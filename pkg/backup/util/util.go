@@ -16,6 +16,7 @@ package util
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -281,4 +282,51 @@ func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error
 		return backupPath, "", nil
 	}
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
+}
+
+func ValidateBackup(backup *v1alpha1.Backup) error {
+	ns := backup.Namespace
+	name := backup.Name
+	if backup.Spec.BR == nil {
+		if backup.Spec.From.Host == "" {
+			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+		}
+		if backup.Spec.From.SecretName == "" {
+			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+		}
+		if backup.Spec.StorageClassName == "" {
+			return fmt.Errorf("missing storageClassName config in spec of %s/%s", ns, name)
+		}
+		if backup.Spec.StorageSize == "" {
+			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
+		}
+	} else {
+		if backup.Spec.BR.PDAddress == "" {
+			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		}
+		if backup.Spec.Type != "" &&
+			backup.Spec.Type != v1alpha1.BackupTypeFull &&
+			backup.Spec.Type != v1alpha1.BackupTypeDB &&
+			backup.Spec.Type != v1alpha1.BackupTypeTable {
+			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
+		}
+		if backup.Spec.S3 != nil {
+			if backup.Spec.S3.Bucket == "" {
+				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
+			}
+			if backup.Spec.S3.Endpoint != "" {
+				u, err := url.Parse(backup.Spec.S3.Endpoint)
+				if err != nil {
+					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+				}
+				if u.Scheme == "" {
+					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+				}
+				if u.Host == "" {
+					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+				}
+			}
+		}
+	}
+	return nil
 }

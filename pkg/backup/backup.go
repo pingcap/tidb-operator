@@ -19,8 +19,6 @@ import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 type BackupManager interface {
 	// Sync	implements the logic for syncing Backup.
 	Sync(backup *v1alpha1.Backup) error
-	// UpdateCondition updates condition for backup CR status
-	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
 }
 
 // RestoreManager implements the logic for manage restore.

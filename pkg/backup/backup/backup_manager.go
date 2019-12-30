@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 type backupManager struct {
@@ -62,11 +63,6 @@ func NewBackupManager(
 	}
 }
 
-// UpdateCondition updates condition for backup CR status
-func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
-	return bm.statusUpdater.Update(backup, condition)
-}
-
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	if err := bm.backupCleaner.Clean(backup); err != nil {
 		return err
@@ -85,7 +81,21 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	_, err := bm.jobLister.Jobs(ns).Get(backupJobName)
+	err := backuputil.ValidateBackup(backup)
+	if err != nil {
+		uErr := bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupInvalid,
+			Status:  corev1.ConditionTrue,
+			Reason:  "InvalidSpec",
+			Message: err.Error(),
+		})
+		if uErr != nil {
+			glog.Warningf("Update condition %s failed for backup %s/%s", v1alpha1.BackupInvalid, ns, name)
+		}
+		return nil
+	}
+
+	_, err = bm.jobLister.Jobs(ns).Get(backupJobName)
 	if err == nil {
 		// already have a backup job running，return directly
 		return nil
@@ -365,10 +375,6 @@ func (fbm *FakeBackupManager) SetSyncError(err error) {
 }
 
 func (fbm *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
-	return fbm.err
-}
-
-func (fbm *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
 	return fbm.err
 }
 

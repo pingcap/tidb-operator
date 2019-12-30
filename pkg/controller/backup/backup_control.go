@@ -32,8 +32,6 @@ import (
 type ControlInterface interface {
 	// UpdateBackup implements the control logic for backup job and backup clean job's creation, deletion
 	UpdateBackup(backup *v1alpha1.Backup) error
-	// UpdateCondition updates status for backup CR
-	UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error
 }
 
 // NewDefaultBackupControl returns a new instance of the default implementation BackupControlInterface that
@@ -68,11 +66,6 @@ func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 
 func (bc *defaultBackupControl) updateBackup(backup *v1alpha1.Backup) error {
 	return bc.backupManager.Sync(backup)
-}
-
-// UpdateCondition updates status for backup CR
-func (bc *defaultBackupControl) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
-	return bc.backupManager.UpdateCondition(backup, condition)
 }
 
 func (bc *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) error {
@@ -116,16 +109,14 @@ var _ ControlInterface = &defaultBackupControl{}
 
 // FakeBackupControl is a fake BackupControlInterface
 type FakeBackupControl struct {
-	backupIndexer          cache.Indexer
-	updateBackupTracker    controller.RequestTracker
-	updateConditionTracker controller.RequestTracker
+	backupIndexer       cache.Indexer
+	updateBackupTracker controller.RequestTracker
 }
 
 // NewFakeBackupControl returns a FakeBackupControl
 func NewFakeBackupControl(backupInformer informers.BackupInformer) *FakeBackupControl {
 	return &FakeBackupControl{
 		backupInformer.Informer().GetIndexer(),
-		controller.RequestTracker{},
 		controller.RequestTracker{},
 	}
 }
@@ -141,22 +132,6 @@ func (fbc *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	if fbc.updateBackupTracker.ErrorReady() {
 		defer fbc.updateBackupTracker.Reset()
 		return fbc.updateBackupTracker.GetError()
-	}
-
-	return fbc.backupIndexer.Add(backup)
-}
-
-// SetUpdateConditionError sets the error attributes of updateConditionTracker
-func (fbc *FakeBackupControl) SetUpdateConditionError(err error, after int) {
-	fbc.updateConditionTracker.SetError(err).SetAfter(after)
-}
-
-// UpdateCondition adds the backup to BackupIndexer
-func (fbc *FakeBackupControl) UpdateCondition(backup *v1alpha1.Backup, c *v1alpha1.BackupCondition) error {
-	defer fbc.updateConditionTracker.Inc()
-	if fbc.updateConditionTracker.ErrorReady() {
-		defer fbc.updateConditionTracker.Reset()
-		return fbc.updateConditionTracker.GetError()
 	}
 
 	return fbc.backupIndexer.Add(backup)

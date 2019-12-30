@@ -15,7 +15,6 @@ package backup
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -174,19 +173,6 @@ func (bkc *Controller) sync(key string) error {
 		return err
 	}
 
-	err = validateBackup(backup)
-	if err != nil {
-		uErr := bkc.control.UpdateCondition(backup.DeepCopy(), &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupInvalid,
-			Status:  corev1.ConditionTrue,
-			Reason:  "InvalidSpec",
-			Message: err.Error(),
-		})
-		if uErr != nil {
-			glog.Warningf("Update condition %s failed for backup %s/%s", v1alpha1.BackupInvalid, ns, name)
-		}
-		return nil
-	}
 	return bkc.syncBackup(backup.DeepCopy())
 }
 
@@ -233,51 +219,4 @@ func (bkc *Controller) enqueueBackup(obj interface{}) {
 		return
 	}
 	bkc.queue.Add(key)
-}
-
-func validateBackup(backup *v1alpha1.Backup) error {
-	ns := backup.Namespace
-	name := backup.Name
-	if backup.Spec.BR == nil {
-		if backup.Spec.From.Host == "" {
-			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		}
-		if backup.Spec.From.SecretName == "" {
-			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-		}
-		if backup.Spec.StorageClassName == "" {
-			return fmt.Errorf("missing storageClassName config in spec of %s/%s", ns, name)
-		}
-		if backup.Spec.StorageSize == "" {
-			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
-		}
-	} else {
-		if backup.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
-		}
-		if backup.Spec.Type != "" &&
-			backup.Spec.Type != v1alpha1.BackupTypeFull &&
-			backup.Spec.Type != v1alpha1.BackupTypeDB &&
-			backup.Spec.Type != v1alpha1.BackupTypeTable {
-			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
-		}
-		if backup.Spec.S3 != nil {
-			if backup.Spec.S3.Bucket == "" {
-				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
-			}
-			if backup.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(backup.Spec.S3.Endpoint)
-				if err != nil {
-					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Scheme == "" {
-					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-				if u.Host == "" {
-					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-				}
-			}
-		}
-	}
-	return nil
 }
