@@ -175,6 +175,7 @@ type PDReplicationConfig struct {
 	// For example, ["zone", "rack"] means that we should place replicas to
 	// different zones first, then to different racks if we don't have enough zones.
 	// Immutable, change should be made through pd-ctl after cluster creation
+	// +k8s:openapi-gen=false
 	// +optional
 	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
