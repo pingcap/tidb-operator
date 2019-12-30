@@ -12,6 +12,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/ant31/crd-validation v0.0.0-20180702145049-30f8a35d0ac2
+	github.com/aws/aws-sdk-go v1.19.45
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
@@ -26,15 +27,14 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-openapi/loads v0.19.4
 	github.com/go-openapi/spec v0.19.3
-	github.com/go-sql-driver/mysql v1.4.0
-	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/go-sql-driver/mysql v1.4.1
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.4.1 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/juju/errors v0.0.0-20180806074554-22422dad46e1
 	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/pingcap/advanced-statefulset v0.2.4
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
-	github.com/pingcap/kvproto v0.0.0-20190516013202-4cf58ad90b6c
+	github.com/pingcap/kvproto v0.0.0-20191217072959-393e6c0fd4b7
 	github.com/pingcap/pd v2.1.17+incompatible
 	github.com/pingcap/tidb v2.1.0-beta+incompatible
 	github.com/prometheus/client_golang v0.9.2
@@ -66,8 +66,10 @@ require (
 	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
+	gocloud.dev v0.18.0
 	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0
@@ -142,3 +144,5 @@ replace k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20
 replace k8s.io/node-api => k8s.io/node-api v0.0.0-20190918163711-2299658ad911
 
 replace github.com/uber-go/atomic => go.uber.org/atomic v1.5.0
+
+replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible

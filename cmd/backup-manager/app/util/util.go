@@ -21,6 +21,8 @@ import (
 
 	"github.com/spf13/pflag"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 var (
@@ -107,4 +109,38 @@ func SetFlagsFromEnv(flags *pflag.FlagSet, prefix string) error {
 	})
 
 	return nil
+}
+
+// ConstructBRGlobalOptions constructs global options for BR and also return the remote path
+func ConstructBRGlobalOptions(backup *v1alpha1.Backup) ([]string, string, error) {
+	var args []string
+	config := backup.Spec.BR
+	if config == nil {
+		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
+	}
+	args = append(args, fmt.Sprintf("--pd=%s", config.PDAddress))
+	if config.CA != "" {
+		args = append(args, fmt.Sprintf("--ca=%s", config.CA))
+	}
+	if config.Cert != "" {
+		args = append(args, fmt.Sprintf("--cert=%s", config.Cert))
+	}
+	if config.Key != "" {
+		args = append(args, fmt.Sprintf("--key=%s", config.Key))
+	}
+	if config.LogLevel != "" {
+		args = append(args, fmt.Sprintf("--log-level=%s", config.LogLevel))
+	}
+	if config.StatusAddr != "" {
+		args = append(args, fmt.Sprintf("--status-addr=%s", config.StatusAddr))
+	}
+	if config.SendCredToTikv != nil {
+		args = append(args, fmt.Sprintf("--send-credentials-to-tikv=%t", *config.SendCredToTikv))
+	}
+	s, path, err := getRemoteStorage(backup)
+	if err != nil {
+		return nil, "", err
+	}
+	args = append(args, s...)
+	return args, path, nil
 }

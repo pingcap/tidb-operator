@@ -53,4 +53,7 @@ const (
 
 	// RcloneConfigArg represents the config argument to rclone cmd
 	RcloneConfigArg = "--config=" + RcloneConfigFile
+
+	// MetaFile is the file name for meta data of backup with BR
+	MetaFile = "backupmeta"
 )

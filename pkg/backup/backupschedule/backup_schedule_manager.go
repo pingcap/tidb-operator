@@ -15,7 +15,9 @@ package backupschedule
 
 import (
 	"fmt"
+	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -199,24 +201,31 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
-	backupSpec := bs.Spec.BackupTemplate
-	if backupSpec.StorageClassName == "" {
-		if bs.Spec.StorageClassName != "" {
-			backupSpec.StorageClassName = bs.Spec.StorageClassName
-		} else {
-			backupSpec.StorageClassName = controller.DefaultBackupStorageClassName
+	backupSpec := *bs.Spec.BackupTemplate.DeepCopy()
+	if backupSpec.BR == nil {
+		if backupSpec.StorageClassName == "" {
+			if bs.Spec.StorageClassName != "" {
+				backupSpec.StorageClassName = bs.Spec.StorageClassName
+			} else {
+				backupSpec.StorageClassName = controller.DefaultBackupStorageClassName
+			}
+		}
+
+		if backupSpec.StorageSize == "" {
+			if bs.Spec.StorageSize != "" {
+				backupSpec.StorageSize = bs.Spec.StorageSize
+			} else {
+				backupSpec.StorageSize = constants.DefaultStorageSize
+			}
+		}
+	} else {
+		if backupSpec.S3 != nil {
+			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,
+				strings.ReplaceAll(backupSpec.BR.PDAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
 		}
 	}
 
-	if backupSpec.StorageSize == "" {
-		if bs.Spec.StorageSize != "" {
-			backupSpec.StorageSize = bs.Spec.StorageSize
-		} else {
-			backupSpec.StorageSize = constants.DefaultStorageSize
-		}
-	}
-
-	bsLabel := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.From.GetTidbEndpoint()).BackupSchedule(bsName)
+	bsLabel := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
 
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
@@ -324,9 +333,8 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, needSort bool) ([]*v1alpha1.Backup, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
-	instanceName := bs.Spec.BackupTemplate.From.GetTidbEndpoint()
 
-	backupLabels := label.NewBackupSchedule().Instance(instanceName).BackupSchedule(bsName)
+	backupLabels := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
 	selector, err := backupLabels.Selector()
 	if err != nil {
 		return nil, fmt.Errorf("generate backup schedule %s/%s label selector failed, err: %v", ns, bsName, err)
