@@ -275,18 +275,9 @@ chmod 777 /data/prometheus /data/grafana
 		c,
 	}
 	container := core.Container{
-		Name:            "monitor-initializer",
-		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
-		ImagePullPolicy: *monitor.Spec.Initializer.ImagePullPolicy,
+		Name:  "monitor-initializer",
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
 		Env: []core.EnvVar{
-			{
-				Name:  "GF_PROVISIONING_PATH",
-				Value: "/grafana-dashboard-definitions/tidb",
-			},
-			{
-				Name:  "GF_DATASOURCE_PATH",
-				Value: "/etc/grafana/provisioning/datasources",
-			},
 			{
 				Name:  "TIDB_CLUSTER_NAME",
 				Value: tc.Name,
@@ -338,6 +329,10 @@ chmod 777 /data/prometheus /data/grafana
 		Resources: controller.ContainerResource(monitor.Spec.Initializer.Resources),
 	}
 
+	if monitor.Spec.Initializer.ImagePullPolicy != nil {
+		container.ImagePullPolicy = *monitor.Spec.Initializer.ImagePullPolicy
+	}
+
 	if monitor.Spec.KubePrometheusURL != nil {
 		container.Env = append(container.Env, core.EnvVar{
 			Name:  "GF_K8S_PROMETHEUS_URL",
@@ -357,6 +352,16 @@ chmod 777 /data/prometheus /data/grafana
 			Name:      "grafana-dashboard",
 			ReadOnly:  false,
 		})
+		container.Env = append(container.Env,
+			core.EnvVar{
+				Name:  "GF_PROVISIONING_PATH",
+				Value: "/grafana-dashboard-definitions/tidb",
+			},
+			core.EnvVar{
+				Name:  "GF_DATASOURCE_PATH",
+				Value: "/etc/grafana/provisioning/datasources",
+			})
+
 	}
 	return container
 }
