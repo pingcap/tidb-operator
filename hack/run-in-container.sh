@@ -16,13 +16,6 @@
 #
 # Isolated container environment for development.
 #
-# Examples:
-#
-#   ./hack/run-in-container.sh # start an interactive shell
-#   CLEANUP=y ./hack/run-in-container.sh # clean local volumes
-#   ./hack/run-in-container.sh make test # exec into the container (start if not running) and run commands
-#   ./hack/run-in-container.sh ./hack/e2e.sh -- --ginkgo.focus='aggregated'
-#
 
 set -o errexit
 set -o nounset
@@ -37,6 +30,52 @@ DOCKER_GRAPH_VOLUME=${DOCKER_GRAPH_VOLUME:-tidb-operator-docker-graph}
 DOCKER_GO_VOLUME=${DOCKER_GO_VOLUME:-tidb-operator-go}
 NAME=${NAME:-tidb-operator-dev}
 
+function usage() {
+    cat <<'EOF'
+This script is entrypoint to start a isolated container environment for development.
+
+Usage: hack/run-in-container.sh [-h] [command]
+
+    -h      show this message and exit
+
+Environments:
+
+    CLEANUP             if passed, clean up local caches
+    DOCKER_LIB_VOLUME   the name of docker lib volume, defaults: tidb-operator-docker-lib
+    DOCKER_GRAPH_VOLUME the name of docker graph volume, defaults: tidb-operator-docker-graph
+    DOCKER_GO_VOLUME    the name of go cache volume, defaults: tidb-operator-go
+    NAME                the name of container
+
+Examples:
+
+0) view help
+
+    ./hack/run-in-container.sh -h
+
+1) start an interactive shell
+
+    ./hack/run-in-container.sh
+
+    You can start more than one terminals and run `./hack/run-in-container.sh` to
+    enter into the same container for debugging.
+
+2) run command and exit
+
+    ./hack/run-in-container.sh make test
+    ./hack/run-in-container.sh ./hack/e2e.sh -- --ginkgo.focus='aggregated'
+
+3) clean docker and go caches local volumes
+
+    CLEANUP=y ./hack/run-in-container.sh
+
+EOF
+}
+
+if [ "${1:-}" == "-h" ]; then
+    usage
+    exit 0
+fi
+
 args=(bash)
 if [ $# -gt 0 ]; then
     args=($@)
@@ -44,6 +83,7 @@ fi
 
 docker_args=(
     -it --rm
+    -h $NAME
     --name $NAME
 )
 
