@@ -1702,6 +1702,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	*out = *in
 	out.To = in.To
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
+	if in.BR != nil {
+		in, out := &in.BR, &out.BR
+		*out = new(BRConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
