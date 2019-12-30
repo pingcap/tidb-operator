@@ -828,16 +828,6 @@ spec:
                     replication:
                       description: PDReplicationConfig is the replication configuration.
                       properties:
-                        location-labels:
-                          description: The label keys specified the location of a
-                            store. The placement priorities is implied by the order
-                            of label keys. For example, ["zone", "rack"] means that
-                            we should place replicas to different zones first, then
-                            to different racks if we don't have enough zones. Immutable,
-                            change should be made through pd-ctl after cluster creation
-                          items:
-                            type: string
-                          type: array
                         max-replicas:
                           description: 'MaxReplicas is the number of replicas for
                             each region. Immutable, change should be made through
@@ -1069,16 +1059,6 @@ spec:
                   type: object
                 storageClassName:
                   type: string
-                service:
-                  description: pd service
-                  items:
-                    properties:
-                      name:
-                        type: string
-                      type:
-                        type: string
-                    type: object
-                  type: array
               required:
               - replicas
               type: object
