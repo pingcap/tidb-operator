@@ -15,16 +15,14 @@ package tidbmonitor
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"time"
-
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
