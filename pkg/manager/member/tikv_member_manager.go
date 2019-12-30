@@ -213,16 +213,8 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 	}
 
-	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
-		if err := tkmm.tikvScaler.ScaleOut(tc, oldSet, newSet); err != nil {
-			return err
-		}
-	}
-
-	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
-		if err := tkmm.tikvScaler.ScaleIn(tc, oldSet, newSet); err != nil {
-			return err
-		}
+	if err := tkmm.tikvScaler.Scale(tc, oldSet, newSet); err != nil {
+		return err
 	}
 
 	if tkmm.autoFailover {
@@ -235,6 +227,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	if !statefulSetEqual(*newSet, *oldSet) {
 		set := *oldSet
+		set.Annotations = newSet.Annotations
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
@@ -424,6 +417,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	tikvLabel := labelTiKV(tc)
 	setName := controller.TiKVMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(20180), tc.BaseTiKVSpec().Annotations())
+	stsAnnotations := getStsAnnotations(tc, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 	storageClassName := tc.Spec.TiKV.StorageClassName
@@ -509,6 +503,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:            setName,
 			Namespace:       ns,
 			Labels:          tikvLabel.Labels(),
+			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{

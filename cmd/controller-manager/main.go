@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1/helper"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
+	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/version"
@@ -170,6 +171,7 @@ func main() {
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
+		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
 
 		// Start informer factories after all controller are initialized.
 		informerFactory.Start(ctx.Done())
@@ -192,6 +194,7 @@ func main() {
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbInitController.Run(workers, ctx.Done()) }, waitDuration)
+		go wait.Forever(func() { tidbMonitorController.Run(workers, ctx.Done()) }, waitDuration)
 		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
 	}
 	onStopped := func() {
