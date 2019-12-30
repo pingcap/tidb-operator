@@ -100,6 +100,18 @@ $ git checkout -b myfeature
 
 You can now edit the code on the `myfeature` branch.
 
+#### Check
+
+Run following commands to check your code change.
+
+```
+$ make check-setup
+$ make check
+```
+
+This will show errors if your code change does not pass checks (e.g. fmt,
+lint). Please fix them before submitting the PR.
+
 #### Run unit tests
 
 Before running your code in a real Kubernetes cluster, make sure it passes all unit tests.
@@ -110,35 +122,38 @@ $ make test
 
 #### Run e2e tests
 
-First you should build a local Kubernetes environment for e2e tests.
+At first, you must have [Docker](https://www.docker.com/get-started/) installed
+and running.
 
-* Use kind to build Kubernetes cluster
-
-    Please ensure you have install [kind](https://kind.sigs.k8s.io/) and it's version == v0.4.0
-
-    Use the following command to create a local kind Kubernetes environment.
-
-    ```sh
-    $ ./hack/kind-cluster-build.sh
-    ```
-
-    If you have customization requirements, please refer the help info:
-
-    ```
-    $ ./hack/kind-cluster-build.sh --help
-    ```
-
-    Setting `KUBECONFIG` environment variable before using the Kubernetes cluster:
-
-    ```
-    export KUBECONFIG=$(kind get kubeconfig-path --name=<clusterName>)
-    ```
-
-Then you run e2e with the following command. Note that images will be pushed to a local registry running inside the Kubernetes cluster.
+Now you can run the following command to run all e2e test.
 
 ```sh
-$ make e2e
+$ ./hack/e2e.sh
 ```
+
+It's possible to limit specs to run, for example:
+
+```
+$ ./hack/e2e.sh -- --ginkgo.focus='Basic'
+```
+
+Run the following command to see help:
+
+```
+$ ./hack/e2e.sh -h
+```
+
+**NOTE**: `hack/run-in-container.sh` can start a dev container the same as our CI
+environment. This is recommended way to run e2e tests, e.g.
+
+```
+$ ./hack/run-in-container.sh # starts an interactive shell
+(tidb-operator-dev) $ <run your commands>
+```
+
+You can start more than one terminals and run `./hack/run-in-container.sh` to
+enter into the same container for debugging. Run `./hack/run-in-container.sh -h`
+to see help.
 
 ### Step 5: Keep your branch in sync
 

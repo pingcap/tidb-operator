@@ -16,12 +16,9 @@ package cmd
 import (
 	"context"
 
-	// registry mysql drive
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -32,7 +29,7 @@ import (
 
 // NewBackupCommand implements the backup command
 func NewBackupCommand() *cobra.Command {
-	bo := backup.BackupOpts{}
+	bo := backup.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "backup",
@@ -44,18 +41,11 @@ func NewBackupCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
-	cmd.Flags().StringVar(&bo.Host, "host", "", "Tidb cluster access address")
-	cmd.Flags().Int32Var(&bo.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
-	cmd.Flags().StringVar(&bo.Bucket, "bucket", "", "Bucket in which to store the backup data")
-	cmd.Flags().StringVar(&bo.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
-	cmd.Flags().StringVar(&bo.User, "user", "", "User for login tidb cluster")
-	cmd.Flags().StringVar(&bo.StorageType, "storageType", "", "Backend storage type")
 	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
-	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
 
-func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
+func runBackup(backupOpts backup.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
@@ -74,6 +64,6 @@ func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
 	glog.Infof("start to process backup %s", backupOpts.String())
-	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
+	bm := backup.NewManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessBackup()
 }

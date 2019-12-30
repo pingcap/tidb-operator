@@ -72,7 +72,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
   - apiGroups: ["admission.tidb.pingcap.com"]
-    resources: ["admissionreviews"]
+    resources: ["admissionreviews", "mutatingreviews"]
     verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

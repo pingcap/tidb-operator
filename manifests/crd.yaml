@@ -1460,16 +1460,6 @@ spec:
                     replication:
                       description: PDReplicationConfig is the replication configuration.
                       properties:
-                        location-labels:
-                          description: The label keys specified the location of a
-                            store. The placement priorities is implied by the order
-                            of label keys. For example, ["zone", "rack"] means that
-                            we should place replicas to different zones first, then
-                            to different racks if we don't have enough zones. Immutable,
-                            change should be made through pd-ctl after cluster creation
-                          items:
-                            type: string
-                          type: array
                         max-replicas:
                           description: 'MaxReplicas is the number of replicas for
                             each region. Immutable, change should be made through
@@ -6171,6 +6161,55 @@ spec:
             backupType:
               description: Type is the backup type for tidb cluster.
               type: string
+            br:
+              description: BRConfig contains config for BR
+              properties:
+                ca:
+                  description: CA is the CA certificate path for TLS connection
+                  type: string
+                cert:
+                  description: Cert is the certificate path for TLS connection
+                  type: string
+                checksum:
+                  description: Checksum specifies whether to run checksum after backup
+                  type: boolean
+                concurrency:
+                  description: Concurrency is the size of thread pool on each node
+                    that execute the backup task
+                  format: int64
+                  type: integer
+                key:
+                  description: Key is the private key path for TLS connection
+                  type: string
+                logLevel:
+                  description: LogLevel is the log level
+                  type: string
+                onLine:
+                  description: OnLine specifies whether online during restore
+                  type: boolean
+                pd:
+                  description: PDAddress is the PD address of the tidb cluster
+                  type: string
+                rateLimit:
+                  description: RateLimit is the rate limit of the backup task, MB/s
+                    per node
+                  format: int32
+                  type: integer
+                sendCredToTikv:
+                  description: SendCredToTikv specifies whether to send credentials
+                    to TiKV
+                  type: boolean
+                statusAddr:
+                  description: StatusAddr is the HTTP listening address for the status
+                    report service. Set to empty string to disable
+                  type: string
+                timeAgo:
+                  description: TimeAgo is the history version of the backup task,
+                    e.g. 1m, 1h
+                  type: string
+              required:
+              - pd
+              type: object
             from:
               description: TiDBAccessConfig defines the configuration for access tidb
                 cluster
@@ -6249,6 +6288,9 @@ spec:
                   description: 'Path is the full path where the backup is saved. The
                     format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
+                prefix:
+                  description: Prefix for the keys.
+                  type: string
                 provider:
                   description: Provider represents the specific storage provider that
                     implements the S3 interface
@@ -6259,6 +6301,9 @@ spec:
                 secretName:
                   description: SecretName is the name of secret which stores S3 compliant
                     storage access key and secret key.
+                  type: string
+                sse:
+                  description: SSE Sever-Side Encryption.
                   type: string
                 storageClass:
                   description: StorageClass represents the storage class
@@ -6274,10 +6319,6 @@ spec:
             storageSize:
               description: StorageSize is the request storage size for backup job
               type: string
-          required:
-          - from
-          - storageClassName
-          - storageSize
           type: object
       type: object
   version: v1alpha1
@@ -6379,6 +6420,9 @@ spec:
                   description: 'Path is the full path where the backup is saved. The
                     format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                   type: string
+                prefix:
+                  description: Prefix for the keys.
+                  type: string
                 provider:
                   description: Provider represents the specific storage provider that
                     implements the S3 interface
@@ -6389,6 +6433,9 @@ spec:
                 secretName:
                   description: SecretName is the name of secret which stores S3 compliant
                     storage access key and secret key.
+                  type: string
+                sse:
+                  description: SSE Sever-Side Encryption.
                   type: string
                 storageClass:
                   description: StorageClass represents the storage class
@@ -6491,6 +6538,56 @@ spec:
                 backupType:
                   description: Type is the backup type for tidb cluster.
                   type: string
+                br:
+                  description: BRConfig contains config for BR
+                  properties:
+                    ca:
+                      description: CA is the CA certificate path for TLS connection
+                      type: string
+                    cert:
+                      description: Cert is the certificate path for TLS connection
+                      type: string
+                    checksum:
+                      description: Checksum specifies whether to run checksum after
+                        backup
+                      type: boolean
+                    concurrency:
+                      description: Concurrency is the size of thread pool on each
+                        node that execute the backup task
+                      format: int64
+                      type: integer
+                    key:
+                      description: Key is the private key path for TLS connection
+                      type: string
+                    logLevel:
+                      description: LogLevel is the log level
+                      type: string
+                    onLine:
+                      description: OnLine specifies whether online during restore
+                      type: boolean
+                    pd:
+                      description: PDAddress is the PD address of the tidb cluster
+                      type: string
+                    rateLimit:
+                      description: RateLimit is the rate limit of the backup task,
+                        MB/s per node
+                      format: int32
+                      type: integer
+                    sendCredToTikv:
+                      description: SendCredToTikv specifies whether to send credentials
+                        to TiKV
+                      type: boolean
+                    statusAddr:
+                      description: StatusAddr is the HTTP listening address for the
+                        status report service. Set to empty string to disable
+                      type: string
+                    timeAgo:
+                      description: TimeAgo is the history version of the backup task,
+                        e.g. 1m, 1h
+                      type: string
+                  required:
+                  - pd
+                  type: object
                 from:
                   description: TiDBAccessConfig defines the configuration for access
                     tidb cluster
@@ -6569,6 +6666,9 @@ spec:
                       description: 'Path is the full path where the backup is saved.
                         The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
                       type: string
+                    prefix:
+                      description: Prefix for the keys.
+                      type: string
                     provider:
                       description: Provider represents the specific storage provider
                         that implements the S3 interface
@@ -6579,6 +6679,9 @@ spec:
                     secretName:
                       description: SecretName is the name of secret which stores S3
                         compliant storage access key and secret key.
+                      type: string
+                    sse:
+                      description: SSE Sever-Side Encryption.
                       type: string
                     storageClass:
                       description: StorageClass represents the storage class
@@ -6595,10 +6698,6 @@ spec:
                   description: StorageSize is the request storage size for backup
                     job
                   type: string
-              required:
-              - from
-              - storageClassName
-              - storageSize
               type: object
             maxBackups:
               description: MaxBackups is to specify how many backups we want to keep
