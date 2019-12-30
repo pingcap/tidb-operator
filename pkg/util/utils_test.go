@@ -17,6 +17,10 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestGetOrdinalFromPodName(t *testing.T) {
@@ -29,11 +33,6 @@ func TestGetOrdinalFromPodName(t *testing.T) {
 	i, err = GetOrdinalFromPodName("pod-notint")
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(i).To(Equal(int32(0)))
-}
-
-func TestGetNextOrdinalPodName(t *testing.T) {
-	g := NewGomegaWithT(t)
-	g.Expect(GetNextOrdinalPodName("pod-1", 1)).To(Equal("pod-2"))
 }
 
 func TestIsSubMapOf(t *testing.T) {
@@ -72,4 +71,57 @@ func TestIsSubMapOf(t *testing.T) {
 		map[string]string{
 			"k1": "v1",
 		})).To(BeFalse())
+}
+
+func TestGetPodOrdinals(t *testing.T) {
+	tests := []struct {
+		name        string
+		tc          *v1alpha1.TidbCluster
+		memberType  v1alpha1.MemberType
+		deleteSlots sets.Int32
+	}{
+		{
+			name: "no delete slots",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Replicas: 3,
+					},
+				},
+			},
+			memberType:  v1alpha1.TiDBMemberType,
+			deleteSlots: sets.NewInt32(0, 1, 2),
+		},
+		{
+			name: "delete slots",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnTiDBDeleteSlots: "[1,2]",
+					},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Replicas: 3,
+					},
+				},
+			},
+			memberType:  v1alpha1.TiDBMemberType,
+			deleteSlots: sets.NewInt32(0, 3, 4),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetPodOrdinals(tt.tc, tt.memberType)
+			if err != nil {
+				t.Error(err)
+			}
+			if !got.Equal(tt.deleteSlots) {
+				t.Errorf("expects %v got %v", tt.deleteSlots.List(), got.List())
+			}
+		})
+	}
 }

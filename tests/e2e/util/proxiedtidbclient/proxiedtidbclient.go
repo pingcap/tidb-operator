@@ -37,7 +37,7 @@ type proxiedTiDBClient struct {
 
 var _ controller.TiDBControlInterface = &proxiedTiDBClient{}
 
-func (p *proxiedTiDBClient) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
+func (p *proxiedTiDBClient) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	panic("implement when necessary")
 }
 
