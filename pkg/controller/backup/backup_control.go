@@ -126,7 +126,7 @@ func (fbc *FakeBackupControl) SetUpdateBackupError(err error, after int) {
 	fbc.updateBackupTracker.SetError(err).SetAfter(after)
 }
 
-// CreateBackup adds the backup to BackupIndexer
+// UpdateBackup adds the backup to BackupIndexer
 func (fbc *FakeBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	defer fbc.updateBackupTracker.Inc()
 	if fbc.updateBackupTracker.ErrorReady() {
