@@ -53,7 +53,6 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// basic validation
 	allErrs = append(allErrs, ValidateTidbCluster(tc)...)
-	allErrs = append(allErrs, ValidateTidbCluster(tc)...)
 	if old.GetInstanceName() != tc.GetInstanceName() {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("labels"), tc.Labels,
 			"The instance must not be mutate or set value other than the cluster name"))
