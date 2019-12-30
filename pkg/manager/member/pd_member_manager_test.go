@@ -1083,7 +1083,7 @@ func TestGetPDConfigMap(t *testing.T) {
 							},
 							Replication: &v1alpha1.PDReplicationConfig{
 								MaxReplicas:    func() *uint64 { i := uint64(5); return &i }(),
-								LocationLabels: v1alpha1.StringSlice{"node", "rack"},
+								LocationLabels: []string{"node", "rack"},
 							},
 						},
 					},
