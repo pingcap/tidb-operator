@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -219,11 +220,12 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		}
 	} else {
 		if backupSpec.S3 != nil {
-			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix, timestamp.UTC().Format(constants.TimeFormat))
+			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,
+				strings.ReplaceAll(backupSpec.BR.PDAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
 		}
 	}
 
-	bsLabel := label.NewBackupSchedule().Instance(bs.Spec.BackupTemplate.From.GetTidbEndpoint()).BackupSchedule(bsName)
+	bsLabel := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
 
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
@@ -331,9 +333,8 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.BackupSchedule, needSort bool) ([]*v1alpha1.Backup, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
-	instanceName := bs.Spec.BackupTemplate.From.GetTidbEndpoint()
 
-	backupLabels := label.NewBackupSchedule().Instance(instanceName).BackupSchedule(bsName)
+	backupLabels := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
 	selector, err := backupLabels.Selector()
 	if err != nil {
 		return nil, fmt.Errorf("generate backup schedule %s/%s label selector failed, err: %v", ns, bsName, err)

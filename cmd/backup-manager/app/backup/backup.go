@@ -23,13 +23,9 @@ import (
 	glog "k8s.io/klog"
 
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-)
-
-const (
-	// MetaFile represents file name
-	MetaFile = "backupmeta"
 )
 
 // Options contains the input arguments to the backup command
@@ -75,15 +71,15 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 	}
 	defer s.Close()
 	ctx := context.Background()
-	exist, err := s.Exists(ctx, MetaFile)
+	exist, err := s.Exists(ctx, constants.MetaFile)
 	if err != nil {
 		return commitTs, err
 	}
 	if !exist {
-		return commitTs, fmt.Errorf("%s not exist", MetaFile)
+		return commitTs, fmt.Errorf("%s not exist", constants.MetaFile)
 
 	}
-	metaData, err := s.ReadAll(ctx, MetaFile)
+	metaData, err := s.ReadAll(ctx, constants.MetaFile)
 	if err != nil {
 		return commitTs, err
 	}

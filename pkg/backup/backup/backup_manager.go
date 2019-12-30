@@ -62,6 +62,11 @@ func NewBackupManager(
 	}
 }
 
+// UpdateCondition updates condition for backup CR status
+func (bm *backupManager) UpdateCondition(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition) error {
+	return bm.statusUpdater.Update(backup, condition)
+}
+
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	if err := bm.backupCleaner.Clean(backup); err != nil {
 		return err
@@ -184,7 +189,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
@@ -251,7 +256,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -323,7 +328,7 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backupPVCName,
 			Namespace: ns,
-			Labels:    label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()),
+			Labels:    label.NewBackup().Instance(backup.GetInstanceName()),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: &storageClassName,
@@ -360,6 +365,10 @@ func (fbm *FakeBackupManager) SetSyncError(err error) {
 }
 
 func (fbm *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
+	return fbm.err
+}
+
+func (fbm *FakeBackupManager) UpdateCondition(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition) error {
 	return fbm.err
 }
 

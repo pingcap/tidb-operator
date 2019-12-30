@@ -600,7 +600,7 @@ type TiDBAccessConfig struct {
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
 	// From is the tidb cluster that needs to backup.
-	From TiDBAccessConfig `json:"from"`
+	From TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
@@ -659,6 +659,8 @@ const (
 	BackupFailed BackupConditionType = "Failed"
 	// BackupRetryFailed means this failure can be retried
 	BackupRetryFailed BackupConditionType = "RetryFailed"
+	// BackupInvalid means invalid backup CR
+	BackupInvalid BackupConditionType = "Invalid"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.

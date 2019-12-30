@@ -27,6 +27,7 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig":                      schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Backup":                        schema_pkg_apis_pingcap_v1alpha1_Backup(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupList":                    schema_pkg_apis_pingcap_v1alpha1_BackupList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSchedule":                schema_pkg_apis_pingcap_v1alpha1_BackupSchedule(ref),
@@ -361,6 +362,104 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BRConfig contains config for BR",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pd": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PDAddress is the PD address of the tidb cluster",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ca": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CA is the CA certificate path for TLS connection",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"cert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cert is the certificate path for TLS connection",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Key is the private key path for TLS connection",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"logLevel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogLevel is the log level",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"statusAddr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatusAddr is the HTTP listening address for the status report service. Set to empty string to disable",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Concurrency is the size of thread pool on each node that execute the backup task",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"rateLimit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RateLimit is the rate limit of the backup task, MB/s per node",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"timeAgo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TimeAgo is the history version of the backup task, e.g. 1m, 1h",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"checksum": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Checksum specifies whether to run checksum after backup",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"sendCredToTikv": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SendCredToTikv specifies whether to send credentials to TiKV",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"onLine": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OnLine specifies whether online during restore",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"pd"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_Backup(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -628,12 +727,17 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"br": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BRConfig is the configs for BR",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
+						},
+					},
 				},
-				Required: []string{"from", "storageClassName", "storageSize"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
 	}
 }
 
@@ -2445,6 +2549,20 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					"secretName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SecretName is the name of secret which stores S3 compliant storage access key and secret key.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"prefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Prefix for the keys.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sse": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SSE Sever-Side Encryption.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

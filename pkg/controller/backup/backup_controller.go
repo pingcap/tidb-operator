@@ -174,7 +174,17 @@ func (bkc *Controller) sync(key string) error {
 		return err
 	}
 
-	if !validBackup(backup) {
+	err = validateBackup(backup)
+	if err != nil {
+		uErr := bkc.control.UpdateCondition(backup.DeepCopy(), &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupInvalid,
+			Status:  corev1.ConditionTrue,
+			Reason:  "InvalidSpec",
+			Message: err.Error(),
+		})
+		if uErr != nil {
+			glog.Warningf("Update condition %s failed for backup %s/%s", v1alpha1.BackupInvalid, ns, name)
+		}
 		return nil
 	}
 	return bkc.syncBackup(backup.DeepCopy())
@@ -193,6 +203,11 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
 		glog.Infof("backup %s/%s is being deleted", ns, name)
 		bkc.enqueueBackup(newBackup)
+		return
+	}
+
+	if v1alpha1.IsBackupInvalid(newBackup) {
+		glog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
 		return
 	}
 
@@ -220,52 +235,49 @@ func (bkc *Controller) enqueueBackup(obj interface{}) {
 	bkc.queue.Add(key)
 }
 
-func validBackup(backup *v1alpha1.Backup) bool {
+func validateBackup(backup *v1alpha1.Backup) error {
 	ns := backup.Namespace
 	name := backup.Name
 	if backup.Spec.BR == nil {
 		if backup.Spec.From.Host == "" {
-			glog.Errorf("Missing Cluster config in spec of %s/%s", ns, name)
-			return false
+			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
 		}
 		if backup.Spec.From.SecretName == "" {
-			glog.Errorf("Missing TidbSecretName config in spec of %s/%s", ns, name)
-			return false
+			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
 		}
 		if backup.Spec.StorageClassName == "" {
-			glog.Errorf("Missing StorageClassName config in spec of %s/%s", ns, name)
-			return false
+			return fmt.Errorf("missing storageClassName config in spec of %s/%s", ns, name)
 		}
 		if backup.Spec.StorageSize == "" {
-			glog.Errorf("Missing StorageSize config in spec of %s/%s", ns, name)
-			return false
+			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
 		if backup.Spec.BR.PDAddress == "" {
-			glog.Errorf("PD address should be configured for BR in spec of %s/%s", ns, name)
-			return false
+			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		}
+		if backup.Spec.Type != "" &&
+			backup.Spec.Type != v1alpha1.BackupTypeFull &&
+			backup.Spec.Type != v1alpha1.BackupTypeDB &&
+			backup.Spec.Type != v1alpha1.BackupTypeTable {
+			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
 		if backup.Spec.S3 != nil {
 			if backup.Spec.S3.Bucket == "" {
-				glog.Errorf("Bucket should be configured for BR in spec of %s/%s", ns, name)
-				return false
+				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
 			}
 			if backup.Spec.S3.Endpoint != "" {
 				u, err := url.Parse(backup.Spec.S3.Endpoint)
 				if err != nil {
-					glog.Errorf("Invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-					return false
+					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
 				}
 				if u.Scheme == "" {
-					glog.Errorf("Scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-					return false
+					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
 				}
 				if u.Host == "" {
-					glog.Errorf("Host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-					return false
+					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
 				}
 			}
 		}
 	}
-	return true
+	return nil
 }
