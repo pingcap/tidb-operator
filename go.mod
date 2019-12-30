@@ -69,6 +69,7 @@ require (
 	gocloud.dev v0.18.0
 	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0
