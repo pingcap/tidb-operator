@@ -50,7 +50,7 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
 
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		rootCAs, err := utilcrypto.ReadCACerts()
 		if err != nil {
 			return nil, err

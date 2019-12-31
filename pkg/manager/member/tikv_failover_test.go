@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiKVFailoverFailover(t *testing.T) {
@@ -34,7 +35,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForPD()
-		tc.Spec.TiKV.MaxFailoverCount = 3
+		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 		test.update(tc)
 		tikvFailover := newFakeTiKVFailover()
 
@@ -257,7 +258,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 		{
 			name: "exceed max failover count2 but maxFailoverCount = 0",
 			update: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiKV.MaxFailoverCount = 0
+				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(0)
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 					"12": {
 						State:              v1alpha1.TiKVStateDown,

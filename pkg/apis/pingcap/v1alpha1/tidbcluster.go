@@ -22,176 +22,110 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage = "busybox:1.26.2"
+	defaultHelperImage      = "busybox:1.26.2"
+	defaultTimeZone         = "UTC"
+	defaultEnableTLSCluster = false
+	defaultEnableTLSClient  = false
+	defaultExposeStatus     = true
+	defaultSeparateSlowLog  = true
+	defaultEnablePVReclaim  = false
 )
 
-// ComponentAccessor is the interface to access component details, which respects the cluster-level properties
-// and component-level overrides
-type ComponentAccessor interface {
-	Image() string
-	ImagePullPolicy() corev1.PullPolicy
-	HostNetwork() bool
-	Affinity() *corev1.Affinity
-	PriorityClassName() string
-	NodeSelector() map[string]string
-	Annotations() map[string]string
-	Tolerations() []corev1.Toleration
-	PodSecurityContext() *corev1.PodSecurityContext
-	SchedulerName() string
-	DnsPolicy() corev1.DNSPolicy
-}
+var (
+	defaultTailerSpec = TiDBSlowLogTailerSpec{
+		ResourceRequirements: corev1.ResourceRequirements{},
+	}
+	defaultHelperSpec = HelperSpec{}
+)
 
-type componentAccessorImpl struct {
-	// Cluster is the TidbCluster Spec
-	ClusterSpec *TidbClusterSpec
-
-	// Cluster is the Component Spec
-	ComponentSpec *ComponentSpec
-}
-
-func (a *componentAccessorImpl) Image() string {
-	image := a.ComponentSpec.Image
-	baseImage := a.ComponentSpec.BaseImage
+func (tc *TidbCluster) PDImage() string {
+	image := tc.Spec.PD.Image
+	baseImage := tc.Spec.PD.BaseImage
 	// base image takes higher priority
 	if baseImage != "" {
-		version := a.ComponentSpec.Version
-		if version == "" {
-			version = a.ClusterSpec.Version
+		version := tc.Spec.PD.Version
+		if version == nil {
+			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, version)
+		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
 	return image
 }
 
-func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext {
-	return a.ComponentSpec.PodSecurityContext
-}
-
-func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
-	pp := a.ComponentSpec.ImagePullPolicy
-	if pp == nil {
-		pp = &a.ClusterSpec.ImagePullPolicy
+func (tc *TidbCluster) TiKVImage() string {
+	image := tc.Spec.TiKV.Image
+	baseImage := tc.Spec.TiKV.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiKV.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
-	return *pp
+	return image
 }
 
-func (a *componentAccessorImpl) HostNetwork() bool {
-	hostNetwork := a.ComponentSpec.HostNetwork
-	if hostNetwork == nil {
-		hostNetwork = &a.ClusterSpec.HostNetwork
+func (tc *TidbCluster) TiDBImage() string {
+	image := tc.Spec.TiDB.Image
+	baseImage := tc.Spec.TiDB.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiDB.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
-	return *hostNetwork
+	return image
 }
 
-func (a *componentAccessorImpl) Affinity() *corev1.Affinity {
-	affi := a.ComponentSpec.Affinity
-	if affi == nil {
-		affi = a.ClusterSpec.Affinity
-	}
-	return affi
-}
-
-func (a *componentAccessorImpl) PriorityClassName() string {
-	pcn := a.ComponentSpec.PriorityClassName
-	if pcn == "" {
-		pcn = a.ClusterSpec.PriorityClassName
-	}
-	return pcn
-}
-
-func (a *componentAccessorImpl) SchedulerName() string {
-	pcn := a.ComponentSpec.SchedulerName
-	if pcn == "" {
-		pcn = a.ClusterSpec.SchedulerName
-	}
-	return pcn
-}
-
-func (a *componentAccessorImpl) NodeSelector() map[string]string {
-	sel := map[string]string{}
-	for k, v := range a.ClusterSpec.NodeSelector {
-		sel[k] = v
-	}
-	for k, v := range a.ComponentSpec.NodeSelector {
-		sel[k] = v
-	}
-	return sel
-}
-
-func (a *componentAccessorImpl) Annotations() map[string]string {
-	anno := map[string]string{}
-	for k, v := range a.ClusterSpec.Annotations {
-		anno[k] = v
-	}
-	for k, v := range a.ComponentSpec.Annotations {
-		anno[k] = v
-	}
-	return anno
-}
-
-func (a *componentAccessorImpl) Tolerations() []corev1.Toleration {
-	tols := a.ComponentSpec.Tolerations
-	if len(tols) == 0 {
-		tols = a.ClusterSpec.Tolerations
-	}
-	return tols
-}
-
-func (a *componentAccessorImpl) DnsPolicy() corev1.DNSPolicy {
-	dnsPolicy := corev1.DNSClusterFirst // same as kubernetes default
-	if a.HostNetwork() {
-		dnsPolicy = corev1.DNSClusterFirstWithHostNet
-	}
-	return dnsPolicy
-}
-
-// BaseTiDBSpec returns the base spec of TiDB servers
-func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
-	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiDB.ComponentSpec}
-}
-
-// BaseTiKVSpec returns the base spec of TiKV servers
-func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
-	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
-}
-
-// BasePDSpec returns the base spec of PD servers
-func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
-	return &componentAccessorImpl{&tc.Spec, &tc.Spec.PD.ComponentSpec}
-}
-
-// BasePumpSpec returns two results:
-// 1. the base pump spec, if exists.
-// 2. whether the base pump spec exists.
-func (tc *TidbCluster) BasePumpSpec() (ComponentAccessor, bool) {
+func (tc *TidbCluster) PumpImage() *string {
 	if tc.Spec.Pump == nil {
-		return nil, false
+		return nil
 	}
-	return &componentAccessorImpl{&tc.Spec, &tc.Spec.Pump.ComponentSpec}, true
+	image := tc.Spec.Pump.Image
+	baseImage := tc.Spec.Pump.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.Pump.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, *version)
+	}
+	return &image
 }
 
 func (tc *TidbCluster) HelperImage() string {
-	image := tc.Spec.Helper.Image
-	if image == "" {
+	image := tc.GetHelperSpec().Image
+	if image == nil {
 		// for backward compatibility
-		image = tc.Spec.TiDB.SlowLogTailer.Image
+		image = tc.Spec.TiDB.GetSlowLogTailerSpec().Image
 	}
-	if image == "" {
-		image = defaultHelperImage
+	if image == nil {
+		return defaultHelperImage
 	}
-	return image
+	return *image
 }
 
 func (tc *TidbCluster) HelperImagePullPolicy() corev1.PullPolicy {
-	pp := tc.Spec.Helper.ImagePullPolicy
+	pp := tc.GetHelperSpec().ImagePullPolicy
 	if pp == nil {
 		// for backward compatibility
-		pp = tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy
+		pp = tc.Spec.TiDB.GetSlowLogTailerSpec().ImagePullPolicy
 	}
 	if pp == nil {
-		pp = &tc.Spec.ImagePullPolicy
+		return tc.Spec.ImagePullPolicy
 	}
 	return *pp
+}
+
+func (tc *TidbCluster) GetHelperSpec() HelperSpec {
+	if tc.Spec.Helper == nil {
+		return defaultHelperSpec
+	}
+	return *tc.Spec.Helper
 }
 
 func (mt MemberType) String() string {
@@ -312,32 +246,6 @@ func (tc *TidbCluster) TiDBStsActualReplicas() int32 {
 	return stsStatus.Replicas
 }
 
-func (tc *TidbCluster) TiDBConfigUpdateStrategy() ConfigUpdateStrategy {
-	s := tc.Spec.TiDB.ConfigUpdateStrategy
-	if string(s) == "" {
-		// defaulting logic will set a default value for configUpdateStrategy field, but if the
-		// object is created in early version without this field being set, we choose a safer default
-		s = ConfigUpdateStrategyInPlace
-	}
-	return s
-}
-
-func (tc *TidbCluster) PDConfigUpdateStrategy() ConfigUpdateStrategy {
-	s := tc.Spec.PD.ConfigUpdateStrategy
-	if string(s) == "" {
-		s = ConfigUpdateStrategyInPlace
-	}
-	return s
-}
-
-func (tc *TidbCluster) TiKVConfigUpdateStrategy() ConfigUpdateStrategy {
-	s := tc.Spec.TiKV.ConfigUpdateStrategy
-	if string(s) == "" {
-		s = ConfigUpdateStrategyInPlace
-	}
-	return s
-}
-
 func (tc *TidbCluster) PDIsAvailable() bool {
 	lowerLimit := tc.Spec.PD.Replicas/2 + 1
 	if int32(len(tc.Status.PD.Members)) < lowerLimit {
@@ -390,8 +298,16 @@ func (tc *TidbCluster) GetClusterID() string {
 	return tc.Status.ClusterID
 }
 
+func (tc *TidbCluster) IsTLSClusterEnabled() bool {
+	enableTLCluster := tc.Spec.EnableTLSCluster
+	if enableTLCluster == nil {
+		return defaultEnableTLSCluster
+	}
+	return *enableTLCluster
+}
+
 func (tc *TidbCluster) Scheme() string {
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		return "https"
 	}
 	return "http"
@@ -400,9 +316,57 @@ func (tc *TidbCluster) Scheme() string {
 func (tc *TidbCluster) Timezone() string {
 	tz := tc.Spec.Timezone
 	if tz == "" {
-		tz = "UTC"
+		return defaultTimeZone
 	}
 	return tz
+}
+
+func (tc *TidbCluster) IsPVReclaimEnabled() bool {
+	enabled := tc.Spec.EnablePVReclaim
+	if enabled == nil {
+		return defaultEnablePVReclaim
+	}
+	return *enabled
+}
+
+func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
+	binlogEnabled := tc.Spec.TiDB.BinlogEnabled
+	if binlogEnabled == nil {
+		isPumpCreated := tc.Spec.Pump != nil
+		return isPumpCreated
+	}
+	return *binlogEnabled
+}
+
+func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
+	enableTLSClient := tidb.EnableTLSClient
+	if enableTLSClient == nil {
+		return defaultEnableTLSClient
+	}
+	return *enableTLSClient
+}
+
+func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
+	separateSlowLog := tidb.SeparateSlowLog
+	if separateSlowLog == nil {
+		return defaultEnableTLSClient
+	}
+	return *separateSlowLog
+}
+
+func (tidb *TiDBSpec) GetSlowLogTailerSpec() TiDBSlowLogTailerSpec {
+	if tidb.SlowLogTailer == nil {
+		return defaultTailerSpec
+	}
+	return *tidb.SlowLogTailer
+}
+
+func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
+	exposeStatus := tidbSvc.ExposeStatus
+	if exposeStatus == nil {
+		return defaultExposeStatus
+	}
+	return *exposeStatus
 }
 
 func (tc *TidbCluster) GetInstanceName() string {
