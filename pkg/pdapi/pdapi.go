@@ -16,6 +16,7 @@ package pdapi
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -62,17 +63,38 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 }
 
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
-func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string) (*tls.Config, error) {
+// It loads in-cluster root ca if caCert is empty.
+func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, caCert []byte) (*tls.Config, error) {
 	secretName := fmt.Sprintf("%s-pd-client", tcName)
 	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}
 
-	rootCAs, tlsCert, err := certutil.LoadCerts(secret.Data["cert"], secret.Data["key"])
+	var rootCAs *x509.CertPool
+	var tlsCert tls.Certificate
+
+	if len(caCert) > 0 {
+		rootCAs = x509.NewCertPool()
+		rootCAs.AppendCertsFromPEM(caCert)
+	} else {
+		rootCAs, err = certutil.ReadCACerts()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	clientCert, certExists := secret.Data["cert"]
+	clientKey, keyExists := secret.Data["key"]
+	if !certExists || !keyExists {
+		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", namespace, secretName)
+	}
+
+	tlsCert, err = tls.X509KeyPair(clientCert, clientKey)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}
+
 	return &tls.Config{
 		RootCAs:      rootCAs,
 		Certificates: []tls.Certificate{tlsCert},
@@ -94,7 +116,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
 		if tlsEnabled {
-			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName)
+			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
 			if err != nil {
 				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
