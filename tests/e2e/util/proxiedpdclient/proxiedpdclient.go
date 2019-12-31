@@ -61,5 +61,5 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 }
 
 func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster, caCert []byte) (pdapi.PDClient, context.CancelFunc, error) {
-	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.Spec.EnableTLSCluster, caCert)
+	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled(), caCert)
 }
