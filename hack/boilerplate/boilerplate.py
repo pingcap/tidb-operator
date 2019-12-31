@@ -155,13 +155,10 @@ def file_extension(filename):
     return os.path.splitext(filename)[1].split(".")[-1].lower()
 
 
-skipped_dirs = ['Godeps', 'third_party', '_gopath', '_output', '.git', 'cluster/env.sh',
-                "vendor", "test/e2e/generated/bindata.go", "hack/boilerplate/test",
-                "staging/src/k8s.io/kubectl/pkg/generated/bindata.go"]
+skipped_dirs = []
 
 # list all the files contain 'DO NOT EDIT', but are not generated
-skipped_ungenerated_files = [
-    'hack/lib/swagger.sh', 'hack/boilerplate/boilerplate.py']
+skipped_ungenerated_files = ['hack/boilerplate/boilerplate.py']
 
 
 def normalize_files(files):
