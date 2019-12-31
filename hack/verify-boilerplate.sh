@@ -35,6 +35,7 @@ files=($(find . -type f -not \( \
         -path './hack/boilerplate/*' \
         -o -path './_tools/*' \
         -o -path './.git/*' \
+        -o -path './.*/*' \
         -o -path './vendor/*' \
         -o -path './pkg/client/*' \
         -o -path './*/.terraform/*' \
