@@ -143,6 +143,12 @@ rules:
 - apiGroups: ["pingcap.com"]
   resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles"]
+  verbs: ["escalate","create","get","update","bind"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings"]
+  verbs: ["create","get","update"]
 {{- if .Values.features | has "AdvancedStatefulSet=true" }}
 - apiGroups:
   - apps.pingcap.com
