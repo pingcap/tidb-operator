@@ -1,8 +1,0 @@
-GCP_REGION="us-west1"
-GCP_PROJECT="smooth-tendril-207212"
-pd_instance_type   = "n1-standard-1"
-tikv_instance_type = "n1-highmem-4"
-tidb_instance_type = "n1-standard-1"
-monitor_instance_type      = "n1-standard-1"
-vpc_name = "vpcdan"
-gke_name = "gkedan"
