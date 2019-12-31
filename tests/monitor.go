@@ -48,7 +48,7 @@ func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 
 		pod, err := oa.kubeCli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 		if err != nil {
-			klog.Infof("tm[%s/%s] is failed to fetch", tm.Namespace, tm.Name)
+			klog.Infof("tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
 			return false, nil
 		}
 		if !podutil.IsPodReady(pod) {
@@ -63,6 +63,7 @@ func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 		}
 		_, err = oa.kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
 		if err != nil {
+			klog.Infof("tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 			return false, nil
 		}
 		return true, err
