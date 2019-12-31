@@ -61,6 +61,7 @@ func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 		if tm.Spec.Grafana == nil && len(pod.Spec.Containers) != 2 {
 			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 		}
+		klog.Infof("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 		_, err = oa.kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Infof("tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
