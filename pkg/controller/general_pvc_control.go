@@ -19,6 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -56,11 +57,10 @@ func (gpc *realGeneralPVCControl) CreatePVC(object runtime.Object, pvc *corev1.P
 	kind := object.GetObjectKind().GroupVersionKind().Kind
 
 	_, err := gpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Create(pvc)
-	if err != nil {
+	if err != nil && !kerrors.IsAlreadyExists(err) {
 		glog.Errorf("failed to create pvc: [%s/%s], %s: %s, %v", ns, pvcName, kind, instanceName, err)
-	} else {
-		glog.V(4).Infof("create pvc: [%s/%s] successfully, %s: %s", ns, pvcName, kind, instanceName)
 	}
+	glog.V(4).Infof("create pvc: [%s/%s] successfully, %s: %s", ns, pvcName, kind, instanceName)
 	gpc.recordPVCEvent("create", object, pvc, err)
 	return err
 }
