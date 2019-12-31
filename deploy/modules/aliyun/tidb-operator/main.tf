@@ -70,7 +70,7 @@ resource "alicloud_cs_managed_kubernetes" "k8s" {
   cluster_network_type  = var.cluster_network_type
   slb_internet_enabled  = var.public_apiserver
   kube_config           = var.kubeconfig_file != "" ? var.kubeconfig_file : format("%s/kubeconfig", path.cwd)
-  worker_numbers        = [var.default_worker_count]
+  worker_number         = var.default_worker_count
   worker_instance_types = [var.default_worker_type != "" ? var.default_worker_type : data.alicloud_instance_types.default.instance_types[0].id]
 
   # These varialbes are 'ForceNew' that will cause kubernetes cluster re-creation
