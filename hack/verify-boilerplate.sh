@@ -34,9 +34,9 @@ boiler="${ROOT}/hack/boilerplate/boilerplate.py"
 files=($(find . -type f -not \( \
         -path './hack/boilerplate/*' \
         -o -path './_tools/*' \
-		-o -path './.git/*' \
-		-o -path './vendor/*' \
-		-o -path './pkg/client/*' \
+        -o -path './.git/*' \
+        -o -path './vendor/*' \
+        -o -path './pkg/client/*' \
         -o -path './*/.terraform/*' \
         -o -path './deploy/*' \
         -o -path '*/*.sh' \
@@ -53,8 +53,8 @@ done < <("${boiler}" "${files[@]}")
 
 # Run boilerplate check
 if [[ ${#files_need_boilerplate[@]} -gt 0 ]]; then
-	for file in "${files_need_boilerplate[@]}"; do
-		echo "Boilerplate header is wrong for: ${file}" >&2
-	done
-	exit 1
+    for file in "${files_need_boilerplate[@]}"; do
+        echo "Boilerplate header is wrong for: ${file}" >&2
+    done
+    exit 1
 fi
