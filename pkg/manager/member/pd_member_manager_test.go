@@ -803,7 +803,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 					},
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
@@ -817,7 +817,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 					},
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 		},
 	}
@@ -1051,6 +1051,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 
 func TestGetPDConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1075,7 +1076,9 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
 						Config: &v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
 								MaxStoreDownTime:         "5m",
@@ -1221,7 +1224,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						{Name: "pd", Type: string(corev1.ServiceTypeClusterIP)},
 					},
 					PD: v1alpha1.PDSpec{
-						Service: &v1alpha1.ServiceSpec{ClusterIP: "172.20.10.1"},
+						Service: &v1alpha1.ServiceSpec{ClusterIP: pointer.StringPtr("172.20.10.1")},
 					},
 				},
 			},
@@ -1282,7 +1285,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
 					PD: v1alpha1.PDSpec{
-						Service: &v1alpha1.ServiceSpec{LoadBalancerIP: "172.20.10.1"},
+						Service: &v1alpha1.ServiceSpec{LoadBalancerIP: pointer.StringPtr("172.20.10.1")},
 					},
 				},
 			},
@@ -1344,7 +1347,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					},
 					PD: v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
-							ClusterIP: "172.20.10.1"},
+							ClusterIP: pointer.StringPtr("172.20.10.1")},
 					},
 				},
 			},

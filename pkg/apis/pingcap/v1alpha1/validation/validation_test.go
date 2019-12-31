@@ -41,22 +41,16 @@ func TestValidateDeletedSlots(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.7",
 					PD: v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/pd",
-						},
-						Config: &v1alpha1.PDConfig{},
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
 					},
 					TiKV: v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tikv",
-						},
-						Config: &v1alpha1.TiKVConfig{},
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
 					},
 					TiDB: v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tidb",
-						},
-						Config: &v1alpha1.TiDBConfig{},
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},
@@ -71,22 +65,16 @@ func TestValidateDeletedSlots(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.7",
 					PD: v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/pd",
-						},
-						Config: &v1alpha1.PDConfig{},
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
 					},
 					TiKV: v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tikv",
-						},
-						Config: &v1alpha1.TiKVConfig{},
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
 					},
 					TiDB: v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tidb",
-						},
-						Config: &v1alpha1.TiDBConfig{},
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},
@@ -117,22 +105,16 @@ func TestValidateDeletedSlots(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.7",
 					PD: v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/pd",
-						},
-						Config: &v1alpha1.PDConfig{},
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
 					},
 					TiKV: v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tikv",
-						},
-						Config: &v1alpha1.TiKVConfig{},
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
 					},
 					TiDB: v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tidb",
-						},
-						Config: &v1alpha1.TiDBConfig{},
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},
@@ -155,22 +137,16 @@ func TestValidateDeletedSlots(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.7",
 					PD: v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/pd",
-						},
-						Config: &v1alpha1.PDConfig{},
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
 					},
 					TiKV: v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tikv",
-						},
-						Config: &v1alpha1.TiKVConfig{},
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
 					},
 					TiDB: v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							BaseImage: "pingcap/tidb",
-						},
-						Config: &v1alpha1.TiDBConfig{},
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},
