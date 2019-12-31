@@ -37,6 +37,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 )
 
@@ -85,9 +86,11 @@ func NewController(
 	}
 
 	controller.WatchForObject(tidbInitializerInformer.Informer(), tic.queue)
+	m := make(map[string]string)
+	m[label.ComponentLabelKey] = label.InitJobLabelVal
 	controller.WatchForController(jobInformer.Informer(), tic.queue, func(ns, name string) (runtime.Object, error) {
 		return tic.tiLister.TidbInitializers(ns).Get(name)
-	})
+	}, m)
 
 	return tic
 }
