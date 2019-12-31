@@ -45,7 +45,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -106,19 +105,41 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
-		clusters := map[string]string{}
-		clusters["v3.0.5"] = "cluster1"
-		clusters["v2.1.16"] = "cluster5" // for v2.1.x series
-
-		for version, name := range clusters {
-			localVersion := version
-			localName := name
-			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localVersion, localName), func() {
-				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localName, "", localVersion)
-				if name == "cluster5" {
+		clusterCfgs := []struct {
+			Version string
+			Name    string // helm release name, should not conflict with names used in other tests
+			Values  map[string]string
+		}{
+			{
+				Version: "v3.0.5",
+				Name:    "basic-v3",
+			},
+			{
+				Version: "v2.1.16",
+				Name:    "basic-v2",
+				Values: map[string]string{
 					// verify v2.1.x configuration compatibility
 					// https://github.com/pingcap/tidb-operator/pull/950
-					cluster.Resources["tikv.resources.limits.storage"] = "1G"
+					"tikv.resources.limits.storage": "1G",
+				},
+			},
+			{
+				Version: "v3.0.5",
+				Name:    "basic-v3-cluster-tls",
+				Values: map[string]string{
+					"enableTLSCluster": "true",
+				},
+			},
+		}
+
+		for _, clusterCfg := range clusterCfgs {
+			localCfg := clusterCfg
+			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
+				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localCfg.Name, "", localCfg.Version)
+				if len(localCfg.Values) > 0 {
+					for k, v := range localCfg.Values {
+						cluster.Resources[k] = v
+					}
 				}
 
 				// support reclaim pv when scale in tikv or pd component
@@ -191,10 +212,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.It("Upgrading TiDB Cluster", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
 		cluster.Resources["pd.replicas"] = "3"
-		// TLS only works with PD >= v3.0.5
-		if semver.Compare(cfg.GetTiDBVersionOrDie(), "v3.0.5") >= 0 {
-			cluster.Resources["enableTLSCluster"] = "true"
-		}
 
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
