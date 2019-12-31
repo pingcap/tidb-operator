@@ -123,7 +123,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).CleanJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).CleanJob().Backup(name)
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{

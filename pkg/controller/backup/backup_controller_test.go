@@ -262,6 +262,8 @@ func newBackup() *v1alpha1.Backup {
 					SecretName: "demo",
 				},
 			},
+			StorageClassName: "local-storage",
+			StorageSize:      "1Gi",
 		},
 	}
 }

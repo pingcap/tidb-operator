@@ -141,10 +141,6 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor) *rbac.Role {
 				Resources: []string{"pods"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
-			{
-				NonResourceURLs: []string{"/metrics"},
-				Verbs:           []string{"get"},
-			},
 		},
 	}
 }
