@@ -120,7 +120,7 @@ rules:
     - events
   verbs: ["*"]
 - apiGroups: [""]
-  resources: ["endpoints"]
+  resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update"]
 - apiGroups: [""]
   resources: ["serviceaccounts"]
@@ -141,15 +141,7 @@ rules:
   resources: ["statefulsets","deployments"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources:
-  - tidbclusters
-  - tidbclusters/finalizers
-  - backups
-  - backups/finalizers
-  - backupschedules
-  - backupschedules/finalizers
-  - restores
-  - restores/finalizers
+  resources: ["*"]
   verbs: ["*"]
 {{- if .Values.features | has "AdvancedStatefulSet=true" }}
 - apiGroups:
