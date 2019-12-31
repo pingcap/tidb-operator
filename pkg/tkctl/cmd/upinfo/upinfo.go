@@ -207,7 +207,7 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 		if dbPhase == v1alpha1.UpgradePhase {
 			if len(podList.Items) != 0 {
 				pod := podList.Items[0]
-				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.BaseTiDBSpec().Image())
+				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.TiDBImage())
 			}
 		}
 		{

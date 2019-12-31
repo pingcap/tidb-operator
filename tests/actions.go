@@ -1436,9 +1436,9 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.BasePDSpec().Image() != c.Image {
+	if tc.PDImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
-			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
+			ns, pdSetName, c.Image, tc.PDImage())
 		return false, nil
 	}
 
@@ -1509,9 +1509,9 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.BaseTiKVSpec().Image() != c.Image {
+	if tc.TiKVImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
+			ns, tikvSetName, c.Image, tc.TiKVImage())
 		return false, nil
 	}
 
@@ -1576,9 +1576,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.BaseTiDBSpec().Image() != c.Image {
+	if tc.TiDBImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
-			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
+			ns, tidbSetName, c.Image, tc.TiDBImage())
 		return false, nil
 	}
 
