@@ -19,6 +19,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"os/exec"
 	"path"
 	"testing"
 	"time"
@@ -121,6 +122,21 @@ func setupSuite() {
 }
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
+	ginkgo.By("Clear all helm releases")
+	helmClearCmd := "helm ls --all --short | xargs -n 1 -r helm delete --purge"
+	if err := exec.Command("sh", "-c", helmClearCmd).Run(); err != nil {
+		framework.Failf("failed to clear helm releases (cmd: %q, error: %v", helmClearCmd, err)
+	}
+	ginkgo.By("Clear non-kubernetes apiservices")
+	clearNonK8SAPIServicesCmd := "kubectl delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart"
+	if err := exec.Command("sh", "-c", clearNonK8SAPIServicesCmd).Run(); err != nil {
+		framework.Failf("failed to clear non-kubernetes apiservices (cmd: %q, error: %v", clearNonK8SAPIServicesCmd, err)
+	}
+	ginkgo.By("Clear validatingwebhookconfigurations")
+	clearValidatingWebhookConfigurationsCmd := "kubectl delete validatingwebhookconfiguration --all"
+	if err := exec.Command("sh", "-c", clearValidatingWebhookConfigurationsCmd).Run(); err != nil {
+		framework.Failf("failed to clear validatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
+	}
 	setupSuite()
 	// override with hard-coded value
 	e2econfig.TestConfig.ManifestDir = "/manifests"

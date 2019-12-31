@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
+	"github.com/pingcap/tidb-operator/pkg/webhook/strategy"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -40,6 +41,7 @@ type AdmissionHook struct {
 	initialized              bool
 	podAC                    *pod.PodAdmissionControl
 	stsAC                    *statefulset.StatefulSetAdmissionControl
+	strategyAC               *strategy.AdmissionWebhook
 	ExtraServiceAccounts     string
 	EvictRegionLeaderTimeout time.Duration
 }
@@ -59,6 +61,11 @@ func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.Admi
 			Allowed: false,
 		}
 	}
+	resp := a.strategyAC.Validate(ar)
+	if !resp.Allowed {
+		return resp
+	}
+	// see if other ACs are interested in this resource
 	switch ar.Kind.Kind {
 	case "Pod":
 		if "" != ar.Kind.Group {
@@ -75,8 +82,21 @@ func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.Admi
 		}
 		return a.stsAC.AdmitStatefulSets(ar)
 	default:
-		return a.unknownAdmissionRequest(ar)
+		return resp
 	}
+}
+
+func (a *AdmissionHook) MutatingResource() (plural schema.GroupVersionResource, singular string) {
+	return schema.GroupVersionResource{
+			Group:    "admission.tidb.pingcap.com",
+			Version:  "v1alpha1",
+			Resource: "mutatingreviews",
+		},
+		"GenericMutatingReview"
+}
+
+func (a *AdmissionHook) Admit(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	return a.strategyAC.Mutate(ar)
 }
 
 // any special initialization goes here
@@ -115,6 +135,8 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 	klog.Info("pod admission webhook initialized successfully")
 	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)
 	klog.Info("statefulset admission webhook initialized successfully")
+	a.strategyAC = strategy.NewAdmissionWebhook(&strategy.Registry)
+	klog.Info("strategy based admission webhook initialized successfully")
 	a.initialized = true
 	return nil
 }
