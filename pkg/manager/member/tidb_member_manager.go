@@ -259,11 +259,16 @@ func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) err
 		fmt.Sprintf("*.%s.%s", peerName, ns),
 	}
 
+	ipList := []string{
+		"127.0.0.1", "::1", // able to access https endpoint via loopback network
+	}
+
 	certOpts := &controller.TiDBClusterCertOptions{
 		Namespace:  ns,
 		Instance:   tcName,
 		CommonName: svcName,
 		HostList:   hostList,
+		IPList:     ipList,
 		Component:  "tidb",
 		Suffix:     "tidb",
 	}

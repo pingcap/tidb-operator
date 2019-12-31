@@ -113,7 +113,9 @@ func NewOperatorActions(cli versioned.Interface,
 		fw:           fw,
 	}
 	if fw != nil {
-		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw)
+		kubeCfg, err := framework.LoadConfig()
+		framework.ExpectNoError(err)
+		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
 		oa.tidbControl = controller.NewDefaultTiDBControl()
 	}
