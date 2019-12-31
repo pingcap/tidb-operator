@@ -195,7 +195,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if setNotExist {
-		err = SetLastAppliedConfigAnnotation(newPDSet)
+		err = SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
 		}
@@ -230,7 +230,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
@@ -311,7 +311,7 @@ func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet
 		set.Spec.Template = newPDSet.Spec.Template
 		*set.Spec.Replicas = *newPDSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newPDSet.Spec.UpdateStrategy
-		err := SetLastAppliedConfigAnnotation(&set)
+		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}
