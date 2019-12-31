@@ -171,7 +171,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 
 	newTiDBSet := getNewTiDBSetForTidbCluster(tc, cm)
 	if setNotExist {
-		err = SetLastAppliedConfigAnnotation(newTiDBSet)
+		err = SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	if !templateEqual(newTiDBSet.Spec.Template, oldTiDBSet.Spec.Template) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}
@@ -228,7 +228,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		set.Spec.Template = newTiDBSet.Spec.Template
 		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newTiDBSet.Spec.UpdateStrategy
-		err := SetLastAppliedConfigAnnotation(&set)
+		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}

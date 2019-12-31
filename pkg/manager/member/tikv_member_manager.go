@@ -181,7 +181,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 	if setNotExist {
-		err = SetLastAppliedConfigAnnotation(newSet)
+		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
 			return err
 		}
@@ -207,7 +207,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
 		if err := tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		set.Spec.Template = newSet.Spec.Template
 		*set.Spec.Replicas = *newSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
-		err := SetLastAppliedConfigAnnotation(&set)
+		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
 		}

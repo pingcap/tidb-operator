@@ -78,7 +78,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		if test.changeOldSet != nil {
 			test.changeOldSet(oldSet)
 		}
-		SetLastAppliedConfigAnnotation(oldSet)
+		SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 
 		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(3)
 

@@ -119,7 +119,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			name:     "modify oldSet update strategy to OnDelete",
 			changeFn: nil,
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
 					Type: apps.OnDeleteStatefulSetStrategyType,
 				}
@@ -140,7 +140,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			name:     "set oldSet's RollingUpdate strategy to nil",
 			changeFn: nil,
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
 					Type: apps.RollingUpdateStatefulSetStrategyType,
 				}
@@ -169,7 +169,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.Stores["3"] = store
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			changePods: func(pods []*corev1.Pod) {
 				for _, pod := range pods {
@@ -203,7 +203,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.Stores["2"] = store
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -234,7 +234,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
 				oldSet.Spec.Template.Spec.Containers[0].Image = "old-image"
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			changePods:          nil,
 			beginEvictLeaderErr: false,
@@ -276,7 +276,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 			},
 			changePods:          nil,
 			beginEvictLeaderErr: false,
@@ -322,7 +322,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -350,7 +350,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -384,7 +384,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -412,7 +412,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -444,7 +444,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -476,7 +476,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
@@ -502,7 +502,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				tc.Status.TiKV.StatefulSet.UpdatedReplicas = 1
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetLastAppliedConfigAnnotation(oldSet)
+				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 				oldSet.Status.CurrentReplicas = 2
 				oldSet.Status.UpdatedReplicas = 1
 				oldSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(2)
