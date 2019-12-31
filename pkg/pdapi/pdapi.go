@@ -97,8 +97,8 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName)
 			if err != nil {
 				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 			}
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
 	}
