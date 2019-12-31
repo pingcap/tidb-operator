@@ -90,7 +90,6 @@ if [ "${GENS}" = "all" ] || grep -qw "registry" <<<"${GENS}"; then
   echo "${GOPATH}/bin/apiregister-gen" --input-dirs "$(codegen::join , "${APIS_DIR[@]}")" "$@"
 fi
 
-return
 if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
   echo "Generating deepcopy funcs"
   "${GOPATH}/bin/deepcopy-gen" --input-dirs "$(codegen::join , "${ALL_FQ_APIS[@]}")" -O zz_generated.deepcopy --bounding-dirs "${INT_APIS_PKG},${EXT_APIS_PKG}" "$@"
