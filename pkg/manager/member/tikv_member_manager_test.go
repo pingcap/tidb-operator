@@ -1878,6 +1878,7 @@ func TestTiKVInitContainers(t *testing.T) {
 
 func TestGetTiKVConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1902,7 +1903,9 @@ func TestGetTiKVConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: v1alpha1.TiKVSpec{
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
 						Config: &v1alpha1.TiKVConfig{
 							Raftstore: &v1alpha1.TiKVRaftstoreConfig{
 								SyncLog:              pointer.BoolPtr(false),
