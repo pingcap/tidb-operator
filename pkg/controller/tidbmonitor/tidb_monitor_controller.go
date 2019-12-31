@@ -15,7 +15,6 @@ package tidbmonitor
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -23,6 +22,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,7 +78,7 @@ func NewController(
 	controller.WatchForObject(tidbMonitorInformer.Informer(), tmc.queue)
 	controller.WatchForController(deploymentInformer.Informer(), tmc.queue, func(ns, name string) (runtime.Object, error) {
 		return tmc.tmLister.TidbMonitors(ns).Get(name)
-	})
+	}, nil)
 
 	return tmc
 }
