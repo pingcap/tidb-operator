@@ -51,6 +51,8 @@ rules:
 - apiGroups: ["pingcap.com"]
   resources: ["*"]
   verbs: ["*"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
 {{- if .Values.features | has "AdvancedStatefulSet=true" }}
 - apiGroups:
   - apps.pingcap.com
@@ -80,7 +82,7 @@ Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-esc
   resources: [clusterroles,roles]
   verbs: ["escalate","create","get","update"]
 - apiGroups: ["rbac.authorization.k8s.io"]
-  resources: ["rolebindings"]
+  resources: ["rolebindings","clusterrolebindings"]
   verbs: ["create","get","update"]
 ---
 kind: ClusterRoleBinding
@@ -120,7 +122,7 @@ rules:
     - events
   verbs: ["*"]
 - apiGroups: [""]
-  resources: ["endpoints"]
+  resources: ["endpoints","configmaps"]
   verbs: ["create", "get", "list", "watch", "update"]
 - apiGroups: [""]
   resources: ["serviceaccounts"]
@@ -141,16 +143,14 @@ rules:
   resources: ["statefulsets","deployments"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources:
-  - tidbclusters
-  - tidbclusters/finalizers
-  - backups
-  - backups/finalizers
-  - backupschedules
-  - backupschedules/finalizers
-  - restores
-  - restores/finalizers
+  resources: ["*"]
   verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles"]
+  verbs: ["escalate","create","get","update"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings"]
+  verbs: ["create","get","update"]
 {{- if .Values.features | has "AdvancedStatefulSet=true" }}
 - apiGroups:
   - apps.pingcap.com
