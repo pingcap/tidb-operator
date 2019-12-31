@@ -62,7 +62,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		if test.getLastAppliedConfigErr {
 			oldSet.SetAnnotations(map[string]string{LastAppliedConfigAnnotation: "fake apply config"})
 		} else {
-			SetLastAppliedConfigAnnotation(oldSet)
+			SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 		}
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		if test.errorExpect {

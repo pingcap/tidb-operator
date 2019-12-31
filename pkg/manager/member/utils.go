@@ -81,11 +81,6 @@ func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
 	return nil
 }
 
-// SetLastAppliedConfigAnnotation set last applied config info to Statefulset's annotation and the podTemplate's annotation
-func SetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
-	return SetStatefulSetLastAppliedConfigAnnotation(set)
-}
-
 // GetLastAppliedConfig get last applied config info from Statefulset's annotation and the podTemplate's annotation
 func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
 	specAppliedConfig, ok := set.Annotations[LastAppliedConfigAnnotation]
