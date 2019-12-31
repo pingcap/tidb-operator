@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/slack"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"time"
 )
@@ -43,13 +44,15 @@ func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	namespace := tm.Namespace
 	podName := monitor.GetMonitorObjectName(tm)
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
-	return wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 
 		pod, err := oa.kubeCli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 		if err != nil {
+			klog.Infof("tm[%s/%s] is failed to fetch", tm.Namespace, tm.Name)
 			return false, nil
 		}
 		if !podutil.IsPodReady(pod) {
+			klog.Infof("tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 			return false, nil
 		}
 		if tm.Spec.Grafana != nil && len(pod.Spec.Containers) != 3 {
