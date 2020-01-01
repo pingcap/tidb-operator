@@ -292,11 +292,16 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
+	ipList := []string{
+		"127.0.0.1", "::1", // able to access https endpoint via loopback network
+	}
+
 	certOpts := &controller.TiDBClusterCertOptions{
 		Namespace:  ns,
 		Instance:   tcName,
 		CommonName: svcName,
 		HostList:   hostList,
+		IPList:     ipList,
 		Component:  "pd",
 		Suffix:     "pd",
 	}

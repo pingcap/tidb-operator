@@ -38,13 +38,13 @@ import (
 //	  }
 //    defer cancel()
 //
-func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool, caCert []byte) (pdapi.PDClient, context.CancelFunc, error) {
 	var tlsConfig *tls.Config
 	var err error
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName)
+		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName, caCert)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -60,6 +60,6 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
 }
 
-func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
-	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled())
+func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster, caCert []byte) (pdapi.PDClient, context.CancelFunc, error) {
+	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled(), caCert)
 }
