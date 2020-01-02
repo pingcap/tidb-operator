@@ -102,10 +102,10 @@ func TestPDFailoverFailover(t *testing.T) {
 	}
 	tests := []testcase{
 		{
-			name:                     "all members are ready",
-			update:                   allMembersReady,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "all members are ready",
+			update: allMembersReady,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -120,10 +120,10 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name:                     "pd status sync failed",
-			update:                   allMembersReady,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "pd status sync failed",
+			update: allMembersReady,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -137,10 +137,10 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
-			name:                     "two members are not ready, not in quorum",
-			update:                   twoMembersNotReady,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "two members are not ready, not in quorum",
+			update: twoMembersNotReady,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -156,15 +156,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				sort.Strings(events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 0 is unhealthy from"))
-				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 0 is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 			},
 		},
 		{
-			name:                     "two members are ready and a failure member",
-			update:                   oneFailureMember,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "two members are ready and a failure member",
+			update: oneFailureMember,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -191,8 +191,8 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.LastTransitionTime = metav1.Time{Time: time.Now().Add(-2 * time.Minute)}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
-			hasPVC:                   true,
-			hasPod:                   true,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -204,7 +204,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 			},
 		},
 		{
@@ -216,8 +216,8 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.LastTransitionTime = metav1.Time{}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
-			hasPVC:                   true,
-			hasPod:                   true,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -229,14 +229,14 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 			},
 		},
 		{
-			name:                     "has one not ready member, don't have pvc",
-			update:                   oneNotReadyMember,
-			hasPVC:                   false,
-			hasPod:                   true,
+			name:   "has one not ready member, don't have pvc",
+			update: oneNotReadyMember,
+			hasPVC: false,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -251,14 +251,14 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 			},
 		},
 		{
-			name:                     "has one not ready member",
-			update:                   oneNotReadyMember,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "has one not ready member",
+			update: oneNotReadyMember,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -278,15 +278,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(failureMembers.MemberDeleted).To(BeFalse())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 marked as a failure member"))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   false,
-			hasPod:                   true,
+			name:   "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success",
+			update: oneNotReadyMemberAndAFailureMember,
+			hasPVC: false,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -301,7 +301,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 deleted from cluster"))
 			},
 		},
@@ -314,8 +314,8 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.MemberID = "wrong-id"
 				tc.Status.PD.FailureMembers[pd1Name] = pd1
 			},
-			hasPVC:                   false,
-			hasPod:                   true,
+			hasPVC: false,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -333,14 +333,14 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete member failed",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   false,
-			hasPod:                   true,
+			name:   "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete member failed",
+			update: oneNotReadyMemberAndAFailureMember,
+			hasPVC: false,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          true,
 			delPodFailed:             false,
@@ -358,14 +358,14 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod failed",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   false,
-			hasPod:                   true,
+			name:   "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod failed",
+			update: oneNotReadyMemberAndAFailureMember,
+			hasPVC: false,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             true,
@@ -383,15 +383,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 deleted from cluster"))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, has Pod, delete pvc failed",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "has one not ready member, and exceed deadline, has Pod, delete pvc failed",
+			update: oneNotReadyMemberAndAFailureMember,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -409,15 +409,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 deleted from cluster"))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, has Pod with deletion timestamp",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "has one not ready member, and exceed deadline, has Pod with deletion timestamp",
+			update: oneNotReadyMemberAndAFailureMember,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: true,
 			delMemberFailed:          false,
 			delPodFailed:             false,
@@ -438,15 +438,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 deleted from cluster"))
 			},
 		},
 		{
-			name:                     "has one not ready member, and exceed deadline, has PVC with deletion timestamp",
-			update:                   oneNotReadyMemberAndAFailureMember,
-			hasPVC:                   true,
-			hasPod:                   true,
+			name:   "has one not ready member, and exceed deadline, has PVC with deletion timestamp",
+			update: oneNotReadyMemberAndAFailureMember,
+			hasPVC: true,
+			hasPod: true,
 			podWithDeletionTimestamp: false,
 			pvcWithDeletionTimestamp: true,
 			delMemberFailed:          false,
@@ -468,7 +468,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
-				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy from"))
+				g.Expect(events[0]).To(ContainSubstring("member 12891273174085095651 is unhealthy"))
 				g.Expect(events[1]).To(ContainSubstring("member 12891273174085095651 deleted from cluster"))
 			},
 		},
@@ -673,11 +673,10 @@ func twoMembersNotReady(tc *v1alpha1.TidbCluster) {
 	pd0 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0)
 	pd1 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 1)
 	pd2 := ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 2)
-	now := time.Now()
 	tc.Status.PD.Members = map[string]v1alpha1.PDMember{
-		pd0: {Name: pd0, ID: "0", LastTransitionTime: metav1.Time{now}, Health: false},
-		pd1: {Name: pd1, ID: "12891273174085095651", LastTransitionTime: metav1.Time{now}, Health: false},
-		pd2: {Name: pd2, ID: "2", LastTransitionTime: metav1.Time{now}, Health: true},
+		pd0: {Name: pd0, ID: "0", Health: false},
+		pd1: {Name: pd1, ID: "12891273174085095651", Health: false},
+		pd2: {Name: pd2, ID: "2", Health: true},
 	}
 }
 

@@ -88,7 +88,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			}
 
 			pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberUnhealthy",
-				"member %s is unhealthy from %s", pdMember.ID, pdMember.LastTransitionTime.Format(time.RFC3339))
+				"member %s is unhealthy", pdMember.ID)
 		}
 	}
 	inQuorum := healthCount > len(tc.Status.PD.Members)/2
