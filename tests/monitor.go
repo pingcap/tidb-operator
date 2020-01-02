@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -43,9 +42,7 @@ func (oa *operatorActions) DeployTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor)
 
 func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	namespace := tm.Namespace
-	deploymentName := monitor.GetMonitorObjectName(tm)
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
-
 	monitorLabel, err := label.New().Instance(tm.Name).Monitor().Selector()
 	if err != nil {
 		return err
