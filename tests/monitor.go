@@ -98,7 +98,7 @@ func (oa *operatorActions) checkTidbMonitorFunctional(monitor *v1alpha1.TidbMoni
 	}
 	if monitor.Spec.Grafana != nil {
 		var grafanaClient *metrics.Client
-		if err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
+		if _, err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
 			return err
 		}
 	}
@@ -140,7 +140,7 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 	return nil
 }
 
-func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) error {
+func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 	end := time.Now()
 	start := end.Add(-time.Minute)
@@ -154,7 +154,7 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 	if oa.fw != nil {
 		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 3000)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer cancel()
 		addr = fmt.Sprintf("%s:%d", localHost, localPort)
@@ -164,24 +164,24 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 
 	datasourceID, err := getDatasourceID(addr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.SetBasicAuth(grafanaUsername, grafanaPassword)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	data := struct {
 		Status string `json:"status"`
@@ -196,10 +196,10 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 		}
 	}{}
 	if err := json.Unmarshal(buf, &data); err != nil {
-		return err
+		return nil, err
 	}
 	if data.Status != "success" || len(data.Data.Result) < 1 {
-		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+		return nil, fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
 	}
 
 	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
@@ -207,9 +207,9 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, namespace)
 		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		grafanaClient = client
+		return client, nil
 	}
-	return nil
+	return nil, nil
 }
