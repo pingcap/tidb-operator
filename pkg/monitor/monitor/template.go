@@ -18,6 +18,39 @@ import (
 	"html/template"
 )
 
+type PrometheusConfig struct {
+	Global        map[string]string  `json:"global"`
+	Alerting      []AlertingSpec     `json:"alerting"`
+	RuleFiles     []string           `json:"rule_files"`
+	ScrapeConfigs []ScrapeConfigSpec `json:"scrape_configs"`
+}
+
+type AlertingSpec struct {
+	AlertManagers []AlertmanagerSpec `json:"alertmanagers"`
+}
+
+type AlertmanagerSpec struct {
+	StaticConfigs []map[string][]string `json:"static_configs"`
+}
+
+type ScrapeConfigSpec struct {
+	JobName             string              `json:"job_name"`
+	ScrapeInterval      string              `json:"scrape_interval"`
+	HonorLabels         bool                `json:"honor_labels"`
+	KubernetesSDConfigs []map[string]string `json:"kubernetes_sd_configs"`
+	TlsConfig           map[string]string   `json:"tls_config"`
+	Schema              string              `json:"schema"`
+	RelabelConfigs      []RelabelConfig     `json:"relabel_configs"`
+}
+
+type RelabelConfig struct {
+	SourceLabels string `json:"source_labels"`
+	Action       string `json:"action"`
+	Regex        string `json:"regex,omitempty"`
+	TargetLabel  string `json:"target_label,omitempty"`
+	Replacement  string `json:"replacement,omitempty"`
+}
+
 var prometheusConfigTpl = template.Must(template.New("monitor-configmap").Parse(`global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -155,6 +188,89 @@ type MonitorConfigModel struct {
 	ReleaseNamespaces  []string
 	ReleaseTargetRegex string
 	EnableTLSCluster   bool
+}
+
+func newPrometheusConfig(model *MonitorConfigModel) PrometheusConfig {
+	c := PrometheusConfig{
+		Global: map[string]string{
+			"scrape_interval":     "15s",
+			"evaluation_interval": "15s",
+		},
+		Alerting: []AlertingSpec{
+			{
+				AlertManagers: []AlertmanagerSpec{
+					{
+						StaticConfigs: []map[string][]string{
+							{
+								"targets": []string{
+									"alertUrl",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		RuleFiles: []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		},
+		ScrapeConfigs: []ScrapeConfigSpec{
+			{
+				JobName:        "tidb-cluster",
+				ScrapeInterval: "15s",
+				HonorLabels:    true,
+				KubernetesSDConfigs: []map[string]string{
+					{
+						"role": "pod",
+					},
+				},
+				TlsConfig: map[string]string{
+					"insecure_skip_verify": "true",
+				},
+				RelabelConfigs: []RelabelConfig{
+					{
+						SourceLabels: "[__meta_kubernetes_pod_label_app_kubernetes_io_instance]",
+						Action:       "keep",
+						Regex:        model.ReleaseTargetRegex,
+					},
+					{
+						SourceLabels: "[__meta_kubernetes_pod_annotation_prometheus_io_scrape]",
+						Action:       "keep",
+						Regex:        "true",
+					},
+					{
+						SourceLabels: "[__meta_kubernetes_pod_annotation_prometheus_io_path]",
+						Action:       "replace",
+						TargetLabel:  "__metrics_path__",
+						Regex:        "(.+)",
+					},
+					{
+						SourceLabels: "[__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]",
+						Action:       "replace",
+						Regex:        "([^:]+)(?::\\d+)?;(\\d+)",
+						Replacement:  "$1:$2",
+						TargetLabel:  "__address__",
+					},
+					{
+						SourceLabels: "[__meta_kubernetes_namespace]",
+						Action:       "replace",
+						TargetLabel:  "kubernetes_pod_ip",
+					},
+					{
+						SourceLabels: "[__meta_kubernetes_pod_name]",
+						Action:       "replace",
+						TargetLabel:  "instance",
+					},
+					{
+						SourceLabels: "[__meta_kubernetes_pod_label_app_kubernetes_io_instance]",
+						Action:       "replace",
+						TargetLabel:  "cluster",
+					},
+				},
+			},
+		},
+	}
+	return c
 }
 
 func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
