@@ -66,7 +66,7 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 		args = append(args, fmt.Sprintf("--concurrency=%d", *config.Concurrency))
 	}
 	if config.Checksum != nil {
-		args = append(args, fmt.Sprintf("--checksum=%d", *config.Checksum))
+		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
 	return args, nil
 }

@@ -32,7 +32,6 @@ func NewBackupMgrCommand() *cobra.Command {
 	cmds.AddCommand(NewBackupCommand())
 	cmds.AddCommand(NewExportCommand())
 	cmds.AddCommand(NewRestoreCommand())
-	cmds.AddCommand(NewExportCommand())
 	cmds.AddCommand(NewImportCommand())
 	cmds.AddCommand(NewCleanCommand())
 	return cmds
