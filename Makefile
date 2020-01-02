@@ -132,7 +132,7 @@ check-setup:
 	@which retool >/dev/null 2>&1 || GO111MODULE=off go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint tidy check-static check-codegen check-terraform
+check: check-setup lint tidy check-static check-codegen check-terraform check-boilerplate
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -154,6 +154,9 @@ check-codegen:
 check-terraform:
 	./hack/check-terraform.sh
 	git diff --quiet deploy
+
+check-boilerplate:
+	./hack/verify-boilerplate.sh
 
 # TODO: staticcheck is too slow currently
 staticcheck:
