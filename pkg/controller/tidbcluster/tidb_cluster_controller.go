@@ -108,7 +108,7 @@ func NewController(
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
-	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister())
+	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
 	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod)
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
