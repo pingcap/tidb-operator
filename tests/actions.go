@@ -2143,10 +2143,7 @@ func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error
 func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	if err := oa.checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient); err != nil {
-		return err
-	}
-	return nil
+	return oa.checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient)
 }
 
 func getDatasourceID(addr string) (int, error) {
