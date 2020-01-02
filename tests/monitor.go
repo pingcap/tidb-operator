@@ -43,7 +43,7 @@ func (oa *operatorActions) DeployTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor)
 func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	namespace := tm.Namespace
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
-	monitorLabel, err := label.New().Instance(tm.Name).Monitor().Selector()
+	monitorLabel, err := label.NewMonitor().Instance(tm.Name).Monitor().Selector()
 	if err != nil {
 		return err
 	}

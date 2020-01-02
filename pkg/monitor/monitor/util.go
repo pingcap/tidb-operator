@@ -215,6 +215,8 @@ func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Tid
 	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	replicas := int32(1)
 
+	labels := label.NewMonitor().Instance(monitor.Name).Monitor().Labels()
+
 	deployment := &apps.Deployment{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
@@ -229,17 +231,11 @@ func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Tid
 				Type: apps.RecreateDeploymentStrategyType,
 			},
 			Selector: &meta.LabelSelector{
-				MatchLabels: map[string]string{
-					label.InstanceLabelKey:  monitor.Name,
-					label.ComponentLabelKey: label.TiDBMonitorVal,
-				},
+				MatchLabels: labels,
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels: map[string]string{
-						label.InstanceLabelKey:  monitor.Name,
-						label.ComponentLabelKey: label.TiDBMonitorVal,
-					},
+					Labels: labels,
 				},
 
 				Spec: core.PodSpec{
