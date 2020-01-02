@@ -93,7 +93,7 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 
 // constructOptions constructs options for BR and also return the remote path
 func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	args, path, err := util.ConstructBRGlobalOptions(backup)
+	args, path, err := util.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
 		return args, path, err
 	}
