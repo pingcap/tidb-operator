@@ -111,11 +111,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			Values  map[string]string
 		}{
 			{
-				Version: "v3.0.5",
+				Version: "v3.0.7",
 				Name:    "basic-v3",
 			},
 			{
-				Version: "v2.1.16",
+				Version: "v2.1.18",
 				Name:    "basic-v2",
 				Values: map[string]string{
 					// verify v2.1.x configuration compatibility
