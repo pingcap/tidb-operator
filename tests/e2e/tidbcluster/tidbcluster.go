@@ -124,7 +124,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				},
 			},
 			{
-				Version: "v3.0.5",
+				Version: "v3.0.7",
 				Name:    "basic-v3-cluster-tls",
 				Values: map[string]string{
 					"enableTLSCluster": "true",
