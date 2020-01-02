@@ -18,15 +18,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
+	glog "k8s.io/klog"
 )
 
 // TODO add maxFailoverCount
@@ -39,6 +41,7 @@ type pdFailover struct {
 	pvcLister        corelisters.PersistentVolumeClaimLister
 	pvcControl       controller.PVCControlInterface
 	pvLister         corelisters.PersistentVolumeLister
+	recorder         record.EventRecorder
 }
 
 // NewPDFailover returns a pd Failover
@@ -49,7 +52,8 @@ func NewPDFailover(cli versioned.Interface,
 	podControl controller.PodControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
-	pvLister corelisters.PersistentVolumeLister) Failover {
+	pvLister corelisters.PersistentVolumeLister,
+	recorder record.EventRecorder) Failover {
 	return &pdFailover{
 		cli,
 		pdControl,
@@ -58,7 +62,8 @@ func NewPDFailover(cli versioned.Interface,
 		podControl,
 		pvcLister,
 		pvcControl,
-		pvLister}
+		pvLister,
+		recorder}
 }
 
 func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
@@ -73,9 +78,17 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	healthCount := 0
-	for _, pdMember := range tc.Status.PD.Members {
+	for podName, pdMember := range tc.Status.PD.Members {
 		if pdMember.Health {
 			healthCount++
+		} else {
+			pod, err := pf.podLister.Pods(ns).Get(podName)
+			if err != nil {
+				return err
+			}
+
+			pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberUnhealthy",
+				"member %s is unhealthy from %s", pdMember.ID, pdMember.LastTransitionTime.Format(time.RFC3339))
 		}
 	}
 	inQuorum := healthCount > len(tc.Status.PD.Members)/2
@@ -131,6 +144,13 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
+		pod, err := pf.podLister.Pods(ns).Get(podName)
+		if err != nil {
+			return err
+		}
+
+		pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberMarkedAsFailure",
+			"member %s marked as a failure member", pdMember.ID)
 
 		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
@@ -181,6 +201,10 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	pod, err := pf.podLister.Pods(ns).Get(failurePodName)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
+	}
+	if pod != nil {
+		pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberDeleted",
+			"member %d deleted from cluster", memberID)
 	}
 
 	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
