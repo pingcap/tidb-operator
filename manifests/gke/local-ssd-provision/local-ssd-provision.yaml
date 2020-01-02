@@ -99,7 +99,7 @@ spec:
                 done
 
                 devs=$(echo "$ssd_mounts" | awk '{print $2}')
-                raid_dev=/dev/md0
+                raid_dev=/dev/mdx
 
                 # If RAID or LVM is already in use, this may have been re-deployed.
                 # Don't try to change the disks.
