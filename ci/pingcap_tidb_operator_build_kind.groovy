@@ -183,15 +183,19 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		}
 
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
+		def MIRRORS = "DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.16.3"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.3 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.3_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
+		}
+		builds["E2E v1.17.0"] = {
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
-			build("IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
 		}
 		builds.failFast = false
 		parallel builds

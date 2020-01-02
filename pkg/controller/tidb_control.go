@@ -41,7 +41,7 @@ type DBInfo struct {
 // TiDBControlInterface is the interface that knows how to manage tidb peers
 type TiDBControlInterface interface {
 	// GetHealth returns tidb's health info
-	GetHealth(tc *v1alpha1.TidbCluster) map[string]bool
+	GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error)
 	// Get TIDB info return tidb's DBInfo
 	GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error)
 	// GetSettings return the TiDB instance settings
@@ -72,35 +72,26 @@ func (tdc *defaultTiDBControl) useTLSHTTPClient(enableTLS bool) error {
 	return nil
 }
 
-func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster) map[string]bool {
+func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
 
-	result := map[string]bool{}
-
-	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
-		return result
+	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
+		return false, err
 	}
 
-	for i := 0; i < int(tc.TiDBStsActualReplicas()); i++ {
-		hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), i)
-		url := fmt.Sprintf("%s://%s.%s.%s:10080/status", scheme, hostName, TiDBPeerMemberName(tcName), ns)
-		_, err := tdc.getBodyOK(url)
-		if err != nil {
-			result[hostName] = false
-		} else {
-			result[hostName] = true
-		}
-	}
-	return result
+	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
+	url := fmt.Sprintf("%s://%s.%s.%s:10080/status", scheme, hostName, TiDBPeerMemberName(tcName), ns)
+	_, err := tdc.getBodyOK(url)
+	return err == nil, nil
 }
 
 func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +126,7 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
 		return nil, err
 	}
 
@@ -202,8 +193,15 @@ func (ftd *FakeTiDBControl) SetHealth(healthInfo map[string]bool) {
 	ftd.healthInfo = healthInfo
 }
 
-func (ftd *FakeTiDBControl) GetHealth(_ *v1alpha1.TidbCluster) map[string]bool {
-	return ftd.healthInfo
+func (ftd *FakeTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+	podName := fmt.Sprintf("%s-%d", TiDBMemberName(tc.GetName()), ordinal)
+	if ftd.healthInfo == nil {
+		return false, nil
+	}
+	if health, ok := ftd.healthInfo[podName]; ok {
+		return health, nil
+	}
+	return false, nil
 }
 
 func (ftd *FakeTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {

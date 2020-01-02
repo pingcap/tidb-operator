@@ -40,7 +40,7 @@ func NewReclaimPolicyManager(pvcLister corelisters.PersistentVolumeClaimLister,
 
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 
 	l, err := label.New().Instance(instanceName).Selector()
 	if err != nil {
@@ -55,7 +55,7 @@ func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 		if pvc.Spec.VolumeName == "" {
 			continue
 		}
-		if tc.Spec.EnablePVReclaim && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
+		if tc.IsPVReclaimEnabled() && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
 			// If the pv reclaim function is turned on, and when pv is the candidate pv to be reclaimed, skip patch this pv.
 			continue
 		}

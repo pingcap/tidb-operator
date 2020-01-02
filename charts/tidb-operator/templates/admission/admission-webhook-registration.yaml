@@ -129,4 +129,66 @@ webhooks:
         apiVersions: ["v1alpha1"]
         resources: ["statefulsets"]
 {{- end }}
+---
+{{- if .Values.admissionWebhook.hooksEnabled.validating }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: pingcap-resources-validating
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: validating.admission.tidb.pingcap.com
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validating | default "Ignore" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: [ "UPDATE", "CREATE" ]
+        apiGroups: [ "pingcap.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["tidbclusters"]
+{{- end }}
+---
+{{- if .Values.admissionWebhook.hooksEnabled.defaulting }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: pingcap-resources-defaulitng
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+webhooks:
+  - name: defaulting.dmission.tidb.pingcap.com
+    failurePolicy: {{ .Values.admissionWebhook.failurePolicy.defaulting | default "Ignore" }}
+    clientConfig:
+      service:
+        name: kubernetes
+        namespace: default
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/mutatingreviews"
+      {{- if .Values.admissionWebhook.cabundle }}
+      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      {{- else }}
+      caBundle: null
+      {{- end }}
+    rules:
+      - operations: [ "UPDATE", "CREATE" ]
+        apiGroups: [ "pingcap.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["tidbclusters"]
+{{- end }}
 {{- end }}

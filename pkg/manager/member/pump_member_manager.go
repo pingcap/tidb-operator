@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -195,6 +194,11 @@ func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) erro
 
 func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
 
+	basePumpSpec, createPump := tc.BasePumpSpec()
+	if !createPump {
+		return nil, nil
+	}
+
 	newCm, err := getNewPumpConfigMap(tc)
 	if err != nil {
 		return nil, err
@@ -202,7 +206,7 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 	// In-place update should pick the name of currently in-use configmap if exists to avoid rolling-update if:
 	//   - user switch strategy from RollingUpdate to In-place
 	//   - the statefulset and configmap is created by other clients (e.g. helm)
-	if set != nil && tc.Spec.Pump.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyInPlace {
+	if set != nil && basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
 		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 		})
@@ -242,6 +246,11 @@ func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 
 // getNewPumpConfigMap returns a configMap for pump
 func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
+
+	basePumpSpec, createPump := tc.BasePumpSpec()
+	if !createPump {
+		return nil, nil
+	}
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
@@ -254,7 +263,7 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	data := map[string]string{
 		"pump-config": string(confText),
 	}
-	if spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+	if basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
 		sum, err := Sha256Sum(data)
 		if err != nil {
 			return nil, err
@@ -309,7 +318,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	containers := []corev1.Container{
 		{
 			Name:            "pump",
-			Image:           spec.Image(),
+			Image:           *tc.PumpImage(),
 			ImagePullPolicy: spec.ImagePullPolicy(),
 			Command: []string{
 				"/bin/sh",
@@ -320,7 +329,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				Name:          "pump",
 				ContainerPort: 8250,
 			}},
-			Resources: util.ResourceRequirement(tc.Spec.Pump.Resources),
+			Resources: controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
 			Env:       envs,
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -364,8 +373,8 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				StorageClassName: &storageClass,
-				Resources:        *storageRequest,
+				StorageClassName: storageClass,
+				Resources:        storageRequest,
 			},
 		},
 	}
@@ -403,7 +412,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 }
 
 func getPumpMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pumpLabel := label.New().Instance(instanceName).Pump()
 
 	objMeta := metav1.ObjectMeta{
@@ -419,7 +428,7 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	// Keep the logic same as helm chart, but pump has not supported tls yet (no cert mounted)
 	// TODO: support tls
 	scheme := "http"
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		scheme = "https"
 	}
 	return RenderPumpStartScript(&PumpStartScriptModel{
@@ -454,7 +463,7 @@ func (pmm *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, 
 		return true, nil
 	}
 	selector, err := label.New().
-		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		Instance(tc.GetInstanceName()).
 		Pump().
 		Selector()
 	if err != nil {

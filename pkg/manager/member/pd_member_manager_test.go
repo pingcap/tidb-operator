@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -124,22 +125,6 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 			pdSvcCreated:               true,
 			pdPeerSvcCreated:           true,
 			setCreated:                 true,
-		},
-		{
-			name: "tidbcluster's storage format is wrong",
-			prepare: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Requests.Storage = "100xxxxi"
-			},
-			errWhenCreateStatefulSet:   false,
-			errWhenCreatePDService:     false,
-			errWhenCreatePDPeerService: false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "cant' get storage size: 100xxxxi for TidbCluster: default/test")).To(BeTrue())
-			},
-			pdSvcCreated:     true,
-			pdPeerSvcCreated: true,
-			setCreated:       false,
 		},
 		{
 			name:                       "error when create statefulset",
@@ -340,24 +325,6 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "tidbcluster's storage format is wrong",
-			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.PD.Requests.Storage = "100xxxxi"
-			},
-			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: true},
-				{Name: "pd2", MemberID: uint64(2), ClientUrls: []string{"http://pd2:2379"}, Health: true},
-				{Name: "pd3", MemberID: uint64(3), ClientUrls: []string{"http://pd3:2379"}, Health: false},
-			}},
-			errWhenUpdateStatefulSet:   false,
-			errWhenUpdatePDService:     false,
-			errWhenUpdatePDPeerService: false,
-			err:                        true,
-			expectPDServiceFn:          nil,
-			expectPDPeerServiceFn:      nil,
-			expectStatefulSetFn:        nil,
-		},
-		{
 			name: "error when update pd service",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.Services = []v1alpha1.Service{
@@ -480,7 +447,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 					Name:        ordinalPodName(v1alpha1.PDMemberType, tc.GetName(), 0),
 					Namespace:   metav1.NamespaceDefault,
 					Annotations: map[string]string{},
-					Labels:      label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).PD().Labels(),
+					Labels:      label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 				},
 			}
 			if test.updatePod != nil {
@@ -828,29 +795,29 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 		},
 	}
@@ -882,7 +849,7 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -913,7 +880,7 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
 					},
 					PublishNotReadyAddresses: true,
@@ -939,6 +906,14 @@ func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) fun
 		}
 		if dnsPolicy != sts.Spec.Template.Spec.DNSPolicy {
 			t.Errorf("unexpected dnsPolicy %v, want %v", sts.Spec.Template.Spec.DNSPolicy, dnsPolicy)
+		}
+	}
+}
+
+func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		if diff := cmp.Diff(annotations, sts.Annotations); diff != "" {
+			t.Errorf("unexpected annotations (-want, +got): %s", diff)
 		}
 	}
 }
@@ -1012,6 +987,54 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testHostNetwork(t, false, ""),
 		},
+		{
+			name: "PD should respect resources config",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ResourceRequirements: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse("1"),
+								corev1.ResourceMemory:           resource.MustParse("2Gi"),
+								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+								corev1.ResourceStorage:          resource.MustParse("100Gi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:              resource.MustParse("1"),
+								corev1.ResourceMemory:           resource.MustParse("2Gi"),
+								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				}))
+				nameToContainer := MapContainers(&sts.Spec.Template.Spec)
+				pdContainer := nameToContainer[v1alpha1.PDMemberType.String()]
+				g.Expect(pdContainer.Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+				}))
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -1019,7 +1042,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sts, err := getNewPDSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("error %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.testSts(sts)
 		})
@@ -1028,6 +1051,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 
 func TestGetPDConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1052,7 +1076,9 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
 						Config: &v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
 								MaxStoreDownTime:         "5m",
@@ -1073,7 +1099,7 @@ func TestGetPDConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -1118,6 +1144,266 @@ func TestGetPDConfigMap(t *testing.T) {
 			cm.Data["startup-script"] = ""
 			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetNewPdServiceForTidbCluster(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected corev1.Service
+	}{
+		{
+			name: "basic",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Services: []v1alpha1.Service{
+						{Name: "pd", Type: string(corev1.ServiceTypeClusterIP)},
+					},
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "client",
+							Port:       2379,
+							TargetPort: intstr.FromInt(2379),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+				},
+			},
+		},
+		{
+			name: "basic and  specify ClusterIP type,clusterIP",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Services: []v1alpha1.Service{
+						{Name: "pd", Type: string(corev1.ServiceTypeClusterIP)},
+					},
+					PD: v1alpha1.PDSpec{
+						Service: &v1alpha1.ServiceSpec{ClusterIP: pointer.StringPtr("172.20.10.1")},
+					},
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "172.20.10.1",
+					Type:      corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "client",
+							Port:       2379,
+							TargetPort: intstr.FromInt(2379),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+				},
+			},
+		},
+		{
+			name: "basic and specify LoadBalancerIP type , LoadBalancerType",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Services: []v1alpha1.Service{
+						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
+					},
+					PD: v1alpha1.PDSpec{
+						Service: &v1alpha1.ServiceSpec{LoadBalancerIP: pointer.StringPtr("172.20.10.1")},
+					},
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					LoadBalancerIP: "172.20.10.1",
+					Type:           corev1.ServiceTypeLoadBalancer,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "client",
+							Port:       2379,
+							TargetPort: intstr.FromInt(2379),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+				},
+			},
+		},
+		{
+			name: "basic and specify pd service overwrite",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Services: []v1alpha1.Service{
+						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
+					},
+					PD: v1alpha1.PDSpec{
+						Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
+							ClusterIP: pointer.StringPtr("172.20.10.1")},
+					},
+				},
+			},
+			expected: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "foo",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "172.20.10.1",
+					Type:      corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "client",
+							Port:       2379,
+							TargetPort: intstr.FromInt(2379),
+							Protocol:   corev1.ProtocolTCP,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "pd",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pmm, _, _, _, _, _, _ := newFakePDMemberManager()
+			svc := pmm.getNewPDServiceForTidbCluster(&tt.tc)
+			if diff := cmp.Diff(tt.expected, *svc); diff != "" {
+				t.Errorf("unexpected Service (-want, +got): %s", diff)
 			}
 		})
 	}

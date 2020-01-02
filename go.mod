@@ -47,7 +47,7 @@ require (
 	github.com/openshift/generic-admission-server v1.14.0
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pingcap/advanced-statefulset v0.1.0
+	github.com/pingcap/advanced-statefulset v0.2.4
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/kvproto v0.0.0-20191217072959-393e6c0fd4b7
@@ -67,8 +67,8 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	gocloud.dev v0.18.0
-	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0

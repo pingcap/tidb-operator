@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -263,6 +263,72 @@ type PumpStartScriptModel struct {
 
 func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {
 	return renderTemplateFunc(pumpStartScriptTpl, model)
+}
+
+// tidbInitStartScriptTpl is the template string of tidb initializer start script
+var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script").Parse(`import os, MySQLdb
+host = '{{ .ClusterName }}-tidb'
+permit_host = '{{ .PermitHost }}'
+port = 4000
+conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+{{- if .PasswordSet }}
+password_dir = '/etc/tidb/password'
+for file in os.listdir(password_dir):
+    if file.startswith('.'):
+        continue
+    user = file
+    with open(os.path.join(password_dir, file), 'r') as f:
+        password = f.read()
+    if user == 'root':
+        conn.cursor().execute("set password for 'root'@'%%' = %s;", (password,))
+    else:
+        conn.cursor().execute("create user %s@%s identified by %s;", (user, permit_host, password,))
+{{- end }}
+{{- if .InitSQL }}
+with open('/data/init.sql', 'r') as sql:
+    for line in sql.readlines():
+        conn.cursor().execute(line)
+        conn.commit()
+{{- end }}
+if permit_host != '%%':
+    conn.cursor().execute("update mysql.user set Host=%s where User='root';", (permit_host,))
+conn.cursor().execute("flush privileges;")
+conn.commit()
+`))
+
+type TiDBInitStartScriptModel struct {
+	ClusterName string
+	PermitHost  string
+	PasswordSet bool
+	InitSQL     bool
+}
+
+func RenderTiDBInitStartScript(model *TiDBInitStartScriptModel) (string, error) {
+	return renderTemplateFunc(tidbInitStartScriptTpl, model)
+}
+
+// tidbInitInitStartScriptTpl is the template string of tidb initializer init container start script
+var tidbInitInitStartScriptTpl = template.Must(template.New("tidb-init-init-start-script").Parse(`trap exit TERM
+host={{ .ClusterName }}-tidb
+port=4000
+while true; do
+  nc -zv -w 3 $host $port
+  if [ $? -eq 0 ]; then
+	break
+  else
+	echo "info: failed to connect to $host:$port, sleep 1 second then retry"
+	sleep 1
+  fi
+done
+echo "info: successfully connected to $host:$port, able to initialize TiDB now"
+`))
+
+type TiDBInitInitStartScriptModel struct {
+	ClusterName string
+}
+
+func RenderTiDBInitInitStartScript(model *TiDBInitInitStartScriptModel) (string, error) {
+	return renderTemplateFunc(tidbInitInitStartScriptTpl, model)
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

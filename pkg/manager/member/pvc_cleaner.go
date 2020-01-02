@@ -80,7 +80,7 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 		return skipReason, err
 	}
 
-	if !tc.Spec.EnablePVReclaim {
+	if !tc.IsPVReclaimEnabled() {
 		// disable PV reclaim, return directly.
 		return nil, nil
 	}
@@ -273,7 +273,7 @@ func (rpc *realPVCCleaner) listAllPVCs(tc *v1alpha1.TidbCluster) ([]*corev1.Pers
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	selector, err := label.New().Instance(tc.GetLabels()[label.InstanceLabelKey]).Selector()
+	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
 	if err != nil {
 		return nil, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tcName, err)
 	}

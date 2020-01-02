@@ -9,7 +9,7 @@
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
-// limitations under the License.package spec
+// limitations under the License.
 
 package label
 
@@ -45,6 +45,9 @@ const (
 	StoreIDLabelKey string = "tidb.pingcap.com/store-id"
 	// MemberIDLabelKey is member id label key
 	MemberIDLabelKey string = "tidb.pingcap.com/member-id"
+
+	// InitLabelKey is the key for TiDB initializer
+	InitLabelKey string = "tidb.pingcap.com/initializer"
 
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
@@ -87,6 +90,13 @@ const (
 	// AnnSysctlInitVal is pod annotation value to indicate whether configuring sysctls with init container
 	AnnSysctlInitVal = "true"
 
+	// AnnPDDeleteSlots is annotation key of pd delete slots.
+	AnnPDDeleteSlots = "pd.tidb.pingcap.com/delete-slots"
+	// TiDBDeleteSlots is annotation key of tidb delete slots.
+	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
+	// TiKVDeleteSlots is annotation key of tikv delete slots.
+	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
@@ -97,6 +107,8 @@ const (
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
 	DiscoveryLabelVal string = "discovery"
+	// TiDBMonitorVal is Monitor label value
+	TiDBMonitorVal string = "monitor"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -104,6 +116,10 @@ const (
 	RestoreJobLabelVal string = "restore"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// BackupScheduleJobLabelVal is backup schedule job label value
+	BackupScheduleJobLabelVal string = "backup-schedule"
+	// InitJobLabelVal is TiDB initializer job label value
+	InitJobLabelVal string = "initializer"
 	// TiDBOperator is ManagedByLabelKey label value
 	TiDBOperator string = "tidb-operator"
 )
@@ -115,14 +131,22 @@ type Label map[string]string
 func New() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster",
-		ManagedByLabelKey: "tidb-operator",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+// NewInitializer initialize a new Label for Jobs of TiDB initializer
+func NewInitializer() Label {
+	return Label{
+		ComponentLabelKey: InitJobLabelVal,
+		ManagedByLabelKey: TiDBOperator,
 	}
 }
 
 // NewBackup initialize a new Label for Jobs of bakcup
 func NewBackup() Label {
 	return Label{
-		NameLabelKey:      "backup",
+		NameLabelKey:      BackupJobLabelVal,
 		ManagedByLabelKey: "backup-operator",
 	}
 }
@@ -130,7 +154,7 @@ func NewBackup() Label {
 // NewRestore initialize a new Label for Jobs of restore
 func NewRestore() Label {
 	return Label{
-		NameLabelKey:      "restore",
+		NameLabelKey:      RestoreJobLabelVal,
 		ManagedByLabelKey: "restore-operator",
 	}
 }
@@ -138,7 +162,7 @@ func NewRestore() Label {
 // NewBackupSchedule initialize a new Label for backups of bakcup schedule
 func NewBackupSchedule() Label {
 	return Label{
-		NameLabelKey:      "backup-schedule",
+		NameLabelKey:      BackupScheduleJobLabelVal,
 		ManagedByLabelKey: "backup-schedule-operator",
 	}
 }
@@ -164,6 +188,12 @@ func (l Label) Component(name string) Label {
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
+}
+
+// Initializer assigns specific value to initializer key in label
+func (l Label) Initializer(val string) Label {
+	l[InitLabelKey] = val
+	return l
 }
 
 // CleanJob assigns clean to component key in label
@@ -211,6 +241,11 @@ func (l Label) PD() Label {
 // Pump assigns pump to component key in label
 func (l Label) Pump() Label {
 	l.Component(PumpLabelVal)
+	return l
+}
+
+func (l Label) Monitor() Label {
+	l.Component(TiDBMonitorVal)
 	return l
 }
 

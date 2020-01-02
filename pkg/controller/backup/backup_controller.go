@@ -144,10 +144,13 @@ func (bkc *Controller) processNextWorkItem() bool {
 	if err := bkc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
+			bkc.queue.AddRateLimited(key)
+		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
+			glog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
+			bkc.queue.AddRateLimited(key)
 		}
-		bkc.queue.AddRateLimited(key)
 	} else {
 		bkc.queue.Forget(key)
 	}
@@ -193,6 +196,11 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
 		glog.Infof("backup %s/%s is being deleted", ns, name)
 		bkc.enqueueBackup(newBackup)
+		return
+	}
+
+	if v1alpha1.IsBackupInvalid(newBackup) {
+		glog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
 		return
 	}
 

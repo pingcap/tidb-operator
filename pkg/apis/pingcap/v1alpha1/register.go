@@ -60,6 +60,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&RestoreList{},
 		&DataResource{},
 		&DataResourceList{},
+		&TidbInitializer{},
+		&TidbInitializerList{},
+		&TidbMonitor{},
+		&TidbMonitorList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

@@ -27,6 +27,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiDBUpgrader_Upgrade(t *testing.T) {
@@ -62,7 +63,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		if test.getLastAppliedConfigErr {
 			oldSet.SetAnnotations(map[string]string{LastAppliedConfigAnnotation: "fake apply config"})
 		} else {
-			SetLastAppliedConfigAnnotation(oldSet)
+			SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 		}
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		if test.errorExpect {
@@ -251,21 +252,20 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiDB: v1alpha1.TiDBSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
-				Replicas:         2,
-				StorageClassName: "my-storage-class",
+				Replicas: 2,
 			},
 		},
 		Status: v1alpha1.TidbClusterStatus{

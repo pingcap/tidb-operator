@@ -80,7 +80,19 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	_, err := bm.jobLister.Jobs(ns).Get(backupJobName)
+	err := backuputil.ValidateBackup(backup)
+	if err != nil {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupInvalid,
+			Status:  corev1.ConditionTrue,
+			Reason:  "InvalidSpec",
+			Message: err.Error(),
+		})
+
+		return controller.IgnoreErrorf("invalid backup spec %s/%s", ns, name)
+	}
+
+	_, err = bm.jobLister.Jobs(ns).Get(backupJobName)
 	if err == nil {
 		// already have a backup job running，return directly
 		return nil
@@ -184,7 +196,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
@@ -251,7 +263,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
-	backupLabel := label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()).BackupJob().Backup(name)
+	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -323,7 +335,7 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backupPVCName,
 			Namespace: ns,
-			Labels:    label.NewBackup().Instance(backup.Spec.From.GetTidbEndpoint()),
+			Labels:    label.NewBackup().Instance(backup.GetInstanceName()),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: &storageClassName,

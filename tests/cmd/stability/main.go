@@ -9,7 +9,7 @@
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
-// limitations under the License.package spec
+// limitations under the License.
 
 package main
 
@@ -383,11 +383,13 @@ func run() {
 
 func newOperatorConfig() *tests.OperatorConfig {
 	return &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          cfg.OperatorImage,
-		Tag:            cfg.OperatorTag,
-		SchedulerImage: "gcr.io/google-containers/hyperkube",
+		Namespace:                 "pingcap",
+		ReleaseName:               "operator",
+		Image:                     cfg.OperatorImage,
+		Tag:                       cfg.OperatorTag,
+		ControllerManagerReplicas: tests.IntPtr(2),
+		SchedulerImage:            "gcr.io/google-containers/hyperkube",
+		SchedulerReplicas:         tests.IntPtr(2),
 		Features: []string{
 			"StableScheduling=true",
 		},

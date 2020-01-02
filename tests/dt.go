@@ -63,7 +63,7 @@ func (oa *operatorActions) LabelNodes() error {
 	}
 
 	for i, node := range nodes.Items {
-		err := wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+		err := wait.PollImmediate(3*time.Second, time.Minute, func() (bool, error) {
 			n, err := oa.kubeCli.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
 			if err != nil {
 				glog.Errorf("get node:[%s] failed! error: %v", node.Name, err)

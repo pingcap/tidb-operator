@@ -45,9 +45,12 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	if tc.Spec.TiDB.MaxFailoverCount > 0 && len(tc.Status.TiDB.FailureMembers) >= int(tc.Spec.TiDB.MaxFailoverCount) {
-		glog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
-		return nil
+	if tc.Spec.TiDB.MaxFailoverCount != nil {
+		maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
+		if maxFailoverCount > 0 && len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
+			glog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
+			return nil
+		}
 	}
 	for _, tidbMember := range tc.Status.TiDB.Members {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]

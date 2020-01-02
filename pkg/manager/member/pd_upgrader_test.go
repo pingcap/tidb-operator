@@ -29,6 +29,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/pointer"
 )
 
 func TestPDUpgraderUpgrade(t *testing.T) {
@@ -77,7 +78,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		if test.changeOldSet != nil {
 			test.changeOldSet(oldSet)
 		}
-		SetLastAppliedConfigAnnotation(oldSet)
+		SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 
 		newSet.Spec.UpdateStrategy.RollingUpdate.Partition = controller.Int32Ptr(3)
 
@@ -315,7 +316,7 @@ func newTidbClusterForPDUpgrader() *v1alpha1.TidbCluster {
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 		},
 		Status: v1alpha1.TidbClusterStatus{

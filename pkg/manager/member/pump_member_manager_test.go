@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -36,6 +37,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -120,19 +122,6 @@ func TestPumpMemberManagerSyncCreate(t *testing.T) {
 				g.Expect(r.getCm).NotTo(Succeed())
 				g.Expect(r.getSet).NotTo(Succeed())
 				g.Expect(r.getSvc).NotTo(Succeed())
-			},
-		},
-		{
-			name: "pump storage format is wrong",
-			prepare: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.Pump.Requests.Storage = "100xxxxi"
-			},
-			errOnCreateSet: false,
-			errOnCreateCm:  false,
-			errOnCreateSvc: false,
-			expectFn: func(g *GomegaWithT, r *result) {
-				g.Expect(r.sync).NotTo(Succeed())
-				g.Expect(r.sync.Error()).To(ContainSubstring("cant' parse storage size: 100xxxxi"))
 			},
 		},
 		{
@@ -367,7 +356,8 @@ func TestSyncConfigUpdate(t *testing.T) {
 		tc := newTidbClusterForPump()
 		ns := tc.Namespace
 		tcName := tc.Name
-		tc.Spec.Pump.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+		updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+		tc.Spec.Pump.ConfigUpdateStrategy = &updateStrategy
 
 		pmm, controls, indexers := newFakePumpMemberManager()
 
@@ -482,6 +472,7 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 }
 
 func newTidbClusterForPump() *v1alpha1.TidbCluster {
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -498,39 +489,38 @@ func newTidbClusterForPump() *v1alpha1.TidbCluster {
 					Image: "pd-test-image",
 				},
 				Replicas:         1,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         1,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 			TiDB: v1alpha1.TiDBSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
-				Replicas:         1,
-				StorageClassName: "my-storage-class",
+				Replicas: 1,
 			},
 			Pump: &v1alpha1.PumpSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
-					Image: "pump-test-image",
+					Image:                "pump-test-image",
+					ConfigUpdateStrategy: &updateStrategy,
 				},
-				ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 				GenericConfig: config.New(map[string]interface{}{
 					"gc": 7,
 				}),
 				Replicas: 3,
-				Resources: v1alpha1.Resources{
-					Requests: &v1alpha1.ResourceRequirement{
-						CPU:     "1",
-						Memory:  "2Gi",
-						Storage: "100Gi",
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				},
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
 		},
 	}
@@ -560,7 +550,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -591,7 +581,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 					Selector: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					PublishNotReadyAddresses: true,
@@ -613,6 +603,7 @@ func TestGetNewPumpHeadlessService(t *testing.T) {
 func TestGetNewPumpConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	tests := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -627,8 +618,10 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Pump: &v1alpha1.PumpSpec{
-						GenericConfig:        config.New(nil),
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
+						GenericConfig: config.New(nil),
 					},
 				},
 			},
@@ -639,7 +632,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{
@@ -671,13 +664,15 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Pump: &v1alpha1.PumpSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
 						GenericConfig: config.New(map[string]interface{}{
 							"gc": 7,
 							"storage": map[string]interface{}{
 								"sync-log": "true",
 							},
 						}),
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
 					},
 				},
 			},
@@ -688,7 +683,7 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 					Labels: map[string]string{
 						"app.kubernetes.io/name":       "tidb-cluster",
 						"app.kubernetes.io/managed-by": "tidb-operator",
-						"app.kubernetes.io/instance":   "",
+						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pump",
 					},
 					OwnerReferences: []metav1.OwnerReference{

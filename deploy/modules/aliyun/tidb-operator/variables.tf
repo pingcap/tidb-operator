@@ -15,6 +15,12 @@ variable "cluster_name" {
   default     = "my-cluster"
 }
 
+variable "k8s_version" {
+  description = "Kubernetes cluster version"
+  default     = "1.14.8-aliyun.1"
+  type        = string
+}
+
 variable "cluster_network_type" {
   description = "Kubernetes network plugin, options: [flannel, terway]. Cannot change once created."
   default     = "flannel"
@@ -22,7 +28,7 @@ variable "cluster_network_type" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.0.5"
+  default = "v1.0.6"
 }
 
 variable "operator_helm_values" {
