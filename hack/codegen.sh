@@ -30,6 +30,6 @@ bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
     github.com/pingcap/tidb-operator/pkg/client \
     github.com/pingcap/tidb-operator/pkg/apis \
     pingcap:v1alpha1 \
-    --go-header-file ./hack/boilerplate.go.txt
+    --go-header-file ./hack/boilerplate/boilerplate.generatego.txt
 
 ./hack/crd-groups.sh generate

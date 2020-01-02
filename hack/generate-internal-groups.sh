@@ -87,7 +87,7 @@ done
 # apiregister-gen generate the REST boilerplate of resources and their internal version
 if [ "${GENS}" = "all" ] || grep -qw "registry" <<<"${GENS}"; then
   echo "Generating api registries"
-  "${GOPATH}/bin/apiregister-gen" --input-dirs "$(codegen::join , "${APIS_DIR[@]}")" "$@"
+  echo "${GOPATH}/bin/apiregister-gen" --input-dirs "$(codegen::join , "${APIS_DIR[@]}")" "$@"
 fi
 
 if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
