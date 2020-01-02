@@ -56,7 +56,7 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 		if !test.pvcHasVolumeName {
 			pvc1.Spec.VolumeName = ""
 		}
-		tc.Spec.EnablePVReclaim = test.enablePVRecalim
+		tc.Spec.EnablePVReclaim = &test.enablePVRecalim
 		if test.hasDeferDeleteAnn {
 			pvc1.Annotations = map[string]string{label.AnnPVCDeferDeleting: time.Now().String()}
 		}

@@ -23,7 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func TestValidateTidbCluster(t *testing.T) {
+// TODO: more UTs
+func TestValidateDeletedSlots(t *testing.T) {
 	successCases := []struct {
 		name string
 		tc   v1alpha1.TidbCluster
@@ -37,6 +38,21 @@ func TestValidateTidbCluster(t *testing.T) {
 						label.AnnTiKVDeleteSlots: "[1,2]",
 					},
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Version: "v3.0.7",
+					PD: v1alpha1.PDSpec{
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
+					},
+					TiKV: v1alpha1.TiKVSpec{
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
+					},
+				},
 			},
 		},
 		{
@@ -46,8 +62,24 @@ func TestValidateTidbCluster(t *testing.T) {
 					Name:        "test",
 					Annotations: map[string]string{},
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Version: "v3.0.7",
+					PD: v1alpha1.PDSpec{
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
+					},
+					TiKV: v1alpha1.TiKVSpec{
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
+					},
+				},
 			},
 		},
+		// TODO: more cases
 	}
 
 	for _, v := range successCases {
@@ -70,6 +102,21 @@ func TestValidateTidbCluster(t *testing.T) {
 						label.AnnTiKVDeleteSlots: "",
 					},
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Version: "v3.0.7",
+					PD: v1alpha1.PDSpec{
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
+					},
+					TiKV: v1alpha1.TiKVSpec{
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
+					},
+				},
 			},
 			errs: []field.Error{
 				{
@@ -85,6 +132,21 @@ func TestValidateTidbCluster(t *testing.T) {
 					Name: "test",
 					Annotations: map[string]string{
 						label.AnnTiDBDeleteSlots: "1,2,3",
+					},
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					Version: "v3.0.7",
+					PD: v1alpha1.PDSpec{
+						BaseImage: "pingcap/pd",
+						Config:    &v1alpha1.PDConfig{},
+					},
+					TiKV: v1alpha1.TiKVSpec{
+						BaseImage: "pingcap/tikv",
+						Config:    &v1alpha1.TiKVConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						BaseImage: "pingcap/tidb",
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},

@@ -77,7 +77,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
 
-	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
 		return false, err
 	}
 
@@ -91,7 +91,7 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
 		return nil, err
 	}
 
@@ -126,7 +126,7 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc.Spec.EnableTLSCluster); err != nil {
+	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
 		return nil, err
 	}
 

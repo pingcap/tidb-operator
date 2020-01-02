@@ -16,9 +16,7 @@ package cmd
 import (
 	"context"
 
-	// registry mysql drive
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -31,7 +29,7 @@ import (
 
 // NewCleanCommand implements the clean command
 func NewCleanCommand() *cobra.Command {
-	bo := backup.BackupOpts{}
+	bo := clean.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "clean",
@@ -47,7 +45,7 @@ func NewCleanCommand() *cobra.Command {
 	return cmd
 }
 
-func runClean(backupOpts backup.BackupOpts, kubecfg string) error {
+func runClean(backupOpts clean.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
@@ -67,6 +65,6 @@ func runClean(backupOpts backup.BackupOpts, kubecfg string) error {
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
 	glog.Infof("start to clean backup %s", backupOpts.String())
-	bm := backup.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
+	bm := clean.NewManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessCleanBackup()
 }

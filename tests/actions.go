@@ -113,7 +113,9 @@ func NewOperatorActions(cli versioned.Interface,
 		fw:           fw,
 	}
 	if fw != nil {
-		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw)
+		kubeCfg, err := framework.LoadConfig()
+		framework.ExpectNoError(err)
+		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
 		oa.tidbControl = controller.NewDefaultTiDBControl()
 	}
@@ -265,10 +267,10 @@ type OperatorConfig struct {
 	ReleaseName               string
 	Image                     string
 	Tag                       string
-	ControllerManagerReplicas int
+	ControllerManagerReplicas *int
 	SchedulerImage            string
 	SchedulerTag              string
-	SchedulerReplicas         int
+	SchedulerReplicas         *int
 	Features                  []string
 	LogLevel                  string
 	WebhookServiceName        string
@@ -280,6 +282,8 @@ type OperatorConfig struct {
 	WebhookEnabled            bool
 	PodWebhookEnabled         bool
 	StsWebhookEnabled         bool
+	DefaultingEnabled         bool
+	ValidatingEnabled         bool
 	Cabundle                  string
 }
 
@@ -404,12 +408,14 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
 		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
 		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+		"admissionWebhook.hooksEnabled.defaulting":   strconv.FormatBool(oi.DefaultingEnabled),
+		"admissionWebhook.hooksEnabled.validating":   strconv.FormatBool(oi.ValidatingEnabled),
 	}
-	if oi.ControllerManagerReplicas > 0 {
-		set["controllerManager.replicas"] = strconv.Itoa(oi.ControllerManagerReplicas)
+	if oi.ControllerManagerReplicas != nil {
+		set["controllerManager.replicas"] = strconv.Itoa(*oi.ControllerManagerReplicas)
 	}
-	if oi.SchedulerReplicas > 0 {
-		set["scheduler.replicas"] = strconv.Itoa(oi.SchedulerReplicas)
+	if oi.SchedulerReplicas != nil {
+		set["scheduler.replicas"] = strconv.Itoa(*oi.SchedulerReplicas)
 	}
 	if oi.SchedulerTag != "" {
 		set["scheduler.kubeSchedulerImageTag"] = oi.SchedulerTag
@@ -556,8 +562,11 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	if err != nil {
 		return err
 	}
-	if err := oa.checkoutTag(info.Tag); err != nil {
-		return err
+
+	if info.Tag != "e2e" {
+		if err := oa.checkoutTag(info.Tag); err != nil {
+			return err
+		}
 	}
 
 	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
@@ -567,6 +576,14 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
+	}
+
+	// wait for all apiservices are available
+	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
+	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
+
+	if info.Tag == "e2e" {
+		return nil
 	}
 
 	// ensure pods unchanged when upgrading operator
@@ -1421,9 +1438,9 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.BasePDSpec().Image() != c.Image {
+	if tc.PDImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
-			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
+			ns, pdSetName, c.Image, tc.PDImage())
 		return false, nil
 	}
 
@@ -1494,9 +1511,9 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.BaseTiKVSpec().Image() != c.Image {
+	if tc.TiKVImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
+			ns, tikvSetName, c.Image, tc.TiKVImage())
 		return false, nil
 	}
 
@@ -1561,9 +1578,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.BaseTiDBSpec().Image() != c.Image {
+	if tc.TiDBImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
-			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
+			ns, tidbSetName, c.Image, tc.TiDBImage())
 		return false, nil
 	}
 
@@ -3500,7 +3517,9 @@ var dummyCancel = func() {}
 
 func (oa *operatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc)
+		cfg, err := framework.LoadConfig()
+		framework.ExpectNoError(err)
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc, cfg.TLSClientConfig.CAData)
 	}
 	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
 }

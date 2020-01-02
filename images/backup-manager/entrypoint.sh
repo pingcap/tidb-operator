@@ -45,6 +45,11 @@ case "$1" in
         echo "$BACKUP_BIN backup $@"
         exec $BACKUP_BIN backup "$@"
         ;;
+    export)
+        shift 1
+        echo "$BACKUP_BIN export $@"
+        exec $BACKUP_BIN export "$@"
+        ;;
     restore)
         shift 1
         echo "$BACKUP_BIN restore $@"

@@ -163,6 +163,7 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 			klog.Errorf("tm[%s/%s]'s clusterRoleBinding failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 			return nil, err
 		}
+		return sa, nil
 	}
 
 	role := getMonitorRole(monitor)

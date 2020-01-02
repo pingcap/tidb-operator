@@ -44,7 +44,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		AlertmanagerURL:    "",
 		ReleaseNamespaces:  releaseNamespaces,
 		ReleaseTargetRegex: tc.Name,
-		EnableTLSCluster:   tc.Spec.EnableTLSCluster,
+		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -140,10 +140,6 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor) *rbac.Role {
 				APIGroups: []string{""},
 				Resources: []string{"pods"},
 				Verbs:     []string{"get", "list", "watch"},
-			},
-			{
-				NonResourceURLs: []string{"/metrics"},
-				Verbs:           []string{"get"},
 			},
 		},
 	}
@@ -284,7 +280,7 @@ chmod 777 /data/prometheus /data/grafana
 			},
 			{
 				Name:  "TIDB_ENABLE_BINLOG",
-				Value: strconv.FormatBool(tc.Spec.TiDB.BinlogEnabled),
+				Value: strconv.FormatBool(tc.IsTiDBBinlogEnabled()),
 			},
 			{
 				Name:  "PROM_CONFIG_PATH",
@@ -296,7 +292,7 @@ chmod 777 /data/prometheus /data/grafana
 			},
 			{
 				Name:  "TIDB_VERSION",
-				Value: fmt.Sprintf("%s:%s", tc.Spec.TiDB.BaseImage, tc.Spec.TiDB.Version),
+				Value: tc.TiDBImage(),
 			},
 			{
 				Name:  "GF_TIDB_PROMETHEUS_URL",
@@ -410,7 +406,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 	}
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      "tls-pd-client",
 			MountPath: "/var/lib/pd-client-tls",
@@ -508,7 +504,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 		Command: []string{
 			"/bin/reload",
 			"--root-store-path=/data",
-			fmt.Sprintf("--sub-store-path=%s", fmt.Sprintf("%s:%s", tc.Spec.TiDB.BaseImage, tc.Spec.TiDB.Version)),
+			fmt.Sprintf("--sub-store-path=%s", tc.TiDBImage()),
 			"--watch-path=/prometheus-rules/rules",
 			"--prometheus-url=http://127.0.0.1:9090",
 		},
@@ -618,7 +614,7 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 		},
 	}
 	volumes = append(volumes, prometheusRules)
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		defaultMode := int32(420)
 		tlsPDClient := core.Volume{
 			Name: "tls-pd-client",

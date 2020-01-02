@@ -151,7 +151,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		fmt.Sprintf("--backupPath=%s", backupPath),
 	}
 
-	restoreLabel := label.NewBackup().Instance(restore.Spec.To.GetTidbEndpoint()).RestoreJob().Restore(name)
+	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
@@ -230,7 +230,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      restorePVCName,
 				Namespace: ns,
-				Labels:    label.NewRestore().Instance(restore.Spec.To.GetTidbEndpoint()),
+				Labels:    label.NewRestore().Instance(restore.GetInstanceName()),
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				StorageClassName: &storageClassName,

@@ -78,9 +78,9 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		ReleaseName:               "operator",
 		Image:                     cfg.OperatorImage,
 		Tag:                       cfg.OperatorTag,
-		ControllerManagerReplicas: 2,
+		ControllerManagerReplicas: tests.IntPtr(2),
 		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
-		SchedulerReplicas:         2,
+		SchedulerReplicas:         tests.IntPtr(2),
 		Features: []string{
 			"StableScheduling=true",
 		},
