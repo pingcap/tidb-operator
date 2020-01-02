@@ -113,7 +113,9 @@ func NewOperatorActions(cli versioned.Interface,
 		fw:           fw,
 	}
 	if fw != nil {
-		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw)
+		kubeCfg, err := framework.LoadConfig()
+		framework.ExpectNoError(err)
+		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
 		oa.tidbControl = controller.NewDefaultTiDBControl()
 	}
@@ -1440,9 +1442,9 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
-	if tc.BasePDSpec().Image() != c.Image {
+	if tc.PDImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
-			ns, pdSetName, c.Image, tc.BasePDSpec().Image())
+			ns, pdSetName, c.Image, tc.PDImage())
 		return false, nil
 	}
 
@@ -1513,9 +1515,9 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.BaseTiKVSpec().Image() != c.Image {
+	if tc.TiKVImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, tc.BaseTiKVSpec().Image())
+			ns, tikvSetName, c.Image, tc.TiKVImage())
 		return false, nil
 	}
 
@@ -1580,9 +1582,9 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
-	if tc.BaseTiDBSpec().Image() != c.Image {
+	if tc.TiDBImage() != c.Image {
 		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
-			ns, tidbSetName, c.Image, tc.BaseTiDBSpec().Image())
+			ns, tidbSetName, c.Image, tc.TiDBImage())
 		return false, nil
 	}
 
@@ -3519,7 +3521,9 @@ var dummyCancel = func() {}
 
 func (oa *operatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc)
+		cfg, err := framework.LoadConfig()
+		framework.ExpectNoError(err)
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc, cfg.TLSClientConfig.CAData)
 	}
 	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
 }

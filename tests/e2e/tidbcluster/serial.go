@@ -9,7 +9,7 @@
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
-// limitations under the License.package spec
+// limitations under the License.
 
 package tidbcluster
 
@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/klog"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
+	"k8s.io/utils/pointer"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -416,11 +417,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
 			legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
 			legacyTc.Spec.PD.BaseImage = "pingcap/pd"
-			legacyTc.Spec.PD.Version = "v3.0.7"
+			legacyTc.Spec.PD.Version = pointer.StringPtr("v3.0.7")
 			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectNoError(err, "Expected update tidbcluster")
 			legacyTc.Spec.TiDB.BaseImage = ""
-			legacyTc.Spec.PD.Version = ""
+			legacyTc.Spec.PD.Version = pointer.StringPtr("")
 			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectError(err,
 				"Validating should reject mandatory fields being empty if the resource has already been migrated to use the new API")

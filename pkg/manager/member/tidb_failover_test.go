@@ -19,6 +19,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -160,7 +161,7 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 		{
 			name: "max failover count but maxFailoverCount = 0",
 			update: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiDB.MaxFailoverCount = 0
+				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(0)
 				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
 					"failover-tidb-0": {
 						Name:   "failover-tidb-0",
@@ -401,8 +402,7 @@ func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {
 					Image: "tidb-test-image",
 				},
 				Replicas:         2,
-				StorageClassName: "my-storage-class",
-				MaxFailoverCount: 3,
+				MaxFailoverCount: pointer.Int32Ptr(3),
 			},
 		},
 	}

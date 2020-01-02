@@ -9,7 +9,7 @@
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
-// limitations under the License.package spec
+// limitations under the License.
 
 package tidbcluster
 
@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 
@@ -44,7 +45,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -105,19 +105,41 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
-		clusters := map[string]string{}
-		clusters["v3.0.5"] = "cluster1"
-		clusters["v2.1.16"] = "cluster5" // for v2.1.x series
-
-		for version, name := range clusters {
-			localVersion := version
-			localName := name
-			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localVersion, localName), func() {
-				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localName, "", localVersion)
-				if name == "cluster5" {
+		clusterCfgs := []struct {
+			Version string
+			Name    string // helm release name, should not conflict with names used in other tests
+			Values  map[string]string
+		}{
+			{
+				Version: "v3.0.5",
+				Name:    "basic-v3",
+			},
+			{
+				Version: "v2.1.16",
+				Name:    "basic-v2",
+				Values: map[string]string{
 					// verify v2.1.x configuration compatibility
 					// https://github.com/pingcap/tidb-operator/pull/950
-					cluster.Resources["tikv.resources.limits.storage"] = "1G"
+					"tikv.resources.limits.storage": "1G",
+				},
+			},
+			{
+				Version: "v3.0.5",
+				Name:    "basic-v3-cluster-tls",
+				Values: map[string]string{
+					"enableTLSCluster": "true",
+				},
+			},
+		}
+
+		for _, clusterCfg := range clusterCfgs {
+			localCfg := clusterCfg
+			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
+				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localCfg.Name, "", localCfg.Version)
+				if len(localCfg.Values) > 0 {
+					for k, v := range localCfg.Values {
+						cluster.Resources[k] = v
+					}
 				}
 
 				// support reclaim pv when scale in tikv or pd component
@@ -190,10 +212,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.It("Upgrading TiDB Cluster", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
 		cluster.Resources["pd.replicas"] = "3"
-		// TLS only works with PD >= v3.0.5
-		if semver.Compare(cfg.GetTiDBVersionOrDie(), "v3.0.5") >= 0 {
-			cluster.Resources["enableTLSCluster"] = "true"
-		}
 
 		ginkgo.By("Creating webhook certs and self signing it")
 		svcName := "webhook"
@@ -318,7 +336,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Expected get TiDB cluster")
 			tc.Spec.TiDB.Service.Type = svcType
-			tc.Spec.TiDB.Service.ExternalTrafficPolicy = trafficPolicy
+			tc.Spec.TiDB.Service.ExternalTrafficPolicy = &trafficPolicy
 			tc.Spec.TiDB.Service.Annotations = map[string]string{
 				"test": "test",
 			}
@@ -357,6 +375,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 	})
 
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	// Basic IT for managed in TidbCluster CR
 	// TODO: deploy pump through CR in backup and restore IT
 	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
@@ -376,9 +395,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		pullPolicy := corev1.PullIfNotPresent
 		tc.Spec.Pump = &v1alpha1.PumpSpec{
+			BaseImage: "pingcap/tidb-binlog",
 			ComponentSpec: v1alpha1.ComponentSpec{
-				BaseImage:       "pingcap/tidb-binlog",
-				Version:         cluster.ClusterVersion,
+				Version:         &cluster.ClusterVersion,
 				ImagePullPolicy: &pullPolicy,
 				Affinity: &corev1.Affinity{
 					PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -401,11 +420,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						Value:    "tidb",
 					},
 				},
-				SchedulerName: "default-scheduler",
+				SchedulerName:        pointer.StringPtr("default-scheduler"),
+				ConfigUpdateStrategy: &updateStrategy,
 			},
-			Replicas:             1,
-			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
-			StorageClassName:     "local-storage",
+			Replicas:         1,
+			StorageClassName: pointer.StringPtr("local-storage"),
 			ResourceRequirements: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: resource.MustParse("10Gi"),
@@ -537,11 +556,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
-		tc.Spec.TiDB.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
 		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
-		tc.Spec.TiKV.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
 		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
-		tc.Spec.PD.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 		framework.ExpectNoError(err, "Expected update tidbcluster")
 
