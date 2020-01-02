@@ -40,10 +40,7 @@ func (oa *operatorActions) DeployAndCheckTidbMonitor(monitor *v1alpha1.TidbMonit
 	if err := oa.checkTidbMonitorPod(monitor); err != nil {
 		return err
 	}
-	if err := oa.checkTidbMonitorFunctional(monitor); err != nil {
-		return err
-	}
-	return nil
+	return oa.checkTidbMonitorFunctional(monitor)
 }
 
 func (oa *operatorActions) DeployAndCheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
