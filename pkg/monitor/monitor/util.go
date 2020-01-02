@@ -212,10 +212,9 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 }
 
 func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.Deployment {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+	monitorLabel := label.New().Instance(monitor.Name).Monitor()
 	replicas := int32(1)
-
-	labels := label.NewMonitor().Instance(monitor.Name).Monitor().Labels()
+	labels := label.NewMonitor().Instance(monitor.Name).Monitor()
 
 	deployment := &apps.Deployment{
 		ObjectMeta: meta.ObjectMeta{
@@ -628,7 +627,8 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 
 func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	var services []*core.Service
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+	monitorLabel := label.New().Instance(monitor.Name).Monitor()
+	labels := label.NewMonitor().Instance(monitor.Name).Monitor()
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
@@ -646,11 +646,8 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 					TargetPort: intstr.FromInt(9090),
 				},
 			},
-			Type: monitor.Spec.Prometheus.Service.Type,
-			Selector: map[string]string{
-				label.InstanceLabelKey:  monitor.Name,
-				label.ComponentLabelKey: label.TiDBMonitorVal,
-			},
+			Type:     monitor.Spec.Prometheus.Service.Type,
+			Selector: labels,
 		},
 	}
 	reloaderService := &core.Service{
