@@ -14,33 +14,45 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
+	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"net/http"
+	"net/url"
 	"time"
 )
 
-func (oa *operatorActions) DeployTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
+func (oa *operatorActions) DeployAndCheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
 	namespace := monitor.Namespace
 	_, err := oa.cli.PingcapV1alpha1().TidbMonitors(namespace).Create(monitor)
 	if err != nil {
 		return err
 	}
+	if err := oa.checkTidbMonitorPod(monitor); err != nil {
+		return err
+	}
+	if err := oa.checkTidbMonitorFunctional(monitor); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (oa *operatorActions) DeployTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
-	if err := oa.DeployTidbMonitor(monitor); err != nil {
+func (oa *operatorActions) DeployAndCheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
+	if err := oa.DeployAndCheckTidbMonitor(monitor); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+func (oa *operatorActions) checkTidbMonitorPod(tm *v1alpha1.TidbMonitor) error {
 	namespace := tm.Namespace
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
 	monitorLabel, err := label.NewMonitor().Instance(tm.Name).Monitor().Selector()
@@ -83,8 +95,124 @@ func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	})
 }
 
-func (oa *operatorActions) CheckTidbMonitorOrDie(tm *v1alpha1.TidbMonitor) {
-	if err := oa.CheckTidbMonitor(tm); err != nil {
-		slack.NotifyAndPanic(err)
+func (oa *operatorActions) checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor) error {
+	if err := oa.checkPrometheusCommon(monitor.Name, monitor.Namespace); err != nil {
+		return err
 	}
+	if monitor.Spec.Grafana != nil {
+		var grafanaClient *metrics.Client
+		if err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
+	var prometheusAddr string
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 9090)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		prometheusAddr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", name, namespace)
+	}
+	prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
+	resp, err := http.Get(prometheusSvc)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	response := &struct {
+		Status string `json:"status"`
+	}{}
+	err = json.Unmarshal(body, response)
+	if err != nil {
+		return err
+	}
+	if response.Status != "success" {
+		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
+	}
+	return nil
+}
+
+func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) error {
+	svcName := fmt.Sprintf("%s-grafana", name)
+	end := time.Now()
+	start := end.Add(-time.Minute)
+	values := url.Values{}
+	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
+	values.Set("start", fmt.Sprintf("%d", start.Unix()))
+	values.Set("end", fmt.Sprintf("%d", end.Unix()))
+	values.Set("step", "30")
+
+	var addr string
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 3000)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		addr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		addr = fmt.Sprintf("%s.%s.svc.cluster.local:3000", svcName, namespace)
+	}
+
+	datasourceID, err := getDatasourceID(addr)
+	if err != nil {
+		return err
+	}
+
+	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(grafanaUsername, grafanaPassword)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	data := struct {
+		Status string `json:"status"`
+		Data   struct {
+			ResultType string `json:"resultType"`
+			Result     []struct {
+				Metric struct {
+					Job string `json:"job"`
+				} `json:"metric"`
+				Values []interface{} `json:"values"`
+			} `json:"result"`
+		}
+	}{}
+	if err := json.Unmarshal(buf, &data); err != nil {
+		return err
+	}
+	if data.Status != "success" || len(data.Data.Result) < 1 {
+		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+	}
+
+	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
+	if grafanaClient == nil {
+		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, namespace)
+		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
+		if err != nil {
+			return err
+		}
+		grafanaClient = client
+	}
+	return nil
 }

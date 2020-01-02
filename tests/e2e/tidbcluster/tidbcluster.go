@@ -718,8 +718,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := newTidbMonitor("monitor", tc.Namespace, tc, true, false)
-		oa.DeployTidbMonitorOrDie(tm)
-		oa.CheckTidbMonitorOrDie(tm)
+		oa.DeployAndCheckTidbMonitorOrDie(tm)
 
 	})
 })

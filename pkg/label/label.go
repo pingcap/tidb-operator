@@ -171,7 +171,7 @@ func NewBackupSchedule() Label {
 func NewMonitor() Label {
 	return Label{
 		NameLabelKey:      TiDBMonitorVal,
-		ManagedByLabelKey: "monitor-operator",
+		ManagedByLabelKey: TiDBOperator,
 	}
 }
 
