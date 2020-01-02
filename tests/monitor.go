@@ -16,6 +16,7 @@ package tests
 import (
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/monitor/monitor"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,15 +43,29 @@ func (oa *operatorActions) DeployTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor)
 
 func (oa *operatorActions) CheckTidbMonitor(tm *v1alpha1.TidbMonitor) error {
 	namespace := tm.Namespace
-	podName := monitor.GetMonitorObjectName(tm)
+	deploymentName := monitor.GetMonitorObjectName(tm)
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
+
+	monitorLabel, err := label.New().Instance(tm.Name).Monitor().Selector()
+	if err != nil {
+		return err
+	}
+
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 
-		pod, err := oa.kubeCli.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pods, err := oa.kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
+			LabelSelector: monitorLabel.String(),
+		})
 		if err != nil {
 			klog.Infof("tm[%s/%s]'s pod is failed to fetch", tm.Namespace, tm.Name)
 			return false, nil
 		}
+		if len(pods.Items) < 1 || len(pods.Items) > 1 {
+			klog.Infof("tm[%s/%s] have incorrect count[%d] of pods", tm.Namespace, tm.Name, len(pods.Items))
+			return false, nil
+		}
+		pod := &pods.Items[0]
+
 		if !podutil.IsPodReady(pod) {
 			klog.Infof("tm[%s/%s]'s pod[%s/%s] is not ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
 			return false, nil
