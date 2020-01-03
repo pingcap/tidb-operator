@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"github.com/ghodss/yaml"
 	"html/template"
+	"strings"
 )
 
 type PrometheusConfig struct {
@@ -217,7 +218,7 @@ type MonitorConfigModel struct {
 }
 
 func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
-	c := PrometheusConfig{
+	var c = PrometheusConfig{
 		Alerting: nil,
 		Global: GlobalConfig{
 			ScrapeInterval:     "15s",
@@ -392,7 +393,8 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(bs), nil
+	// remove character "'"
+	return strings.ReplaceAll(string(bs), "'", ""), nil
 }
 
 func RenderPrometheusConfig2(model *MonitorConfigModel) (string, error) {
