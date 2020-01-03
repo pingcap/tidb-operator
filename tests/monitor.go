@@ -162,7 +162,7 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 
 	var addr string
 	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 3000)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-grafana", name), 3000)
 		if err != nil {
 			return nil, err
 		}
