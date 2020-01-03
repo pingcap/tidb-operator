@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"github.com/ghodss/yaml"
+	"fmt"
 	. "github.com/onsi/gomega"
 	"testing"
 )
@@ -10,8 +10,14 @@ func TestRenderPrometheusConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	model := &MonitorConfigModel{
 		ReleaseTargetRegex: "regex",
+		AlertmanagerURL:    "alertUrl",
+		ReleaseNamespaces: []string{
+			"ns1",
+			"ns2",
+		},
+		EnableTLSCluster: false,
 	}
-	c := newPrometheusConfig(model)
-	_, err := yaml.Marshal(c)
+	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
+	fmt.Printf(content)
 }
