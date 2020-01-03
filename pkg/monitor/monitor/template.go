@@ -14,7 +14,6 @@
 package monitor
 
 import (
-	"bytes"
 	"github.com/ghodss/yaml"
 	"html/template"
 	"strings"
@@ -395,17 +394,4 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	}
 	// remove character "'"
 	return strings.ReplaceAll(string(bs), "'", ""), nil
-}
-
-func RenderPrometheusConfig2(model *MonitorConfigModel) (string, error) {
-	return renderTemplateFunc(prometheusConfigTpl, model)
-}
-
-func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {
-	buff := new(bytes.Buffer)
-	err := tpl.Execute(buff, model)
-	if err != nil {
-		return "", err
-	}
-	return buff.String(), nil
 }
