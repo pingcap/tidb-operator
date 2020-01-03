@@ -82,13 +82,8 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		if pdMember.Health {
 			healthCount++
 		} else {
-			pod, err := pf.podLister.Pods(ns).Get(podName)
-			if err != nil {
-				return err
-			}
-
-			pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberUnhealthy",
-				"member %s is unhealthy", pdMember.ID)
+			pf.recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberUnhealthy",
+				"%s(%s) is unhealthy", podName, pdMember.ID)
 		}
 	}
 	inQuorum := healthCount > len(tc.Status.PD.Members)/2
@@ -144,13 +139,9 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		pod, err := pf.podLister.Pods(ns).Get(podName)
-		if err != nil {
-			return err
-		}
 
-		pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberMarkedAsFailure",
-			"member %s marked as a failure member", pdMember.ID)
+		pf.recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberMarkedAsFailure",
+			"%s(%s) marked as a failure member", podName, pdMember.ID)
 
 		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
@@ -193,6 +184,8 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 		return err
 	}
 	glog.Infof("pd failover: delete member: %d successfully", memberID)
+	pf.recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberDeleted",
+		"%s(%d) deleted from cluster", failurePodName, memberID)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
 	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
@@ -201,10 +194,6 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	pod, err := pf.podLister.Pods(ns).Get(failurePodName)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
-	}
-	if pod != nil {
-		pf.recorder.Eventf(pod, apiv1.EventTypeWarning, "PDMemberDeleted",
-			"member %d deleted from cluster", memberID)
 	}
 
 	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
