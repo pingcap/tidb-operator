@@ -706,21 +706,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
 	})
 
-	//ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
-	//	cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", "")
-	//	cluster.Resources["pd.replicas"] = "1"
-	//	cluster.Resources["tikv.replicas"] = "1"
-	//	cluster.Resources["tidb.replicas"] = "1"
-	//	oa.DeployTidbClusterOrDie(&cluster)
-	//	oa.CheckTidbClusterStatusOrDie(&cluster)
-	//
-	//	tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-	//	framework.ExpectNoError(err, "Expected get tidbcluster")
-	//
-	//	tm := newTidbMonitor("monitor", tc.Namespace, tc, true, false)
-	//	oa.DeployAndCheckTidbMonitorOrDie(tm)
-	//
-	//})
+	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		tm := newTidbMonitor("monitor", tc.Namespace, tc, true, false)
+		oa.DeployAndCheckTidbMonitorOrDie(tm)
+
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
