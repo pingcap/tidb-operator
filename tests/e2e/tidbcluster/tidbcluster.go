@@ -720,7 +720,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tm := newTidbMonitor("monitor", tc.Namespace, tc, true, false)
+		tm := newTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
 		oa.DeployAndCheckTidbMonitorOrDie(tm)
 
 	})
