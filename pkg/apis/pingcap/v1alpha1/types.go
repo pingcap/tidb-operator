@@ -914,6 +914,8 @@ const (
 	RestoreFailed RestoreConditionType = "Failed"
 	// RestoreRetryFailed means this failure can be retried
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
+	// RestoreInvalid means invalid restore CR.
+	RestoreInvalid RestoreConditionType = "Invalid"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.

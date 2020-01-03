@@ -15,7 +15,6 @@ package backup
 
 import (
 	"fmt"
-	"net/url"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -177,9 +176,6 @@ func (bkc *Controller) sync(key string) error {
 		return err
 	}
 
-	if !validBackup(backup) {
-		return nil
-	}
 	return bkc.syncBackup(backup.DeepCopy())
 }
 
@@ -226,54 +222,4 @@ func (bkc *Controller) enqueueBackup(obj interface{}) {
 		return
 	}
 	bkc.queue.Add(key)
-}
-
-func validBackup(backup *v1alpha1.Backup) bool {
-	ns := backup.Namespace
-	name := backup.Name
-	if backup.Spec.BR == nil {
-		if backup.Spec.From.Host == "" {
-			glog.Errorf("Missing Cluster config in spec of %s/%s", ns, name)
-			return false
-		}
-		if backup.Spec.From.SecretName == "" {
-			glog.Errorf("Missing TidbSecretName config in spec of %s/%s", ns, name)
-			return false
-		}
-		if backup.Spec.StorageClassName == "" {
-			glog.Errorf("Missing StorageClassName config in spec of %s/%s", ns, name)
-			return false
-		}
-		if backup.Spec.StorageSize == "" {
-			glog.Errorf("Missing StorageSize config in spec of %s/%s", ns, name)
-			return false
-		}
-	} else {
-		if backup.Spec.BR.PDAddress == "" {
-			glog.Errorf("PD address should be configured for BR in spec of %s/%s", ns, name)
-			return false
-		}
-		if backup.Spec.S3 != nil {
-			if backup.Spec.S3.Bucket == "" {
-				glog.Errorf("Bucket should be configured for BR in spec of %s/%s", ns, name)
-				return false
-			}
-			if backup.Spec.S3.Endpoint != "" {
-				u, err := url.Parse(backup.Spec.S3.Endpoint)
-				if err != nil {
-					glog.Errorf("Invalid endpoint %s is configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-					return false
-				}
-				if u.Scheme == "" {
-					glog.Errorf("Scheme not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-					return false
-				}
-				if u.Host == "" {
-					glog.Errorf("Host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
-					return false
-				}
-			}
-		}
-	}
-	return true
 }
