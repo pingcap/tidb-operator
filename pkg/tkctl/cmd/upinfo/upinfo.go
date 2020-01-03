@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -207,7 +207,7 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 		if dbPhase == v1alpha1.UpgradePhase {
 			if len(podList.Items) != 0 {
 				pod := podList.Items[0]
-				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.BaseTiDBSpec().Image())
+				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.TiDBImage())
 			}
 		}
 		{

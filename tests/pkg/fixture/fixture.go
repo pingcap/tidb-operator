@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,10 +69,8 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			Timezone:        "Asia/Shanghai",
 
 			PD: v1alpha1.PDSpec{
-				Replicas: 3,
-				ComponentSpec: v1alpha1.ComponentSpec{
-					BaseImage: "pingcap/pd",
-				},
+				Replicas:             3,
+				BaseImage:            "pingcap/pd",
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
 				Config: &v1alpha1.PDConfig{
 					Log: &v1alpha1.PDLogConfig{
@@ -86,12 +84,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			},
 
 			TiKV: v1alpha1.TiKVSpec{
-				Replicas: 3,
-				ComponentSpec: v1alpha1.ComponentSpec{
-					BaseImage: "pingcap/tikv",
-				},
+				Replicas:             3,
+				BaseImage:            "pingcap/tikv",
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
-				MaxFailoverCount:     3,
+				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config: &v1alpha1.TiKVConfig{
 					LogLevel: "info",
 					Server:   &v1alpha1.TiKVServerConfig{},
@@ -99,19 +95,17 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			},
 
 			TiDB: v1alpha1.TiDBSpec{
-				Replicas: 2,
-				ComponentSpec: v1alpha1.ComponentSpec{
-					BaseImage: "pingcap/tidb",
-				},
+				Replicas:             2,
+				BaseImage:            "pingcap/tidb",
 				ResourceRequirements: BurstbleMedium,
 				Service: &v1alpha1.TiDBServiceSpec{
 					ServiceSpec: v1alpha1.ServiceSpec{
 						Type: corev1.ServiceTypeClusterIP,
 					},
-					ExposeStatus: true,
+					ExposeStatus: pointer.BoolPtr(true),
 				},
-				SeparateSlowLog:  true,
-				MaxFailoverCount: 3,
+				SeparateSlowLog:  pointer.BoolPtr(true),
+				MaxFailoverCount: pointer.Int32Ptr(3),
 				Config: &v1alpha1.TiDBConfig{
 					Log: &v1alpha1.Log{
 						Level: pointer.StringPtr("info"),
