@@ -178,6 +178,7 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		klog.Errorf("tm[%s/%s]'s grafana response error:%v", namespace, name, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -185,6 +186,7 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 	if err != nil {
 		return nil, err
 	}
+	klog.Infof("tm[%s/%s]'s grafana reponse:%s", namespace, name, buf)
 	data := struct {
 		Status string `json:"status"`
 		Data   struct {
