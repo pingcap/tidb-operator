@@ -178,6 +178,7 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 	}
 
 	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
+	klog.Infof("tm[%s/%s]'s grafana query url is %s", namespace, name, u)
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
