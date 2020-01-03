@@ -35,12 +35,18 @@ func (oa *operatorActions) DeployAndCheckTidbMonitor(monitor *v1alpha1.TidbMonit
 	namespace := monitor.Namespace
 	_, err := oa.cli.PingcapV1alpha1().TidbMonitors(namespace).Create(monitor)
 	if err != nil {
+		klog.Errorf("tm[%s/%s] failed to deploy:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	if err := oa.checkTidbMonitorPod(monitor); err != nil {
+		klog.Errorf("tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	return oa.checkTidbMonitorFunctional(monitor)
+	if err := oa.checkTidbMonitorFunctional(monitor); err != nil {
+		klog.Errorf("tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+	return nil
 }
 
 func (oa *operatorActions) DeployAndCheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
@@ -94,12 +100,14 @@ func (oa *operatorActions) checkTidbMonitorPod(tm *v1alpha1.TidbMonitor) error {
 
 func (oa *operatorActions) checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor) error {
 	if err := oa.checkPrometheusCommon(monitor.Name, monitor.Namespace); err != nil {
+		klog.Errorf("tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
 	klog.Infof("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
 	if monitor.Spec.Grafana != nil {
 		var grafanaClient *metrics.Client
 		if _, err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
+			klog.Errorf("tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
 			return err
 		}
 		klog.Infof("tidbmonitor[%s/%s]'s grafana is ready", monitor.Name, monitor.Namespace)
