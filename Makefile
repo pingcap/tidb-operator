@@ -89,6 +89,7 @@ endif
 
 e2e-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/tkctl cmd/tkctl/main.go
 	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
