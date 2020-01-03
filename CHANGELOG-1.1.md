@@ -1,6 +1,6 @@
 # TiDB Operator v1.1.0-beta.1 Release Notes
 
-This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
+This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
 
 ## Changes since v1.0.0
 
@@ -8,22 +8,22 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 
 - ACTION REQUIRED: Add the `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts)([#1122](https://github.com/pingcap/tidb-operator/pull/1122), [@weekface](https://github.com/weekface)).
   
-  For the `tidb-cluster` chart, we already have the `timezone` option (`UTC` by default). If the user does not change it to a different value (for example: `Aisa/Shanghai`), all Pods will not be recreated.
+  For the `tidb-cluster` chart, we already have the `timezone` option (`UTC` by default) If the user does not change it to a different value (for example: `Aisa/Shanghai`), all Pods will not be recreated.
   If the user changes it to another value (for example: `Aisa/Shanghai`), all the related Pods (add a `TZ` env) will be recreated (rolling update).
   
-  Regarding other charts, we don't have a `timezone` option in their `values.yaml`. We add the `timezone` option in this PR. Whether the user uses the old `values.yaml` or the new `values.yaml`, all the related Pods (add a `TZ` env) will not be recreated (rolling update).
+  Regarding other charts, we don't have a `timezone` option in their `values.yaml` We add the `timezone` option in this PR Whether the user uses the old `values.yaml` or the new `values.yaml`, all the related Pods (add a `TZ` env) will not be recreated (rolling update).
   
   The related Pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
   
-  All images' time zone maintained by `tidb-operator` is `UTC`.  If you use your own images, you need to make sure that the time zone inside your images is `UTC`. 
+  All images' time zone maintained by `tidb-operator` is `UTC`  If you use your own images, you need to make sure that the time zone inside your images is `UTC` 
 
 ### Other notable changes
 
 - Support backup to S3 with [Backup & Restore (BR)](https://github.com/pingcap/br) ([#1280](https://github.com/pingcap/tidb-operator/pull/1280), [@DanielZhangQD](https://github.com/DanielZhangQD))
-- Add basic defaulting and validating for `TidbCluster`. ([#1429](https://github.com/pingcap/tidb-operator/pull/1429), [@aylei](https://github.com/aylei))
+- Add basic defaulting and validating for `TidbCluster` ([#1429](https://github.com/pingcap/tidb-operator/pull/1429), [@aylei](https://github.com/aylei))
 - Support scaling in/out with deleted slots feature of advanced StatefulSets ([#1361](https://github.com/pingcap/tidb-operator/pull/1361), [@cofyc](https://github.com/cofyc))
 - Support initializing the TiDB cluster with TidbInitializer Custom Resource ([#1403](https://github.com/pingcap/tidb-operator/pull/1403), [@DanielZhangQD](https://github.com/DanielZhangQD))
-- Refine the configuration schema of PD/TiKV/TiDB. ([#1411](https://github.com/pingcap/tidb-operator/pull/1411), [@aylei](https://github.com/aylei))
+- Refine the configuration schema of PD/TiKV/TiDB ([#1411](https://github.com/pingcap/tidb-operator/pull/1411), [@aylei](https://github.com/aylei))
 - Set the default name of the instance label key for `tidbcluster`-owned resources to the cluster name ([#1419](https://github.com/pingcap/tidb-operator/pull/1419), [@aylei](https://github.com/aylei))
 - Extend the custom resource `TidbCluster` to support managing the Pump cluster ([#1269](https://github.com/pingcap/tidb-operator/pull/1269), [@aylei](https://github.com/aylei))
 - Fix the default TiKV-importer configuration ([#1415](https://github.com/pingcap/tidb-operator/pull/1415), [@aylei](https://github.com/aylei))
@@ -44,11 +44,11 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Wait for the TiDB host:port to be opened before processing to initialize TiDB to speed up TiDB initialization ([#1296](https://github.com/pingcap/tidb-operator/pull/1296), [@cofyc](https://github.com/cofyc))
 - Remove DinD related scripts ([#1283](https://github.com/pingcap/tidb-operator/pull/1283), [@shonge](https://github.com/shonge))
 - Allow retrieving credentials from metadata on AWS and GCP ([#1248](https://github.com/pingcap/tidb-operator/pull/1248), [@gregwebs](https://github.com/gregwebs))
-- Add the privilege to operate configmap for tidb-controller-manager. ([#1275](https://github.com/pingcap/tidb-operator/pull/1275), [@aylei](https://github.com/aylei))
+- Add the privilege to operate configmap for tidb-controller-manager ([#1275](https://github.com/pingcap/tidb-operator/pull/1275), [@aylei](https://github.com/aylei))
 - Manage TiDB service in tidb-controller-manager ([#1242](https://github.com/pingcap/tidb-operator/pull/1242), [@aylei](https://github.com/aylei))
 - Support cluster-level setting for components ([#1193](https://github.com/pingcap/tidb-operator/pull/1193), [@aylei](https://github.com/aylei))
 - Get the time string from the current time instead of the Pod name ([#1229](https://github.com/pingcap/tidb-operator/pull/1229), [@weekface](https://github.com/weekface))
-- Operator will not resign the ddl owner anymore when upgrading tidb-servers because tidb-server will transfer ddl owner automatically on shutdown. ([#1239](https://github.com/pingcap/tidb-operator/pull/1239), [@aylei](https://github.com/aylei))
+- Operator will not resign the ddl owner anymore when upgrading tidb-servers because tidb-server will transfer ddl owner automatically on shutdown ([#1239](https://github.com/pingcap/tidb-operator/pull/1239), [@aylei](https://github.com/aylei))
 - Fix the Google terraform module `use_ip_aliases` error ([#1206](https://github.com/pingcap/tidb-operator/pull/1206), [@tennix](https://github.com/tennix))
 - Upgrade the default TiDB version to v3.0.5 ([#1179](https://github.com/pingcap/tidb-operator/pull/1179), [@shonge](https://github.com/shonge))
 - Upgrade the base system of Docker images to the latest stable ([#1178](https://github.com/pingcap/tidb-operator/pull/1178), [@AstroProfundis](https://github.com/AstroProfundis))
@@ -68,7 +68,7 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Add the `tikvGCLifeTime` option ([#835](https://github.com/pingcap/tidb-operator/pull/835), [@weekface](https://github.com/weekface))
 - Update the default backup image to pingcap/tidb-cloud-backup:20190828 ([#846](https://github.com/pingcap/tidb-operator/pull/846), [@aylei](https://github.com/aylei))
 - Fix the Pump/Drainer data directory to avoid potential data loss ([#826](https://github.com/pingcap/tidb-operator/pull/826), [@aylei](https://github.com/aylei))
-- Fix `tkctl` ouput nothing with `-oyaml` or `-ojson` flag and support for viewing details of a specific pod or PV,  also improve get comand output ([#822](https://github.com/pingcap/tidb-operator/pull/822), [@onlymellb](https://github.com/onlymellb))
+- Fix `tkctl` ouput nothing with `-oyaml` or `-ojson` flag and support for viewing details of a specific pod or PV, also improve get comand output ([#822](https://github.com/pingcap/tidb-operator/pull/822), [@onlymellb](https://github.com/onlymellb))
 - Add recommendations options to mydumper: `-t 16 -F 64 --skip-tz-utc` ([#828](https://github.com/pingcap/tidb-operator/pull/828), [@weekface](https://github.com/weekface))
 - Support zonal and multi-zonal clusters in deploy/gcp ([#809](https://github.com/pingcap/tidb-operator/pull/809), [@cofyc](https://github.com/cofyc))
 - Fix ad-hoc backup when the default backup name is used ([#836](https://github.com/pingcap/tidb-operator/pull/836), [@DanielZhangQD](https://github.com/DanielZhangQD))
@@ -77,8 +77,8 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Fix tkctl log output exception ([#797](https://github.com/pingcap/tidb-operator/pull/797), [@onlymellb](https://github.com/onlymellb))
 - Add the `hostNetwork` field in PD/TiKV/TiDB spec to make it possible to run TiDB components in host network ([#774](https://github.com/pingcap/tidb-operator/pull/774), [@cofyc](https://github.com/cofyc))
 - Use mdadm and RAID rather than LVM when it is available on GKE ([#789](https://github.com/pingcap/tidb-operator/pull/789), [@gregwebs](https://github.com/gregwebs))
-- Users can now expand cloud storage PV dynamically by increasing PVC storage size. ([#772](https://github.com/pingcap/tidb-operator/pull/772), [@tennix](https://github.com/tennix))
-- Support configuring node image types for PD/TiDB/TiKV node pools. ([#776](https://github.com/pingcap/tidb-operator/pull/776), [@cofyc](https://github.com/cofyc))
+- Users can now expand cloud storage PV dynamically by increasing PVC storage size ([#772](https://github.com/pingcap/tidb-operator/pull/772), [@tennix](https://github.com/tennix))
+- Support configuring node image types for PD/TiDB/TiKV node pools ([#776](https://github.com/pingcap/tidb-operator/pull/776), [@cofyc](https://github.com/cofyc))
 - Add a script to delete unused disk for GKE ([#771](https://github.com/pingcap/tidb-operator/pull/771), [@gregwebs](https://github.com/gregwebs))
 - Support `binlog.pump.config` and `binlog.drainer.config` configurations for Pump and Drainer ([#693](https://github.com/pingcap/tidb-operator/pull/693), [@weekface](https://github.com/weekface))
 - Prevent the Pump progress from exiting with 0 if the Pump becomes `offline` ([#769](https://github.com/pingcap/tidb-operator/pull/769), [@weekface](https://github.com/weekface))
@@ -97,10 +97,10 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Unify all S3 compliant storage to support backup and restore ([#1088](https://github.com/pingcap/tidb-operator/pull/1088), [@onlymellb](https://github.com/onlymellb))
 - Set podSecuriyContext to nil by default ([#1079](https://github.com/pingcap/tidb-operator/pull/1079), [@aylei](https://github.com/aylei))
 - Add tidb-apiserver in the tidb-operator chart ([#1083](https://github.com/pingcap/tidb-operator/pull/1083), [@aylei](https://github.com/aylei))
-- Add new component TiDB aggregated apiserver. ([#1048](https://github.com/pingcap/tidb-operator/pull/1048), [@aylei](https://github.com/aylei))
+- Add new component TiDB aggregated apiserver ([#1048](https://github.com/pingcap/tidb-operator/pull/1048), [@aylei](https://github.com/aylei))
 - Fix the issue that the tkctl version does not work when the release name is un-wanted ([#1065](https://github.com/pingcap/tidb-operator/pull/1065), [@aylei](https://github.com/aylei))
 - Support pause for backup schedule ([#1047](https://github.com/pingcap/tidb-operator/pull/1047), [@onlymellb](https://github.com/onlymellb))
-- Fix the issue that TiDB Loadbalancer is empty in terraform output. ([#1045](https://github.com/pingcap/tidb-operator/pull/1045), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Fix the issue that TiDB Loadbalancer is empty in terraform output ([#1045](https://github.com/pingcap/tidb-operator/pull/1045), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Fix that the `create_tidb_cluster_release` variable in AWS terraform script does not work ([#1062](https://github.com/pingcap/tidb-operator/pull/1062), [@aylei](https://github.com/aylei))
 - Enable `ConfigMapRollout` by default in the stability test ([#1036](https://github.com/pingcap/tidb-operator/pull/1036), [@aylei](https://github.com/aylei))
 - Migrate to use app/v1 and do not support Kubernetes before 1.9 anymore ([#1012](https://github.com/pingcap/tidb-operator/pull/1012), [@Yisaer](https://github.com/Yisaer))
@@ -112,7 +112,7 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Fix values file customization for tidb-operator on Aliyun ([#971](https://github.com/pingcap/tidb-operator/pull/971), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Add the `maxFailoverCount` limit to TiKV ([#965](https://github.com/pingcap/tidb-operator/pull/965), [@weekface](https://github.com/weekface))
 - The custom tidb-operator values can be properly set now in terraform script for AWS ([#946](https://github.com/pingcap/tidb-operator/pull/946), [@aylei](https://github.com/aylei))
-- Convert TiKV capacity into MiB when it's not a multiple of GiB. ([#942](https://github.com/pingcap/tidb-operator/pull/942), [@cofyc](https://github.com/cofyc))
+- Convert TiKV capacity into MiB when it's not a multiple of GiB ([#942](https://github.com/pingcap/tidb-operator/pull/942), [@cofyc](https://github.com/cofyc))
 - Fix Drainer misconfiguration ([#939](https://github.com/pingcap/tidb-operator/pull/939), [@weekface](https://github.com/weekface))
 - Support correctly deploying tidb-operator and tidb-cluster with customized `values.yaml` ([#959](https://github.com/pingcap/tidb-operator/pull/959), [@DanielZhangQD](https://github.com/DanielZhangQD))
-- Support specifying SecurityContext for PD, TiKV and TiDB Pods and enable tcp keepalive for AWS. ([#915](https://github.com/pingcap/tidb-operator/pull/915), [@aylei](https://github.com/aylei))
+- Support specifying SecurityContext for PD, TiKV and TiDB Pods and enable tcp keepalive for AWS ([#915](https://github.com/pingcap/tidb-operator/pull/915), [@aylei](https://github.com/aylei))
