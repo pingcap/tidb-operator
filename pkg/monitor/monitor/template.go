@@ -19,10 +19,15 @@ import (
 )
 
 type PrometheusConfig struct {
-	Global        map[string]string  `json:"global,omitempty"`
+	Global        GlobalConfig       `json:"global,omitempty"`
 	Alerting      []AlertingSpec     `json:"alerting,omitempty"`
 	RuleFiles     []string           `json:"rule_files,omitempty"`
 	ScrapeConfigs []ScrapeConfigSpec `json:"scrape_configs,omitempty"`
+}
+
+type GlobalConfig struct {
+	ScrapeInterval     string `json:"scrape_interval,omitempty"`
+	EvaluationInterval string `json:"evaluation_interval,omitempty"`
 }
 
 type AlertingSpec struct {
@@ -48,8 +53,12 @@ type ScrapeConfigSpec struct {
 }
 
 type KubernetesSDConfig struct {
-	Role       string              `json:"role,omitempty"`
-	Namespaces map[string][]string `json:"namespaces,omitempty"`
+	Role       string           `json:"role,omitempty"`
+	Namespaces NamespacesConfig `json:"namespaces,omitempty"`
+}
+
+type NamespacesConfig struct {
+	Names []string `json:"names,omitempty"`
 }
 
 type RelabelConfig struct {
@@ -208,9 +217,9 @@ type MonitorConfigModel struct {
 
 func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 	c := PrometheusConfig{
-		Global: map[string]string{
-			"scrape_interval":     "15s",
-			"evaluation_interval": "15s",
+		Global: GlobalConfig{
+			ScrapeInterval:     "15s",
+			EvaluationInterval: "15s",
 		},
 		Alerting: []AlertingSpec{
 			{
@@ -315,8 +324,8 @@ func addTlsConfig(pc *PrometheusConfig, model *MonitorConfigModel) {
 		KubernetesSDConfigs: []KubernetesSDConfig{
 			{
 				Role: "pod",
-				Namespaces: map[string][]string{
-					"names": model.ReleaseNamespaces,
+				Namespaces: NamespacesConfig{
+					Names: model.ReleaseNamespaces,
 				},
 			},
 		},
