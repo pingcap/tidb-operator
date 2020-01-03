@@ -148,7 +148,7 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 	end := time.Now()
-	start := end.Add(-5 * time.Minute)
+	start := end.Add(-time.Minute)
 	values := url.Values{}
 	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
