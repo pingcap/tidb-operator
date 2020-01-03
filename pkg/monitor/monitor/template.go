@@ -273,6 +273,37 @@ func newPrometheusConfig(model *MonitorConfigModel) PrometheusConfig {
 	return c
 }
 
+func addTlsConfig(pc *PrometheusConfig) {
+	for id, config := range pc.ScrapeConfigs {
+		if config.JobName == "tidb-cluster" {
+			config.TlsConfig["ca_file"] = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+			config.TlsConfig["cert_file"] = "/var/lib/pd-client-tls/cert"
+			config.TlsConfig["key_file"] = "/var/lib/pd-client-tls/key"
+			config.Schema = "https"
+			// This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
+			// be removed after TiKV fix this issue
+			config.RelabelConfigs = append(config.RelabelConfigs, RelabelConfig{
+				SourceLabels: "[__meta_kubernetes_pod_name]",
+				Action:       "drop",
+				Regex:        ".*\\-tikv\\-\\d*$",
+			})
+		}
+		pc.ScrapeConfigs[id] = config
+	}
+	// This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
+	// be removed after TiKV fix this issue
+	pc.ScrapeConfigs = append(pc.ScrapeConfigs, ScrapeConfigSpec{
+		JobName:             "",
+		ScrapeInterval:      "",
+		HonorLabels:         false,
+		KubernetesSDConfigs: nil,
+		TlsConfig:           nil,
+		Schema:              "",
+		RelabelConfigs:      nil,
+	})
+
+}
+
 func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	return renderTemplateFunc(prometheusConfigTpl, model)
 }
