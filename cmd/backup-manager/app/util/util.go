@@ -119,11 +119,11 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config)...)
-	s, path, err := getRemoteStorage(backup.Spec.StorageProvider)
+	storageArgs, path, err := getRemoteStorage(backup.Spec.StorageProvider)
 	if err != nil {
 		return nil, "", err
 	}
-	args = append(args, fmt.Sprintf("--storage=%s", s))
+	args = append(args, storageArgs...)
 	return args, path, nil
 }
 
@@ -135,11 +135,11 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config)...)
-	s, _, err := getRemoteStorage(restore.Spec.StorageProvider)
+	storageArgs, _, err := getRemoteStorage(restore.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
-	args = append(args, fmt.Sprintf("--storage=%s", s))
+	args = append(args, storageArgs...)
 	return args, nil
 }
 
