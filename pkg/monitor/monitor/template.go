@@ -14,13 +14,14 @@
 package monitor
 
 import (
+	"bytes"
 	"github.com/ghodss/yaml"
 	"html/template"
 )
 
 type PrometheusConfig struct {
 	Global        GlobalConfig       `json:"global,omitempty"`
-	Alerting      []AlertingSpec     `json:"alerting,omitempty"`
+	Alerting      AlertingSpec       `json:"alerting,omitempty"`
 	RuleFiles     []string           `json:"rule_files,omitempty"`
 	ScrapeConfigs []ScrapeConfigSpec `json:"scrape_configs,omitempty"`
 }
@@ -221,21 +222,6 @@ func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 			ScrapeInterval:     "15s",
 			EvaluationInterval: "15s",
 		},
-		Alerting: []AlertingSpec{
-			{
-				AlertManagers: []AlertmanagerSpec{
-					{
-						StaticConfigs: []StaticConfig{
-							{
-								Targets: []string{
-									model.AlertmanagerURL,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		},
@@ -296,6 +282,22 @@ func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 		},
 	}
 	return &c
+}
+
+func addAlertManagerUrl(pc *PrometheusConfig, model *MonitorConfigModel) {
+	pc.Alerting = AlertingSpec{
+		AlertManagers: []AlertmanagerSpec{
+			{
+				StaticConfigs: []StaticConfig{
+					{
+						Targets: []string{
+							model.AlertmanagerURL,
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func addTlsConfig(pc *PrometheusConfig, model *MonitorConfigModel) {
@@ -381,9 +383,25 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	if model.EnableTLSCluster {
 		addTlsConfig(pc, model)
 	}
-	bytes, err := yaml.Marshal(pc)
+	if len(model.AlertmanagerURL) > 0 {
+		addAlertManagerUrl(pc, model)
+	}
+	bs, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", err
 	}
-	return string(bytes), nil
+	return string(bs), nil
+}
+
+func RenderPrometheusConfig2(model *MonitorConfigModel) (string, error) {
+	return renderTemplateFunc(prometheusConfigTpl, model)
+}
+
+func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {
+	buff := new(bytes.Buffer)
+	err := tpl.Execute(buff, model)
+	if err != nil {
+		return "", err
+	}
+	return buff.String(), nil
 }
