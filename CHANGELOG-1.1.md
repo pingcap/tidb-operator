@@ -71,7 +71,7 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Fix `tkctl` ouput nothing with `-oyaml` or `-ojson` flag and support for viewing details of a specific pod or PV,  also improve get comand output ([#822](https://github.com/pingcap/tidb-operator/pull/822), [@onlymellb](https://github.com/onlymellb))
 - Add recommendations options to mydumper: `-t 16 -F 64 --skip-tz-utc` ([#828](https://github.com/pingcap/tidb-operator/pull/828), [@weekface](https://github.com/weekface))
 - Support zonal and multi-zonal clusters in deploy/gcp ([#809](https://github.com/pingcap/tidb-operator/pull/809), [@cofyc](https://github.com/cofyc))
-- The ad-hoc backup will fail if use default backup name which is not rendered during helm install in backup-job.yaml. ([#836](https://github.com/pingcap/tidb-operator/pull/836), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Fix ad-hoc backup when the default backup name is used ([#836](https://github.com/pingcap/tidb-operator/pull/836), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Add the support for tidb-lightning ([#817](https://github.com/pingcap/tidb-operator/pull/817), [@tennix](https://github.com/tennix))
 - Support restoring the TiDB cluster from a specified scheduled backup directory ([#804](https://github.com/pingcap/tidb-operator/pull/804), [@onlymellb](https://github.com/onlymellb))
 - Fix tkctl log output exception ([#797](https://github.com/pingcap/tidb-operator/pull/797), [@onlymellb](https://github.com/onlymellb))
