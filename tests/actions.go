@@ -230,8 +230,8 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
-	DeployAndCheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error
-	DeployAndCheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor)
+	CheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error
+	CheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor)
 }
 
 type operatorActions struct {

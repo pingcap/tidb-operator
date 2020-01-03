@@ -721,7 +721,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := newTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
-		oa.DeployAndCheckTidbMonitorOrDie(tm)
+		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		oa.CheckTidbMonitorOrDie(tm)
 
 	})
 })
