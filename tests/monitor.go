@@ -31,13 +31,8 @@ import (
 	"time"
 )
 
-func (oa *operatorActions) DeployAndCheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
-	namespace := monitor.Namespace
-	_, err := oa.cli.PingcapV1alpha1().TidbMonitors(namespace).Create(monitor)
-	if err != nil {
-		klog.Errorf("tm[%s/%s] failed to deploy:%v", monitor.Namespace, monitor.Name, err)
-		return err
-	}
+func (oa *operatorActions) CheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
+
 	if err := oa.checkTidbMonitorPod(monitor); err != nil {
 		klog.Errorf("tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -49,8 +44,8 @@ func (oa *operatorActions) DeployAndCheckTidbMonitor(monitor *v1alpha1.TidbMonit
 	return nil
 }
 
-func (oa *operatorActions) DeployAndCheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
-	if err := oa.DeployAndCheckTidbMonitor(monitor); err != nil {
+func (oa *operatorActions) CheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
+	if err := oa.CheckTidbMonitor(monitor); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
@@ -153,7 +148,7 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 	end := time.Now()
-	start := end.Add(-time.Minute)
+	start := end.Add(-5 * time.Minute)
 	values := url.Values{}
 	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
 	values.Set("start", fmt.Sprintf("%d", start.Unix()))
