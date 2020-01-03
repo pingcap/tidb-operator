@@ -10,7 +10,6 @@ func TestRenderPrometheusConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	model := &MonitorConfigModel{
 		ReleaseTargetRegex: "regex",
-		AlertmanagerURL:    "alertUrl",
 		ReleaseNamespaces: []string{
 			"ns1",
 			"ns2",

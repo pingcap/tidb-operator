@@ -21,7 +21,7 @@ import (
 
 type PrometheusConfig struct {
 	Global        GlobalConfig       `json:"global,omitempty"`
-	Alerting      AlertingSpec       `json:"alerting,omitempty"`
+	Alerting      *AlertingSpec      `json:"alerting,omitempty"`
 	RuleFiles     []string           `json:"rule_files,omitempty"`
 	ScrapeConfigs []ScrapeConfigSpec `json:"scrape_configs,omitempty"`
 }
@@ -54,8 +54,8 @@ type ScrapeConfigSpec struct {
 }
 
 type KubernetesSDConfig struct {
-	Role       string           `json:"role,omitempty"`
-	Namespaces NamespacesConfig `json:"namespaces,omitempty"`
+	Role       string            `json:"role,omitempty"`
+	Namespaces *NamespacesConfig `json:"namespaces,omitempty"`
 }
 
 type NamespacesConfig struct {
@@ -218,6 +218,7 @@ type MonitorConfigModel struct {
 
 func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 	c := PrometheusConfig{
+		Alerting: nil,
 		Global: GlobalConfig{
 			ScrapeInterval:     "15s",
 			EvaluationInterval: "15s",
@@ -232,7 +233,8 @@ func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 				HonorLabels:    true,
 				KubernetesSDConfigs: []KubernetesSDConfig{
 					{
-						Role: "pod",
+						Role:       "pod",
+						Namespaces: nil,
 					},
 				},
 				TlsConfig: TlsConfig{
@@ -285,7 +287,7 @@ func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 }
 
 func addAlertManagerUrl(pc *PrometheusConfig, model *MonitorConfigModel) {
-	pc.Alerting = AlertingSpec{
+	pc.Alerting = &AlertingSpec{
 		AlertManagers: []AlertmanagerSpec{
 			{
 				StaticConfigs: []StaticConfig{
@@ -326,7 +328,7 @@ func addTlsConfig(pc *PrometheusConfig, model *MonitorConfigModel) {
 		KubernetesSDConfigs: []KubernetesSDConfig{
 			{
 				Role: "pod",
-				Namespaces: NamespacesConfig{
+				Namespaces: &NamespacesConfig{
 					Names: model.ReleaseNamespaces,
 				},
 			},
