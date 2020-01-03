@@ -53,6 +53,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -303,8 +304,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
-		tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
-		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
+			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+			return err
+		})
 		framework.ExpectNoError(err, "Expected update TiDB cluster")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
