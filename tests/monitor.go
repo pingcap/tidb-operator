@@ -97,12 +97,13 @@ func (oa *operatorActions) checkTidbMonitorFunctional(monitor *v1alpha1.TidbMoni
 		return err
 	}
 	klog.Infof("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
-	//if monitor.Spec.Grafana != nil {
-	//	var grafanaClient *metrics.Client
-	//	if _, err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
-	//		return err
-	//	}
-	//}
+	if monitor.Spec.Grafana != nil {
+		var grafanaClient *metrics.Client
+		if _, err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
+			return err
+		}
+		klog.Infof("tidbmonitor[%s/%s]'s grafana is ready", monitor.Name, monitor.Namespace)
+	}
 	return nil
 }
 
