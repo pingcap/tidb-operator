@@ -5,57 +5,57 @@ it is **NOT** recommended to use this version in critical environments.
 
 ## Changes since v1.0.0
 
-### Action Required
+### Action required
 
-- ACTION REQUIRED: Adds `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts)([#1122](https://github.com/pingcap/tidb-operator/pull/1122), [@weekface](https://github.com/weekface)).
+- ACTION REQUIRED: Add the `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts)([#1122](https://github.com/pingcap/tidb-operator/pull/1122), [@weekface](https://github.com/weekface)).
   
-  For the `tidb-cluster` chart, we already have the `timezone` option(default `UTC`). If the user does not change it to a different value(for example: `Aisa/Shanghai`), all pods will not be recreated.
-  If the user changes it to other value(for example: `Aisa/Shanghai`), all the related pods (add a `TZ` env) will be recreated(rolling update).
+  For the `tidb-cluster` chart, we already have the `timezone` option (`UTC` by default). If the user does not change it to a different value (for example: `Aisa/Shanghai`), all Pods will not be recreated.
+  If the user changes it to another value (for example: `Aisa/Shanghai`), all the related Pods (add a `TZ` env) will be recreated (rolling update).
   
-  Regard other charts, we don't have a `timezone` option in their `values.yaml`. We add the `timezone` option in this PR. Whether the user uses the old `values.yaml` or the new `values.yaml`, all the related pods (add a `TZ` env) will not be recreated(rolling update).
+  Regarding other charts, we don't have a `timezone` option in their `values.yaml`. We add the `timezone` option in this PR. Whether the user uses the old `values.yaml` or the new `values.yaml`, all the related Pods (add a `TZ` env) will not be recreated (rolling update).
   
-  The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, `tikv-importer`.
+  The related Pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
   
-  All images' time zone maintained by `tidb-operator` are `UTC`. You need to make sure that the time zone inside your images are `UTC` if you use your own images. 
+  All images' time zone maintained by `tidb-operator` is `UTC`.  If you use your own images, you need to make sure that the time zone inside your images is `UTC`. 
 
-### Other Notable Changes
+### Other notable changes
 
 - Support backup to S3 with BR ([#1280](https://github.com/pingcap/tidb-operator/pull/1280), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Add basic defaulting and validating for tidbcluster. ([#1429](https://github.com/pingcap/tidb-operator/pull/1429), [@aylei](https://github.com/aylei))
-- able to scale in/out with delete slots feature of advanced statefulset ([#1361](https://github.com/pingcap/tidb-operator/pull/1361), [@cofyc](https://github.com/cofyc))
-- Support initializing TiDB Cluster with TidbInitializer Custom Resource. ([#1403](https://github.com/pingcap/tidb-operator/pull/1403), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Support scaling in/out with delete slots feature of advanced StatefulSets ([#1361](https://github.com/pingcap/tidb-operator/pull/1361), [@cofyc](https://github.com/cofyc))
+- Support initializing the TiDB cluster with TidbInitializer Custom Resource ([#1403](https://github.com/pingcap/tidb-operator/pull/1403), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Refine the configuration schema of PD/TiKV/TiDB. ([#1411](https://github.com/pingcap/tidb-operator/pull/1411), [@aylei](https://github.com/aylei))
-- The instance label key of resources owned by `tidbcluster` is default to the cluster name now. ([#1419](https://github.com/pingcap/tidb-operator/pull/1419), [@aylei](https://github.com/aylei))
-- Custom resource `TidbCluster` is extended to support managing Pump cluster. ([#1269](https://github.com/pingcap/tidb-operator/pull/1269), [@aylei](https://github.com/aylei))
+- Set the default name of the instance label key for `tidbcluster`-owned resources to the cluster name ([#1419](https://github.com/pingcap/tidb-operator/pull/1419), [@aylei](https://github.com/aylei))
+- Extend the custom resource `TidbCluster` to support managing the Pump cluster ([#1269](https://github.com/pingcap/tidb-operator/pull/1269), [@aylei](https://github.com/aylei))
 - Fix the default tikv-importer configuration ([#1415](https://github.com/pingcap/tidb-operator/pull/1415), [@aylei](https://github.com/aylei))
-- expose ephemeral-storage in resource config ([#1398](https://github.com/pingcap/tidb-operator/pull/1398), [@aylei](https://github.com/aylei))
+- Expose ephemeral-storage in resource configuration ([#1398](https://github.com/pingcap/tidb-operator/pull/1398), [@aylei](https://github.com/aylei))
 - e2e case of operating tidb-cluster without helm ([#1396](https://github.com/pingcap/tidb-operator/pull/1396), [@aylei](https://github.com/aylei))
-- Expose terraform aliyun ACK version and specify the default version to '1.14.8-aliyun.1'. ([#1284](https://github.com/pingcap/tidb-operator/pull/1284), [@shonge](https://github.com/shonge))
-- scheduler: refine scheduler error message ([#1373](https://github.com/pingcap/tidb-operator/pull/1373), [@weekface](https://github.com/weekface))
-- Use cluster-role system:kube-scheduler to binding service account tidb-scheduler. ([#1355](https://github.com/pingcap/tidb-operator/pull/1355), [@shonge](https://github.com/shonge))
-- Add new CRD TidbInitializer. ([#1391](https://github.com/pingcap/tidb-operator/pull/1391), [@aylei](https://github.com/aylei))
-- Upgrade the default backup image to pingcap/tidb-cloud-backup:20191217 and facilitate -r option ([#1360](https://github.com/pingcap/tidb-operator/pull/1360), [@aylei](https://github.com/aylei))
-- Terraform: fix docker ulimit configuring for latest EKS AMI. ([#1349](https://github.com/pingcap/tidb-operator/pull/1349), [@aylei](https://github.com/aylei))
+- Expose terraform Aliyun ACK version and specify the default version to '1.14.8-aliyun.1' ([#1284](https://github.com/pingcap/tidb-operator/pull/1284), [@shonge](https://github.com/shonge))
+- Refine error messages for the scheduler ([#1373](https://github.com/pingcap/tidb-operator/pull/1373), [@weekface](https://github.com/weekface))
+- Bind the cluster-role `system:kube-scheduler` to the service account `tidb-scheduler` ([#1355](https://github.com/pingcap/tidb-operator/pull/1355), [@shonge](https://github.com/shonge))
+- Add a new CRD TidbInitializer ([#1391](https://github.com/pingcap/tidb-operator/pull/1391), [@aylei](https://github.com/aylei))
+- Upgrade the default backup image to pingcap/tidb-cloud-backup:20191217 and facilitate the `-r` option ([#1360](https://github.com/pingcap/tidb-operator/pull/1360), [@aylei](https://github.com/aylei))
+- Terraform: fix docker ulimit configuring for the latest EKS AMI ([#1349](https://github.com/pingcap/tidb-operator/pull/1349), [@aylei](https://github.com/aylei))
 - Support sync pump status to tidb-cluster. ([#1292](https://github.com/pingcap/tidb-operator/pull/1292), [@shonge](https://github.com/shonge))
 - `tidb-controller-manager` will automatically create and reconcile the tidb-discovery-service now ([#1322](https://github.com/pingcap/tidb-operator/pull/1322), [@aylei](https://github.com/aylei))
-- make backup and restore more universal and secure ([#1276](https://github.com/pingcap/tidb-operator/pull/1276), [@onlymellb](https://github.com/onlymellb))
-- pd and tikv configs are now managed in TidbCluster resource. ([#1330](https://github.com/pingcap/tidb-operator/pull/1330), [@aylei](https://github.com/aylei))
-- The configuration of tidb-server can be managed in the `TidbCluster` resource now. ([#1291](https://github.com/pingcap/tidb-operator/pull/1291), [@aylei](https://github.com/aylei))
+- Make backup and restore more universal and secure ([#1276](https://github.com/pingcap/tidb-operator/pull/1276), [@onlymellb](https://github.com/onlymellb))
+- Manage PD and TiKV configuations in TidbCluster resource ([#1330](https://github.com/pingcap/tidb-operator/pull/1330), [@aylei](https://github.com/aylei))
+- Support managing the configuration of tidb-server in the `TidbCluster` resource ([#1291](https://github.com/pingcap/tidb-operator/pull/1291), [@aylei](https://github.com/aylei))
 - Add schema for configuration of TiKV. ([#1306](https://github.com/pingcap/tidb-operator/pull/1306), [@aylei](https://github.com/aylei))
-- tidb-initializer: wait for the TiDB host:port is open before processing to initialize TiDB. This speeds up TiDB initialization. ([#1296](https://github.com/pingcap/tidb-operator/pull/1296), [@cofyc](https://github.com/cofyc))
+- tidb-initializer: wait for the TiDB host:port to be opened before processing to initialize TiDB. This speeds up TiDB initialization ([#1296](https://github.com/pingcap/tidb-operator/pull/1296), [@cofyc](https://github.com/cofyc))
 - Remove DinD related scripts ([#1283](https://github.com/pingcap/tidb-operator/pull/1283), [@shonge](https://github.com/shonge))
 - backup chart: allow retrieving credentials from metadata on AWS and GCP ([#1248](https://github.com/pingcap/tidb-operator/pull/1248), [@gregwebs](https://github.com/gregwebs))
 - Add the privilege to operate configmap for tidb-controller-manager. ([#1275](https://github.com/pingcap/tidb-operator/pull/1275), [@aylei](https://github.com/aylei))
 - Manage TiDB service in tidb-controller-manager. ([#1242](https://github.com/pingcap/tidb-operator/pull/1242), [@aylei](https://github.com/aylei))
 - Support cluster-level setting for components ([#1193](https://github.com/pingcap/tidb-operator/pull/1193), [@aylei](https://github.com/aylei))
-- get time string from current time instead of pod name ([#1229](https://github.com/pingcap/tidb-operator/pull/1229), [@weekface](https://github.com/weekface))
-- Operator will not resign ddl owner when upgrading tidb-servers anymore because tidb-server will transfer ddl owner automatically on shutdown. ([#1239](https://github.com/pingcap/tidb-operator/pull/1239), [@aylei](https://github.com/aylei))
-- Fix google terraform module `use_ip_aliases` error. ([#1206](https://github.com/pingcap/tidb-operator/pull/1206), [@tennix](https://github.com/tennix))
-- upgrade default TiDB version to v3.0.5 ([#1179](https://github.com/pingcap/tidb-operator/pull/1179), [@shonge](https://github.com/shonge))
-- Upgrade base system of docker images to latest stable ([#1178](https://github.com/pingcap/tidb-operator/pull/1178), [@AstroProfundis](https://github.com/AstroProfundis))
-- `tkctl get tikv` now can show store state for each tikv pod ([#916](https://github.com/pingcap/tidb-operator/pull/916), [@Yisaer](https://github.com/Yisaer))
+- Get the time string from the current time instead of the Pod name ([#1229](https://github.com/pingcap/tidb-operator/pull/1229), [@weekface](https://github.com/weekface))
+- Operator will not resign the ddl owner anymore when upgrading tidb-servers because tidb-server will transfer ddl owner automatically on shutdown. ([#1239](https://github.com/pingcap/tidb-operator/pull/1239), [@aylei](https://github.com/aylei))
+- Fix the Google terraform module `use_ip_aliases` error ([#1206](https://github.com/pingcap/tidb-operator/pull/1206), [@tennix](https://github.com/tennix))
+- Upgrade the default TiDB version to v3.0.5 ([#1179](https://github.com/pingcap/tidb-operator/pull/1179), [@shonge](https://github.com/shonge))
+- Upgrade the base system of Docker images to the latest stable ([#1178](https://github.com/pingcap/tidb-operator/pull/1178), [@AstroProfundis](https://github.com/AstroProfundis))
+- `tkctl get tikv` now can show store state for each TiKV Pod ([#916](https://github.com/pingcap/tidb-operator/pull/916), [@Yisaer](https://github.com/Yisaer))
 - Add an option to monitor across namespaces ([#907](https://github.com/pingcap/tidb-operator/pull/907), [@gregwebs](https://github.com/gregwebs))
-- `tkctl get tikv` add `STOREID` column to show store id for each tikv pod ([#842](https://github.com/pingcap/tidb-operator/pull/842), [@Yisaer](https://github.com/Yisaer))
+- Add the `STOREID` column to show the store ID for each TiKV Pod in `tkctl get tikv` ([#842](https://github.com/pingcap/tidb-operator/pull/842), [@Yisaer](https://github.com/Yisaer))
 - Users can designate permitting host in chart values.tidb.permitHost ([#779](https://github.com/pingcap/tidb-operator/pull/779), [@shonge](https://github.com/shonge))
 - Add zone label and reserved resources arguments to kubelet ([#871](https://github.com/pingcap/tidb-operator/pull/871), [@aylei](https://github.com/aylei))
 - deploy/gcp: fix an issue that kubeconfig may be destroyed in apply phrase ([#861](https://github.com/pingcap/tidb-operator/pull/861), [@cofyc](https://github.com/cofyc))
