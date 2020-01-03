@@ -825,6 +825,10 @@ func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			},
 			Username: "admin",
 			Password: "admin",
+			Service: v1alpha1.ServiceSpec{
+				Type: corev1.ServiceTypeClusterIP,
+			},
+			LogLevel: "info",
 		}
 	}
 
