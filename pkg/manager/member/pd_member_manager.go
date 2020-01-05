@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"strconv"
 	"strings"
 
@@ -407,6 +408,11 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 
+	// k8s check
+	err = pmm.checkNotJoinClusterNode(tc, set, pdStatus)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -754,6 +760,53 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 	}
 	return cm, nil
+}
+
+func (pmm *pdMemberManager) checkNotJoinClusterNode(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
+	if podSelectErr != nil {
+		return podSelectErr
+	}
+	pods, podErr := pmm.podLister.Pods(tc.Namespace).List(podSelector)
+	if podErr != nil {
+		return podErr
+	}
+	for _, pod := range pods {
+		var joined = false
+		for podName, _ := range pdStatus {
+			if strings.EqualFold(pod.Name, podName) {
+				joined = true
+			}
+		}
+		if !joined {
+			if tc.Status.PD.NotJoinClusterMembers == nil {
+				tc.Status.PD.NotJoinClusterMembers = map[string]v1alpha1.NotJoinClusterMember{}
+			}
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return err
+			}
+			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
+			pvc, err := pmm.pvcLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
+			if err != nil {
+				return err
+			}
+			tc.Status.PD.NotJoinClusterMembers[pod.Name] = v1alpha1.NotJoinClusterMember{
+				PodName:   pod.Name,
+				MemberID:  "",
+				PVCUID:    pvc.UID,
+				CreatedAt: metav1.Now(),
+			}
+		} else {
+			if tc.Status.PD.NotJoinClusterMembers != nil {
+				if _, ok := tc.Status.PD.NotJoinClusterMembers[pod.Name]; ok {
+					delete(tc.Status.PD.NotJoinClusterMembers, pod.Name)
+				}
+
+			}
+		}
+	}
+	return nil
 }
 
 type FakePDMemberManager struct {

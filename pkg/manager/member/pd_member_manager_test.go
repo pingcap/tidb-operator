@@ -1408,3 +1408,141 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 		})
 	}
 }
+
+func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                string
+		modify              func(cluster *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer)
+		pdHealth            *pdapi.HealthInfo
+		tcStatusChange      func(cluster *v1alpha1.TidbCluster)
+		err                 bool
+		expectTidbClusterFn func(*GomegaWithT, *v1alpha1.TidbCluster)
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		ns := tc.Namespace
+		tcName := tc.Name
+
+		pmm, _, _, fakePDControl, podIndexer, pvcIndexer, _ := newFakePDMemberManager()
+		pdClient := controller.NewFakePDClient(fakePDControl, tc)
+
+		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+			return test.pdHealth, nil
+		})
+		pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &metapb.Cluster{Id: uint64(1)}, nil
+		})
+
+		err := pmm.Sync(tc)
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.svcLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		if test.tcStatusChange != nil {
+			test.tcStatusChange(tc)
+		}
+		test.modify(tc, podIndexer, pvcIndexer)
+		err = pmm.syncPDStatefulSetForTidbCluster(tc)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+		if test.expectTidbClusterFn != nil {
+			test.expectTidbClusterFn(g, tc)
+		}
+	}
+	tests := []testcase{
+		{
+			name: "add not join cluster pod info ",
+			modify: func(cluster *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
+				for ordinal := 0; ordinal < 3; ordinal++ {
+					pod := &corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        ordinalPodName(v1alpha1.PDMemberType, cluster.GetName(), int32(ordinal)),
+							Namespace:   metav1.NamespaceDefault,
+							Annotations: map[string]string{},
+							Labels:      label.New().Instance(cluster.GetInstanceName()).PD().Labels(),
+						},
+					}
+					podIndexer.Add(pod)
+				}
+				for ordinal := 0; ordinal < 3; ordinal++ {
+					pvc := &corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(cluster.GetName()), int32(ordinal)),
+							Namespace:   metav1.NamespaceDefault,
+							Annotations: map[string]string{},
+							Labels:      label.New().Instance(cluster.GetInstanceName()).PD().Labels(),
+						},
+					}
+					pvcIndexer.Add(pvc)
+				}
+
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},
+				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1:2379"}, Health: false},
+			}},
+			err: false,
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.PD.NotJoinClusterMembers["test-pd-2"]).NotTo(Equal(nil))
+			},
+		},
+		{
+			name: "clear notJoinClusterMembers when the member join the cluster  ",
+			tcStatusChange: func(cluster *v1alpha1.TidbCluster) {
+				cluster.Status.PD.NotJoinClusterMembers = map[string]v1alpha1.NotJoinClusterMember{
+					"test-pd-0": {
+						PodName:   "test-pd-0",
+						CreatedAt: metav1.Now(),
+					},
+				}
+			},
+			modify: func(cluster *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
+				for ordinal := 0; ordinal < 3; ordinal++ {
+					pod := &corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        ordinalPodName(v1alpha1.PDMemberType, cluster.GetName(), int32(ordinal)),
+							Namespace:   metav1.NamespaceDefault,
+							Annotations: map[string]string{},
+							Labels:      label.New().Instance(cluster.GetInstanceName()).PD().Labels(),
+						},
+					}
+					podIndexer.Add(pod)
+				}
+				for ordinal := 0; ordinal < 3; ordinal++ {
+					pvc := &corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(cluster.GetName()), int32(ordinal)),
+							Namespace:   metav1.NamespaceDefault,
+							Annotations: map[string]string{},
+							Labels:      label.New().Instance(cluster.GetInstanceName()).PD().Labels(),
+						},
+					}
+					pvcIndexer.Add(pvc)
+				}
+
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "test-pd-0", MemberID: uint64(1), ClientUrls: []string{"http://test-pd-0:2379"}, Health: false},
+				{Name: "test-pd-1", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-1:2379"}, Health: false},
+				{Name: "test-pd-2", MemberID: uint64(2), ClientUrls: []string{"http://test-pd-2:2379"}, Health: false},
+			}},
+			err: false,
+			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(len(tc.Status.PD.NotJoinClusterMembers)).To(Equal(0))
+			},
+		},
+	}
+	for i := range tests {
+		t.Logf("begin: %s", tests[i].name)
+		testFn(&tests[i], t)
+		t.Logf("end: %s", tests[i].name)
+	}
+}
