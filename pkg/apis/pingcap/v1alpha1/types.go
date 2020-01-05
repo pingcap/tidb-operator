@@ -931,15 +931,15 @@ type RestoreCondition struct {
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
 	// To is the tidb cluster that needs to restore.
-	To TiDBAccessConfig `json:"to"`
+	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
-	StorageProvider `json:",inline,omitempty"`
+	StorageProvider `json:",inline"`
 	// StorageClassName is the storage class for backup job's PV.
-	StorageClassName string `json:"storageClassName"`
+	StorageClassName string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
-	StorageSize string `json:"storageSize"`
+	StorageSize string `json:"storageSize,omitempty"`
 	// BR is the configs for BR.
 	BR *BRConfig `json:"br,omitempty"`
 }
