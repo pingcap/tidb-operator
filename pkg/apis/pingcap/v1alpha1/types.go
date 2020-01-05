@@ -532,7 +532,6 @@ type PDFailureMember struct {
 // PDFailureMember is the pd failure member information
 type NotJoinClusterMember struct {
 	PodName   string      `json:"podName,omitempty"`
-	MemberID  string      `json:"memberID,omitempty"`
 	PVCUID    types.UID   `json:"pvcUID,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
