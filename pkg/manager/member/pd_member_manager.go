@@ -773,7 +773,7 @@ func (pmm *pdMemberManager) checkNotJoinClusterNode(tc *v1alpha1.TidbCluster, se
 	}
 	for _, pod := range pods {
 		var joined = false
-		for podName, _ := range pdStatus {
+		for podName := range pdStatus {
 			if strings.EqualFold(pod.Name, podName) {
 				joined = true
 			}
