@@ -793,7 +793,6 @@ func (pmm *pdMemberManager) checkNotJoinClusterNode(tc *v1alpha1.TidbCluster, se
 			}
 			tc.Status.PD.NotJoinClusterMembers[pod.Name] = v1alpha1.NotJoinClusterMember{
 				PodName:   pod.Name,
-				MemberID:  "",
 				PVCUID:    pvc.UID,
 				CreatedAt: metav1.Now(),
 			}
