@@ -6523,10 +6523,6 @@ spec:
               - host
               - secretName
               type: object
-          required:
-          - to
-          - storageClassName
-          - storageSize
           type: object
       type: object
   version: v1alpha1
