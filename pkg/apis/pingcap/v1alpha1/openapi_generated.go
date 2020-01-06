@@ -375,6 +375,20 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"db": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DB is the specific DB which will be backed-up or restored",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"table": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Table is the specific table which will be backed-up or restored",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"ca": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CA is the CA certificate path for TLS connection",

@@ -6178,6 +6178,9 @@ spec:
                     that execute the backup task
                   format: int64
                   type: integer
+                db:
+                  description: DB is the specific DB which will be backed-up or restored
+                  type: string
                 key:
                   description: Key is the private key path for TLS connection
                   type: string
@@ -6202,6 +6205,10 @@ spec:
                 statusAddr:
                   description: StatusAddr is the HTTP listening address for the status
                     report service. Set to empty string to disable
+                  type: string
+                table:
+                  description: Table is the specific table which will be backed-up
+                    or restored
                   type: string
                 timeAgo:
                   description: TimeAgo is the history version of the backup task,
@@ -6382,6 +6389,9 @@ spec:
                     that execute the backup task
                   format: int64
                   type: integer
+                db:
+                  description: DB is the specific DB which will be backed-up or restored
+                  type: string
                 key:
                   description: Key is the private key path for TLS connection
                   type: string
@@ -6406,6 +6416,10 @@ spec:
                 statusAddr:
                   description: StatusAddr is the HTTP listening address for the status
                     report service. Set to empty string to disable
+                  type: string
+                table:
+                  description: Table is the specific table which will be backed-up
+                    or restored
                   type: string
                 timeAgo:
                   description: TimeAgo is the history version of the backup task,
@@ -6601,6 +6615,10 @@ spec:
                         node that execute the backup task
                       format: int64
                       type: integer
+                    db:
+                      description: DB is the specific DB which will be backed-up or
+                        restored
+                      type: string
                     key:
                       description: Key is the private key path for TLS connection
                       type: string
@@ -6625,6 +6643,10 @@ spec:
                     statusAddr:
                       description: StatusAddr is the HTTP listening address for the
                         status report service. Set to empty string to disable
+                      type: string
+                    table:
+                      description: Table is the specific table which will be backed-up
+                        or restored
                       type: string
                     timeAgo:
                       description: TimeAgo is the history version of the backup task,

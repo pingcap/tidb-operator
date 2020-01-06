@@ -747,6 +747,10 @@ type BackupSpec struct {
 type BRConfig struct {
 	// PDAddress is the PD address of the tidb cluster
 	PDAddress string `json:"pd"`
+	// DB is the specific DB which will be backed-up or restored
+	DB string `json:"db,omitempty"`
+	// Table is the specific table which will be backed-up or restored
+	Table string `json:"table,omitempty"`
 	// CA is the CA certificate path for TLS connection
 	CA string `json:"ca,omitempty"`
 	// Cert is the certificate path for TLS connection

@@ -140,6 +140,12 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, err
 	}
 	args = append(args, storageArgs...)
+	if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && config.DB != "" {
+		args = append(args, fmt.Sprintf("--db=%s", config.DB))
+	}
+	if restore.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
+		args = append(args, fmt.Sprintf("--table=%s", config.Table))
+	}
 	return args, nil
 }
 

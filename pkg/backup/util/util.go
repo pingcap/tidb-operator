@@ -358,6 +358,12 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 			restore.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
+		if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && restore.Spec.BR.DB == "" {
+			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
+		}
+		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
+			return fmt.Errorf("Table should be configured for BR with restore type table in spec of %s/%s", ns, name)
+		}
 		if restore.Spec.S3 != nil {
 			if restore.Spec.S3.Bucket == "" {
 				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
