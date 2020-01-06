@@ -77,9 +77,6 @@ func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condit
 		}
 		return nil
 	})
-	if isUpdate {
-		rcu.recordRestoreEvent("update", restore, err)
-	}
 	return err
 }
 
