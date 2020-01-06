@@ -226,7 +226,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		if force {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newPDSet, 0)
-			errSTS := pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+			errSTS := updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 		}
 	}
@@ -251,7 +251,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
 }
 
 func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
@@ -308,24 +308,6 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 	}
 
 	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
-	if !statefulSetEqual(*newPDSet, *oldPDSet) {
-		set := *oldPDSet
-		set.Annotations = newPDSet.Annotations
-		set.Spec.Template = newPDSet.Spec.Template
-		*set.Spec.Replicas = *newPDSet.Spec.Replicas
-		set.Spec.UpdateStrategy = newPDSet.Spec.UpdateStrategy
-		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
-		_, err = pmm.setControl.UpdateStatefulSet(tc, &set)
-		return err
-	}
-
-	return nil
 }
 
 func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
