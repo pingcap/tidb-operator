@@ -2,7 +2,7 @@
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License a
+// You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -15,6 +15,7 @@ package proxiedtidbclient
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -25,7 +26,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
-	utilcrypto "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb/config"
 )
@@ -33,6 +33,7 @@ import (
 type proxiedTiDBClient struct {
 	fw         portforward.PortForward
 	httpClient *http.Client
+	caCert     []byte
 }
 
 var _ controller.TiDBControlInterface = &proxiedTiDBClient{}
@@ -50,11 +51,9 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
 
-	if tc.Spec.EnableTLSCluster {
-		rootCAs, err := utilcrypto.ReadCACerts()
-		if err != nil {
-			return nil, err
-		}
+	if tc.IsTLSClusterEnabled() {
+		rootCAs := x509.NewCertPool()
+		rootCAs.AppendCertsFromPEM(p.caCert)
 		p.httpClient.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: rootCAs,
@@ -94,6 +93,6 @@ func (p *proxiedTiDBClient) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32)
 	return &info, nil
 }
 
-func NewProxiedTiDBClient(fw portforward.PortForward) controller.TiDBControlInterface {
-	return &proxiedTiDBClient{fw: fw, httpClient: &http.Client{Timeout: 5 * time.Second}}
+func NewProxiedTiDBClient(fw portforward.PortForward, caCert []byte) controller.TiDBControlInterface {
+	return &proxiedTiDBClient{fw: fw, httpClient: &http.Client{Timeout: 5 * time.Second}, caCert: caCert}
 }

@@ -25,4 +25,4 @@ ${scriptdir}/generate-internal-groups.sh \
   github.com/pingcap/tidb-operator/pkg/apiserver/apis \
   github.com/pingcap/tidb-operator/pkg/apiserver/apis \
   "tidb.pingcap.com:v1alpha1" \
-  --go-header-file=${scriptdir}/boilerplate.go.txt
+  --go-header-file=${scriptdir}/boilerplate/boilerplate.generatego.txt

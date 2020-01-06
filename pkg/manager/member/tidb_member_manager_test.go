@@ -217,7 +217,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 		{
 			name: "enable separate slowlog on the fly",
 			modify: func(tc *v1alpha1.TidbCluster) {
-				tc.Spec.TiDB.SeparateSlowLog = true
+				tc.Spec.TiDB.SeparateSlowLog = pointer.BoolPtr(true)
 			},
 			errWhenUpdateStatefulSet: false,
 			err:                      false,
@@ -891,6 +891,7 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 
 func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 	enable := true
+	updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -968,8 +969,10 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						Config:               &v1alpha1.TiDBConfig{},
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
+						Config: &v1alpha1.TiDBConfig{},
 					},
 				},
 			},
@@ -1303,6 +1306,7 @@ func TestTiDBInitContainers(t *testing.T) {
 
 func TestGetNewTiDBService(t *testing.T) {
 	g := NewGomegaWithT(t)
+	trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1328,7 +1332,7 @@ func TestGetNewTiDBService(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
 						Service: &v1alpha1.TiDBServiceSpec{
-							ExposeStatus: false,
+							ExposeStatus: pointer.BoolPtr(false),
 						},
 					},
 				},
@@ -1386,7 +1390,7 @@ func TestGetNewTiDBService(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
 						Service: &v1alpha1.TiDBServiceSpec{
-							ExposeStatus: true,
+							ExposeStatus: pointer.BoolPtr(true),
 						},
 					},
 				},
@@ -1456,8 +1460,8 @@ func TestGetNewTiDBService(t *testing.T) {
 									"lb-type": "testlb",
 								},
 							},
-							ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-							ExposeStatus:          true,
+							ExternalTrafficPolicy: &trafficPolicy,
+							ExposeStatus:          pointer.BoolPtr(true),
 						},
 					},
 				},
@@ -1534,6 +1538,7 @@ func TestGetNewTiDBService(t *testing.T) {
 
 func TestGetTiDBConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
+	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1558,7 +1563,9 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
 						Config: &v1alpha1.TiDBConfig{
 							Lease: pointer.StringPtr("45s"),
 						},
@@ -1605,11 +1612,13 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					EnableTLSCluster: true,
+					EnableTLSCluster: pointer.BoolPtr(true),
 					TiDB: v1alpha1.TiDBSpec{
-						ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyInPlace,
-						EnableTLSClient:      true,
-						Config:               &v1alpha1.TiDBConfig{},
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ConfigUpdateStrategy: &updateStrategy,
+						},
+						EnableTLSClient: pointer.BoolPtr(true),
+						Config:          &v1alpha1.TiDBConfig{},
 					},
 				},
 			},

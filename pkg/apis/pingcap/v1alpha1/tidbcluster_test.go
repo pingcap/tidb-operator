@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 )
 
 func TestPDIsAvailable(t *testing.T) {
@@ -197,9 +198,9 @@ func TestComponentAccessor(t *testing.T) {
 			name: "use cluster-level defaults",
 			cluster: &TidbClusterSpec{
 				ImagePullPolicy:   corev1.PullNever,
-				HostNetwork:       true,
+				HostNetwork:       pointer.BoolPtr(true),
 				Affinity:          affinity,
-				PriorityClassName: "test",
+				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
 			component: &ComponentSpec{},
@@ -207,7 +208,7 @@ func TestComponentAccessor(t *testing.T) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullNever))
 				g.Expect(a.HostNetwork()).Should(Equal(true))
 				g.Expect(a.Affinity()).Should(Equal(affinity))
-				g.Expect(a.PriorityClassName()).Should(Equal("test"))
+				g.Expect(*a.PriorityClassName()).Should(Equal("test"))
 				g.Expect(a.SchedulerName()).Should(Equal("test"))
 			},
 		},
@@ -215,74 +216,24 @@ func TestComponentAccessor(t *testing.T) {
 			name: "override at component-level",
 			cluster: &TidbClusterSpec{
 				ImagePullPolicy:   corev1.PullNever,
-				HostNetwork:       true,
+				HostNetwork:       pointer.BoolPtr(true),
 				Affinity:          nil,
-				PriorityClassName: "test",
+				PriorityClassName: pointer.StringPtr("test"),
 				SchedulerName:     "test",
 			},
 			component: &ComponentSpec{
 				ImagePullPolicy:   func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }(),
 				HostNetwork:       func() *bool { a := false; return &a }(),
 				Affinity:          affinity,
-				PriorityClassName: "override",
-				SchedulerName:     "override",
+				PriorityClassName: pointer.StringPtr("override"),
+				SchedulerName:     pointer.StringPtr("override"),
 			},
 			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
 				g.Expect(a.ImagePullPolicy()).Should(Equal(corev1.PullAlways))
 				g.Expect(a.HostNetwork()).Should(Equal(false))
 				g.Expect(a.Affinity()).Should(Equal(affinity))
-				g.Expect(a.PriorityClassName()).Should(Equal("override"))
+				g.Expect(*a.PriorityClassName()).Should(Equal("override"))
 				g.Expect(a.SchedulerName()).Should(Equal("override"))
-			},
-		},
-		{
-			name: "baseImage and cluster version",
-			cluster: &TidbClusterSpec{
-				Version: "v1.1.0",
-			},
-			component: &ComponentSpec{
-				BaseImage: "pingcap/tidb",
-			},
-			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
-				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.1.0"))
-			},
-		},
-		{
-			name: "baseImage and component-level version override",
-			cluster: &TidbClusterSpec{
-				Version: "v1.1.0",
-			},
-			component: &ComponentSpec{
-				BaseImage: "pingcap/tidb",
-				Version:   "v1.2.0",
-			},
-			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
-				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.2.0"))
-			},
-		},
-		{
-			name: "backward compatibility of .spec.<component>.image",
-			cluster: &TidbClusterSpec{
-				Version: "v1.1.0",
-			},
-			component: &ComponentSpec{
-				Image: "pingcap/tidb:v1.0.0",
-			},
-			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
-				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.0.0"))
-			},
-		},
-		{
-			name: "baseImage shadows the deprecated image field",
-			cluster: &TidbClusterSpec{
-				Version: "v1.1.0",
-			},
-			component: &ComponentSpec{
-				BaseImage: "pingcap/tidb",
-				Image:     "pingcap/tidb:v1.0.0",
-			},
-			expectFn: func(g *GomegaWithT, a ComponentAccessor) {
-				g.Expect(a.Image()).Should(Equal("pingcap/tidb:v1.1.0"))
 			},
 		},
 		{
@@ -390,8 +341,12 @@ func TestHelperImage(t *testing.T) {
 		{
 			name: "helper image use .spec.helper.image first",
 			update: func(tc *TidbCluster) {
-				tc.Spec.Helper.Image = "helper1"
-				tc.Spec.TiDB.SlowLogTailer.Image = "helper2"
+				tc.Spec.Helper = &HelperSpec{
+					Image: pointer.StringPtr("helper1"),
+				}
+				tc.Spec.TiDB.SlowLogTailer = &TiDBSlowLogTailerSpec{
+					Image: pointer.StringPtr("helper2"),
+				}
 			},
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).Should(Equal("helper1"))
@@ -400,8 +355,12 @@ func TestHelperImage(t *testing.T) {
 		{
 			name: "pick .spec.tidb.slowLogTailer.image as helper for backward compatibility",
 			update: func(tc *TidbCluster) {
-				tc.Spec.Helper.Image = ""
-				tc.Spec.TiDB.SlowLogTailer.Image = "helper2"
+				tc.Spec.Helper = &HelperSpec{
+					Image: nil,
+				}
+				tc.Spec.TiDB.SlowLogTailer = &TiDBSlowLogTailerSpec{
+					Image: pointer.StringPtr("helper2"),
+				}
 			},
 			expectFn: func(g *GomegaWithT, s string) {
 				g.Expect(s).Should(Equal("helper2"))
@@ -433,8 +392,12 @@ func TestHelperImagePullPolicy(t *testing.T) {
 		{
 			name: "use .spec.helper.imagePullPolicy first",
 			update: func(tc *TidbCluster) {
-				tc.Spec.Helper.ImagePullPolicy = func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }()
-				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = func() *corev1.PullPolicy { a := corev1.PullIfNotPresent; return &a }()
+				tc.Spec.Helper = &HelperSpec{
+					ImagePullPolicy: func() *corev1.PullPolicy { a := corev1.PullAlways; return &a }(),
+				}
+				tc.Spec.TiDB.SlowLogTailer = &TiDBSlowLogTailerSpec{
+					ImagePullPolicy: func() *corev1.PullPolicy { a := corev1.PullIfNotPresent; return &a }(),
+				}
 				tc.Spec.ImagePullPolicy = corev1.PullNever
 			},
 			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {
@@ -444,8 +407,12 @@ func TestHelperImagePullPolicy(t *testing.T) {
 		{
 			name: "pick .spec.tidb.slowLogTailer.imagePullPolicy when .spec.helper.imagePullPolicy is nil",
 			update: func(tc *TidbCluster) {
-				tc.Spec.Helper.ImagePullPolicy = nil
-				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = func() *corev1.PullPolicy { a := corev1.PullIfNotPresent; return &a }()
+				tc.Spec.Helper = &HelperSpec{
+					ImagePullPolicy: nil,
+				}
+				tc.Spec.TiDB.SlowLogTailer = &TiDBSlowLogTailerSpec{
+					ImagePullPolicy: func() *corev1.PullPolicy { a := corev1.PullIfNotPresent; return &a }(),
+				}
 				tc.Spec.ImagePullPolicy = corev1.PullNever
 			},
 			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {
@@ -455,8 +422,6 @@ func TestHelperImagePullPolicy(t *testing.T) {
 		{
 			name: "pick cluster one if both .spec.tidb.slowLogTailer.imagePullPolicy and .spec.helper.imagePullPolicy are nil",
 			update: func(tc *TidbCluster) {
-				tc.Spec.Helper.ImagePullPolicy = nil
-				tc.Spec.TiDB.SlowLogTailer.ImagePullPolicy = nil
 				tc.Spec.ImagePullPolicy = corev1.PullNever
 			},
 			expectFn: func(g *GomegaWithT, p corev1.PullPolicy) {
