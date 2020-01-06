@@ -106,30 +106,12 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return pmm.setControl.CreateStatefulSet(tc, newPumpSet)
 	}
 
-	isOrphan := metav1.GetControllerOf(oldPumpSet) == nil
-
-	if !statefulSetEqual(*newPumpSet, *oldPumpSet) || isOrphan {
-		set := *oldPumpSet
-		set.Spec.Template = newPumpSet.Spec.Template
-		*set.Spec.Replicas = *newPumpSet.Spec.Replicas
-		set.Spec.UpdateStrategy = newPumpSet.Spec.UpdateStrategy
-		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
-		if isOrphan {
-			set.OwnerReferences = newPumpSet.OwnerReferences
-			set.Labels = newPumpSet.Labels
-		}
-		_, err = pmm.setControl.UpdateStatefulSet(tc, &set)
-		return err
-	}
-
 	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
 		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
 		return err
 	}
-	return nil
+
+	return updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
 }
 
 func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
