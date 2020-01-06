@@ -225,21 +225,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 	}
 
-	if !statefulSetEqual(*newSet, *oldSet) {
-		set := *oldSet
-		set.Annotations = newSet.Annotations
-		set.Spec.Template = newSet.Spec.Template
-		*set.Spec.Replicas = *newSet.Spec.Replicas
-		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
-		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
-		_, err = tkmm.setControl.UpdateStatefulSet(tc, &set)
-		return err
-	}
-
-	return nil
+	return updateStatefulSet(tkmm.setControl, tc, newSet, oldSet)
 }
 
 func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) error {
