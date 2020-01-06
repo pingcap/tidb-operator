@@ -20,10 +20,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
-	"github.com/pingcap/tidb-operator/tests/slack"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"net/http"
@@ -31,26 +31,20 @@ import (
 	"time"
 )
 
-func (oa *operatorActions) CheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error {
+func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface, fw portforward.PortForward) error {
 
-	if err := oa.checkTidbMonitorPod(monitor); err != nil {
+	if err := checkTidbMonitorPod(monitor, kubeCli); err != nil {
 		klog.Errorf("tm[%s/%s] failed to check pod:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	if err := oa.checkTidbMonitorFunctional(monitor); err != nil {
+	if err := checkTidbMonitorFunctional(monitor, fw); err != nil {
 		klog.Errorf("tm[%s/%s] failed to check functional:%v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
 	return nil
 }
 
-func (oa *operatorActions) CheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor) {
-	if err := oa.CheckTidbMonitor(monitor); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *operatorActions) checkTidbMonitorPod(tm *v1alpha1.TidbMonitor) error {
+func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface) error {
 	namespace := tm.Namespace
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
 	monitorLabel, err := label.NewMonitor().Instance(tm.Name).Monitor().Selector()
@@ -60,7 +54,7 @@ func (oa *operatorActions) checkTidbMonitorPod(tm *v1alpha1.TidbMonitor) error {
 
 	return wait.Poll(5*time.Second, 20*time.Minute, func() (done bool, err error) {
 
-		pods, err := oa.kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		pods, err := kubeCli.CoreV1().Pods(namespace).List(metav1.ListOptions{
 			LabelSelector: monitorLabel.String(),
 		})
 		if err != nil {
@@ -84,7 +78,7 @@ func (oa *operatorActions) checkTidbMonitorPod(tm *v1alpha1.TidbMonitor) error {
 			return false, fmt.Errorf("tm[%s/%s]'s pod didnt' have 2 containers with grafana disabled", tm.Namespace, tm.Name)
 		}
 		klog.Infof("tm[%s/%s]'s pod[%s/%s] is ready", tm.Namespace, tm.Name, pod.Namespace, pod.Name)
-		_, err = oa.kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
+		_, err = kubeCli.CoreV1().Services(namespace).Get(svcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Infof("tm[%s/%s]'s service[%s/%s] failed to fetch", tm.Namespace, tm.Name, tm.Namespace, svcName)
 			return false, nil
@@ -93,15 +87,15 @@ func (oa *operatorActions) checkTidbMonitorPod(tm *v1alpha1.TidbMonitor) error {
 	})
 }
 
-func (oa *operatorActions) checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor) error {
-	if err := oa.checkPrometheusCommon(monitor.Name, monitor.Namespace); err != nil {
+func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
+	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw); err != nil {
 		klog.Errorf("tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
 		return err
 	}
 	klog.Infof("tidbmonitor[%s/%s]'s prometheus is ready", monitor.Name, monitor.Namespace)
 	if monitor.Spec.Grafana != nil {
 		var grafanaClient *metrics.Client
-		if _, err := oa.checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient); err != nil {
+		if _, err := checkGrafanaDataCommon(monitor.Name, monitor.Namespace, grafanaClient, fw); err != nil {
 			klog.Errorf("tm[%s/%s]'s grafana check error:%v", monitor.Namespace, monitor.Namespace, err)
 			return err
 		}
@@ -110,10 +104,10 @@ func (oa *operatorActions) checkTidbMonitorFunctional(monitor *v1alpha1.TidbMoni
 	return nil
 }
 
-func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
+func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) error {
 	var prometheusAddr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 9090)
+	if fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s-prometheus", name), 9090)
 		if err != nil {
 			return err
 		}
@@ -149,6 +143,7 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 	if err != nil {
 		return err
 	}
+
 	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
 		targetResponse, err := http.Get(prometheusTargets)
@@ -187,12 +182,12 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 	})
 }
 
-func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) (*metrics.Client, error) {
+func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client, fw portforward.PortForward) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 
 	var addr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, namespace, fmt.Sprintf("svc/%s-grafana", name), 3000)
+	if fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, namespace, fmt.Sprintf("svc/%s-grafana", name), 3000)
 		if err != nil {
 			return nil, err
 		}
