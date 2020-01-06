@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	_ "net/http/pprof"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -76,6 +75,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var ocfg *tests.OperatorConfig
 	var genericCli client.Client
 	var fwCancel context.CancelFunc
+	var fw portforward.PortForward
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -92,7 +92,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
 		ctx, cancel := context.WithCancel(context.Background())
-		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
@@ -715,20 +715,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
-		cluster.Monitor = false
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tm := newTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
+		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
-		err = debugTM("e2e-monitor", tc.Namespace)
-		framework.ExpectNoError(err, "Expected debug tidbmonitor success")
-		oa.CheckTidbMonitorOrDie(tm)
-
+		err = tests.CheckTidbMonitor(tm, c, fw)
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 	})
 })
 
@@ -780,87 +777,4 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tidbVersion,
 	}
-}
-
-func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
-	imagePullPolicy := corev1.PullIfNotPresent
-	monitor := &v1alpha1.TidbMonitor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: v1alpha1.TidbMonitorSpec{
-			Clusters: []v1alpha1.TidbClusterRef{
-				{
-					Name:      tc.Name,
-					Namespace: tc.Namespace,
-				},
-			},
-			Prometheus: v1alpha1.PrometheusSpec{
-				ReserveDays: 7,
-				LogLevel:    "info",
-				Service: v1alpha1.ServiceSpec{
-					Type:        "ClusterIP",
-					Annotations: map[string]string{},
-				},
-				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       "prom/prometheus",
-					Version:         "v2.11.1",
-					ImagePullPolicy: &imagePullPolicy,
-					Resources:       corev1.ResourceRequirements{},
-				},
-			},
-			Reloader: v1alpha1.ReloaderSpec{
-				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       "pingcap/tidb-monitor-reloader",
-					Version:         "v1.0.1",
-					ImagePullPolicy: &imagePullPolicy,
-					Resources:       corev1.ResourceRequirements{},
-				},
-				Service: v1alpha1.ServiceSpec{
-					Type:        "ClusterIP",
-					Annotations: map[string]string{},
-				},
-			},
-			Initializer: v1alpha1.InitializerSpec{
-				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       "pingcap/tidb-monitor-initializer",
-					Version:         "v3.0.5",
-					ImagePullPolicy: &imagePullPolicy,
-					Resources:       corev1.ResourceRequirements{},
-				},
-				Envs: map[string]string{},
-			},
-			Persistent: persist,
-		},
-	}
-	if grafanaEnabled {
-		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
-			MonitorContainer: v1alpha1.MonitorContainer{
-				BaseImage:       "grafana/grafana",
-				Version:         "6.0.1",
-				ImagePullPolicy: &imagePullPolicy,
-				Resources:       corev1.ResourceRequirements{},
-			},
-			Username: "admin",
-			Password: "admin",
-			Service: v1alpha1.ServiceSpec{
-				Type:        corev1.ServiceTypeClusterIP,
-				Annotations: map[string]string{},
-			},
-		}
-	}
-
-	return monitor
-}
-
-func debugTM(name, namespace string) error {
-	cmd := fmt.Sprintf("kubectl get tidbmonitor %s -n %s -oyaml", name, namespace)
-	klog.Info(cmd)
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to get tm[%s/%s] content: %v", name, namespace, err)
-	}
-	klog.Infof("tm[%s/%s]'s yaml,\n%s", name, namespace, res)
-	return nil
 }

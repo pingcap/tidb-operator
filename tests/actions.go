@@ -230,8 +230,6 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
-	CheckTidbMonitor(monitor *v1alpha1.TidbMonitor) error
-	CheckTidbMonitorOrDie(monitor *v1alpha1.TidbMonitor)
 }
 
 type operatorActions struct {
@@ -2137,13 +2135,13 @@ func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clus
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	return oa.checkPrometheusCommon(tcName, ns)
+	return checkPrometheusCommon(tcName, ns, oa.fw)
 }
 
 func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	grafanaClient, err := oa.checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient)
+	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw)
 	if err != nil {
 		return err
 	}
