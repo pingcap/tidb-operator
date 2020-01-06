@@ -78,7 +78,7 @@ spec:
       - name: data
         persistentVolumeClaim:
     {{- if .Values.scheduledBackupName }}
-          claimName: {{ .Values.clusterName }}-scheduled-backup
+          claimName: {{ .Values.name }}-scheduled-backup
     {{- else }}
           claimName: {{ .Values.name }}
     {{- end }}
