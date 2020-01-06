@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	_ "net/http/pprof"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -724,6 +725,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm := newTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		err = debugTM("e2e-monitor", tc.Namespace)
+		framework.ExpectNoError(err, "Expected debug tidbmonitor success")
 		oa.CheckTidbMonitorOrDie(tm)
 
 	})
@@ -836,4 +839,14 @@ func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 	}
 
 	return monitor
+}
+
+func debugTM(name, namespace string) error {
+	cmd := fmt.Sprintf("kubectl get tidbmonitor %s -n %s -oyaml", name, namespace)
+	klog.Info(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil && !strings.Contains(string(res), "already exists") {
+		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
+	}
+	return nil
 }
