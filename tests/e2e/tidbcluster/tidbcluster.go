@@ -303,8 +303,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
-		tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
-		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
+			return nil
+		})
 		framework.ExpectNoError(err, "Expected update TiDB cluster")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
