@@ -122,70 +122,73 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 	} else {
 		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", name, namespace)
 	}
-	prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
-	resp, err := http.Get(prometheusSvc)
+	err := wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
+		resp, err := http.Get(prometheusSvc)
+		if err != nil {
+			return false, nil
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return false, nil
+		}
+		response := &struct {
+			Status string `json:"status"`
+		}{}
+		err = json.Unmarshal(body, response)
+		if err != nil {
+			return false, nil
+		}
+		if response.Status != "success" {
+			klog.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
+			return false, nil
+		}
+		return true, nil
+	})
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	response := &struct {
-		Status string `json:"status"`
-	}{}
-	err = json.Unmarshal(body, response)
-	if err != nil {
-		return err
-	}
-	if response.Status != "success" {
-		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
-	}
-
-	prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
-	targetResponse, err := http.Get(prometheusTargets)
-	if err != nil {
-		return err
-	}
-	defer targetResponse.Body.Close()
-	body, err = ioutil.ReadAll(targetResponse.Body)
-	if err != nil {
-		return err
-	}
-	data := struct {
-		Status string `json:"status"`
-		Data   struct {
-			ActiveTargets []struct {
-				DiscoveredLabels struct {
-					Job     string `json:"job"`
-					PodName string `json:"__meta_kubernetes_pod_name"`
-				} `json:"discoveredLabels"`
-				Health string `json:"health"`
-			} `json:"activeTargets"`
-		} `json:"data"`
-	}{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return err
-	}
-	if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
-		return fmt.Errorf("monitor[%s/%s]'s prometheus targets error", namespace, name)
-	}
-	for _, target := range data.Data.ActiveTargets {
-		klog.Infof("monitor[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
-	}
-	return nil
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
+		targetResponse, err := http.Get(prometheusTargets)
+		if err != nil {
+			return false, nil
+		}
+		defer targetResponse.Body.Close()
+		body, err := ioutil.ReadAll(targetResponse.Body)
+		if err != nil {
+			return false, nil
+		}
+		data := struct {
+			Status string `json:"status"`
+			Data   struct {
+				ActiveTargets []struct {
+					DiscoveredLabels struct {
+						Job     string `json:"job"`
+						PodName string `json:"__meta_kubernetes_pod_name"`
+					} `json:"discoveredLabels"`
+					Health string `json:"health"`
+				} `json:"activeTargets"`
+			} `json:"data"`
+		}{}
+		if err := json.Unmarshal(body, &data); err != nil {
+			return false, nil
+		}
+		klog.Infof("monitor[%s/%s]'s prometheus targets error,response:%s", namespace, name, body)
+		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
+			klog.Errorf("monitor[%s/%s]'s prometheus targets error,response:%s", namespace, name, body)
+			return false, nil
+		}
+		for _, target := range data.Data.ActiveTargets {
+			klog.Infof("monitor[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
+		}
+		return true, nil
+	})
 }
 
 func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
-	end := time.Now()
-	start := end.Add(-time.Minute)
-	values := url.Values{}
-	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
-	values.Set("start", fmt.Sprintf("%d", start.Unix()))
-	values.Set("end", fmt.Sprintf("%d", end.Unix()))
-	values.Set("step", "30")
 
 	var addr string
 	if oa.fw != nil {
@@ -204,42 +207,58 @@ func (oa *operatorActions) checkGrafanaDataCommon(name, namespace string, grafan
 		return nil, err
 	}
 
-	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
-	klog.Infof("tm[%s/%s]'s grafana query url is %s", namespace, name, u)
-	req, err := http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.SetBasicAuth(grafanaUsername, grafanaPassword)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		klog.Errorf("tm[%s/%s]'s grafana response error:%v", namespace, name, err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	buf, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	klog.Infof("tm[%s/%s]'s grafana response:%s", namespace, name, buf)
-	data := struct {
-		Status string `json:"status"`
-		Data   struct {
-			ResultType string `json:"resultType"`
-			Result     []struct {
-				Metric struct {
-					Job string `json:"job"`
-				} `json:"metric"`
-				Values []interface{} `json:"values"`
-			} `json:"result"`
+	err = wait.PollImmediate(5*time.Second, 20*time.Minute, func() (done bool, err error) {
+
+		end := time.Now()
+		start := end.Add(-time.Minute)
+		values := url.Values{}
+		values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
+		values.Set("start", fmt.Sprintf("%d", start.Unix()))
+		values.Set("end", fmt.Sprintf("%d", end.Unix()))
+		values.Set("step", "30")
+		u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
+		klog.Infof("tm[%s/%s]'s grafana query url is %s", namespace, name, u)
+
+		req, err := http.NewRequest(http.MethodGet, u, nil)
+		if err != nil {
+			return false, nil
 		}
-	}{}
-	if err := json.Unmarshal(buf, &data); err != nil {
+		req.SetBasicAuth(grafanaUsername, grafanaPassword)
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s grafana response error:%v", namespace, name, err)
+			return false, nil
+		}
+		defer resp.Body.Close()
+		buf, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return false, nil
+		}
+		klog.Infof("tm[%s/%s]'s grafana response:%s", namespace, name, buf)
+		data := struct {
+			Status string `json:"status"`
+			Data   struct {
+				ResultType string `json:"resultType"`
+				Result     []struct {
+					Metric struct {
+						Job string `json:"job"`
+					} `json:"metric"`
+					Values []interface{} `json:"values"`
+				} `json:"result"`
+			}
+		}{}
+		if err := json.Unmarshal(buf, &data); err != nil {
+			return false, nil
+		}
+		if data.Status != "success" || len(data.Data.Result) < 1 {
+			klog.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
 		return nil, err
-	}
-	if data.Status != "success" || len(data.Data.Result) < 1 {
-		return nil, fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
 	}
 
 	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
