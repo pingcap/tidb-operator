@@ -89,7 +89,7 @@ type Node struct {
 // NewDefaultConfig creates a default configuration.
 func NewDefaultConfig() *Config {
 	return &Config{
-		AdditionalDrainerVersion: "v3.0.7",
+		AdditionalDrainerVersion: "v3.0.8",
 
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,
@@ -110,7 +110,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.5,v3.0.6,v3.0.7", "tidb versions")
+	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.6,v3.0.7,v3.0.8", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flag.StringVar(&cfg.E2EImage, "e2e-image", "pingcap/tidb-operator-e2e:latest", "operator-e2e image")

@@ -111,7 +111,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			Values  map[string]string
 		}{
 			{
-				Version: "v3.0.7",
+				Version: "v3.0.8",
 				Name:    "basic-v3",
 			},
 			{
@@ -124,7 +124,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				},
 			},
 			{
-				Version: "v3.0.7",
+				Version: "v3.0.8",
 				Name:    "basic-v3-cluster-tls",
 				Values: map[string]string{
 					"enableTLSCluster": "true",
@@ -690,7 +690,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled out and ready")
 
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = "v3.0.7"
+			tc.Spec.Version = "v3.0.8"
 			return nil
 		})
 		framework.ExpectNoError(err, "Expected TiDB cluster updated")
