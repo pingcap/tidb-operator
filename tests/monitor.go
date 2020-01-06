@@ -142,6 +142,35 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 	if response.Status != "success" {
 		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
 	}
+
+	prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
+	targetResponse, err := http.Get(prometheusTargets)
+	if err != nil {
+		return err
+	}
+	defer targetResponse.Body.Close()
+	body, err = ioutil.ReadAll(targetResponse.Body)
+	data := struct {
+		Status string `json:"status"`
+		Data   struct {
+			ActiveTargets []struct {
+				DiscoveredLabels struct {
+					Job     string `json:"job"`
+					PodName string `json:"__meta_kubernetes_pod_name"`
+				} `json:"discoveredLabels"`
+				Health string `json:"health"`
+			} `json:"activeTargets"`
+		} `json:"data"`
+	}{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return err
+	}
+	if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
+		return fmt.Errorf("monitor[%s/%s]'s prometheus targets error", namespace, name)
+	}
+	for _, target := range data.Data.ActiveTargets {
+		klog.Infof("monitor[%s/%s]'s target[%s]", namespace, name, target.DiscoveredLabels.PodName)
+	}
 	return nil
 }
 
