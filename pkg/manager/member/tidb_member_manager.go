@@ -222,21 +222,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
-	if !statefulSetEqual(*newTiDBSet, *oldTiDBSet) {
-		set := *oldTiDBSet
-		set.Annotations = newTiDBSet.Annotations
-		set.Spec.Template = newTiDBSet.Spec.Template
-		*set.Spec.Replicas = *newTiDBSet.Spec.Replicas
-		set.Spec.UpdateStrategy = newTiDBSet.Spec.UpdateStrategy
-		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
-		_, err = tmm.setControl.UpdateStatefulSet(tc, &set)
-		return err
-	}
-
-	return nil
+	return updateStatefulSet(tmm.setControl, tc, newTiDBSet, oldTiDBSet)
 }
 
 // syncTiDBClusterCerts creates the cert pair for TiDB if not exist, the cert
