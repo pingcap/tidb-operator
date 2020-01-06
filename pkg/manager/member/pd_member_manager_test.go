@@ -1459,7 +1459,7 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 	}
 	tests := []testcase{
 		{
-			name: "add not join cluster pod info ",
+			name: "add pd unjoin cluster member info ",
 			modify: func(cluster *v1alpha1.TidbCluster, podIndexer cache.Indexer, pvcIndexer cache.Indexer) {
 				for ordinal := 0; ordinal < 3; ordinal++ {
 					pod := &corev1.Pod{
@@ -1491,13 +1491,13 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 			}},
 			err: false,
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.NotJoinClusterMembers["test-pd-2"]).NotTo(Equal(nil))
+				g.Expect(tc.Status.PD.UnjoinedMembers["test-pd-2"]).NotTo(BeNil())
 			},
 		},
 		{
-			name: "clear notJoinClusterMembers when the member join the cluster  ",
+			name: "clear unjoin cluster member info when the member join the cluster ",
 			tcStatusChange: func(cluster *v1alpha1.TidbCluster) {
-				cluster.Status.PD.NotJoinClusterMembers = map[string]v1alpha1.NotJoinClusterMember{
+				cluster.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{
 					"test-pd-0": {
 						PodName:   "test-pd-0",
 						CreatedAt: metav1.Now(),
@@ -1536,7 +1536,7 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 			}},
 			err: false,
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(len(tc.Status.PD.NotJoinClusterMembers)).To(Equal(0))
+				g.Expect(tc.Status.PD.UnjoinedMembers).To(BeEmpty())
 			},
 		},
 	}
