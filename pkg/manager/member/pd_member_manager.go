@@ -776,6 +776,7 @@ func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set
 		for podName := range pdStatus {
 			if strings.EqualFold(pod.Name, podName) {
 				joined = true
+				break
 			}
 		}
 		if !joined {

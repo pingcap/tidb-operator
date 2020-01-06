@@ -505,7 +505,7 @@ type PDStatus struct {
 	Members         map[string]PDMember        `json:"members,omitempty"`
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
-	UnjoinedMembers map[string]UnjoinedMember  `json:"unJoinedMembers,omitempty"`
+	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 }
 
 // PDMember is PD member
