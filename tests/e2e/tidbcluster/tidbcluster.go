@@ -783,6 +783,7 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 }
 
 func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
+	imagePullPolicy := corev1.PullIfNotPresent
 	monitor := &v1alpha1.TidbMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -798,27 +799,36 @@ func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			Prometheus: v1alpha1.PrometheusSpec{
 				LogLevel: "info",
 				Service: v1alpha1.ServiceSpec{
-					Type: "ClusterIP",
+					Type:        "ClusterIP",
+					Annotations: map[string]string{},
 				},
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage: "prom/prometheus",
-					Version:   "v2.11.1",
+					BaseImage:       "prom/prometheus",
+					Version:         "v2.11.1",
+					ImagePullPolicy: &imagePullPolicy,
+					Resources:       corev1.ResourceRequirements{},
 				},
 			},
 			Reloader: v1alpha1.ReloaderSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage: "pingcap/tidb-monitor-reloader",
-					Version:   "v1.0.1",
+					BaseImage:       "pingcap/tidb-monitor-reloader",
+					Version:         "v1.0.1",
+					ImagePullPolicy: &imagePullPolicy,
+					Resources:       corev1.ResourceRequirements{},
 				},
 				Service: v1alpha1.ServiceSpec{
-					Type: "ClusterIP",
+					Type:        "ClusterIP",
+					Annotations: map[string]string{},
 				},
 			},
 			Initializer: v1alpha1.InitializerSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage: "pingcap/tidb-monitor-initializer",
-					Version:   "v3.0.5",
+					BaseImage:       "pingcap/tidb-monitor-initializer",
+					Version:         "v3.0.5",
+					ImagePullPolicy: &imagePullPolicy,
+					Resources:       corev1.ResourceRequirements{},
 				},
+				Envs: map[string]string{},
 			},
 			Persistent: persist,
 		},
@@ -826,15 +836,17 @@ func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 	if grafanaEnabled {
 		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
 			MonitorContainer: v1alpha1.MonitorContainer{
-				BaseImage: "grafana/grafana",
-				Version:   "6.0.1",
+				BaseImage:       "grafana/grafana",
+				Version:         "6.0.1",
+				ImagePullPolicy: &imagePullPolicy,
+				Resources:       corev1.ResourceRequirements{},
 			},
 			Username: "admin",
 			Password: "admin",
 			Service: v1alpha1.ServiceSpec{
-				Type: corev1.ServiceTypeClusterIP,
+				Type:        corev1.ServiceTypeClusterIP,
+				Annotations: map[string]string{},
 			},
-			LogLevel: "info",
 		}
 	}
 
@@ -845,8 +857,9 @@ func debugTM(name, namespace string) error {
 	cmd := fmt.Sprintf("kubectl get tidbmonitor %s -n %s -oyaml", name, namespace)
 	klog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil && !strings.Contains(string(res), "already exists") {
-		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
+	if err != nil {
+		return fmt.Errorf("failed to get tm[%s/%s] content: %v", name, namespace, err)
 	}
+	klog.Infof("tm[%s/%s]'s yaml,\n%s", name, namespace, res)
 	return nil
 }
