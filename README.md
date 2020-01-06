@@ -9,6 +9,11 @@
 
 [![Build Status](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master_kind/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master_kind)
 [![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
+[![LICENSE](https://img.shields.io/github/license/pingcap/tidb-operator.svg)](https://github.com/pingcap/tidb-operator/blob/master/LICENSE)
+[![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pingcap/tidb-operator)](https://goreportcard.com/report/github.com/pingcap/tidb-operator)
+[![GitHub release](https://img.shields.io/github/tag/pingcap/tidb-operator.svg?label=release)](https://github.com/pingcap/tidb-operator/releases)
+[![GoDoc](https://img.shields.io/badge/Godoc-reference-blue.svg)](https://godoc.org/github.com/pingcap/tidb-operator)
 
 TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kubernetes](https://kubernetes.io) and automates tasks related to operating a TiDB cluster. It makes TiDB a truly cloud-native database.
 

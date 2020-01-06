@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 PingCAP, Inc.
+# Copyright 2020 PingCAP, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,11 +22,15 @@ cd $ROOT
 
 boiler="${ROOT}/hack/boilerplate/boilerplate.py"
 
+# ignored files is a list of files we should ignore, e.g. k8s script.
+# one file per line
+ignored_files='./hack/cherry_pick_pull.sh
+hack/generate-internal-groups.sh'
+
 #
 # TODO update license information for following files
 #
 # - ./deploy/*
-# - */*.sh
 # - */Makefile
 # - */Dockerfile
 # - */*.register.go # files geneated by apiregister-gen
@@ -39,12 +43,12 @@ files=($(find . -type f -not \( \
         -o -path './vendor/*' \
         -o -path './pkg/client/*' \
         -o -path './*/.terraform/*' \
+        -o -path './tests/images/*/*' \
         -o -path './deploy/*' \
-        -o -path '*/*.sh' \
         -o -path '*/Makefile' \
         -o -path '*/Dockerfile' \
         -o -path '*/*.register.go' \
-    \)
+    \) | grep -v -F "$ignored_files"
 ))
 
 files_need_boilerplate=()
