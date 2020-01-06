@@ -798,7 +798,7 @@ func newTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			},
 			Prometheus: v1alpha1.PrometheusSpec{
 				ReserveDays: 7,
-				LogLevel: "info",
+				LogLevel:    "info",
 				Service: v1alpha1.ServiceSpec{
 					Type:        "ClusterIP",
 					Annotations: map[string]string{},
