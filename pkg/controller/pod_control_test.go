@@ -307,7 +307,6 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 
 func TestPodControlUpdatePod(t *testing.T) {
 	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	pod.Annotations = map[string]string{"a": "b"}
@@ -326,7 +325,6 @@ func TestPodControlUpdatePod(t *testing.T) {
 
 func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	pod.Annotations = map[string]string{"a": "b"}
