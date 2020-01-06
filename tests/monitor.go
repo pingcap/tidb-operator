@@ -150,6 +150,9 @@ func (oa *operatorActions) checkPrometheusCommon(name, namespace string) error {
 	}
 	defer targetResponse.Body.Close()
 	body, err = ioutil.ReadAll(targetResponse.Body)
+	if err != nil {
+		return err
+	}
 	data := struct {
 		Status string `json:"status"`
 		Data   struct {
