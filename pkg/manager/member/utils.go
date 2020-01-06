@@ -27,6 +27,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	glog "k8s.io/klog"
 )
 
@@ -261,4 +262,37 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 		m[c.Name] = c
 	}
 	return m
+}
+
+// updateStatefulSet is a template function to update the statefulset of components
+func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alpha1.TidbCluster, newSet, oldSet *apps.StatefulSet) error {
+	isOrphan := metav1.GetControllerOf(oldSet) == nil
+	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
+		set := *oldSet
+		// Retain the deprecated last applied pod template annotation for backward compatibility
+		var podConfig string
+		var hasPodConfig bool
+		if oldSet.Spec.Template.Annotations != nil {
+			podConfig, hasPodConfig = oldSet.Spec.Template.Annotations[LastAppliedConfigAnnotation]
+		}
+		set.Spec.Template = newSet.Spec.Template
+		if hasPodConfig {
+			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
+		}
+		set.Annotations = newSet.Annotations
+		*set.Spec.Replicas = *newSet.Spec.Replicas
+		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
+		if isOrphan {
+			set.OwnerReferences = newSet.OwnerReferences
+			set.Labels = newSet.Labels
+		}
+		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
+		if err != nil {
+			return err
+		}
+		_, err = setCtl.UpdateStatefulSet(tc, &set)
+		return err
+	}
+
+	return nil
 }
