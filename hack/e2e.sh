@@ -77,7 +77,7 @@ Examples:
 
 4) use registry mirrors
 
-    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=quay.azk8s.cn GCR_IO_MIRROR=gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
+    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
 
 EOF
 
@@ -206,11 +206,19 @@ function e2e::up() {
     fi
     if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
         echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
+        if [[ "$DOCKER_IO_MIRROR" = https://* ]]; then
 cat <<EOF > /etc/docker/daemon.json
 {
     "registry-mirrors": ["$DOCKER_IO_MIRROR"]
 }
 EOF
+        else
+cat <<EOF > /etc/docker/daemon.json
+{
+    "insecure-registries": ["$DOCKER_IO_MIRROR"]
+}
+EOF
+        fi
         e2e::__restart_docker
     fi
     if e2e::cluster_exists $CLUSTER; then
