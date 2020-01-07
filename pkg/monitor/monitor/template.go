@@ -36,9 +36,9 @@ scrape_configs:
     - role: pod
       namespaces:
         names:
-		{{- range .ReleaseNamespaces }}
+        {{- range .ReleaseNamespaces }}
         - {{ . }}
-		{{- end}}
+        {{- end}}
     tls_config:
       insecure_skip_verify: true
     {{- if .EnableTLSCluster }}

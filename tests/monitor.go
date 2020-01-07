@@ -44,6 +44,7 @@ func CheckTidbMonitor(monitor *v1alpha1.TidbMonitor, kubeCli kubernetes.Interfac
 	return nil
 }
 
+// checkTidbMonitorPod check the pod of TidbMonitor whether it is ready
 func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface) error {
 	namespace := tm.Namespace
 	svcName := fmt.Sprintf("%s-prometheus", tm.Name)
@@ -87,6 +88,7 @@ func checkTidbMonitorPod(tm *v1alpha1.TidbMonitor, kubeCli kubernetes.Interface)
 	})
 }
 
+// checkTidbMonitorFunctional check whether TidbMonitor's Prometheus and Grafana are working now
 func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.PortForward) error {
 	if err := checkPrometheusCommon(monitor.Name, monitor.Namespace, fw); err != nil {
 		klog.Errorf("tm[%s/%s]'s prometheus check error:%v", monitor.Namespace, monitor.Namespace, err)
@@ -104,6 +106,7 @@ func checkTidbMonitorFunctional(monitor *v1alpha1.TidbMonitor, fw portforward.Po
 	return nil
 }
 
+// checkPrometheusCommon check the Prometheus working status by querying `up` api and `targets` api.
 func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) error {
 	var prometheusAddr string
 	if fw != nil {
@@ -182,6 +185,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 	})
 }
 
+// checkGrafanaDataCommon check the Grafana woring status by sending a query request
 func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client, fw portforward.PortForward) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 
