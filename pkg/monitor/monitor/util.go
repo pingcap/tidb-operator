@@ -371,7 +371,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			"/bin/prometheus",
 			"--web.enable-admin-api",
 			"--web.enable-lifecycle",
-			fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel),
 			"--config.file=/etc/prometheus/prometheus.yml",
 			"--storage.tsdb.path=/data/prometheus",
 			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
@@ -406,6 +405,10 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 	}
+	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
+		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
+	}
+
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      "tls-pd-client",
