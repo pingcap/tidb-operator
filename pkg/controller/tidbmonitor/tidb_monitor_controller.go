@@ -63,7 +63,7 @@ func NewController(
 	tidbMonitorInformer := informerFactory.Pingcap().V1alpha1().TidbMonitors()
 	deploymentInformer := kubeInformerFactory.Apps().V1().Deployments()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	monitorManager := monitor.NewMonitorManager(informerFactory, kubeInformerFactory, typedControl)
+	monitorManager := monitor.NewMonitorManager(informerFactory, kubeInformerFactory, typedControl, recorder)
 
 	tmc := &Controller{
 		cli:      genericCli,
