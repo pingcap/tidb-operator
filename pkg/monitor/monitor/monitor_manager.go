@@ -93,6 +93,8 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 		return fmt.Errorf("tm[%s/%s] failed to sync,empty cluster", monitor.Namespace, monitor.Name)
 	}
 
+	setDefaultNamespaceForClusterRef(monitor)
+
 	targetTcRef := monitor.Spec.Clusters[0]
 	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
 	if err != nil {
@@ -181,4 +183,14 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	}
 
 	return sa, nil
+}
+
+// If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
+func setDefaultNamespaceForClusterRef(tm *v1alpha1.TidbMonitor) {
+	for id, tc := range tm.Spec.Clusters {
+		if len(tc.Namespace) < 1 {
+			tc.Namespace = tm.Namespace
+		}
+		tm.Spec.Clusters[id] = tc
+	}
 }
