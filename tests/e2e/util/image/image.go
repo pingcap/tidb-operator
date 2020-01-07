@@ -22,6 +22,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -53,7 +54,7 @@ func ListImages() []string {
 		framework.ExpectNoError(err)
 	}
 	images = append(images, imagesFromTiDBCluster...)
-	return images
+	return sets.NewString(images...).List()
 }
 
 // values represents a collection of chart values.
@@ -94,7 +95,7 @@ func readImagesFromValues(f string) ([]string, error) {
 	return images, nil
 }
 
-func nsenter(args ...string) error {
+func nsenter(args ...string) ([]byte, error) {
 	nsenter_args := []string{
 		"--mount=/rootfs/proc/1/ns/mnt",
 		fmt.Sprintf("--wd=%s", framework.TestContext.RepoRoot),
@@ -102,7 +103,7 @@ func nsenter(args ...string) error {
 	}
 	nsenter_args = append(nsenter_args, args...)
 	klog.Infof("run nsenter command: %s %s", "nsenter", strings.Join(nsenter_args, " "))
-	return exec.Command("nsenter", nsenter_args...).Run()
+	return exec.Command("nsenter", nsenter_args...).CombinedOutput()
 }
 
 // PreloadImages pre-loads images into the e2e cluster.
@@ -110,13 +111,29 @@ func nsenter(args ...string) error {
 // NOTE: it supports kind only right now
 func PreloadImages() error {
 	images := ListImages()
-	cluster := "tidb-operator" // TODO: make it configurable
+	// TODO: make it configurable
+	cluster := "tidb-operator"
 	kindBin := "./output/bin/kind"
+	output, err := nsenter(kindBin, "get", "nodes", "--name", cluster)
+	if err != nil {
+		return err
+	}
+	nodes := []string{}
+	for _, l := range strings.Split(string(output), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if strings.HasSuffix(l, "-control-plane") {
+			continue
+		}
+		nodes = append(nodes, l)
+	}
 	for _, image := range images {
-		if err := nsenter("docker", "pull", image); err != nil {
+		if _, err := nsenter("docker", "pull", image); err != nil {
 			return err
 		}
-		if err := nsenter(kindBin, "load", "docker-image", "--name", cluster, image); err != nil {
+		if _, err := nsenter(kindBin, "load", "docker-image", "--name", cluster, "--nodes", strings.Join(nodes, ","), image); err != nil {
 			return err
 		}
 	}
