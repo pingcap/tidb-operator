@@ -206,19 +206,11 @@ function e2e::up() {
     fi
     if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
         echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
-        if [[ "$DOCKER_IO_MIRROR" = https://* ]]; then
 cat <<EOF > /etc/docker/daemon.json
 {
     "registry-mirrors": ["$DOCKER_IO_MIRROR"]
 }
 EOF
-        else
-cat <<EOF > /etc/docker/daemon.json
-{
-    "insecure-registries": ["$DOCKER_IO_MIRROR"]
-}
-EOF
-        fi
         e2e::__restart_docker
     fi
     if e2e::cluster_exists $CLUSTER; then

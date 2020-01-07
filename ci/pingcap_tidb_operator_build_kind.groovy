@@ -185,7 +185,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
 		// unstable in our IDC, disable temporarily
 		//def MIRRORS = "DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn"
-		def MIRRORS = "DOCKER_IO_MIRROR=https://hub-mirror.c.163.com"
+		def MIRRORS = "DOCKER_IO_MIRROR=http://registry-proxy-docker-io.fuyecheng:5000"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
