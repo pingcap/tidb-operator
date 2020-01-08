@@ -1,7 +1,7 @@
 # TiDB Operator
 
 - [**Stack Overflow**](https://stackoverflow.com/questions/tagged/tidb)
-- [**Community Slack Channel**](https://join.slack.com/t/tidbcommunity/shared_invite/enQtNjIyNjA5Njk0NTAxLTVmZDkxOWY1ZGZhMDg3YzcwNGU0YmM4ZjIyODRhOTg4MWEwZjJmMGQzZTJlNjllMGY1YzdlNzIxZGE2NzRlMGY)
+- [**Community Slack Channel**](https://pingcap.com/tidbslack/)
 - [**Reddit**](https://www.reddit.com/r/TiDB/)
 - **Mailing list**: [Google Group](https://groups.google.com/forum/#!forum/tidb-user)
 - [**Blog**](https://www.pingcap.com/blog/)

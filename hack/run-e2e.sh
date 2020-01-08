@@ -75,11 +75,13 @@ e2e_args=(
     --provider=skeleton
     --clean-start=true
     --delete-namespace-on-failure=false
+    --repo-root=$ROOT
     # tidb-operator e2e flags
     --operator-tag=e2e
     --operator-image=${TIDB_OPERATOR_IMAGE}
     --e2e-image=${E2E_IMAGE}
-    --tidb-versions=v3.0.6,v3.0.7,v3.0.8
+    # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
+    --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
     -v=4
 )
@@ -97,6 +99,8 @@ docker_args=(
     run
     --rm
     --net=host
+    --privileged
+    -v /:/rootfs
     -v $ROOT:$ROOT
     -w $ROOT
     -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro

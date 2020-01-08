@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	v1 "k8s.io/api/core/v1"
@@ -384,19 +385,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					TiDB: v1alpha1.TiDBSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/tidb:v2.1.18",
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV2Version),
 						},
 					},
 					TiKV: v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/tikv:v2.1.18",
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV2Version),
 						},
 					},
 					PD: v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/pd:v2.1.18",
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV2Version),
 						},
 					},
 				},
@@ -408,7 +409,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.WebhookEnabled = true
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
-			legacyTc.Spec.TiDB.Image = "pingcap/tidb:v3.0.8"
+			legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version)
 			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectNoError(err, "Update legacy tidbcluster should not be influenced by validating")
 			framework.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
@@ -417,7 +418,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
 			legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
 			legacyTc.Spec.PD.BaseImage = "pingcap/pd"
-			legacyTc.Spec.PD.Version = pointer.StringPtr("v3.0.8")
+			legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV3Version)
 			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
 			framework.ExpectNoError(err, "Expected update tidbcluster")
 			legacyTc.Spec.TiDB.BaseImage = ""
@@ -435,17 +436,17 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/tidb:v2.1.18",
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV2Version),
 						},
 					},
 					TiKV: v1alpha1.TiKVSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/tikv:v2.1.18",
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV2Version),
 						},
 					},
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: "pingcap/pd:v2.1.18",
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV2Version),
 						},
 					},
 				},
@@ -461,7 +462,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					Name:      "newly-created",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: "v3.0.8",
+					Version: utilimage.TiDBV3Version,
 					TiDB: v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},

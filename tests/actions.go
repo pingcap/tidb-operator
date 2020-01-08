@@ -461,8 +461,6 @@ func (oa *operatorActions) CleanCRDOrDie() {
 
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
 func (oa *operatorActions) InstallCRDOrDie() {
-	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
-	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
 	if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
 		glog.Fatal(err)
 	} else if isSupported {
@@ -470,6 +468,8 @@ func (oa *operatorActions) InstallCRDOrDie() {
 	} else {
 		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
 	}
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
+	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
 	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
 	waitArgs := []string{"wait", "--for=condition=Established"}
 	for _, crd := range strings.Split(out, " ") {
@@ -523,7 +523,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 
 	// wait for all apiservices are available
 	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
-	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
+	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b", "--timeout=60s")
 	return nil
 }
 
