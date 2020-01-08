@@ -523,7 +523,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 
 	// wait for all apiservices are available
 	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
-	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
+	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b", "--timeout=60s")
 	return nil
 }
 
