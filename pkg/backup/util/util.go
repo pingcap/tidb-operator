@@ -22,7 +22,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -148,7 +149,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	storageType := GetStorageType(provider)
@@ -159,7 +160,7 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 			return certEnv, "S3ConfigIsEmpty", errors.New("s3 config is empty")
 		}
 		s3SecretName := provider.S3.SecretName
-		secret, err := secretLister.Secrets(ns).Get(s3SecretName)
+		secret, err := kubeCli.CoreV1().Secrets(ns).Get(s3SecretName, metav1.GetOptions{})
 		if err != nil {
 			err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
 			return certEnv, "GetS3SecretFailed", err
@@ -180,7 +181,7 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 			return certEnv, "GcsConfigIsEmpty", errors.New("gcs config is empty")
 		}
 		gcsSecretName := provider.Gcs.SecretName
-		secret, err := secretLister.Secrets(ns).Get(gcsSecretName)
+		secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
 		if err != nil {
 			err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
 			return certEnv, "GetGcsSecretFailed", err
@@ -205,9 +206,9 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
-	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
+	secret, err := kubeCli.CoreV1().Secrets(ns).Get(tidbSecretName, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err

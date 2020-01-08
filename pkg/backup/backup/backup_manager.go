@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -34,7 +35,7 @@ import (
 type backupManager struct {
 	backupCleaner BackupCleaner
 	statusUpdater controller.BackupConditionUpdaterInterface
-	secretLister  corelisters.SecretLister
+	kubeCli       kubernetes.Interface
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
 	pvcLister     corelisters.PersistentVolumeClaimLister
@@ -45,7 +46,7 @@ type backupManager struct {
 func NewBackupManager(
 	backupCleaner BackupCleaner,
 	statusUpdater controller.BackupConditionUpdaterInterface,
-	secretLister corelisters.SecretLister,
+	kubeCli kubernetes.Interface,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
@@ -54,7 +55,7 @@ func NewBackupManager(
 	return &backupManager{
 		backupCleaner,
 		statusUpdater,
-		secretLister,
+		kubeCli,
 		jobLister,
 		jobControl,
 		pvcLister,
@@ -163,12 +164,12 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.kubeCli)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.kubeCli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -252,7 +253,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.kubeCli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}

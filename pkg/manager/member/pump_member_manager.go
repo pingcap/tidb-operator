@@ -43,7 +43,6 @@ type pumpMemberManager struct {
 	cmControl    controller.ConfigMapControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
-	cmLister     corelisters.ConfigMapLister
 	podLister    corelisters.PodLister
 }
 
@@ -55,7 +54,6 @@ func NewPumpMemberManager(
 	cmControl controller.ConfigMapControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	cmLister corelisters.ConfigMapLister,
 	podLister corelisters.PodLister) manager.Manager {
 	return &pumpMemberManager{
 		setControl,
@@ -64,7 +62,6 @@ func NewPumpMemberManager(
 		cmControl,
 		setLister,
 		svcLister,
-		cmLister,
 		podLister,
 	}
 }

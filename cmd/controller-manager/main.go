@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -33,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,20 +137,23 @@ func main() {
 
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
-	if controller.ClusterScoped {
-		informerFactory = informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
-	} else {
-		options := []informers.SharedInformerOption{
-			informers.WithNamespace(ns),
-		}
-		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
-
-		kubeoptions := []kubeinformers.SharedInformerOption{
-			kubeinformers.WithNamespace(ns),
-		}
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
+	labelSelector := fmt.Sprintf("%s=%s", label.ManagedByLabelKey, label.TiDBOperator)
+	options := []informers.SharedInformerOption{
+		informers.WithTweakListOptions(func(listOpts *metav1.ListOptions) {
+			listOpts.LabelSelector = labelSelector
+		}),
 	}
+	kubeoptions := []kubeinformers.SharedInformerOption{
+		kubeinformers.WithTweakListOptions(func(listOpts *metav1.ListOptions) {
+			listOpts.LabelSelector = labelSelector
+		}),
+	}
+	if !controller.ClusterScoped {
+		options = append(options, informers.WithNamespace(ns))
+		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
+	}
+	informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
+	kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
 
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
