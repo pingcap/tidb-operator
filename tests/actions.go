@@ -45,6 +45,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
 	utildiscovery "github.com/pingcap/tidb-operator/tests/e2e/util/discovery"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
@@ -67,6 +68,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	glog "k8s.io/klog"
+	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
@@ -87,6 +89,7 @@ const (
 func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
 	asCli asclientset.Interface,
+	aggrCli aggregatorclient.Interface,
 	pollInterval time.Duration,
 	operatorConfig *OperatorConfig,
 	cfg *Config,
@@ -106,6 +109,7 @@ func NewOperatorActions(cli versioned.Interface,
 		kubeCli:      kubeCli,
 		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
 		asCli:        asCli,
+		aggrCli:      aggrCli,
 		tcStsGetter:  tcStsGetter,
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -239,6 +243,7 @@ type operatorActions struct {
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface
+	aggrCli            aggregatorclient.Interface
 	tcStsGetter        typedappsv1.StatefulSetsGetter
 	pdControl          pdapi.PDControlInterface
 	tidbControl        controller.TiDBControlInterface
@@ -522,10 +527,8 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	// wait for all apiservices are available
-	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
-	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b", "--timeout=60s")
-	return nil
+	glog.Infof("Wait for all apiesrvices are available")
+	return e2eutil.WaitForAllAPIServicesAvaiable(oa.aggrCli)
 }
 
 func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
@@ -579,9 +582,11 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
 
-	// wait for all apiservices are available
-	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
-	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
+	glog.Infof("Wait for all apiesrvices are available")
+	err = e2eutil.WaitForAllAPIServicesAvaiable(oa.aggrCli)
+	if err != nil {
+		return err
+	}
 
 	if info.Tag == "e2e" {
 		return nil
@@ -3448,7 +3453,7 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 		panic(err)
 	}
 
-	versionCli, kubeCli, _ := client.NewCliOrDie()
+	versionCli, kubeCli, _, _ := client.NewCliOrDie()
 	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{

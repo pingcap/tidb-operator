@@ -41,6 +41,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
+	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -157,6 +158,8 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.ExpectNoError(err, "failed to create clientset")
 	kubeCli, err := kubernetes.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
+	aggrCli, err := aggregatorclient.NewForConfig(config)
+	framework.ExpectNoError(err, "failed to create clientset")
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
 	ginkgo.By("Recycle all local PVs")
@@ -186,7 +189,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	})
 	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
 	ginkgo.By("Labeling nodes")
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
 		ginkgo.By("Installing CRDs")
