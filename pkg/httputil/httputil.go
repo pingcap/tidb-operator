@@ -1,8 +1,19 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package httputil
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -51,36 +62,4 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 		return nil, errMsg
 	}
 	return body, err
-}
-
-func ReadCACerts() (*x509.CertPool, error) {
-	// try to load system CA certs
-	rootCAs, err := x509.SystemCertPool()
-	if err != nil {
-		return nil, err
-	}
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
-	}
-
-	// load k8s CA cert
-	caCert, err := ioutil.ReadFile(k8sCAFile)
-	if err != nil {
-		return nil, fmt.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
-	}
-	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
-		glog.Warningf("fail to append CA file to pool, using system CAs only")
-	}
-	return rootCAs, nil
-}
-
-func ReadCerts() (*x509.CertPool, tls.Certificate, error) {
-	rootCAs, err := ReadCACerts()
-	if err != nil {
-		return rootCAs, tls.Certificate{}, err
-	}
-
-	// load client cert
-	cert, err := tls.LoadX509KeyPair(clientCert, clientKey)
-	return rootCAs, cert, err
 }

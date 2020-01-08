@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ type PingcapV1alpha1Interface interface {
 	DataResourcesGetter
 	RestoresGetter
 	TidbClustersGetter
+	TidbInitializersGetter
 	TidbMonitorsGetter
 }
 
@@ -54,6 +55,10 @@ func (c *PingcapV1alpha1Client) Restores(namespace string) RestoreInterface {
 
 func (c *PingcapV1alpha1Client) TidbClusters(namespace string) TidbClusterInterface {
 	return newTidbClusters(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) TidbInitializers(namespace string) TidbInitializerInterface {
+	return newTidbInitializers(c, namespace)
 }
 
 func (c *PingcapV1alpha1Client) TidbMonitors(namespace string) TidbMonitorInterface {

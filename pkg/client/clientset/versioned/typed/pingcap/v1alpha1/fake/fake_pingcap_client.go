@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,6 +43,10 @@ func (c *FakePingcapV1alpha1) Restores(namespace string) v1alpha1.RestoreInterfa
 
 func (c *FakePingcapV1alpha1) TidbClusters(namespace string) v1alpha1.TidbClusterInterface {
 	return &FakeTidbClusters{c, namespace}
+}
+
+func (c *FakePingcapV1alpha1) TidbInitializers(namespace string) v1alpha1.TidbInitializerInterface {
+	return &FakeTidbInitializers{c, namespace}
 }
 
 func (c *FakePingcapV1alpha1) TidbMonitors(namespace string) v1alpha1.TidbMonitorInterface {

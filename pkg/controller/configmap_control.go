@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,7 +90,6 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 
 		return updateErr
 	})
-	cc.recordConfigMapEvent("update", owner, cm, err)
 	return updatedCm, err
 }
 

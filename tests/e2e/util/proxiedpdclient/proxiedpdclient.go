@@ -2,7 +2,7 @@
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License a
+// You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
@@ -38,13 +38,13 @@ import (
 //	  }
 //    defer cancel()
 //
-func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool, caCert []byte) (pdapi.PDClient, context.CancelFunc, error) {
 	var tlsConfig *tls.Config
 	var err error
 	scheme := "http"
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName)
+		tlsConfig, err = pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName, caCert)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -60,6 +60,6 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
 }
 
-func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
-	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.Spec.EnableTLSCluster)
+func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster, caCert []byte) (pdapi.PDClient, context.CancelFunc, error) {
+	return NewProxiedPDClient(kubeCli, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled(), caCert)
 }

@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ type Interface interface {
 	Restores() RestoreInformer
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
+	// TidbInitializers returns a TidbInitializerInformer.
+	TidbInitializers() TidbInitializerInformer
 	// TidbMonitors returns a TidbMonitorInformer.
 	TidbMonitors() TidbMonitorInformer
 }
@@ -69,6 +71,11 @@ func (v *version) Restores() RestoreInformer {
 // TidbClusters returns a TidbClusterInformer.
 func (v *version) TidbClusters() TidbClusterInformer {
 	return &tidbClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TidbInitializers returns a TidbInitializerInformer.
+func (v *version) TidbInitializers() TidbInitializerInformer {
+	return &tidbInitializerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TidbMonitors returns a TidbMonitorInformer.

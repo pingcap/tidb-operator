@@ -74,11 +74,13 @@ func AfterReadingAllFlags() error {
 // NewDefaultOperatorConfig creates default operator configuration.
 func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 	return &tests.OperatorConfig{
-		Namespace:      "pingcap",
-		ReleaseName:    "operator",
-		Image:          cfg.OperatorImage,
-		Tag:            cfg.OperatorTag,
-		SchedulerImage: "k8s.gcr.io/kube-scheduler",
+		Namespace:                 "pingcap",
+		ReleaseName:               "operator",
+		Image:                     cfg.OperatorImage,
+		Tag:                       cfg.OperatorTag,
+		ControllerManagerReplicas: tests.IntPtr(2),
+		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
+		SchedulerReplicas:         tests.IntPtr(2),
 		Features: []string{
 			"StableScheduling=true",
 		},

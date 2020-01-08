@@ -80,10 +80,6 @@ func TestServiceControlUpdateService(t *testing.T) {
 	updateSvc, err := control.UpdateService(tc, svc)
 	g.Expect(err).To(Succeed())
 	g.Expect(updateSvc.Spec.ClusterIP).To(Equal("1.1.1.1"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestServiceControlUpdateServiceConflictSuccess(t *testing.T) {
@@ -112,10 +108,6 @@ func TestServiceControlUpdateServiceConflictSuccess(t *testing.T) {
 	updateSvc, err := control.UpdateService(tc, svc)
 	g.Expect(err).To(Succeed())
 	g.Expect(updateSvc.Spec.ClusterIP).To(Equal("1.1.1.1"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestServiceControlDeleteService(t *testing.T) {

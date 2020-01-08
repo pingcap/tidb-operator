@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+
+# Copyright 2020 PingCAP, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #
 # E2E entrypoint script.
 #
@@ -28,16 +42,18 @@ Environments:
     SKIP_IMAGE_BUILD    skip build and push images
     SKIP_UP             skip starting the cluster
     SKIP_DOWN           skip shutting down the cluster
+    REUSE_CLUSTER       reuse existing cluster if found
     KUBE_VERSION        the version of Kubernetes to test against
     KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
     DOCKER_IO_MIRROR    configure mirror for docker.io
+    GCR_IO_MIRROR       configure mirror for gcr.io
+    QUAY_IO_MIRROR      configure mirror for quay.io
     KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
     GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
     GINKGO_NO_COLOR     if set to `y`, suppress color output in default reporter
 
 Examples:
-
 
 0) view help
 
@@ -54,6 +70,14 @@ Examples:
     ./hack/e2e.sh -- --ginkgo.focus='Backup\sand\srestore'
 
     See https://onsi.github.io/ginkgo/ for more ginkgo options.
+
+3) reuse the cluster and don't tear down it after the testing
+
+    REUSE_CLUSTER=y SKIP_DOWN=y ./hack/e2e.sh -- <e2e args>
+
+4) use registry mirrors
+
+    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
 
 EOF
 
@@ -85,10 +109,13 @@ SKIP_BUILD=${SKIP_BUILD:-}
 SKIP_IMAGE_BUILD=${SKIP_IMAGE_BUILD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
+REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 KUBE_VERSION=${KUBE_VERSION:-v1.12.10}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
+GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
+QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 
 echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
 echo "IMAGE_TAG: $IMAGE_TAG"
@@ -102,6 +129,8 @@ echo "SKIP_DOWN: $SKIP_DOWN"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "KUBE_VERSION: $KUBE_VERSION"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
+echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
+echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.1
 declare -A kind_node_images
@@ -111,6 +140,7 @@ kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:1fe072c080ee129a2a440
 kind_node_images["v1.14.9"]="kindest/node:v1.14.9@sha256:bdd3731588fa3ce8f66c7c22f25351362428964b6bca13048659f68b9e665b72"
 kind_node_images["v1.15.6"]="kindest/node:v1.15.6@sha256:18c4ab6b61c991c249d29df778e651f443ac4bcd4e6bdd37e0c83c0d33eaae78"
 kind_node_images["v1.16.3"]="kindest/node:v1.16.3@sha256:70ce6ce09bee5c34ab14aec2b84d6edb260473a60638b1b095470a3a0f95ebec"
+kind_node_images["v1.17.0"]="kindest/node:v1.17.0@sha256:190c97963ec4f4121c3f1e96ca6eb104becda5bae1df3a13f01649b2dd372f6d"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
@@ -161,6 +191,14 @@ function e2e::__restart_docker() {
     echo "info: done restarting docker"
 }
 
+# e2e::__cluster_is_alive checks if the cluster is alive or not
+function e2e::__cluster_is_alive() {
+    local ret=0
+    echo "info: checking the cluster version"
+    $KUBECTL_BIN --context $KUBECONTEXT version --short || ret=$?
+    return $ret
+}
+
 function e2e::up() {
     if [ -n "$SKIP_UP" ]; then
         echo "info: skip starting a new cluster"
@@ -176,6 +214,14 @@ EOF
         e2e::__restart_docker
     fi
     if e2e::cluster_exists $CLUSTER; then
+        if [ -n "$REUSE_CLUSTER" ]; then
+            if e2e::__cluster_is_alive; then
+                echo "info: REUSE_CLUSTER is enabled and the cluster is alive, reusing it"
+                return
+            else
+                echo "info: REUSE_CLUSTER is enabled but the cluster is not alive, trying to recreate it"
+            fi
+        fi
         echo "info: deleting the cluster '$CLUSTER'"
         $KIND_BIN delete cluster --name $CLUSTER
     fi
@@ -186,13 +232,29 @@ EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 EOF
-    if [ -n "$DOCKER_IO_MIRROR" ]; then
+    if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
 containerdConfigPatches:
 - |-
+EOF
+        if [ -n "$DOCKER_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
     endpoint = ["$DOCKER_IO_MIRROR"]
 EOF
+        fi
+        if [ -n "$GCR_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
+    endpoint = ["$GCR_IO_MIRROR"]
+EOF
+        fi
+        if [ -n "$QUAY_IO_MIRROR" ]; then
+cat <<EOF >> $tmpfile
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
+    endpoint = ["$QUAY_IO_MIRROR"]
+EOF
+        fi
     fi
     # control-plane
     cat <<EOF >> $tmpfile

@@ -16,12 +16,15 @@ package member
 import (
 	"fmt"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	glog "k8s.io/klog"
 )
@@ -34,10 +37,12 @@ const (
 
 // Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
+	// Scale scales the cluster. It does nothing if scaling is not needed.
+	Scale(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// ScaleOut scales out the cluster
-	ScaleOut(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
+	ScaleOut(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// ScaleIn scales in the cluster
-	ScaleIn(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
+	ScaleIn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 }
 
 type generalScaler struct {
@@ -83,18 +88,22 @@ func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 
 func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
 	*newSet.Spec.Replicas = *oldSet.Spec.Replicas
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		helper.SetDeleteSlots(newSet, helper.GetDeleteSlots(oldSet))
+	}
 }
 
-func increaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
-	*newSet.Spec.Replicas = *oldSet.Spec.Replicas + 1
-	glog.Infof("pd scale out: increase pd statefulset: %s/%s replicas to %d",
-		newSet.GetNamespace(), newSet.GetName(), *newSet.Spec.Replicas)
-}
-
-func decreaseReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
-	*newSet.Spec.Replicas = *oldSet.Spec.Replicas - 1
-	glog.Infof("pd scale in: decrease pd statefulset: %s/%s replicas to %d",
-		newSet.GetNamespace(), newSet.GetName(), *newSet.Spec.Replicas)
+func setReplicasAndDeleteSlots(newSet *apps.StatefulSet, replicas int32, deleteSlots sets.Int32) {
+	oldReplicas := *newSet.Spec.Replicas
+	*newSet.Spec.Replicas = replicas
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		helper.SetDeleteSlots(newSet, deleteSlots)
+		glog.Infof("scale statefulset: %s/%s replicas from %d to %d (delete slots: %v)",
+			newSet.GetNamespace(), newSet.GetName(), oldReplicas, replicas, deleteSlots.List())
+		return
+	}
+	glog.Infof("scale statefulset: %s/%s replicas from %d to %d",
+		newSet.GetNamespace(), newSet.GetName(), oldReplicas, replicas)
 }
 
 func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int32) string {
@@ -103,4 +112,68 @@ func ordinalPVCName(memberType v1alpha1.MemberType, setName string, ordinal int3
 
 func ordinalPodName(memberType v1alpha1.MemberType, tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", tcName, memberType, ordinal)
+}
+
+// scaleOne calculates desired replicas and delete slots from actual/desired
+// stateful sets by allowing only one pod to be deleted or created
+// it returns following values:
+// - scaling:
+//   - 0: no scaling required
+//   - 1: scaling out
+//   - -1: scaling in
+// - ordinal: pod ordinal to create or delete
+// - replicas/deleteSlots: desired replicas and deleteSlots by allowing only one pod to be deleted or created
+func scaleOne(actual *apps.StatefulSet, desired *apps.StatefulSet) (scaling int, ordinal int32, replicas int32, deleteSlots sets.Int32) {
+	actualPodOrdinals := helper.GetPodOrdinals(*actual.Spec.Replicas, actual)
+	desiredPodOrdinals := helper.GetPodOrdinals(*desired.Spec.Replicas, desired)
+	additions := desiredPodOrdinals.Difference(actualPodOrdinals)
+	deletions := actualPodOrdinals.Difference(desiredPodOrdinals)
+	scaling = 0
+	ordinal = -1
+	replicas = *actual.Spec.Replicas
+	actualDeleteSlots := helper.GetDeleteSlots(actual)
+	desiredDeleteSlots := helper.GetDeleteSlots(desired)
+	// copy delete slots from desired delete slots if not in actual pod ordinals
+	for i := range desiredDeleteSlots {
+		if !actualPodOrdinals.Has(i) {
+			actualDeleteSlots.Insert(i)
+		}
+	}
+	if additions.Len() > 0 {
+		// we always do scaling out before scaling in to maintain maximum avaiability
+		scaling = 1
+		ordinal = additions.List()[0]
+		replicas += 1
+		if !desiredDeleteSlots.Has(ordinal) {
+			// not in desired delete slots, remove it from actual delete slots
+			actualDeleteSlots.Delete(ordinal)
+		}
+		actualDeleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
+	} else if deletions.Len() > 0 {
+		scaling = -1
+		deletionsList := deletions.List()
+		ordinal = deletionsList[len(deletionsList)-1]
+		replicas -= 1
+		if desiredDeleteSlots.Has(ordinal) {
+			// in desired delete slots, add it in actual delete slots
+			actualDeleteSlots.Insert(ordinal)
+		}
+		actualDeleteSlots = normalizeDeleteSlots(replicas, actualDeleteSlots, desiredDeleteSlots)
+	}
+	deleteSlots = actualDeleteSlots
+	return
+}
+
+// normalizeDeleteSlots
+// - add redundant data if in desired delete slots
+// - remove redundant data if not in desired delete slots
+// this is necessary to reach the desired state
+func normalizeDeleteSlots(replicas int32, deleteSlots sets.Int32, desiredDeleteSlots sets.Int32) sets.Int32 {
+	maxReplicaCount, _ := helper.GetMaxReplicaCountAndDeleteSlots(replicas, deleteSlots)
+	for ordinal := range deleteSlots {
+		if ordinal >= maxReplicaCount && !desiredDeleteSlots.Has(ordinal) {
+			deleteSlots.Delete(ordinal)
+		}
+	}
+	return deleteSlots
 }

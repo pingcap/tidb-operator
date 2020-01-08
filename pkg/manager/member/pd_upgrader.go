@@ -53,7 +53,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	}
 
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+	if !templateEqual(newSet, oldSet) {
 		return nil
 	}
 
@@ -69,6 +69,10 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
 		glog.Warningf("tidbcluster: [%s/%s] pd statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
+	}
+
+	if controller.PodWebhookEnabled {
+		setUpgradePartition(newSet, 0)
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)

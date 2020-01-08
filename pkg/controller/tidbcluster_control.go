@@ -80,9 +80,6 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 
 		return updateErr
 	})
-	if !deepEqualExceptHeartbeatTime(newStatus.DeepCopy(), oldStatus.DeepCopy()) {
-		rtc.recordTidbClusterEvent("update", tc, err)
-	}
 	return updateTC, err
 }
 

@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"strconv"
 	"strings"
 
@@ -23,11 +24,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -197,11 +196,11 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 	if setNotExist {
-		err = SetLastAppliedConfigAnnotation(newPDSet)
+		err = SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
 			return err
 		}
-		if tc.Spec.EnableTLSCluster {
+		if tc.IsTLSClusterEnabled() {
 			err := pmm.syncPDServerCerts(tc)
 			if err != nil {
 				return err
@@ -227,26 +226,19 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		if force {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newPDSet, 0)
-			errSTS := pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+			errSTS := updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 		}
 	}
 
-	if !templateEqual(newPDSet.Spec.Template, oldPDSet.Spec.Template) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
 	}
 
-	if *newPDSet.Spec.Replicas > *oldPDSet.Spec.Replicas {
-		if err := pmm.pdScaler.ScaleOut(tc, oldPDSet, newPDSet); err != nil {
-			return err
-		}
-	}
-	if *newPDSet.Spec.Replicas < *oldPDSet.Spec.Replicas {
-		if err := pmm.pdScaler.ScaleIn(tc, oldPDSet, newPDSet); err != nil {
-			return err
-		}
+	if err := pmm.pdScaler.Scale(tc, oldPDSet, newPDSet); err != nil {
+		return err
 	}
 
 	if pmm.autoFailover {
@@ -259,7 +251,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		}
 	}
 
-	return pmm.updateStatefulSet(tc, newPDSet, oldPDSet)
+	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
 }
 
 func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
@@ -301,33 +293,21 @@ func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
 		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
+	ipList := []string{
+		"127.0.0.1", "::1", // able to access https endpoint via loopback network
+	}
+
 	certOpts := &controller.TiDBClusterCertOptions{
 		Namespace:  ns,
 		Instance:   tcName,
 		CommonName: svcName,
 		HostList:   hostList,
+		IPList:     ipList,
 		Component:  "pd",
 		Suffix:     "pd",
 	}
 
 	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-func (pmm *pdMemberManager) updateStatefulSet(tc *v1alpha1.TidbCluster, newPDSet, oldPDSet *apps.StatefulSet) error {
-	if !statefulSetEqual(*newPDSet, *oldPDSet) {
-		set := *oldPDSet
-		set.Spec.Template = newPDSet.Spec.Template
-		*set.Spec.Replicas = *newPDSet.Spec.Replicas
-		set.Spec.UpdateStrategy = newPDSet.Spec.UpdateStrategy
-		err := SetLastAppliedConfigAnnotation(&set)
-		if err != nil {
-			return err
-		}
-		_, err = pmm.setControl.UpdateStatefulSet(tc, &set)
-		return err
-	}
-
-	return nil
 }
 
 func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
@@ -410,6 +390,11 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 
+	// k8s check
+	err = pmm.collectUnjoinedMembers(tc, set, pdStatus)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -424,7 +409,7 @@ func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.PDConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
+	if set != nil && tc.BasePDSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
 		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 		})
@@ -440,10 +425,10 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
-	return &corev1.Service{
+	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
@@ -463,13 +448,28 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 			Selector: pdLabel,
 		},
 	}
+	// if set pd service type ,overwrite global variable services
+	svcSpec := tc.Spec.PD.Service
+	if svcSpec != nil {
+		if svcSpec.Type != "" {
+			pdService.Spec.Type = svcSpec.Type
+		}
+		pdService.ObjectMeta.Annotations = svcSpec.Annotations
+		if svcSpec.LoadBalancerIP != nil {
+			pdService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+		}
+		if svcSpec.ClusterIP != nil {
+			pdService.Spec.ClusterIP = *svcSpec.ClusterIP
+		}
+	}
+	return pdService
 }
 
 func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
 	return &corev1.Service{
@@ -500,7 +500,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 		return true, nil
 	}
 	selector, err := label.New().
-		Instance(tc.GetLabels()[label.InstanceLabelKey]).
+		Instance(tc.GetInstanceName()).
 		PD().
 		Selector()
 	if err != nil {
@@ -525,7 +525,8 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	basePDSpec := tc.BasePDSpec()
+	instanceName := tc.GetInstanceName()
 	pdConfigMap := controller.MemberConfigMapName(tc, v1alpha1.PDMemberType)
 	if cm != nil {
 		pdConfigMap = cm.Name
@@ -538,7 +539,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
 	}
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
@@ -567,7 +568,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		},
 	}
-	if tc.Spec.EnableTLSCluster {
+	if tc.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -577,21 +578,18 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 
-	var q resource.Quantity
-	var err error
-	if tc.Spec.PD.Requests != nil {
-		size := tc.Spec.PD.Requests.Storage
-		q, err = resource.ParseQuantity(size)
-		if err != nil {
-			return nil, fmt.Errorf("cant' get storage size: %s for TidbCluster: %s/%s, %v", size, ns, tcName, err)
-		}
+	storageRequest, err := controller.ParseStorageRequest(tc.Spec.PD.Requests)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse storage request for PD, tidbcluster %s/%s, error: %v", tc.Namespace, tc.Name, err)
 	}
+
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
-	podAnnotations := CombineAnnotations(controller.AnnProm(2379), tc.BasePDSpec().Annotations())
+	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
+	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
 	storageClassName := tc.Spec.PD.StorageClassName
-	if storageClassName == "" {
-		storageClassName = controller.DefaultStorageClassName
+	if storageClassName == nil {
+		storageClassName = &controller.DefaultStorageClassName
 	}
 	failureReplicas := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
@@ -600,6 +598,26 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		}
 	}
 
+	pdContainer := corev1.Container{
+		Name:            v1alpha1.PDMemberType.String(),
+		Image:           tc.PDImage(),
+		ImagePullPolicy: basePDSpec.ImagePullPolicy(),
+		Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "server",
+				ContainerPort: int32(2380),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "client",
+				ContainerPort: int32(2379),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: volMounts,
+		Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
+	}
 	env := []corev1.EnvVar{
 		{
 			Name: "NAMESPACE",
@@ -626,41 +644,9 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Value: tc.Spec.Timezone,
 		},
 	}
-	podSpec := corev1.PodSpec{
-		SchedulerName: tc.BasePDSpec().SchedulerName(),
-		Affinity:      tc.BasePDSpec().Affinity(),
-		NodeSelector:  tc.BasePDSpec().NodeSelector(),
-		HostNetwork:   tc.BasePDSpec().HostNetwork(),
-		Containers: []corev1.Container{
-			{
-				Name:            v1alpha1.PDMemberType.String(),
-				Image:           tc.BasePDSpec().Image(),
-				Command:         []string{"/bin/sh", "/usr/local/bin/pd_start_script.sh"},
-				ImagePullPolicy: tc.BasePDSpec().ImagePullPolicy(),
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "server",
-						ContainerPort: int32(2380),
-						Protocol:      corev1.ProtocolTCP,
-					},
-					{
-						Name:          "client",
-						ContainerPort: int32(2379),
-						Protocol:      corev1.ProtocolTCP,
-					},
-				},
-				VolumeMounts: volMounts,
-				Resources:    util.ResourceRequirement(tc.Spec.PD.Resources),
-			},
-		},
-		RestartPolicy:     corev1.RestartPolicyAlways,
-		Tolerations:       tc.BasePDSpec().Tolerations(),
-		Volumes:           vols,
-		SecurityContext:   tc.BasePDSpec().PodSecurityContext(),
-		PriorityClassName: tc.BasePDSpec().PriorityClassName(),
-	}
 
-	if tc.BasePDSpec().HostNetwork() {
+	podSpec := basePDSpec.BuildPodSpec()
+	if basePDSpec.HostNetwork() {
 		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{
 			Name: "POD_NAME",
@@ -671,14 +657,16 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-
-	podSpec.Containers[0].Env = env
+	pdContainer.Env = env
+	podSpec.Volumes = vols
+	podSpec.Containers = []corev1.Container{pdContainer}
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            setName,
 			Namespace:       ns,
 			Labels:          pdLabel.Labels(),
+			Annotations:     stsAnnotations,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
@@ -700,12 +688,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: &storageClassName,
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: q,
-							},
-						},
+						StorageClassName: storageClassName,
+						Resources:        storageRequest,
 					},
 				},
 			},
@@ -738,7 +722,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	instanceName := tc.GetLabels()[label.InstanceLabelKey]
+	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -752,12 +736,59 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			"startup-script": startScript,
 		},
 	}
-	if tc.PDConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+	if tc.BasePDSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
 		if err := AddConfigMapDigestSuffix(cm); err != nil {
 			return nil, err
 		}
 	}
 	return cm, nil
+}
+
+func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
+	if podSelectErr != nil {
+		return podSelectErr
+	}
+	pods, podErr := pmm.podLister.Pods(tc.Namespace).List(podSelector)
+	if podErr != nil {
+		return podErr
+	}
+	for _, pod := range pods {
+		var joined = false
+		for podName := range pdStatus {
+			if strings.EqualFold(pod.Name, podName) {
+				joined = true
+				break
+			}
+		}
+		if !joined {
+			if tc.Status.PD.UnjoinedMembers == nil {
+				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
+			}
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return err
+			}
+			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
+			pvc, err := pmm.pvcLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
+			if err != nil {
+				return err
+			}
+			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
+				PodName:   pod.Name,
+				PVCUID:    pvc.UID,
+				CreatedAt: metav1.Now(),
+			}
+		} else {
+			if tc.Status.PD.UnjoinedMembers != nil {
+				if _, ok := tc.Status.PD.UnjoinedMembers[pod.Name]; ok {
+					delete(tc.Status.PD.UnjoinedMembers, pod.Name)
+				}
+
+			}
+		}
+	}
+	return nil
 }
 
 type FakePDMemberManager struct {

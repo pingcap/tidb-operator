@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,10 +81,6 @@ func TestConfigMapControlUpdateConfigMap(t *testing.T) {
 	updatecm, err := control.UpdateConfigMap(tc, cm)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatecm.Data["file"]).To(Equal("test"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestConfigMapControlUpdateConfigMapConflictSuccess(t *testing.T) {
@@ -113,10 +109,6 @@ func TestConfigMapControlUpdateConfigMapConflictSuccess(t *testing.T) {
 	updatecm, err := control.UpdateConfigMap(tc, cm)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatecm.Data["file"]).To(Equal("test"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestConfigMapControlDeleteConfigMap(t *testing.T) {

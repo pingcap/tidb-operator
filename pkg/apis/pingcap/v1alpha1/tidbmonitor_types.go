@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -109,9 +109,8 @@ type InitializerSpec struct {
 // +k8s:openapi-gen=true
 // MonitorContainer is the common attributes of the container of monitoring
 type MonitorContainer struct {
-	// TODO: generate OpenAPI schema for resources
-	// +k8s:openapi-gen=false
-	Resources `json:",inline"`
+	Resources corev1.ResourceRequirements `json:",inline"`
+
 	BaseImage string `json:"baseImage,omitempty"`
 	Version   string `json:"version,omitempty"`
 	// +optional

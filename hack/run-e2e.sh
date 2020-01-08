@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+# Copyright 2020 PingCAP, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -53,22 +66,6 @@ if [[ "${GINKGO_STREAM}" == "y" ]]; then
     ginkgo_args+=("--stream")
 fi
 
-kubectl_args=()
-if [[ -n "$KUBECONTEXT" ]]; then
-    kubectl_args+=(--context "$KUBECONTEXT")
-fi
-
-# TODO move these clean logic into e2e code
-echo "info: clear helm releases"
-$HELM_BIN ls --all --short | xargs -n 1 -r $HELM_BIN delete --purge
-
-echo "info: clear non-kubernetes apiservices"
-$KUBECTL_BIN ${kubectl_args[@]:-} delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart
-
-# clear all validatingwebhookconfigurations first otherwise it may deny pods deletion requests
-echo "info: clear validatingwebhookconfiguration"
-$KUBECTL_BIN ${kubectl_args[@]:-} delete validatingwebhookconfiguration --all
-
 echo "info: start to run e2e process"
 e2e_args=(
     /usr/local/bin/ginkgo
@@ -78,11 +75,13 @@ e2e_args=(
     --provider=skeleton
     --clean-start=true
     --delete-namespace-on-failure=false
+    --repo-root=$ROOT
     # tidb-operator e2e flags
     --operator-tag=e2e
     --operator-image=${TIDB_OPERATOR_IMAGE}
     --e2e-image=${E2E_IMAGE}
-    --tidb-versions=v3.0.2,v3.0.3,v3.0.4,v3.0.5
+    # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
+    --tidb-versions=v3.0.6,v3.0.7
     --chart-dir=/charts
     -v=4
 )
@@ -100,6 +99,8 @@ docker_args=(
     run
     --rm
     --net=host
+    --privileged
+    -v /:/rootfs
     -v $ROOT:$ROOT
     -w $ROOT
     -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro
