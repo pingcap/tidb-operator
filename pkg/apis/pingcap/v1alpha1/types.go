@@ -499,12 +499,13 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced         bool                       `json:"synced,omitempty"`
-	Phase          MemberPhase                `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members        map[string]PDMember        `json:"members,omitempty"`
-	Leader         PDMember                   `json:"leader,omitempty"`
-	FailureMembers map[string]PDFailureMember `json:"failureMembers,omitempty"`
+	Synced          bool                       `json:"synced,omitempty"`
+	Phase           MemberPhase                `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
+	Members         map[string]PDMember        `json:"members,omitempty"`
+	Leader          PDMember                   `json:"leader,omitempty"`
+	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
+	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 }
 
 // PDMember is PD member
@@ -526,6 +527,13 @@ type PDFailureMember struct {
 	PVCUID        types.UID   `json:"pvcUID,omitempty"`
 	MemberDeleted bool        `json:"memberDeleted,omitempty"`
 	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+}
+
+// UnjoinedMember is the pd unjoin cluster member information
+type UnjoinedMember struct {
+	PodName   string      `json:"podName,omitempty"`
+	PVCUID    types.UID   `json:"pvcUID,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
