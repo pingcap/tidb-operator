@@ -97,10 +97,6 @@ func TestStatefulSetControlUpdateStatefulSet(t *testing.T) {
 	updateSS, err := control.UpdateStatefulSet(tc, set)
 	g.Expect(err).To(Succeed())
 	g.Expect(int(*updateSS.Spec.Replicas)).To(Equal(100))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
@@ -129,10 +125,6 @@ func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
 	updateSS, err := control.UpdateStatefulSet(tc, set)
 	g.Expect(err).To(Succeed())
 	g.Expect(int(*updateSS.Spec.Replicas)).To(Equal(100))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestStatefulSetControlDeleteStatefulSet(t *testing.T) {
