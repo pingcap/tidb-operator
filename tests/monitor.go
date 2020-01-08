@@ -173,9 +173,9 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		if err := json.Unmarshal(body, &data); err != nil {
 			return false, nil
 		}
-		klog.Infof("monitor[%s/%s]'s prometheus targets error,response:%s", namespace, name, body)
+		klog.Infof("monitor[%s/%s]'s prometheus targets error", namespace, name)
 		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
-			klog.Errorf("monitor[%s/%s]'s prometheus targets error,response:%s", namespace, name, body)
+			klog.Errorf("monitor[%s/%s]'s prometheus targets error", namespace, name)
 			return false, nil
 		}
 		for _, target := range data.Data.ActiveTargets {
@@ -234,7 +234,6 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		if err != nil {
 			return false, nil
 		}
-		klog.Infof("tm[%s/%s]'s grafana response:%s", namespace, name, buf)
 		data := struct {
 			Status string `json:"status"`
 			Data   struct {
