@@ -132,6 +132,7 @@ func PreloadImages() error {
 	for _, image := range images {
 		if _, err := nsenter("docker", "pull", image); err != nil {
 			klog.Errorf("preloadImages, error pulling image %s", image)
+			continue
 		}
 		if _, err := nsenter(kindBin, "load", "docker-image", "--name", cluster, "--nodes", strings.Join(nodes, ","), image); err != nil {
 			return err
