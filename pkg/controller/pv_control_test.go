@@ -106,10 +106,6 @@ func TestPVControlUpdateMetaInfoSuccess(t *testing.T) {
 	updatePV, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePV.Annotations["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPVControlUpdateMetaInfoUpdatePVFailed(t *testing.T) {
@@ -128,10 +124,6 @@ func TestPVControlUpdateMetaInfoUpdatePVFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
 func TestPVControlUpdateMetaInfoGetPVCFailed(t *testing.T) {
@@ -148,9 +140,6 @@ func TestPVControlUpdateMetaInfoGetPVCFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
@@ -179,10 +168,6 @@ func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	updatePV, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePV.Annotations["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func newFakeRecorderAndPVCInformer() (*fake.Clientset, coreinformers.PersistentVolumeClaimInformer, coreinformers.PersistentVolumeInformer, *record.FakeRecorder) {
