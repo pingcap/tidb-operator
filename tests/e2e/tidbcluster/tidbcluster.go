@@ -42,6 +42,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
@@ -112,11 +113,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			Values  map[string]string
 		}{
 			{
-				Version: "v3.0.5",
+				Version: utilimage.TiDBV3Version,
 				Name:    "basic-v3",
 			},
 			{
-				Version: "v2.1.16",
+				Version: utilimage.TiDBV2Version,
 				Name:    "basic-v2",
 				Values: map[string]string{
 					// verify v2.1.x configuration compatibility
@@ -125,7 +126,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				},
 			},
 			{
-				Version: "v3.0.5",
+				Version: utilimage.TiDBTLSVersion,
 				Name:    "basic-v3-cluster-tls",
 				Values: map[string]string{
 					"enableTLSCluster": "true",
@@ -691,7 +692,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled out and ready")
 
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = "v3.0.7"
+			tc.Spec.Version = utilimage.TiDBV3Version
 			return nil
 		})
 		framework.ExpectNoError(err, "Expected TiDB cluster updated")

@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
@@ -142,6 +143,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	e2econfig.TestConfig.ManifestDir = "/manifests"
 	framework.Logf("====== e2e configuration ======")
 	framework.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
+	// preload images
+	if err := utilimage.PreloadImages(); err != nil {
+		framework.Failf("failed to pre-load images: %v", err)
+	}
 	// Get clients
 	config, err := framework.LoadConfig()
 	framework.ExpectNoError(err, "failed to load config")
