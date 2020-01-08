@@ -73,7 +73,7 @@ func main() {
 }
 
 func run() {
-	cli, kubeCli, asCli := client.NewCliOrDie()
+	cli, kubeCli, asCli, aggrCli := client.NewCliOrDie()
 
 	ocfg := newOperatorConfig()
 
@@ -115,7 +115,7 @@ func run() {
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
