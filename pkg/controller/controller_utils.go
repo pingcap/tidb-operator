@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -434,12 +435,19 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		}
 		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("cannot parse group versio of the controller %v", ref))
+			utilruntime.HandleError(fmt.Errorf("cannot parse group version for the controller %v of %s/%s",
+				ref, meta.GetNamespace(), meta.GetName()))
 			return
 		}
 		controllerObj, err := fn(meta.GetNamespace(), ref.Name)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s", meta.GetNamespace(), ref.Name))
+			if errors.IsNotFound(err) {
+				glog.V(4).Infof("controller %s/%s of %s/%s not found, ignore",
+					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName())
+			} else {
+				utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s of %s/%s",
+					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName()))
+			}
 			return
 		}
 		// Ensure the ref is exactly the controller we listed
