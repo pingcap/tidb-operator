@@ -473,7 +473,7 @@ monitor:
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
-      portName: reloader
+      portName: tcp-reloader
     resources: {}
       # limits:
       #  cpu: 50m
@@ -485,7 +485,7 @@ monitor:
     create: true
     image: grafana/grafana:6.0.1
     imagePullPolicy: IfNotPresent
-    portName: grafana
+    portName: http-grafana
     logLevel: info
     resources:
       limits: {}
@@ -521,7 +521,7 @@ monitor:
       #   memory: 4Gi
     service:
       type: NodePort
-      portName: prometheus
+      portName: http-prometheus
     reserveDays: 12
     # alertmanagerURL: ""
   nodeSelector: {}
