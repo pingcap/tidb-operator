@@ -683,6 +683,13 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			},
 		},
 	}
+	if monitor.Spec.Prometheus.Service.PortName != nil {
+		prometheusService.Spec.Ports[0].Name = *monitor.Spec.Prometheus.Service.PortName
+	}
+	if monitor.Spec.Reloader.Service.PortName != nil {
+		reloaderService.Spec.Ports[0].Name = *monitor.Spec.Reloader.Service.PortName
+	}
+
 	services = append(services, prometheusService, reloaderService)
 	if monitor.Spec.Grafana != nil {
 		grafanaService := &core.Service{
@@ -708,6 +715,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 					label.ComponentLabelKey: label.TiDBMonitorVal,
 				},
 			},
+		}
+		if monitor.Spec.Grafana.Service.PortName != nil {
+			grafanaService.Spec.Ports[0].Name = *monitor.Spec.Grafana.Service.PortName
 		}
 		services = append(services, grafanaService)
 	}
