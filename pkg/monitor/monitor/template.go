@@ -34,6 +34,11 @@ scrape_configs:
     honor_labels: true
     kubernetes_sd_configs:
     - role: pod
+      namespaces:
+        names:
+        {{- range .ReleaseNamespaces }}
+        - {{ . }}
+        {{- end}}
     tls_config:
       insecure_skip_verify: true
     {{- if .EnableTLSCluster }}
@@ -68,6 +73,12 @@ scrape_configs:
     - source_labels: [__meta_kubernetes_pod_ip]
       action: replace
       target_label: kubernetes_pod_ip
+    - source_labels: [__meta_kubernetes_pod_name]
+      action: replace
+      target_label: instance
+    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+      action: replace
+      target_label: cluster
     {{- if .EnableTLSCluster }}
     # This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
     # be removed after TiKV fix this issue
@@ -75,12 +86,6 @@ scrape_configs:
       action: drop
       regex: .*\-tikv\-\d*$
     {{- end }}
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: replace
-      target_label: instance
-    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-      action: replace
-      target_label: cluster
   {{- if .EnableTLSCluster }}
   # This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
   # be removed after TiKV fix this issue
