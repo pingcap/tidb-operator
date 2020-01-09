@@ -18,29 +18,18 @@ set -o nounset
 set -o pipefail
 
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+cd $ROOT
 
-DIFFROOT="${ROOT}/pkg"
-TMP_DIFFROOT="${ROOT}/_tmp/pkg"
-_tmp="${ROOT}/_tmp"
+source "${ROOT}/hack/lib.sh"
 
-cleanup() {
-  rm -rf "${_tmp}"
-}
-trap "cleanup" EXIT SIGINT
+# Ensure that we find the binaries we build before anything else.
+export GOBIN="${OUTPUT_BIN}"
+PATH="${GOBIN}:${PATH}"
 
-cleanup
+# Enable go modules explicilty.
+export GO111MODULE=on
+go install k8s.io/code-generator/cmd/openapi-gen
 
-mkdir -p "${TMP_DIFFROOT}"
-cp -a "${DIFFROOT}"/* "${TMP_DIFFROOT}"
-
-"${ROOT}/hack/update-codegen.sh"
-echo "diffing ${DIFFROOT} against freshly generated codegen"
-ret=0
-diff -Naupr "${DIFFROOT}" "${TMP_DIFFROOT}" || ret=$?
-cp -a "${TMP_DIFFROOT}"/* "${DIFFROOT}"
-if [[ $ret -eq 0 ]]; then
-  echo "${DIFFROOT} up to date."
-else
-  echo "${DIFFROOT} is out of date. Please run hack/update-codegen.sh"
-  exit 1
-fi
+openapi-gen --go-header-file=./hack/boilerplate/boilerplate.generatego.txt \
+    -i github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/api/core/v1 \
+    -p apis/pingcap/v1alpha1 -O openapi_generated -o ./pkg
