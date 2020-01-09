@@ -185,7 +185,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 	})
 }
 
-// checkGrafanaDataCommon check the Grafana woring status by sending a query request
+// checkGrafanaDataCommon check the Grafana working status by sending a query request
 func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Client, fw portforward.PortForward) (*metrics.Client, error) {
 	svcName := fmt.Sprintf("%s-grafana", name)
 
