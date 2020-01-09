@@ -195,7 +195,7 @@ $ git push -f origin myfeature
 
 1. Visit your fork at https://github.com/$user/tidb-operator (replace `$user` obviously).
 2. Click the `Compare & pull request` button next to your `myfeature` branch.
-3. Edit the description of the pull request to match your change, and if your pull request introduce an user-facing change, a release note is required.
+3. Edit the description of the pull request to match your change, and if your pull request introduce a user-facing change, a release note is required.
 
 > You can refer to [Release Notes Language Style Guide](./release-note-guide.md) for how to write proper release notes.
 

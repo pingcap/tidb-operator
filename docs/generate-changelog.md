@@ -16,7 +16,7 @@
     - `<branch>` the branch to scrape, e.g. `release-1.1`
     - `<start>` the start revision, e.g. `v1.1.0-beta.1`
     - `<end>` the end revision, e.g. `release-1.1` (HEAD of the branch)
-    - `<output` the output file, e.g. `note.md`
+    - `<output>` the output file, e.g. `note.md`
 
     Full example:
 
