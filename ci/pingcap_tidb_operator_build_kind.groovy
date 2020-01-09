@@ -209,11 +209,11 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 				deleteDir()
 				unstash 'tidb-operator'
 				if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
-					stage('upload tidb-operator binary and charts'){
+					stage('upload tidb-operator, backup-manager binary and charts'){
 						//upload binary and charts
 						sh """
 						cp ~/bin/config.cfg ./
-						tar -zcvf tidb-operator.tar.gz images/tidb-operator charts
+						tar -zcvf tidb-operator.tar.gz images/tidb-operator images/backup-manager charts
 						filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file tidb-operator.tar.gz
 						"""
 						//update refs
