@@ -27,7 +27,7 @@ When you write a release note for your pull request, make sure that your languag
 5. Pay attention to the capitalization of the following terms that are often misspelled:
 
     - PD, TiKV, TiDB (not pd, tikv, tidb)
-    - TiDB Operator or `tidb-operator` (not tidb operator)
+    - TiDB Operator (not tidb operator)
     - TiDB Binlog (not tidb binlog)
 
 6. The following templates are commonly used in release notes:
