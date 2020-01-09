@@ -649,7 +649,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
 				{
-					Name:       "prometheus",
+					Name:       "http-prometheus",
 					Port:       9090,
 					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromInt(9090),
@@ -670,7 +670,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
 				{
-					Name:       "reloader",
+					Name:       "tcp-reloader",
 					Port:       9089,
 					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromInt(9089),
@@ -684,10 +684,22 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		},
 	}
 	if monitor.Spec.Prometheus.Service.PortName != nil {
-		prometheusService.Spec.Ports[0].Name = *monitor.Spec.Prometheus.Service.PortName
+		for id, port := range prometheusService.Spec.Ports {
+			if port.Name == "http-prometheus" {
+				port.Name = *monitor.Spec.Prometheus.Service.PortName
+				prometheusService.Spec.Ports[id] = port
+				break
+			}
+		}
 	}
 	if monitor.Spec.Reloader.Service.PortName != nil {
-		reloaderService.Spec.Ports[0].Name = *monitor.Spec.Reloader.Service.PortName
+		for id, port := range reloaderService.Spec.Ports {
+			if port.Name == "tcp-reloader" {
+				port.Name = *monitor.Spec.Reloader.Service.PortName
+				reloaderService.Spec.Ports[id] = port
+				break
+			}
+		}
 	}
 
 	services = append(services, prometheusService, reloaderService)
@@ -703,7 +715,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{
 					{
-						Name:       "grafana",
+						Name:       "http-grafana",
 						Port:       3000,
 						Protocol:   core.ProtocolTCP,
 						TargetPort: intstr.FromInt(3000),
@@ -717,7 +729,13 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			},
 		}
 		if monitor.Spec.Grafana.Service.PortName != nil {
-			grafanaService.Spec.Ports[0].Name = *monitor.Spec.Grafana.Service.PortName
+			for id, port := range grafanaService.Spec.Ports {
+				if port.Name == "http-grafana" {
+					port.Name = *monitor.Spec.Grafana.Service.PortName
+					grafanaService.Spec.Ports[id] = port
+					break
+				}
+			}
 		}
 		services = append(services, grafanaService)
 	}
