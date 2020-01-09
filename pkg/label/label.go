@@ -167,6 +167,14 @@ func NewBackupSchedule() Label {
 	}
 }
 
+// NewMonitor initialize a new label for monitor of tidb-monitor
+func NewMonitor() Label {
+	return Label{
+		NameLabelKey:      TiDBMonitorVal,
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
 // Instance adds instance kv pair to label
 func (l Label) Instance(name string) Label {
 	l[InstanceLabelKey] = name

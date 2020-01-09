@@ -75,6 +75,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var ocfg *tests.OperatorConfig
 	var genericCli client.Client
 	var fwCancel context.CancelFunc
+	var fw portforward.PortForward
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -91,7 +92,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
 		ctx, cancel := context.WithCancel(context.Background())
-		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
@@ -707,6 +708,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster updated")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
+	})
+
+	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
+		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		err = tests.CheckTidbMonitor(tm, c, fw)
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 	})
 })
 
