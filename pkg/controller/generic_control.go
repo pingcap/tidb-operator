@@ -15,6 +15,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -147,6 +148,10 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 
 		existingDep.Spec.Replicas = desiredDep.Spec.Replicas
 		existingDep.Labels = desiredDep.Labels
+
+		if existingDep.Annotations == nil {
+			existingDep.Annotations = map[string]string{}
+		}
 		for k, v := range desiredDep.Annotations {
 			existingDep.Annotations[k] = v
 		}
@@ -163,11 +168,13 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 		}
 		// podSpec of deployment is hard to merge, use an annotation to assist
 		if DeploymentPodSpecChanged(desiredDep, existingDep) {
-			existingDep.Spec.Template.Spec = desiredDep.Spec.Template.Spec
-			err := SetDeploymentLastAppliedPodTemplate(existingDep)
+			// Record last applied spec in favor of future equality check
+			b, err := json.Marshal(desiredDep.Spec.Template.Spec)
 			if err != nil {
 				return err
 			}
+			existingDep.Annotations[LastAppliedConfigAnnotation] = string(b)
+			existingDep.Spec.Template.Spec = desiredDep.Spec.Template.Spec
 		}
 		return nil
 	})
@@ -245,8 +252,11 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 		existingSvc := existing.(*corev1.Service)
 		desiredSvc := desired.(*corev1.Service)
 
+		if existingSvc.Annotations == nil {
+			existingSvc.Annotations = map[string]string{}
+		}
 		for k, v := range desiredSvc.Annotations {
-			desiredSvc.Annotations[k] = v
+			existingSvc.Annotations[k] = v
 		}
 		existingSvc.Labels = desiredSvc.Labels
 		equal, err := ServiceEqual(desiredSvc, existingSvc)
@@ -254,13 +264,15 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 			return err
 		}
 		if !equal {
-			clusterIp := existingSvc.Spec.ClusterIP
-			existingSvc.Spec = desiredSvc.Spec
-			existingSvc.Spec.ClusterIP = clusterIp
-			err := SetServiceLastAppliedConfigAnnotation(existingSvc)
+			// record desiredSvc Spec in annotations in favor of future equality checks
+			b, err := json.Marshal(desiredSvc.Spec)
 			if err != nil {
 				return err
 			}
+			existingSvc.Annotations[LastAppliedConfigAnnotation] = string(b)
+			clusterIp := existingSvc.Spec.ClusterIP
+			existingSvc.Spec = desiredSvc.Spec
+			existingSvc.Spec.ClusterIP = clusterIp
 		}
 		return nil
 	})
