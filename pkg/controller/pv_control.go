@@ -153,7 +153,6 @@ func (rpc *realPVControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pv *corev1.Pe
 		return updateErr
 	})
 
-	rpc.recordPVEvent("update", tc, pvName, err)
 	return updatePV, err
 }
 

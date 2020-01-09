@@ -98,7 +98,6 @@ func (rpc *realPVCControl) UpdatePVC(tc *v1alpha1.TidbCluster, pvc *corev1.Persi
 
 		return updateErr
 	})
-	rpc.recordPVCEvent("update", tc, pvcName, err)
 	return updatePVC, err
 }
 
@@ -156,7 +155,6 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 
 		return updateErr
 	})
-	rpc.recordPVCEvent("update", tc, pvcName, err)
 	return updatePVC, err
 }
 
