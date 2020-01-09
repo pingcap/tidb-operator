@@ -15,14 +15,13 @@ When you write a release note for your pull request, make sure that your languag
 
 4. Use a single backquote (``) to frame the following elements in your release notes:
 
-    - Custom Resource name
+    - Custom Resource name, e.g. `TidbCluster`, `Backup`
+    - Kubernetes Resource name, e.g. `Pod`, `StatefulSet`
+    - Configuration item name, e.g. `.spec.version`
     - Variable name
     - Variable value
     - Error message
-    - Single-line SQL statement
-    - Configuration item name
     - Field name
-    - The element that needs emphasis (for example, table name, column name, schema name, etc.)
   
 5. Pay attention to the capitalization of the following terms that are often misspelled:
 
