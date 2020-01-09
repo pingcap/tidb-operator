@@ -77,7 +77,7 @@ Examples:
 
 4) use registry mirrors
 
-    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=quay.azk8s.cn GCR_IO_MIRROR=gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
+    DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
 
 EOF
 

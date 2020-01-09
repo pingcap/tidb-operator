@@ -77,9 +77,6 @@ func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition
 		}
 		return nil
 	})
-	if isUpdate {
-		bcu.recordBackupEvent("update", backup, err)
-	}
 	return err
 }
 

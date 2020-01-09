@@ -24,7 +24,6 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -82,9 +81,6 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 
 		return updateErr
 	})
-	if !apiequality.Semantic.DeepEqual(newStatus, oldStatus) {
-		bss.recordBackupScheduleEvent("update", bs, err)
-	}
 	return err
 }
 
