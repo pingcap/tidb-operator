@@ -485,7 +485,6 @@ monitor:
     create: true
     image: grafana/grafana:6.0.1
     imagePullPolicy: IfNotPresent
-    portName: http-grafana
     logLevel: info
     resources:
       limits: {}
@@ -507,7 +506,7 @@ monitor:
       # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
     service:
       type: NodePort
-      portName: grafana
+      portName: http-grafana
   prometheus:
     image: prom/prometheus:v2.11.1
     imagePullPolicy: IfNotPresent
