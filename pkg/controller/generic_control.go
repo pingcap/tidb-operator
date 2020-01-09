@@ -374,7 +374,6 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 		// 5. check if the copy is actually mutated
 		if !apiequality.Semantic.DeepEqual(existing, mutated) {
 			err := c.client.Update(context.TODO(), mutated)
-			c.RecordControllerEvent("update", controller, mutated, err)
 			return mutated, err
 		}
 
