@@ -27,8 +27,8 @@ admissionWebhook:
     statefulSets: true
     pods: true
     # TODO: enable validating and defaulting after we ease the constrain
-    validating: true
-    defaulting: true
+    validating: false
+    defaulting: false
 '''
 
 def call(BUILD_BRANCH) {
