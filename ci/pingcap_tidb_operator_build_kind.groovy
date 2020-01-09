@@ -26,11 +26,11 @@ spec:
       requests:
         memory: "8000Mi"
         cpu: 8000m
-        ephemeral-storage: "40Gi"
+        ephemeral-storage: "50Gi"
       limits:
         memory: "8000Mi"
         cpu: 8000m
-        ephemeral-storage: "40Gi"
+        ephemeral-storage: "50Gi"
     # kind needs /lib/modules and cgroups from the host
     volumeMounts:
     - mountPath: /lib/modules
@@ -183,7 +183,9 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		}
 
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
-		def MIRRORS = "DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn"
+		// unstable in our IDC, disable temporarily
+		//def MIRRORS = "DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn"
+		def MIRRORS = "DOCKER_IO_MIRROR=http://172.16.4.143:5000"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]'", artifacts)
@@ -207,11 +209,11 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 				deleteDir()
 				unstash 'tidb-operator'
 				if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
-					stage('upload tidb-operator binary and charts'){
+					stage('upload tidb-operator, backup-manager binary and charts'){
 						//upload binary and charts
 						sh """
 						cp ~/bin/config.cfg ./
-						tar -zcvf tidb-operator.tar.gz images/tidb-operator charts
+						tar -zcvf tidb-operator.tar.gz images/tidb-operator images/backup-manager charts
 						filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file tidb-operator.tar.gz
 						"""
 						//update refs
