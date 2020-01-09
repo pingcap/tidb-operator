@@ -93,7 +93,6 @@ func (rpc *realPodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 
 		return updateErr
 	})
-	rpc.recordPodEvent("update", tc, podName, err)
 	return updatePod, err
 }
 
@@ -185,7 +184,6 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 		return updateErr
 	})
 
-	rpc.recordPodEvent("update", tc, podName, err)
 	return updatePod, err
 }
 
