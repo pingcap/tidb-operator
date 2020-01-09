@@ -34,6 +34,14 @@ spec:
             - --tls-cert-file=/var/serving-cert/cert.pem
             - --tls-private-key-file=/var/serving-cert/key.pem
             {{- end }}
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
           {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
           volumeMounts:
             - mountPath: /var/serving-cert
