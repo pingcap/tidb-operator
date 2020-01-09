@@ -49,10 +49,7 @@ def call(BUILD_BRANCH) {
                     }
                     stage('Push tidb-operator Docker Image to Harbor') {
                         docker.withRegistry("https://hub.pingcap.net", "harbor-pingcap") {
-                            sh"""
-                        docker build --network=host -t hub.pingcap.net/jenkins/tidb-operator:${GITHASH} images/tidb-operator
-                        docker push hub.pingcap.net/jenkins/tidb-operator:${GITHASH}
-                        """
+                            docker.build("hub.pingcap.net/jenkins/tidb-operator:${GITHASH}", "images/tidb-operator").push()
                         }
                     }
 
@@ -60,15 +57,15 @@ def call(BUILD_BRANCH) {
                         ansiColor('xterm') {
                             writeFile file: 'values.yaml', text: "${values}"
                             sh """
-                        # ensure helm
-                        wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-linux-amd64.tar.gz
-                        tar -zxvf helm-v2.9.1-linux-amd64.tar.gz
-                        chmod +x linux-amd64/helm
+                            # ensure helm
+                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.9.1-linux-amd64.tar.gz
+                            tar -zxvf helm-v2.9.1-linux-amd64.tar.gz
+                            chmod +x linux-amd64/helm
 
-                        # deploy to staging
-                        export KUBECONFIG=/home/jenkins/.kubeconfig/operator_staging
-                        ./linux-amd64/helm upgrade --install tidb-operator charts/tidb-operator --namespace=tidb-admin --set-string operatorImage=hub.pingcap.net/jenkins/tidb-operator:${GITHASH} -f values.yaml
-                        """
+                            # deploy to staging
+                            export KUBECONFIG=/home/jenkins/.kubeconfig/operator_staging
+                            ./linux-amd64/helm upgrade --install tidb-operator charts/tidb-operator --namespace=tidb-admin --set-string operatorImage=hub.pingcap.net/jenkins/tidb-operator:${GITHASH} -f values.yaml
+                            """
                         }
                     }
                 }
