@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2017 PingCAP, Inc.
+# Copyright 2020 PingCAP, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,19 +17,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-cd $SCRIPT_ROOT
+ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+cd $ROOT
 
-export GO111MODULE=on
-
-go mod vendor
-
-CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
-
-bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
-    github.com/pingcap/tidb-operator/pkg/client \
-    github.com/pingcap/tidb-operator/pkg/apis \
-    pingcap:v1alpha1 \
-    --go-header-file ./hack/boilerplate/boilerplate.generatego.txt
-
-./hack/crd-groups.sh generate
+make check-setup
+make check
