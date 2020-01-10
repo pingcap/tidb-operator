@@ -34,6 +34,14 @@ spec:
             - --tls-cert-file=/var/serving-cert/cert.pem
             - --tls-private-key-file=/var/serving-cert/key.pem
             {{- end }}
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
           readinessProbe:
             failureThreshold: 5
             httpGet:
