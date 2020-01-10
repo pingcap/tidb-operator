@@ -115,8 +115,10 @@ func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 				HonorLabels:    true,
 				KubernetesSDConfigs: []KubernetesSDConfig{
 					{
-						Role:       "pod",
-						Namespaces: nil,
+						Role: "pod",
+						Namespaces: &NamespacesConfig{
+							Names: model.ReleaseNamespaces,
+						},
 					},
 				},
 				TlsConfig: TlsConfig{
