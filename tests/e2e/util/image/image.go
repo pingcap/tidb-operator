@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	TiDBV3Version  = "v3.0.7"
+	TiDBV3Version  = "v3.0.8"
 	TiDBTLSVersion = TiDBV3Version // must >= 3.0.5
-	TiDBV2Version  = "v2.1.18"
+	TiDBV2Version  = "v2.1.19"
 )
 
 func ListImages() []string {
