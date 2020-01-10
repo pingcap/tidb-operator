@@ -138,11 +138,7 @@ func main() {
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
 	labelSelector := fmt.Sprintf("%s=%s", label.ManagedByLabelKey, label.TiDBOperator)
-	options := []informers.SharedInformerOption{
-		informers.WithTweakListOptions(func(listOpts *metav1.ListOptions) {
-			listOpts.LabelSelector = labelSelector
-		}),
-	}
+	var options []informers.SharedInformerOption
 	kubeoptions := []kubeinformers.SharedInformerOption{
 		kubeinformers.WithTweakListOptions(func(listOpts *metav1.ListOptions) {
 			listOpts.LabelSelector = labelSelector
