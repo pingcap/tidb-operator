@@ -311,7 +311,12 @@ EOF
         echo "error: no image for $KUBE_VERSION, exit"
         exit 1
     fi
-    $KIND_BIN create cluster --config $KUBECONFIG --name $CLUSTER --image $image --config $tmpfile -v 4
+    # Retry on error. Sometimes, kind will fail with the following error:
+    #
+    # OCI runtime create failed: container_linux.go:346: starting container process caused "process_linux.go:319: getting the final child's pid from pipe caused \"EOF\"": unknown
+    #
+    # TODO this error should be related to docker or linux kernel, find the root cause.
+    hack::wait_for_success 120 5 "$KIND_BIN create cluster --config $KUBECONFIG --name $CLUSTER --image $image --config $tmpfile -v 4"
     # make it able to schedule pods on control-plane, then less resources we required
     # This is disabled because when hostNetwork is used, pd requires 2379/2780
     # which may conflict with etcd on control-plane.
