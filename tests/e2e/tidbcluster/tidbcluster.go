@@ -43,6 +43,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,6 +70,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var cli versioned.Interface
 	var asCli asclientset.Interface
 	var aggrCli aggregatorclient.Interface
+	var apiExtCli apiextensionsclientset.Interface
 	var oa tests.OperatorActions
 	var cfg *tests.Config
 	var config *restclient.Config
@@ -91,6 +93,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
+		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
 		ctx, cancel := context.WithCancel(context.Background())
@@ -99,7 +103,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {
