@@ -695,7 +695,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tidb.replicas"] = "2"
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
-		oa.CheckTkctlOrDie(&cluster)
+		tests.CheckListOrDie(&cluster)
+		tests.CheckUseOrDie(&cluster)
 	})
 })
 
