@@ -16,6 +16,7 @@ package tests
 import (
 	"database/sql"
 	"fmt"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -36,6 +37,70 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	glog "k8s.io/klog"
 )
+
+func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
+	const failoverTimeout = 5 * time.Minute
+	ns := info.Namespace
+	tcName := info.ClusterName
+	podName := fmt.Sprintf("%s-pd-0", tcName)
+
+	var err error
+	var result []byte
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		deletePDDataCmd := fmt.Sprintf("kubectl exec -n %s %s -- rm -rf /var/lib/pd/member", ns, podName)
+		result, err = exec.Command("/bin/sh", "-c", deletePDDataCmd).CombinedOutput()
+		if err != nil {
+			glog.Error(err)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete pod %s/%s data, %s", ns, podName, string(result))
+	}
+	glog.Infof("delete pod %s/%s data successfully", ns, podName)
+
+	err = wait.Poll(10*time.Second, failoverTimeout+pdFailoverPeriod, func() (bool, error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			glog.Error(err)
+			return false, nil
+		}
+
+		if len(tc.Status.PD.FailureMembers) == 1 {
+			glog.Infof("%#v", tc.Status.PD.FailureMembers)
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to check pd %s/%s failover", ns, podName)
+	}
+	glog.Infof("check pd %s/%s failover successfully", ns, podName)
+
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	tc.Status.PD.FailureMembers = nil
+	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+	if err != nil {
+		return err
+	}
+	err = oa.CheckTidbClusterStatus(info)
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("recover %s/%s successfully", ns, podName)
+	return nil
+}
+
+func (oa *operatorActions) DeletePDDataThenCheckFailoverOrDie(info *TidbClusterConfig, pdFailoverPeriod time.Duration) {
+	if err := oa.DeletePDDataThenCheckFailover(info, pdFailoverPeriod); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
 	const failoverTimeout = 5 * time.Minute

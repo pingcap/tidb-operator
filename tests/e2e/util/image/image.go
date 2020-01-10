@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	TiDBV3Version  = "v3.0.7"
+	TiDBV3Version  = "v3.0.8"
 	TiDBTLSVersion = TiDBV3Version // must >= 3.0.5
-	TiDBV2Version  = "v2.1.18"
+	TiDBV2Version  = "v2.1.19"
 )
 
 func ListImages() []string {
@@ -131,7 +131,8 @@ func PreloadImages() error {
 	}
 	for _, image := range images {
 		if _, err := nsenter("docker", "pull", image); err != nil {
-			return err
+			klog.Errorf("preloadImages, error pulling image %s", image)
+			continue
 		}
 		if _, err := nsenter(kindBin, "load", "docker-image", "--name", cluster, "--nodes", strings.Join(nodes, ","), image); err != nil {
 			return err

@@ -86,7 +86,6 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 
 		return updateErr
 	})
-	cc.recordConfigMapEvent("update", owner, cm, err)
 	return updatedCm, err
 }
 

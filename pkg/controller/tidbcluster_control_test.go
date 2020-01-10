@@ -45,9 +45,6 @@ func TestTidbClusterControlUpdateTidbCluster(t *testing.T) {
 	updateTC, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
 	g.Expect(updateTC.Spec.PD.Replicas).To(Equal(int32(5)))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
@@ -69,9 +66,6 @@ func TestTidbClusterControlUpdateTidbClusterConflictSuccess(t *testing.T) {
 	})
 	_, err := control.UpdateTidbCluster(tc, &v1alpha1.TidbClusterStatus{}, &v1alpha1.TidbClusterStatus{})
 	g.Expect(err).To(Succeed())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestDeepEqualExceptHeartbeatTime(t *testing.T) {
