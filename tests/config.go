@@ -73,6 +73,8 @@ type Config struct {
 	ManifestDir string `yaml:"manifest_dir" json:"manifest_dir"`
 
 	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
+
+	PreloadImages bool `yaml:"preload_images" json:"preload_images"`
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
