@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	v1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -63,6 +64,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var cli versioned.Interface
 	var asCli asclientset.Interface
 	var aggrCli aggregatorclient.Interface
+	var apiExtCli apiextensionsclientset.Interface
 	var hc clientset.Interface
 	var cfg *tests.Config
 	var config *restclient.Config
@@ -80,6 +82,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
@@ -117,7 +121,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ImagePullPolicy: v1.PullIfNotPresent,
 				TestMode:        true,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie()
@@ -304,7 +308,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				PodWebhookEnabled: true,
 				StsWebhookEnabled: false,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie()
@@ -360,7 +364,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				SchedulerReplicas:         tests.IntPtr(0),
 				ControllerManagerReplicas: tests.IntPtr(0),
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie()

@@ -60,6 +60,7 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -68,7 +69,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	glog "k8s.io/klog"
-	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
+	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
@@ -89,7 +90,8 @@ const (
 func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
 	asCli asclientset.Interface,
-	aggrCli aggregatorclient.Interface,
+	aggrCli aggregatorclientset.Interface,
+	apiExtCli apiextensionsclientset.Interface,
 	pollInterval time.Duration,
 	operatorConfig *OperatorConfig,
 	cfg *Config,
@@ -110,6 +112,7 @@ func NewOperatorActions(cli versioned.Interface,
 		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
 		asCli:        asCli,
 		aggrCli:      aggrCli,
+		apiExtCli:    apiExtCli,
 		tcStsGetter:  tcStsGetter,
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -243,7 +246,8 @@ type operatorActions struct {
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface
-	aggrCli            aggregatorclient.Interface
+	aggrCli            aggregatorclientset.Interface
+	apiExtCli          apiextensionsclientset.Interface
 	tcStsGetter        typedappsv1.StatefulSetsGetter
 	pdControl          pdapi.PDControlInterface
 	tidbControl        controller.TiDBControlInterface
@@ -476,16 +480,8 @@ func (oa *operatorActions) InstallCRDOrDie() {
 	}
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
-	waitArgs := []string{"wait", "--for=condition=Established"}
-	for _, crd := range strings.Split(out, " ") {
-		crd = strings.TrimSpace(crd)
-		if crd == "" {
-			continue
-		}
-		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
-	}
-	oa.runKubectlOrDie(waitArgs...)
+	glog.Infof("Wait for all CRDs are established")
+	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
 	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
 	glog.Infof("force sync kubectl cache")
 	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
@@ -528,7 +524,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	}
 
 	glog.Infof("Wait for all apiesrvices are available")
-	return e2eutil.WaitForAllAPIServicesAvaiable(oa.aggrCli)
+	return e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
 }
 
 func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
@@ -583,7 +579,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	}
 
 	glog.Infof("Wait for all apiesrvices are available")
-	err = e2eutil.WaitForAllAPIServicesAvaiable(oa.aggrCli)
+	err = e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -3453,7 +3449,7 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 		panic(err)
 	}
 
-	versionCli, kubeCli, _, _ := client.NewCliOrDie()
+	versionCli, kubeCli, _, _, _ := client.NewCliOrDie()
 	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{
