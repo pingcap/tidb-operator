@@ -24,7 +24,7 @@ timezone: UTC
 
 # reclaim policy of PV, default: Retain.
 # you must set it to Retain to ensure data safety in production environment.
-# https://pingcap.com/docs/v3.0/tidb-in-kubernetes/reference/configuration/local-pv/#data-security
+# https://pingcap.com/docs/stable/tidb-in-kubernetes/reference/configuration/storage-class/#data-safety
 pvReclaimPolicy: Retain
 
 # Whether enable PV reclaim.
@@ -65,7 +65,7 @@ pd:
   # pd configurations (change to the tags of your pd version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
-  # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/pd-server/configuration-file/
+  # Please refer to https://pingcap.com/docs/stable/reference/configuration/pd-server/configuration-file
   # (choose the version matching your pd) for detailed explanation of each parameter.
   config: |
     [log]
@@ -192,7 +192,7 @@ tikv:
   # tikv configurations (change to the tags of your tikv version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
-  # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/tikv-server/configuration-file/
+  # Please refer to https://pingcap.com/docs/stable/reference/configuration/tikv-server/configuration-file
   # (choose the version matching your tikv) for detailed explanation of each parameter.
   config: |
     log-level = "info"
@@ -290,7 +290,7 @@ tidb:
   # tidb configurations(change to the tags of your tidb version),
   # just follow the format in the file and configure in the 'config' section
   # as below if you want to customize any configuration.
-  # Please refer to https://pingcap.com/docs-cn/v3.0/reference/configuration/tidb-server/configuration-file/
+  # Please refer to https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration-file
   # (choose the version matching your tidb) for detailed explanation of each parameter.
   config: |
     [log]
