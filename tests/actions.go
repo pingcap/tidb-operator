@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -2136,112 +2135,18 @@ func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clus
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	var prometheusAddr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s-prometheus", tcName), 9090)
-		if err != nil {
-			return err
-		}
-		defer cancel()
-		prometheusAddr = fmt.Sprintf("%s:%d", localHost, localPort)
-	} else {
-		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", tcName, ns)
-	}
-	prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
-	resp, err := http.Get(prometheusSvc)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	response := &struct {
-		Status string `json:"status"`
-	}{}
-	err = json.Unmarshal(body, response)
-	if err != nil {
-		return err
-	}
-	if response.Status != "success" {
-		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
-	}
-	return nil
+	return checkPrometheusCommon(tcName, ns, oa.fw)
 }
 
 func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	svcName := fmt.Sprintf("%s-grafana", tcName)
-	end := time.Now()
-	start := end.Add(-time.Minute)
-	values := url.Values{}
-	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
-	values.Set("start", fmt.Sprintf("%d", start.Unix()))
-	values.Set("end", fmt.Sprintf("%d", end.Unix()))
-	values.Set("step", "30")
-
-	var addr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s-prometheus", tcName), 3000)
-		if err != nil {
-			return err
-		}
-		defer cancel()
-		addr = fmt.Sprintf("%s:%d", localHost, localPort)
-	} else {
-		addr = fmt.Sprintf("%s.%s.svc.cluster.local:3000", svcName, ns)
-	}
-
-	datasourceID, err := getDatasourceID(addr)
+	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw)
 	if err != nil {
 		return err
 	}
-
-	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
-	req, err := http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(grafanaUsername, grafanaPassword)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	buf, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	data := struct {
-		Status string `json:"status"`
-		Data   struct {
-			ResultType string `json:"resultType"`
-			Result     []struct {
-				Metric struct {
-					Job string `json:"job"`
-				} `json:"metric"`
-				Values []interface{} `json:"values"`
-			} `json:"result"`
-		}
-	}{}
-	if err := json.Unmarshal(buf, &data); err != nil {
-		return err
-	}
-	if data.Status != "success" || len(data.Data.Result) < 1 {
-		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
-	}
-
-	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
-	if clusterInfo.GrafanaClient == nil {
-		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
-		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
-		if err != nil {
-			return err
-		}
-		clusterInfo.GrafanaClient = client
+	if clusterInfo.GrafanaClient == nil && grafanaClient != nil {
+		clusterInfo.GrafanaClient = grafanaClient
 	}
 	return nil
 }
