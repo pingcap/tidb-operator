@@ -115,3 +115,75 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 		},
 	}
 }
+
+func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
+	imagePullPolicy := corev1.PullIfNotPresent
+	monitor := &v1alpha1.TidbMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.TidbMonitorSpec{
+			Clusters: []v1alpha1.TidbClusterRef{
+				{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+			Prometheus: v1alpha1.PrometheusSpec{
+				ReserveDays: 7,
+				LogLevel:    "info",
+				Service: v1alpha1.ServiceSpec{
+					Type:        "ClusterIP",
+					Annotations: map[string]string{},
+				},
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage:       "prom/prometheus",
+					Version:         "v2.11.1",
+					ImagePullPolicy: &imagePullPolicy,
+					Resources:       corev1.ResourceRequirements{},
+				},
+			},
+			Reloader: v1alpha1.ReloaderSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage:       "pingcap/tidb-monitor-reloader",
+					Version:         "v1.0.1",
+					ImagePullPolicy: &imagePullPolicy,
+					Resources:       corev1.ResourceRequirements{},
+				},
+				Service: v1alpha1.ServiceSpec{
+					Type:        "ClusterIP",
+					Annotations: map[string]string{},
+				},
+			},
+			Initializer: v1alpha1.InitializerSpec{
+				MonitorContainer: v1alpha1.MonitorContainer{
+					BaseImage:       "pingcap/tidb-monitor-initializer",
+					Version:         "v3.0.5",
+					ImagePullPolicy: &imagePullPolicy,
+					Resources:       corev1.ResourceRequirements{},
+				},
+				Envs: map[string]string{},
+			},
+			Persistent: persist,
+		},
+	}
+	if grafanaEnabled {
+		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
+			MonitorContainer: v1alpha1.MonitorContainer{
+				BaseImage:       "grafana/grafana",
+				Version:         "6.0.1",
+				ImagePullPolicy: &imagePullPolicy,
+				Resources:       corev1.ResourceRequirements{},
+			},
+			Username: "admin",
+			Password: "admin",
+			Service: v1alpha1.ServiceSpec{
+				Type:        corev1.ServiceTypeClusterIP,
+				Annotations: map[string]string{},
+			},
+		}
+	}
+
+	return monitor
+}
