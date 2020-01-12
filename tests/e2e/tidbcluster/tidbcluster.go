@@ -23,6 +23,7 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -51,6 +52,7 @@ import (
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -78,6 +80,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var genericCli client.Client
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
+	/**
+	 * StatefulSet or AdvancedStatefulSet interface.
+	 */
+	var stsGetter func(namespace string) typedappsv1.StatefulSetInterface
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -103,6 +109,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsGetter = helper.NewHijackClient(c, asCli).AppsV1().StatefulSets
+		} else {
+			stsGetter = c.AppsV1().StatefulSets
+		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
@@ -448,7 +459,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}),
 		}
 
-		oldPumpSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+		oldPumpSet, err := stsGetter(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get pump statefulset")
 
 		oldRev := oldPumpSet.Status.CurrentRevision
@@ -458,7 +469,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected update tc")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			pumpSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+			pumpSet, err := stsGetter(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
 			if errors.IsNotFound(err) {
 				return false, err
 			}
@@ -554,7 +565,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		for setName := range setNameToRevision {
-			oldSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+			oldSet, err := stsGetter(tc.Namespace).Get(setName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Expected get statefulset %s", setName)
 
 			oldRev := oldSet.Status.CurrentRevision
@@ -583,7 +594,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectEqual(tc.Status.TiDB.Phase, v1alpha1.NormalPhase, "TiDB should not be updated")
 
 			for setName, oldRev := range setNameToRevision {
-				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				newSet, err := stsGetter(tc.Namespace).Get(setName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "Expected get tidb statefulset")
 				framework.ExpectEqual(newSet.Status.CurrentRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
 				framework.ExpectEqual(newSet.Status.UpdateRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
@@ -597,7 +608,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 			for setName := range setNameToRevision {
-				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				newSet, err := stsGetter(tc.Namespace).Get(setName, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
