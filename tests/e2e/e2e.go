@@ -146,8 +146,11 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.Logf("====== e2e configuration ======")
 	framework.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
 	// preload images
-	if err := utilimage.PreloadImages(); err != nil {
-		framework.Failf("failed to pre-load images: %v", err)
+	if e2econfig.TestConfig.PreloadImages {
+		ginkgo.By("Preloading images")
+		if err := utilimage.PreloadImages(); err != nil {
+			framework.Failf("failed to pre-load images: %v", err)
+		}
 	}
 	// Get clients
 	config, err := framework.LoadConfig()

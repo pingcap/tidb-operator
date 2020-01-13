@@ -20,8 +20,8 @@ import (
 	"strings"
 	"sync"
 
-	utilflags "github.com/pingcap/tidb-operator/pkg/util/flags"
 	"k8s.io/apimachinery/pkg/util/sets"
+	cliflag "k8s.io/component-base/cli/flag"
 )
 
 var (
@@ -60,7 +60,7 @@ type featureGate struct {
 }
 
 func (f *featureGate) AddFlag(flagset *flag.FlagSet) {
-	flag.Var(utilflags.NewMapStringBool(&f.enabledFeatures), "features", fmt.Sprintf("A set of key={true,false} pairs to enable/disable features, available features: %s", strings.Join(allFeatures.List(), ",")))
+	flag.Var(cliflag.NewMapStringBool(&f.enabledFeatures), "features", fmt.Sprintf("A set of key={true,false} pairs to enable/disable features, available features: %s", strings.Join(allFeatures.List(), ",")))
 }
 
 func (f *featureGate) Enabled(key string) bool {
