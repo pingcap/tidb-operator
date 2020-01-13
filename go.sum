@@ -646,6 +646,12 @@ github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pingcap/advanced-statefulset v0.2.4 h1:0PRkKLEiwlWgdFWNtbBOa+Dio7MZLqZ3escd0R3s8No=
 github.com/pingcap/advanced-statefulset v0.2.4/go.mod h1:rg2p1v6AGsKhvEZi6Sm0YNYJCmdXdZZhQ6Sviei7Ivs=
+github.com/pingcap/advanced-statefulset v0.2.5 h1:LxUVnZ0RP1qQWA1DsUCfaXQbWX8L+mF3Duxkum+XhsI=
+github.com/pingcap/advanced-statefulset v0.2.5/go.mod h1:rg2p1v6AGsKhvEZi6Sm0YNYJCmdXdZZhQ6Sviei7Ivs=
+github.com/pingcap/advanced-statefulset v0.3.0 h1:RA//GlU/M5P3+s+AOSvCxMFou05XCT07HtrE6XyEU4c=
+github.com/pingcap/advanced-statefulset v0.3.0/go.mod h1:rg2p1v6AGsKhvEZi6Sm0YNYJCmdXdZZhQ6Sviei7Ivs=
+github.com/pingcap/advanced-statefulset v0.3.1 h1:LxfAdpY2MV/b0MUlASYWjcPfUR161Xly1rA7oaIi684=
+github.com/pingcap/advanced-statefulset v0.3.1/go.mod h1:rg2p1v6AGsKhvEZi6Sm0YNYJCmdXdZZhQ6Sviei7Ivs=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 h1:USx2/E1bX46VG32FIw034Au6seQ2fY9NEILmNh/UlQg=
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
 github.com/pingcap/errors v0.11.0 h1:DCJQB8jrHbQ1VVlMFIrbj2ApScNNotVmkSNplu2yUt4=
