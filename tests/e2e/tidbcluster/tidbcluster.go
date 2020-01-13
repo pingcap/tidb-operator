@@ -459,6 +459,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}),
 		}
 
+		// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsList, err := c.AppsV1().StatefulSets(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err)
+			for _, sts := range stsList.Items {
+				_, err = helper.Upgrade(c, asCli, &sts)
+				framework.ExpectNoError(err)
+			}
+		}
+
 		oldPumpSet, err := stsGetter(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get pump statefulset")
 
