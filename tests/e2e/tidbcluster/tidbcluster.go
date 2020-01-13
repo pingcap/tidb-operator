@@ -586,13 +586,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
-		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
-		tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
-		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
-		tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
-		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
-		tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
-		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
+			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
+			tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+			tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
+			tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+			tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
+			return nil
+		})
 		framework.ExpectNoError(err, "Expected update tidbcluster")
 
 		// check for 2 minutes to ensure the tidb statefulset do not get rolling-update

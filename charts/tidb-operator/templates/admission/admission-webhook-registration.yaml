@@ -126,7 +126,7 @@ webhooks:
         resources: ["statefulsets"]
       - operations: [ "UPDATE" ]
         apiGroups: [ "apps.pingcap.com"]
-        apiVersions: ["v1alpha1"]
+        apiVersions: ["v1alpha1", "v1"]
         resources: ["statefulsets"]
 {{- end }}
 ---
