@@ -31,20 +31,6 @@ const (
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
 )
 
-// SetDeploymentLastAppliedPodTemplate set last pod template to Deployment's annotation
-func SetDeploymentLastAppliedPodTemplate(dep *appsv1.Deployment) error {
-	b, err := json.Marshal(dep.Spec.Template.Spec)
-	if err != nil {
-		return err
-	}
-	applied := string(b)
-	if dep.Annotations == nil {
-		dep.Annotations = map[string]string{}
-	}
-	dep.Annotations[LastAppliedPodTemplate] = applied
-	return nil
-}
-
 // GetDeploymentLastAppliedPodTemplate set last applied pod template from Deployment's annotation
 func GetDeploymentLastAppliedPodTemplate(dep *appsv1.Deployment) (*corev1.PodSpec, error) {
 	applied, ok := dep.Annotations[LastAppliedPodTemplate]
