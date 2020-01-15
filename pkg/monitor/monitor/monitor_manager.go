@@ -59,15 +59,12 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		return nil
 	}
 
-	setDefaultNamespaceForClusterRef(monitor)
-
 	// Sync Service
 	if err := mm.syncTidbMonitorService(monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
-	mm.recorder.Event(monitor, corev1.EventTypeNormal, SuccessSync, fmt.Sprintf("Sync TidbMonitor[%s/%s] Service Success", monitor.Namespace, monitor.Name))
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 	// Sync PVC
 	if monitor.Spec.Persistent {
@@ -77,7 +74,6 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 			return err
 		}
 	}
-	mm.recorder.Event(monitor, corev1.EventTypeNormal, SuccessSync, fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC Success", monitor.Namespace, monitor.Name))
 	klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 
 	// Sync Deployment
@@ -86,7 +82,7 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
-	mm.recorder.Event(monitor, corev1.EventTypeNormal, SuccessSync, fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment Success", monitor.Name, monitor.Name))
+	mm.recorder.Event(monitor, corev1.EventTypeNormal, SuccessSync, fmt.Sprintf("Sync TidbMonitor[%s/%s] Success", monitor.Name, monitor.Name))
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
 }
@@ -208,14 +204,4 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	}
 
 	return sa, nil
-}
-
-// If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func setDefaultNamespaceForClusterRef(tm *v1alpha1.TidbMonitor) {
-	for id, tc := range tm.Spec.Clusters {
-		if len(tc.Namespace) < 1 {
-			tc.Namespace = tm.Namespace
-		}
-		tm.Spec.Clusters[id] = tc
-	}
 }
