@@ -139,7 +139,7 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Inter
 	return kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, meta.GetOptions{})
 }
 
-// checkFormerPodRestartStatus whether there are any form pod is going to be restarted
+// checkFormerPodRestartStatus checks whether there are any former pod is going to be restarted
 // return true if existed
 func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alpha1.MemberType, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) (bool, error) {
 	for i := replicas - 1; i > ordinal; i-- {
