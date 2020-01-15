@@ -35,12 +35,14 @@ import (
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	v1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
+	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -144,8 +146,11 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	framework.Logf("====== e2e configuration ======")
 	framework.Logf("%s", e2econfig.TestConfig.MustPrettyPrintJSON())
 	// preload images
-	if err := utilimage.PreloadImages(); err != nil {
-		framework.Failf("failed to pre-load images: %v", err)
+	if e2econfig.TestConfig.PreloadImages {
+		ginkgo.By("Preloading images")
+		if err := utilimage.PreloadImages(); err != nil {
+			framework.Failf("failed to pre-load images: %v", err)
+		}
 	}
 	// Get clients
 	config, err := framework.LoadConfig()
@@ -153,6 +158,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	cli, err := versioned.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
 	kubeCli, err := kubernetes.NewForConfig(config)
+	framework.ExpectNoError(err, "failed to create clientset")
+	aggrCli, err := aggregatorclientset.NewForConfig(config)
+	framework.ExpectNoError(err, "failed to create clientset")
+	apiExtCli, err := apiextensionsclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
 	asCli, err := asclientset.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
@@ -183,7 +192,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	})
 	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
 	ginkgo.By("Labeling nodes")
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
 		ginkgo.By("Installing CRDs")
