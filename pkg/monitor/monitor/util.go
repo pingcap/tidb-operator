@@ -51,6 +51,8 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
 
+	setDefaultNamespaceForClusterRef(model, monitor)
+
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
 		return nil, err
@@ -730,5 +732,12 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			},
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
+	}
+}
+
+// If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
+func setDefaultNamespaceForClusterRef(model *MonitorConfigModel, tm *v1alpha1.TidbMonitor) {
+	if len(model.ReleaseNamespaces) < 1 {
+		model.ReleaseNamespaces = append(model.ReleaseNamespaces, tm.Namespace)
 	}
 }
