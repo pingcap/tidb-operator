@@ -63,7 +63,7 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 
 	// Sync Service
 	if err := mm.syncTidbMonitorService(monitor); err != nil {
-		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed,err:%v", monitor.Namespace, monitor.Name, err)
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
