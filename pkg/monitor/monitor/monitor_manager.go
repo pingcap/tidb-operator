@@ -54,8 +54,6 @@ func NewMonitorManager(
 func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
-		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] failed, it's going to be deleted", monitor.Namespace, monitor.Name)
-		mm.recorder.Event(monitor, corev1.EventTypeNormal, FailedSync, message)
 		return nil
 	}
 
@@ -82,7 +80,6 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
-	mm.recorder.Event(monitor, corev1.EventTypeNormal, SuccessSync, fmt.Sprintf("Sync TidbMonitor[%s/%s] Success", monitor.Name, monitor.Name))
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
 }
