@@ -42,7 +42,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		return toAdmissionResponse(err)
 	}
 
-	versionCli, kubeCli, _ := client.NewCliOrDie()
+	versionCli, kubeCli, _, _, _ := client.NewCliOrDie()
 
 	name := ar.Request.Name
 	namespace := ar.Request.Namespace
