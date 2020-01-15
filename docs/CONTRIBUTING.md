@@ -131,8 +131,8 @@ Now you can run the following command to run all e2e test.
 $ ./hack/e2e.sh
 ```
 
-**NOTE**: We don't support bash version < 4 for now. For those who using a not supported version of bash, especially macOS (which default bash version is 3.2)
-users, please use containerized environment or upgrade your bash manually.
+**NOTE**: We don't support bash version < 4 for now. For those who are using a not supported version of bash, especially macOS (which default bash version is 3.2)
+users, please run `hack/run-in-container.sh` to start a containerized environment or install bash 4+ manually.
 
 It's possible to limit specs to run, for example:
 
