@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -29,17 +30,22 @@ import (
 var (
 	errFailToRead  = restful.NewError(http.StatusBadRequest, "unable to read request body")
 	errFailToWrite = restful.NewError(http.StatusInternalServerError, "unable to write response")
+	errTimeout     = restful.NewError(http.StatusRequestTimeout, "timeout to scheduler")
 )
 
 type server struct {
-	scheduler scheduler.Scheduler
-	lock      sync.Mutex
+	scheduler           scheduler.Scheduler
+	lockTimeoutDuration time.Duration
+	lock                sync.Mutex
 }
 
 // StartServer starts a kubernetes scheduler extender http apiserver
-func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int) {
+func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int, lockTimeoutDuration time.Duration) {
 	s := scheduler.NewScheduler(kubeCli, cli)
-	svr := &server{scheduler: s}
+	svr := &server{
+		scheduler:           s,
+		lockTimeoutDuration: lockTimeoutDuration,
+	}
 
 	ws := new(restful.WebService)
 	ws.
@@ -63,8 +69,8 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 }
 
 func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
+	ch := make(chan *struct{})
 	svr.lock.Lock()
-	defer svr.lock.Unlock()
 
 	args := &schedulerapiv1.ExtenderArgs{}
 	if err := req.ReadEntity(args); err != nil {
@@ -72,15 +78,30 @@ func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
-	filterResult, err := svr.scheduler.Filter(args)
-	if err != nil {
-		errorResponse(resp, restful.NewError(http.StatusInternalServerError,
-			fmt.Sprintf("unable to filter nodes: %v", err)))
-		return
-	}
+	var filterResult *schedulerapiv1.ExtenderFilterResult
+	var err error
 
-	if err := resp.WriteEntity(filterResult); err != nil {
-		errorResponse(resp, errFailToWrite)
+	go func() {
+		filterResult, err = svr.scheduler.Filter(args)
+		ch <- &struct{}{}
+	}()
+
+	select {
+	case <-ch:
+		if err != nil {
+			errorResponse(resp, restful.NewError(http.StatusInternalServerError,
+				fmt.Sprintf("unable to filter nodes: %v", err)))
+			svr.lock.Unlock()
+			return
+		}
+
+		if err := resp.WriteEntity(filterResult); err != nil {
+			errorResponse(resp, errFailToWrite)
+		}
+		svr.lock.Unlock()
+	case <-time.After(svr.lockTimeoutDuration):
+		errorResponse(resp, errTimeout)
+		svr.lock.Unlock()
 	}
 }
 

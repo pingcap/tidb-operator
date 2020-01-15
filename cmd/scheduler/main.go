@@ -32,14 +32,16 @@ import (
 )
 
 var (
-	printVersion bool
-	port         int
+	printVersion        bool
+	port                int
+	lockTimeoutDuration time.Duration
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10262, "The port that the tidb scheduler's http service runs on (default 10262)")
+	flag.DurationVar(&lockTimeoutDuration, "lock-timeout-duration", 1*time.Minute, "timeout duration for filter hold sync mutex")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 	flag.Parse()
 }
@@ -68,7 +70,7 @@ func main() {
 	}
 
 	go wait.Forever(func() {
-		server.StartServer(kubeCli, cli, port)
+		server.StartServer(kubeCli, cli, port, lockTimeoutDuration)
 	}, 5*time.Second)
 	glog.Fatal(http.ListenAndServe(":6060", nil))
 }
