@@ -132,6 +132,15 @@ echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 
+# check bash version
+BASH_MAJOR_VERSION=$(echo "$BASH_VERSION" | grep -o "^\d\{1,3\}")
+# we need bash version >= 4
+if [ $BASH_MAJOR_VERSION -lt 4 ]
+then
+  echo "error: e2e.sh could not work with bash version earlier than 4 for now, please upgrade your bash"
+  exit 1
+fi
+
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.1
 declare -A kind_node_images
 kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:e6f3dade95b7cb74081c5b9f3291aaaa6026a90a977e0b990778b6adc9ea6248"
