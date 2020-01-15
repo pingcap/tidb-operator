@@ -15,6 +15,7 @@ package pod
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -27,11 +28,25 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
-	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
 	if err != nil {
 		return util.ARFail(err)
 	}
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+
+	// If the pd pod is deleted by restarter, it is necessary to check former pd restart status
+	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
+		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.PDMemberType, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
+		if err != nil {
+			return util.ARFail(err)
+		}
+		if existed {
+			return &admission.AdmissionResponse{
+				Allowed: false,
+			}
+		}
+	}
+
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
 	if err != nil {
 		return util.ARFail(err)
 	}
