@@ -33,6 +33,8 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
+// getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
+// If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
 	var releaseNamespaces []string
@@ -51,7 +53,9 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		model.AlertmanagerURL = *monitor.Spec.AlertmanagerURL
 	}
 
-	setDefaultNamespaceForClusterRef(model, monitor)
+	if len(model.ReleaseNamespaces) < 1 {
+		model.ReleaseNamespaces = append(model.ReleaseNamespaces, monitor.Namespace)
+	}
 
 	content, err := RenderPrometheusConfig(model)
 	if err != nil {
@@ -732,12 +736,5 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			},
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
-	}
-}
-
-// If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func setDefaultNamespaceForClusterRef(model *MonitorConfigModel, tm *v1alpha1.TidbMonitor) {
-	if len(model.ReleaseNamespaces) < 1 {
-		model.ReleaseNamespaces = append(model.ReleaseNamespaces, tm.Namespace)
 	}
 }
