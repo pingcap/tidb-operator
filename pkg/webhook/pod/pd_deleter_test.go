@@ -232,7 +232,6 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           true,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
-				g.Expect(response.Result.Message, "update pvc error")
 			},
 		},
 	}
