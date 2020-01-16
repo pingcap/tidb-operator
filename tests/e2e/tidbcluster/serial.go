@@ -351,7 +351,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 			oa.CleanTidbClusterOrDie(&cluster)
 		})
-		
 	})
 
 	ginkgo.Context("[Feature: Defaulting and Validating]", func() {
