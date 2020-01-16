@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 
-	asappsv1alpha1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1alpha1"
+	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
@@ -75,7 +75,7 @@ func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.Admi
 	case "StatefulSet":
 		expectedGroup := "apps"
 		if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-			expectedGroup = asappsv1alpha1.GroupName
+			expectedGroup = asappsv1.GroupName
 		}
 		if expectedGroup != ar.Kind.Group {
 			return a.unknownAdmissionRequest(ar)
@@ -142,6 +142,6 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 }
 
 func (a *AdmissionHook) unknownAdmissionRequest(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
-	klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Name, ar.Namespace)
+	klog.Infof("success to %v %s[%s/%s]", ar.Operation, ar.Kind.Kind, ar.Namespace, ar.Name)
 	return util.ARSuccess()
 }
