@@ -125,13 +125,13 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, payload.ownerStatefulSet.Name, ordinal)
 			pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 			if err != nil {
+				if errors.IsNotFound(err) {
+					return util.ARSuccess()
+				}
 				return util.ARFail(err)
 			}
 			err = addDeferDeletingToPVC(pvc, pc.kubeCli, payload.tc)
 			if err != nil {
-				if errors.IsNotFound(err) {
-					return util.ARSuccess()
-				}
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
 			}
