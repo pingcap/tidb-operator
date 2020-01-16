@@ -69,19 +69,21 @@ func TestPDDeleterDelete(t *testing.T) {
 		ownerStatefulSet := newOwnerStatefulSetForPDPodAdmissionControl()
 		tc := newTidbClusterForPodAdmissionControl()
 		kubeCli := kubefake.NewSimpleClientset()
+
 		if test.UpdatePVCErr {
+
 			if test.PVCNotFound {
-				kubeCli.AddReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+				kubeCli.PrependReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.NewNotFound(action.GetResource().GroupResource(), "name")
 				})
 			} else {
-				kubeCli.AddReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+				kubeCli.PrependReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, fmt.Errorf("some errors")
 				})
 			}
 		}
 
-		podAdmissionControl := newPodAdmissionControl()
+		podAdmissionControl := newPodAdmissionControl(kubeCli)
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
@@ -177,7 +179,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           false,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, false)
+				g.Expect(response.Allowed).Should(Equal(false))
 			},
 		},
 		{
@@ -190,7 +192,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           false,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, true)
+				g.Expect(response.Allowed).Should(Equal(true))
 			},
 		},
 		{
@@ -203,7 +205,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           false,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, false)
+				g.Expect(response.Allowed).Should(Equal(false))
 			},
 		},
 		{
@@ -216,7 +218,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           false,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, false)
+				g.Expect(response.Allowed).Should(Equal(false))
 			},
 		},
 		{
@@ -229,7 +231,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           false,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, false)
+				g.Expect(response.Allowed).Should(Equal(false))
 			},
 		},
 		{
@@ -242,7 +244,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           false,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, true)
+				g.Expect(response.Allowed).Should(Equal(true))
 			},
 		},
 		{
@@ -255,7 +257,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           true,
 			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, false)
+				g.Expect(response.Allowed).Should(Equal(false))
 			},
 		},
 		{
@@ -268,7 +270,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			UpdatePVCErr:           true,
 			PVCNotFound:            true,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, true)
+				g.Expect(response.Allowed).Should(Equal(true))
 			},
 		},
 	}
