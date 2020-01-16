@@ -26,7 +26,9 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
@@ -46,6 +48,7 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func mustToString(set sets.Int32) string {
@@ -105,6 +108,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	ginkgo.Context("[Feature: AdvancedStatefulSet]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
+		var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -128,6 +132,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
+			var err error
+			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.AfterEach(func() {
@@ -221,22 +228,24 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, st.deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
 				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 				framework.ExpectNoError(err)
-				if tc.Annotations == nil {
-					tc.Annotations = map[string]string{}
-				}
-				if st.component == "tikv" {
-					tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
-					tc.Spec.TiKV.Replicas = replicas
-				} else if st.component == "pd" {
-					tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
-					tc.Spec.PD.Replicas = replicas
-				} else if st.component == "tidb" {
-					tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
-					tc.Spec.TiDB.Replicas = replicas
-				} else {
-					framework.Failf("unsupported component: %v", st.component)
-				}
-				tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					if tc.Annotations == nil {
+						tc.Annotations = map[string]string{}
+					}
+					if st.component == "tikv" {
+						tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.TiKV.Replicas = replicas
+					} else if st.component == "pd" {
+						tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.PD.Replicas = replicas
+					} else if st.component == "tidb" {
+						tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.TiDB.Replicas = replicas
+					} else {
+						return fmt.Errorf("unsupported component: %v", st.component)
+					}
+					return nil
+				})
 				framework.ExpectNoError(err)
 
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
