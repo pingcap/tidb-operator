@@ -194,7 +194,6 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			UpdatePVCErr:   true,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
-				g.Expect(response.Result.Message, "update pvc error")
 			},
 		},
 		{
