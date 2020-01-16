@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	_ "net/http/pprof"
 	"time"
 
@@ -333,7 +334,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
-		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
+		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", "")
@@ -350,6 +351,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			// TODO: find a more graceful way to check tidbcluster during upgrading
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 			oa.CleanTidbClusterOrDie(&cluster)
+		})
+
+		ginkgo.It("[PodAdmissionWebhook] delete pvc before deleting pod directly with admission webhook", func() {
+			klog.Infof("start to delete pvc and pod with pod admission webhook")
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "direct-delete", "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "2"
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			pdapi.NewDefaultPDControl(c)
 		})
 	})
 

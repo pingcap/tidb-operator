@@ -14,6 +14,9 @@
 package pod
 
 import (
+	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -29,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	k8sTesting "k8s.io/client-go/testing"
 )
 
 var (
@@ -49,6 +53,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		isStatefulSetUpgrading bool
 		isLeader               bool
 		UpdatePVCErr           bool
+		PVCNotFound            bool
 		expectFn               func(g *GomegaWithT, response *admission.AdmissionResponse)
 	}
 
@@ -64,6 +69,17 @@ func TestPDDeleterDelete(t *testing.T) {
 		ownerStatefulSet := newOwnerStatefulSetForPDPodAdmissionControl()
 		tc := newTidbClusterForPodAdmissionControl()
 		kubeCli := kubefake.NewSimpleClientset()
+		if test.UpdatePVCErr {
+			if test.PVCNotFound {
+				kubeCli.AddReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, errors.NewNotFound(action.GetResource().GroupResource(), "name")
+				})
+			} else {
+				kubeCli.AddReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, fmt.Errorf("some errors")
+				})
+			}
+		}
 
 		podAdmissionControl := newPodAdmissionControl()
 		pdControl := pdapi.NewFakePDControl(kubeCli)
@@ -159,6 +175,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
 			UpdatePVCErr:           false,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
@@ -171,6 +188,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
 			UpdatePVCErr:           false,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
@@ -183,6 +201,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               false,
 			UpdatePVCErr:           false,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
@@ -195,6 +214,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: true,
 			isLeader:               true,
 			UpdatePVCErr:           false,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
@@ -206,6 +226,8 @@ func TestPDDeleterDelete(t *testing.T) {
 			isOutOfOrdinal:         true,
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
+			UpdatePVCErr:           false,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
@@ -218,6 +240,7 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
 			UpdatePVCErr:           false,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
@@ -230,8 +253,22 @@ func TestPDDeleterDelete(t *testing.T) {
 			isStatefulSetUpgrading: false,
 			isLeader:               false,
 			UpdatePVCErr:           true,
+			PVCNotFound:            false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
+			},
+		},
+		{
+			name:                   "final scale in,update pvc error,pvc not found",
+			isMember:               false,
+			isDeferDeleting:        true,
+			isOutOfOrdinal:         true,
+			isStatefulSetUpgrading: false,
+			isLeader:               false,
+			UpdatePVCErr:           true,
+			PVCNotFound:            true,
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
+				g.Expect(response.Allowed, true)
 			},
 		},
 	}
