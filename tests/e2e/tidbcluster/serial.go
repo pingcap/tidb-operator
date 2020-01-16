@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	_ "net/http/pprof"
 	"time"
 
@@ -352,18 +351,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 			oa.CleanTidbClusterOrDie(&cluster)
 		})
-
-		ginkgo.It("[PodAdmissionWebhook] delete pvc before deleting pod directly with admission webhook", func() {
-			klog.Infof("start to delete pvc and pod with pod admission webhook")
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "direct-delete", "", "")
-			cluster.Resources["pd.replicas"] = "3"
-			cluster.Resources["tikv.replicas"] = "3"
-			cluster.Resources["tidb.replicas"] = "2"
-			oa.DeployTidbClusterOrDie(&cluster)
-			oa.CheckTidbClusterStatusOrDie(&cluster)
-
-			pdapi.NewDefaultPDControl(c)
-		})
+		
 	})
 
 	ginkgo.Context("[Feature: Defaulting and Validating]", func() {
