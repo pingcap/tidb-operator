@@ -26,6 +26,16 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
+# check bash version
+BASH_MAJOR_VERSION=$(echo "$BASH_VERSION" | cut -d '.' -f 1)
+# we need bash version >= 4
+if [ $BASH_MAJOR_VERSION -lt 4 ]
+then
+  echo "error: e2e.sh could not work with bash version earlier than 4 for now, please upgrade your bash"
+  exit 1
+fi
+
+
 function usage() {
     cat <<'EOF'
 This script is entrypoint to run e2e tests.
