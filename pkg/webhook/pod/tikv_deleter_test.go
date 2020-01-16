@@ -26,8 +26,11 @@ import (
 	admission "k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	k8sTesting "k8s.io/client-go/testing"
 	"testing"
 )
 
@@ -46,6 +49,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		isUpgrading    bool
 		storeState     string
 		UpdatePVCErr   bool
+		PVCNotFound    bool
 		expectFn       func(g *GomegaWithT, response *admission.AdmissionResponse)
 	}
 
@@ -151,6 +155,18 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			return nil, nil
 		})
 
+		if test.UpdatePVCErr {
+			if test.PVCNotFound {
+				kubeCli.AddReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, errors.NewNotFound(action.GetResource().GroupResource(), "name")
+				})
+			} else {
+				kubeCli.AddReactor("get", "persistentvolumeclaims", func(action k8sTesting.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, fmt.Errorf("some errors")
+				})
+			}
+		}
+
 		payload := &admitPayload{
 			pod:              deleteTiKVPod,
 			ownerStatefulSet: ownerStatefulSet,
@@ -170,6 +186,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    false,
 			storeState:     "",
 			UpdatePVCErr:   false,
+			PVCNotFound:    false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
@@ -181,19 +198,33 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    false,
 			storeState:     "",
 			UpdatePVCErr:   false,
+			PVCNotFound:    false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
 		},
 		{
-			name:           "no store,out of ordinal",
+			name:           "no store,out of ordinal,update pvc error",
 			isStoreExist:   false,
 			isOutOfOrdinal: true,
 			isUpgrading:    false,
 			storeState:     "",
 			UpdatePVCErr:   true,
+			PVCNotFound:    false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
-				g.Expect(response.Allowed, true)
+				g.Expect(response.Allowed, false)
+			},
+		},
+		{
+			name:           "no store,out of ordinal,update pvc error, pvc not found",
+			isStoreExist:   false,
+			isOutOfOrdinal: true,
+			isUpgrading:    false,
+			storeState:     "",
+			UpdatePVCErr:   true,
+			PVCNotFound:    true,
+			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
+				g.Expect(response.Allowed, false)
 			},
 		},
 		{
@@ -203,6 +234,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    true,
 			storeState:     v1alpha1.TiKVStateUp,
 			UpdatePVCErr:   false,
+			PVCNotFound:    false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
@@ -214,6 +246,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    false,
 			storeState:     v1alpha1.TiKVStateUp,
 			UpdatePVCErr:   false,
+			PVCNotFound:    false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, false)
 			},
@@ -225,6 +258,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			isUpgrading:    true,
 			storeState:     v1alpha1.TiKVStateTombstone,
 			UpdatePVCErr:   false,
+			PVCNotFound:    false,
 			expectFn: func(g *GomegaWithT, response *admission.AdmissionResponse) {
 				g.Expect(response.Allowed, true)
 			},
