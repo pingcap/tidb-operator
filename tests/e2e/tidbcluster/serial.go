@@ -333,7 +333,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
-		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
+		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", "")
