@@ -37,7 +37,7 @@ want to mutate the defaulting one:
 Options:
        -h,--help               prints the usage message
        -n,--name               name of the Kubernetes cluster,default value: kind
-       -c,--nodeNum            the count of the cluster nodes,default value: 6
+       -c,--nodeNum            the count of the cluster nodes,default value: 3
        -k,--k8sVersion         version of the Kubernetes cluster,default value: v1.12.8
        -v,--volumeNum          the volumes number of each kubernetes node,default value: 9
 
@@ -91,7 +91,7 @@ esac
 done
 
 clusterName=${clusterName:-kind}
-nodeNum=${nodeNum:-6}
+nodeNum=${nodeNum:-3}
 k8sVersion=${k8sVersion:-v1.12.8}
 volumeNum=${volumeNum:-9}
 
