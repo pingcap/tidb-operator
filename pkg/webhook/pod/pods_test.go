@@ -16,6 +16,8 @@ package pod
 import (
 	"testing"
 
+	"k8s.io/client-go/kubernetes"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	operatorClifake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -53,7 +55,8 @@ func TestAdmitPod(t *testing.T) {
 	testFn := func(test *testcase) {
 		t.Log(test.name)
 
-		podAdmissionControl := newPodAdmissionControl()
+		kubeCli := kubefake.NewSimpleClientset()
+		podAdmissionControl := newPodAdmissionControl(kubeCli)
 		ar := newAdmissionRequest()
 		pod := newNormalPod()
 		if test.isDelete {
@@ -124,8 +127,7 @@ func newAdmissionRequest() *admission.AdmissionRequest {
 	return &request
 }
 
-func newPodAdmissionControl() *PodAdmissionControl {
-	kubeCli := kubefake.NewSimpleClientset()
+func newPodAdmissionControl(kubeCli kubernetes.Interface) *PodAdmissionControl {
 	operatorCli := operatorClifake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	return &PodAdmissionControl{
