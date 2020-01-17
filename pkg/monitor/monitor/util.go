@@ -643,13 +643,13 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	prometheusPortName := "http-prometheus"
 	grafanaPortName := "http-grafana"
 
-	if monitor.Spec.Reloader.Service.PortName != nil {
+	if monitor.ReloaderPortName() != nil {
 		reloaderPortName = *monitor.Spec.Reloader.Service.PortName
 	}
-	if monitor.Spec.Prometheus.Service.PortName != nil {
+	if monitor.PrometheusPortName() != nil {
 		prometheusPortName = *monitor.Spec.Prometheus.Service.PortName
 	}
-	if monitor.Spec.Grafana != nil && monitor.Spec.Grafana.Service.PortName != nil {
+	if monitor.GrafanaPortName() != nil {
 		grafanaPortName = *monitor.Spec.Grafana.Service.PortName
 	}
 
