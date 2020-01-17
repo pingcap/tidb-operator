@@ -15,12 +15,14 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/pingcap/tidb-operator/tests"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -36,6 +38,7 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.BoolVar(&TestConfig.InstallOperator, "install-operator", true, "install a default operator")
 	flags.StringVar(&TestConfig.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flags.StringVar(&TestConfig.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flags.Var(cliflag.NewMapStringBool(&TestConfig.OperatorFeatures), "operator-features", "a set of key=value pairs that describe feature gates for operator")
 	flags.StringVar(&TestConfig.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
 	flags.StringVar(&TestConfig.UpgradeOperatorImage, "upgrade-operator-image", "", "upgrade operator image")
 	flags.StringVar(&TestConfig.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
@@ -74,6 +77,14 @@ func AfterReadingAllFlags() error {
 
 // NewDefaultOperatorConfig creates default operator configuration.
 func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
+	features := []string{}
+	for k, v := range cfg.OperatorFeatures {
+		t := "false"
+		if v {
+			t = "true"
+		}
+		features = append(features, fmt.Sprintf("%s=%s", k, t))
+	}
 	return &tests.OperatorConfig{
 		Namespace:                 "pingcap",
 		ReleaseName:               "operator",
@@ -82,19 +93,17 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		ControllerManagerReplicas: tests.IntPtr(2),
 		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
 		SchedulerReplicas:         tests.IntPtr(2),
-		Features: []string{
-			"StableScheduling=true",
-		},
-		LogLevel:           "4",
-		WebhookServiceName: "webhook-service",
-		WebhookSecretName:  "webhook-secret",
-		WebhookConfigName:  "webhook-config",
-		ImagePullPolicy:    v1.PullIfNotPresent,
-		TestMode:           true,
-		WebhookEnabled:     true,
-		StsWebhookEnabled:  true,
-		PodWebhookEnabled:  false,
-		Cabundle:           "",
+		Features:                  features,
+		LogLevel:                  "4",
+		WebhookServiceName:        "webhook-service",
+		WebhookSecretName:         "webhook-secret",
+		WebhookConfigName:         "webhook-config",
+		ImagePullPolicy:           v1.PullIfNotPresent,
+		TestMode:                  true,
+		WebhookEnabled:            true,
+		StsWebhookEnabled:         true,
+		PodWebhookEnabled:         false,
+		Cabundle:                  "",
 	}
 }
 

@@ -3315,7 +3315,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 		}
 	}
 
-	// wait for the tidb statefulset is upgrade to the protect one
+	// wait for the tidb or tikv statefulset is upgraded to the protected one
 	if err = wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
 		return fmt.Errorf("fail to upgrade to annotation %s pod, err: %v", component, err)
 	}
