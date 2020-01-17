@@ -102,7 +102,6 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -393,7 +392,6 @@ type TiDBSlowLogTailerSpec struct {
 // +k8s:openapi-gen=true
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
 type ComponentSpec struct {
-
 	// Image of the component, override baseImage and version if present
 	// Deprecated
 	// +k8s:openapi-gen=false
@@ -471,6 +469,10 @@ type ServiceSpec struct {
 	// ClusterIP is the clusterIP of service
 	// +optional
 	ClusterIP *string `json:"clusterIP,omitempty"`
+
+	// PortName is the name of service port
+	// +optional
+	PortName *string `json:"portName,omitempty"`
 }
 
 // +k8s:openapi-gen=true

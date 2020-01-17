@@ -1845,6 +1845,9 @@ spec:
                       description: 'LoadBalancerIP is the loadBalancerIP of service
                         Optional: Defaults to omitted'
                       type: string
+                    portName:
+                      description: PortName is the name of service port
+                      type: string
                     type:
                       description: Type of the real kubernetes service
                       type: string
