@@ -22,20 +22,32 @@ source $ROOT/hack/lib.sh
 
 hack::ensure_kubectl
 hack::ensure_helm
+hack::ensure_kind
 
 usage() {
     cat <<EOF
 This script use kind to create Kubernetes cluster,about kind please refer: https://kind.sigs.k8s.io/
-Before run this script,please ensure that:
-* have installed docker
-* have installed kind and kind's version == v0.4.0
+Before run this script,please ensure that docker have been installed.
+
+Note that kind will merge config to your KUBECONFIG file, you could use a new KUBECONFIG file if you do not
+want to mutate the defaulting one:
+
+    export KUBECONFIG=${HOME}/.kube/kind-config-<cluster>
 
 Options:
        -h,--help               prints the usage message
        -n,--name               name of the Kubernetes cluster,default value: kind
-       -c,--nodeNum            the count of the cluster nodes,default value: 6
+       -c,--nodeNum            the count of the cluster nodes,default value: 3
        -k,--k8sVersion         version of the Kubernetes cluster,default value: v1.12.8
        -v,--volumeNum          the volumes number of each kubernetes node,default value: 9
+
+Environments:
+
+    KUBECONFIG      kubectl config file that the kind config merged to
+    HELM_VERSION    version of helm
+    KUBECTL_VERSION version of kubectl
+    KIND_VERSION    version of kind
+
 Usage:
     $0 --name testCluster --nodeNum 4 --k8sVersion v1.12.9
 EOF
@@ -79,7 +91,7 @@ esac
 done
 
 clusterName=${clusterName:-kind}
-nodeNum=${nodeNum:-6}
+nodeNum=${nodeNum:-3}
 k8sVersion=${k8sVersion:-v1.12.8}
 volumeNum=${volumeNum:-9}
 
@@ -89,7 +101,7 @@ echo "k8sVersion: ${k8sVersion}"
 echo "volumeNum: ${volumeNum}"
 
 # check requirements
-for requirement in kind docker
+for requirement in $KIND_BIN docker
 do
     echo "############ check ${requirement} ##############"
     if hash ${requirement} 2>/dev/null;then
@@ -143,8 +155,9 @@ EOF
 done
 
 echo "start to create k8s cluster"
-kind create cluster --config ${configFile} --image kindest/node:${k8sVersion} --name=${clusterName}
-export KUBECONFIG="$(kind get kubeconfig-path --name=${clusterName})"
+$KIND_BIN create cluster --config ${configFile} --image kindest/node:${k8sVersion} --name=${clusterName}
+echo "switch kube context to kind"
+$KUBECTL_BIN config use-context kind-${clusterName}
 
 echo "deploy docker registry in kind"
 registryNode=${clusterName}-control-plane
@@ -232,12 +245,12 @@ $HELM_BIN init --service-account=tiller --wait
 # FIXME: remove this
 docker pull gcr.io/google-containers/kube-scheduler:${k8sVersion}
 docker tag gcr.io/google-containers/kube-scheduler:${k8sVersion} mirantis/hypokube:final
-kind load docker-image --name=${clusterName} mirantis/hypokube:final
+$KIND_BIN load docker-image --name=${clusterName} mirantis/hypokube:final
 
 echo "############# success create cluster:[${clusterName}] #############"
 
 echo "To start using your cluster, run:"
-echo "    export KUBECONFIG=$(kind get kubeconfig-path --name=${clusterName})"
+echo "    kubectl config use-context kind-${clusterName}"
 echo ""
 echo <<EOF
 NOTE: In kind, nodes run docker network and cannot access host network.
@@ -245,6 +258,6 @@ If you configured local HTTP proxy in your docker, images may cannot be pulled
 because http proxy is inaccessible.
 
 If you cannot remove http proxy settings, you can either whitelist image
-domains in NO_PROXY environment or use 'docker pull <image> && kind load
+domains in NO_PROXY environment or use 'docker pull <image> && $KIND_BIN load
 docker-image <image>' command to load images into nodes.
 EOF

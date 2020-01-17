@@ -20,6 +20,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -121,9 +122,12 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 		// it would be existed an pd-3 instance with its deferDeleting label Annotations PVC.
 		// And the pvc can be deleted during upgrading if we use create pod webhook in future.
 		if !isInOrdinal {
-			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
+			pvcName := operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, payload.ownerStatefulSet.Name, ordinal)
 			pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 			if err != nil {
+				if errors.IsNotFound(err) {
+					return util.ARSuccess()
+				}
 				return util.ARFail(err)
 			}
 			err = addDeferDeletingToPVC(pvc, pc.kubeCli, payload.tc)
