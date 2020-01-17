@@ -26,6 +26,16 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
+# check bash version
+BASH_MAJOR_VERSION=$(echo "$BASH_VERSION" | cut -d '.' -f 1)
+# we need bash version >= 4
+if [ $BASH_MAJOR_VERSION -lt 4 ]
+then
+  echo "error: e2e.sh could not work with bash version earlier than 4 for now, please upgrade your bash"
+  exit 1
+fi
+
+
 function usage() {
     cat <<'EOF'
 This script is entrypoint to run e2e tests.
@@ -134,13 +144,13 @@ echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.1
 declare -A kind_node_images
-kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:8ebe805201da0a988ee9bbcc2de2ac0031f9264ac24cf2a598774f1e7b324fe1"
-kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:c5aeca1433e3230e6c1a96b5e1cd79c90139fd80242189b370a3248a05d77118"
-kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:1fe072c080ee129a2a440956a65925ab3bbd1227cf154e2ade145b8e59a584ad"
-kind_node_images["v1.14.9"]="kindest/node:v1.14.9@sha256:bdd3731588fa3ce8f66c7c22f25351362428964b6bca13048659f68b9e665b72"
-kind_node_images["v1.15.6"]="kindest/node:v1.15.6@sha256:18c4ab6b61c991c249d29df778e651f443ac4bcd4e6bdd37e0c83c0d33eaae78"
-kind_node_images["v1.16.3"]="kindest/node:v1.16.3@sha256:70ce6ce09bee5c34ab14aec2b84d6edb260473a60638b1b095470a3a0f95ebec"
-kind_node_images["v1.17.0"]="kindest/node:v1.17.0@sha256:190c97963ec4f4121c3f1e96ca6eb104becda5bae1df3a13f01649b2dd372f6d"
+kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:e6f3dade95b7cb74081c5b9f3291aaaa6026a90a977e0b990778b6adc9ea6248"
+kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:68a6581f64b54994b824708286fafc37f1227b7b54cbb8865182ce1e036ed1cc"
+kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:5e8ae1a4e39f3d151d420ef912e18368745a2ede6d20ea87506920cd947a7e3a"
+kind_node_images["v1.14.10"]="kindest/node:v1.14.10@sha256:81ae5a3237c779efc4dda43cc81c696f88a194abcc4f8fa34f86cf674aa14977"
+kind_node_images["v1.15.7"]="kindest/node:v1.15.7@sha256:e2df133f80ef633c53c0200114fce2ed5e1f6947477dbc83261a6a921169488d"
+kind_node_images["v1.16.4"]="kindest/node:v1.16.4@sha256:b91a2c2317a000f3a783489dfb755064177dbc3a0b2f4147d50f04825d016f55"
+kind_node_images["v1.17.0"]="kindest/node:v1.17.0@sha256:9512edae126da271b66b990b6fff768fbb7cd786c7d39e86bdf55906352fdf62"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then

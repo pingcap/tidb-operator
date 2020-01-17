@@ -20,31 +20,35 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"k8s.io/klog"
-	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
-	"k8s.io/utils/pointer"
-
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	v1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/klog"
+	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
+	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func mustToString(set sets.Int32) string {
@@ -62,6 +66,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var c clientset.Interface
 	var cli versioned.Interface
 	var asCli asclientset.Interface
+	var aggrCli aggregatorclient.Interface
+	var apiExtCli apiextensionsclientset.Interface
 	var hc clientset.Interface
 	var cfg *tests.Config
 	var config *restclient.Config
@@ -77,6 +83,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		cli, err = versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		aggrCli, err = aggregatorclient.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
@@ -98,6 +108,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	ginkgo.Context("[Feature: AdvancedStatefulSet]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
+		var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -114,13 +125,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ImagePullPolicy: v1.PullIfNotPresent,
 				TestMode:        true,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie()
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
+			var err error
+			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+			framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.AfterEach(func() {
@@ -214,22 +228,24 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ginkgo.By(fmt.Sprintf("Scaling sts %s/%s to replicas %d and setting deleting pods to %v (old replicas: %d, old delete slots: %v)", ns, stsName, replicas, st.deleteSlots.List(), *sts.Spec.Replicas, helper.GetDeleteSlots(sts).List()))
 				tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(clusterName, metav1.GetOptions{})
 				framework.ExpectNoError(err)
-				if tc.Annotations == nil {
-					tc.Annotations = map[string]string{}
-				}
-				if st.component == "tikv" {
-					tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
-					tc.Spec.TiKV.Replicas = replicas
-				} else if st.component == "pd" {
-					tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
-					tc.Spec.PD.Replicas = replicas
-				} else if st.component == "tidb" {
-					tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
-					tc.Spec.TiDB.Replicas = replicas
-				} else {
-					framework.Failf("unsupported component: %v", st.component)
-				}
-				tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					if tc.Annotations == nil {
+						tc.Annotations = map[string]string{}
+					}
+					if st.component == "tikv" {
+						tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.TiKV.Replicas = replicas
+					} else if st.component == "pd" {
+						tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.PD.Replicas = replicas
+					} else if st.component == "tidb" {
+						tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.TiDB.Replicas = replicas
+					} else {
+						return fmt.Errorf("unsupported component: %v", st.component)
+					}
+					return nil
+				})
 				framework.ExpectNoError(err)
 
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
@@ -301,7 +317,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				PodWebhookEnabled: true,
 				StsWebhookEnabled: false,
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie()
@@ -317,7 +333,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
-		ginkgo.It("able to upgrade TiDB Cluster with pod admission webhook", func() {
+		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", "")
@@ -357,7 +373,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				SchedulerReplicas:         tests.IntPtr(0),
 				ControllerManagerReplicas: tests.IntPtr(0),
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
 			oa.InstallCRDOrDie()

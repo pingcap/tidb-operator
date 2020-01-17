@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -29,16 +30,24 @@ type MonitorManager struct {
 	typedControl     controller.TypedControlInterface
 	deploymentLister appslisters.DeploymentLister
 	tcLister         v1alpha1listers.TidbClusterLister
+	recorder         record.EventRecorder
 }
+
+const (
+	FailedSync  = "FailedSync"
+	SuccessSync = "SuccessSync"
+)
 
 func NewMonitorManager(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	typedControl controller.TypedControlInterface) *MonitorManager {
+	typedControl controller.TypedControlInterface,
+	recorder record.EventRecorder) *MonitorManager {
 	return &MonitorManager{
 		typedControl:     typedControl,
 		deploymentLister: kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		tcLister:         informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+		recorder:         recorder,
 	}
 }
 
@@ -50,18 +59,29 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 
 	// Sync Service
 	if err := mm.syncTidbMonitorService(monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 	// Sync PVC
 	if monitor.Spec.Persistent {
 		if err := mm.syncTidbMonitorPVC(monitor); err != nil {
+			message := fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC failed,err:%v", monitor.Namespace, monitor.Name, err)
+			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 			return err
 		}
 	}
 	klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
+
 	// Sync Deployment
-	return mm.syncTidbMonitorDeployment(monitor)
+	if err := mm.syncTidbMonitorDeployment(monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		return err
+	}
+	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
+	return nil
 }
 
 func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
