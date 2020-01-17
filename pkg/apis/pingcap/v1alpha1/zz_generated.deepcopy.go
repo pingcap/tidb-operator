@@ -1973,6 +1973,11 @@ func (in *ServiceSpec) DeepCopyInto(out *ServiceSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.PortName != nil {
+		in, out := &in.PortName, &out.PortName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
