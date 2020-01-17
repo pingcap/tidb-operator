@@ -40,17 +40,18 @@ const (
 type Config struct {
 	configFile string
 
-	TidbVersions         string  `yaml:"tidb_versions" json:"tidb_versions"`
-	InstallOperator      bool    `yaml:"install_opeartor" json:"install_opeartor"`
-	OperatorTag          string  `yaml:"operator_tag" json:"operator_tag"`
-	OperatorImage        string  `yaml:"operator_image" json:"operator_image"`
-	UpgradeOperatorTag   string  `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
-	UpgradeOperatorImage string  `yaml:"upgrade_operator_image" json:"upgrade_operator_image"`
-	LogDir               string  `yaml:"log_dir" json:"log_dir"`
-	FaultTriggerPort     int     `yaml:"fault_trigger_port" json:"fault_trigger_port"`
-	Nodes                []Nodes `yaml:"nodes" json:"nodes"`
-	ETCDs                []Nodes `yaml:"etcds" json:"etcds"`
-	APIServers           []Nodes `yaml:"apiservers" json:"apiservers"`
+	TidbVersions         string          `yaml:"tidb_versions" json:"tidb_versions"`
+	InstallOperator      bool            `yaml:"install_opeartor" json:"install_opeartor"`
+	OperatorTag          string          `yaml:"operator_tag" json:"operator_tag"`
+	OperatorImage        string          `yaml:"operator_image" json:"operator_image"`
+	OperatorFeatures     map[string]bool `yaml:"operator_features" json:"operator_features"`
+	UpgradeOperatorTag   string          `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
+	UpgradeOperatorImage string          `yaml:"upgrade_operator_image" json:"upgrade_operator_image"`
+	LogDir               string          `yaml:"log_dir" json:"log_dir"`
+	FaultTriggerPort     int             `yaml:"fault_trigger_port" json:"fault_trigger_port"`
+	Nodes                []Nodes         `yaml:"nodes" json:"nodes"`
+	ETCDs                []Nodes         `yaml:"etcds" json:"etcds"`
+	APIServers           []Nodes         `yaml:"apiservers" json:"apiservers"`
 	CertFile             string
 	KeyFile              string
 
