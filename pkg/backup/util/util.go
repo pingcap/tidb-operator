@@ -294,7 +294,7 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 		if backup.Spec.From.SecretName == "" {
 			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
 		}
-		if backup.Spec.StorageClassName == "" {
+		if backup.Spec.StorageClassName == nil || *backup.Spec.StorageClassName == "" {
 			return fmt.Errorf("missing storageClassName config in spec of %s/%s", ns, name)
 		}
 		if backup.Spec.StorageSize == "" {

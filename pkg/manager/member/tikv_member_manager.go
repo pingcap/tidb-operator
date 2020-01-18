@@ -409,7 +409,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 	storageClassName := tc.Spec.TiKV.StorageClassName
-	if storageClassName == nil {
+	if storageClassName == nil && len(controller.DefaultStorageClassName) > 0 {
 		storageClassName = &controller.DefaultStorageClassName
 	}
 

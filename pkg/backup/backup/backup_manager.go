@@ -327,10 +327,6 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 	}
 
 	// not found PVC, so we need to create PVC for backup job
-	storageClassName := controller.DefaultBackupStorageClassName
-	if backup.Spec.StorageClassName != "" {
-		storageClassName = backup.Spec.StorageClassName
-	}
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backupPVCName,
@@ -338,7 +334,6 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 			Labels:    label.NewBackup().Instance(backup.GetInstanceName()),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: &storageClassName,
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				corev1.ReadWriteOnce,
 			},
@@ -348,6 +343,11 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 				},
 			},
 		},
+	}
+	if backup.Spec.StorageClassName != nil {
+		pvc.Spec.StorageClassName = backup.Spec.StorageClassName
+	} else if len(controller.DefaultBackupStorageClassName) > 0 {
+		pvc.Spec.StorageClassName = &controller.DefaultBackupStorageClassName
 	}
 
 	if err := bm.pvcControl.CreatePVC(backup, pvc); err != nil {

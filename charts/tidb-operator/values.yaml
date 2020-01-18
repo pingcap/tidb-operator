@@ -15,11 +15,28 @@ timezone: UTC
 operatorImage: pingcap/tidb-operator:v1.1.0-beta.1
 imagePullPolicy: IfNotPresent
 
-defaultStorageClassName: local-storage
+#
+# Specify storage class for pd/tikv componnents. 
+#
+# By default, "standard" is used. If you want to use default storage class in
+# the Kubernetes cluster, set its value to "".
+#
+# https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
+# 
+# defaultStorageClassName: standard 
 
 # tidbBackupManagerImage is tidb backup manager image
 # tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
-# defaultBackupStorageClassName: local-storage
+
+#
+# Specify storage class for backup and restore. 
+#
+# By default, "standard" is used. If you want to use default storage class in
+# the Kubernetes cluster, set its value to "".
+#
+# https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
+# 
+# defaultBackupStorageClassName: standard
 
 #
 # Enable or disable tidb-operator features:

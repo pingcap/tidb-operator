@@ -203,11 +203,11 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 
 	backupSpec := *bs.Spec.BackupTemplate.DeepCopy()
 	if backupSpec.BR == nil {
-		if backupSpec.StorageClassName == "" {
-			if bs.Spec.StorageClassName != "" {
+		if backupSpec.StorageClassName == nil || *backupSpec.StorageClassName == "" {
+			if bs.Spec.StorageClassName != nil && *bs.Spec.StorageClassName != "" {
 				backupSpec.StorageClassName = bs.Spec.StorageClassName
-			} else {
-				backupSpec.StorageClassName = controller.DefaultBackupStorageClassName
+			} else if len(controller.DefaultBackupStorageClassName) > 0 {
+				backupSpec.StorageClassName = &controller.DefaultBackupStorageClassName
 			}
 		}
 
