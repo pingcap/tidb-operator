@@ -587,10 +587,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	storageClassName := tc.Spec.PD.StorageClassName
-	if storageClassName == nil && len(controller.DefaultStorageClassName) > 0 {
-		storageClassName = &controller.DefaultStorageClassName
-	}
 	failureReplicas := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.MemberDeleted {
@@ -688,7 +684,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: storageClassName,
+						StorageClassName: tc.Spec.PD.StorageClassName,
 						Resources:        storageRequest,
 					},
 				},

@@ -237,12 +237,8 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 						corev1.ResourceStorage: rs,
 					},
 				},
+				StorageClassName: restore.Spec.StorageClassName,
 			},
-		}
-		if restore.Spec.StorageClassName != nil {
-			pvc.Spec.StorageClassName = restore.Spec.StorageClassName
-		} else if len(controller.DefaultBackupStorageClassName) > 0 {
-			pvc.Spec.StorageClassName = &controller.DefaultBackupStorageClassName
 		}
 		if err := rm.pvcControl.CreatePVC(restore, pvc); err != nil {
 			errMsg := fmt.Errorf(" %s/%s create restore pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
