@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/upgrader"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -127,6 +128,14 @@ func main() {
 		glog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
+	// note that kubeCli here must not be the hijacked one
+	var operatorUpgrader upgrader.Interface
+	if controller.ClusterScoped {
+		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, metav1.NamespaceAll)
+	} else {
+		operatorUpgrader = upgrader.NewUpgrader(kubeCli, cli, asCli, ns)
+	}
+
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
 		// AdvancedStatefulSet.
@@ -166,6 +175,12 @@ func main() {
 	defer cancel()
 
 	onStarted := func(ctx context.Context) {
+		// Upgrade before running any controller logic. If it fails, we wait
+		// for process supervisor to restart it again.
+		if err := operatorUpgrader.Upgrade(); err != nil {
+			glog.Fatalf("failed to upgrade: %v", err)
+		}
+
 		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
 		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -201,7 +216,7 @@ func main() {
 		glog.Fatalf("leader election lost")
 	}
 
-	// leader election for multiple tidb-cloud-manager
+	// leader election for multiple tidb-controller-manager instances
 	go wait.Forever(func() {
 		leaderelection.RunOrDie(controllerCtx, leaderelection.LeaderElectionConfig{
 			Lock:          &rl,

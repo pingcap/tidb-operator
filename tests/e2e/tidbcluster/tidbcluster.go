@@ -704,7 +704,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("should be operable without helm [API]", func() {
-		tc := fixture.GetTidbCluster(ns, "plain-cr", "v2.1.16")
+		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV2Version)
 		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
