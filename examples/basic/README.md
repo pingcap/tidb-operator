@@ -42,11 +42,6 @@ Wait for cluster Pods ready:
 watch kubectl -n <namespace> get pod
 ```
 
-It is expected to see the following outputs:
-
-```bash
-```
-
 ## Explore
 
 Explore the TiDB sql interface:
