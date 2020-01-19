@@ -16,7 +16,7 @@ metadata:
   {{- end }}
 spec:
   ports:
-  - name: grafana
+  - name: {{ .Values.monitor.grafana.service.portName }}
     port: 3000
     protocol: TCP
     targetPort: 3000
@@ -40,7 +40,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   ports:
-  - name: reloader
+  - name: {{ .Values.monitor.reloader.service.portName }}
     port: 9089
     protocol: TCP
     targetPort: 9089
@@ -63,7 +63,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   ports:
-  - name: prometheus
+  - name: {{ .Values.monitor.prometheus.service.portName }}
     port: 9090
     protocol: TCP
     targetPort: 9090

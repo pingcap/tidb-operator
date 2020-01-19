@@ -101,6 +101,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 
 	component, ok := pod.Labels[label.ComponentLabelKey]
 	if !ok {
+		glog.Warningf("can't find component label in pod labels: %s/%s", ns, podName)
 		return &schedulerapiv1.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil
@@ -108,6 +109,7 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 
 	predicatesByComponent, ok := s.predicates[component]
 	if !ok {
+		glog.Warningf("no predicate for component %q, ignored", component)
 		return &schedulerapiv1.ExtenderFilterResult{
 			Nodes: args.Nodes,
 		}, nil

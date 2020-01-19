@@ -473,6 +473,7 @@ monitor:
     imagePullPolicy: IfNotPresent
     service:
       type: NodePort
+      portName: tcp-reloader
     resources: {}
       # limits:
       #  cpu: 50m
@@ -505,6 +506,7 @@ monitor:
       # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
     service:
       type: NodePort
+      portName: http-grafana
   prometheus:
     image: prom/prometheus:v2.11.1
     imagePullPolicy: IfNotPresent
@@ -518,6 +520,7 @@ monitor:
       #   memory: 4Gi
     service:
       type: NodePort
+      portName: http-prometheus
     reserveDays: 12
     # alertmanagerURL: ""
   nodeSelector: {}
