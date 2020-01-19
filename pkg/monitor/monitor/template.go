@@ -14,69 +14,17 @@
 package monitor
 
 import (
-	"github.com/ghodss/yaml"
-	"strings"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+	"gopkg.in/yaml.v2"
+	"time"
 )
 
-type PrometheusConfig struct {
-	Global        GlobalConfig       `json:"global,omitempty"`
-	Alerting      *AlertingSpec      `json:"alerting,omitempty"`
-	RuleFiles     []string           `json:"rule_files,omitempty"`
-	ScrapeConfigs []ScrapeConfigSpec `json:"scrape_configs,omitempty"`
-}
-
-type GlobalConfig struct {
-	ScrapeInterval     string `json:"scrape_interval,omitempty"`
-	EvaluationInterval string `json:"evaluation_interval,omitempty"`
-}
-
-type AlertingSpec struct {
-	AlertManagers []AlertmanagerSpec `json:"alertmanagers,omitempty"`
-}
-
-type AlertmanagerSpec struct {
-	StaticConfigs []StaticConfig `json:"static_configs,omitempty"`
-}
-
-type StaticConfig struct {
-	Targets []string `json:"targets,omitempty"`
-}
-
-type ScrapeConfigSpec struct {
-	JobName             string               `json:"job_name"`
-	ScrapeInterval      string               `json:"scrape_interval,omitempty"`
-	HonorLabels         bool                 `json:"honor_labels,omitempty"`
-	KubernetesSDConfigs []KubernetesSDConfig `json:"kubernetes_sd_configs,omitempty"`
-	TlsConfig           TlsConfig            `json:"tls_config,omitempty"`
-	Schema              string               `json:"schema,omitempty"`
-	RelabelConfigs      []RelabelConfig      `json:"relabel_configs,omitempty"`
-}
-
-type KubernetesSDConfig struct {
-	Role       string            `json:"role,omitempty"`
-	Namespaces *NamespacesConfig `json:"namespaces,omitempty"`
-}
-
-type NamespacesConfig struct {
-	Names []string `json:"names,omitempty"`
-}
-
-type RelabelConfig struct {
-	SourceLabels string `json:"source_labels"`
-	Action       string `json:"action"`
-	Regex        string `json:"regex,omitempty"`
-	TargetLabel  string `json:"target_label,omitempty"`
-	Replacement  string `json:"replacement,omitempty"`
-}
-
-type TlsConfig struct {
-	InsecureSkipVerify bool   `json:"insecure_skip_verify,omitempty"`
-	CaFile             string `json:"ca_file,omitempty"`
-	CertFile           string `json:"cert_file,omitempty"`
-	KeyFile            string `json:"key_file,omitempty"`
-}
-
-var dashBoardConfig = `{
+var (
+	truePattern, _     = config.NewRegexp("true")
+	allMatchPattern, _ = config.NewRegexp("(.+)")
+	portPattern, _     = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
+	dashBoardConfig    = `{
     "apiVersion": 1,
     "providers": [
         {
@@ -90,78 +38,95 @@ var dashBoardConfig = `{
         }
     ]
 }`
+)
 
 type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ReleaseNamespaces  []string
-	ReleaseTargetRegex string
+	ReleaseTargetRegex *config.Regexp
 	EnableTLSCluster   bool
 }
 
-func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
-	var c = PrometheusConfig{
-		Alerting: nil,
-		Global: GlobalConfig{
-			ScrapeInterval:     "15s",
-			EvaluationInterval: "15s",
+func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
+	var c = config.Config{
+		AlertingConfig: config.AlertingConfig{
+			AlertRelabelConfigs: nil,
+			AlertmanagerConfigs: nil,
+			XXX:                 nil,
+		},
+		GlobalConfig: config.GlobalConfig{
+			ScrapeInterval:     model.Duration(15 * time.Second),
+			EvaluationInterval: model.Duration(15 * time.Second),
 		},
 		RuleFiles: []string{
 			"/prometheus-rules/rules/*.rules.yml",
 		},
-		ScrapeConfigs: []ScrapeConfigSpec{
+		ScrapeConfigs: []*config.ScrapeConfig{
 			{
 				JobName:        "tidb-cluster",
-				ScrapeInterval: "15s",
+				ScrapeInterval: model.Duration(15 * time.Second),
 				HonorLabels:    true,
-				KubernetesSDConfigs: []KubernetesSDConfig{
-					{
-						Role: "pod",
-						Namespaces: &NamespacesConfig{
-							Names: model.ReleaseNamespaces,
+				ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+					KubernetesSDConfigs: []*config.KubernetesSDConfig{
+						{
+							Role: "pod",
+							NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
+								Names: cmodel.ReleaseNamespaces,
+							},
 						},
 					},
 				},
-				TlsConfig: TlsConfig{
-					InsecureSkipVerify: true,
+				HTTPClientConfig: config.HTTPClientConfig{
+					TLSConfig: config.TLSConfig{
+						InsecureSkipVerify: true,
+					},
+					XXX: map[string]interface{}{
+						"scheme": "http",
+					},
 				},
-				RelabelConfigs: []RelabelConfig{
+				RelabelConfigs: []*config.RelabelConfig{
 					{
-						SourceLabels: "[__meta_kubernetes_pod_label_app_kubernetes_io_instance]",
-						Action:       "keep",
-						Regex:        model.ReleaseTargetRegex,
+						SourceLabels: model.LabelNames{
+							"__meta_kubernetes_pod_label_app_kubernetes_io_instance",
+						},
+						Action: "keep",
+						Regex:  *cmodel.ReleaseTargetRegex,
 					},
 					{
-						SourceLabels: "[__meta_kubernetes_pod_annotation_prometheus_io_scrape]",
-						Action:       "keep",
-						Regex:        "true",
+						SourceLabels: model.LabelNames{
+							"__meta_kubernetes_pod_annotation_prometheus_io_scrape",
+						},
+						Action: "keep",
+						Regex:  truePattern,
 					},
 					{
-						SourceLabels: "[__meta_kubernetes_pod_annotation_prometheus_io_path]",
-						Action:       "replace",
-						TargetLabel:  "__metrics_path__",
-						Regex:        "(.+)",
+						SourceLabels: model.LabelNames{
+							"__meta_kubernetes_pod_annotation_prometheus_io_path",
+						},
+						Action:      "replace",
+						TargetLabel: "__metrics_path__",
+						Regex:       allMatchPattern,
 					},
 					{
-						SourceLabels: "[__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]",
-						Action:       "replace",
-						Regex:        "([^:]+)(?::\\d+)?;(\\d+)",
-						Replacement:  "$1:$2",
-						TargetLabel:  "__address__",
+						SourceLabels: model.LabelNames{
+							"__meta_kubernetes_namespace",
+						},
+						Action:      "replace",
+						TargetLabel: "kubernetes_pod_ip",
 					},
 					{
-						SourceLabels: "[__meta_kubernetes_namespace]",
-						Action:       "replace",
-						TargetLabel:  "kubernetes_pod_ip",
+						SourceLabels: model.LabelNames{
+							"__meta_kubernetes_pod_name",
+						},
+						Action:      "replace",
+						TargetLabel: "instance",
 					},
 					{
-						SourceLabels: "[__meta_kubernetes_pod_name]",
-						Action:       "replace",
-						TargetLabel:  "instance",
-					},
-					{
-						SourceLabels: "[__meta_kubernetes_pod_label_app_kubernetes_io_instance]",
-						Action:       "replace",
-						TargetLabel:  "cluster",
+						SourceLabels: model.LabelNames{
+							model.LabelName("__meta_kubernetes_pod_label_app_kubernetes_io_instance"),
+						},
+						Action:      "replace",
+						TargetLabel: "cluster",
 					},
 				},
 			},
@@ -170,14 +135,18 @@ func newPrometheusConfig(model *MonitorConfigModel) *PrometheusConfig {
 	return &c
 }
 
-func addAlertManagerUrl(pc *PrometheusConfig, model *MonitorConfigModel) {
-	pc.Alerting = &AlertingSpec{
-		AlertManagers: []AlertmanagerSpec{
+func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
+	pc.AlertingConfig = config.AlertingConfig{
+		AlertmanagerConfigs: []*config.AlertmanagerConfig{
 			{
-				StaticConfigs: []StaticConfig{
-					{
-						Targets: []string{
-							model.AlertmanagerURL,
+				ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+					StaticConfigs: []*config.TargetGroup{
+						{
+							Targets: []model.LabelSet{
+								map[model.LabelName]model.LabelValue{
+									"targets": model.LabelValue(cmodel.AlertmanagerURL),
+								},
+							},
 						},
 					},
 				},
@@ -186,79 +155,105 @@ func addAlertManagerUrl(pc *PrometheusConfig, model *MonitorConfigModel) {
 	}
 }
 
-func addTlsConfig(pc *PrometheusConfig, model *MonitorConfigModel) {
-	for id, config := range pc.ScrapeConfigs {
-		if config.JobName == "tidb-cluster" {
-			config.TlsConfig.CaFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-			config.TlsConfig.CertFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-			config.TlsConfig.KeyFile = "/var/lib/pd-client-tls/key"
-			config.Schema = "https"
-			// This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
-			// be removed after TiKV fix this issue
-			config.RelabelConfigs = append(config.RelabelConfigs, RelabelConfig{
-				SourceLabels: "[__meta_kubernetes_pod_name]",
-				Action:       "drop",
-				Regex:        ".*\\-tikv\\-\\d*$",
+func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
+
+	r, _ := config.NewRegexp(".*\\-tikv\\-\\d*$")
+	for id, sconfig := range pc.ScrapeConfigs {
+		if sconfig.JobName == "tidb-cluster" {
+			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:   "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+				CertFile: "/var/lib/pd-client-tls/cert",
+				KeyFile:  "/var/lib/pd-client-tls/key",
+			}
+			sconfig.RelabelConfigs = append(sconfig.RelabelConfigs, &config.RelabelConfig{
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_pod_name",
+				},
+				Action: "drop",
+				Regex:  r,
 			})
+			pc.ScrapeConfigs[id] = sconfig
+			sconfig.HTTPClientConfig.XXX["scheme"] = "https"
+			break
 		}
-		pc.ScrapeConfigs[id] = config
 	}
+
 	// This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
 	// be removed after TiKV fix this issue
-	pc.ScrapeConfigs = append(pc.ScrapeConfigs, ScrapeConfigSpec{
+	pc.ScrapeConfigs = append(pc.ScrapeConfigs, &config.ScrapeConfig{
 		JobName:        "tidb-cluster-tikv",
-		ScrapeInterval: "15s",
+		ScrapeInterval: model.Duration(15 * time.Second),
 		HonorLabels:    true,
-		KubernetesSDConfigs: []KubernetesSDConfig{
-			{
-				Role: "pod",
-				Namespaces: &NamespacesConfig{
-					Names: model.ReleaseNamespaces,
+		ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+			KubernetesSDConfigs: []*config.KubernetesSDConfig{
+				{
+					Role: "pod",
+					NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
+						Names: cmodel.ReleaseNamespaces,
+					},
 				},
 			},
 		},
-		TlsConfig: TlsConfig{
-			InsecureSkipVerify: true,
+		HTTPClientConfig: config.HTTPClientConfig{
+			TLSConfig: config.TLSConfig{
+				InsecureSkipVerify: true,
+			},
+			XXX: map[string]interface{}{
+				"scheme": "http",
+			},
 		},
-		Schema: "http",
-		RelabelConfigs: []RelabelConfig{
+		RelabelConfigs: []*config.RelabelConfig{
 			{
-				SourceLabels: "[__meta_kubernetes_pod_label_app_kubernetes_io_instance]",
-				Action:       "keep",
-				Regex:        model.ReleaseTargetRegex,
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_pod_label_app_kubernetes_io_instance",
+				},
+				Action: "keep",
+				Regex:  *cmodel.ReleaseTargetRegex,
 			},
 			{
-				SourceLabels: "[__meta_kubernetes_pod_annotation_prometheus_io_scrape]",
-				Action:       "keep",
-				Regex:        "true",
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_pod_annotation_prometheus_io_scrape]",
+				},
+				Action: "keep",
+				Regex:  truePattern,
 			},
 			{
-				SourceLabels: "[__meta_kubernetes_pod_annotation_prometheus_io_path]",
-				Action:       "replace",
-				TargetLabel:  "__metrics_path__",
-				Regex:        "(.+)",
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_pod_annotation_prometheus_io_path",
+				},
+				Action:      "replace",
+				TargetLabel: "__metrics_path__",
+				Regex:       allMatchPattern,
 			},
 			{
-				SourceLabels: "[__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]",
-				Action:       "replace",
-				Regex:        "([^:]+)(?::\\d+)?;(\\d+)",
-				Replacement:  "$1:$2",
-				TargetLabel:  "__address__",
+				SourceLabels: model.LabelNames{
+					"__address__, __meta_kubernetes_pod_annotation_prometheus_io_port",
+				},
+				Action:      "replace",
+				Regex:       portPattern,
+				Replacement: "$1:$2",
+				TargetLabel: "__address__",
 			},
 			{
-				SourceLabels: "[__meta_kubernetes_namespace]",
-				Action:       "replace",
-				TargetLabel:  "kubernetes_namespace",
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_namespace",
+				},
+				Action:      "replace",
+				TargetLabel: "kubernetes_namespace",
 			},
 			{
-				SourceLabels: "[__meta_kubernetes_pod_node_name]",
-				Action:       "replace",
-				TargetLabel:  "kubernetes_node",
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_pod_node_name",
+				},
+				Action:      "replace",
+				TargetLabel: "kubernetes_node",
 			},
 			{
-				SourceLabels: "[__meta_kubernetes_pod_ip]",
-				Action:       "replace",
-				TargetLabel:  "kubernetes_pod_ip",
+				SourceLabels: model.LabelNames{
+					"__meta_kubernetes_pod_ip",
+				},
+				Action:      "replace",
+				TargetLabel: "kubernetes_pod_ip",
 			},
 		},
 	})
@@ -277,5 +272,5 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 		return "", err
 	}
 	// remove character "'"
-	return strings.ReplaceAll(string(bs), "'", ""), nil
+	return string(bs), nil
 }
