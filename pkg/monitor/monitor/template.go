@@ -89,21 +89,21 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 						SourceLabels: model.LabelNames{
 							"__meta_kubernetes_pod_label_app_kubernetes_io_instance",
 						},
-						Action: "keep",
+						Action: config.RelabelKeep,
 						Regex:  *cmodel.ReleaseTargetRegex,
 					},
 					{
 						SourceLabels: model.LabelNames{
 							"__meta_kubernetes_pod_annotation_prometheus_io_scrape",
 						},
-						Action: "keep",
+						Action: config.RelabelKeep,
 						Regex:  truePattern,
 					},
 					{
 						SourceLabels: model.LabelNames{
 							"__meta_kubernetes_pod_annotation_prometheus_io_path",
 						},
-						Action:      "replace",
+						Action:      config.RelabelReplace,
 						TargetLabel: "__metrics_path__",
 						Regex:       allMatchPattern,
 					},
@@ -111,21 +111,21 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 						SourceLabels: model.LabelNames{
 							"__meta_kubernetes_namespace",
 						},
-						Action:      "replace",
+						Action:      config.RelabelReplace,
 						TargetLabel: "kubernetes_pod_ip",
 					},
 					{
 						SourceLabels: model.LabelNames{
 							"__meta_kubernetes_pod_name",
 						},
-						Action:      "replace",
+						Action:      config.RelabelReplace,
 						TargetLabel: "instance",
 					},
 					{
 						SourceLabels: model.LabelNames{
 							model.LabelName("__meta_kubernetes_pod_label_app_kubernetes_io_instance"),
 						},
-						Action:      "replace",
+						Action:      config.RelabelReplace,
 						TargetLabel: "cluster",
 					},
 				},
@@ -207,21 +207,21 @@ func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
 				SourceLabels: model.LabelNames{
 					"__meta_kubernetes_pod_label_app_kubernetes_io_instance",
 				},
-				Action: "keep",
+				Action: config.RelabelKeep,
 				Regex:  *cmodel.ReleaseTargetRegex,
 			},
 			{
 				SourceLabels: model.LabelNames{
 					"__meta_kubernetes_pod_annotation_prometheus_io_scrape]",
 				},
-				Action: "keep",
+				Action: config.RelabelKeep,
 				Regex:  truePattern,
 			},
 			{
 				SourceLabels: model.LabelNames{
 					"__meta_kubernetes_pod_annotation_prometheus_io_path",
 				},
-				Action:      "replace",
+				Action:      config.RelabelReplace,
 				TargetLabel: "__metrics_path__",
 				Regex:       allMatchPattern,
 			},
@@ -229,7 +229,7 @@ func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
 				SourceLabels: model.LabelNames{
 					"__address__, __meta_kubernetes_pod_annotation_prometheus_io_port",
 				},
-				Action:      "replace",
+				Action:      config.RelabelReplace,
 				Regex:       portPattern,
 				Replacement: "$1:$2",
 				TargetLabel: "__address__",
@@ -238,21 +238,21 @@ func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
 				SourceLabels: model.LabelNames{
 					"__meta_kubernetes_namespace",
 				},
-				Action:      "replace",
+				Action:      config.RelabelReplace,
 				TargetLabel: "kubernetes_namespace",
 			},
 			{
 				SourceLabels: model.LabelNames{
 					"__meta_kubernetes_pod_node_name",
 				},
-				Action:      "replace",
+				Action:      config.RelabelReplace,
 				TargetLabel: "kubernetes_node",
 			},
 			{
 				SourceLabels: model.LabelNames{
 					"__meta_kubernetes_pod_ip",
 				},
-				Action:      "replace",
+				Action:      config.RelabelReplace,
 				TargetLabel: "kubernetes_pod_ip",
 			},
 		},
