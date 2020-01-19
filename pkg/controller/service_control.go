@@ -91,7 +91,6 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 
 		return updateErr
 	})
-	sc.recordServiceEvent("update", tc, svc, err)
 	return updateSvc, err
 }
 

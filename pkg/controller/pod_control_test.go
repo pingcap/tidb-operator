@@ -82,10 +82,6 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(Succeed())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
@@ -129,9 +125,6 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
@@ -172,9 +165,6 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 	pod.Labels[label.ComponentLabelKey] = label.PDLabelVal
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
@@ -210,9 +200,6 @@ func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
 	pod.Labels[label.ComponentLabelKey] = label.TiKVLabelVal
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
@@ -259,10 +246,6 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
 func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
@@ -320,15 +303,10 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePod.Labels[label.StoreIDLabelKey]).To(Equal("333"))
 	g.Expect(updatePod.Labels[label.ClusterIDLabelKey]).To(Equal("222"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPodControlUpdatePod(t *testing.T) {
 	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	pod.Annotations = map[string]string{"a": "b"}
@@ -343,15 +321,10 @@ func TestPodControlUpdatePod(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePod.Annotations["a"]).To(Equal("b"))
 	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	pod.Annotations = map[string]string{"a": "b"}
@@ -374,10 +347,6 @@ func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePod.Annotations["a"]).To(Equal("b"))
 	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func newFakeClientRecorderAndPDControl() (*fake.Clientset, *pdapi.FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
