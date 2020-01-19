@@ -16,13 +16,16 @@ package upgrader
 import (
 	"fmt"
 
+	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
@@ -51,6 +54,20 @@ type upgrader struct {
 
 var _ Interface = &upgrader{}
 
+// isOwnedByTidbCluster checks if the given object is owned by TidbCluster.
+// Schema Kind and Group are checked, Version is ignored.
+func isOwnedByTidbCluster(obj metav1.Object) bool {
+	ref := metav1.GetControllerOf(obj)
+	if ref == nil {
+		return false
+	}
+	gv, err := schema.ParseGroupVersion(ref.APIVersion)
+	if err != nil {
+		return false
+	}
+	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group
+}
+
 func (u *upgrader) Upgrade() error {
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		klog.Infof("Upgrader: migrating Kubernetes StatefulSets to Advanced StatefulSets")
@@ -70,12 +87,18 @@ func (u *upgrader) Upgrade() error {
 		if err != nil {
 			return err
 		}
-		if len(stsList.Items) <= 0 {
-			klog.Infof("Upgrader: found 0 Kubernetes StatefulSets, nothing need to do")
+		stsToMigrate := make([]appsv1.StatefulSet, 0)
+		for _, sts := range stsList.Items {
+			if isOwnedByTidbCluster(&sts) {
+				stsToMigrate = append(stsToMigrate, sts)
+			}
+		}
+		if len(stsToMigrate) <= 0 {
+			klog.Infof("Upgrader: found 0 Kubernetes StatefulSets owned by TidbCluster, nothing need to do")
 			return nil
 		}
-		klog.Infof("Upgrader: found %d Kubernetes StatefulSets, trying to migrate one by one", len(stsList.Items))
-		for _, sts := range stsList.Items {
+		klog.Infof("Upgrader: found %d Kubernetes StatefulSets owned by TidbCluster, trying to migrate one by one", len(stsToMigrate))
+		for _, sts := range stsToMigrate {
 			_, err := helper.Upgrade(u.kubeCli, u.asCli, &sts)
 			if err != nil {
 				return err
@@ -87,14 +110,20 @@ func (u *upgrader) Upgrade() error {
 		if err != nil {
 			return err
 		}
-		if len(stsList.Items) <= 0 {
-			klog.Infof("Upgrader: found %d Advanced StatefulSets, nothing need to do", len(stsList.Items))
+		stsToMigrate := make([]asappsv1.StatefulSet, 0)
+		for _, sts := range stsList.Items {
+			if isOwnedByTidbCluster(&sts) {
+				stsToMigrate = append(stsToMigrate, sts)
+			}
+		}
+		if len(stsToMigrate) <= 0 {
+			klog.Infof("Upgrader: found %d Advanced StatefulSets owned by TidbCluster, nothing need to do", len(stsToMigrate))
 			return nil
 		}
 		// The upgrader cannot migrate Advanced StatefulSets to Kubernetes
 		// StatefulSets automatically right now.
 		// TODO try our best to allow users to revert AdvancedStatefulSet feature automaticaly
-		return fmt.Errorf("Upgrader: found %d Advanced StatefulSets in the cluster, the opertor cann't run with AdvancedStatefulSet feature disabled", len(stsList.Items))
+		return fmt.Errorf("Upgrader: found %d Advanced StatefulSets owned by TidbCluster, the operator cann't run with AdvancedStatefulSet feature disabled", len(stsToMigrate))
 	}
 	return nil
 }
