@@ -15,11 +15,8 @@ timezone: UTC
 operatorImage: pingcap/tidb-operator:v1.1.0-beta.1
 imagePullPolicy: IfNotPresent
 
-defaultStorageClassName: local-storage
-
 # tidbBackupManagerImage is tidb backup manager image
 # tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
-# defaultBackupStorageClassName: local-storage
 
 #
 # Enable or disable tidb-operator features:

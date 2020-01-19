@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"strconv"
 	"strings"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -587,10 +587,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	storageClassName := tc.Spec.PD.StorageClassName
-	if storageClassName == nil {
-		storageClassName = &controller.DefaultStorageClassName
-	}
 	failureReplicas := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.MemberDeleted {
@@ -688,7 +684,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: storageClassName,
+						StorageClassName: tc.Spec.PD.StorageClassName,
 						Resources:        storageRequest,
 					},
 				},

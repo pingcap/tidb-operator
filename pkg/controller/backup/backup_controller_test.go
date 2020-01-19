@@ -19,10 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +30,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestBackupControllerEnqueueBackup(t *testing.T) {
@@ -262,7 +262,7 @@ func newBackup() *v1alpha1.Backup {
 					SecretName: "demo",
 				},
 			},
-			StorageClassName: "local-storage",
+			StorageClassName: pointer.StringPtr("local-storage"),
 			StorageSize:      "1Gi",
 		},
 	}

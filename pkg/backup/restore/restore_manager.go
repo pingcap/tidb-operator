@@ -222,10 +222,6 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 	if err != nil {
 		// get the object from the local cache, the error can only be IsNotFound,
 		// so we need to create PVC for restore job
-		storageClassName := controller.DefaultBackupStorageClassName
-		if restore.Spec.StorageClassName != "" {
-			storageClassName = restore.Spec.StorageClassName
-		}
 		pvc := &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      restorePVCName,
@@ -233,7 +229,6 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 				Labels:    label.NewRestore().Instance(restore.GetInstanceName()),
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: &storageClassName,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
@@ -242,6 +237,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 						corev1.ResourceStorage: rs,
 					},
 				},
+				StorageClassName: restore.Spec.StorageClassName,
 			},
 		}
 		if err := rm.pvcControl.CreatePVC(restore, pvc); err != nil {
