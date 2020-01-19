@@ -331,10 +331,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 
 		defer func() {
-			// ginkgo.By("Uninstall tidb-operator")
-			// oa.CleanOperatorOrDie(ocfg)
-			// ginkgo.By("Uninstalling CRDs")
-			// oa.CleanCRDOrDie()
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
 		}()
 
 		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV3Version)

@@ -28,7 +28,71 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/pointer"
 )
+
+func TestIsOwnedByTidbCluster(t *testing.T) {
+	tests := []struct {
+		name   string
+		sts    appsv1.StatefulSet
+		wantOK bool
+	}{
+		{
+			name: "owned by tidbcluster.pingcap.com/v1alpha1",
+			sts: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Controller: pointer.BoolPtr(true),
+						},
+					},
+				},
+			},
+			wantOK: true,
+		},
+		{
+			name: "owned by tidbcluster.pingcap.com/v1",
+			sts: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1",
+							Kind:       "TidbCluster",
+							Controller: pointer.BoolPtr(true),
+						},
+					},
+				},
+			},
+			wantOK: true,
+		},
+		{
+			name: "owned by tidbcluster.example.com/v1",
+			sts: appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "example.com/v1",
+							Kind:       "TidbCluster",
+							Controller: pointer.BoolPtr(true),
+						},
+					},
+				},
+			},
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok := isOwnedByTidbCluster(&tt.sts)
+			if tt.wantOK != ok {
+				t.Errorf("got %v, want %v", ok, tt.wantOK)
+			}
+		})
+	}
+}
 
 func TestDeleteSlotAnns(t *testing.T) {
 	tests := []struct {
@@ -95,6 +159,17 @@ func TestDeleteSlotAnns(t *testing.T) {
 	}
 }
 
+var (
+	validOwnerRefs = []metav1.OwnerReference{
+		{
+			APIVersion: "pingcap.com/v1alpha1",
+			Kind:       "TidbCluster",
+			Controller: pointer.BoolPtr(true),
+		},
+	}
+	invalidOwnerRefs = []metav1.OwnerReference{}
+)
+
 func TestUpgrade(t *testing.T) {
 	tests := []struct {
 		name                     string
@@ -115,8 +190,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts1",
-						Namespace: "sts",
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -125,8 +201,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts2",
-						Namespace: "sts",
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 			},
@@ -140,8 +217,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps.pingcap.com/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts1",
-						Namespace: "sts",
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -150,8 +228,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps.pingcap.com/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts2",
-						Namespace: "sts",
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 			},
@@ -166,8 +245,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts1",
-						Namespace: "sts",
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -176,8 +256,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts2",
-						Namespace: "sts",
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -186,8 +267,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "other2",
-						Namespace: "other",
+						Name:            "other2",
+						Namespace:       "other",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 			},
@@ -201,8 +283,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps.pingcap.com/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts1",
-						Namespace: "sts",
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -211,8 +294,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps.pingcap.com/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts2",
-						Namespace: "sts",
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 			},
@@ -223,8 +307,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "other2",
-						Namespace: "other",
+						Name:            "other2",
+						Namespace:       "other",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 			},
@@ -247,8 +332,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts1",
-						Namespace: "sts",
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -257,8 +343,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts2",
-						Namespace: "sts",
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 			},
@@ -273,8 +360,9 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts1",
-						Namespace: "sts",
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
 					},
 				},
 				{
@@ -283,8 +371,43 @@ func TestUpgrade(t *testing.T) {
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "sts2",
-						Namespace: "sts",
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+		},
+		{
+			name:         "should ignore if sts is not owned by TidbCluster",
+			tidbClusters: nil,
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: invalidOwnerRefs,
+					},
+				},
+			},
+			feature:                  "AdvancedStatefulSet=true",
+			ns:                       metav1.NamespaceAll,
+			wantErr:                  false,
+			wantAdvancedStatefulsets: nil,
+			wantStatefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: invalidOwnerRefs,
 					},
 				},
 			},
