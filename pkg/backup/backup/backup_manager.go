@@ -342,12 +342,8 @@ func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, 
 					corev1.ResourceStorage: rs,
 				},
 			},
+			StorageClassName: backup.Spec.StorageClassName,
 		},
-	}
-	if backup.Spec.StorageClassName != nil {
-		pvc.Spec.StorageClassName = backup.Spec.StorageClassName
-	} else if len(controller.DefaultBackupStorageClassName) > 0 {
-		pvc.Spec.StorageClassName = &controller.DefaultBackupStorageClassName
 	}
 
 	if err := bm.pvcControl.CreatePVC(backup, pvc); err != nil {

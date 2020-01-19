@@ -223,7 +223,7 @@ type PDSpec struct {
 	Service *ServiceSpec `json:"service,omitempty"`
 
 	// The storageClassName of the persistent volume for PD data storage.
-	// Optionals: Defaults to the default-storage-class-name set in the tidb-operator or Kubernetes default storage classs.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
@@ -261,7 +261,7 @@ type TiKVSpec struct {
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
 	// The storageClassName of the persistent volume for TiKV data storage.
-	// Optionals: Defaults to the default-storage-class-name set in the tidb-operator or Kubernetes default storage classs.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
@@ -342,7 +342,7 @@ type PumpSpec struct {
 	BaseImage string `json:"baseImage"`
 
 	// The storageClassName of the persistent volume for Pump data storage.
-	// Optionals: Defaults to the default-storage-class-name set in the tidb-operator or Kubernetes default storage classs.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
@@ -742,7 +742,7 @@ type BackupSpec struct {
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
-	// Optionals: Defaults to the default-backup-storage-class-name set in the tidb-operator or Kubernetes default storage classs.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
@@ -865,8 +865,8 @@ type BackupScheduleSpec struct {
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
-	// The storageClassName of the persistent volume for Backup data storage.
-	// Optionals: Defaults to the default-backup-storage-class-name set in the tidb-operator or Kubernetes default storage classs.
+	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
@@ -946,7 +946,7 @@ type RestoreSpec struct {
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Restore data storage.
-	// Optionals: Defaults to the default-backup-storage-class-name set in the tidb-operator or Kubernetes default storage classs.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job

@@ -661,7 +661,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for Backup data storage. Optionals: Defaults to the default-backup-storage-class-name set in the tidb-operator or Kubernetes default storage classs.",
+							Description: "The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -714,7 +714,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for Backup data storage. Optionals: Defaults to the default-backup-storage-class-name set in the tidb-operator or Kubernetes default storage classs.",
+							Description: "The storageClassName of the persistent volume for Backup data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2082,7 +2082,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for PD data storage. Optionals: Defaults to the default-storage-class-name set in the tidb-operator or Kubernetes default storage classs.",
+							Description: "The storageClassName of the persistent volume for PD data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2529,7 +2529,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for Pump data storage. Optionals: Defaults to the default-storage-class-name set in the tidb-operator or Kubernetes default storage classs.",
+							Description: "The storageClassName of the persistent volume for Pump data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2666,7 +2666,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for Restore data storage. Optionals: Defaults to the default-backup-storage-class-name set in the tidb-operator or Kubernetes default storage classs.",
+							Description: "The storageClassName of the persistent volume for Restore data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5281,7 +5281,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for TiKV data storage. Optionals: Defaults to the default-storage-class-name set in the tidb-operator or Kubernetes default storage classs.",
+							Description: "The storageClassName of the persistent volume for TiKV data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
