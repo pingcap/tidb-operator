@@ -271,6 +271,5 @@ func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// remove character "'"
 	return string(bs), nil
 }
