@@ -15,6 +15,7 @@ package pod
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"strconv"
 	"strings"
 	"time"
@@ -131,6 +132,9 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
 		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return util.ARSuccess()
+			}
 			return util.ARFail(err)
 		}
 		err = addDeferDeletingToPVC(pvc, pc.kubeCli, payload.tc)

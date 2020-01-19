@@ -34,6 +34,9 @@ spec:
             - --tls-cert-file=/var/serving-cert/cert.pem
             - --tls-private-key-file=/var/serving-cert/key.pem
             {{- end }}
+            {{- if .Values.features }}
+            - --features={{ join "," .Values.features }}
+            {{- end }}
           livenessProbe:
             failureThreshold: 5
             httpGet:

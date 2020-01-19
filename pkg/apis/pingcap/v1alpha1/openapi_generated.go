@@ -2868,6 +2868,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"portName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PortName is the name of service port",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
