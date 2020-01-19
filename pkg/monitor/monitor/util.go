@@ -638,6 +638,21 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	var services []*core.Service
 	monitorLabel := label.New().Instance(monitor.Name).Monitor()
 	labels := label.NewMonitor().Instance(monitor.Name).Monitor()
+
+	reloaderPortName := "tcp-reloader"
+	prometheusPortName := "http-prometheus"
+	grafanaPortName := "http-grafana"
+
+	if monitor.BaseReloaderSpec().PortName() != nil {
+		reloaderPortName = *monitor.BaseReloaderSpec().PortName()
+	}
+	if monitor.BasePrometheusSpec().PortName() != nil {
+		prometheusPortName = *monitor.BasePrometheusSpec().PortName()
+	}
+	if monitor.BaseGrafanaSpec() != nil && monitor.BaseGrafanaSpec().PortName() != nil {
+		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
+	}
+
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
@@ -649,7 +664,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
 				{
-					Name:       "prometheus",
+					Name:       prometheusPortName,
 					Port:       9090,
 					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromInt(9090),
@@ -659,6 +674,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Selector: labels,
 		},
 	}
+
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            fmt.Sprintf("%s-reloader", monitor.Name),
@@ -670,7 +686,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
 				{
-					Name:       "reloader",
+					Name:       reloaderPortName,
 					Port:       9089,
 					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromInt(9089),
@@ -683,6 +699,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			},
 		},
 	}
+
 	services = append(services, prometheusService, reloaderService)
 	if monitor.Spec.Grafana != nil {
 		grafanaService := &core.Service{
@@ -696,7 +713,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{
 					{
-						Name:       "grafana",
+						Name:       grafanaPortName,
 						Port:       3000,
 						Protocol:   core.ProtocolTCP,
 						TargetPort: intstr.FromInt(3000),

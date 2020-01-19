@@ -408,10 +408,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	stsAnnotations := getStsAnnotations(tc, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
-	storageClassName := tc.Spec.TiKV.StorageClassName
-	if storageClassName == nil {
-		storageClassName = &controller.DefaultStorageClassName
-	}
 
 	env := []corev1.EnvVar{
 		{
@@ -494,7 +490,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				volumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), storageClassName),
+				volumeClaimTemplate(storageRequest, v1alpha1.TiKVMemberType.String(), tc.Spec.TiKV.StorageClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: apps.ParallelPodManagement,

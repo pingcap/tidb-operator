@@ -218,6 +218,11 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		**out = **in
 	}
 	in.BackupTemplate.DeepCopyInto(&out.BackupTemplate)
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -260,6 +265,11 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 	*out = *in
 	out.From = in.From
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.BR != nil {
 		in, out := &in.BR, &out.BR
 		*out = new(BRConfig)
@@ -1832,6 +1842,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	*out = *in
 	out.To = in.To
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -1970,6 +1985,11 @@ func (in *ServiceSpec) DeepCopyInto(out *ServiceSpec) {
 	}
 	if in.ClusterIP != nil {
 		in, out := &in.ClusterIP, &out.ClusterIP
+		*out = new(string)
+		**out = **in
+	}
+	if in.PortName != nil {
+		in, out := &in.PortName, &out.PortName
 		*out = new(string)
 		**out = **in
 	}

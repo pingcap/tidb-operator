@@ -1845,15 +1845,16 @@ spec:
                       description: 'LoadBalancerIP is the loadBalancerIP of service
                         Optional: Defaults to omitted'
                       type: string
+                    portName:
+                      description: PortName is the name of service port
+                      type: string
                     type:
                       description: Type of the real kubernetes service
                       type: string
                   type: object
                 storageClassName:
-                  description: 'The storageClassName of the persistent volume for
-                    PD data storage, empty string means not explicitly set and use
-                    the cluster default set by admission controller. Optionals: Defaults
-                    to the default-storage-class-name set in the tidb-operator'
+                  description: The storageClassName of the persistent volume for PD
+                    data storage. Defaults to Kubernetes default storage class.
                   type: string
                 tolerations:
                   description: 'Tolerations of the component. Override the cluster-level
@@ -2690,10 +2691,8 @@ spec:
                     one if present Optional: Defaults to cluster-level setting'
                   type: string
                 storageClassName:
-                  description: 'The storageClassName of the persistent volume for
-                    Pump data storage, empty string means not explicitly set and use
-                    the cluster default set by admission controller. Optionals: Defaults
-                    to the default-storage-class-name set in the tidb-operator'
+                  description: The storageClassName of the persistent volume for Pump
+                    data storage. Defaults to Kubernetes default storage class.
                   type: string
                 tolerations:
                   description: 'Tolerations of the component. Override the cluster-level
@@ -5998,10 +5997,8 @@ spec:
                     one if present Optional: Defaults to cluster-level setting'
                   type: string
                 storageClassName:
-                  description: 'The storageClassName of the persistent volume for
-                    TiKV data storage, empty string means not explicitly set and use
-                    the cluster default set by admission controller. Optionals: Defaults
-                    to the default-storage-class-name set in the tidb-operator'
+                  description: The storageClassName of the persistent volume for TiKV
+                    data storage. Defaults to Kubernetes default storage class.
                   type: string
                 tolerations:
                   description: 'Tolerations of the component. Override the cluster-level
@@ -6313,8 +6310,8 @@ spec:
               - secretName
               type: object
             storageClassName:
-              description: StorageClassName is the storage class for backup job's
-                PV.
+              description: The storageClassName of the persistent volume for Backup
+                data storage. Defaults to Kubernetes default storage class.
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
@@ -6445,8 +6442,8 @@ spec:
               - secretName
               type: object
             storageClassName:
-              description: StorageClassName is the storage class for backup job's
-                PV.
+              description: The storageClassName of the persistent volume for Restore
+                data storage. Defaults to Kubernetes default storage class.
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
@@ -6476,7 +6473,6 @@ spec:
               type: object
           required:
           - to
-          - storageClassName
           - storageSize
           type: object
       type: object
@@ -6691,8 +6687,8 @@ spec:
                   - secretName
                   type: object
                 storageClassName:
-                  description: StorageClassName is the storage class for backup job's
-                    PV.
+                  description: The storageClassName of the persistent volume for Backup
+                    data storage. Defaults to Kubernetes default storage class.
                   type: string
                 storageSize:
                   description: StorageSize is the request storage size for backup
@@ -6715,8 +6711,9 @@ spec:
               description: Schedule specifies the cron string used for backup scheduling.
               type: string
             storageClassName:
-              description: StorageClassName is the storage class for backup job's
-                PV.
+              description: The storageClassName of the persistent volume for Backup
+                data storage if not storage class name set in BackupSpec. Defaults
+                to Kubernetes default storage class.
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
