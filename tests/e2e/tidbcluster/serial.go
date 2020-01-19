@@ -32,11 +32,14 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -295,6 +298,97 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 		})
+	})
+
+	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade to Advanced StatefulSet", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+		var genericCli client.Client
+
+		ocfg = &tests.OperatorConfig{
+			Namespace:      "pingcap",
+			ReleaseName:    "operator",
+			Image:          cfg.OperatorImage,
+			Tag:            cfg.OperatorTag,
+			SchedulerImage: "k8s.gcr.io/kube-scheduler",
+			Features: []string{
+				"StableScheduling=true",
+				"AdvancedStatefulSet=false",
+			},
+			LogLevel:        "4",
+			ImagePullPolicy: v1.PullIfNotPresent,
+			TestMode:        true,
+		}
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		ginkgo.By("Installing CRDs")
+		oa.CleanCRDOrDie()
+		oa.InstallCRDOrDie()
+		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
+		oa.CleanOperatorOrDie(ocfg)
+		oa.DeployOperatorOrDie(ocfg)
+		var err error
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		framework.ExpectNoError(err, "failed to create clientset")
+
+		defer func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		}()
+
+		tc := fixture.GetTidbCluster(ns, "sts", utilimage.TiDBV3Version)
+		err = genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		listOption := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				label.InstanceLabelKey: tc.Name,
+			}).String(),
+		}
+		stsList, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
+		framework.ExpectNoError(err)
+		if len(stsList.Items) < 3 {
+			e2elog.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
+		}
+
+		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(metav1.ListOptions{})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Upgrading tidb-operator with AdvancedStatefulSet feature")
+		ocfg.Features = []string{
+			"StableScheduling=true",
+			"AdvancedStatefulSet=true",
+		}
+		oa.UpgradeOperatorOrDie(ocfg)
+
+		ginkgo.By("Wait for the advanced statefulsets are created and Kubernetes statfulsets are deleted")
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, func() (bool, error) {
+			advancedStsList, err := asCli.AppsV1().StatefulSets(tc.Namespace).List(listOption)
+			if err != nil {
+				return false, nil
+			}
+			if len(advancedStsList.Items) != len(stsList.Items) {
+				klog.Infof("advanced statefulsets got %d, expect %d", len(advancedStsList.Items), len(stsList.Items))
+				return false, nil
+			}
+			stsListAfterUpgrade, err := c.AppsV1().StatefulSets(tc.Namespace).List(listOption)
+			if err != nil {
+				return false, nil
+			}
+			if len(stsListAfterUpgrade.Items) != 0 {
+				klog.Infof("Kubernetes statefulsets got %d, expect %d", len(stsListAfterUpgrade.Items), 0)
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Make sure pods are not affected")
+		err = utilpod.WaitForPodsAreNotAffected(c, podListBeforeUpgrade.Items, time.Minute*3)
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods was not affeteced after the operator is upgraded")
 	})
 
 	// tidb-operator with pod admission webhook enabled
