@@ -52,12 +52,6 @@ var (
 	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
-	// DefaultStorageClassName is the default storageClassName
-	DefaultStorageClassName string
-
-	// DefaultBackupStorageClassName is the default storageClassName for backup and restore job
-	DefaultBackupStorageClassName string
-
 	// TidbBackupManagerImage is the image of tidb backup manager tool
 	TidbBackupManagerImage string
 
