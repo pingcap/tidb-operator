@@ -52,7 +52,7 @@ scrape_configs:
     target_label: __metrics_path__
     action: replace
   - source_labels: [__meta_kubernetes_namespace]
-    target_label: kubernetes_pod_ip
+    target_label: kubernetes_namespace
     action: replace
   - source_labels: [__meta_kubernetes_pod_name]
     target_label: instance
