@@ -71,6 +71,9 @@ func setupSuite() {
 				metav1.NamespaceDefault,
 				metav1.NamespacePublic,
 				v1.NamespaceNodeLease,
+				// kind local path provisioner namespace since 0.7.0
+				// https://github.com/kubernetes-sigs/kind/blob/v0.7.0/pkg/build/node/storage.go#L35
+				"local-path-storage",
 			})
 		if err != nil {
 			e2elog.Failf("Error deleting orphaned namespaces: %v", err)
