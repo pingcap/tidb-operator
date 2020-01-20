@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
+	"k8s.io/klog"
 	"time"
 )
 
@@ -28,13 +29,16 @@ const (
 	podNameLabel     = "__meta_kubernetes_pod_name"
 	nodeNameLabel    = "__meta_kubernetes_pod_node_name"
 	podIPLabel       = "__meta_kubernetes_pod_ip"
+	caFilePath       = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	certFilePath     = "/var/lib/pd-client-tls/cert"
+	keyFilePath      = "/var/lib/pd-client-tls/key"
 )
 
 var (
-	truePattern, _     = config.NewRegexp("true")
-	allMatchPattern, _ = config.NewRegexp("(.+)")
-	portPattern, _     = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
-	dashBoardConfig    = `{
+	truePattern     config.Regexp
+	allMatchPattern config.Regexp
+	portPattern     config.Regexp
+	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
         {
@@ -49,6 +53,22 @@ var (
     ]
 }`
 )
+
+func init() {
+	var err error
+	truePattern, err = config.NewRegexp("true")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	allMatchPattern, err = config.NewRegexp("(.+)")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	portPattern, err = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+}
 
 type MonitorConfigModel struct {
 	AlertmanagerURL    string
@@ -171,9 +191,9 @@ func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
 	for id, sconfig := range pc.ScrapeConfigs {
 		if sconfig.JobName == "tidb-cluster" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-				CertFile: "/var/lib/pd-client-tls/cert",
-				KeyFile:  "/var/lib/pd-client-tls/key",
+				CAFile:   caFilePath,
+				CertFile: certFilePath,
+				KeyFile:  keyFilePath,
 			}
 			sconfig.RelabelConfigs = append(sconfig.RelabelConfigs, &config.RelabelConfig{
 				SourceLabels: model.LabelNames{
