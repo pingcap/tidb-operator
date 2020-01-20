@@ -1,0 +1,95 @@
+{{- if .Values.monitor.create }}
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: {{ template "cluster.name" . }}-monitor
+  namespace: {{ .Release.Namespace }}
+spec:
+  clusters:
+    - name: {{ template "cluster.name" . }}
+      namespace: {{ .Release.Namespace }}
+  persistent: {{ .Values.monitor.persistent }}
+  storage: {{ .Values.monitor.storage }}
+  prometheus:
+    logLevel: {{ .Values.monitor.prometheus.logLevel }}
+    service:
+      type: {{ .Values.monitor.prometheus.service.type }}
+      annotations: {}
+      portName: http-prometheus
+    resources:
+{{ toYaml .Values.monitor.prometheus.resources | indent 6 }}
+    baseImage: {{ (split ":" .Values.monitor.prometheus.image)._0 }}
+    version: {{ (split ":" .Values.monitor.prometheus.image)._1 }}
+    imagePullPolicy: {{ .Values.monitor.prometheus.imagePullPolicy }}
+    nodeSelector: {}
+    annotations: {}
+    tolerations: {}
+    reserveDays: {{ .Values.monitor.prometheus.reserveDays }}
+  {{- if .Values.monitor.reloader.create }}
+  reloader:
+    service:
+      type: {{ .Values.monitor.reloader.service.type }}
+      annotations: {}
+      portName: tcp-reloader
+    resources:
+{{ toYaml .Values.monitor.reloader.resources | indent 6 }}
+    baseImage: {{ (split ":" .Values.monitor.reloader.image)._0 }}
+    version: {{ (split ":" .Values.monitor.reloader.image)._1 }}
+    imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy }}
+  {{- end }}
+  initializer:
+    env:
+      {{- if .Values.monitor.grafana.config }}
+        {{- range $key, $value := .Values.monitor.grafana.config }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+    resources:
+{{ toYaml .Values.monitor.initializer.resources | indent 6 }}
+    baseImage: {{ (split ":" .Values.monitor.initializer.image)._0 }}
+    version: {{ (split ":" .Values.monitor.initializer.image)._1 }}
+    imagePullPolicy: {{ .Values.monitor.initializer.imagePullPolicy }}
+  {{- if .Values.monitor.grafana.create }}
+  grafana:
+    logLevel: {{ .Values.monitor.grafana.logLevel }}
+    username: {{ .Values.monitor.grafana.username }}
+    password: {{ .Values.monitor.grafana.password }}
+    resources:
+{{ toYaml .Values.monitor.grafana.resources | indent 6 }}
+    baseImage: {{ (split ":" .Values.monitor.grafana.image)._0 }}
+    version: {{ (split ":" .Values.monitor.grafana.image)._1 }}
+    imagePullPolicy: {{ .Values.monitor.grafana.imagePullPolicy }}
+    service:
+      type: {{ .Values.monitor.grafana.service.type }}
+      annotations: {}
+      portName: http-grafana
+    env:
+        {{- if .Values.monitor.grafana.config }}
+        {{- range $key, $value := .Values.monitor.grafana.config }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+  {{- end }}
+  {{- if .Values.monitor.nodeSelector }}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            {{- range $key, $val := .Values.monitor.nodeSelector }}
+            {{- $valList := splitList "," $val }}
+            - key: {{ $key }}
+              operator: In
+              values:
+                {{- range $kl, $vl := $valList }}
+                - {{ $vl }}
+                {{- end }}
+            {{- end }}
+  {{- end }}
+  {{- if .Values.monitor.tolerations }}
+  tolerations:
+{{ toYaml .Values.monitor.tolerations | indent 4 }}
+  {{- end }}
+{{- end }}
