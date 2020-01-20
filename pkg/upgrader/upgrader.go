@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -108,6 +109,12 @@ func (u *upgrader) Upgrade() error {
 			klog.Infof("Upgrader: successfully migrated Kubernetes StatefulSet %s/%s", sts.Namespace, sts.Name)
 		}
 	} else {
+		if isSupported, err := utildiscovery.IsAPIGroupSupported(u.kubeCli.Discovery(), asappsv1.GroupName); err != nil {
+			return err
+		} else if !isSupported {
+			klog.Infof("Upgrader: APIGroup %s is not registered, skip checking Advanced Statfulset", asappsv1.GroupName)
+			return nil
+		}
 		stsList, err := u.asCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
