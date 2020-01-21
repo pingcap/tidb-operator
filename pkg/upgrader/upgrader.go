@@ -110,12 +110,9 @@ func (u *upgrader) Upgrade() error {
 	} else {
 		stsList, err := u.asCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
 		if err != nil {
-			if err != nil {
-				if errors.IsNotFound(err) {
-					klog.Infof("Upgrader: Kubernetes server haven't Advanced StatefulSets resources, skip to revert")
-					return nil
-				}
-				return err
+			if errors.IsNotFound(err) {
+				klog.Infof("Upgrader: Kubernetes server haven't Advanced StatefulSets resources, skip to revert")
+				return nil
 			}
 			return err
 		}
