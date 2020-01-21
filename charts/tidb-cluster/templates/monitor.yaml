@@ -2,8 +2,16 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
-  name: {{ template "cluster.name" . }}-monitor
+  # for backward compatibility, name should not be {{ template "cluster.name" . }}-monitor
+  # or the names of the pods/svcs would be changed, like tidb-cluster-grafana -> tidb-cluster-monitor-grafana
+  name: {{ template "cluster.name" . }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   clusters:
     - name: {{ template "cluster.name" . }}
