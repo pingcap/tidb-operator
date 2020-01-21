@@ -15,13 +15,16 @@ package monitor
 
 import (
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
@@ -30,6 +33,8 @@ type MonitorManager struct {
 	typedControl     controller.TypedControlInterface
 	deploymentLister appslisters.DeploymentLister
 	tcLister         v1alpha1listers.TidbClusterLister
+	pvLister         corelisters.PersistentVolumeLister
+	pvControl        controller.PVControlInterface
 	recorder         record.EventRecorder
 }
 
@@ -39,14 +44,19 @@ const (
 )
 
 func NewMonitorManager(
+	kubeCli kubernetes.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	typedControl controller.TypedControlInterface,
 	recorder record.EventRecorder) *MonitorManager {
+	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
+	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	return &MonitorManager{
 		typedControl:     typedControl,
 		deploymentLister: kubeInformerFactory.Apps().V1().Deployments().Lister(),
 		tcLister:         informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+		pvControl:        controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
+		pvLister:         pvLister,
 		recorder:         recorder,
 	}
 }
@@ -66,13 +76,17 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 	// Sync PVC
 	if monitor.Spec.Persistent {
-		if err := mm.syncTidbMonitorPVC(monitor); err != nil {
+		pvc, err := mm.syncTidbMonitorPVC(monitor)
+		if err != nil {
 			message := fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC failed,err:%v", monitor.Namespace, monitor.Name, err)
 			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 			return err
 		}
+		if err := mm.syncTidbMonitorPV(monitor, pvc); err != nil {
+			return err
+		}
+		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 	}
-	klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 
 	// Sync Deployment
 	if err := mm.syncTidbMonitorDeployment(monitor); err != nil {
@@ -96,12 +110,25 @@ func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) 
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) error {
+func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
 
 	pvc := getMonitorPVC(monitor)
-	_, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc)
+	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
+		return nil, err
+	}
+	return pvc, nil
+}
+
+func (mm *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *corev1.PersistentVolumeClaim) error {
+	// update meta info for pv
+	pv, err := mm.pvLister.Get(pvc.Spec.VolumeName)
+	if err != nil {
+		return err
+	}
+	_, err = mm.pvControl.UpdateMetaInfo(monitor, pv)
+	if err != nil {
 		return err
 	}
 	return nil

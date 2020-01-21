@@ -150,7 +150,7 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 		var updateErr error
 		updatePV, updateErr = rpc.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
-			glog.Infof("PV: [%s] updated successfully, kind: %s/%s", pvName, kind, ns, name)
+			glog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
 			return nil
 		}
 		glog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
