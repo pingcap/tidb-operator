@@ -22,23 +22,22 @@ spec:
     logLevel: {{ .Values.monitor.prometheus.logLevel }}
     service:
       type: {{ .Values.monitor.prometheus.service.type }}
-      annotations: {}
-      portName: http-prometheus
+      annotations:
+{{ toYaml .Values.monitor.prometheus.service.annotations | indent 8 }}
+      portName: {{ .Values.monitor.prometheus.service.portName }}
     resources:
 {{ toYaml .Values.monitor.prometheus.resources | indent 6 }}
     baseImage: {{ (split ":" .Values.monitor.prometheus.image)._0 }}
     version: {{ (split ":" .Values.monitor.prometheus.image)._1 }}
     imagePullPolicy: {{ .Values.monitor.prometheus.imagePullPolicy }}
-    nodeSelector: {}
-    annotations: {}
-    tolerations: {}
     reserveDays: {{ .Values.monitor.prometheus.reserveDays }}
   {{- if .Values.monitor.reloader.create }}
   reloader:
     service:
       type: {{ .Values.monitor.reloader.service.type }}
-      annotations: {}
-      portName: tcp-reloader
+      annotations:
+{{ toYaml .Values.monitor.reloader.service.annotations | indent 8 }}
+      portName: {{ .Values.monitor.reloader.service.portName }}
     resources:
 {{ toYaml .Values.monitor.reloader.resources | indent 6 }}
     baseImage: {{ (split ":" .Values.monitor.reloader.image)._0 }}
@@ -70,8 +69,9 @@ spec:
     imagePullPolicy: {{ .Values.monitor.grafana.imagePullPolicy }}
     service:
       type: {{ .Values.monitor.grafana.service.type }}
-      annotations: {}
-      portName: http-grafana
+      annotations:
+{{ toYaml .Values.monitor.grafana.service.annotations | indent 8 }}
+      portName: {{ .Values.monitor.grafana.service.portName }}
     env:
         {{- if .Values.monitor.grafana.config }}
         {{- range $key, $value := .Values.monitor.grafana.config }}
