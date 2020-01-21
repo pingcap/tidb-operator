@@ -16,6 +16,8 @@ package upgrader
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
@@ -108,6 +110,13 @@ func (u *upgrader) Upgrade() error {
 	} else {
 		stsList, err := u.asCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
 		if err != nil {
+			if err != nil {
+				if errors.IsNotFound(err) {
+					klog.Infof("Upgrader: Kubernetes server haven't Advanced StatefulSets resources, skip to revert")
+					return nil
+				}
+				return err
+			}
 			return err
 		}
 		stsToMigrate := make([]asappsv1.StatefulSet, 0)
