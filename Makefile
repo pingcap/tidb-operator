@@ -146,7 +146,7 @@ check-static:
 	  --enable ineffassign \
 	  $$($(PACKAGE_DIRECTORIES))
 	@echo "end-of-file checking"
-	./hack/check-EOF.sh
+	./hack/fix-EOF.sh
 
 check-codegen:
 	./hack/verify-codegen.sh
