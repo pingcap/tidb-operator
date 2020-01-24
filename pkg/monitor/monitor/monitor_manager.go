@@ -75,14 +75,13 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 	}
 	klog.V(4).Infof("tm[%s/%s]'s service synced", monitor.Namespace, monitor.Name)
 	// Sync PVC
+	var pvc *corev1.PersistentVolumeClaim
 	if monitor.Spec.Persistent {
-		pvc, err := mm.syncTidbMonitorPVC(monitor)
+		var err error
+		pvc, err = mm.syncTidbMonitorPVC(monitor)
 		if err != nil {
 			message := fmt.Sprintf("Sync TidbMonitor[%s/%s] PVC failed,err:%v", monitor.Namespace, monitor.Name, err)
 			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
-			return err
-		}
-		if err := mm.syncTidbMonitorPV(monitor, pvc); err != nil {
 			return err
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
@@ -93,6 +92,13 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
+	}
+
+	// After the pvc has consumer, we sync monitor pv's labels
+	if monitor.Spec.Persistent {
+		if err := mm.syncTidbMonitorPV(monitor, pvc); err != nil {
+			return err
+		}
 	}
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
