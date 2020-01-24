@@ -14,11 +14,12 @@
 package monitor
 
 import (
+	"time"
+
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
-	"time"
 )
 
 const (
@@ -38,6 +39,7 @@ var (
 	truePattern     config.Regexp
 	allMatchPattern config.Regexp
 	portPattern     config.Regexp
+	tikvPattern     config.Regexp
 	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
@@ -65,6 +67,10 @@ func init() {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
 	portPattern, err = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	tikvPattern, err = config.NewRegexp(".*\\-tikv\\-\\d*$")
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
@@ -187,7 +193,6 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 
 func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
 
-	r, _ := config.NewRegexp(".*\\-tikv\\-\\d*$")
 	for id, sconfig := range pc.ScrapeConfigs {
 		if sconfig.JobName == "tidb-cluster" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
@@ -200,7 +205,7 @@ func addTlsConfig(pc *config.Config, cmodel *MonitorConfigModel) {
 					"__meta_kubernetes_pod_name",
 				},
 				Action: "drop",
-				Regex:  r,
+				Regex:  tikvPattern,
 			})
 			pc.ScrapeConfigs[id] = sconfig
 			sconfig.HTTPClientConfig.XXX["scheme"] = "https"
