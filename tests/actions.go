@@ -239,6 +239,10 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
+	CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig)
+	CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
+	CheckScaleTidbClusterToZeroReplicaOrDie(info *TidbClusterConfig)
+	CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
@@ -3419,6 +3423,43 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 		return true, nil
 	})
+}
+func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var tc *v1alpha1.TidbCluster
+		var err error
+		ns := info.Namespace
+		tcName := info.ClusterName
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
+		return len(tc.Status.TiDB.FailureMembers) != 0, nil
+	})
+}
+func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var tc *v1alpha1.TidbCluster
+		var err error
+		ns := info.Namespace
+		tcName := info.ClusterName
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
+
+		return tc.Status.TiDB.StatefulSet.Replicas == 0, nil
+	})
+}
+func (oa *operatorActions) CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckTidbClusterHaveFailedMember(info, 5*time.Minute, 15*time.Second); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+func (oa *operatorActions) CheckScaleTidbClusterToZeroReplicaOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckScaleTidbClusterToZeroReplica(info, 5*time.Minute, 15*time.Second); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 var dummyCancel = func() {}
