@@ -3462,7 +3462,7 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 	})
 }
 func (oa *operatorActions) CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig) {
-	if err := oa.CheckTidbClusterHaveFailedMember(info, 5*time.Minute, 15*time.Second); err != nil {
+	if err := oa.CheckTidbClusterHaveFailedMember(info, 30*time.Minute, 15*time.Second); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
