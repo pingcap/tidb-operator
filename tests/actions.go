@@ -3453,7 +3453,7 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 			return false, nil
 		}
 		if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-			glog.Infof("fail to scale tidb member to zero")
+			glog.Infof("failed to scale tidb member to zero")
 			return false, nil
 		} else {
 			return true, nil
@@ -3461,7 +3461,7 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 	})
 }
 func (oa *operatorActions) CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig) {
-	if err := oa.CheckTidbClusterHaveFailedMember(info, 30*time.Minute, 15*time.Second); err != nil {
+	if err := oa.CheckTidbClusterHaveFailedMember(info, 10*time.Minute, 15*time.Second); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
