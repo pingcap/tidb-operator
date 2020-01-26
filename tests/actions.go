@@ -3434,7 +3434,12 @@ func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterCon
 			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
-		return len(tc.Status.TiDB.FailureMembers) != 0, nil
+		if len(tc.Status.TiDB.FailureMembers) == 0 {
+			glog.Infof("the number of failed member is zero")
+			return false, nil
+		} else {
+			return true, nil
+		}
 	})
 }
 func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
@@ -3447,8 +3452,12 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
-
-		return tc.Status.TiDB.StatefulSet.Replicas == 0, nil
+		if tc.Status.TiDB.StatefulSet.Replicas != 0 {
+			glog.Infof("fail to scale tidb member to zero")
+			return false, nil
+		} else {
+			return true, nil
+		}
 	})
 }
 func (oa *operatorActions) CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig) {
