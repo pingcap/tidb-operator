@@ -24,3 +24,4 @@ hack/update-codegen.sh
 hack/update-test-codegen.sh
 hack/update-openapi-spec.sh
 hack/update-crd-groups.sh
+hack/update-EOF.sh
