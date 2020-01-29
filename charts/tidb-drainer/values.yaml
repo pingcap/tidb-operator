@@ -5,6 +5,10 @@
 # timezone is the default system timzone
 timezone: UTC
 
+# Change the name of the statefulset and pod
+# The default is clusterName-ReleaseName-drainer
+# drainerName:
+
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 clusterVersion: v3.0.8
