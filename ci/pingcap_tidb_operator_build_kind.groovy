@@ -57,6 +57,17 @@ spec:
     emptyDir: {}
   - name: docker-graph
     emptyDir: {}
+  # we limit nodes to run to avoid some issues we found in our cluster, e.g.
+  # https://github.com/pingcap/tidb-operator/issues/1603
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - 172.16.5.64
 '''
 
 def build(SHELL_CODE, ARTIFACTS = "") {
@@ -197,9 +208,6 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
-		}
-		builds["E2E v1.16.4"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.16.4 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.16.4_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]' --operator-features AdvancedStatefulSet=true", artifacts)
