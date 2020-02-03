@@ -283,7 +283,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
-		go oa.BeginInsertDataToOrDie(&clusterA)
+		oa.BeginInsertDataToOrDie(&clusterA)
 
 		// backup and restore
 		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
