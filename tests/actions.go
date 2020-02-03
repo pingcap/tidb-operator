@@ -3442,6 +3442,7 @@ func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterCon
 			glog.Infof("the number of failed member is zero")
 			return false, nil
 		}
+		glog.Infof("the number of failed member is not zero")
 		return true, nil
 	})
 }
@@ -3459,6 +3460,7 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 			glog.Infof("failed to scale tidb member to zero")
 			return false, nil
 		}
+		glog.Infof("scale tidb member to zero successfully")
 		return true, nil
 
 	})

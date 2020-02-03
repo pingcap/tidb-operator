@@ -774,6 +774,30 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectEqual(existed, true)
 		framework.ExpectEqual(value, label.TiDBOperator)
 	})
+
+	ginkgo.It("tidb-scale: clear TiDB failureMembers when scale TiDB to zero", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", "")
+		cluster.Resources["pd.replicas"] = "3"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+		oa.CheckDisasterToleranceOrDie(&cluster)
+		// generate failmembers
+		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+		ctx, cancel := context.WithCancel(context.Background())
+		oa.UpgradeTidbClusterOrDie(&cluster)
+		oa.CheckUpgradeOrDie(ctx, &cluster)
+		oa.CheckTidbClusterHaveFailedMemberOrDie(&cluster)
+		//scale tidb member to zero replica
+		cluster.ScaleTiDB(0)
+		oa.ScaleTidbClusterOrDie(&cluster)
+		oa.CheckScaleTidbClusterToZeroReplicaOrDie(&cluster)
+		cancel()
+
+		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
