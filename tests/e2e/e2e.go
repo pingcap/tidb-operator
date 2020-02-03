@@ -198,11 +198,11 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
+		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
-		oa.InstallCRDOrDie()
+		oa.InstallCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator")
-		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
 	} else {
