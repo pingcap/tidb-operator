@@ -15,7 +15,7 @@
 
 #
 # This script runs before all e2e jobs to prepare shared files.
-# This is optional.
+# This is optional. We only use it in CI to speed up our e2e process.
 #
 
 set -o errexit
@@ -27,6 +27,14 @@ cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
 
+DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
+IMAGE_TAG=${IMAGE_TAG:-latest}
+
 hack::ensure_kind
 hack::ensure_kubectl
 hack::ensure_helm
+
+DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
+DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker
+docker save -o output/tidb-operator-$IMAGE_TAG.tar.gz $DOCKER_REGISTRY/pingcap/tidb-operator:$IMAGE_TAG
+docker save -o output/tidb-operator-e2e-$IMAGE_TAG.tar.gz $DOCKER_REGISTRY/pingcap/tidb-operator-e2e:$IMAGE_TAG
