@@ -177,6 +177,14 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						}
 					}
 
+					stage("Prepare for e2e") {
+						ansiColor('xterm') {
+							sh """
+							hack/prepare-e2e.sh
+							"""
+						}
+					}
+
 					stash excludes: "vendor/**,deploy/**", name: "tidb-operator"
 				}
 			}
