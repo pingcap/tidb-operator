@@ -786,9 +786,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&cluster)
 		// generate failmembers
 		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-		ctx, cancel := context.WithCancel(context.Background())
+		_, cancel := context.WithCancel(context.Background())
 		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckUpgradeOrDie(ctx, &cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
 		oa.CheckTidbClusterHaveFailedMemberOrDie(&cluster)
 		//scale tidb member to zero replica
 		cluster.ScaleTiDB(0)
