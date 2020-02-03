@@ -35,21 +35,10 @@ FILELIST=($(find . -type f -not \( -path './vendor/*' \
     -o -path './*/.DS_Store' \
     \)))
 
-NUM=0
-declare FAILED_FILE
-
 for f in ${FILELIST[@]}; do
     c=$(tail -c 1 "$f" | wc -l)
     if [ "$c" -eq 0 ]; then
-        FAILED_FILE+=($f)
-        NUM=$((NUM + 1))
+        echo "find file $f do not end with newline, fixing it"
+        printf "\n" >> $f
     fi
 done
-
-if [ $NUM -ne 0 ]; then
-    echo "error: following files do not end with newline, please run hack/update-EOF.sh to fix them"
-    printf '%s\n' "${FAILED_FILE[@]}"
-    exit 1
-else
-    echo "all files pass checking."
-fi
