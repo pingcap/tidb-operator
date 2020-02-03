@@ -184,6 +184,10 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			},
 		}
 	}
-
+	if persist {
+		storageClassName := "local-storage"
+		monitor.Spec.StorageClassName = &storageClassName
+		monitor.Spec.Storage = "2Gi"
+	}
 	return monitor
 }
