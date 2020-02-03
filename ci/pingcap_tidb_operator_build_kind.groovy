@@ -8,6 +8,9 @@ import groovy.transform.Field
 def podYAML = '''
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: tidb-operator-e2e
 spec:
   containers:
   - name: main
@@ -68,6 +71,20 @@ spec:
             operator: In
             values:
             - 172.16.5.64
+            - 172.16.5.65
+            - 172.16.5.67
+            - 172.16.5.68
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - tidb-operator-e2e
+          topologyKey: kubernetes.io/hostname
 '''
 
 def build(SHELL_CODE, ARTIFACTS = "") {
