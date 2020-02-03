@@ -495,19 +495,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					TiDB: v1alpha1.TiDBSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV2Version),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
 						},
 					},
 					TiKV: v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV2Version),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
 						},
 					},
 					PD: v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV2Version),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
 						},
 					},
 				},
@@ -546,17 +546,17 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV2Version),
+							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
 						},
 					},
 					TiKV: v1alpha1.TiKVSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV2Version),
+							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
 						},
 					},
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV2Version),
+							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
 						},
 					},
 				},

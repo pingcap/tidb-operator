@@ -283,7 +283,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
-		go oa.BeginInsertDataToOrDie(&clusterA)
+		oa.BeginInsertDataToOrDie(&clusterA)
 
 		// backup and restore
 		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
@@ -704,7 +704,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("should be operable without helm [API]", func() {
-		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV2Version)
+		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV3Version)
 		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -750,11 +750,29 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
+		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+		pvName := pvc.Spec.VolumeName
+		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
+		value, existed := pv.Labels[label.ComponentLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, label.TiDBMonitorVal)
+		value, existed = pv.Labels[label.InstanceLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, "e2e-monitor")
+		value, existed = pv.Labels[label.InstanceLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, "e2e-monitor")
+		value, existed = pv.Labels[label.ManagedByLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, label.TiDBOperator)
 	})
 })
 
