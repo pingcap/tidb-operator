@@ -154,7 +154,7 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 		return err
 	}
 
-	go oa.BeginInsertDataToOrDie(source)
+	oa.BeginInsertDataToOrDie(source)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbCluste
 		return err
 	}
 
-	go oa.BeginInsertDataToOrDie(source)
+	oa.BeginInsertDataToOrDie(source)
 	err = oa.DeployScheduledBackup(source)
 	if err != nil {
 		glog.Errorf("cluster:[%s] scheduler happen error: %v", source.ClusterName, err)
