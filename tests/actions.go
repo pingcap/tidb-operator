@@ -3429,6 +3429,7 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 	})
 }
 func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+	glog.Infof("checking tidb cluster [%s/%s] failed member", info.Namespace, info.ClusterName)
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
@@ -3439,14 +3440,15 @@ func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterCon
 			return false, nil
 		}
 		if len(tc.Status.TiDB.FailureMembers) == 0 {
-			glog.Infof("the number of failed member is zero")
+			glog.V(4).Infof("the number of failed member is zero")
 			return false, nil
 		}
-		glog.Infof("the number of failed member is not zero")
+		glog.V(4).Infof("the number of failed member is not zero")
 		return true, nil
 	})
 }
 func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+	glog.Infof("checking tidb cluster [%s/%s] scale to zero", info.Namespace, info.ClusterName)
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
@@ -3457,16 +3459,16 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 			return false, nil
 		}
 		if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-			glog.Infof("failed to scale tidb member to zero")
+			glog.V(4).Infof("failed to scale tidb member to zero")
 			return false, nil
 		}
-		glog.Infof("scale tidb member to zero successfully")
+		glog.V(4).Infof("scale tidb member to zero successfully")
 		return true, nil
 
 	})
 }
 func (oa *operatorActions) CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig) {
-	if err := oa.CheckTidbClusterHaveFailedMember(info, 10*time.Minute, 15*time.Second); err != nil {
+	if err := oa.CheckTidbClusterHaveFailedMember(info, 15*time.Minute, 15*time.Second); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
