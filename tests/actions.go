@@ -711,6 +711,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
 
+	oa.StopInsertDataTo(info)
+
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			label.InstanceLabelKey: tcName,
@@ -1098,6 +1100,8 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
+
+	info.blockWriterPod = nil
 }
 
 func (oa *operatorActions) manifestPath(tag string) string {
