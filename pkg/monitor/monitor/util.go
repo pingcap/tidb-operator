@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -42,10 +43,14 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
 	}
 
+	targetPattern, err := config.NewRegexp(tc.Name)
+	if err != nil {
+		return nil, err
+	}
 	model := &MonitorConfigModel{
 		AlertmanagerURL:    "",
 		ReleaseNamespaces:  releaseNamespaces,
-		ReleaseTargetRegex: tc.Name,
+		ReleaseTargetRegex: &targetPattern,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 	}
 

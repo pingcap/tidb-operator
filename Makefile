@@ -98,7 +98,8 @@ e2e:
 	./hack/e2e.sh
 
 stability-test-build:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
 
 stability-test-docker: stability-test-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
