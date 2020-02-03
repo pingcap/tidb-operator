@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -42,10 +43,14 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
 	}
 
+	targetPattern, err := config.NewRegexp(tc.Name)
+	if err != nil {
+		return nil, err
+	}
 	model := &MonitorConfigModel{
 		AlertmanagerURL:    "",
 		ReleaseNamespaces:  releaseNamespaces,
-		ReleaseTargetRegex: tc.Name,
+		ReleaseTargetRegex: &targetPattern,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
 	}
 
@@ -638,6 +643,21 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	var services []*core.Service
 	monitorLabel := label.New().Instance(monitor.Name).Monitor()
 	labels := label.NewMonitor().Instance(monitor.Name).Monitor()
+
+	reloaderPortName := "tcp-reloader"
+	prometheusPortName := "http-prometheus"
+	grafanaPortName := "http-grafana"
+
+	if monitor.BaseReloaderSpec().PortName() != nil {
+		reloaderPortName = *monitor.BaseReloaderSpec().PortName()
+	}
+	if monitor.BasePrometheusSpec().PortName() != nil {
+		prometheusPortName = *monitor.BasePrometheusSpec().PortName()
+	}
+	if monitor.BaseGrafanaSpec() != nil && monitor.BaseGrafanaSpec().PortName() != nil {
+		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
+	}
+
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
@@ -649,7 +669,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
 				{
-					Name:       "prometheus",
+					Name:       prometheusPortName,
 					Port:       9090,
 					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromInt(9090),
@@ -659,6 +679,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Selector: labels,
 		},
 	}
+
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            fmt.Sprintf("%s-reloader", monitor.Name),
@@ -670,7 +691,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		Spec: core.ServiceSpec{
 			Ports: []core.ServicePort{
 				{
-					Name:       "reloader",
+					Name:       reloaderPortName,
 					Port:       9089,
 					Protocol:   core.ProtocolTCP,
 					TargetPort: intstr.FromInt(9089),
@@ -683,6 +704,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			},
 		},
 	}
+
 	services = append(services, prometheusService, reloaderService)
 	if monitor.Spec.Grafana != nil {
 		grafanaService := &core.Service{
@@ -696,7 +718,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Spec: core.ServiceSpec{
 				Ports: []core.ServicePort{
 					{
-						Name:       "grafana",
+						Name:       grafanaPortName,
 						Port:       3000,
 						Protocol:   core.ProtocolTCP,
 						TargetPort: intstr.FromInt(3000),
