@@ -73,6 +73,8 @@ spec:
             - 172.16.5.64
             - 172.16.5.65
             - 172.16.5.67
+            - 172.16.5.68
+            - 172.16.5.70
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
