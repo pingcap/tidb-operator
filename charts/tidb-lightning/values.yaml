@@ -30,6 +30,8 @@ dataSource:
     storage: 100Gi
     secretName: cloud-storage-secret
     path: s3:bench-data-us/sysbench/sbtest_16_1e7.tar.gz
+    # Directory support downloading all files in a remote directory, shadow dataSoure.remote.path if present
+    # directory: s3:bench-data-us
 
 targetTidbCluster:
   name: tidb-cluster
