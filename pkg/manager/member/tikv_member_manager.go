@@ -588,12 +588,13 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf("%s-tikv-\\d+\\.%s-tikv-peer\\.%s\\.svc\\:\\d+", tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(`%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`, tc.Name, tc.Name, tc.Namespace))
 	if err != nil {
 		return err
 	}
 	for _, store := range storesInfo.Stores {
-		// make sure that the store belongs to the tikv
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
