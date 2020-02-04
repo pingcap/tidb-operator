@@ -788,7 +788,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
 		_, cancel := context.WithCancel(context.Background())
 		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
 		oa.CheckTidbClusterHaveFailedMemberOrDie(&cluster)
 		//scale tidb member to zero replica
 		cluster.ScaleTiDB(0)
