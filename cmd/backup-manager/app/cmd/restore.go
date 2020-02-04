@@ -36,7 +36,7 @@ func NewRestoreCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "restore",
-		Short: "restore specific tidb cluster.",
+		Short: "Restore specific tidb cluster.",
 		Run: func(cmd *cobra.Command, args []string) {
 			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
 			cmdutil.CheckErr(runRestore(ro, kubecfg))

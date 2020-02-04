@@ -50,7 +50,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	fullArgs = append(fullArgs, args...)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, args, string(output), err)
+		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, fullArgs, string(output), err)
 	}
 	glog.Infof("Restore data for cluster %s successfully, output: %s", ro, string(output))
 	return nil
@@ -59,7 +59,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 	args, err := util.ConstructBRGlobalOptionsForRestore(restore)
 	if err != nil {
-		return args, nil
+		return nil, err
 	}
 	config := restore.Spec.BR
 	if config.Concurrency != nil {
@@ -67,6 +67,9 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 	}
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
+	}
+	if config.RateLimit != nil {
+		args = append(args, fmt.Sprintf("--ratelimit=%d", *config.RateLimit))
 	}
 	return args, nil
 }

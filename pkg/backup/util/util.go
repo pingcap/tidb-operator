@@ -307,6 +307,12 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 			backup.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
+		if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && backup.Spec.BR.DB == "" {
+			return fmt.Errorf("DB should be configured for BR with backup type %s in spec of %s/%s", backup.Spec.Type, ns, name)
+		}
+		if backup.Spec.Type == v1alpha1.BackupTypeTable && backup.Spec.BR.Table == "" {
+			return fmt.Errorf("table should be configured for BR with backup type table in spec of %s/%s", ns, name)
+		}
 		if backup.Spec.S3 != nil {
 			if backup.Spec.S3.Bucket == "" {
 				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
@@ -339,9 +345,6 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 		if restore.Spec.To.SecretName == "" {
 			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
 		}
-		if restore.Spec.StorageClassName == "" {
-			return fmt.Errorf("missing storageClassName config in spec of %s/%s", ns, name)
-		}
 		if restore.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
@@ -359,7 +362,7 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
 		}
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
-			return fmt.Errorf("Table should be configured for BR with restore type table in spec of %s/%s", ns, name)
+			return fmt.Errorf("table should be configured for BR with restore type table in spec of %s/%s", ns, name)
 		}
 		if restore.Spec.S3 != nil {
 			if restore.Spec.S3.Bucket == "" {

@@ -124,6 +124,12 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 		return nil, "", err
 	}
 	args = append(args, storageArgs...)
+	if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.DB != "" {
+		args = append(args, fmt.Sprintf("--db=%s", config.DB))
+	}
+	if backup.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
+		args = append(args, fmt.Sprintf("--table=%s", config.Table))
+	}
 	return args, path, nil
 }
 
