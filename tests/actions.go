@@ -45,8 +45,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
-	utildiscovery "github.com/pingcap/tidb-operator/tests/e2e/util/discovery"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
@@ -151,7 +151,7 @@ const (
 
 type OperatorActions interface {
 	CleanCRDOrDie()
-	InstallCRDOrDie()
+	InstallCRDOrDie(info *OperatorConfig)
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -470,13 +470,15 @@ func (oa *operatorActions) CleanCRDOrDie() {
 }
 
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
-func (oa *operatorActions) InstallCRDOrDie() {
-	if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
-		glog.Fatal(err)
-	} else if isSupported {
-		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
-	} else {
-		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+func (oa *operatorActions) InstallCRDOrDie(info *OperatorConfig) {
+	if info.Enabled(features.AdvancedStatefulSet) {
+		if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
+			glog.Fatal(err)
+		} else if isSupported {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+		} else {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+		}
 	}
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
@@ -489,7 +491,6 @@ func (oa *operatorActions) InstallCRDOrDie() {
 	if err != nil {
 		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
-	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
