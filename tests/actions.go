@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -46,7 +45,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	utildiscovery "github.com/pingcap/tidb-operator/tests/e2e/util/discovery"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
+	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
@@ -60,6 +60,7 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -68,6 +69,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	glog "k8s.io/klog"
+	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
@@ -88,6 +90,8 @@ const (
 func NewOperatorActions(cli versioned.Interface,
 	kubeCli kubernetes.Interface,
 	asCli asclientset.Interface,
+	aggrCli aggregatorclientset.Interface,
+	apiExtCli apiextensionsclientset.Interface,
 	pollInterval time.Duration,
 	operatorConfig *OperatorConfig,
 	cfg *Config,
@@ -107,6 +111,8 @@ func NewOperatorActions(cli versioned.Interface,
 		kubeCli:      kubeCli,
 		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
 		asCli:        asCli,
+		aggrCli:      aggrCli,
+		apiExtCli:    apiExtCli,
 		tcStsGetter:  tcStsGetter,
 		pollInterval: pollInterval,
 		cfg:          cfg,
@@ -145,7 +151,7 @@ const (
 
 type OperatorActions interface {
 	CleanCRDOrDie()
-	InstallCRDOrDie()
+	InstallCRDOrDie(info *OperatorConfig)
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -188,6 +194,8 @@ type OperatorActions interface {
 	GetNodeMap(info *TidbClusterConfig, component string) (map[string][]string, error)
 	TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
 	TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
+	DeletePDDataThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error
+	DeletePDDataThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration)
 	CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error)
 	CheckFailoverPendingOrDie(clusters []*TidbClusterConfig, node string, faultPoint *time.Time)
 	CheckFailover(info *TidbClusterConfig, faultNode string) (bool, error)
@@ -238,6 +246,8 @@ type operatorActions struct {
 	cli                versioned.Interface
 	kubeCli            kubernetes.Interface
 	asCli              asclientset.Interface
+	aggrCli            aggregatorclientset.Interface
+	apiExtCli          apiextensionsclientset.Interface
 	tcStsGetter        typedappsv1.StatefulSetsGetter
 	pdControl          pdapi.PDControlInterface
 	tidbControl        controller.TiDBControlInterface
@@ -460,26 +470,20 @@ func (oa *operatorActions) CleanCRDOrDie() {
 }
 
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
-func (oa *operatorActions) InstallCRDOrDie() {
+func (oa *operatorActions) InstallCRDOrDie(info *OperatorConfig) {
+	if info.Enabled(features.AdvancedStatefulSet) {
+		if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
+			glog.Fatal(err)
+		} else if isSupported {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+		} else {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+		}
+	}
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-	if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
-		glog.Fatal(err)
-	} else if isSupported {
-		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
-	} else {
-		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
-	}
-	out := oa.runKubectlOrDie([]string{"get", "crds", "--no-headers", `-ojsonpath={range .items[*]}{.metadata.name}{" "}{end}`}...)
-	waitArgs := []string{"wait", "--for=condition=Established"}
-	for _, crd := range strings.Split(out, " ") {
-		crd = strings.TrimSpace(crd)
-		if crd == "" {
-			continue
-		}
-		waitArgs = append(waitArgs, fmt.Sprintf("crds/%s", crd))
-	}
-	oa.runKubectlOrDie(waitArgs...)
+	glog.Infof("Wait for all CRDs are established")
+	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
 	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
 	glog.Infof("force sync kubectl cache")
 	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
@@ -487,7 +491,6 @@ func (oa *operatorActions) InstallCRDOrDie() {
 	if err != nil {
 		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
-	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
@@ -521,10 +524,8 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	// wait for all apiservices are available
-	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
-	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
-	return nil
+	glog.Infof("Wait for all apiesrvices are available")
+	return e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
 }
 
 func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
@@ -578,9 +579,11 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
 
-	// wait for all apiservices are available
-	// '-l a!=b' is a workaround solution for '--all' flag which is introduced only in kubectl 1.14+
-	oa.runKubectlOrDie("wait", "--for=condition=Available", "apiservices", "-l", "a!=b")
+	glog.Infof("Wait for all apiesrvices are available")
+	err = e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
+	if err != nil {
+		return err
+	}
 
 	if info.Tag == "e2e" {
 		return nil
@@ -708,6 +711,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "CleanTidbCluster")
 	ns := info.Namespace
 	tcName := info.ClusterName
+
+	oa.StopInsertDataTo(info)
 
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels: map[string]string{
@@ -1096,6 +1101,8 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
+
+	info.blockWriterPod = nil
 }
 
 func (oa *operatorActions) manifestPath(tag string) string {
@@ -2136,112 +2143,18 @@ func (oa *operatorActions) checkTiKVConfigUpdated(tc *v1alpha1.TidbCluster, clus
 func (oa *operatorActions) checkPrometheus(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	var prometheusAddr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s-prometheus", tcName), 9090)
-		if err != nil {
-			return err
-		}
-		defer cancel()
-		prometheusAddr = fmt.Sprintf("%s:%d", localHost, localPort)
-	} else {
-		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", tcName, ns)
-	}
-	prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
-	resp, err := http.Get(prometheusSvc)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	response := &struct {
-		Status string `json:"status"`
-	}{}
-	err = json.Unmarshal(body, response)
-	if err != nil {
-		return err
-	}
-	if response.Status != "success" {
-		return fmt.Errorf("the prometheus's api[%s] has not ready", prometheusSvc)
-	}
-	return nil
+	return checkPrometheusCommon(tcName, ns, oa.fw)
 }
 
 func (oa *operatorActions) checkGrafanaData(clusterInfo *TidbClusterConfig) error {
 	ns := clusterInfo.Namespace
 	tcName := clusterInfo.ClusterName
-	svcName := fmt.Sprintf("%s-grafana", tcName)
-	end := time.Now()
-	start := end.Add(-time.Minute)
-	values := url.Values{}
-	values.Set("query", "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))")
-	values.Set("start", fmt.Sprintf("%d", start.Unix()))
-	values.Set("end", fmt.Sprintf("%d", end.Unix()))
-	values.Set("step", "30")
-
-	var addr string
-	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("svc/%s-prometheus", tcName), 3000)
-		if err != nil {
-			return err
-		}
-		defer cancel()
-		addr = fmt.Sprintf("%s:%d", localHost, localPort)
-	} else {
-		addr = fmt.Sprintf("%s.%s.svc.cluster.local:3000", svcName, ns)
-	}
-
-	datasourceID, err := getDatasourceID(addr)
+	grafanaClient, err := checkGrafanaDataCommon(tcName, ns, clusterInfo.GrafanaClient, oa.fw)
 	if err != nil {
 		return err
 	}
-
-	u := fmt.Sprintf("http://%s/api/datasources/proxy/%d/api/v1/query_range?%s", addr, datasourceID, values.Encode())
-	req, err := http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(grafanaUsername, grafanaPassword)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	buf, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	data := struct {
-		Status string `json:"status"`
-		Data   struct {
-			ResultType string `json:"resultType"`
-			Result     []struct {
-				Metric struct {
-					Job string `json:"job"`
-				} `json:"metric"`
-				Values []interface{} `json:"values"`
-			} `json:"result"`
-		}
-	}{}
-	if err := json.Unmarshal(buf, &data); err != nil {
-		return err
-	}
-	if data.Status != "success" || len(data.Data.Result) < 1 {
-		return fmt.Errorf("invalid response: status: %s, result: %v", data.Status, data.Data.Result)
-	}
-
-	// Grafana ready, init grafana client, no more sync logic because race condition is okay here
-	if clusterInfo.GrafanaClient == nil {
-		grafanaURL := fmt.Sprintf("http://%s.%s:3000", svcName, ns)
-		client, err := metrics.NewClient(grafanaURL, grafanaUsername, grafanaPassword)
-		if err != nil {
-			return err
-		}
-		clusterInfo.GrafanaClient = client
+	if clusterInfo.GrafanaClient == nil && grafanaClient != nil {
+		clusterInfo.GrafanaClient = grafanaClient
 	}
 	return nil
 }
@@ -3407,7 +3320,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 		}
 	}
 
-	// wait for the tidb statefulset is upgrade to the protect one
+	// wait for the tidb or tikv statefulset is upgraded to the protected one
 	if err = wait.Poll(DefaultPollInterval, 30*time.Minute, fn); err != nil {
 		return fmt.Errorf("fail to upgrade to annotation %s pod, err: %v", component, err)
 	}
@@ -3541,7 +3454,7 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 		panic(err)
 	}
 
-	versionCli, kubeCli, _ := client.NewCliOrDie()
+	versionCli, kubeCli, _, _, _ := client.NewCliOrDie()
 	wh := webhook.NewWebhook(kubeCli, versionCli, namespaces)
 	http.HandleFunc("/pods", wh.ServePods)
 	server := &http.Server{

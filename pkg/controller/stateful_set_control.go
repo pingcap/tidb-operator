@@ -93,7 +93,6 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, se
 		return updateErr
 	})
 
-	sc.recordStatefulSetEvent("update", tc, set, err)
 	return updatedSS, err
 }
 

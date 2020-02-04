@@ -375,20 +375,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
-					"db": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DB is the specific DB which will be backed-up or restored",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"table": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Table is the specific table which will be backed-up or restored",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"ca": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CA is the CA certificate path for TLS connection",
@@ -675,7 +661,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageClassName is the storage class for backup job's PV.",
+							Description: "The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -728,7 +714,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageClassName is the storage class for backup job's PV.",
+							Description: "The storageClassName of the persistent volume for Backup data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2096,7 +2082,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for PD data storage, empty string means not explicitly set and use the cluster default set by admission controller. Optionals: Defaults to the default-storage-class-name set in the tidb-operator",
+							Description: "The storageClassName of the persistent volume for PD data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2543,7 +2529,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for Pump data storage, empty string means not explicitly set and use the cluster default set by admission controller. Optionals: Defaults to the default-storage-class-name set in the tidb-operator",
+							Description: "The storageClassName of the persistent volume for Pump data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2680,7 +2666,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageClassName is the storage class for backup job's PV.",
+							Description: "The storageClassName of the persistent volume for Restore data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2692,17 +2678,12 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"br": {
-						SchemaProps: spec.SchemaProps{
-							Description: "BR is the configs for BR.",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
-						},
-					},
 				},
+				Required: []string{"to", "storageSize"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
 	}
 }
 
@@ -2883,6 +2864,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 					"clusterIP": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterIP is the clusterIP of service",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"portName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PortName is the name of service port",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5293,7 +5281,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for TiKV data storage, empty string means not explicitly set and use the cluster default set by admission controller. Optionals: Defaults to the default-storage-class-name set in the tidb-operator",
+							Description: "The storageClassName of the persistent volume for TiKV data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

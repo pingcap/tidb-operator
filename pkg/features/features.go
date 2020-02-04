@@ -16,12 +16,13 @@ package features
 import (
 	"flag"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
-	utilflags "github.com/pingcap/tidb-operator/pkg/util/flags"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog"
 )
 
 var (
@@ -54,13 +55,15 @@ type FeatureGate interface {
 	SetFromMap(m map[string]bool)
 }
 
+var _ flag.Value = &featureGate{}
+
 type featureGate struct {
 	lock            sync.Mutex
 	enabledFeatures map[string]bool
 }
 
 func (f *featureGate) AddFlag(flagset *flag.FlagSet) {
-	flag.Var(utilflags.NewMapStringBool(&f.enabledFeatures), "features", fmt.Sprintf("A set of key={true,false} pairs to enable/disable features, available features: %s", strings.Join(allFeatures.List(), ",")))
+	flag.Var(f, "features", fmt.Sprintf("A set of key={true,false} pairs to enable/disable features, available features: %s", strings.Join(allFeatures.List(), ",")))
 }
 
 func (f *featureGate) Enabled(key string) bool {
@@ -68,6 +71,16 @@ func (f *featureGate) Enabled(key string) bool {
 		return b
 	}
 	return false
+}
+
+// String returns a string containing all enabled feature gates, formatted as "key1=value1,key2=value2,...".
+func (f *featureGate) String() string {
+	pairs := []string{}
+	for k, v := range f.enabledFeatures {
+		pairs = append(pairs, fmt.Sprintf("%s=%t", k, v))
+	}
+	sort.Strings(pairs)
+	return strings.Join(pairs, ",")
 }
 
 func (f *featureGate) Set(value string) error {
@@ -99,6 +112,8 @@ func (f *featureGate) SetFromMap(m map[string]bool) {
 	for k, v := range m {
 		f.enabledFeatures[k] = v
 	}
+
+	klog.V(1).Infof("feature gates: %v", f.enabledFeatures)
 }
 
 func NewFeatureGate() FeatureGate {

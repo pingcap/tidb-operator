@@ -33,13 +33,9 @@ spec:
 {{ toYaml .Values.controllerManager.resources | indent 12 }}
         command:
           - /usr/local/bin/tidb-controller-manager
-          - -default-storage-class-name={{ .Values.defaultStorageClassName }}
           {{- if .Values.tidbBackupManagerImage }}
           - -tidb-backup-manager-image={{ .Values.tidbBackupManagerImage }}
           - -tidb-discovery-image={{ .Values.operatorImage }}
-          {{- end }}
-          {{- if .Values.defaultBackupStorageClassName }}
-          - -default-backup-storage-class-name={{ .Values.defaultBackupStorageClassName }}
           {{- end }}
           - -cluster-scoped={{ .Values.clusterScoped }}
           - -auto-failover={{ .Values.controllerManager.autoFailover | default true }}
