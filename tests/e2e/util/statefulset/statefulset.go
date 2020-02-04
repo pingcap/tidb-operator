@@ -16,6 +16,14 @@ package statefulset
 import (
 	"regexp"
 	"strconv"
+
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 )
 
 var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
@@ -30,4 +38,27 @@ func GetStatefulPodOrdinal(podName string) int {
 		ordinal = int(i)
 	}
 	return ordinal
+}
+
+// IsAllDesiredPodsRunningAndReady checks if all desired pods of given statefulset are running and ready
+func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.StatefulSet) bool {
+	deleteSlots := helper.GetDeleteSlots(sts)
+	actualPodList := e2esset.GetPodList(c, sts)
+	actualPodOrdinals := sets.NewInt32()
+	for _, pod := range actualPodList.Items {
+		actualPodOrdinals.Insert(int32(GetStatefulPodOrdinal(pod.Name)))
+	}
+	desiredPodOrdinals := helper.GetPodOrdinalsFromReplicasAndDeleteSlots(*sts.Spec.Replicas, deleteSlots)
+	if !actualPodOrdinals.Equal(desiredPodOrdinals) {
+		klog.Infof("pod ordinals of sts %s/%s is %v, expects: %v", sts.Namespace, sts.Name, actualPodOrdinals.List(), desiredPodOrdinals.List())
+		return false
+	}
+	for _, pod := range actualPodList.Items {
+		if !podutil.IsPodReady(&pod) {
+			klog.Infof("pod %s of sts %s/%s is not ready, got: %v", pod.Name, sts.Namespace, sts.Name, podutil.GetPodReadyCondition(pod.Status))
+			return false
+		}
+	}
+	klog.Infof("desired pods of sts %s/%s are running and ready (%v)", sts.Namespace, sts.Name, actualPodOrdinals.List())
+	return true
 }
