@@ -590,9 +590,8 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	addressPrefix := fmt.Sprintf("%s-tikv-", tc.Name)
 	addressSuffix := fmt.Sprintf("%s-tikv-peer.%s.svc:20160", tc.Name, tc.Namespace)
 	for _, store := range storesInfo.Stores {
-		address := store.Store.Address
 		// make sure that the store belongs to the tikv
-		if !(strings.HasPrefix(address, addressPrefix) && strings.HasSuffix(address, addressSuffix)) {
+		if store.Store != nil && !(strings.HasPrefix(store.Store.Address, addressPrefix) && strings.HasSuffix(store.Store.Address, addressSuffix)) {
 			continue
 		}
 		status := tkmm.getTiKVStore(store)
