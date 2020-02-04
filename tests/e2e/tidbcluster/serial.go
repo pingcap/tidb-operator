@@ -131,7 +131,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
@@ -322,7 +322,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
-		oa.InstallCRDOrDie()
+		oa.InstallCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
@@ -362,6 +362,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			"StableScheduling=true",
 			"AdvancedStatefulSet=true",
 		}
+		oa.InstallCRDOrDie(ocfg)
 		oa.UpgradeOperatorOrDie(ocfg)
 
 		ginkgo.By("Wait for the advanced statefulsets are created and Kubernetes statfulsets are deleted")
@@ -414,7 +415,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
@@ -470,7 +471,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
 			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
