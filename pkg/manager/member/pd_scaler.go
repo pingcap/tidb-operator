@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -73,10 +74,10 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return nil
 	}
 
-	var i int32 = 0
 	healthCount := 0
 	totalCount := *oldSet.Spec.Replicas
-	for ; i < totalCount; i++ {
+	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+	for _, i := range podOrdinals {
 		podName := ordinalPodName(v1alpha1.PDMemberType, tcName, i)
 		if member, ok := tc.Status.PD.Members[podName]; ok && member.Health {
 			healthCount++
