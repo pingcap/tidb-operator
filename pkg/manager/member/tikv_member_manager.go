@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -587,11 +588,13 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	addressPrefix := fmt.Sprintf("%s-tikv-", tc.Name)
-	addressSuffix := fmt.Sprintf("%s-tikv-peer.%s.svc:20160", tc.Name, tc.Namespace)
+	pattern, err := regexp.Compile(fmt.Sprintf("%s-tikv-\\d+\\.%s-tikv-peer\\.%s\\.svc\\:\\d+", tc.Name, tc.Name, tc.Namespace))
+	if err != nil {
+		return err
+	}
 	for _, store := range storesInfo.Stores {
 		// make sure that the store belongs to the tikv
-		if store.Store != nil && !(strings.HasPrefix(store.Store.Address, addressPrefix) && strings.HasSuffix(store.Store.Address, addressSuffix)) {
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
 		status := tkmm.getTiKVStore(store)
