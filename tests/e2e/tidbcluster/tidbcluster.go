@@ -783,6 +783,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tidb.replicas"] = "1"
 
 		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+		oa.DeployTidbClusterOrDie(&cluster)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 
 		err := oa.CheckTidbClusterHaveFailedMember(&cluster, 30*time.Minute, 15*time.Second)
