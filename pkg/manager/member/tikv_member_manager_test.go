@@ -514,7 +514,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		if test.hasPod {
 			pod := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "pod-1",
+					Name:      "test-tikv-1",
 					Namespace: metav1.NamespaceDefault,
 				},
 				Spec: corev1.PodSpec{
@@ -612,7 +612,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Up",
 						},
@@ -641,7 +641,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Up",
 						},
@@ -669,7 +669,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 								Labels: []*metapb.StoreLabel{
 									{
 										Key:   "region",
@@ -715,7 +715,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 								Labels: []*metapb.StoreLabel{
 									{
 										Key:   "region",
@@ -749,7 +749,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 								Labels: []*metapb.StoreLabel{
 									{
 										Key:   "region",
@@ -1007,6 +1007,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 					LastHeartbeatTime: now,
 				}
 			},
+
 			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
 				return false, nil
 			},
@@ -1017,7 +1018,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 						},
 						Status: &pdapi.StoreStatus{
@@ -1057,7 +1058,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 						},
 						Status: &pdapi.StoreStatus{
@@ -1097,7 +1098,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 						},
 						Status: &pdapi.StoreStatus{
@@ -1135,7 +1136,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 						},
 						Status: &pdapi.StoreStatus{
@@ -1175,7 +1176,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Up",
 						},
@@ -1216,7 +1217,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Down",
 						},
@@ -1257,7 +1258,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Up",
 						},
@@ -1294,7 +1295,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Up",
 						},
@@ -1311,7 +1312,7 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 						Store: &pdapi.MetaStore{
 							Store: &metapb.Store{
 								Id:      333,
-								Address: "pod-1.ns-1",
+								Address: fmt.Sprintf("%s-tikv-1.%s-tikv-peer.%s.svc:20160", "test", "test", "default"),
 							},
 							StateName: "Tombstone",
 						},
