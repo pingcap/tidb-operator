@@ -781,21 +781,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
 
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-		oa.CheckDisasterToleranceOrDie(&cluster)
-		// generate failmembers
 		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-		_, cancel := context.WithCancel(context.Background())
 		oa.UpgradeTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterHaveFailedMemberOrDie(&cluster)
-		//scale tidb member to zero replica
+
+		err := oa.CheckTidbClusterHaveFailedMember(&cluster, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "tidb failover work")
 		cluster.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&cluster)
-		oa.CheckScaleTidbClusterToZeroReplicaOrDie(&cluster)
-		cancel()
-
-		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
+		err = oa.CheckScaleTidbClusterToZeroReplica(&cluster, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "clear TiDB failureMembers when scale TiDB to zero")
 	})
 })
 
