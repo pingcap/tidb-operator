@@ -55,6 +55,7 @@ scrape_configs:
     target_label: __metrics_path__
     action: replace
   - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: ([^:]+)(?::\d+)?;(\d+)
     target_label: __address__
     replacement: $1:$2
     action: replace
@@ -100,6 +101,7 @@ scrape_configs:
     target_label: __metrics_path__
     action: replace
   - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: ([^:]+)(?::\d+)?;(\d+)
     target_label: __address__
     replacement: $1:$2
     action: replace
@@ -145,6 +147,7 @@ scrape_configs:
     target_label: __metrics_path__
     action: replace
   - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+    regex: ([^:]+)(?::\d+)?;(\d+)
     target_label: __address__
     replacement: $1:$2
     action: replace

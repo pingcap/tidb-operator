@@ -44,7 +44,6 @@ var (
 	tikvPattern     config.Regexp
 	pdPattern       config.Regexp
 	tidbPattern     config.Regexp
-	ioPortPattern   config.Regexp
 	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
@@ -179,7 +178,7 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 					ioPortLabel,
 				},
 				Action:      config.RelabelReplace,
-				Regex:       ioPortPattern,
+				Regex:       portPattern,
 				Replacement: "$1:$2",
 				TargetLabel: "__address__",
 			},
