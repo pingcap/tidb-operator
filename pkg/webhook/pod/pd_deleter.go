@@ -196,16 +196,16 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	var targetName string
 
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		lastOrdinal := payload.tc.Status.PD.StatefulSet.Replicas - 1
+		lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
 		if ordinal == lastOrdinal {
-			targetName = pdutil.PdPodName(tcName, 0)
+			targetName = pdutil.PdPodName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet))
 		} else {
 			targetName = pdutil.PdPodName(tcName, lastOrdinal)
 		}
 	} else {
-		lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+		lastOrdinal := payload.tc.Status.PD.StatefulSet.Replicas - 1
 		if ordinal == lastOrdinal {
-			targetName = pdutil.PdPodName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet))
+			targetName = pdutil.PdPodName(tcName, 0)
 		} else {
 			targetName = pdutil.PdPodName(tcName, lastOrdinal)
 		}
