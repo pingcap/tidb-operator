@@ -193,16 +193,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					deleteSlots: sets.NewInt32(),
 				},
 				{
-					name:        "Scaling in tidb from 0 to 2",
+					name:        "Scaling out tidb from 0 to 2 by adding pods 0 and 2",
 					component:   "tidb",
 					replicas:    2,
-					deleteSlots: sets.NewInt32(),
+					deleteSlots: sets.NewInt32(1),
 				},
 				{
-					name:        "Scaling out tidb from 2 to 4 by adding pods 3 and 4",
+					name:        "Scaling tidb from 2 to 4 by deleting pods 2 and adding pods 3, 4 and 5",
 					component:   "tidb",
 					replicas:    4,
-					deleteSlots: sets.NewInt32(1),
+					deleteSlots: sets.NewInt32(1, 2),
 				},
 				{
 					name:        "Scaling out pd from 3 to 5 by adding pods 3, 4",
@@ -214,6 +214,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					name:        "Scaling in pd from 5 to 3 by deleting pods 0 and 3",
 					component:   "pd",
 					replicas:    3,
+					deleteSlots: sets.NewInt32(0, 3),
+				},
+				{
+					name:        "Scaling out pd from 3 to 5 by adding pods 5 and 6",
+					component:   "pd",
+					replicas:    5,
 					deleteSlots: sets.NewInt32(0, 3),
 				},
 			}
