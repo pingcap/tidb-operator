@@ -48,6 +48,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
+	glog.Infof("Running br command with args: br %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, fullArgs, string(output), err)

@@ -54,9 +54,10 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		btype,
 	}
 	fullArgs = append(fullArgs, args...)
+	glog.Infof("Running br command with args: %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
-		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
 	}
 	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
 	return path, nil
