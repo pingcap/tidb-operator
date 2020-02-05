@@ -789,7 +789,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "tidb failover work")
 		cluster.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&cluster)
-		err = oa.CheckScaleTidbClusterToZeroReplica(&cluster, 30*time.Minute, 15*time.Second)
+		err = oa.CheckScaleTidbMemberToZeroReplica(&cluster, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "clear TiDB failureMembers when scale TiDB to zero")
 	})
 })

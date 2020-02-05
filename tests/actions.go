@@ -240,7 +240,7 @@ type OperatorActions interface {
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 	CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
-	CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
+	CheckScaleTidbMemberToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
@@ -3442,11 +3442,11 @@ func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterCon
 			glog.V(4).Infof("the number of failed member is zero")
 			return false, nil
 		}
-		glog.V(4).Infof("the number of failed member is not zero")
+		glog.V(4).Infof("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
 		return true, nil
 	})
 }
-func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+func (oa *operatorActions) CheckScaleTidbMemberToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
 	glog.Infof("checking tidb cluster [%s/%s] scale to zero", info.Namespace, info.ClusterName)
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
@@ -3458,9 +3458,15 @@ func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterC
 			return false, nil
 		}
 		if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-			glog.V(4).Infof("failed to scale tidb member to zero")
+			glog.V(4).Infof("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
 			return false, nil
 		}
+
+		if len(tc.Status.TiDB.FailureMembers) != 0 {
+			glog.V(4).Infof("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers) )
+			return false, nil
+		}
+
 		glog.V(4).Infof("scale tidb member to zero successfully")
 		return true, nil
 
