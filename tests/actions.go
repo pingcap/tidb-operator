@@ -239,8 +239,6 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
-	CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
-	CheckScaleTidbMemberToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
