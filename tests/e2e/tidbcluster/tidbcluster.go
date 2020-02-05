@@ -777,7 +777,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.Skipf("AdvancedStatefulSet feature of default operator is not enabled, skipping")
 		}
 		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV3Version)
-		tc.Spec.PD.Replicas = 3
+		tc.Spec.PD.Replicas = 5
 		tc.Spec.TiKV.Replicas = 4
 		tc.Spec.TiDB.Replicas = 3
 		err := genericCli.Create(context.TODO(), tc)
@@ -795,7 +795,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Annotations[label.AnnPDDeleteSlots] = "[1]"
 			tc.Annotations[label.AnnTiKVDeleteSlots] = "[0]"
 			tc.Annotations[label.AnnTiDBDeleteSlots] = "[1]"
-			tc.Spec.PD.Replicas = 2
+			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			return nil
