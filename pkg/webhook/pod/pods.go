@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -165,14 +164,10 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARSuccess()
 	}
 
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
-	if err != nil {
-		return util.ARFail(err)
-	}
-
-	// If there was only one replica for this statefulset,admit to delete it.
-	if *ownerStatefulSet.Spec.Replicas == 1 && ordinal == 0 {
-		klog.Infof("tc[%s/%s]'s pd only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
+	// When AdvancedStatefulSet is enabled, the ordinal of the last pod in the statefulset could be a non-zero number,
+	// so we let the deleting request of the last pod pass when spec.replicas <= 1 and status.replicas equals 1
+	if *ownerStatefulSet.Spec.Replicas <= 1 && ownerStatefulSet.Status.Replicas == 1 {
+		klog.Infof("tc[%s/%s]'s statefulset only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
 

@@ -58,7 +58,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 
 	// If the tikv pod is deleted by restarter, it is necessary to check former tikv restart status
 	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
-		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.TiKVMemberType, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
+		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.TiKVMemberType, payload, ordinal)
 		if err != nil {
 			return util.ARFail(err)
 		}
