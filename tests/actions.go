@@ -3425,51 +3425,6 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		return true, nil
 	})
 }
-func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
-	glog.Infof("checking tidb cluster [%s/%s] failed member", info.Namespace, info.ClusterName)
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var tc *v1alpha1.TidbCluster
-		var err error
-		ns := info.Namespace
-		tcName := info.ClusterName
-		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
-			return false, nil
-		}
-		if len(tc.Status.TiDB.FailureMembers) == 0 {
-			glog.V(4).Infof("the number of failed member is zero")
-			return false, nil
-		}
-		glog.V(4).Infof("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
-		return true, nil
-	})
-}
-func (oa *operatorActions) CheckScaleTidbMemberToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
-	glog.Infof("checking tidb cluster [%s/%s] scale to zero", info.Namespace, info.ClusterName)
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var tc *v1alpha1.TidbCluster
-		var err error
-		ns := info.Namespace
-		tcName := info.ClusterName
-		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
-			return false, nil
-		}
-		if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-			glog.V(4).Infof("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
-			return false, nil
-		}
-
-		if len(tc.Status.TiDB.FailureMembers) != 0 {
-			glog.V(4).Infof("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
-			return false, nil
-		}
-
-		glog.V(4).Infof("scale tidb member to zero successfully")
-		return true, nil
-
-	})
-}
 
 var dummyCancel = func() {}
 
