@@ -795,7 +795,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 			if len(tc.Status.TiDB.FailureMembers) == 0 {
-				e2elog.Failf("the number of failed member is zero")
+				e2elog.Fail("the number of failed member is zero")
 				return false, nil
 			}
 			e2elog.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
