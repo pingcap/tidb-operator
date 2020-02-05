@@ -784,11 +784,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
 		oa.DeployTidbClusterOrDie(&cluster)
-		oa.UpgradeTidbClusterOrDie(&cluster)
+
 		e2elog.Logf("checking tidb cluster [%s/%s] failed member", cluster.Namespace, cluster.ClusterName)
 		ns := cluster.Namespace
 		tcName := cluster.ClusterName
-		err := wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
+		err := wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -802,7 +802,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
 			return true, nil
 		})
-		framework.ExpectNoError(err, "tidb failover work")
+		framework.ExpectError(err, "tidb failover not work")
 
 		cluster.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&cluster)
@@ -826,7 +826,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Logf("scale tidb member to zero successfully")
 			return true, nil
 		})
-		framework.ExpectNoError(err, "clear TiDB failureMembers when scale TiDB to zero")
+		framework.ExpectError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 	})
 })
 
