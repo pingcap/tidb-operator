@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -31,11 +32,13 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 )
 
 func TestPDFailoverFailover(t *testing.T) {
 	g := NewGomegaWithT(t)
 
+	recorder := record.NewFakeRecorder(100)
 	type testcase struct {
 		name                     string
 		update                   func(*v1alpha1.TidbCluster)
@@ -57,6 +60,7 @@ func TestPDFailoverFailover(t *testing.T) {
 
 		pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
+		pdFailover.recorder = recorder
 
 		pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
 			if test.delMemberFailed {
@@ -107,6 +111,8 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(0))
 			},
 		},
 		{
@@ -122,6 +128,8 @@ func TestPDFailoverFailover(t *testing.T) {
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(0))
 			},
 		},
 		{
@@ -141,6 +149,11 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				sort.Strings(events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-0(0) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -160,6 +173,9 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -182,6 +198,9 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -204,6 +223,9 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -223,6 +245,9 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -247,6 +272,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(failureMembers.MemberID).To(Equal("12891273174085095651"))
 				g.Expect(string(failureMembers.PVCUID)).To(Equal("pvc-1-uid"))
 				g.Expect(failureMembers.MemberDeleted).To(BeFalse())
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) marked as a failure member"))
 			},
 		},
 		{
@@ -266,6 +295,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -294,6 +327,9 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -316,6 +352,9 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -338,6 +377,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -360,6 +403,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -385,6 +432,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -411,6 +462,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).NotTo(HaveOccurred())
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 	}
@@ -541,7 +596,8 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.Fake
 			podControl,
 			pvcInformer.Lister(),
 			pvcControl,
-			pvInformer.Lister()},
+			pvInformer.Lister(),
+			nil},
 		pvcInformer.Informer().GetIndexer(),
 		podInformer.Informer().GetIndexer(),
 		pdControl, podControl, pvcControl
@@ -648,4 +704,18 @@ func newPodForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 			Namespace: metav1.NamespaceDefault,
 		},
 	}
+}
+
+func collectEvents(source <-chan string) []string {
+	done := false
+	events := make([]string, 0)
+	for !done {
+		select {
+		case event := <-source:
+			events = append(events, event)
+		default:
+			done = true
+		}
+	}
+	return events
 }
