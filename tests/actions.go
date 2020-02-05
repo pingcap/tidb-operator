@@ -3463,7 +3463,7 @@ func (oa *operatorActions) CheckScaleTidbMemberToZeroReplica(info *TidbClusterCo
 		}
 
 		if len(tc.Status.TiDB.FailureMembers) != 0 {
-			glog.V(4).Infof("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers) )
+			glog.V(4).Infof("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
 			return false, nil
 		}
 
