@@ -73,7 +73,7 @@ func main() {
 }
 
 func run() {
-	cli, kubeCli, asCli := client.NewCliOrDie()
+	cli, kubeCli, asCli, aggrCli, apiExtCli := client.NewCliOrDie()
 
 	ocfg := newOperatorConfig()
 
@@ -115,7 +115,7 @@ func run() {
 	fta := tests.NewFaultTriggerAction(cli, kubeCli, cfg)
 	fta.CheckAndRecoverEnvOrDie()
 
-	oa := tests.NewOperatorActions(cli, kubeCli, asCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
+	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, cfg, allClusters, nil, nil)
 	oa.CheckK8sAvailableOrDie(nil, nil)
 	oa.LabelNodesOrDie()
 
@@ -243,6 +243,9 @@ func run() {
 
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+
+		// delete pd data
+		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
@@ -399,9 +402,9 @@ func newOperatorConfig() *tests.OperatorConfig {
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullAlways,
 		TestMode:           true,
-		WebhookEnabled:     false,
+		WebhookEnabled:     true,
 		PodWebhookEnabled:  false,
-		StsWebhookEnabled:  false,
+		StsWebhookEnabled:  true,
 	}
 }
 

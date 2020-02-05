@@ -131,6 +131,9 @@ Now you can run the following command to run all e2e test.
 $ ./hack/e2e.sh
 ```
 
+**NOTE**: We don't support bash version < 4 for now. For those who are using a not supported version of bash, especially macOS (which default bash version is 3.2)
+users, please run `hack/run-in-container.sh` to start a containerized environment or install bash 4+ manually.
+
 It's possible to limit specs to run, for example:
 
 ```
@@ -195,6 +198,9 @@ $ git push -f origin myfeature
 
 1. Visit your fork at https://github.com/$user/tidb-operator (replace `$user` obviously).
 2. Click the `Compare & pull request` button next to your `myfeature` branch.
+3. Edit the description of the pull request to match your change, and if your pull request introduce a user-facing change, a release note is required.
+
+> You can refer to [Release Notes Language Style Guide](./release-note-guide.md) for how to write proper release notes.
 
 ### Step 9: Get a code review
 

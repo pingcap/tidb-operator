@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -389,6 +390,11 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
 
+	// k8s check
+	err = pmm.collectUnjoinedMembers(tc, set, pdStatus)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -581,10 +587,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	storageClassName := tc.Spec.PD.StorageClassName
-	if storageClassName == nil {
-		storageClassName = &controller.DefaultStorageClassName
-	}
 	failureReplicas := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
 		if failureMember.MemberDeleted {
@@ -682,7 +684,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: storageClassName,
+						StorageClassName: tc.Spec.PD.StorageClassName,
 						Resources:        storageRequest,
 					},
 				},
@@ -736,6 +738,53 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 	}
 	return cm, nil
+}
+
+func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
+	podSelector, podSelectErr := metav1.LabelSelectorAsSelector(set.Spec.Selector)
+	if podSelectErr != nil {
+		return podSelectErr
+	}
+	pods, podErr := pmm.podLister.Pods(tc.Namespace).List(podSelector)
+	if podErr != nil {
+		return podErr
+	}
+	for _, pod := range pods {
+		var joined = false
+		for podName := range pdStatus {
+			if strings.EqualFold(pod.Name, podName) {
+				joined = true
+				break
+			}
+		}
+		if !joined {
+			if tc.Status.PD.UnjoinedMembers == nil {
+				tc.Status.PD.UnjoinedMembers = map[string]v1alpha1.UnjoinedMember{}
+			}
+			ordinal, err := util.GetOrdinalFromPodName(pod.Name)
+			if err != nil {
+				return err
+			}
+			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
+			pvc, err := pmm.pvcLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
+			if err != nil {
+				return err
+			}
+			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
+				PodName:   pod.Name,
+				PVCUID:    pvc.UID,
+				CreatedAt: metav1.Now(),
+			}
+		} else {
+			if tc.Status.PD.UnjoinedMembers != nil {
+				if _, ok := tc.Status.PD.UnjoinedMembers[pod.Name]; ok {
+					delete(tc.Status.PD.UnjoinedMembers, pod.Name)
+				}
+
+			}
+		}
+	}
+	return nil
 }
 
 type FakePDMemberManager struct {

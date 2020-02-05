@@ -102,7 +102,6 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
-
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -223,9 +222,8 @@ type PDSpec struct {
 	// +optional
 	Service *ServiceSpec `json:"service,omitempty"`
 
-	// The storageClassName of the persistent volume for PD data storage, empty string means not explicitly set
-	// and use the cluster default set by admission controller.
-	// Optionals: Defaults to the default-storage-class-name set in the tidb-operator
+	// The storageClassName of the persistent volume for PD data storage.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
@@ -262,9 +260,8 @@ type TiKVSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
-	// The storageClassName of the persistent volume for TiKV data storage, empty string means not explicitly set
-	// and use the cluster default set by admission controller.
-	// Optionals: Defaults to the default-storage-class-name set in the tidb-operator
+	// The storageClassName of the persistent volume for TiKV data storage.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
@@ -344,9 +341,8 @@ type PumpSpec struct {
 	// +optional
 	BaseImage string `json:"baseImage"`
 
-	// The storageClassName of the persistent volume for Pump data storage, empty string means not explicitly set
-	// and use the cluster default set by admission controller.
-	// Optionals: Defaults to the default-storage-class-name set in the tidb-operator
+	// The storageClassName of the persistent volume for Pump data storage.
+	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
@@ -393,7 +389,6 @@ type TiDBSlowLogTailerSpec struct {
 // +k8s:openapi-gen=true
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
 type ComponentSpec struct {
-
 	// Image of the component, override baseImage and version if present
 	// Deprecated
 	// +k8s:openapi-gen=false
@@ -471,6 +466,10 @@ type ServiceSpec struct {
 	// ClusterIP is the clusterIP of service
 	// +optional
 	ClusterIP *string `json:"clusterIP,omitempty"`
+
+	// PortName is the name of service port
+	// +optional
+	PortName *string `json:"portName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -499,12 +498,13 @@ type Service struct {
 
 // PDStatus is PD status
 type PDStatus struct {
-	Synced         bool                       `json:"synced,omitempty"`
-	Phase          MemberPhase                `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members        map[string]PDMember        `json:"members,omitempty"`
-	Leader         PDMember                   `json:"leader,omitempty"`
-	FailureMembers map[string]PDFailureMember `json:"failureMembers,omitempty"`
+	Synced          bool                       `json:"synced,omitempty"`
+	Phase           MemberPhase                `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
+	Members         map[string]PDMember        `json:"members,omitempty"`
+	Leader          PDMember                   `json:"leader,omitempty"`
+	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
+	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
 }
 
 // PDMember is PD member
@@ -526,6 +526,13 @@ type PDFailureMember struct {
 	PVCUID        types.UID   `json:"pvcUID,omitempty"`
 	MemberDeleted bool        `json:"memberDeleted,omitempty"`
 	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+}
+
+// UnjoinedMember is the pd unjoin cluster member information
+type UnjoinedMember struct {
+	PodName   string      `json:"podName,omitempty"`
+	PVCUID    types.UID   `json:"pvcUID,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
 // TiDBStatus is TiDB status
@@ -734,8 +741,10 @@ type BackupSpec struct {
 	Type BackupType `json:"backupType,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// StorageClassName is the storage class for backup job's PV.
-	StorageClassName string `json:"storageClassName,omitempty"`
+	// The storageClassName of the persistent volume for Backup data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
@@ -856,8 +865,10 @@ type BackupScheduleSpec struct {
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
-	// StorageClassName is the storage class for backup job's PV.
-	StorageClassName string `json:"storageClassName,omitempty"`
+	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 }
@@ -934,8 +945,10 @@ type RestoreSpec struct {
 	Type BackupType `json:"backupType,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// StorageClassName is the storage class for backup job's PV.
-	StorageClassName string `json:"storageClassName"`
+	// The storageClassName of the persistent volume for Restore data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize"`
 }

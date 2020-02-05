@@ -98,7 +98,8 @@ e2e:
 	./hack/e2e.sh
 
 stability-test-build:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test tests/cmd/stability/*.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
 
 stability-test-docker: stability-test-build
 	docker build -t "${DOCKER_REGISTRY}/pingcap/tidb-operator-stability-test:${IMAGE_TAG}" tests/images/stability-test
@@ -132,7 +133,7 @@ check-setup:
 	@which retool >/dev/null 2>&1 || GO111MODULE=off go get github.com/twitchtv/retool
 	@GO111MODULE=off retool sync
 
-check: check-setup lint tidy check-static check-codegen check-terraform check-boilerplate
+check: check-setup lint tidy check-static check-codegen check-terraform check-boilerplate check-openapi-spec check-crd-groups
 
 check-static:
 	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
@@ -157,6 +158,12 @@ check-terraform:
 
 check-boilerplate:
 	./hack/verify-boilerplate.sh
+
+check-openapi-spec:
+	./hack/verify-openapi-spec.sh
+
+check-crd-groups:
+	./hack/verify-crd-groups.sh
 
 # TODO: staticcheck is too slow currently
 staticcheck:

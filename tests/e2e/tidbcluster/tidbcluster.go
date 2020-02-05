@@ -21,20 +21,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
-
-	"github.com/pingcap/tidb-operator/pkg/label"
-
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
@@ -42,22 +37,30 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
+	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	"k8s.io/kubernetes/test/utils"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -68,12 +71,19 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var c clientset.Interface
 	var cli versioned.Interface
 	var asCli asclientset.Interface
+	var aggrCli aggregatorclient.Interface
+	var apiExtCli apiextensionsclientset.Interface
 	var oa tests.OperatorActions
 	var cfg *tests.Config
 	var config *restclient.Config
 	var ocfg *tests.OperatorConfig
 	var genericCli client.Client
 	var fwCancel context.CancelFunc
+	var fw portforward.PortForward
+	/**
+	 * StatefulSet or AdvancedStatefulSet interface.
+	 */
+	var stsGetter func(namespace string) typedappsv1.StatefulSetInterface
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -87,15 +97,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
 		framework.ExpectNoError(err, "failed to create clientset")
+		aggrCli, err = aggregatorclient.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		apiExtCli, err = apiextensionsclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
 		clientRawConfig, err := e2econfig.LoadClientRawConfig()
 		framework.ExpectNoError(err, "failed to load raw config")
 		ctx, cancel := context.WithCancel(context.Background())
-		fw, err := portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
+		fw, err = portforward.NewPortForwarder(ctx, e2econfig.NewSimpleRESTClientGetter(clientRawConfig))
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		oa = tests.NewOperatorActions(cli, c, asCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsGetter = helper.NewHijackClient(c, asCli).AppsV1().StatefulSets
+		} else {
+			stsGetter = c.AppsV1().StatefulSets
+		}
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -111,11 +130,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			Values  map[string]string
 		}{
 			{
-				Version: "v3.0.5",
+				Version: utilimage.TiDBV3Version,
 				Name:    "basic-v3",
 			},
 			{
-				Version: "v2.1.16",
+				Version: utilimage.TiDBV2Version,
 				Name:    "basic-v2",
 				Values: map[string]string{
 					// verify v2.1.x configuration compatibility
@@ -124,7 +143,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				},
 			},
 			{
-				Version: "v3.0.5",
+				Version: utilimage.TiDBTLSVersion,
 				Name:    "basic-v3-cluster-tls",
 				Values: map[string]string{
 					"enableTLSCluster": "true",
@@ -264,7 +283,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
-		go oa.BeginInsertDataToOrDie(&clusterA)
+		oa.BeginInsertDataToOrDie(&clusterA)
 
 		// backup and restore
 		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
@@ -440,7 +459,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}),
 		}
 
-		oldPumpSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+		// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsList, err := c.AppsV1().StatefulSets(ns).List(metav1.ListOptions{})
+			framework.ExpectNoError(err)
+			for _, sts := range stsList.Items {
+				_, err = helper.Upgrade(c, asCli, &sts)
+				framework.ExpectNoError(err)
+			}
+		}
+
+		oldPumpSet, err := stsGetter(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get pump statefulset")
 
 		oldRev := oldPumpSet.Status.CurrentRevision
@@ -450,7 +479,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected update tc")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			pumpSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
+			pumpSet, err := stsGetter(tc.Namespace).Get(controller.PumpMemberName(tc.Name), metav1.GetOptions{})
 			if errors.IsNotFound(err) {
 				return false, err
 			}
@@ -546,7 +575,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		for setName := range setNameToRevision {
-			oldSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+			oldSet, err := stsGetter(tc.Namespace).Get(setName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Expected get statefulset %s", setName)
 
 			oldRev := oldSet.Status.CurrentRevision
@@ -557,13 +586,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
-		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
-		tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
-		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
-		tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
-		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
-		tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
-		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
+			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
+			tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+			tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
+			tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+			tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
+			return nil
+		})
 		framework.ExpectNoError(err, "Expected update tidbcluster")
 
 		// check for 2 minutes to ensure the tidb statefulset do not get rolling-update
@@ -575,7 +606,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectEqual(tc.Status.TiDB.Phase, v1alpha1.NormalPhase, "TiDB should not be updated")
 
 			for setName, oldRev := range setNameToRevision {
-				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				newSet, err := stsGetter(tc.Namespace).Get(setName, metav1.GetOptions{})
 				framework.ExpectNoError(err, "Expected get tidb statefulset")
 				framework.ExpectEqual(newSet.Status.CurrentRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
 				framework.ExpectEqual(newSet.Status.UpdateRevision, oldRev, "Expected no rolling-update of %s when manage config in-place", setName)
@@ -589,7 +620,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
 			for setName := range setNameToRevision {
-				newSet, err := c.AppsV1().StatefulSets(tc.Namespace).Get(setName, metav1.GetOptions{})
+				newSet, err := stsGetter(tc.Namespace).Get(setName, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -673,7 +704,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("should be operable without helm [API]", func() {
-		tc := fixture.GetTidbCluster(ns, "plain-cr", "v2.1.16")
+		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV3Version)
 		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -690,7 +721,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled out and ready")
 
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = "v3.0.7"
+			tc.Spec.Version = utilimage.TiDBV3Version
 			return nil
 		})
 		framework.ExpectNoError(err, "Expected TiDB cluster updated")
@@ -706,6 +737,42 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster updated")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
+	})
+
+	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", "")
+		cluster.Resources["pd.replicas"] = "1"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+
+		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected get tidbcluster")
+
+		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
+		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
+		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
+		err = tests.CheckTidbMonitor(tm, c, fw)
+		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+		pvName := pvc.Spec.VolumeName
+		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
+		value, existed := pv.Labels[label.ComponentLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, label.TiDBMonitorVal)
+		value, existed = pv.Labels[label.InstanceLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, "e2e-monitor")
+		value, existed = pv.Labels[label.InstanceLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, "e2e-monitor")
+		value, existed = pv.Labels[label.ManagedByLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, label.TiDBOperator)
 	})
 })
 

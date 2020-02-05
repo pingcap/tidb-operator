@@ -39,7 +39,7 @@ func TestValidateDeletedSlots(t *testing.T) {
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: "v3.0.7",
+					Version: "v3.0.8",
 					PD: v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
@@ -63,7 +63,7 @@ func TestValidateDeletedSlots(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: "v3.0.7",
+					Version: "v3.0.8",
 					PD: v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
@@ -103,7 +103,7 @@ func TestValidateDeletedSlots(t *testing.T) {
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: "v3.0.7",
+					Version: "v3.0.8",
 					PD: v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
@@ -135,7 +135,7 @@ func TestValidateDeletedSlots(t *testing.T) {
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					Version: "v3.0.7",
+					Version: "v3.0.8",
 					PD: v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},

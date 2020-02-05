@@ -63,7 +63,7 @@ func NewController(
 	tidbMonitorInformer := informerFactory.Pingcap().V1alpha1().TidbMonitors()
 	deploymentInformer := kubeInformerFactory.Apps().V1().Deployments()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	monitorManager := monitor.NewMonitorManager(informerFactory, kubeInformerFactory, typedControl)
+	monitorManager := monitor.NewMonitorManager(kubeCli, informerFactory, kubeInformerFactory, typedControl, recorder)
 
 	tmc := &Controller{
 		cli:      genericCli,
@@ -115,7 +115,7 @@ func (tmc *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbMonitor: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("TidbMonitor: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("TidbMonitor: %v, sync failed, err: %v", key.(string), err))
 		}
 		tmc.queue.AddRateLimited(key)
 	} else {

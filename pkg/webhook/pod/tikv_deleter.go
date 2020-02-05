@@ -15,6 +15,7 @@ package pod
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +51,23 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 	name := pod.Name
 	namespace := pod.Namespace
 	tcName := tc.Name
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
+	if err != nil {
+		return util.ARFail(err)
+	}
+
+	// If the tikv pod is deleted by restarter, it is necessary to check former tikv restart status
+	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
+		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.TiKVMemberType, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
+		if err != nil {
+			return util.ARFail(err)
+		}
+		if existed {
+			return &admission.AdmissionResponse{
+				Allowed: false,
+			}
+		}
+	}
 
 	storesInfo, err := pdClient.GetStores()
 	if err != nil {
@@ -114,6 +132,9 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		pvcName := operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, payload.ownerStatefulSet.Name, ordinal)
 		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return util.ARSuccess()
+			}
 			return util.ARFail(err)
 		}
 		err = addDeferDeletingToPVC(pvc, pc.kubeCli, payload.tc)

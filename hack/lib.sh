@@ -23,16 +23,16 @@ ARCH=$(go env GOARCH)
 OUTPUT=${ROOT}/output
 OUTPUT_BIN=${OUTPUT}/bin
 TERRAFORM_BIN=${OUTPUT_BIN}/terraform
-TERRAFORM_VERSION=0.12.12
-KUBECTL_VERSION=1.12.10
+TERRAFORM_VERSION=${TERRAFORM_VERSION:-0.12.12}
+KUBECTL_VERSION=${KUBECTL_VERSION:-1.12.10}
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
 #
 # Don't ugprade to 2.15.x/2.16.x until this issue
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
-HELM_VERSION=2.9.1
-KIND_VERSION=0.6.1
+HELM_VERSION=${HELM_VERSION:-2.9.1}
+KIND_VERSION=${KIND_VERSION:-0.7.0}
 KIND_BIN=$OUTPUT_BIN/kind
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
@@ -124,4 +124,25 @@ function hack::ensure_kind() {
 # hack::version_ge "$v1" "$v2" checks whether "v1" is greater or equal to "v2"
 function hack::version_ge() {
     [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" = "$2" ]
+}
+
+# Usage:
+#
+#	hack::wait_for_success 120 5 "cmd arg1 arg2 ... argn"
+#
+# Returns 0 if the shell command get output, 1 otherwise.
+# From https://github.com/kubernetes/kubernetes/blob/v1.17.0/hack/lib/util.sh#L70
+function hack::wait_for_success() {
+    local wait_time="$1"
+    local sleep_time="$2"
+    local cmd="$3"
+    while [ "$wait_time" -gt 0 ]; do
+        if eval "$cmd"; then
+            return 0
+        else
+            sleep "$sleep_time"
+            wait_time=$((wait_time-sleep_time))
+        fi
+    done
+    return 1
 }
