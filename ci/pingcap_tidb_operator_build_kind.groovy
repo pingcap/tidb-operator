@@ -61,18 +61,13 @@ spec:
   - name: docker-graph
     emptyDir: {}
   affinity:
-    #nodeAffinity:
-    #  requiredDuringSchedulingIgnoredDuringExecution:
-    #    nodeSelectorTerms:
-    #    - matchExpressions:
-    #      - key: kubernetes.io/hostname
-    #        operator: In
-    #        values:
-    #        - 172.16.5.64
-    #        - 172.16.5.65
-    #        - 172.16.5.67
-    #        - 172.16.5.68
-    #        - 172.16.5.70
+	# worker nodes only
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+		  - key: node-role.kubernetes.io/master
+            operator: Exists
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -111,7 +106,16 @@ def build(SHELL_CODE, ARTIFACTS = "") {
 							ansiColor('xterm') {
 								sh """
 								export GOPATH=${WORKSPACE}/go
-								${SHELL_CODE}
+								# We don't rely on Jenkins or Jenkins
+								# Kubernetes Plugin to terminate the job on
+								# timeout because it's not reliable and hard to
+								# debug (Jenkins disconnects stdout/stderr
+								# immediately).
+								# `timeout` utility sends `SIGTERM` signal on
+								# timeout which can be trapped in script to
+								# clean resources.
+								# https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
+								timeout 90m bash -c "${SHELL_CODE}"
 								"""
 							}
 						}
@@ -142,7 +146,7 @@ def getChangeLogText() {
 }
 
 def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
-	timeout (time: 2, unit: 'HOURS') {
+	timeout (time: 3, unit: 'HOURS') {
 
 	def GITHASH
 	def CODECOV_TOKEN
@@ -223,13 +227,13 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def MIRRORS = "DOCKER_IO_MIRROR=http://172.16.4.143:5000 QUAY_IO_MIRROR=http://172.16.4.143:5001"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]' --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]' --operator-features AdvancedStatefulSet=true", artifacts)
 		}
 		builds["E2E v1.17.0"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- -preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- -preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
 			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
