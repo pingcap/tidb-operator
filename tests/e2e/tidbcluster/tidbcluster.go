@@ -786,11 +786,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.DeployTidbClusterOrDie(&cluster)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 
-		err := oa.CheckTidbClusterHaveFailedMember(&cluster, 30*time.Minute, 15*time.Second)
+		err := oa.CheckTidbClusterHaveFailedMember(&cluster, 10*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "tidb failover work")
 		cluster.ScaleTiDB(0)
 		oa.ScaleTidbClusterOrDie(&cluster)
-		err = oa.CheckScaleTidbMemberToZeroReplica(&cluster, 30*time.Minute, 15*time.Second)
+		err = oa.CheckScaleTidbMemberToZeroReplica(&cluster, 10*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "clear TiDB failureMembers when scale TiDB to zero")
 	})
 })
