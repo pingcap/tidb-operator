@@ -814,6 +814,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
 
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(blockWriterPodName(info), nil)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete blockwriter pod %v", err)
+	}
+
 	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete secret: %s, %v", info.InitSecretName, err)
@@ -1034,7 +1039,7 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: info.Namespace,
-			Name:      "blockwriter",
+			Name:      blockWriterPodName(info),
 			Labels: map[string]string{
 				"app": "blockwriter",
 			},
@@ -3470,4 +3475,8 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 		}
 		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
+}
+
+func blockWriterPodName(info *TidbClusterConfig) string {
+	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
 }
