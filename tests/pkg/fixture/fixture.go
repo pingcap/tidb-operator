@@ -159,7 +159,7 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			Initializer: v1alpha1.InitializerSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
 					BaseImage:       "pingcap/tidb-monitor-initializer",
-					Version:         "v3.0.5",
+					Version:         "v3.0.8",
 					ImagePullPolicy: &imagePullPolicy,
 					Resources:       corev1.ResourceRequirements{},
 				},
