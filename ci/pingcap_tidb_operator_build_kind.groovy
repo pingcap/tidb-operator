@@ -17,8 +17,19 @@ spec:
     image: gcr.io/k8s-testimages/kubekins-e2e:v20191108-9467d02-master
     command:
     - runner.sh
-    - sleep
-    - 99d
+    # Clean containers on TERM signal in root process to avoid cgroup leaking.
+    # https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
+    - exec
+    - bash
+    - -c
+    - |
+      function clean() {
+        echo "info: clean all containers to avoid cgroup leaking"
+        docker kill $(docker ps -q) || true
+        docker system prune -af || true
+      }
+      trap clean TERM
+      sleep 1d & wait
     # we need privileged mode in order to do docker in docker
     securityContext:
       privileged: true
@@ -61,13 +72,13 @@ spec:
   - name: docker-graph
     emptyDir: {}
   affinity:
-	# worker nodes only
+    # worker nodes only
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-		  - key: node-role.kubernetes.io/master
-            operator: Exists
+          - key: node-role.kubernetes.io/master
+            operator: DoesNotExist
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -106,16 +117,7 @@ def build(SHELL_CODE, ARTIFACTS = "") {
 							ansiColor('xterm') {
 								sh """
 								export GOPATH=${WORKSPACE}/go
-								# We don't rely on Jenkins or Jenkins
-								# Kubernetes Plugin to terminate the job on
-								# timeout because it's not reliable and hard to
-								# debug (Jenkins disconnects stdout/stderr
-								# immediately).
-								# `timeout` utility sends `SIGTERM` signal on
-								# timeout which can be trapped in script to
-								# clean resources.
-								# https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
-								timeout 90m bash -c "${SHELL_CODE}"
+								${SHELL_CODE}
 								"""
 							}
 						}
@@ -146,7 +148,7 @@ def getChangeLogText() {
 }
 
 def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
-	timeout (time: 3, unit: 'HOURS') {
+	timeout (time: 2, unit: 'HOURS') {
 
 	def GITHASH
 	def CODECOV_TOKEN
