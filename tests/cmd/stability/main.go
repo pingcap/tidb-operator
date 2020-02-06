@@ -418,6 +418,7 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		UserName:         "root",
 		Password:         "admin",
