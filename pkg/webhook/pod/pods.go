@@ -16,6 +16,7 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -48,7 +49,8 @@ type PodAdmissionControl struct {
 }
 
 const (
-	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
+	stsControllerServiceAccounts  = "system:serviceaccount:kube-system:statefulset-controller"
+	astsControllerServiceAccounts = "system:serviceaccount:pingcap:advanced-statefulset-controller"
 )
 
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
@@ -56,6 +58,9 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
+	}
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		serviceAccounts.Insert(astsControllerServiceAccounts)
 	}
 	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{
