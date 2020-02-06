@@ -298,6 +298,7 @@ type OperatorConfig struct {
 }
 
 type TidbClusterConfig struct {
+	PvReclaimPolicy        string
 	BackupName             string
 	Namespace              string
 	ClusterName            string
@@ -386,6 +387,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 		"pd.preStartScript":       tc.PDPreStartScript,
 		"tikv.preStartScript":     tc.TiKVPreStartScript,
 		"tidb.preStartScript":     tc.TiDBPreStartScript,
+		"pvReclaimPolicy":         tc.PvReclaimPolicy,
 	}
 
 	for k, v := range tc.Resources {

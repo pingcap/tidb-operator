@@ -464,7 +464,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	})
 
 	// tidb-operator with AdvancedStatefulSet feature enabled and pod admission webhook enabled
-	ginkgo.Context("[Feature: AdvancedStatefulSet and PodAdmissionWebhook]", func() {
+	ginkgo.Context("[Feature: AdvancedStatefulsetPodAdmissionWebhook]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
@@ -510,6 +510,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			clusterName := "deploy"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
 			cluster.Monitor = false
+			cluster.PvReclaimPolicy = "Delete"
+			cluster.EnablePVReclaim = true
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "5"
 			cluster.Resources["tidb.replicas"] = "3"

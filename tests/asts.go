@@ -141,7 +141,7 @@ func AstsScalingTest(st AstsCase, clusterName, ns string, c, hc clientset.Interf
 	framework.ExpectNoError(err)
 
 	ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.Component, ns, stsName, st.Replicas, st.DeleteSlots.List()))
-	err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
+	err = wait.PollImmediate(time.Second*5, time.Minute*20, func() (bool, error) {
 		// check delete slots annotation
 		sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 		if err != nil {
