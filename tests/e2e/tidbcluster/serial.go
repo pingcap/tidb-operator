@@ -136,7 +136,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
 			clusterName := "deploy"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
-			cluster.Monitor = false
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "5"
 			cluster.Resources["tidb.replicas"] = "3"
@@ -510,7 +509,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			clusterName := "deploy"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
 			cluster.Monitor = false
-			cluster.PvReclaimPolicy = "Delete"
 			cluster.EnablePVReclaim = true
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "5"
