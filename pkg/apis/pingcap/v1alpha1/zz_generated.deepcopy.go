@@ -462,6 +462,7 @@ func (in *CrdKinds) DeepCopyInto(out *CrdKinds) {
 	in.BackupSchedule.DeepCopyInto(&out.BackupSchedule)
 	in.TiDBMonitor.DeepCopyInto(&out.TiDBMonitor)
 	in.TiDBInitializer.DeepCopyInto(&out.TiDBInitializer)
+	in.TidbClusterAutoScaler.DeepCopyInto(&out.TidbClusterAutoScaler)
 	return
 }
 
