@@ -74,15 +74,9 @@ spec:
   tolerations:
   - effect: NoSchedule
     key: tidb-operator
+    operator: Exists
   affinity:
-    # worker nodes only
-    #nodeAffinity:
-    #  requiredDuringSchedulingIgnoredDuringExecution:
-    #    nodeSelectorTerms:
-    #    - matchExpressions:
-    #      - key: node-role.kubernetes.io/master
-    #        operator: DoesNotExist
-    # running on tidb-operator nodes only
+    # running on nodes for tidb-operator only
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
