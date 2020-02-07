@@ -54,9 +54,10 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		btype,
 	}
 	fullArgs = append(fullArgs, args...)
+	glog.Infof("Running br command with args: %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
-		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
 	}
 	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
 	return path, nil
@@ -93,7 +94,7 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 
 // constructOptions constructs options for BR and also return the remote path
 func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	args, path, err := util.ConstructBRGlobalOptions(backup)
+	args, path, err := util.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
 		return args, path, err
 	}
