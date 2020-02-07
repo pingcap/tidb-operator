@@ -71,14 +71,26 @@ spec:
     emptyDir: {}
   - name: docker-graph
     emptyDir: {}
+  tolerations:
+  - effect: NoSchedule
+    key: tidb-operator
   affinity:
     # worker nodes only
+    #nodeAffinity:
+    #  requiredDuringSchedulingIgnoredDuringExecution:
+    #    nodeSelectorTerms:
+    #    - matchExpressions:
+    #      - key: node-role.kubernetes.io/master
+    #        operator: DoesNotExist
+    # running on tidb-operator nodes only
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-          - key: node-role.kubernetes.io/master
-            operator: DoesNotExist
+          - key: ci.pingcap.com
+            operator: In
+            values:
+            - tidb-operator
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
