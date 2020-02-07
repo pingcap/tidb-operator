@@ -142,10 +142,13 @@ func (rsc *Controller) processNextWorkItem() bool {
 	if err := rsc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			glog.Infof("Restore: %v, still need sync: %v, requeuing", key.(string), err)
+			rsc.queue.AddRateLimited(key)
+		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
+			glog.V(4).Infof("Restore: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
+			rsc.queue.AddRateLimited(key)
 		}
-		rsc.queue.AddRateLimited(key)
 	} else {
 		rsc.queue.Forget(key)
 	}
@@ -183,6 +186,11 @@ func (rsc *Controller) updateRestore(cur interface{}) {
 	newRestore := cur.(*v1alpha1.Restore)
 	ns := newRestore.GetNamespace()
 	name := newRestore.GetName()
+
+	if v1alpha1.IsRestoreInvalid(newRestore) {
+		glog.V(4).Infof("restore %s/%s is Invalid, skipping.", ns, name)
+		return
+	}
 
 	if v1alpha1.IsRestoreComplete(newRestore) {
 		glog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
