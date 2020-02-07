@@ -173,6 +173,8 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			container("golang") {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}") {
+					deleteDir()
+
 					stage('Checkout') {
 						checkout changelog: false,
 						poll: false,
