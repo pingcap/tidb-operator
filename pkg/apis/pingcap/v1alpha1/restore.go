@@ -87,6 +87,12 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 	return !isUpdate
 }
 
+// IsRestoreInvalid returns true if a Restore has invalid condition set
+func IsRestoreInvalid(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestoreInvalid)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // IsRestoreComplete returns true if a Restore has successfully completed
 func IsRestoreComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreComplete)

@@ -307,6 +307,12 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 			backup.Spec.Type != v1alpha1.BackupTypeTable {
 			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", backup.Spec.Type, ns, name)
 		}
+		if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && backup.Spec.BR.DB == "" {
+			return fmt.Errorf("DB should be configured for BR with backup type %s in spec of %s/%s", backup.Spec.Type, ns, name)
+		}
+		if backup.Spec.Type == v1alpha1.BackupTypeTable && backup.Spec.BR.Table == "" {
+			return fmt.Errorf("table should be configured for BR with backup type table in spec of %s/%s", ns, name)
+		}
 		if backup.Spec.S3 != nil {
 			if backup.Spec.S3.Bucket == "" {
 				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
@@ -321,6 +327,57 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 				}
 				if u.Host == "" {
 					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", backup.Spec.S3.Endpoint, ns, name)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateRestore checks whether a restore spec is valid.
+func ValidateRestore(restore *v1alpha1.Restore) error {
+	ns := restore.Namespace
+	name := restore.Name
+	if restore.Spec.BR == nil {
+		if restore.Spec.To.Host == "" {
+			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+		}
+		if restore.Spec.To.SecretName == "" {
+			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+		}
+		if restore.Spec.StorageSize == "" {
+			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
+		}
+	} else {
+		if restore.Spec.BR.PDAddress == "" {
+			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		}
+		if restore.Spec.Type != "" &&
+			restore.Spec.Type != v1alpha1.BackupTypeFull &&
+			restore.Spec.Type != v1alpha1.BackupTypeDB &&
+			restore.Spec.Type != v1alpha1.BackupTypeTable {
+			return fmt.Errorf("invalid backup type %s for BR in spec of %s/%s", restore.Spec.Type, ns, name)
+		}
+		if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && restore.Spec.BR.DB == "" {
+			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
+		}
+		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {
+			return fmt.Errorf("table should be configured for BR with restore type table in spec of %s/%s", ns, name)
+		}
+		if restore.Spec.S3 != nil {
+			if restore.Spec.S3.Bucket == "" {
+				return fmt.Errorf("bucket should be configured for BR in spec of %s/%s", ns, name)
+			}
+			if restore.Spec.S3.Endpoint != "" {
+				u, err := url.Parse(restore.Spec.S3.Endpoint)
+				if err != nil {
+					return fmt.Errorf("invalid endpoint %s is configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+				}
+				if u.Scheme == "" {
+					return fmt.Errorf("scheme not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
+				}
+				if u.Host == "" {
+					return fmt.Errorf("host not found in endpoint %s configured for BR in spec of %s/%s", restore.Spec.S3.Endpoint, ns, name)
 				}
 			}
 		}
