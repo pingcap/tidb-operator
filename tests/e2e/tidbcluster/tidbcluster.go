@@ -671,6 +671,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		f := func(name, namespace string, uid types.UID) (bool, error) {
 			pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
+				if errors.IsNotFound(err) {
+					// ignore not found error (pod is deleted and recreated again in restarting)
+					return false, nil
+				}
 				return false, err
 			}
 			if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
