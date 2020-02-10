@@ -506,7 +506,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
-			clusterName := "deploy"
+			clusterName := "asts-pod-admission"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
 			cluster.Monitor = false
 			cluster.EnablePVReclaim = true
