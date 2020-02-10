@@ -792,11 +792,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-				e2elog.Failf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			if len(tc.Status.TiDB.FailureMembers) == 0 {
-				e2elog.Fail("the number of failed member is zero")
+				e2elog.Logf("the number of failed member is zero")
 				return false, nil
 			}
 			e2elog.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
@@ -812,15 +812,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-				e2elog.Failf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			if tc.Status.TiDB.StatefulSet.Replicas != 0 {
-				e2elog.Failf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				e2elog.Logf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
 				return false, nil
 			}
 			if len(tc.Status.TiDB.FailureMembers) != 0 {
-				e2elog.Failf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
+				e2elog.Logf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
 				return false, nil
 			}
 			e2elog.Logf("scale tidb member to zero successfully")
