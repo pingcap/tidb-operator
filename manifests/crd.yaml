@@ -7011,7 +7011,7 @@ spec:
                     will be set to 500
                   format: int32
                   type: integer
-                scaleoutIntervalSeconds:
+                scaleOutIntervalSeconds:
                   description: ScaleOutIntervalSeconds represents the duration seconds
                     between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds
                     will be set to 300
@@ -7053,7 +7053,7 @@ spec:
                     will be set to 500
                   format: int32
                   type: integer
-                scaleoutIntervalSeconds:
+                scaleOutIntervalSeconds:
                   description: ScaleOutIntervalSeconds represents the duration seconds
                     between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds
                     will be set to 300

@@ -34,6 +34,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupScheduleList":            schema_pkg_apis_pingcap_v1alpha1_BackupScheduleList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupScheduleSpec":            schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec":                    schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerSpec":           schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
@@ -742,6 +743,63 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BasicAutoScalerSpec describes the basic spec for auto-scaling",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"maxReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"minReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleOutIntervalSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"metrics": {
+						SchemaProps: spec.SchemaProps{
+							Description: "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/autoscaling/v2beta2.MetricSpec"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"maxReplicas"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/autoscaling/v2beta2.MetricSpec"},
 	}
 }
 
@@ -5559,7 +5617,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							Format:      "int32",
 						},
 					},
-					"scaleoutIntervalSeconds": {
+					"scaleOutIntervalSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
 							Type:        []string{"integer"},
@@ -6438,7 +6496,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							Format:      "int32",
 						},
 					},
-					"scaleoutIntervalSeconds": {
+					"scaleOutIntervalSeconds": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
 							Type:        []string{"integer"},
