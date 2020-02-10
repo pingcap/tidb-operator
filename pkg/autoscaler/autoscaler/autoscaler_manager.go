@@ -63,10 +63,29 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	return nil
 }
 
+//sum(rate(tikv_thread_cpu_seconds_total{cluster="tidb"}[1m])) by (instance)
+//rate(process_cpu_seconds_total{cluster="tidb",job="tikv"}[1m]) ??
+//sum(rate(tikv_grpc_msg_duration_seconds_count{cluster="tidb", type!="kv_gc"}[1m])) by (instance)
 func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+	if tac.Spec.TiKV == nil {
+		return nil
+	}
+	// tikv is under updated, refuse to auto-scaling
+	if tc.Status.TiKV.StatefulSet.CurrentRevision != tc.Status.TiKV.StatefulSet.UpdateRevision {
+		return nil
+	}
 	return nil
 }
 
+//rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[1m])
 func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+	if tac.Spec.TiDB == nil {
+		return nil
+	}
+
+	// tidb is under updated, refuse to auto-scaling
+	if tc.Status.TiDB.StatefulSet.CurrentRevision != tc.Status.TiDB.StatefulSet.UpdateRevision {
+		return nil
+	}
 	return nil
 }
