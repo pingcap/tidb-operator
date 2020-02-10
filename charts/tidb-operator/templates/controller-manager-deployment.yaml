@@ -35,8 +35,8 @@ spec:
           - /usr/local/bin/tidb-controller-manager
           {{- if .Values.tidbBackupManagerImage }}
           - -tidb-backup-manager-image={{ .Values.tidbBackupManagerImage }}
-          - -tidb-discovery-image={{ .Values.operatorImage }}
           {{- end }}
+          - -tidb-discovery-image={{ .Values.operatorImage }}
           - -cluster-scoped={{ .Values.clusterScoped }}
           - -auto-failover={{ .Values.controllerManager.autoFailover | default true }}
           - -pd-failover-period={{ .Values.controllerManager.pdFailoverPeriod | default "5m" }}
