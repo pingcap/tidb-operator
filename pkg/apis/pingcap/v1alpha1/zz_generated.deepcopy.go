@@ -3803,8 +3803,16 @@ func (in *TidbClusterAutoScalerSpec) DeepCopyInto(out *TidbClusterAutoScalerSpec
 		*out = new(string)
 		**out = **in
 	}
-	in.TiKV.DeepCopyInto(&out.TiKV)
-	in.TiDB.DeepCopyInto(&out.TiDB)
+	if in.TiKV != nil {
+		in, out := &in.TiKV, &out.TiKV
+		*out = new(TikvAutoScalerSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.TiDB != nil {
+		in, out := &in.TiDB, &out.TiDB
+		*out = new(TidbAutoScalerSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

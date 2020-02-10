@@ -7064,8 +7064,6 @@ spec:
               type: object
           required:
           - cluster
-          - tikv
-          - tidb
           type: object
         status: {}
       type: object

@@ -5799,7 +5799,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 						},
 					},
 				},
-				Required: []string{"cluster", "tikv", "tidb"},
+				Required: []string{"cluster"},
 			},
 		},
 		Dependencies: []string{

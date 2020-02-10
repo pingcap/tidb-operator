@@ -59,10 +59,12 @@ type TidbClusterAutoScalerSpec struct {
 	MetricsUrl *string `json:"metricsUrl,omitempty"`
 
 	// TiKV represents the auto-scaling spec for tikv
-	TiKV TikvAutoScalerSpec `json:"tikv"`
+	// +optional
+	TiKV *TikvAutoScalerSpec `json:"tikv,omitempty"`
 
 	// TiDB represents the auto-scaling spec for tidb
-	TiDB TidbAutoScalerSpec `json:"tidb"`
+	// +optional
+	TiDB *TidbAutoScalerSpec `json:"tidb,omitempty"`
 }
 
 // +k8s:openapi-gen=true
