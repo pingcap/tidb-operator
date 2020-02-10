@@ -199,19 +199,29 @@ function e2e::__cluster_is_alive() {
     return $ret
 }
 
+function e2e::__configure_docker_mirror_for_dind() {
+    echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
+cat <<EOF > /etc/docker/daemon.json.tmp
+{
+    "registry-mirrors": ["$DOCKER_IO_MIRROR"]
+}
+EOF
+    if diff /etc/docker/daemon.json.tmp /etc/docker/daemon.json 1>/dev/null 2>&1; then
+        echo "info: already configured"
+        rm /etc/docker/daemon.json.tmp
+    else
+        mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
+        e2e::__restart_docker
+    fi
+}
+
 function e2e::up() {
     if [ -n "$SKIP_UP" ]; then
         echo "info: skip starting a new cluster"
         return
     fi
     if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
-        echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
-cat <<EOF > /etc/docker/daemon.json
-{
-    "registry-mirrors": ["$DOCKER_IO_MIRROR"]
-}
-EOF
-        e2e::__restart_docker
+        e2e::__configure_docker_mirror_for_dind
     fi
     if e2e::cluster_exists $CLUSTER; then
         if [ -n "$REUSE_CLUSTER" ]; then
