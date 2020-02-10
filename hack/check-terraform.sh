@@ -22,7 +22,7 @@ source $ROOT/hack/lib.sh
 
 hack::ensure_terraform
 
-terraform_modules=$(find ${ROOT}/deploy -not -path '*/\.*' -type f -name variables.tf | xargs -I{} -n1 dirname {})
+terraform_modules=$(find ${ROOT}/deploy -mindepth 1 -maxdepth 1 -type d -a -not -name 'modules')
 
 for module in $terraform_modules; do
     echo "Checking module ${module}"
