@@ -16,7 +16,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -27,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
