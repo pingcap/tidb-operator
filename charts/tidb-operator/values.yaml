@@ -34,6 +34,7 @@ imagePullPolicy: IfNotPresent
 features: []
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
+# - AutoScaling=true
 
 controllerManager:
   # With rbac.create=false, the user is responsible for creating this account
