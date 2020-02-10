@@ -1847,6 +1847,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.BR != nil {
+		in, out := &in.BR, &out.BR
+		*out = new(BRConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

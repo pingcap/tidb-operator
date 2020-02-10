@@ -69,6 +69,11 @@ case "$1" in
         echo "$BACKUP_BIN restore $@"
         exec $BACKUP_BIN restore "$@"
         ;;
+    import)
+        shift 1
+        echo "$BACKUP_BIN import $@"
+        exec $BACKUP_BIN import "$@"
+        ;;
     clean)
         shift 1
         echo "$BACKUP_BIN clean $@"
