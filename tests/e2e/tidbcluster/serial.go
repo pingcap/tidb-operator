@@ -133,7 +133,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
-		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
+		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
 			clusterName := "deploy"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
 			cluster.Resources["pd.replicas"] = "3"
@@ -152,7 +152,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 	})
 
-	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade to Advanced StatefulSet", func() {
+	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade to advanced statefulset", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
