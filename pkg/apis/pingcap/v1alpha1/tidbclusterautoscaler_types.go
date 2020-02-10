@@ -68,41 +68,18 @@ type TidbClusterAutoScalerSpec struct {
 // +k8s:openapi-gen=true
 // TikvAutoScalerSpec describes the spec for tikv auto-scaling
 type TikvAutoScalerSpec struct {
-	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-	// It cannot be less than minReplicas.
-	MaxReplicas int32 `json:"maxReplicas"`
-
-	// minReplicas is the lower limit for the number of replicas to which the autoscaler
-	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-	// available.
-	// +optional
-	MinReplicas *int32 `json:"minReplicas,omitempty"`
-
-	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
-	// If not set, the default ScaleInIntervalSeconds will be set to 500
-	// +optional
-	ScaleInIntervalSeconds *int32 `json:"scaleInIntervalSeconds,omitempty"`
-
-	// ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
-	// If not set, the default ScaleOutIntervalSeconds will be set to 300
-	// +optional
-	ScaleOutIntervalSeconds *int32 `json:"scaleoutIntervalSeconds,omitempty"`
-
-	// metrics contains the specifications for which to use to calculate the
-	// desired replica count (the maximum replica count across all metrics will
-	// be used).  The desired replica count is calculated multiplying the
-	// ratio between the target value and the current value by the current
-	// number of pods.  Ergo, metrics used must decrease as the pod count is
-	// increased, and vice-versa.  See the individual metric source types for
-	// more information about how each type of metric must respond.
-	// If not set, the default metric will be set to 80% average CPU utilization.
-	// +optional
-	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty"`
+	BasicAutoScalerSpec `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
 // TidbAutoScalerSpec describes the spec for tidb auto-scaling
 type TidbAutoScalerSpec struct {
+	BasicAutoScalerSpec `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
+// BasicAutoScalerSpec describes the basic spec for auto-scaling
+type BasicAutoScalerSpec struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	// It cannot be less than minReplicas.
 	MaxReplicas int32 `json:"maxReplicas"`
@@ -121,7 +98,7 @@ type TidbAutoScalerSpec struct {
 	// ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
 	// If not set, the default ScaleOutIntervalSeconds will be set to 300
 	// +optional
-	ScaleOutIntervalSeconds *int32 `json:"scaleoutIntervalSeconds,omitempty"`
+	ScaleOutIntervalSeconds *int32 `json:"scaleOutIntervalSeconds,omitempty"`
 
 	// metrics contains the specifications for which to use to calculate the
 	// desired replica count (the maximum replica count across all metrics will
