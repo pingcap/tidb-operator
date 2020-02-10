@@ -15,6 +15,7 @@ package autoscaler
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -39,6 +40,7 @@ type Controller struct {
 	cli      client.Client
 	control  ControlInterface
 	taLister listers.TidbClusterAutoScalerLister
+	tcLister listers.TidbClusterLister
 	queue    workqueue.RateLimitingInterface
 }
 
@@ -54,12 +56,15 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbclusterautoscaler"})
 
 	autoScalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
+	asm := autoscaler.NewAutoScalerManager(informerFactory, recorder)
 	tac := &Controller{
 		cli:      genericCli,
-		control:  NewDefaultAutoScalerControl(recorder, typedControl),
+		control:  NewDefaultAutoScalerControl(recorder, typedControl, asm),
 		taLister: autoScalerInformer.Lister(),
+		tcLister: tcInformer.Lister(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"tidbclusterautoscaler"),
