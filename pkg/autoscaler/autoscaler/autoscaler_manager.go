@@ -14,11 +14,14 @@
 package autoscaler
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	promClient "github.com/prometheus/client_golang/api"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
@@ -50,12 +53,16 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if tac.Spec.MetricsUrl == nil {
 		return fmt.Errorf("tidbclusterAutoScaler[%s/%s]' metrics url should be defined currently", tac.Namespace, tac.Name)
 	}
-
-	if err := am.syncTiKV(tc, tac); err != nil {
+	client, err := promClient.NewClient(promClient.Config{Address: *tac.Spec.MetricsUrl})
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	if err := am.syncTiKV(tc, tac, client, ctx); err != nil {
 		return err
 	}
 
-	if err := am.syncTiKV(tc, tac); err != nil {
+	if err := am.syncTiKV(tc, tac, client, ctx); err != nil {
 		return err
 	}
 
@@ -66,7 +73,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 //sum(rate(tikv_thread_cpu_seconds_total{cluster="tidb"}[1m])) by (instance)
 //rate(process_cpu_seconds_total{cluster="tidb",job="tikv"}[1m]) ??
 //sum(rate(tikv_grpc_msg_duration_seconds_count{cluster="tidb", type!="kv_gc"}[1m])) by (instance)
-func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, ctx context.Context) error {
 	if tac.Spec.TiKV == nil {
 		return nil
 	}
@@ -78,7 +85,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 }
 
 //rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[1m])
-func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, ctx context.Context) error {
 	if tac.Spec.TiDB == nil {
 		return nil
 	}
@@ -86,6 +93,17 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	// tidb is under updated, refuse to auto-scaling
 	if tc.Status.TiDB.StatefulSet.CurrentRevision != tc.Status.TiDB.StatefulSet.UpdateRevision {
 		return nil
+	}
+	for _, metric := range tac.Spec.TiDB.Metrics {
+		// TIDB auto-scaler only support CPU AverageUtilization metrics
+		if metric.Type == autoscalingv2beta2.ResourceMetricSourceType &&
+			metric.Resource != nil &&
+			metric.Resource.Name == corev1.ResourceCPU &&
+			metric.Resource.Target.AverageUtilization != nil {
+			
+		} else {
+			return fmt.Errorf("tidbclusterAutoScaler[%s/%s] only support ")
+		}
 	}
 	return nil
 }
