@@ -5673,7 +5673,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref common.Reference
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Status describe the status of the TidbClusterAutoScaler",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterStatus"),
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoSclaerStatus"),
 						},
 					},
 				},
@@ -5681,7 +5681,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref common.Reference
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterStatus"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoSclaerStatus"},
 	}
 }
 
@@ -5749,13 +5749,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 					},
 					"tikv": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Tikv represents the auto-scaling spec for tikv",
+							Description: "TiKV represents the auto-scaling spec for tikv",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"),
 						},
 					},
 					"tidb": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Tidb represents the auto-scaling spec for tidb",
+							Description: "TiDB represents the auto-scaling spec for tidb",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec"),
 						},
 					},
