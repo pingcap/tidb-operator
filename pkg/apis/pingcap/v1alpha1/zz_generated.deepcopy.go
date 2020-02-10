@@ -3722,7 +3722,7 @@ func (in *TidbClusterAutoScaler) DeepCopyInto(out *TidbClusterAutoScaler) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
-	in.Status.DeepCopyInto(&out.Status)
+	out.Status = in.Status
 	return
 }
 
@@ -3786,8 +3786,8 @@ func (in *TidbClusterAutoScalerSpec) DeepCopyInto(out *TidbClusterAutoScalerSpec
 		*out = new(string)
 		**out = **in
 	}
-	in.Tikv.DeepCopyInto(&out.Tikv)
-	in.Tidb.DeepCopyInto(&out.Tidb)
+	in.TiKV.DeepCopyInto(&out.TiKV)
+	in.TiDB.DeepCopyInto(&out.TiDB)
 	return
 }
 

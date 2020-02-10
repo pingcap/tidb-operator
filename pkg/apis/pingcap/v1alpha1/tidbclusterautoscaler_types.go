@@ -32,7 +32,7 @@ type TidbClusterAutoScaler struct {
 	Spec TidbClusterAutoScalerSpec `json:"spec"`
 
 	// Status describe the status of the TidbClusterAutoScaler
-	Status TidbClusterStatus `json:"status"`
+	Status TidbClusterAutoSclaerStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -58,11 +58,11 @@ type TidbClusterAutoScalerSpec struct {
 	// +optional
 	MetricsUrl *string `json:"metricsUrl,omitempty"`
 
-	// Tikv represents the auto-scaling spec for tikv
-	Tikv TikvAutoScalerSpec `json:"tikv"`
+	// TiKV represents the auto-scaling spec for tikv
+	TiKV TikvAutoScalerSpec `json:"tikv"`
 
-	// Tidb represents the auto-scaling spec for tidb
-	Tidb TidbAutoScalerSpec `json:"tidb"`
+	// TiDB represents the auto-scaling spec for tidb
+	TiDB TidbAutoScalerSpec `json:"tidb"`
 }
 
 // +k8s:openapi-gen=true
@@ -70,13 +70,13 @@ type TidbClusterAutoScalerSpec struct {
 type TikvAutoScalerSpec struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	// It cannot be less than minReplicas.
-	MaxReplicas int32 `json:"maxReplicas" protobuf:"varint,3,opt,name=maxReplicas"`
+	MaxReplicas int32 `json:"maxReplicas"`
 
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler
 	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
 	// available.
 	// +optional
-	MinReplicas *int32 `json:"minReplicas,omitempty" protobuf:"varint,2,opt,name=minReplicas"`
+	MinReplicas *int32 `json:"minReplicas,omitempty"`
 
 	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
 	// If not set, the default ScaleInIntervalSeconds will be set to 500
@@ -97,7 +97,7 @@ type TikvAutoScalerSpec struct {
 	// more information about how each type of metric must respond.
 	// If not set, the default metric will be set to 80% average CPU utilization.
 	// +optional
-	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty" protobuf:"bytes,4,rep,name=metrics"`
+	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -105,13 +105,13 @@ type TikvAutoScalerSpec struct {
 type TidbAutoScalerSpec struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	// It cannot be less than minReplicas.
-	MaxReplicas int32 `json:"maxReplicas" protobuf:"varint,3,opt,name=maxReplicas"`
+	MaxReplicas int32 `json:"maxReplicas"`
 
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler
 	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
 	// available.
 	// +optional
-	MinReplicas *int32 `json:"minReplicas,omitempty" protobuf:"varint,2,opt,name=minReplicas"`
+	MinReplicas *int32 `json:"minReplicas,omitempty"`
 
 	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
 	// If not set, the default ScaleInIntervalSeconds will be set to 500
@@ -132,7 +132,7 @@ type TidbAutoScalerSpec struct {
 	// more information about how each type of metric must respond.
 	// If not set, the default metric will be set to 80% average CPU utilization.
 	// +optional
-	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty" protobuf:"bytes,4,rep,name=metrics"`
+	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty"`
 }
 
 // TODO: sync status
