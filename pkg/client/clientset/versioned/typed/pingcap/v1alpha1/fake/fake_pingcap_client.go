@@ -45,6 +45,10 @@ func (c *FakePingcapV1alpha1) TidbClusters(namespace string) v1alpha1.TidbCluste
 	return &FakeTidbClusters{c, namespace}
 }
 
+func (c *FakePingcapV1alpha1) TidbClusterAutoScalers(namespace string) v1alpha1.TidbClusterAutoScalerInterface {
+	return &FakeTidbClusterAutoScalers{c, namespace}
+}
+
 func (c *FakePingcapV1alpha1) TidbInitializers(namespace string) v1alpha1.TidbInitializerInterface {
 	return &FakeTidbInitializers{c, namespace}
 }
