@@ -45,7 +45,7 @@ const (
 	TiDBInitializerKind    = "TidbInitializer"
 	TiDBInitializerKindKey = "tidbinitializer"
 
-	TidbClusterAutoScalerName    = "tidbclusterautoscalernames"
+	TidbClusterAutoScalerName    = "tidbclusterautoscalers"
 	TidbClusterAutoScalerKind    = "TidbClusterAutoScaler"
 	TidbClusterAutoScalerKindKey = "tidbclusterautoscaler"
 
