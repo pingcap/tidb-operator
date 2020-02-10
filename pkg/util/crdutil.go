@@ -215,6 +215,8 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 		return v1alpha1.DefaultCrdKinds.TiDBMonitor, nil
 	case v1alpha1.TiDBInitializerKindKey:
 		return v1alpha1.DefaultCrdKinds.TiDBInitializer, nil
+	case v1alpha1.TidbClusterAutoScalerKindKey:
+		return v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler, nil
 	default:
 		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
 	}
