@@ -100,9 +100,9 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 			metric.Resource != nil &&
 			metric.Resource.Name == corev1.ResourceCPU &&
 			metric.Resource.Target.AverageUtilization != nil {
-			
+			//TODO: query cpu metrics
 		} else {
-			return fmt.Errorf("tidbclusterAutoScaler[%s/%s] only support ")
+			return fmt.Errorf("tidbclusterAutoScaler[%s/%s] only support cpu averageUtilization", tac.Namespace, tac.Name)
 		}
 	}
 	return nil
