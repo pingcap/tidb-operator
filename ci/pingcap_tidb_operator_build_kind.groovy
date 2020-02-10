@@ -71,14 +71,20 @@ spec:
     emptyDir: {}
   - name: docker-graph
     emptyDir: {}
+  tolerations:
+  - effect: NoSchedule
+    key: tidb-operator
+    operator: Exists
   affinity:
-    # worker nodes only
+    # running on nodes for tidb-operator only
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-          - key: node-role.kubernetes.io/master
-            operator: DoesNotExist
+          - key: ci.pingcap.com
+            operator: In
+            values:
+            - tidb-operator
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -161,6 +167,8 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			container("golang") {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}") {
+					deleteDir()
+
 					stage('Checkout') {
 						checkout changelog: false,
 						poll: false,
