@@ -20,8 +20,6 @@ import (
 	promClient "github.com/prometheus/client_golang/api"
 )
 
-//sum(rate(tikv_thread_cpu_seconds_total{cluster="tidb"}[1m])) by (instance)
-//sum(rate(tikv_grpc_msg_duration_seconds_count{cluster="tidb", type!="kv_gc"}[1m])) by (instance)
 func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
 	if tac.Spec.TiKV == nil {
 		return nil
@@ -34,7 +32,9 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	targetReplicas := tc.Spec.TiKV.Replicas
+
 	// TODO: sync tikv .metrics from prometheus
+	// sum(rate(tikv_grpc_msg_duration_seconds_count{cluster="tidb", type!="kv_gc"}[1m])) by (instance)
 	for _, _ = range tac.Spec.TiKV.Metrics {
 		// revive:disable:empty-block
 	}

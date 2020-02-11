@@ -34,7 +34,9 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	targetReplicas := tc.Spec.TiDB.Replicas
+
 	// TODO: sync tidb.metrics from prometheus
+	// rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[threshold Minute])
 	for _, _ = range tac.Spec.TiDB.Metrics {
 		// revive:disable:empty-block
 	}
