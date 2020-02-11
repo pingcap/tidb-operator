@@ -60,28 +60,25 @@ func checkStsAutoScalingInterval(tc *v1alpha1.TidbCluster, intervalSeconds int32
 	return true, nil
 }
 
-// checkTiDBAutoScalingPrerequisites would check the tikv status to ensure the autoscaling would'n happen during
+// checkAutoScalingPrerequisites would check the tidbcluster status to ensure the autoscaling would'n happen during
 // upgrading, scaling and syncing
-func checkTiKVAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) bool {
+func checkAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet, memberType v1alpha1.MemberType) bool {
 	if !checkStsAutoScalingPrerequisites(sts) {
 		return false
 	}
-	if !tc.Status.TiKV.Synced {
-		return false
-	}
-	if tc.Status.TiKV.Phase != v1alpha1.NormalPhase {
-		return false
-	}
-	return true
-}
-
-// checkTiDBAutoScalingPrerequisites would check the tidb status to ensure the autoscaling would'n happen during
-// upgrading, scaling and syncing
-func checkTiDBAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) bool {
-	if !checkStsAutoScalingPrerequisites(sts) {
-		return false
-	}
-	if tc.Status.TiDB.Phase != v1alpha1.NormalPhase {
+	if memberType == v1alpha1.TiDBMemberType {
+		if tc.Status.TiDB.Phase != v1alpha1.NormalPhase {
+			return false
+		}
+	} else if memberType == v1alpha1.TiKVMemberType {
+		if !tc.Status.TiKV.Synced {
+			return false
+		}
+		if tc.Status.TiKV.Phase != v1alpha1.NormalPhase {
+			return false
+		}
+	} else {
+		// Unknown MemberType
 		return false
 	}
 	return true

@@ -30,7 +30,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
-	if !checkTiKVAutoScalingPrerequisites(tc, sts) {
+	if !checkAutoScalingPrerequisites(tc, sts, v1alpha1.TiKVMemberType) {
 		return nil
 	}
 	targetReplicas := tc.Spec.TiKV.Replicas

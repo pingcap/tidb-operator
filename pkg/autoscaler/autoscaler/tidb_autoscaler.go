@@ -30,7 +30,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
-	if !checkTiDBAutoScalingPrerequisites(tc, sts) {
+	if !checkAutoScalingPrerequisites(tc, sts, v1alpha1.TiDBMemberType) {
 		return nil
 	}
 	targetReplicas := tc.Spec.TiDB.Replicas
