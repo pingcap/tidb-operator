@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
@@ -185,7 +186,10 @@ func main() {
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
-
+		var autoScalerController *autoscaler.Controller
+		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+			autoScalerController = autoscaler.NewController(kubeCli, genericCli, informerFactory)
+		}
 		// Start informer factories after all controller are initialized.
 		informerFactory.Start(ctx.Done())
 		kubeInformerFactory.Start(ctx.Done())
@@ -208,6 +212,9 @@ func main() {
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbInitController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbMonitorController.Run(workers, ctx.Done()) }, waitDuration)
+		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+			go wait.Forever(func() { autoScalerController.Run(workers, ctx.Done()) }, waitDuration)
+		}
 		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
 	}
 	onStopped := func() {
