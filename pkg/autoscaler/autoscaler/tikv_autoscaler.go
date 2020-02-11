@@ -35,9 +35,9 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 
 	// TODO: sync tikv .metrics from prometheus
 	// sum(rate(tikv_grpc_msg_duration_seconds_count{cluster="tidb", type!="kv_gc"}[1m])) by (instance)
-	for _, _ = range tac.Spec.TiKV.Metrics {
-		// revive:disable:empty-block
-	}
+	//for _, _ = range tac.Spec.TiKV.Metrics {
+	//	// revive:disable:empty-block
+	//}
 	if targetReplicas == tc.Spec.TiKV.Replicas {
 		return nil
 	}

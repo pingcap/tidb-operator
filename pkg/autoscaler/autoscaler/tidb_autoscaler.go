@@ -37,9 +37,9 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 
 	// TODO: sync tidb.metrics from prometheus
 	// rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[threshold Minute])
-	for _, _ = range tac.Spec.TiDB.Metrics {
-		// revive:disable:empty-block
-	}
+	//for _, _ = range tac.Spec.TiDB.Metrics {
+	//	// revive:disable:empty-block
+	//}
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		return nil
 	}
