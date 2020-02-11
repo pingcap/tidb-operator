@@ -20,7 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 )
 
 func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
@@ -31,17 +30,17 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
-	if !checkTiDBAutoScalingPrerequisites(tc, sts) {
+	if !checkAutoScalingPrerequisites(tc, sts, v1alpha1.TiDBMemberType) {
 		return nil
 	}
 	targetReplicas := tc.Spec.TiDB.Replicas
-	for _, metric := range tac.Spec.TiDB.Metrics {
-		//TIDB auto-scaler only support CPU AverageUtilization metrics
-		if metric.Type == autoscalingv2beta2.ResourceMetricSourceType {
-			//TODO: query cpu metrics and calculate the target TiDB replicas
-			// rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[threshold Minute])
-		}
-	}
+
+	// TODO: sync tidb.metrics from prometheus
+	// rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[threshold Minute])
+	//for _, _ = range tac.Spec.TiDB.Metrics {
+	//	// revive:disable:empty-block
+	//}
+	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		return nil
 	}
@@ -56,7 +55,6 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if !ableToScale {
 		return nil
 	}
-	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	tc.Spec.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
 	tc.Spec.TiDB.Replicas = targetReplicas
 	return nil
