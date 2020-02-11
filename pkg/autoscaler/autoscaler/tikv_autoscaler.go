@@ -37,6 +37,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	targetReplicas := tc.Spec.TiKV.Replicas
 	for _, metric := range tac.Spec.TiKV.Metrics {
 		if metric.Type == autoscalingv2beta2.ResourceMetricSourceType {
+			// revive:disable:empty-block
 			//TODO: auto-scaler only support CPU AverageUtilization metrics And QPS AverageValues
 			// sum(rate(tikv_thread_cpu_seconds_total{cluster="tidb"}[1m])) by (instance)
 			// sum(rate(tikv_grpc_msg_duration_seconds_count{cluster="tidb", type!="kv_gc"}[1m])) by (instance)

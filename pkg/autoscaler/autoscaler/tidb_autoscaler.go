@@ -38,6 +38,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	for _, metric := range tac.Spec.TiDB.Metrics {
 		//TIDB auto-scaler only support CPU AverageUtilization metrics
 		if metric.Type == autoscalingv2beta2.ResourceMetricSourceType {
+			// revive:disable:empty-block
 			//TODO: query cpu metrics and calculate the target TiDB replicas
 			// rate(process_cpu_seconds_total{cluster="tidb",job="tidb"}[threshold Minute])
 		}
