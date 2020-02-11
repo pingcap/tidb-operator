@@ -30,6 +30,7 @@ var (
 	defaultFeatures = map[string]bool{
 		StableScheduling:    true,
 		AdvancedStatefulSet: false,
+		AutoScaling:         false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewFeatureGate()
