@@ -107,7 +107,7 @@ func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScal
 // If the minReplicas not set, the default value would be 1
 // If the Metrics not set, the default metric will be set to 80% average CPU utilization.
 // defaultTAC would default the omitted value
-func defaultTAC(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) {
+func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 	defaultMetricSpec := autoscalingv2beta2.MetricSpec{
 		Type: autoscalingv2beta2.ResourceMetricSourceType,
 		Resource: &autoscalingv2beta2.ResourceMetricSource{

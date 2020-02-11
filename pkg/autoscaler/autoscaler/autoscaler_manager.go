@@ -77,7 +77,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if err != nil {
 		return err
 	}
-	defaultTAC(tc, tac)
+	defaultTAC(tac)
 	if err := am.syncTiKV(tc, tac, client); err != nil {
 		return err
 	}
