@@ -15,11 +15,11 @@ package autoscaler
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler"
 	"time"
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -48,6 +49,7 @@ func NewController(
 	kubeCli kubernetes.Interface,
 	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
+	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -59,7 +61,7 @@ func NewController(
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
-	asm := autoscaler.NewAutoScalerManager(informerFactory, recorder)
+	asm := autoscaler.NewAutoScalerManager(informerFactory, kubeInformerFactory, recorder)
 	tac := &Controller{
 		cli:      genericCli,
 		control:  NewDefaultAutoScalerControl(recorder, typedControl, asm),
