@@ -16,7 +16,6 @@ package pod
 import (
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
@@ -195,20 +194,11 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	tcName := payload.tc.Name
 	var targetName string
 
-	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
-		if ordinal == lastOrdinal {
-			targetName = pdutil.PdPodName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet))
-		} else {
-			targetName = pdutil.PdPodName(tcName, lastOrdinal)
-		}
+	lastOrdinal := helper.GetMaxPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet)
+	if ordinal == lastOrdinal {
+		targetName = pdutil.PdPodName(tcName, helper.GetMinPodOrdinal(*payload.ownerStatefulSet.Spec.Replicas, payload.ownerStatefulSet))
 	} else {
-		lastOrdinal := payload.tc.Status.PD.StatefulSet.Replicas - 1
-		if ordinal == lastOrdinal {
-			targetName = pdutil.PdPodName(tcName, 0)
-		} else {
-			targetName = pdutil.PdPodName(tcName, lastOrdinal)
-		}
+		targetName = pdutil.PdPodName(tcName, lastOrdinal)
 	}
 
 	err = payload.pdClient.TransferPDLeader(targetName)
