@@ -58,7 +58,6 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbclusterautoscaler"})
 
 	autoScalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
 	asm := autoscaler.NewAutoScalerManager(informerFactory, kubeInformerFactory, recorder)
@@ -66,7 +65,6 @@ func NewController(
 		cli:      genericCli,
 		control:  NewDefaultAutoScalerControl(recorder, typedControl, asm),
 		taLister: autoScalerInformer.Lister(),
-		tcLister: tcInformer.Lister(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"tidbclusterautoscaler"),
