@@ -410,7 +410,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                              oi.Image,
 		"controllerManager.autoFailover":             "true",
-		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
 		"controllerManager.logLevel":                 oi.LogLevel,
 		"scheduler.logLevel":                         "4",
 		"imagePullPolicy":                            string(oi.ImagePullPolicy),
@@ -421,6 +420,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
 		"admissionWebhook.hooksEnabled.defaulting":   strconv.FormatBool(oi.DefaultingEnabled),
 		"admissionWebhook.hooksEnabled.validating":   strconv.FormatBool(oi.ValidatingEnabled),
+	}
+	if oi.SchedulerImage != "" {
+		set["scheduler.kubeSchedulerImageName"] = oi.SchedulerImage
 	}
 	if oi.ControllerManagerReplicas != nil {
 		set["controllerManager.replicas"] = strconv.Itoa(*oi.ControllerManagerReplicas)

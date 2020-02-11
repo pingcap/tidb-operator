@@ -228,7 +228,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 	})
 
-	ginkgo.It("Upgrading TiDB Cluster", func() {
+	ginkgo.It("Upgrading TiDB Cluster with partition", func() {
+		if !ocfg.StsWebhookEnabled {
+			framework.Skipf("Partition upgrading requires StatefulSet webhook, skipped")
+		}
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
 		cluster.Resources["pd.replicas"] = "3"
 
@@ -237,7 +240,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		certCtx, err := apimachinery.SetupServerCert(ns, svcName)
 		framework.ExpectNoError(err, fmt.Sprintf("unable to setup certs for webservice %s", tests.WebhookServiceName))
 
-		ginkgo.By("Starting webhook pod")
+		ginkgo.By("Starting webhook pod to validate pod states")
 		webhookPod, svc := startWebhook(f, cfg.E2EImage, ns, svcName, certCtx.Cert, certCtx.Key)
 
 		ginkgo.By("Register webhook")

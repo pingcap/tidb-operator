@@ -39,6 +39,7 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flags.StringVar(&TestConfig.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
 	flags.Var(cliflag.NewMapStringBool(&TestConfig.OperatorFeatures), "operator-features", "a set of key=value pairs that describe feature gates for operator")
+	flags.BoolVar(&TestConfig.OperatorWebhook, "operator-webhook", true, "if set, operator admission webhook is deployed and enabled")
 	flags.StringVar(&TestConfig.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
 	flags.StringVar(&TestConfig.UpgradeOperatorImage, "upgrade-operator-image", "", "upgrade operator image")
 	flags.StringVar(&TestConfig.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
@@ -85,13 +86,14 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		}
 		features = append(features, fmt.Sprintf("%s=%s", k, t))
 	}
-	return &tests.OperatorConfig{
+	// the default configuration will use the default values in tidb-operator
+	// chart except logigng, debuging configurations.
+	operatorCfg := &tests.OperatorConfig{
 		Namespace:                 "pingcap",
 		ReleaseName:               "operator",
 		Image:                     cfg.OperatorImage,
 		Tag:                       cfg.OperatorTag,
 		ControllerManagerReplicas: tests.IntPtr(2),
-		SchedulerImage:            "k8s.gcr.io/kube-scheduler",
 		SchedulerReplicas:         tests.IntPtr(2),
 		Features:                  features,
 		LogLevel:                  "4",
@@ -100,11 +102,16 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		WebhookConfigName:         "webhook-config",
 		ImagePullPolicy:           v1.PullIfNotPresent,
 		TestMode:                  true,
-		WebhookEnabled:            true,
-		StsWebhookEnabled:         true,
+		WebhookEnabled:            false,
+		StsWebhookEnabled:         false,
 		PodWebhookEnabled:         false,
-		Cabundle:                  "",
 	}
+	if cfg.OperatorWebhook {
+		operatorCfg.WebhookEnabled = true
+		operatorCfg.StsWebhookEnabled = true
+		operatorCfg.PodWebhookEnabled = true
+	}
+	return operatorCfg
 }
 
 func LoadClientRawConfig() (clientcmdapi.Config, error) {
