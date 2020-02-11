@@ -1,0 +1,136 @@
+// Copyright 2020 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package autoscaler
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
+	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
+)
+
+// checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
+// upgrading, scaling
+func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
+	if operatorUtils.IsStatefulSetUpgrading(set) {
+		return false
+	}
+	if operatorUtils.IsStatefulSetScaling(set) {
+		return false
+	}
+	return true
+}
+
+// checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
+func checkStsAutoScalingInterval(tc *v1alpha1.TidbCluster, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
+	if tc.Annotations == nil {
+		tc.Annotations = map[string]string{}
+	}
+	lastAutoScalingTimestamp, existed := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+	if memberType == v1alpha1.TiKVMemberType {
+		lastAutoScalingTimestamp, existed = tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+	}
+	if !existed {
+		return true, nil
+	}
+	t, err := strconv.ParseInt(lastAutoScalingTimestamp, 10, 64)
+	if err != nil {
+		return false, err
+	}
+	if intervalSeconds > int32(time.Now().Sub(time.Unix(t, 0)).Seconds()) {
+		return false, nil
+	}
+	return true, nil
+}
+
+// checkTiDBAutoScalingPrerequisites would check the tikv status to ensure the autoscaling would'n happen during
+// upgrading, scaling and syncing
+func checkTiKVAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) bool {
+	if !checkStsAutoScalingPrerequisites(sts) {
+		return false
+	}
+	if !tc.Status.TiKV.Synced {
+		return false
+	}
+	if tc.Status.TiKV.Phase != v1alpha1.NormalPhase {
+		return false
+	}
+	return true
+}
+
+// checkTiDBAutoScalingPrerequisites would check the tidb status to ensure the autoscaling would'n happen during
+// upgrading, scaling and syncing
+func checkTiDBAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) bool {
+	if !checkStsAutoScalingPrerequisites(sts) {
+		return false
+	}
+	if tc.Status.TiDB.Phase != v1alpha1.NormalPhase {
+		return false
+	}
+	return true
+}
+
+// limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
+func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
+	if targetReplicas > tac.Spec.TiKV.MaxReplicas {
+		targetReplicas = tac.Spec.TiKV.MaxReplicas
+	} else if targetReplicas < *tac.Spec.TiKV.MinReplicas {
+		targetReplicas = *tac.Spec.TiKV.MinReplicas
+	}
+	if memberType == v1alpha1.TiDBMemberType {
+		if targetReplicas > tac.Spec.TiDB.MaxReplicas {
+			targetReplicas = tac.Spec.TiDB.MaxReplicas
+		} else if targetReplicas < *tac.Spec.TiDB.MinReplicas {
+			targetReplicas = *tac.Spec.TiDB.MinReplicas
+		}
+	}
+	return targetReplicas
+}
+
+// If the minReplicas not set, the default value would be 1
+// If the Metrics not set, the default metric will be set to 80% average CPU utilization.
+// defaultTAC would default the omitted value
+func defaultTAC(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) {
+	defaultMetricSpec := autoscalingv2beta2.MetricSpec{
+		Type: autoscalingv2beta2.ResourceMetricSourceType,
+		Resource: &autoscalingv2beta2.ResourceMetricSource{
+			Name: corev1.ResourceCPU,
+			Target: autoscalingv2beta2.MetricTarget{
+				AverageUtilization: pointer.Int32Ptr(80),
+			},
+		},
+	}
+	if tac.Spec.TiKV != nil {
+		if tac.Spec.TiKV.MinReplicas == nil {
+			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(1)
+		}
+		if len(tac.Spec.TiKV.Metrics) == 0 {
+			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
+		}
+	}
+	if tac.Spec.TiDB != nil {
+		if tac.Spec.TiDB.MinReplicas == nil {
+			tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(1)
+		}
+		if len(tac.Spec.TiDB.Metrics) == 0 {
+			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
+		}
+	}
+}

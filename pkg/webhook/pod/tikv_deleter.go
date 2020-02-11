@@ -166,7 +166,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 		return util.ARFail(err)
 	}
 	tcName := payload.tc.Name
-	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
 
 	if !isInOrdinal {
 		err = payload.pdClient.DeleteStore(store.Store.Id)
