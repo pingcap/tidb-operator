@@ -381,6 +381,20 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"db": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DB is the specific DB which will be backed-up or restored",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"table": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Table is the specific table which will be backed-up or restored",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"ca": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CA is the CA certificate path for TLS connection",
@@ -2741,12 +2755,17 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"br": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BR is the configs for BR.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
+						},
+					},
 				},
-				Required: []string{"to", "storageSize"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"},
 	}
 }
 
