@@ -30,6 +30,7 @@ var (
 	defaultFeatures = map[string]bool{
 		StableScheduling:    true,
 		AdvancedStatefulSet: false,
+		AutoScaling:         false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewFeatureGate()
@@ -41,6 +42,9 @@ const (
 
 	// AdvancedStatefulSet controls whether to use AdvancedStatefulSet to manage pods
 	AdvancedStatefulSet string = "AdvancedStatefulSet"
+
+	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
+	AutoScaling string = "AutoScaling"
 )
 
 type FeatureGate interface {
