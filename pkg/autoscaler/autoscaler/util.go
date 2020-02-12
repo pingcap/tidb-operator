@@ -99,13 +99,13 @@ func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScal
 	if memberType != v1alpha1.TiKVMemberType && memberType != v1alpha1.TiDBMemberType {
 		return targetReplicas
 	}
-
-	if targetReplicas > tac.Spec.TiKV.MaxReplicas {
-		targetReplicas = tac.Spec.TiKV.MaxReplicas
-	} else if targetReplicas < *tac.Spec.TiKV.MinReplicas {
-		targetReplicas = *tac.Spec.TiKV.MinReplicas
-	}
-	if memberType == v1alpha1.TiDBMemberType {
+	if memberType == v1alpha1.TiKVMemberType {
+		if targetReplicas > tac.Spec.TiKV.MaxReplicas {
+			targetReplicas = tac.Spec.TiKV.MaxReplicas
+		} else if targetReplicas < *tac.Spec.TiKV.MinReplicas {
+			targetReplicas = *tac.Spec.TiKV.MinReplicas
+		}
+	} else if memberType == v1alpha1.TiDBMemberType {
 		if targetReplicas > tac.Spec.TiDB.MaxReplicas {
 			targetReplicas = tac.Spec.TiDB.MaxReplicas
 		} else if targetReplicas < *tac.Spec.TiDB.MinReplicas {
