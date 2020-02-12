@@ -71,7 +71,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	if tac.Spec.MetricsUrl == nil {
-		return fmt.Errorf("tidbclusterAutoScaler[%s/%s]' metrics url should be defined currently", tac.Namespace, tac.Name)
+		return fmt.Errorf("tidbclusterAutoScaler[%s/%s]' metrics url should be defined explicitly", tac.Namespace, tac.Name)
 	}
 	client, err := promClient.NewClient(promClient.Config{Address: *tac.Spec.MetricsUrl})
 	if err != nil {
