@@ -1,7 +1,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  {{- if .Values.jobName }}
+  name: {{ .Values.jobName }}
+  {{- else}}
   name: {{ include "tidb-lightning.name" . }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -69,6 +73,22 @@ spec:
         - name: FAIL_FAST
           value: "true"
         {{- end }}
+        {{- if .Values.targetTidbCluster.secretName }}
+        {{- if .Values.targetTidbCluster.secretUserKey }}
+        - name: TIDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.targetTidbCluster.secretName }}
+              key: {{ .Values.targetTidbCluster.secretUserKey }}
+        {{- end }}
+        {{- if .Values.targetTidbCluster.secretPwdKey }}
+        - name: TIDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.targetTidbCluster.secretName }}
+              key: {{ .Values.targetTidbCluster.secretPwdKey }}
+        {{- end }}
+        {{- end }}
         volumeMounts:
         - name: config
           mountPath: /etc/tidb-lightning
@@ -95,9 +115,18 @@ spec:
         persistentVolumeClaim:
           claimName: {{ .Values.dataSource.adhoc.pvcName }}
       {{ else }}
+      {{- if .Values.dataSource.remote.rcloneConfig }}
+      - name: credentials
+        configMap:
+          name: rclone-{{ include "tidb-lightning.name" . }}
+          items:
+          - key: config-file
+            path: rclone.conf
+      {{ else }}
       - name: credentials
         secret:
           secretName: {{ .Values.dataSource.remote.secretName }}
+      {{ end -}}
       - name: data
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
