@@ -56,6 +56,6 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	tc.Spec.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
-	tc.Spec.TiDB.Replicas = targetReplicas
+	tc.Spec.TiKV.Replicas = targetReplicas
 	return nil
 }
