@@ -21,9 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -46,10 +44,6 @@ func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PD
 		}
 	}
 	return false, nil
-}
-
-func IsStatefulSetUpgrading(set *v1.StatefulSet) bool {
-	return operatorUtils.IsStatefulSetUpgrading(set)
 }
 
 // each time we scale in pd replicas, we won't delete the pvc which belong to the
