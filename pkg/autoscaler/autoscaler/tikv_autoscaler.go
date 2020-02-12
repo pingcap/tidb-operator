@@ -40,6 +40,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	//for _, _ = range tac.Spec.TiKV.Metrics {
 	//	// revive:disable:empty-block
 	//}
+	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
 	if targetReplicas == tc.Spec.TiKV.Replicas {
 		return nil
 	}
@@ -54,7 +55,6 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if !ableToScale {
 		return nil
 	}
-	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
 	tc.Spec.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
 	tc.Spec.TiDB.Replicas = targetReplicas
 	return nil

@@ -40,6 +40,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	//for _, _ = range tac.Spec.TiDB.Metrics {
 	//	// revive:disable:empty-block
 	//}
+	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		return nil
 	}
@@ -54,7 +55,6 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if !ableToScale {
 		return nil
 	}
-	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	tc.Spec.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
 	tc.Spec.TiDB.Replicas = targetReplicas
 	return nil
