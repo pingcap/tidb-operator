@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -37,7 +37,7 @@ func GetOrdinalFromPodName(podName string) (int32, error) {
 	return int32(ordinalInt), nil
 }
 
-func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, sts *apps.StatefulSet) (bool, error) {
+func IsPodOrdinalNotExceedReplicas(pod *corev1.Pod, sts *appsv1.StatefulSet) (bool, error) {
 	ordinal, err := GetOrdinalFromPodName(pod.Name)
 	if err != nil {
 		return false, err
@@ -113,4 +113,16 @@ func IsSubMapOf(first map[string]string, second map[string]string) bool {
 
 func GetPodName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", tc.Name, memberType.String(), ordinal)
+}
+
+func IsStatefulSetUpgrading(set *appsv1.StatefulSet) bool {
+	return !(set.Status.CurrentRevision == set.Status.UpdateRevision)
+}
+
+func IsStatefulSetScaling(set *appsv1.StatefulSet) bool {
+	return !(set.Status.Replicas == *set.Spec.Replicas)
+}
+
+func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
+	return fmt.Sprintf("%s-%s", tc.Name, memberType.String())
 }
