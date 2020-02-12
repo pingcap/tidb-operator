@@ -26,6 +26,16 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
+	Type: autoscalingv2beta2.ResourceMetricSourceType,
+	Resource: &autoscalingv2beta2.ResourceMetricSource{
+		Name: corev1.ResourceCPU,
+		Target: autoscalingv2beta2.MetricTarget{
+			AverageUtilization: pointer.Int32Ptr(80),
+		},
+	},
+}
+
 // checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
 // upgrading, scaling
 func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
@@ -86,6 +96,10 @@ func checkAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.Statefu
 
 // limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
 func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
+	if memberType != v1alpha1.TiKVMemberType && memberType != v1alpha1.TiDBMemberType {
+		return targetReplicas
+	}
+
 	if targetReplicas > tac.Spec.TiKV.MaxReplicas {
 		targetReplicas = tac.Spec.TiKV.MaxReplicas
 	} else if targetReplicas < *tac.Spec.TiKV.MinReplicas {
@@ -105,15 +119,6 @@ func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScal
 // If the Metrics not set, the default metric will be set to 80% average CPU utilization.
 // defaultTAC would default the omitted value
 func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
-	defaultMetricSpec := autoscalingv2beta2.MetricSpec{
-		Type: autoscalingv2beta2.ResourceMetricSourceType,
-		Resource: &autoscalingv2beta2.ResourceMetricSource{
-			Name: corev1.ResourceCPU,
-			Target: autoscalingv2beta2.MetricTarget{
-				AverageUtilization: pointer.Int32Ptr(80),
-			},
-		},
-	}
 	if tac.Spec.TiKV != nil {
 		if tac.Spec.TiKV.MinReplicas == nil {
 			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(1)
