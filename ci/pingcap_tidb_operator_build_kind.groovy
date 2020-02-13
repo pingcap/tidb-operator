@@ -191,16 +191,17 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						}
 					}
 
-					stage("Check") {
-						ansiColor('xterm') {
-							sh """
-							export GOPATH=${WORKSPACE}/go
-							export PATH=${WORKSPACE}/go/bin:\$PATH
-							make check-setup
-							make check
-							"""
-						}
-					}
+					// moved to Github Actions
+					// stage("Check") {
+						// ansiColor('xterm') {
+							// sh """
+							// export GOPATH=${WORKSPACE}/go
+							// export PATH=${WORKSPACE}/go/bin:\$PATH
+							// make check-setup
+							// make check
+							// """
+						// }
+					// }
 
 					stage("Build and Test") {
 						ansiColor('xterm') {
@@ -209,10 +210,10 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							make e2e-build
 							if [ ${BUILD_BRANCH} == "master" ]
 							then
-								make test GO_COVER=y
+								make test GOFLAGS='-race' GO_COVER=y
 								curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
 							else
-								make test
+								make test GOFLAGS='-race'
 							fi
 							"""
 						}
