@@ -46,7 +46,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
@@ -147,7 +146,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.CleanCRDOrDie()
 		})
 
-		ginkgo.It("able to deploy TiDB Cluster with advanced statefulset", func() {
+		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
 			clusterName := "deploy"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
 			cluster.Resources["pd.replicas"] = "3"
@@ -193,16 +192,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					deleteSlots: sets.NewInt32(),
 				},
 				{
-					name:        "Scaling in tidb from 0 to 2",
+					name:        "Scaling out tidb from 0 to 2 by adding pods 0 and 2",
 					component:   "tidb",
 					replicas:    2,
-					deleteSlots: sets.NewInt32(),
+					deleteSlots: sets.NewInt32(1),
 				},
 				{
-					name:        "Scaling out tidb from 2 to 4 by adding pods 3 and 4",
+					name:        "Scaling tidb from 2 to 4 by deleting pods 2 and adding pods 3, 4 and 5",
 					component:   "tidb",
 					replicas:    4,
-					deleteSlots: sets.NewInt32(1),
+					deleteSlots: sets.NewInt32(1, 2),
 				},
 				{
 					name:        "Scaling out pd from 3 to 5 by adding pods 3, 4",
@@ -214,6 +213,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					name:        "Scaling in pd from 5 to 3 by deleting pods 0 and 3",
 					component:   "pd",
 					replicas:    3,
+					deleteSlots: sets.NewInt32(0, 3),
+				},
+				{
+					name:        "Scaling out pd from 3 to 5 by adding pods 5 and 6",
+					component:   "pd",
+					replicas:    5,
 					deleteSlots: sets.NewInt32(0, 3),
 				},
 			}
@@ -253,33 +258,21 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
 				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
-					// check delete slots annotation
+					// check replicas and delete slots are synced
 					sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 					if err != nil {
 						return false, nil
 					}
+					if *sts.Spec.Replicas != st.replicas {
+						klog.Infof("replicas of sts %s/%s is %d, expects %d", ns, stsName, sts.Spec.Replicas, st.replicas)
+						return false, nil
+					}
 					if !helper.GetDeleteSlots(sts).Equal(st.deleteSlots) {
-						klog.Infof("delete slots of sts %s/%s is %v, expects: %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
+						klog.Infof("delete slots of sts %s/%s is %v, expects %v", ns, stsName, helper.GetDeleteSlots(sts).List(), st.deleteSlots.List())
 						return false, nil
 					}
-					// check all pod ordinals
-					actualPodList := e2esset.GetPodList(c, sts)
-					actualPodOrdinals := sets.NewInt32()
-					for _, pod := range actualPodList.Items {
-						actualPodOrdinals.Insert(int32(utilstatefulset.GetStatefulPodOrdinal(pod.Name)))
-					}
-					desiredPodOrdinals := helper.GetPodOrdinalsFromReplicasAndDeleteSlots(st.replicas, st.deleteSlots)
-					if !actualPodOrdinals.Equal(desiredPodOrdinals) {
-						klog.Infof("pod ordinals of sts %s/%s is %v, expects: %v", ns, stsName, actualPodOrdinals.List(), desiredPodOrdinals.List())
-						return false, nil
-					}
-					for _, pod := range actualPodList.Items {
-						if !podutil.IsPodReady(&pod) {
-							klog.Infof("pod %s of sts %s/%s is not ready, got: %v", pod.Name, ns, stsName, podutil.GetPodReadyCondition(pod.Status))
-							return false, nil
-						}
-					}
-					return true, nil
+					// check all desired pods are running and ready
+					return utilstatefulset.IsAllDesiredPodsRunningAndReady(hc, sts), nil
 				})
 				framework.ExpectNoError(err)
 
@@ -300,7 +293,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 	})
 
-	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade to Advanced StatefulSet", func() {
+	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrade to advanced statefulset", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client

@@ -50,6 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
+	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -814,6 +815,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete dir pod %v", err)
 	}
 
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(blockWriterPodName(info), nil)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete blockwriter pod %v", err)
+	}
+
 	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete secret: %s, %v", info.InitSecretName, err)
@@ -1034,7 +1040,7 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: info.Namespace,
-			Name:      "blockwriter",
+			Name:      blockWriterPodName(info),
 			Labels: map[string]string{
 				"app": "blockwriter",
 			},
@@ -1411,6 +1417,10 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
+		return false, nil
+	}
+
 	if tc.Status.PD.StatefulSet == nil {
 		glog.Infof("tidbcluster: %s/%s .status.PD.StatefulSet is nil", ns, tcName)
 		return false, nil
@@ -1484,6 +1494,10 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
+		return false, nil
+	}
+
 	if tc.Status.TiKV.StatefulSet == nil {
 		glog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
 		return false, nil
@@ -1548,6 +1562,10 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tidbSet) {
 		return false, nil
 	}
 
@@ -3470,4 +3488,8 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 		}
 		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
+}
+
+func blockWriterPodName(info *TidbClusterConfig) string {
+	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
 }

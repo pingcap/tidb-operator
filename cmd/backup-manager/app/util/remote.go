@@ -48,10 +48,7 @@ func NewRemoteStorage(backup *v1alpha1.Backup) (*blob.Bucket, error) {
 	st := util.GetStorageType(backup.Spec.StorageProvider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		qs, err := checkS3Config(backup, true)
-		if err != nil {
-			return nil, err
-		}
+		qs := checkS3Config(backup.Spec.S3, true)
 		bucket, err := newS3Storage(qs)
 		if err != nil {
 			return nil, err
@@ -63,14 +60,11 @@ func NewRemoteStorage(backup *v1alpha1.Backup) (*blob.Bucket, error) {
 }
 
 // getRemoteStorage returns the arg for --storage option and the remote path for br
-func getRemoteStorage(backup *v1alpha1.Backup) ([]string, string, error) {
-	st := util.GetStorageType(backup.Spec.StorageProvider)
+func getRemoteStorage(provider v1alpha1.StorageProvider) ([]string, string, error) {
+	st := util.GetStorageType(provider)
 	switch st {
-	case "s3":
-		qs, err := checkS3Config(backup, false)
-		if err != nil {
-			return nil, "", err
-		}
+	case v1alpha1.BackupStorageTypeS3:
+		qs := checkS3Config(provider.S3, false)
 		s, path := newS3StorageOption(qs)
 		return s, path, nil
 	default:
@@ -138,20 +132,17 @@ func newS3Storage(qs *s3Query) (*blob.Bucket, error) {
 }
 
 // checkS3Config constructs s3Query parameters
-func checkS3Config(backup *v1alpha1.Backup, fakeRegion bool) (*s3Query, error) {
+func checkS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Query {
 	sqs := s3Query{}
 
-	if backup.Spec.S3 == nil {
-		return nil, fmt.Errorf("no s3 config in backup %s/%s", backup.Namespace, backup.Name)
-	}
-	sqs.bucket = backup.Spec.S3.Bucket
-	sqs.region = backup.Spec.S3.Region
-	sqs.provider = string(backup.Spec.S3.Provider)
-	sqs.prefix = backup.Spec.S3.Prefix
-	sqs.endpoint = backup.Spec.S3.Endpoint
-	sqs.sse = backup.Spec.S3.SSE
-	sqs.acl = backup.Spec.S3.Acl
-	sqs.storageClass = backup.Spec.S3.StorageClass
+	sqs.bucket = s3.Bucket
+	sqs.region = s3.Region
+	sqs.provider = string(s3.Provider)
+	sqs.prefix = s3.Prefix
+	sqs.endpoint = s3.Endpoint
+	sqs.sse = s3.SSE
+	sqs.acl = s3.Acl
+	sqs.storageClass = s3.StorageClass
 	sqs.forcePathStyle = true
 	// In some cases, we need to set ForcePathStyle to false.
 	// Refer to: https://rclone.org/s3/#s3-force-path-style
@@ -166,5 +157,5 @@ func checkS3Config(backup *v1alpha1.Backup, fakeRegion bool) (*s3Query, error) {
 	sqs.prefix = strings.Trim(sqs.prefix, "/")
 	sqs.prefix += "/"
 
-	return &sqs, nil
+	return &sqs
 }

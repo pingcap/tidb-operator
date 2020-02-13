@@ -17,8 +17,19 @@ spec:
     image: gcr.io/k8s-testimages/kubekins-e2e:v20191108-9467d02-master
     command:
     - runner.sh
-    - sleep
-    - 99d
+    # Clean containers on TERM signal in root process to avoid cgroup leaking.
+    # https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
+    - exec
+    - bash
+    - -c
+    - |
+      function clean() {
+        echo "info: clean all containers to avoid cgroup leaking"
+        docker kill $(docker ps -q) || true
+        docker system prune -af || true
+      }
+      trap clean TERM
+      sleep 1d & wait
     # we need privileged mode in order to do docker in docker
     securityContext:
       privileged: true
@@ -60,21 +71,20 @@ spec:
     emptyDir: {}
   - name: docker-graph
     emptyDir: {}
-  # we limit nodes to run to avoid some issues we found in our cluster, e.g.
-  # https://github.com/pingcap/tidb-operator/issues/1603
+  tolerations:
+  - effect: NoSchedule
+    key: tidb-operator
+    operator: Exists
   affinity:
+    # running on nodes for tidb-operator only
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-          - key: kubernetes.io/hostname
+          - key: ci.pingcap.com
             operator: In
             values:
-            - 172.16.5.64
-            - 172.16.5.65
-            - 172.16.5.67
-            - 172.16.5.68
-            - 172.16.5.70
+            - tidb-operator
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -157,6 +167,8 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			container("golang") {
 				def WORKSPACE = pwd()
 				dir("${PROJECT_DIR}") {
+					deleteDir()
+
 					stage('Checkout') {
 						checkout changelog: false,
 						poll: false,
@@ -179,16 +191,17 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						}
 					}
 
-					stage("Check") {
-						ansiColor('xterm') {
-							sh """
-							export GOPATH=${WORKSPACE}/go
-							export PATH=${WORKSPACE}/go/bin:\$PATH
-							make check-setup
-							make check
-							"""
-						}
-					}
+					// moved to Github Actions
+					// stage("Check") {
+						// ansiColor('xterm') {
+							// sh """
+							// export GOPATH=${WORKSPACE}/go
+							// export PATH=${WORKSPACE}/go/bin:\$PATH
+							// make check-setup
+							// make check
+							// """
+						// }
+					// }
 
 					stage("Build and Test") {
 						ansiColor('xterm') {
@@ -197,10 +210,10 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							make e2e-build
 							if [ ${BUILD_BRANCH} == "master" ]
 							then
-								make test GO_COVER=y
+								make test GOFLAGS='-race' GO_COVER=y
 								curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
 							else
-								make test
+								make test GOFLAGS='-race'
 							fi
 							"""
 						}
