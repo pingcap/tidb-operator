@@ -20,6 +20,7 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -34,20 +35,17 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Controller struct {
-	cli      client.Client
 	control  ControlInterface
 	taLister listers.TidbClusterAutoScalerLister
-	tcLister listers.TidbClusterLister
 	queue    workqueue.RateLimitingInterface
 }
 
 func NewController(
 	kubeCli kubernetes.Interface,
-	genericCli client.Client,
+	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
@@ -56,14 +54,11 @@ func NewController(
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbclusterautoscaler"})
-
 	autoScalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
-	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	asm := autoscaler.NewAutoScalerManager(cli, informerFactory, kubeInformerFactory, recorder)
 
-	asm := autoscaler.NewAutoScalerManager(informerFactory, kubeInformerFactory, recorder)
 	tac := &Controller{
-		cli:      genericCli,
-		control:  NewDefaultAutoScalerControl(recorder, typedControl, asm),
+		control:  NewDefaultAutoScalerControl(recorder, asm),
 		taLister: autoScalerInformer.Lister(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),

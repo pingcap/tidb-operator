@@ -17,25 +17,24 @@ provider "helm" {
 }
 
 # TiDB cluster declaration example
-#module "example-cluster" {
-#  source   = "./tidb-cluster"
-#  eks_info = local.default_eks
-#  subnets = local.default_subnets
-#
-#  # NOTE: cluster_name cannot be changed after creation
-#  cluster_name                  = "demo-cluster"
-#  cluster_version               = "v3.0.8"
-#  ssh_key_name                  = module.key-pair.key_name
-#  pd_count                      = 1
-#  pd_instance_type              = "t2.xlarge"
-#  tikv_count                    = 1
-#  tikv_instance_type            = "t2.xlarge"
-#  tidb_count                    = 1
-#  tidb_instance_type            = "t2.xlarge"
-#  monitor_instance_type         = "t2.xlarge"
-#  # yaml file that passed to helm to customize the release
-#  override_values               = file("values/example.yaml")
-#}
+# module example-cluster {
+#   source = "../modules/aws/tidb-cluster"
+
+#   eks = local.eks
+#   subnets = local.subnets
+#   region  = var.region
+#   cluster_name    = "example"
+
+#   ssh_key_name                  = module.key-pair.key_name
+#   pd_count                      = 1
+#   pd_instance_type              = "c5.large"
+#   tikv_count                    = 1
+#   tikv_instance_type            = "c5d.large"
+#   tidb_count                    = 1
+#   tidb_instance_type            = "c4.large"
+#   monitor_instance_type         = "c5.large"
+#   create_tidb_cluster_release   = false
+# }
 
 module "default-cluster" {
   providers = {
@@ -46,15 +45,15 @@ module "default-cluster" {
   subnets = local.subnets
   region  = var.region
 
-  cluster_name          = var.default_cluster_name
-  cluster_version       = var.default_cluster_version
-  ssh_key_name          = module.key-pair.key_name
-  pd_count              = var.default_cluster_pd_count
-  pd_instance_type      = var.default_cluster_pd_instance_type
-  tikv_count            = var.default_cluster_tikv_count
-  tikv_instance_type    = var.default_cluster_tikv_instance_type
-  tidb_count            = var.default_cluster_tidb_count
-  tidb_instance_type    = var.default_cluster_tidb_instance_type
-  monitor_instance_type = var.default_cluster_monitor_instance_type
-  override_values       = file("default-cluster.yaml")
+  cluster_name                = var.default_cluster_name
+  cluster_version             = var.default_cluster_version
+  ssh_key_name                = module.key-pair.key_name
+  pd_count                    = var.default_cluster_pd_count
+  pd_instance_type            = var.default_cluster_pd_instance_type
+  tikv_count                  = var.default_cluster_tikv_count
+  tikv_instance_type          = var.default_cluster_tikv_instance_type
+  tidb_count                  = var.default_cluster_tidb_count
+  tidb_instance_type          = var.default_cluster_tidb_instance_type
+  monitor_instance_type       = var.default_cluster_monitor_instance_type
+  create_tidb_cluster_release = var.create_tidb_cluster_release
 }

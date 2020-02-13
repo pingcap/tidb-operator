@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // PVControlInterface manages PVs used in TidbCluster
@@ -98,7 +98,7 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 	pvName := pv.GetName()
 	pvcRef := pv.Spec.ClaimRef
 	if pvcRef == nil {
-		glog.Warningf("PV: [%s] doesn't have a ClaimRef, skipping, %s: %s/%s", kind, pvName, ns, name)
+		klog.Warningf("PV: [%s] doesn't have a ClaimRef, skipping, %s: %s/%s", kind, pvName, ns, name)
 		return pv, nil
 	}
 
@@ -109,7 +109,7 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 			return pv, err
 		}
 
-		glog.Warningf("PV: [%s]'s PVC: [%s/%s] doesn't exist, skipping. %s: %s", pvName, ns, pvcName, kind, name)
+		klog.Warningf("PV: [%s]'s PVC: [%s/%s] doesn't exist, skipping. %s: %s", pvName, ns, pvcName, kind, name)
 		return pv, nil
 	}
 
@@ -128,7 +128,7 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 		pv.Labels[label.MemberIDLabelKey] == memberID &&
 		pv.Labels[label.StoreIDLabelKey] == storeID &&
 		pv.Annotations[label.AnnPodNameKey] == podName {
-		glog.V(4).Infof("pv %s already has labels and annotations synced, skipping. %s: %s/%s", pvName, kind, ns, name)
+		klog.V(4).Infof("pv %s already has labels and annotations synced, skipping. %s: %s/%s", pvName, kind, ns, name)
 		return pv, nil
 	}
 
@@ -150,10 +150,10 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 		var updateErr error
 		updatePV, updateErr = rpc.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
-			glog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
+			klog.Infof("PV: [%s] updated successfully, %s: %s/%s", pvName, kind, ns, name)
 			return nil
 		}
-		glog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
+		klog.Errorf("failed to update PV: [%s], %s %s/%s, error: %v", pvName, kind, ns, name, err)
 
 		if updated, err := rpc.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache

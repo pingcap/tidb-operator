@@ -14,12 +14,16 @@
 package monitor
 
 import (
-	"time"
-
+	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"path"
+	"time"
 )
 
 const (
@@ -32,9 +36,6 @@ const (
 	podNameLabel     = "__meta_kubernetes_pod_name"
 	nodeNameLabel    = "__meta_kubernetes_pod_node_name"
 	podIPLabel       = "__meta_kubernetes_pod_ip"
-	caFilePath       = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	certFilePath     = "/var/lib/pd-client-tls/cert"
-	keyFilePath      = "/var/lib/pd-client-tls/key"
 )
 
 var (
@@ -44,6 +45,7 @@ var (
 	tikvPattern     config.Regexp
 	pdPattern       config.Regexp
 	tidbPattern     config.Regexp
+	addressPattern  config.Regexp
 	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
@@ -74,7 +76,7 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
-	tikvPattern, err = config.NewRegexp(".*\\-tikv\\-\\d*$")
+	tikvPattern, err = config.NewRegexp("tikv")
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
@@ -83,6 +85,10 @@ func init() {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
 	tidbPattern, err = config.NewRegexp("tidb")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	addressPattern, err = config.NewRegexp("(.+);(.+);(.+)")
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
@@ -97,11 +103,6 @@ type MonitorConfigModel struct {
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	var c = config.Config{
-		AlertingConfig: config.AlertingConfig{
-			AlertRelabelConfigs: nil,
-			AlertmanagerConfigs: nil,
-			XXX:                 nil,
-		},
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
 			EvaluationInterval: model.Duration(15 * time.Second),
@@ -119,10 +120,35 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 }
 
 func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfigModel) *config.ScrapeConfig {
+
+	addressRelabelConfig := &config.RelabelConfig{
+		SourceLabels: model.LabelNames{
+			"__address__",
+			ioPortLabel,
+		},
+		Action:      config.RelabelReplace,
+		Regex:       portPattern,
+		Replacement: "$1:$2",
+		TargetLabel: "__address__",
+	}
+	if name == label.PDLabelVal || name == label.TiDBLabelVal || name == label.TiKVLabelVal {
+		addressRelabelConfig = &config.RelabelConfig{
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				ioPortLabel,
+			},
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: fmt.Sprintf("$1.$2-%s-peer:$3", name),
+			TargetLabel: "__address__",
+		}
+	}
 	return &config.ScrapeConfig{
 
 		JobName:        name,
 		ScrapeInterval: model.Duration(15 * time.Second),
+		Scheme:         "http",
 		HonorLabels:    true,
 		ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
 			KubernetesSDConfigs: []*config.KubernetesSDConfig{
@@ -137,9 +163,6 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 		HTTPClientConfig: config.HTTPClientConfig{
 			TLSConfig: config.TLSConfig{
 				InsecureSkipVerify: true,
-			},
-			XXX: map[string]interface{}{
-				"scheme": "http",
 			},
 		},
 		RelabelConfigs: []*config.RelabelConfig{
@@ -172,16 +195,7 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 				TargetLabel: "__metrics_path__",
 				Regex:       allMatchPattern,
 			},
-			{
-				SourceLabels: model.LabelNames{
-					"__address__",
-					ioPortLabel,
-				},
-				Action:      config.RelabelReplace,
-				Regex:       portPattern,
-				Replacement: "$1:$2",
-				TargetLabel: "__address__",
-			},
+			addressRelabelConfig,
 			{
 				SourceLabels: model.LabelNames{
 					namespaceLabel,
@@ -230,9 +244,7 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 					StaticConfigs: []*config.TargetGroup{
 						{
 							Targets: []model.LabelSet{
-								map[model.LabelName]model.LabelValue{
-									"targets": model.LabelValue(cmodel.AlertmanagerURL),
-								},
+								{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
 							},
 						},
 					},
@@ -245,16 +257,14 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 func addTlsConfig(pc *config.Config) {
 
 	for id, sconfig := range pc.ScrapeConfigs {
-		// TiKV doesn't support scheme https for now.
-		// And we should fix it after TiKV fix this issue: https://github.com/tikv/tikv/issues/5340
-		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" {
+		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   caFilePath,
-				CertFile: certFilePath,
-				KeyFile:  keyFilePath,
+				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
+				KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
 			}
 			pc.ScrapeConfigs[id] = sconfig
-			sconfig.HTTPClientConfig.XXX["scheme"] = "https"
+			sconfig.Scheme = "https"
 		}
 	}
 }

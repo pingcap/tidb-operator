@@ -17,21 +17,20 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
-	skipReasonOrphanPodsCleanerIsNotPDOrTiKV   = "orphan pods cleaner: member type is not pd or tikv"
-	skipReasonOrphanPodsCleanerPVCNameIsEmpty  = "orphan pods cleaner: pvcName is empty"
-	skipReasonOrphanPodsCleanerPVCIsFound      = "orphan pods cleaner: pvc is found"
-	skipReasonOrphanPodsCleanerPodIsNotPending = "orphan pods cleaner: pod is not pending"
-	skipReasonOrphanPodsCleanerPodIsNotFound   = "orphan pods cleaner: pod does not exist anymore"
-	skipReasonOrphanPodsCleanerPodChanged      = "orphan pods cleaner: pod changed before deletion"
+	skipReasonOrphanPodsCleanerIsNotPDOrTiKV       = "orphan pods cleaner: member type is not pd or tikv"
+	skipReasonOrphanPodsCleanerPVCNameIsEmpty      = "orphan pods cleaner: pvcName is empty"
+	skipReasonOrphanPodsCleanerPVCIsFound          = "orphan pods cleaner: pvc is found"
+	skipReasonOrphanPodsCleanerPodHasBeenScheduled = "orphan pods cleaner: pod has been scheduled"
+	skipReasonOrphanPodsCleanerPodIsNotFound       = "orphan pods cleaner: pod does not exist anymore"
+	skipReasonOrphanPodsCleanerPodChanged          = "orphan pods cleaner: pod changed before deletion"
 )
 
 // OrphanPodsCleaner implements the logic for cleaning the orphan pods(has no pvc)
@@ -88,8 +87,8 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			continue
 		}
 
-		if pod.Status.Phase != v1.PodPending {
-			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotPending
+		if len(pod.Spec.NodeName) > 0 {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodHasBeenScheduled
 			continue
 		}
 
@@ -128,7 +127,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		}
 
 		// if the PVC is not found in apiserver (also informer cache) and the
-		// phase of the Pod is Pending, delete it and let the stateful
+		// pod has not been scheduled, delete it and let the stateful
 		// controller to create the pod and its PVC(s) again
 		apiPod, err := opc.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
@@ -138,18 +137,19 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		if err != nil {
 			return skipReason, err
 		}
-		// try our best to avoid deleting wrong object in apiserver
-		// TODO upgrade to use deleteOption.Preconditions.ResourceVersion in client-go 1.14+
+		// In pre-1.14, kube-apiserver does not support
+		// deleteOption.Preconditions.ResourceVersion, we try our best to avoid
+		// deleting wrong object in apiserver.
 		if apiPod.UID != pod.UID || apiPod.ResourceVersion != pod.ResourceVersion {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodChanged
 			continue
 		}
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
-			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
+			klog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
 			return skipReason, err
 		}
-		glog.Infof("orphan pods cleaner: clean orphan pod: %s/%s successfully", ns, podName)
+		klog.Infof("orphan pods cleaner: clean orphan pod: %s/%s successfully", ns, podName)
 	}
 
 	return skipReason, nil

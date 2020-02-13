@@ -56,4 +56,10 @@ const (
 
 	// MetaFile is the file name for meta data of backup with BR
 	MetaFile = "backupmeta"
+
+	// BR certificate storage path
+	BRCertPath = "/var/lib/br-tls"
+
+	// ServiceAccountCAPath is where is CABundle of serviceaccount locates
+	ServiceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )

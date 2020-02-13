@@ -25,10 +25,11 @@ resource "null_resource" "setup-env" {
     # it manually and the resource namespace & name are hard-coded by convention
     command = <<EOS
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/tiller-rbac.yaml
 kubectl apply -f ${path.module}/manifest/alicloud-disk-storageclass.yaml
 echo '${data.template_file.local-volume-provisioner.rendered}' | kubectl apply -f -
 kubectl patch -n kube-system daemonset flexvolume --type='json' -p='[{"op":"replace", "path": "/spec/template/spec/tolerations", "value":[{"operator": "Exists"}]}]'
-helm init
+helm init --upgrade --tiller-image registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:$(helm version --client --short | grep -Eo 'v[0-9]\.[0-9]+\.[0-9]+') --service-account tiller
 until helm ls; do
   echo "Wait tiller ready"
 done

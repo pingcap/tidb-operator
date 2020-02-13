@@ -46,6 +46,11 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/drainer
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+        - name: drainer-tls
+          mountPath: /var/lib/drainer-tls
+          readOnly: true
+      {{- end }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
         - name: TZ
@@ -60,6 +65,11 @@ spec:
           items:
           - key: config-file
             path: drainer.toml
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: drainer-tls
+        secret:
+          secretName: {{ include "drainer.tlsSecretName" . }}
+    {{- end }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}

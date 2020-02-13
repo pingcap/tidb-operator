@@ -16,15 +16,13 @@ package crypto
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
 	"net"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -97,26 +95,11 @@ func ReadCACerts() (*x509.CertPool, error) {
 	// load k8s CA cert
 	caCert, err := ioutil.ReadFile(k8sCAFile)
 	if err != nil {
-		glog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
+		klog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
 		return nil, err
 	}
 	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
-		glog.Warningf("fail to append CA file to pool, using system CAs only")
+		klog.Warningf("fail to append CA file to pool, using system CAs only")
 	}
 	return rootCAs, nil
-}
-
-func LoadCerts(cert []byte, key []byte) (*x509.CertPool, tls.Certificate, error) {
-	if cert == nil || key == nil {
-		return nil, tls.Certificate{}, fmt.Errorf("fail to load certs, cert and key can not be empty")
-	}
-
-	rootCAs, err := ReadCACerts()
-	if err != nil {
-		return rootCAs, tls.Certificate{}, err
-	}
-
-	// load client cert
-	tlsCert, err := tls.X509KeyPair(cert, key)
-	return rootCAs, tlsCert, err
 }

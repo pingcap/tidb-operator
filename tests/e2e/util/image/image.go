@@ -32,6 +32,7 @@ const (
 	TiDBV3UpgradeVersion = "v3.0.9"
 	TiDBTLSVersion       = TiDBV3Version // must >= 3.0.5
 	TiDBV2Version        = "v2.1.19"
+	TiDBBRVersion        = "v4.0.0-beta.1"
 )
 
 func ListImages() []string {

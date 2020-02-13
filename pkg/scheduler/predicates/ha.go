@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type ha struct {
@@ -87,7 +87,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	tcName := getTCNameFromPod(pod, component)
 
 	if component != label.PDLabelVal && component != label.TiKVLabelVal {
-		glog.V(4).Infof("component %s is ignored in HA predicate", component)
+		klog.V(4).Infof("component %s is ignored in HA predicate", component)
 		return nodes, nil
 	}
 
@@ -118,7 +118,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		return nil, err
 	}
 	replicas := getReplicasFrom(tc, component)
-	glog.Infof("ha: tidbcluster %s/%s component %s replicas %d", ns, tcName, component, replicas)
+	klog.Infof("ha: tidbcluster %s/%s component %s replicas %d", ns, tcName, component, replicas)
 
 	allNodes := make(sets.String)
 	nodeMap := make(map[string][]string)
@@ -137,7 +137,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 
 		nodeMap[nodeName] = append(nodeMap[nodeName], pName)
 	}
-	glog.V(4).Infof("nodeMap: %+v", nodeMap)
+	klog.V(4).Infof("nodeMap: %+v", nodeMap)
 
 	min := -1
 	minNodeNames := make([]string, 0)
@@ -187,13 +187,13 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		// tikv replicas less than 3 cannot achieve high availability
 		if component == label.TiKVLabelVal && replicas < 3 {
 			minNodeNames = append(minNodeNames, nodeName)
-			glog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
+			klog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
 			continue
 		}
 
 		if podsCount+1 > maxPodsPerNode {
 			// pods on this node exceeds the limit, skip
-			glog.Infof("node %s has %d instances of component %s, max allowed is %d, skipping",
+			klog.Infof("node %s has %d instances of component %s, max allowed is %d, skipping",
 				nodeName, podsCount, component, maxPodsPerNode)
 			continue
 		}
@@ -203,7 +203,7 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			min = podsCount
 		}
 		if podsCount > min {
-			glog.Infof("node %s podsCount %d > min %d, skipping", nodeName, podsCount, min)
+			klog.Infof("node %s podsCount %d > min %d, skipping", nodeName, podsCount, min)
 			continue
 		}
 		if podsCount < min {
@@ -282,11 +282,11 @@ func (h *ha) realAcquireLock(pod *apiv1.Pod) (*apiv1.PersistentVolumeClaim, *api
 	delete(schedulingPVC.Annotations, label.AnnPVCPodScheduling)
 	err = h.updatePVCFn(schedulingPVC)
 	if err != nil {
-		glog.Errorf("ha: failed to delete pvc %s/%s annotation %s, %v",
+		klog.Errorf("ha: failed to delete pvc %s/%s annotation %s, %v",
 			ns, schedulingPVC.GetName(), label.AnnPVCPodScheduling, err)
 		return schedulingPVC, currentPVC, err
 	}
-	glog.Infof("ha: delete pvc %s/%s annotation %s successfully",
+	klog.Infof("ha: delete pvc %s/%s annotation %s successfully",
 		ns, schedulingPVC.GetName(), label.AnnPVCPodScheduling)
 	return schedulingPVC, currentPVC, h.setCurrentPodScheduling(currentPVC)
 }
@@ -319,10 +319,10 @@ func (h *ha) realUpdatePVCFn(pvc *apiv1.PersistentVolumeClaim) error {
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, updateErr := h.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(pvc)
 		if updateErr == nil {
-			glog.Infof("update PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
+			klog.Infof("update PVC: [%s/%s] successfully, TidbCluster: %s", ns, pvcName, tcName)
 			return nil
 		}
-		glog.Errorf("failed to update PVC: [%s/%s], TidbCluster: %s, error: %v", ns, pvcName, tcName, updateErr)
+		klog.Errorf("failed to update PVC: [%s/%s], TidbCluster: %s, error: %v", ns, pvcName, tcName, updateErr)
 
 		if updated, err := h.pvcGetFn(ns, pvcName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -355,11 +355,11 @@ func (h *ha) setCurrentPodScheduling(pvc *apiv1.PersistentVolumeClaim) error {
 	pvc.Annotations[label.AnnPVCPodScheduling] = now
 	err := h.updatePVCFn(pvc)
 	if err != nil {
-		glog.Errorf("ha: failed to set pvc %s/%s annotation %s to %s, %v",
+		klog.Errorf("ha: failed to set pvc %s/%s annotation %s to %s, %v",
 			ns, pvcName, label.AnnPVCPodScheduling, now, err)
 		return err
 	}
-	glog.Infof("ha: set pvc %s/%s annotation %s to %s successfully",
+	klog.Infof("ha: set pvc %s/%s annotation %s to %s successfully",
 		ns, pvcName, label.AnnPVCPodScheduling, now)
 	return nil
 }

@@ -19,7 +19,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 // This is designed to be used in a defer statement.
 func DeferClose(c io.Closer) {
 	if err := c.Close(); err != nil {
-		glog.Error(err)
+		klog.Error(err)
 	}
 }
 

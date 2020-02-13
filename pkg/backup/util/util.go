@@ -22,7 +22,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -39,7 +40,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -51,7 +52,7 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, stri
 			break
 		}
 		if !strings.HasPrefix(s3.Endpoint, "http://") {
-			return envVars, "InvalidS3Endpoint", fmt.Errorf("cenph endpoint URI %s must start with http://", s3.Endpoint)
+			return envVars, "InvalidS3Endpoint", fmt.Errorf("ceph endpoint URI %s must start with http://", s3.Endpoint)
 		}
 	case v1alpha1.S3StorageProviderTypeAWS:
 		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
@@ -86,24 +87,36 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, stri
 			Name:  "AWS_STORAGE_CLASS",
 			Value: s3.StorageClass,
 		},
-		{
-			Name: "AWS_ACCESS_KEY_ID",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-					Key:                  constants.S3AccessKey,
+	}
+	if useKMS {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name:  "AWS_DEFAULT_REGION",
+				Value: s3.Region,
+			},
+		}...)
+	}
+	if s3.SecretName != "" {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name: "AWS_ACCESS_KEY_ID",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+						Key:                  constants.S3AccessKey,
+					},
 				},
 			},
-		},
-		{
-			Name: "AWS_SECRET_ACCESS_KEY",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-					Key:                  constants.S3SecretKey,
+			{
+				Name: "AWS_SECRET_ACCESS_KEY",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+						Key:                  constants.S3SecretKey,
+					},
 				},
 			},
-		},
+		}...)
 	}
 	return envVars, "", nil
 }
@@ -148,9 +161,10 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StorageProvider, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
+	var err error
 	storageType := GetStorageType(provider)
 
 	switch storageType {
@@ -158,20 +172,23 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 		if provider.S3 == nil {
 			return certEnv, "S3ConfigIsEmpty", errors.New("s3 config is empty")
 		}
+
 		s3SecretName := provider.S3.SecretName
-		secret, err := secretLister.Secrets(ns).Get(s3SecretName)
-		if err != nil {
-			err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
-			return certEnv, "GetS3SecretFailed", err
+		if s3SecretName != "" {
+			secret, err := kubeCli.CoreV1().Secrets(ns).Get(s3SecretName, metav1.GetOptions{})
+			if err != nil {
+				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
+				return certEnv, "GetS3SecretFailed", err
+			}
+
+			keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
+			if !exist {
+				err := fmt.Errorf("s3 secret %s/%s missing some keys %s", ns, s3SecretName, keyStr)
+				return certEnv, "s3KeyNotExist", err
+			}
 		}
 
-		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
-		if !exist {
-			err := fmt.Errorf("s3 secret %s/%s missing some keys %s", ns, s3SecretName, keyStr)
-			return certEnv, "s3KeyNotExist", err
-		}
-
-		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy(), useKMS)
 		if err != nil {
 			return certEnv, reason, err
 		}
@@ -180,7 +197,7 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 			return certEnv, "GcsConfigIsEmpty", errors.New("gcs config is empty")
 		}
 		gcsSecretName := provider.Gcs.SecretName
-		secret, err := secretLister.Secrets(ns).Get(gcsSecretName)
+		secret, err := kubeCli.CoreV1().Secrets(ns).Get(gcsSecretName, metav1.GetOptions{})
 		if err != nil {
 			err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
 			return certEnv, "GetGcsSecretFailed", err
@@ -205,9 +222,10 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useKMS bool, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
-	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
+	var passwordKey string
+	secret, err := kubeCli.CoreV1().Secrets(ns).Get(tidbSecretName, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err
@@ -219,9 +237,15 @@ func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corel
 		return certEnv, "KeyNotExist", err
 	}
 
+	if useKMS {
+		passwordKey = fmt.Sprintf("%s_%s_%s", constants.KMSSecretPrefix, constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
+	} else {
+		passwordKey = fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
+	}
+
 	certEnv = []corev1.EnvVar{
 		{
-			Name: fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey)),
+			Name: passwordKey,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: tidbSecretName},
@@ -287,19 +311,20 @@ func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error
 func ValidateBackup(backup *v1alpha1.Backup) error {
 	ns := backup.Namespace
 	name := backup.Name
+
+	if backup.Spec.From.Host == "" {
+		return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+	}
+	if backup.Spec.From.SecretName == "" {
+		return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+	}
 	if backup.Spec.BR == nil {
-		if backup.Spec.From.Host == "" {
-			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		}
-		if backup.Spec.From.SecretName == "" {
-			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-		}
 		if backup.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if backup.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		if backup.Spec.BR.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
@@ -338,19 +363,20 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 func ValidateRestore(restore *v1alpha1.Restore) error {
 	ns := restore.Namespace
 	name := restore.Name
+
+	if restore.Spec.To.Host == "" {
+		return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+	}
+	if restore.Spec.To.SecretName == "" {
+		return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+	}
 	if restore.Spec.BR == nil {
-		if restore.Spec.To.Host == "" {
-			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		}
-		if restore.Spec.To.SecretName == "" {
-			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-		}
 		if restore.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if restore.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		if restore.Spec.BR.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&

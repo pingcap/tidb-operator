@@ -23,6 +23,16 @@ rules:
   resources:
   - pods
   verbs: ["get", "list", "watch"]
+  {{- if .Capabilities.APIVersions.Has "security.openshift.io/v1" }}
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - anyuid
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+  {{- end }}
   {{- if .Values.rbac.crossNamespace }}
 - nonResourceURLs: ["/metrics"]
   verbs: ["get"]

@@ -227,7 +227,9 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			},
 		},
 		{
-			name: "pvc is not found but pod is not pending",
+			// in theory, this is is possible because we can't check the PVC
+			// and pod in an atomic operation.
+			name: "pvc is not found but pod has been scheduled",
 			pods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -246,9 +248,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 								},
 							},
 						},
-					},
-					Status: corev1.PodStatus{
-						Phase: corev1.PodRunning,
+						NodeName: "foobar",
 					},
 				},
 			},
@@ -256,7 +256,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
-				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodIsNotPending))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodHasBeenScheduled))
 			},
 		},
 		{

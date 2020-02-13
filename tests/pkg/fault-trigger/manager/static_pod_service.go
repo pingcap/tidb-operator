@@ -18,7 +18,7 @@ import (
 	"os"
 	"os/exec"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -66,7 +66,7 @@ func (m *Manager) StopKubeControllerManager() error {
 func (m *Manager) stopStaticPodService(serviceName string, fileName string) error {
 	manifest := fmt.Sprintf("%s/%s", staticPodPath, fileName)
 	if _, err := os.Stat(manifest); os.IsNotExist(err) {
-		glog.Infof("%s had been stopped before", serviceName)
+		klog.Infof("%s had been stopped before", serviceName)
 		return nil
 	}
 	shell := fmt.Sprintf("mkdir -p %s && mv %s %s", staticPodTmpPath, manifest, staticPodTmpPath)
@@ -74,11 +74,11 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	glog.Infof("%s is stopped", serviceName)
+	klog.Infof("%s is stopped", serviceName)
 
 	return nil
 }
@@ -86,7 +86,7 @@ func (m *Manager) stopStaticPodService(serviceName string, fileName string) erro
 func (m *Manager) startStaticPodService(serviceName string, fileName string) error {
 	manifest := fmt.Sprintf("%s/%s", staticPodTmpPath, fileName)
 	if _, err := os.Stat(manifest); os.IsNotExist(err) {
-		glog.Infof("%s had been started before", serviceName)
+		klog.Infof("%s had been started before", serviceName)
 		return nil
 	}
 	shell := fmt.Sprintf("mv %s %s", manifest, staticPodPath)
@@ -94,11 +94,11 @@ func (m *Manager) startStaticPodService(serviceName string, fileName string) err
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	glog.Infof("%s is started", serviceName)
+	klog.Infof("%s is started", serviceName)
 
 	return nil
 }

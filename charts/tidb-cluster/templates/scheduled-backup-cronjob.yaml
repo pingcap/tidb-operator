@@ -74,7 +74,7 @@ spec:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
           {{- end }}
-          {{- if or .Values.scheduledBackup.ceph .Values.scheduledBackup.s3 }}
+          {{- if or .Values.scheduledBackup.ceph.secretName .Values.scheduledBackup.s3.secretName }}
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -97,6 +97,14 @@ spec:
                   name: {{ .Values.scheduledBackup.secretName }}
                   key: password
           restartPolicy: {{ .Values.scheduledBackup.restartPolicy | default "OnFailure" }}
+        {{- if .Values.scheduledBackup.affinity }}
+          affinity:
+{{ toYaml .Values.scheduledBackup.affinity | indent 12 }}
+        {{- end }}
+        {{- if .Values.scheduledBackup.tolerations }}
+          tolerations:
+{{ toYaml .Values.scheduledBackup.tolerations | indent 12 }}
+        {{- end }}
           volumes:
           - name: data
             persistentVolumeClaim:

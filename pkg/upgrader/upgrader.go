@@ -23,11 +23,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
@@ -56,48 +56,40 @@ type upgrader struct {
 
 var _ Interface = &upgrader{}
 
-// isOwnedByTidbCluster checks if the given object is owned by TidbCluster.
-// Schema Kind and Group are checked, Version is ignored.
-func isOwnedByTidbCluster(obj metav1.Object) bool {
-	ref := metav1.GetControllerOf(obj)
-	if ref == nil {
-		return false
-	}
-	gv, err := schema.ParseGroupVersion(ref.APIVersion)
-	if err != nil {
-		return false
-	}
-	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group
-}
-
 func (u *upgrader) Upgrade() error {
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		klog.Infof("Upgrader: migrating Kubernetes StatefulSets to Advanced StatefulSets")
-		tcList, err := u.cli.PingcapV1alpha1().TidbClusters(u.ns).List(metav1.ListOptions{})
-		if err != nil {
-			return err
-		}
-		for _, tc := range tcList.Items {
-			// Existing delete slots annotations must be removed first. This is
-			// a safety check to ensure no pods are affected in upgrading
-			// process.
-			if anns := deleteSlotAnns(&tc); len(anns) > 0 {
-				return fmt.Errorf("Upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
-			}
-		}
 		stsList, err := u.kubeCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
 		stsToMigrate := make([]appsv1.StatefulSet, 0)
+		tidbClusters := make([]*v1alpha1.TidbCluster, 0)
 		for _, sts := range stsList.Items {
-			if isOwnedByTidbCluster(&sts) {
+			if ok, tcRef := util.IsOwnedByTidbCluster(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
+				tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				if tc != nil {
+					tidbClusters = append(tidbClusters, tc)
+				}
 			}
 		}
 		if len(stsToMigrate) <= 0 {
 			klog.Infof("Upgrader: found 0 Kubernetes StatefulSets owned by TidbCluster, nothing need to do")
 			return nil
+		}
+		klog.Infof("Upgrader: %d Kubernetes Statfulsets owned by TidbCluster should be migrated to Advanced Statefulsets", len(stsToMigrate))
+		// Check if relavant TidbClusters have delete slots annotations set.
+		for _, tc := range tidbClusters {
+			// Existing delete slots annotations must be removed first. This is
+			// a safety check to ensure no pods are affected in upgrading
+			// process.
+			if anns := deleteSlotAnns(tc); len(anns) > 0 {
+				return fmt.Errorf("Upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
+			}
 		}
 		klog.Infof("Upgrader: found %d Kubernetes StatefulSets owned by TidbCluster, trying to migrate one by one", len(stsToMigrate))
 		for _, sts := range stsToMigrate {
@@ -116,7 +108,7 @@ func (u *upgrader) Upgrade() error {
 		}
 		stsList, err := u.asCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				klog.Infof("Upgrader: Kubernetes server does't have Advanced StatefulSets resources, skip to revert")
 				return nil
 			}
@@ -124,7 +116,7 @@ func (u *upgrader) Upgrade() error {
 		}
 		stsToMigrate := make([]asappsv1.StatefulSet, 0)
 		for _, sts := range stsList.Items {
-			if isOwnedByTidbCluster(&sts) {
+			if ok, _ := util.IsOwnedByTidbCluster(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
 			}
 		}

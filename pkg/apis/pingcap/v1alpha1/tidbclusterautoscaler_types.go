@@ -58,6 +58,11 @@ type TidbClusterAutoScalerSpec struct {
 	// +optional
 	MetricsUrl *string `json:"metricsUrl,omitempty"`
 
+	// TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
+	// Operator will use MetricsUrl
+	// +optional
+	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
+
 	// TiKV represents the auto-scaling spec for tikv
 	// +optional
 	TiKV *TikvAutoScalerSpec `json:"tikv,omitempty"`
@@ -112,8 +117,84 @@ type BasicAutoScalerSpec struct {
 	// If not set, the default metric will be set to 80% average CPU utilization.
 	// +optional
 	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty"`
+
+	// MetricsTimeDuration describe the Time duration to be queried in the Prometheus
+	// +optional
+	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
+
+	// ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
+	// if the consecutive counts of the scale-out result in auto-scaling reach this number,
+	// the auto-scaling would be performed.
+	// If not set, the default value is 3.
+	// +optional
+	ScaleOutThreshold *int32 `json:"scaleOutThreshold,omitempty"`
+
+	// ScaleInThreshold describe the consecutive threshold for the auto-scaling,
+	// if the consecutive counts of the scale-in result in auto-scaling reach this number,
+	// the auto-scaling would be performed.
+	// If not set, the default value is 5.
+	// +optional
+	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
 }
 
-// TODO: sync status
+// +k8s:openapi-gen=true
+// TidbMonitorRef reference to a TidbMonitor
+type TidbMonitorRef struct {
+	// Namespace is the namespace that TidbMonitor object locates,
+	// default to the same namespace with TidbClusterAutoScaler
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name is the name of TidbMonitor object
+	Name string `json:"name"`
+}
+
+// +k8s:openapi-gen=true
+// TidbClusterAutoSclaerStatus describe the whole status
 type TidbClusterAutoSclaerStatus struct {
+	// Tikv describes the status for the tikv in the last auto-scaling reconciliation
+	// +optional
+	TiKV *TikvAutoScalerStatus `json:"tikv,omitempty"`
+	// Tidb describes the status for the tidb in the last auto-scaling reconciliation
+	// +optional
+	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// TidbAutoScalerStatus describe the auto-scaling status of tidb
+type TidbAutoScalerStatus struct {
+	BasicAutoScalerStatus `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
+// TikvAutoScalerStatus describe the auto-scaling status of tikv
+type TikvAutoScalerStatus struct {
+	BasicAutoScalerStatus `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
+// BasicAutoScalerStatus describe the basic auto-scaling status
+type BasicAutoScalerStatus struct {
+	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
+	// +optional
+	MetricsStatusList []MetricsStatus `json:"metrics,omitempty"`
+	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
+	CurrentReplicas int32 `json:"currentReplicas"`
+	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
+	// +optional
+	RecommendedReplicas *int32 `json:"recommendedReplicas,omitempty"`
+	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
+	// +optional
+	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation
+type MetricsStatus struct {
+	// Name indicates the metrics name
+	Name string `json:"name"`
+	// CurrentValue indicates the value calculated in the last auto-scaling reconciliation
+	CurrentValue string `json:"currentValue"`
+	// TargetValue indicates the threshold value for this metrics in auto-scaling
+	ThresholdValue string `json:"thresholdValue"`
 }

@@ -25,6 +25,7 @@ import (
 	versionedfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -86,7 +87,7 @@ func TestIsOwnedByTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ok := isOwnedByTidbCluster(&tt.sts)
+			ok, _ := util.IsOwnedByTidbCluster(&tt.sts)
 			if tt.wantOK != ok {
 				t.Errorf("got %v, want %v", ok, tt.wantOK)
 			}
@@ -160,10 +161,12 @@ func TestDeleteSlotAnns(t *testing.T) {
 }
 
 var (
+	ownerTCName    = "foo"
 	validOwnerRefs = []metav1.OwnerReference{
 		{
 			APIVersion: "pingcap.com/v1alpha1",
 			Kind:       "TidbCluster",
+			Name:       ownerTCName,
 			Controller: pointer.BoolPtr(true),
 		},
 	}
@@ -319,6 +322,8 @@ func TestUpgrade(t *testing.T) {
 			tidbClusters: []v1alpha1.TidbCluster{
 				{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:      ownerTCName,
+						Namespace: "sts",
 						Annotations: map[string]string{
 							label.AnnTiDBDeleteSlots: "[1,2]",
 						},
@@ -377,6 +382,78 @@ func TestUpgrade(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name: "should upgrade if tc has delete slot annotations but does not own Kubernetes StatefulSets",
+			tidbClusters: []v1alpha1.TidbCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ownerTCName,
+						Namespace: "sts",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "bar",
+						Namespace: "sts",
+						Annotations: map[string]string{
+							label.AnnTiDBDeleteSlots: "[1,2]",
+						},
+					},
+				},
+			},
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+			feature: "AdvancedStatefulSet=true",
+			ns:      metav1.NamespaceAll,
+			wantErr: false,
+			wantAdvancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts2",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+			wantStatefulsets: nil,
 		},
 		{
 			name:         "should ignore if sts is not owned by TidbCluster",

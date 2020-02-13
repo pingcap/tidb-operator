@@ -1,0 +1,31 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbClusterAutoScaler
+metadata:
+  name: auto-scaling-demo
+spec:
+  cluster:
+    name: auto-scaling-demo
+  monitor:
+    name: auto-scaling-demo
+  tikv:
+    minReplicas: 3
+    maxReplicas: 4
+    metricsTimeDuration: "1m"
+    metrics:
+      - type: "Resource"
+        resource:
+          name: "cpu"
+          target:
+            type: "Utilization"
+            averageUtilization: 80
+  tidb:
+    minReplicas: 2
+    maxReplicas: 3
+    metricsTimeDuration: "1m"
+    metrics:
+      - type: "Resource"
+        resource:
+          name: "cpu"
+          target:
+            type: "Utilization"
+            averageUtilization: 80

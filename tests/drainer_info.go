@@ -18,7 +18,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type DbType string
@@ -72,6 +72,6 @@ func (d *DrainerConfig) BuildSubValues(dir string) (string, error) {
 	if err := ioutil.WriteFile(path, []byte(values), 0644); err != nil {
 		return "", err
 	}
-	glog.Infof("Values of drainer %s:\n %s", d.DrainerName, values)
+	klog.Infof("Values of drainer %s:\n %s", d.DrainerName, values)
 	return path, nil
 }

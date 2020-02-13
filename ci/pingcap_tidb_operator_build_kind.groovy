@@ -14,7 +14,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: gcr.io/k8s-testimages/kubekins-e2e:v20191108-9467d02-master
+    image: gcr.io/k8s-testimages/kubekins-e2e:v20200311-1e25827-master
     command:
     - runner.sh
     # Clean containers on TERM signal in root process to avoid cgroup leaking.
@@ -191,16 +191,17 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						}
 					}
 
-					stage("Check") {
-						ansiColor('xterm') {
-							sh """
-							export GOPATH=${WORKSPACE}/go
-							export PATH=${WORKSPACE}/go/bin:\$PATH
-							make check-setup
-							make check
-							"""
-						}
-					}
+					// moved to Github Actions
+					// stage("Check") {
+						// ansiColor('xterm') {
+							// sh """
+							// export GOPATH=${WORKSPACE}/go
+							// export PATH=${WORKSPACE}/go/bin:\$PATH
+							// make check-setup
+							// make check
+							// """
+						// }
+					// }
 
 					stage("Build and Test") {
 						ansiColor('xterm') {
@@ -209,10 +210,10 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							make e2e-build
 							if [ ${BUILD_BRANCH} == "master" ]
 							then
-								make test GO_COVER=y
+								make test GOFLAGS='-race' GO_COVER=y
 								curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
 							else
-								make test
+								make test GOFLAGS='-race'
 							fi
 							"""
 						}
@@ -237,40 +238,40 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def MIRRORS = "DOCKER_IO_MIRROR=http://172.16.4.143:5000 QUAY_IO_MIRROR=http://172.16.4.143:5001"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]' --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
 		}
-		builds["E2E v1.17.0"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- -preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
+		builds["E2E v1.18.0"] = {
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.18 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12-serial IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
 		}
 		builds.failFast = false
 		parallel builds
 
-		// we requires ~/bin/config.cfg, filemgr-linux64 utilities on k8s-kind node
-		// TODO make it possible to run on any node
-		node('k8s-kind') {
-			dir("${PROJECT_DIR}"){
-				deleteDir()
-				unstash 'tidb-operator'
-				if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
-					stage('upload tidb-operator, backup-manager binary and charts'){
-						//upload binary and charts
-						sh """
-						cp ~/bin/config.cfg ./
-						tar -zcvf tidb-operator.tar.gz images/tidb-operator images/backup-manager charts
-						filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file tidb-operator.tar.gz
-						"""
-						//update refs
-						writeFile file: 'sha1', text: "${GITHASH}"
-						sh """
-						filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file sha1
-						rm -f sha1 tidb-operator.tar.gz config.cfg
-						"""
+		if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
+			node('build_go1130_memvolume') {
+				container("golang") {
+					def WORKSPACE = pwd()
+					dir("${PROJECT_DIR}") {
+						unstash 'tidb-operator'
+						stage('upload tidb-operator binaries and charts'){
+							withCredentials([
+								string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
+								string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
+							]) {
+								sh """
+								export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
+								export UCLOUD_UFILE_BUCKET=pingcap-dev
+								export BUILD_BRANCH=${BUILD_BRANCH}
+								export GITHASH=${GITHASH}
+								./ci/upload-binaries-charts.sh
+								"""
+							}
+						}
 					}
 				}
 			}

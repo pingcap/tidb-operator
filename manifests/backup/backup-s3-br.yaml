@@ -4,13 +4,15 @@ kind: Backup
 metadata:
   name: demo1-backup-s3
   namespace: test1
+  # annotations:
+    # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
-  #backupType: full
+  # backupType: full
+  # useKMS: false
+  # serviceAccount: myServiceAccount
   br:
-    pd: 10.233.40.168:2379
-    # ca: <ca>
-    # cert: <cert>
-    # key: <key>
+    cluster: myCluster
+    # clusterNamespce: <backup-namespace>
     # logLevel: info
     # statusAddr: <status-addr>
     # concurrency: 4
@@ -18,6 +20,13 @@ spec:
     # timeAgo: <time>
     # checksum: true
     # sendCredToTikv: true
+  from:
+    host: 172.30.6.56
+    secretName: mySecret
+    # port: 4000
+    # user: root
+    # tlsClient:
+    #   tlsSecret: <backup-tls-secretname>
   s3:
     provider: ceph
     endpoint: http://10.233.57.220

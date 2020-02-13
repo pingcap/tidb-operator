@@ -12,11 +12,11 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.0-beta.1
+operatorImage: pingcap/tidb-operator:v1.1.0-rc.2
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
-# tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-rc.2
 
 #
 # Enable or disable tidb-operator features:
@@ -58,6 +58,8 @@ controllerManager:
   tikvFailoverPeriod: 5m
   # tidb failover period default(5m)
   tidbFailoverPeriod: 5m
+  # tiflash failover period default(5m)
+  tiflashFailoverPeriod: 5m
   ## affinity defines pod scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -182,10 +184,11 @@ admissionWebhook:
   rbac:
     create: true
   ## jobImage is to indicate the image used in `pre-delete-job.yaml`
-  ## if admissionWebhook.create and admissionWebhook.hooksEnabled.pods are both enabled,
+  ## if admissionWebhook.create and admissionWebhook.validation.pods are both enabled,
   ## The pre-delete-job would delete the validationWebhookConfiguration using this image
   jobImage: "bitnami/kubectl:latest"
-  hooksEnabled:
+  ## validation webhook would check the given request for the specific resource and operation
+  validation:
     ## statefulsets hook would check requests for updating tidbcluster's statefulsets
     ## If enabled it, the statefulsets of tidbcluseter would update in partition by tidbcluster's annotation
     statefulSets: false
@@ -193,36 +196,41 @@ admissionWebhook:
     ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
     pods: true
     ## validating hook validates the correctness of the resources under pingcap.com group
-    validating: false
+    pingcapResources: false
+  ## mutation webhook would mutate the given request for the specific resource and operation
+  mutation:
+    ## pods mutation hook would mutate the pod. Currently It is used for TiKV Auto-Scaling.
+    ## refer to https://github.com/pingcap/tidb-operator/issues/1651
+    pods: true
     ## defaulting hook set default values for the the resources under pingcap.com group
-    defaulting: false
+    pingcapResources: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:
-    ## deletePod Webhook would check the deleting request of tidbcluster pod and the failurePolicy is recommended as Fail
-    deletePod: Fail
-    ## createPod Webhook would check the creating request of tidbcluster pod and the failurePolicy is recommended as Ignore
-    createPod: Ignore
-    ## updateStatefulSet Webhook would check the updating request of tidbcluster statefulset and the failurePolicy is recommended as Ignore
-    updateStatefulSet: Ignore
-    ## validation hook validates the correctness of the resources under pingcap.com group
-    validating: Ignore
-    ## defaulting hook set default values for the the resources under pingcap.com group
-    defaulting: Ignore
+    ## the validation webhook would check the request of the given resources.
+    ## If the kubernetes api-server version >= 1.15.0, we recommend the failurePolicy as Fail, otherwise, as Ignore.
+    validation: Ignore
+    ## the mutation webhook would mutate the request of the given resources.
+    ## If the kubernetes api-server version >= 1.15.0, we recommend the failurePolicy as Fail, otherwise, as Ignore.
+    mutation: Ignore
   ## tidb-admission-webhook deployed as kubernetes apiservice server
   ## refer to https://github.com/openshift/generic-admission-server
   apiservice:
     ## apiservice config
     ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
     insecureSkipTLSVerify: true
-    ## The key and cert for `tidb-admission-webook.<Release Namespace>` Service.
+    ## The Secret includes the TLS ca, cert and key for the `tidb-admission-webook.<Release Namespace>.svc` Service.
     ## If insecureSkipTLSVerify is true, this would be ignored.
-    cert: ""
-    key: ""
+    ## You can create the tls secret by:
+    ## kubectl create secret generic <secret-name> --namespace=<release-namespace> --from-file=tls.crt=<path-to-cert> --from-file=tls.key=<path-to-key> --from-file=ca.crt=<path-to-ca>
+    tlsSecret: ""
+    ## The caBundle for the webhook apiservice, you could get it by the secret you created previously:
+    ## kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
+    caBundle: ""
   ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
   ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
   ## would trust the roots on the apiserver.
   ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
   ## or you can get the cabundle by:
-  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}'
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
   cabundle: ""

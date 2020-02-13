@@ -7,7 +7,11 @@ host=`echo {{ .Values.clusterName }}_TIDB_SERVICE_HOST | tr '[a-z]' '[A-Z]' | tr
 {{- if .Values.gcp }}
 downloader \
   --cloud=gcp \
+  {{- if .Values.gcp.prefix }}
+  --bucket={{ .Values.gcp.bucket }}/{{ .Values.gcp.prefix }} \
+  {{- else }}
   --bucket={{ .Values.gcp.bucket }} \
+  {{- end }}
   --srcDir=${BACKUP_NAME} \
   --destDir=/data
 {{- end }}
@@ -15,7 +19,11 @@ downloader \
 {{- if .Values.ceph }}
 downloader \
   --cloud=ceph \
+  {{- if .Values.ceph.prefix }}
+  --bucket={{ .Values.ceph.bucket }}/{{ .Values.ceph.prefix }} \
+  {{- else }}
   --bucket={{ .Values.ceph.bucket }} \
+  {{- end }}
   --endpoint={{ .Values.ceph.endpoint }} \
   --srcDir=${BACKUP_NAME} \
   --destDir=/data
@@ -25,7 +33,11 @@ downloader \
 downloader \
   --cloud=aws \
   --region={{ .Values.s3.region }} \
+  {{- if .Values.s3.prefix }}
+  --bucket={{ .Values.s3.bucket }}/{{ .Values.s3.prefix }} \
+  {{- else }}
   --bucket={{ .Values.s3.bucket }} \
+  {{- end }}
   --srcDir=${BACKUP_NAME} \
   --destDir=/data
 {{- end }}

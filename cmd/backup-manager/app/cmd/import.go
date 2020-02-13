@@ -21,18 +21,17 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/import"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // NewImportCommand implements the restore command
 func NewImportCommand() *cobra.Command {
-	ro := _import.RestoreOpts{}
+	ro := _import.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "import",
@@ -44,17 +43,12 @@ func NewImportCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
-	cmd.Flags().StringVar(&ro.Host, "host", "", "Tidb cluster access address")
-	cmd.Flags().Int32Var(&ro.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
-	cmd.Flags().StringVar(&ro.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
-	cmd.Flags().StringVar(&ro.User, "user", "", "User for login tidb cluster")
-	cmd.Flags().StringVar(&ro.RestoreName, "restoreName", "", "Restore CRD object name")
+	cmd.Flags().StringVar(&ro.ResourceName, "restoreName", "", "Restore CRD object name")
 	cmd.Flags().StringVar(&ro.BackupPath, "backupPath", "", "The location of the backup")
-	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
 
-func runImport(restoreOpts _import.RestoreOpts, kubecfg string) error {
+func runImport(restoreOpts _import.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
@@ -72,7 +66,7 @@ func runImport(restoreOpts _import.RestoreOpts, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
 
-	glog.Infof("start to process restore %s", restoreOpts.String())
+	klog.Infof("start to process restore %s", restoreOpts.String())
 	rm := _import.NewRestoreManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
 }

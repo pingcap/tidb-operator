@@ -14,20 +14,24 @@
 package member
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/klog"
 )
 
 type tikvFailover struct {
 	tikvFailoverPeriod time.Duration
+	recorder           record.EventRecorder
 }
 
 // NewTiKVFailover returns a tikv Failover
-func NewTiKVFailover(tikvFailoverPeriod time.Duration) Failover {
-	return &tikvFailover{tikvFailoverPeriod}
+func NewTiKVFailover(tikvFailoverPeriod time.Duration, recorder record.EventRecorder) Failover {
+	return &tikvFailover{tikvFailoverPeriod, recorder}
 }
 
 func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
@@ -51,18 +55,19 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			if tc.Status.TiKV.FailureStores == nil {
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 			}
-			if tc.Spec.TiKV.MaxFailoverCount != nil {
+			if tc.Spec.TiKV.MaxFailoverCount != nil && *tc.Spec.TiKV.MaxFailoverCount > 0 {
 				maxFailoverCount := *tc.Spec.TiKV.MaxFailoverCount
-				if maxFailoverCount > 0 && len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
-					glog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
+				if len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
+					klog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
 					return nil
 				}
-			}
-
-			tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-				PodName:   podName,
-				StoreID:   store.ID,
-				CreatedAt: metav1.Now(),
+				tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
+					PodName:   podName,
+					StoreID:   store.ID,
+					CreatedAt: metav1.Now(),
+				}
+				msg := fmt.Sprintf("store[%s] is Down", store.ID)
+				tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 			}
 		}
 	}

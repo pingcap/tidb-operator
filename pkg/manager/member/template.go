@@ -47,7 +47,10 @@ then
     tail -f /dev/null
 fi
 
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
 --host=0.0.0.0 \
 --path=${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tidb/tidb.toml
@@ -216,7 +219,7 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
+ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \
@@ -224,6 +227,11 @@ ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
 "
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
 
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
@@ -270,7 +278,11 @@ var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script"
 host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
+{{- if .TLS }}
+conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+{{- else }}
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+{{- end }}
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
@@ -294,6 +306,7 @@ if permit_host != '%%':
     conn.cursor().execute("update mysql.user set Host=%s where User='root';", (permit_host,))
 conn.cursor().execute("flush privileges;")
 conn.commit()
+conn.close()
 `))
 
 type TiDBInitStartScriptModel struct {
@@ -301,6 +314,10 @@ type TiDBInitStartScriptModel struct {
 	PermitHost  string
 	PasswordSet bool
 	InitSQL     bool
+	TLS         bool
+	CAPath      string
+	CertPath    string
+	KeyPath     string
 }
 
 func RenderTiDBInitStartScript(model *TiDBInitStartScriptModel) (string, error) {

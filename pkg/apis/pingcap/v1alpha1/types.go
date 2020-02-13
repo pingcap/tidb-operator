@@ -42,6 +42,8 @@ const (
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
+	// TiFlashMemberType is tiflash container type
+	TiFlashMemberType MemberType = "tiflash"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
@@ -111,6 +113,10 @@ type TidbClusterSpec struct {
 	// TiKV cluster spec
 	TiKV TiKVSpec `json:"tikv"`
 
+	// TiFlash cluster spec
+	// +optional
+	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -118,6 +124,11 @@ type TidbClusterSpec struct {
 	// Helper spec
 	// +optional
 	Helper *HelperSpec `json:"helper,omitempty"`
+
+	// Indicates that the tidb cluster is paused and will not be processed by
+	// the controller.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 
 	// TODO: remove optional after defaulting logic introduced
 	// TiDB cluster version
@@ -150,10 +161,10 @@ type TidbClusterSpec struct {
 	// +optional
 	EnablePVReclaim *bool `json:"enablePVReclaim,omitempty"`
 
-	// Enable TLS connection between TiDB server components
-	// Optional: Defaults to false
+	// Whether enable the TLS connection between TiDB server components
+	// Optional: Defaults to nil
 	// +optional
-	EnableTLSCluster *bool `json:"enableTLSCluster,omitempty"`
+	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 
 	// Whether Hostnetwork is enabled for TiDB cluster Pods
 	// Optional: Defaults to false
@@ -177,7 +188,7 @@ type TidbClusterSpec struct {
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Base tolerations of TiDB cluster Pods, components may add more tolreations upon this respectively
+	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
@@ -194,11 +205,12 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string     `json:"clusterID,omitempty"`
-	PD        PDStatus   `json:"pd,omitempty"`
-	TiKV      TiKVStatus `json:"tikv,omitempty"`
-	TiDB      TiDBStatus `json:"tidb,omitempty"`
-	Pump      PumpStatus `josn:"pump,omitempty"`
+	ClusterID string        `json:"clusterID,omitempty"`
+	PD        PDStatus      `json:"pd,omitempty"`
+	TiKV      TiKVStatus    `json:"tikv,omitempty"`
+	TiDB      TiDBStatus    `json:"tidb,omitempty"`
+	Pump      PumpStatus    `josn:"pump,omitempty"`
+	TiFlash   TiFlashStatus `json:"tiflash,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -222,6 +234,12 @@ type PDSpec struct {
 	// +optional
 	Service *ServiceSpec `json:"service,omitempty"`
 
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
 	// The storageClassName of the persistent volume for PD data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -237,6 +255,9 @@ type PDSpec struct {
 type TiKVSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for tikv
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
@@ -254,8 +275,8 @@ type TiKVSpec struct {
 	// +optional
 	Privileged *bool `json:"privileged,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -268,6 +289,68 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
+}
+
+// TiFlashSpec contains details of TiFlash members
+// +k8s:openapi-gen=true
+type TiFlashSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiFlash
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiflash
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Whether create the TiFlash container in privileged mode, it is highly discouraged to enable this in
+	// critical environment.
+	// Optional: defaults to false
+	// +optional
+	Privileged *bool `json:"privileged,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// The persistent volume claims of the TiFlash data storages.
+	// TiFlash supports multiple disks.
+	StorageClaims []StorageClaim `json:"storageClaims"`
+
+	// Config is the Configuration of TiFlash
+	// +optional
+	Config *TiFlashConfig `json:"config,omitempty"`
+
+	// LogTailer is the configurations of the log tailers for TiFlash
+	// +optional
+	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// LogTailerSpec represents an optional log tailer sidecar container
+type LogTailerSpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
+// StorageClaim contains details of TiFlash storages
+type StorageClaim struct {
+	// Resources represents the minimum resources the volume should have.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Name of the StorageClass required by the claim.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -296,8 +379,8 @@ type TiDBSpec struct {
 	// +optional
 	BinlogEnabled *bool `json:"binlogEnabled,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -308,9 +391,9 @@ type TiDBSpec struct {
 	SeparateSlowLog *bool `json:"separateSlowLog,omitempty"`
 
 	// Whether enable the TLS connection between the SQL client and TiDB server
-	// Optional: Defaults to false
+	// Optional: Defaults to nil
 	// +optional
-	EnableTLSClient *bool `json:"enableTLSClient,omitempty"`
+	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 
 	// The spec of the slow log tailer sidecar
 	// +optional
@@ -447,6 +530,24 @@ type ComponentSpec struct {
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	ConfigUpdateStrategy *ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
+	// List of environment variables to set in the container, like
+	// v1.Container.Env.
+	// Note that following env names cannot be used and may be overrided by
+	// tidb-operator built envs.
+	// - NAMESPACE
+	// - TZ
+	// - SERVICE_NAME
+	// - PEER_SERVICE_NAME
+	// - HEADLESS_SERVICE_NAME
+	// - SET_NAME
+	// - HOSTNAME
+	// - CLUSTER_NAME
+	// - POD_NAME
+	// - BINLOG_ENABLED
+	// - SLOW_LOG_FILE
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -505,6 +606,7 @@ type PDStatus struct {
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
+	Image           string                     `json:"image,omitempty"`
 }
 
 // PDMember is PD member
@@ -542,6 +644,7 @@ type TiDBStatus struct {
 	Members                  map[string]TiDBMember        `json:"members,omitempty"`
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
+	Image                    string                       `json:"image,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -568,6 +671,18 @@ type TiKVStatus struct {
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	Image           string                      `json:"image,omitempty"`
+}
+
+// TiFlashStatus is TiFlash status
+type TiFlashStatus struct {
+	Synced          bool                        `json:"synced,omitempty"`
+	Phase           MemberPhase                 `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
+	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	Image           string                      `json:"image,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
@@ -594,6 +709,55 @@ type TiKVFailureStore struct {
 type PumpStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+}
+
+// TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
+type TiDBTLSClient struct {
+	// When enabled, TiDB will accept TLS encrypted connections from MySQL client
+	// The steps to enable this feature:
+	//   1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
+	//      There are multiple ways to generate certificates:
+	//        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/
+	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+	//        - or use cert-manager signed certificates: https://cert-manager.io/
+	//   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
+	//      The name of this Secret must be: <clusterName>-tidb-server-secret.
+	//        kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//   3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+	//      The name of this Secret must be: <clusterName>-tidb-client-secret.
+	//        kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//   4. Set Enabled to `true`.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+	// Specify a secret of client cert for backup/restore
+	// Optional: Defaults to <cluster>-tidb-client-secret
+	// +optional
+	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
+	// this field only work in backup/restore process
+	TLSSecret string `json:"tlsSecret,omitempty"`
+}
+
+// TLSCluster can enable TLS connection between TiDB server components
+// https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/
+type TLSCluster struct {
+	// Enable mutual TLS authentication among TiDB components
+	// Once enabled, the mutual authentication applies to all components,
+	// and it does not support applying to only part of the components.
+	// The steps to enable this feature:
+	//   1. Generate TiDB server components certificates and a client-side certifiacete for them.
+	//      There are multiple ways to generate these certificates:
+	//        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
+	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+	//        - or use cert-manager signed certificates: https://cert-manager.io/
+	//   2. Create one secret object for one component which contains the certificates created above.
+	//      The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.
+	//        For PD: kubectl create secret generic <clusterName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        Same for other components.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // +genclient
@@ -674,7 +838,7 @@ type S3StorageProvider struct {
 	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// Prefix for the keys.
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
@@ -730,6 +894,10 @@ type TiDBAccessConfig struct {
 	User string `json:"user,omitempty"`
 	// SecretName is the name of secret which stores tidb cluster's password.
 	SecretName string `json:"secretName"`
+	// Whether enable the TLS connection between the SQL client and TiDB server
+	// Optional: Defaults to nil
+	// +optional
+	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -739,6 +907,10 @@ type BackupSpec struct {
 	From TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// TikvGCLifeTime is to specify the safe gc life time for backup.
+	// The time limit during which data is retained for each GC, in the format of Go Duration.
+	// When a GC happens, the current time minus this value is the safe point.
+	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
@@ -749,23 +921,29 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// Affinity of backup Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Use KMS to decrypt the secrets
+	UseKMS bool `json:"useKMS,omitempty"`
+	// Specify service account of backup
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
-	// PDAddress is the PD address of the tidb cluster
-	PDAddress string `json:"pd"`
+	// ClusterName of backup/restore cluster
+	Cluster string `json:"cluster"`
+	// Namespace of backup/restore cluster
+	ClusterNamespace string `json:"clusterNamespace,omitempty"`
 	// DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
 	// Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
-	// CA is the CA certificate path for TLS connection
-	CA string `json:"ca,omitempty"`
-	// Cert is the certificate path for TLS connection
-	Cert string `json:"cert,omitempty"`
-	// Key is the private key path for TLS connection
-	Key string `json:"key,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`
 	// StatusAddr is the HTTP listening address for the status report service. Set to empty string to disable
@@ -949,6 +1127,10 @@ type RestoreSpec struct {
 	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// TikvGCLifeTime is to specify the safe gc life time for restore.
+	// The time limit during which data is retained for each GC, in the format of Go Duration.
+	// When a GC happens, the current time minus this value is the safe point.
+	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Restore data storage.
@@ -959,6 +1141,16 @@ type RestoreSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BR is the configs for BR.
 	BR *BRConfig `json:"br,omitempty"`
+	// Base tolerations of restore Pods, components may add more tolerations upon this respectively
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// Affinity of restore Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Use KMS to decrypt the secrets
+	UseKMS bool `json:"useKMS,omitempty"`
+	// Specify service account of restore
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.

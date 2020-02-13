@@ -31,7 +31,7 @@ import (
 	"net/http"
 
 	"github.com/juju/errors"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // Response defines a new response struct for http
@@ -71,7 +71,7 @@ func ExtractResponse(data []byte) ([]byte, error) {
 	if respData.StatusCode != http.StatusOK {
 		d, err := json.Marshal(respData.Payload)
 		if err != nil {
-			glog.Errorf("marshal data failed %v", d)
+			klog.Errorf("marshal data failed %v", d)
 		}
 
 		return d, errors.New(respData.Message)

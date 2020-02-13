@@ -16,9 +16,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/pingcap/tidb-operator/pkg/to-crdgen/cmd"
 	"github.com/spf13/pflag"
-	"os"
 )
 
 func main() {

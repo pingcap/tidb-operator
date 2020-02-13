@@ -15,12 +15,17 @@ package tidbcluster
 
 import (
 	"context"
+	nerrors "errors"
 	"fmt"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -38,7 +43,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -46,8 +53,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -140,13 +149,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					// verify v2.1.x configuration compatibility
 					// https://github.com/pingcap/tidb-operator/pull/950
 					"tikv.resources.limits.storage": "1G",
-				},
-			},
-			{
-				Version: utilimage.TiDBTLSVersion,
-				Name:    "basic-v3-cluster-tls",
-				Values: map[string]string{
-					"enableTLSCluster": "true",
 				},
 			},
 		}
@@ -251,12 +253,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
 		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
 		ctx, cancel := context.WithCancel(context.Background())
-		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)
 		cluster.UpgradeAll(upgradeVersions[0])
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckUpgradeOrDie(ctx, &cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
-		oa.CheckTidbMemberAssignedNodesOrDie(&cluster, assignedNodes)
 		cancel()
 
 		ginkgo.By("Check webhook is still running")
@@ -291,6 +291,150 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterA.ClusterName))
 		oa.StopInsertDataTo(&clusterA)
+	})
+
+	ginkgo.It("Adhoc backup and restore with BR CRD", func() {
+		if framework.TestContext.Provider != "aws" {
+			framework.Skipf("provider is not aws, skipping")
+		}
+		tcNameFrom := "backup"
+		tcNameTo := "restore"
+		serviceAccountName := "tidb-backup-manager"
+		backupFolder := time.Now().Format(time.RFC3339)
+
+		// create backup cluster
+		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBBRVersion)
+		tcFrom.Spec.PD.Replicas = 1
+		tcFrom.Spec.TiKV.Replicas = 1
+		tcFrom.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), tcFrom)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", "")
+
+		// create restore cluster
+		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBBRVersion)
+		tcTo.Spec.PD.Replicas = 1
+		tcTo.Spec.TiKV.Replicas = 1
+		tcTo.Spec.TiDB.Replicas = 1
+		err = genericCli.Create(context.TODO(), tcTo)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", "")
+
+		// import some data to sql with blockwriter
+		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
+		oa.BeginInsertDataToOrDie(&clusterFrom)
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
+		framework.ExpectNoError(err)
+		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
+		oa.StopInsertDataTo(&clusterFrom)
+
+		// prepare for create backup/restore CRD
+		backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
+		_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
+		framework.ExpectNoError(err)
+		backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
+		_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
+		framework.ExpectNoError(err)
+		backupRoleBinding := fixture.GetBackupRoleBing(tcFrom, serviceAccountName)
+		_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
+		framework.ExpectNoError(err)
+		backupSecret := fixture.GetBackupSecret(tcFrom, "")
+		_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
+		framework.ExpectNoError(err)
+		restoreSecret := fixture.GetBackupSecret(tcTo, "")
+		_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
+		framework.ExpectNoError(err)
+		cred := credentials.NewSharedCredentials("", "default")
+		val, err := cred.Get()
+		framework.ExpectNoError(err)
+		backupS3Secret := fixture.GetS3Secret(tcFrom, val.AccessKeyID, val.SecretAccessKey)
+		_, err = c.CoreV1().Secrets(ns).Create(backupS3Secret)
+		framework.ExpectNoError(err)
+
+		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
+		// create backup CRD to process backup
+		backup := fixture.GetBackupCRDWithBR(tcFrom, backupFolder)
+		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
+		framework.ExpectNoError(err)
+
+		// check backup is successed
+		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+			tmpBackup, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			// Check the status in conditions one by one,
+			// if the status other than complete or failed is running
+			for _, condition := range tmpBackup.Status.Conditions {
+				if condition.Type == v1alpha1.BackupComplete {
+					return true, nil
+				} else if condition.Type == v1alpha1.BackupFailed {
+					return false, errors.NewInternalError(nerrors.New(condition.Reason))
+				}
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
+		// create restore CRD to process restore
+		restore := fixture.GetRestoreCRDWithBR(tcTo, backupFolder)
+		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
+		framework.ExpectNoError(err)
+
+		// check restore is successed
+		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+			tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(restore.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			// Check the status in conditions one by one,
+			// if the status other than complete or failed is running
+			for _, condition := range tmpRestore.Status.Conditions {
+				if condition.Type == v1alpha1.RestoreComplete {
+					return true, nil
+				} else if condition.Type == v1alpha1.RestoreFailed {
+					return false, errors.NewInternalError(nerrors.New(condition.Reason))
+				}
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
+		isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
+		framework.ExpectNoError(err)
+		if !isSame {
+			framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
+		}
+
+		// delete backup data in S3
+		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err)
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			awsConfig := aws.NewConfig().
+				WithRegion(backup.Spec.S3.Region).
+				WithCredentials(cred)
+			svc := s3.New(session.Must(session.NewSession(awsConfig)))
+			input := &s3.ListObjectsV2Input{
+				Bucket: aws.String(backup.Spec.S3.Bucket),
+				Prefix: aws.String(backup.Spec.S3.Prefix),
+			}
+			result, err := svc.ListObjectsV2(input)
+			if err != nil {
+				return false, err
+			}
+			if *result.KeyCount != 0 {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
@@ -762,18 +906,80 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvName := pvc.Spec.VolumeName
 		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
-		value, existed := pv.Labels[label.ComponentLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, label.TiDBMonitorVal)
-		value, existed = pv.Labels[label.InstanceLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, "e2e-monitor")
-		value, existed = pv.Labels[label.InstanceLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, "e2e-monitor")
-		value, existed = pv.Labels[label.ManagedByLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, label.TiDBOperator)
+
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			value, existed := pv.Labels[label.ComponentLabelKey]
+			if !existed || value != label.TiDBMonitorVal {
+				return false, nil
+			}
+			value, existed = pv.Labels[label.InstanceLabelKey]
+			if !existed || value != "e2e-monitor" {
+				return false, nil
+			}
+
+			value, existed = pv.Labels[label.NameLabelKey]
+			if !existed || value != "tidb-cluster" {
+				return false, nil
+			}
+			value, existed = pv.Labels[label.ManagedByLabelKey]
+			if !existed || value != label.TiDBOperator {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "monitor pv label error")
+
+		// update TidbMonitor and check whether portName is updated and the nodePort is unchanged
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
+		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		framework.ExpectNoError(err, "update tidbmonitor service type error")
+
+		var targetPort int32
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
+			if len(prometheusSvc.Spec.Ports) != 1 {
+				return false, nil
+			}
+			if prometheusSvc.Spec.Type != corev1.ServiceTypeNodePort {
+				return false, nil
+			}
+			targetPort = prometheusSvc.Spec.Ports[0].NodePort
+			return true, nil
+		})
+		framework.ExpectNoError(err, "first update tidbmonitor service error")
+
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "fetch latest tidbmonitor again error")
+		newPortName := "any-other-word"
+		tm.Spec.Prometheus.Service.PortName = &newPortName
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		framework.ExpectNoError(err, "update tidbmonitor service portName error")
+
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
+			if len(prometheusSvc.Spec.Ports) != 1 {
+				return false, nil
+			}
+			if prometheusSvc.Spec.Type != corev1.ServiceTypeNodePort {
+				return false, nil
+			}
+			if prometheusSvc.Spec.Ports[0].Name != "any-other-word" {
+				return false, nil
+			}
+			if prometheusSvc.Spec.Ports[0].NodePort != targetPort {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "second update tidbmonitor service error")
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
@@ -817,6 +1023,67 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 		ginkgo.By("Checking for tidb cluster is ready")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+	})
+
+	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
+		tcName := "paused"
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		podListBeforePaused, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Pause the tidb cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Paused = true
+			return nil
+		})
+		framework.ExpectNoError(err)
+		ginkgo.By("Make a change")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			return nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Check pods are not changed when the tidb cluster is paused")
+		err = utilpod.WaitForPodsAreChanged(c, podListBeforePaused.Items, time.Minute*5)
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed when the tidb cluster is paused")
+
+		ginkgo.By("Unpause the tidb cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Paused = false
+			return nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Check the tidb cluster will be upgraded now")
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
+		}
+		err = wait.PollImmediate(5*time.Second, 15*time.Minute, func() (bool, error) {
+			podList, err := c.CoreV1().Pods(ns).List(listOptions)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return false, err
+			}
+			for _, pod := range podList.Items {
+				for _, c := range pod.Spec.Containers {
+					if c.Name == v1alpha1.TiKVMemberType.String() {
+						if c.Image == tc.TiKVImage() {
+							return true, nil
+						}
+					}
+				}
+			}
+			return false, nil
+		})
 		framework.ExpectNoError(err)
 	})
 
@@ -897,16 +1164,16 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
-			"pd.resources.requests.cpu":      "200m",
-			"pd.resources.requests.memory":   "200Mi",
+			"pd.resources.requests.cpu":      "20m",
+			"pd.resources.requests.memory":   "20Mi",
 			"tikv.resources.limits.cpu":      "2000m",
 			"tikv.resources.limits.memory":   "4Gi",
-			"tikv.resources.requests.cpu":    "200m",
-			"tikv.resources.requests.memory": "200Mi",
+			"tikv.resources.requests.cpu":    "20m",
+			"tikv.resources.requests.memory": "20Mi",
 			"tidb.resources.limits.cpu":      "2000m",
 			"tidb.resources.limits.memory":   "4Gi",
-			"tidb.resources.requests.cpu":    "200m",
-			"tidb.resources.requests.memory": "200Mi",
+			"tidb.resources.requests.cpu":    "20m",
+			"tidb.resources.requests.memory": "20Mi",
 			"tidb.initSql":                   strconv.Quote("create database e2e;"),
 			"discovery.image":                cfg.OperatorImage,
 		},

@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -24,6 +25,14 @@ import (
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
+)
+
+const (
+	annScaleOutSuffix = "tidb.pingcap.com/consecutive-scale-out-count"
+	annScaleInSuffix  = "tidb.pingcap.com/consecutive-scale-in-count"
+
+	invalidMemberTypeErrorMsg    = "tac[%s/%s] invalid set MemberType:%s"
+	invalidTacAnnotationErrorMsg = "tac[%s/%s] annotation invalid set,err:%v"
 )
 
 var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
@@ -49,13 +58,13 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tc *v1alpha1.TidbCluster, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
-	if tc.Annotations == nil {
-		tc.Annotations = map[string]string{}
+func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
 	}
-	lastAutoScalingTimestamp, existed := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+	lastAutoScalingTimestamp, existed := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 	if memberType == v1alpha1.TiKVMemberType {
-		lastAutoScalingTimestamp, existed = tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+		lastAutoScalingTimestamp, existed = tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 	}
 	if !existed {
 		return true, nil
@@ -126,7 +135,23 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		if len(tac.Spec.TiKV.Metrics) == 0 {
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
 		}
+		if tac.Spec.TiKV.ScaleInThreshold == nil {
+			tac.Spec.TiKV.ScaleInThreshold = pointer.Int32Ptr(5)
+		}
+		if tac.Spec.TiKV.ScaleOutThreshold == nil {
+			tac.Spec.TiKV.ScaleOutThreshold = pointer.Int32Ptr(3)
+		}
+		if tac.Spec.TiKV.MetricsTimeDuration == nil {
+			tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
+		}
+		if tac.Spec.TiKV.ScaleOutIntervalSeconds == nil {
+			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+		}
+		if tac.Spec.TiKV.ScaleInIntervalSeconds == nil {
+			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+		}
 	}
+
 	if tac.Spec.TiDB != nil {
 		if tac.Spec.TiDB.MinReplicas == nil {
 			tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(1)
@@ -134,5 +159,59 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		if len(tac.Spec.TiDB.Metrics) == 0 {
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 		}
+		if tac.Spec.TiDB.ScaleInThreshold == nil {
+			tac.Spec.TiDB.ScaleInThreshold = pointer.Int32Ptr(5)
+		}
+		if tac.Spec.TiDB.ScaleOutThreshold == nil {
+			tac.Spec.TiDB.ScaleOutThreshold = pointer.Int32Ptr(3)
+		}
+		if tac.Spec.TiDB.MetricsTimeDuration == nil {
+			tac.Spec.TiDB.MetricsTimeDuration = pointer.StringPtr("3m")
+		}
+		if tac.Spec.TiDB.ScaleOutIntervalSeconds == nil {
+			tac.Spec.TiDB.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+		}
+		if tac.Spec.TiDB.ScaleInIntervalSeconds == nil {
+			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+		}
 	}
+
+	if tac.Spec.Monitor != nil {
+		if len(tac.Spec.Monitor.Namespace) < 1 {
+			tac.Spec.Monitor.Namespace = tac.Namespace
+		}
+	}
+}
+
+func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {
+	tac.Annotations[label.AnnAutoScalingTargetNamespace] = tac.Spec.Cluster.Namespace
+	tac.Annotations[label.AnnAutoScalingTargetName] = tac.Spec.Cluster.Name
+}
+
+// checkAndUpdateTacRef would compare the target tidbcluster ref stored in the annotations
+// and in the Spec. It not equal, the previous stored status would be empty and the stored Ref
+// would be updated.
+func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
+		resetAutoScalingAnn(tac)
+		return
+	}
+	name := tac.Annotations[label.AnnAutoScalingTargetName]
+	namespace := tac.Annotations[label.AnnAutoScalingTargetNamespace]
+	if name == tac.Spec.Cluster.Name && namespace == tac.Spec.Cluster.Namespace {
+		return
+	}
+	// If not satisfied, reset tac Ann
+	resetAutoScalingAnn(tac)
+}
+
+func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
+	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
+		return "", fmt.Errorf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
+	}
+	if tac.Spec.MetricsUrl != nil {
+		return *tac.Spec.MetricsUrl, nil
+	}
+	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
 }

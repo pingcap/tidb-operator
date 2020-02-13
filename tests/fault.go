@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -95,7 +95,7 @@ type faultTriggerActions struct {
 }
 
 func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
-	glog.Infof("ensure all nodes are running")
+	klog.Infof("ensure all nodes are running")
 	for _, physicalNode := range fa.cfg.Nodes {
 		for _, vNode := range physicalNode.Nodes {
 			err := fa.StartNode(physicalNode.PhysicalNode, vNode.IP)
@@ -104,21 +104,21 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 			}
 		}
 	}
-	glog.Infof("ensure all etcds are running")
+	klog.Infof("ensure all etcds are running")
 	err := fa.StartETCD()
 	if err != nil {
 		return err
 	}
 
 	allK8sNodes := getAllK8sNodes(fa.cfg)
-	glog.Infof("ensure all kubelets are running")
+	klog.Infof("ensure all kubelets are running")
 	for _, node := range allK8sNodes {
 		err := fa.StartKubelet(node)
 		if err != nil {
 			return err
 		}
 	}
-	glog.Infof("ensure all static pods are running")
+	klog.Infof("ensure all static pods are running")
 	for _, physicalNode := range fa.cfg.APIServers {
 		for _, vNode := range physicalNode.Nodes {
 			err := fa.StartKubeAPIServer(vNode.IP)
@@ -135,7 +135,7 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 			}
 		}
 	}
-	glog.Infof("ensure all kube-proxy are running")
+	klog.Infof("ensure all kube-proxy are running")
 	err = fa.StartKubeProxy()
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (fa *faultTriggerActions) CheckAndRecoverEnv() error {
 
 func (fa *faultTriggerActions) CheckAndRecoverEnvOrDie() {
 	if err := fa.CheckAndRecoverEnv(); err != nil {
-		glog.Fatal(err)
+		klog.Fatal(err)
 	}
 }
 
@@ -156,7 +156,7 @@ func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {
 	if err != nil {
 		return "", "", now, err
 	}
-	glog.Infof("selecting %s as the node to failover", node)
+	klog.Infof("selecting %s as the node to failover", node)
 
 	physicalNode := getPhysicalNode(node, fa.cfg)
 
@@ -176,11 +176,11 @@ func (fa *faultTriggerActions) StopNode() (string, string, time.Time, error) {
 	if err := faultCli.StopVM(&manager.VM{
 		Name: name,
 	}); err != nil {
-		glog.Errorf("failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
+		klog.Errorf("failed to stop node %s on physical node: %s: %v", node, physicalNode, err)
 		return "", "", now, err
 	}
 
-	glog.Infof("node %s on physical node %s is stopped", node, physicalNode)
+	klog.Infof("node %s on physical node %s is stopped", node, physicalNode)
 	return physicalNode, node, now, nil
 }
 
@@ -216,11 +216,11 @@ func (fa *faultTriggerActions) StartNode(physicalNode string, node string) error
 	if err := faultCli.StartVM(&manager.VM{
 		Name: name,
 	}); err != nil {
-		glog.Errorf("failed to start node %s on physical node %s: %v", node, physicalNode, err)
+		klog.Errorf("failed to start node %s on physical node %s: %v", node, physicalNode, err)
 		return err
 	}
 
-	glog.Infof("node %s on physical node %s is started", node, physicalNode)
+	klog.Infof("node %s on physical node %s is started", node, physicalNode)
 
 	return nil
 }
@@ -244,7 +244,7 @@ func (fa *faultTriggerActions) getAllKubeProxyPods() ([]v1.Pod, error) {
 
 // StopKubeProxy stops the kube-proxy service.
 func (fa *faultTriggerActions) StopKubeProxy() error {
-	glog.Infof("stopping all kube-proxy pods")
+	klog.Infof("stopping all kube-proxy pods")
 	nodes := getAllK8sNodes(fa.cfg)
 	pods, err := fa.getAllKubeProxyPods()
 	if err != nil {
@@ -277,13 +277,13 @@ func (fa *faultTriggerActions) StopKubeProxy() error {
 		return err
 	}
 	for _, pod := range pods {
-		glog.Infof("waiting for kube-proxy pod %s/%s to be terminated", pod.Namespace, pod.Name)
+		klog.Infof("waiting for kube-proxy pod %s/%s to be terminated", pod.Namespace, pod.Name)
 		err = waitForPodNotFoundInNamespace(fa.kubeCli, pod.Name, pod.Namespace, PodTimeout)
 		if err != nil {
 			return err
 		}
 	}
-	glog.Infof("kube-proxy on vm nodes %v are stopped", nodes)
+	klog.Infof("kube-proxy on vm nodes %v are stopped", nodes)
 	return nil
 }
 
@@ -295,7 +295,7 @@ func (fa *faultTriggerActions) StopKubeProxyOrDie() {
 
 // StartKubeProxy starts the kube-proxy service.
 func (fa *faultTriggerActions) StartKubeProxy() error {
-	glog.Infof("starting all kube-proxy pods")
+	klog.Infof("starting all kube-proxy pods")
 	nodes := getAllK8sNodes(fa.cfg)
 	ds, err := fa.kubeCli.AppsV1().DaemonSets(metav1.NamespaceSystem).Get("kube-proxy", metav1.GetOptions{})
 	if err != nil {
@@ -327,7 +327,7 @@ func (fa *faultTriggerActions) StartKubeProxy() error {
 	if err != nil {
 		return err
 	}
-	glog.Infof("kube-proxy on vm nodes %v are started", nodes)
+	klog.Infof("kube-proxy on vm nodes %v are started", nodes)
 	return nil
 }
 
@@ -356,7 +356,7 @@ func (fa *faultTriggerActions) StopETCD(nodes ...string) error {
 }
 
 func (fa *faultTriggerActions) StopETCDOrDie(nodes ...string) {
-	glog.Infof("stopping %v etcds", nodes)
+	klog.Infof("stopping %v etcds", nodes)
 	if err := fa.StopETCD(nodes...); err != nil {
 		slack.NotifyAndPanic(err)
 	}
@@ -380,7 +380,7 @@ func (fa *faultTriggerActions) StopKubelet(nodes ...string) error {
 }
 
 func (fa *faultTriggerActions) StopKubeletOrDie(nodes ...string) {
-	glog.Infof("stopping %v kubelets", nodes)
+	klog.Infof("stopping %v kubelets", nodes)
 	if err := fa.StopKubelet(nodes...); err != nil {
 		slack.NotifyAndPanic(err)
 	}
@@ -553,11 +553,11 @@ func (fa *faultTriggerActions) serviceAction(node string, serverName string, act
 	}
 
 	if err != nil {
-		glog.Errorf("failed to %s %s %s: %v", action, serverName, node, err)
+		klog.Errorf("failed to %s %s %s: %v", action, serverName, node, err)
 		return err
 	}
 
-	glog.Infof("%s %s %s successfully", action, serverName, node)
+	klog.Infof("%s %s %s successfully", action, serverName, node)
 
 	return nil
 }
@@ -576,7 +576,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 	err = wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
 		nodes, err = kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
-			glog.Errorf("trigger node stop failed when get all nodes, error: %v", err)
+			klog.Errorf("trigger node stop failed when get all nodes, error: %v", err)
 			return false, nil
 		}
 
@@ -584,7 +584,7 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 	})
 
 	if err != nil {
-		glog.Errorf("failed to list nodes: %v", err)
+		klog.Errorf("failed to list nodes: %v", err)
 		return "", err
 	}
 
@@ -592,27 +592,35 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 		return "", fmt.Errorf("the number of nodes cannot be less than 1")
 	}
 
-	myNode := getMyNodeName()
-
-	index := rand.Intn(len(nodes.Items))
-	faultNode := nodes.Items[index].Name
-	if faultNode != myNode {
-		return faultNode, nil
+	listOption := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"app":  "helm",
+			"name": "tiller",
+		}).String(),
 	}
-
-	if index == 0 {
-		faultNode = nodes.Items[index+1].Name
-	} else {
-		faultNode = nodes.Items[index-1].Name
-	}
-
-	if faultNode == myNode {
-		err := fmt.Errorf("there are at least two nodes with the name %s", myNode)
-		glog.Error(err.Error())
+	pods, err := kubeCli.CoreV1().Pods("kube-system").List(listOption)
+	if err != nil {
 		return "", err
 	}
+	if len(pods.Items) < 1 {
+		return "", fmt.Errorf("failed to get tiller pods")
+	}
+	tillerNodeName := pods.Items[0].Spec.NodeName
+	myNode := getMyNodeName()
 
-	return faultNode, nil
+	var filterNodes []string
+	for _, node := range nodes.Items {
+		if node.Name != myNode && node.Name != tillerNodeName {
+			filterNodes = append(filterNodes, node.Name)
+		}
+	}
+
+	if filterNodes == nil || len(filterNodes) < 1 {
+		return "", fmt.Errorf("no nodes filtered after selecting nodes and filter the tiller and stabiltiy pod")
+	}
+
+	index := rand.Intn(len(filterNodes))
+	return filterNodes[index], nil
 }
 
 func getPhysicalNode(faultNode string, cfg *Config) string {

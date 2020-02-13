@@ -26,10 +26,9 @@ import (
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
-// WaitForPodsAreNotAffected waits for given pods are not affected.
-// It returns wait.ErrWaitTimeout if the given pods are not affected in specified timeout.
-func WaitForPodsAreNotAffected(c kubernetes.Interface, pods []v1.Pod, timeout time.Duration) error {
-	return wait.PollImmediate(time.Second*5, timeout, func() (bool, error) {
+// PodsAreChanged checks the given pods are changed or not (recreate, update).
+func PodsAreChanged(c kubernetes.Interface, pods []v1.Pod) wait.ConditionFunc {
+	return func() (bool, error) {
 		for _, pod := range pods {
 			podNew, err := c.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
 			if err != nil {
@@ -46,5 +45,11 @@ func WaitForPodsAreNotAffected(c kubernetes.Interface, pods []v1.Pod, timeout ti
 			}
 		}
 		return false, nil
-	})
+	}
+}
+
+// WaitForPodsAreChanged waits for given pods are changed.
+// It returns wait.ErrWaitTimeout if the given pods are not changed in specified timeout.
+func WaitForPodsAreChanged(c kubernetes.Interface, pods []v1.Pod, timeout time.Duration) error {
+	return wait.PollImmediate(time.Second*5, timeout, PodsAreChanged(c, pods))
 }

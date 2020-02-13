@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: dm-master
+  name: dm-master
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: dm-master
+  serviceName: dm-master-peer
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8261"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/component: dm-master
+    spec:
+      affinity: {}
+      containers:
+      - command:
+        - /dm-master
+        - --data-dir=/data
+        - --config=/etc/config/config.toml
+        - --name=$(MY_POD_NAME)
+        - --master-addr=:8261
+        - --advertise-addr=$(MY_POD_NAME).$(PEER_SERVICE_NAME).$(NAMESPACE):8261
+        - --peer-urls=:8291
+        - --advertise-peer-urls=http://$(MY_POD_NAME).$(PEER_SERVICE_NAME).$(NAMESPACE):8291
+        - --initial-cluster=dm-master-0=http://dm-master-0.$(PEER_SERVICE_NAME).$(NAMESPACE):8291,dm-master-1=http://dm-master-1.$(PEER_SERVICE_NAME).$(NAMESPACE):8291,dm-master-2=http://dm-master-2.$(PEER_SERVICE_NAME).$(NAMESPACE):8291
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: PEER_SERVICE_NAME
+          value: dm-master-peer
+        - name: SERVICE_NAME
+          value: dm-master
+        - name: TZ
+          value: UTC
+        image: pingcap/dm:ha-alpha
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 8
+          httpGet:
+            path: /status
+            port: 8261
+            scheme: HTTP
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /status
+            port: 8261
+            scheme: HTTP
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        name: master
+        ports:
+        - containerPort: 8291
+          name: server
+          protocol: TCP
+        - containerPort: 8261
+          name: client
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /etc/config
+          name: config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          name: dm-master-config
+        name: config
+  updateStrategy:
+    rollingUpdate:
+      partition: 3
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      dataSource: null
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: local-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: dm-master
+  name: dm-master
+spec:
+  ports:
+  - name: client
+    port: 8261
+    protocol: TCP
+    targetPort: 8261
+  selector:
+    app.kubernetes.io/component: dm-master
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: dm-master
+  name: dm-master-peer
+spec:
+  clusterIP: None
+  ports:
+  - name: peer
+    port: 8291
+    protocol: TCP
+    targetPort: 8291
+  selector:
+    app.kubernetes.io/component: dm-master
+  publishNotReadyAddresses: true
+  sessionAffinity: None
+  type: ClusterIP
+

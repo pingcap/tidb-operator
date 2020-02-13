@@ -16,11 +16,15 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -31,10 +35,227 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	// validate metadata
 	fldPath := field.NewPath("metadata")
 	// validate metadata/annotations
-	allErrs = append(allErrs, apivalidation.ValidateAnnotations(tc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
+	allErrs = append(allErrs, validateAnnotations(tc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
+	// validate spec
+	allErrs = append(allErrs, validateTiDBClusterSpec(&tc.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
+func validateAnnotations(anns map[string]string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
 	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots} {
-		allErrs = append(allErrs, validateDeleteSlots(tc.ObjectMeta.Annotations, key, fldPath.Child("annotations", key))...)
+		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
 	}
+	return allErrs
+}
+
+func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validatePDSpec(&spec.PD, fldPath.Child("pd"))...)
+	allErrs = append(allErrs, validateTiKVSpec(&spec.TiKV, fldPath.Child("tikv"))...)
+	allErrs = append(allErrs, validateTiDBSpec(&spec.TiDB, fldPath.Child("tidb"))...)
+	if spec.Pump != nil {
+		allErrs = append(allErrs, validatePumpSpec(spec.Pump, fldPath.Child("pump"))...)
+	}
+	if spec.TiFlash != nil {
+		allErrs = append(allErrs, validateTiFlashSpec(spec.TiFlash, fldPath.Child("tiflash"))...)
+	}
+	return allErrs
+}
+
+func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateTiFlashConfig(spec.Config, fldPath)...)
+	if len(spec.StorageClaims) < 1 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims"),
+			spec.StorageClaims, "storageClaims should be configured at least one item."))
+	}
+	return allErrs
+}
+
+func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if config == nil {
+		return allErrs
+	}
+
+	if config.CommonConfig != nil {
+		if config.CommonConfig.Flash != nil {
+			if config.CommonConfig.Flash.OverlapThreshold != nil {
+				if *config.CommonConfig.Flash.OverlapThreshold < 0 || *config.CommonConfig.Flash.OverlapThreshold > 1 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
+						config.CommonConfig.Flash.OverlapThreshold,
+						"overlap_threshold must be in the range of [0,1]."))
+				}
+			}
+			if config.CommonConfig.Flash.FlashCluster != nil {
+				if config.CommonConfig.Flash.FlashCluster.ClusterLog != "" {
+					splitPath := strings.Split(config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
+					// The log path should be at least /dir/base.log
+					if len(splitPath) < 3 {
+						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
+							config.CommonConfig.Flash.FlashCluster.ClusterLog,
+							"log path should include at least one level dir."))
+					}
+				}
+			}
+			if config.CommonConfig.Flash.FlashProxy != nil {
+				if config.CommonConfig.Flash.FlashProxy.LogFile != "" {
+					splitPath := strings.Split(config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
+					// The log path should be at least /dir/base.log
+					if len(splitPath) < 3 {
+						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_proxy.log-file"),
+							config.CommonConfig.Flash.FlashProxy.LogFile,
+							"log path should include at least one level dir."))
+					}
+				}
+			}
+		}
+		if config.CommonConfig.FlashLogger != nil {
+			if config.CommonConfig.FlashLogger.ServerLog != "" {
+				splitPath := strings.Split(config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
+				// The log path should be at least /dir/base.log
+				if len(splitPath) < 3 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
+						config.CommonConfig.FlashLogger.ServerLog,
+						"log path should include at least one level dir."))
+				}
+			}
+			if config.CommonConfig.FlashLogger.ErrorLog != "" {
+				splitPath := strings.Split(config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
+				// The log path should be at least /dir/base.log
+				if len(splitPath) < 3 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
+						config.CommonConfig.FlashLogger.ErrorLog,
+						"log path should include at least one level dir."))
+				}
+			}
+		}
+	}
+	return allErrs
+}
+
+func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validatePumpSpec(spec *v1alpha1.PumpSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	// TODO validate other fields
+	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
+	return allErrs
+}
+
+// validateEnv validates env vars
+func validateEnv(vars []corev1.EnvVar, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for i, ev := range vars {
+		idxPath := fldPath.Index(i)
+		if len(ev.Name) == 0 {
+			allErrs = append(allErrs, field.Required(idxPath.Child("name"), ""))
+		} else {
+			for _, msg := range validation.IsEnvVarName(ev.Name) {
+				allErrs = append(allErrs, field.Invalid(idxPath.Child("name"), ev.Name, msg))
+			}
+		}
+		allErrs = append(allErrs, validateEnvVarValueFrom(ev, idxPath.Child("valueFrom"))...)
+	}
+	return allErrs
+}
+
+func validateEnvVarValueFrom(ev corev1.EnvVar, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if ev.ValueFrom == nil {
+		return allErrs
+	}
+
+	numSources := 0
+
+	if ev.ValueFrom.FieldRef != nil {
+		numSources++
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("fieldRef"), "", "fieldRef is not supported"))
+	}
+	if ev.ValueFrom.ResourceFieldRef != nil {
+		numSources++
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("resourceFieldRef"), "", "resourceFieldRef is not supported"))
+	}
+	if ev.ValueFrom.ConfigMapKeyRef != nil {
+		numSources++
+		allErrs = append(allErrs, validateConfigMapKeySelector(ev.ValueFrom.ConfigMapKeyRef, fldPath.Child("configMapKeyRef"))...)
+	}
+	if ev.ValueFrom.SecretKeyRef != nil {
+		numSources++
+		allErrs = append(allErrs, validateSecretKeySelector(ev.ValueFrom.SecretKeyRef, fldPath.Child("secretKeyRef"))...)
+	}
+
+	if numSources == 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath, "", "must specify one of: `configMapKeyRef` or `secretKeyRef`"))
+	} else if len(ev.Value) != 0 {
+		if numSources != 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath, "", "may not be specified when `value` is not empty"))
+		}
+	} else if numSources > 1 {
+		allErrs = append(allErrs, field.Invalid(fldPath, "", "may not have more than one field specified at a time"))
+	}
+
+	return allErrs
+}
+
+func validateConfigMapKeySelector(s *corev1.ConfigMapKeySelector, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for _, msg := range apivalidation.NameIsDNSSubdomain(s.Name, false) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("name"), s.Name, msg))
+	}
+	if len(s.Key) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("key"), ""))
+	} else {
+		for _, msg := range validation.IsConfigMapKey(s.Key) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("key"), s.Key, msg))
+		}
+	}
+
+	return allErrs
+}
+
+func validateSecretKeySelector(s *corev1.SecretKeySelector, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for _, msg := range apivalidation.NameIsDNSSubdomain(s.Name, false) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("name"), s.Name, msg))
+	}
+	if len(s.Key) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("key"), ""))
+	} else {
+		for _, msg := range validation.IsConfigMapKey(s.Key) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("key"), s.Key, msg))
+		}
+	}
+
 	return allErrs
 }
 
@@ -88,15 +309,6 @@ func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path
 	if spec.PD.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
 	}
-	if spec.TiDB.Config == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("tidb.config"), spec.TiDB.Config, "tidb.config must not be nil"))
-	}
-	if spec.TiKV.Config == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("tikv.config"), spec.TiKV.Config, "tidb.config must not be nil"))
-	}
-	if spec.PD.Config == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("pd.config"), spec.PD.Config, "tidb.config must not be nil"))
-	}
 	return allErrs
 }
 
@@ -135,6 +347,12 @@ func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) fiel
 	if old == nil || conf == nil {
 		return allErrs
 	}
+
+	if conf.Security != nil && len(conf.Security.CertAllowedCN) > 1 {
+		allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), conf.Security.CertAllowedCN,
+			"Only one CN is currently supported"))
+	}
+
 	if !reflect.DeepEqual(old.Schedule, conf.Schedule) {
 		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), conf.Schedule,
 			"PD Schedule Config is immutable through CRD, please modify with pd-ctl instead."))

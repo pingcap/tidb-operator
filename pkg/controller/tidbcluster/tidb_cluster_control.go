@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -46,6 +47,7 @@ func NewDefaultTidbClusterControl(
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pumpMemberManager manager.Manager,
+	tiflashMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	podRestarter member.PodRestarter,
 	recorder record.EventRecorder) ControlInterface {
@@ -59,6 +61,7 @@ func NewDefaultTidbClusterControl(
 		orphanPodsCleaner,
 		pvcCleaner,
 		pumpMemberManager,
+		tiflashMemberManager,
 		discoveryManager,
 		podRestarter,
 		recorder,
@@ -75,6 +78,7 @@ type defaultTidbClusterControl struct {
 	orphanPodsCleaner    member.OrphanPodsCleaner
 	pvcCleaner           member.PVCCleanerInterface
 	pumpMemberManager    manager.Manager
+	tiflashMemberManager manager.Manager
 	discoveryManager     member.TidbDiscoveryManager
 	podRestarter         member.PodRestarter
 	recorder             record.EventRecorder
@@ -82,6 +86,7 @@ type defaultTidbClusterControl struct {
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	tcc.defaulting(tc)
 	if !tcc.validate(tc) {
 		return nil // fatal error, no need to retry on invalid object
 	}
@@ -111,6 +116,10 @@ func (tcc *defaultTidbClusterControl) validate(tc *v1alpha1.TidbCluster) bool {
 		return false
 	}
 	return true
+}
+
+func (tcc *defaultTidbClusterControl) defaulting(tc *v1alpha1.TidbCluster) {
+	defaulting.SetTidbClusterDefault(tc)
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -171,6 +180,19 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - scale out/in the tidb cluster
 	//   - failover the tidb cluster
 	if err := tcc.tidbMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
+	// works that should do to making the tiflash cluster current state match the desired state:
+	//   - waiting for the tidb cluster available
+	//   - create or update tiflash headless service
+	//   - create the tiflash statefulset
+	//   - sync tiflash cluster status from pd to TidbCluster object
+	//   - set scheduler labels to tiflash stores
+	//   - upgrade the tiflash cluster
+	//   - scale out/in the tiflash cluster
+	//   - failover the tiflash cluster
+	if err := tcc.tiflashMemberManager.Sync(tc); err != nil {
 		return err
 	}
 

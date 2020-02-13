@@ -24,9 +24,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // BackupCleaner implements the logic for cleaning backup
@@ -36,7 +36,7 @@ type BackupCleaner interface {
 
 type backupCleaner struct {
 	statusUpdater controller.BackupConditionUpdaterInterface
-	secretLister  corelisters.SecretLister
+	kubeCli       kubernetes.Interface
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
 }
@@ -44,12 +44,12 @@ type backupCleaner struct {
 // NewBackupCleaner returns a BackupCleaner
 func NewBackupCleaner(
 	statusUpdater controller.BackupConditionUpdaterInterface,
-	secretLister corelisters.SecretLister,
+	kubeCli kubernetes.Interface,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface) BackupCleaner {
 	return &backupCleaner{
 		statusUpdater,
-		secretLister,
+		kubeCli,
 		jobLister,
 		jobControl,
 	}
@@ -63,7 +63,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	glog.Infof("start to clean backup %s/%s", ns, name)
+	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
 	_, err := bc.jobLister.Jobs(ns).Get(cleanJobName)
@@ -112,7 +112,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bc.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.kubeCli)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -123,20 +123,24 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).CleanJob().Backup(name)
-
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
+			Labels:      backupLabel.Labels(),
+			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             storageEnv,
 				},
 			},

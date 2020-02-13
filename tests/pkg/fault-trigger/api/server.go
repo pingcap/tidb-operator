@@ -30,7 +30,7 @@ import (
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // Server is a web service to control fault trigger
@@ -54,8 +54,8 @@ func (s *Server) StartServer() {
 
 	restful.Add(ws)
 
-	glog.Infof("starting fault-trigger server, listening on 0.0.0.0:%d", s.port)
-	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil))
+	klog.Infof("starting fault-trigger server, listening on 0.0.0.0:%d", s.port)
+	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil))
 }
 
 func (s *Server) listVMs(req *restful.Request, resp *restful.Response) {
@@ -64,7 +64,7 @@ func (s *Server) listVMs(req *restful.Request, resp *restful.Response) {
 	if err != nil {
 		res.message(err.Error()).statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: listVMs, error: %v", err)
+			klog.Errorf("failed to response, methods: listVMs, error: %v", err)
 		}
 		return
 	}
@@ -72,7 +72,7 @@ func (s *Server) listVMs(req *restful.Request, resp *restful.Response) {
 	res.payload(vms).statusCode(http.StatusOK)
 
 	if err = resp.WriteEntity(res); err != nil {
-		glog.Errorf("failed to response, method: listVMs, error: %v", err)
+		klog.Errorf("failed to response, method: listVMs, error: %v", err)
 	}
 }
 
@@ -85,7 +85,7 @@ func (s *Server) startVM(req *restful.Request, resp *restful.Response) {
 		res.message(fmt.Sprintf("failed to get vm %s, error: %v", name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: startVM, error: %v", err)
+			klog.Errorf("failed to response, methods: startVM, error: %v", err)
 		}
 		return
 	}
@@ -93,7 +93,7 @@ func (s *Server) startVM(req *restful.Request, resp *restful.Response) {
 	if targetVM == nil {
 		res.message(fmt.Sprintf("vm %s not found", name)).statusCode(http.StatusNotFound)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: startVM, error: %v", err)
+			klog.Errorf("failed to response, methods: startVM, error: %v", err)
 		}
 		return
 	}
@@ -110,7 +110,7 @@ func (s *Server) stopVM(req *restful.Request, resp *restful.Response) {
 		res.message(fmt.Sprintf("failed to get vm %s, error: %v", name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: stopVM, error: %v", err)
+			klog.Errorf("failed to response, methods: stopVM, error: %v", err)
 		}
 		return
 	}
@@ -118,7 +118,7 @@ func (s *Server) stopVM(req *restful.Request, resp *restful.Response) {
 	if targetVM == nil {
 		res.message(fmt.Sprintf("vm %s not found", name)).statusCode(http.StatusNotFound)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: stopVM, error: %v", err)
+			klog.Errorf("failed to response, methods: stopVM, error: %v", err)
 		}
 		return
 	}
@@ -178,7 +178,7 @@ func (s *Server) action(
 		res.message(fmt.Sprintf("failed to %s, error: %v", method, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: %s, error: %v", method, err)
+			klog.Errorf("failed to response, methods: %s, error: %v", method, err)
 		}
 		return
 	}
@@ -186,7 +186,7 @@ func (s *Server) action(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		glog.Errorf("failed to response, method: %s, error: %v", method, err)
+		klog.Errorf("failed to response, method: %s, error: %v", method, err)
 	}
 }
 
@@ -202,7 +202,7 @@ func (s *Server) vmAction(
 		res.message(fmt.Sprintf("failed to %s vm: %s, error: %v", method, targetVM.Name, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: %s, error: %v", method, err)
+			klog.Errorf("failed to response, methods: %s, error: %v", method, err)
 		}
 		return
 	}
@@ -210,7 +210,7 @@ func (s *Server) vmAction(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		glog.Errorf("failed to response, method: %s, error: %v", method, err)
+		klog.Errorf("failed to response, method: %s, error: %v", method, err)
 	}
 }
 
@@ -226,7 +226,7 @@ func (s *Server) kubeProxyAction(
 		res.message(fmt.Sprintf("failed to invoke %s, nodeName: %s, error: %v", method, nodeName, err)).
 			statusCode(http.StatusInternalServerError)
 		if err = resp.WriteEntity(res); err != nil {
-			glog.Errorf("failed to response, methods: %s, error: %v", method, err)
+			klog.Errorf("failed to response, methods: %s, error: %v", method, err)
 		}
 		return
 	}
@@ -234,7 +234,7 @@ func (s *Server) kubeProxyAction(
 	res.message("OK").statusCode(http.StatusOK)
 
 	if err := resp.WriteEntity(res); err != nil {
-		glog.Errorf("failed to response, method: %s, error: %v", method, err)
+		klog.Errorf("failed to response, method: %s, error: %v", method, err)
 	}
 }
 

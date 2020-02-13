@@ -30,6 +30,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 )
 
 const (
@@ -59,6 +60,7 @@ type tidbInitManager struct {
 	jobLister    batchlisters.JobLister
 	genericCli   client.Client
 	tiLister     listers.TidbInitializerLister
+	tcLister     listers.TidbClusterLister
 	typedControl controller.TypedControlInterface
 }
 
@@ -67,12 +69,14 @@ func NewTiDBInitManager(
 	jobLister batchlisters.JobLister,
 	genericCli client.Client,
 	tiLister listers.TidbInitializerLister,
+	tcLister listers.TidbClusterLister,
 	typedControl controller.TypedControlInterface,
 ) InitManager {
 	return &tidbInitManager{
 		jobLister,
 		genericCli,
 		tiLister,
+		tcLister,
 		typedControl,
 	}
 }
@@ -134,6 +138,7 @@ func (tm *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) e
 	name := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 	ns := ti.Namespace
 	cm := &corev1.ConfigMap{}
+	tcName := ti.Spec.Clusters.Name
 
 	exist, err := tm.typedControl.Exist(client.ObjectKey{
 		Namespace: ns,
@@ -146,7 +151,12 @@ func (tm *tidbInitManager) syncTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) e
 		return nil
 	}
 
-	newCm, err := getTiDBInitConfigMap(ti)
+	tc, err := tm.tcLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		return err
+	}
+
+	newCm, err := getTiDBInitConfigMap(ti, tc.Spec.TiDB.IsTLSClientEnabled())
 	if err != nil {
 		return err
 	}
@@ -187,6 +197,13 @@ func (tm *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 
 func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv1.Job, error) {
 	jobName := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
+	ns := ti.Namespace
+	tcName := ti.Spec.Clusters.Name
+
+	tc, err := tm.tcLister.TidbClusters(ns).Get(tcName)
+	if err != nil {
+		return nil, err
+	}
 
 	var envs []corev1.EnvVar
 	if ti.Spec.Timezone != "" {
@@ -207,6 +224,21 @@ func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batch
 
 	var vms []corev1.VolumeMount
 	var vs []corev1.Volume
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		vms = append(vms, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		vs = append(vs, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBClientTLSSecretName(tcName),
+				},
+			},
+		})
+	}
 	vms = append(vms, corev1.VolumeMount{
 		Name:      startKey,
 		ReadOnly:  true,
@@ -335,7 +367,7 @@ func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batch
 	return job, nil
 }
 
-func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) (*corev1.ConfigMap, error) {
+func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer, tlsClientEnabled bool) (*corev1.ConfigMap, error) {
 	var initSQL, passwdSet bool
 
 	permitHost := ti.GetPermitHost()
@@ -354,12 +386,19 @@ func getTiDBInitConfigMap(ti *v1alpha1.TidbInitializer) (*corev1.ConfigMap, erro
 		return nil, err
 	}
 
-	startScript, err := RenderTiDBInitStartScript(&TiDBInitStartScriptModel{
+	initModel := &TiDBInitStartScriptModel{
 		ClusterName: ti.Spec.Clusters.Name,
 		PermitHost:  permitHost,
 		InitSQL:     initSQL,
 		PasswordSet: passwdSet,
-	})
+	}
+	if tlsClientEnabled {
+		initModel.TLS = true
+		initModel.CAPath = path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)
+		initModel.CertPath = path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)
+		initModel.KeyPath = path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)
+	}
+	startScript, err := RenderTiDBInitStartScript(initModel)
 	if err != nil {
 		return nil, err
 	}

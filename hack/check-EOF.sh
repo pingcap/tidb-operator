@@ -33,6 +33,7 @@ FILELIST=($(find . -type f -not \( -path './vendor/*' \
     -o -path './.idea/*' \
     -o -path './.DS_Store' \
     -o -path './*/.DS_Store' \
+    -o -path './data' \
     \)))
 
 NUM=0

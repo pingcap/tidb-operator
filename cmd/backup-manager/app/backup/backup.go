@@ -14,35 +14,46 @@
 package backup
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os/exec"
+	"path"
+	"strings"
 
 	"github.com/gogo/protobuf/proto"
-	glog "k8s.io/klog"
-
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	Namespace  string
-	BackupName string
-}
-
-func (bo *Options) String() string {
-	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
+	backupUtil.GenericOptions
 }
 
 func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
-	args, path, err := constructOptions(backup)
+	clusterNamespace := backup.Spec.BR.ClusterNamespace
+	if backup.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = backup.Namespace
+	}
+	args, remotePath, err := constructOptions(backup)
 	if err != nil {
 		return "", err
 	}
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
+	if bo.TLSCluster {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
+	}
+
 	var btype string
 	if backup.Spec.Type == "" {
 		btype = string(v1alpha1.BackupTypeFull)
@@ -54,19 +65,53 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		btype,
 	}
 	fullArgs = append(fullArgs, args...)
-	glog.Infof("Running br command with args: %v", fullArgs)
-	output, err := exec.Command("br", fullArgs...).CombinedOutput()
+	klog.Infof("Running br command with args: %v", fullArgs)
+	bin := "br" + backupUtil.Suffix(bo.TiKVVersion)
+	cmd := exec.Command(bin, fullArgs...)
+
+	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
+		return remotePath, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
 	}
-	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
-	return path, nil
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
+	}
+	err = cmd.Start()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+	}
+	var errMsg string
+	reader := bufio.NewReader(stdOut)
+	for {
+		line, err := reader.ReadString('\n')
+		if strings.Contains(line, "[ERROR]") {
+			errMsg += line
+		}
+
+		klog.Infof(strings.Replace(line, "\n", "", -1))
+		if err != nil || io.EOF == err {
+			break
+		}
+	}
+	tmpErr, _ := ioutil.ReadAll(stdErr)
+	if len(tmpErr) > 0 {
+		klog.Infof(string(tmpErr))
+		errMsg += string(tmpErr)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	klog.Infof("Backup data for cluster %s successfully", bo)
+	return remotePath, nil
 }
 
 // getCommitTs get backup position from `EndVersion` in BR backup meta
 func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 	var commitTs uint64
-	s, err := util.NewRemoteStorage(backup)
+	s, err := backupUtil.NewRemoteStorage(backup)
 	if err != nil {
 		return commitTs, err
 	}
@@ -94,9 +139,9 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 
 // constructOptions constructs options for BR and also return the remote path
 func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	args, path, err := util.ConstructBRGlobalOptionsForBackup(backup)
+	args, remotePath, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
-		return args, path, err
+		return args, remotePath, err
 	}
 	config := backup.Spec.BR
 	if config.Concurrency != nil {
@@ -111,13 +156,13 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
-	return args, path, nil
+	return args, remotePath, nil
 }
 
 // getBackupSize get the backup data size from remote
 func getBackupSize(backup *v1alpha1.Backup) (int64, error) {
 	var size int64
-	s, err := util.NewRemoteStorage(backup)
+	s, err := backupUtil.NewRemoteStorage(backup)
 	if err != nil {
 		return size, err
 	}

@@ -238,14 +238,7 @@ echo "init tidb-operator env"
 $KUBECTL_BIN apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
 $KUBECTL_BIN apply -f ${ROOT}/manifests/tiller-rbac.yaml
 $KUBECTL_BIN apply -f ${ROOT}/manifests/crd.yaml
-$KUBECTL_BIN create ns tidb-operator-e2e
 $HELM_BIN init --service-account=tiller --wait
-
-# This is required because current tidb-operator-e2e use a DIND-only image `mirantis/hypokube:final`
-# FIXME: remove this
-docker pull gcr.io/google-containers/kube-scheduler:${k8sVersion}
-docker tag gcr.io/google-containers/kube-scheduler:${k8sVersion} mirantis/hypokube:final
-$KIND_BIN load docker-image --name=${clusterName} mirantis/hypokube:final
 
 echo "############# success create cluster:[${clusterName}] #############"
 

@@ -3,7 +3,8 @@ set -euo pipefail
 host=$(getent hosts {{ template "cluster.name" . }}-tidb | head | awk '{print $1}')
 
 backupName=scheduled-backup-`date "+%Y%m%d-%H%M%S"`
-backupPath=/data/${backupName}
+backupBase=/data
+backupPath=${backupBase}/${backupName}
 
 echo "making dir ${backupPath}"
 mkdir -p ${backupPath}
@@ -37,10 +38,29 @@ echo "Reset TiKV GC life time to ${gc_life_time}"
 /usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
 {{- if .Values.scheduledBackup.gcp }}
-uploader \
-  --cloud=gcp \
-  --bucket={{ .Values.scheduledBackup.gcp.bucket }} \
-  --backup-dir=${backupPath}
+# Once we know there are no more credentials that will be logged we can run with -x
+set -x
+bucket={{ .Values.scheduledBackup.gcp.bucket }}
+creds=${GOOGLE_APPLICATION_CREDENTIALS:-""}
+if ! [[ -z $creds ]] ; then
+creds="service_account_file = ${creds}"
+fi
+
+cat <<EOF > /tmp/rclone.conf
+[gcp]
+type = google cloud storage
+bucket_policy_only = true
+$creds
+EOF
+
+cd "${backupBase}"
+{{- if .Values.scheduledBackup.gcp.prefix }}
+tar -cf - "${backupName}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/{{ .Values.scheduledBackup.gcp.prefix }}/${backupName}/${backupName}.tgz
+{{- else }}
+tar -cf - "${backupName}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/${backupName}/${backupName}.tgz
+{{- end }}
 {{- end }}
 
 {{- if .Values.scheduledBackup.ceph }}
@@ -52,11 +72,26 @@ uploader \
 {{- end }}
 
 {{- if .Values.scheduledBackup.s3 }}
-uploader \
-  --cloud=aws \
-  --region={{ .Values.scheduledBackup.s3.region }} \
-  --bucket={{ .Values.scheduledBackup.s3.bucket }} \
-  --backup-dir=${backupPath}
+# Once we know there are no more credentials that will be logged we can run with -x
+set -x
+bucket={{ .Values.scheduledBackup.s3.bucket }}
+
+cat <<EOF > /tmp/rclone.conf
+[s3]
+type = s3
+provider = AWS
+env_auth = true
+region = {{ .Values.scheduledBackup.s3.region }}
+EOF
+
+cd "${backupBase}"
+{{- if .Values.scheduledBackup.s3.prefix }}
+tar -cf - "${backupName}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat s3:${bucket}/{{ .Values.scheduledBackup.s3.prefix }}/${backupName}/${backupName}.tgz
+{{- else }}
+tar -cf - "${backupName}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat s3:${bucket}/${backupName}/${backupName}.tgz
+{{- end }}
 {{- end }}
 
 {{- if and (.Values.scheduledBackup.cleanupAfterUpload) (or (.Values.scheduledBackup.gcp) (or .Values.scheduledBackup.ceph .Values.scheduledBackup.s3)) }}

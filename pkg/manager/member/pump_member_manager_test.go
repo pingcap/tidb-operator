@@ -455,7 +455,6 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 		cmControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
-		cmInformer.Lister(),
 		podInformer.Lister(),
 	}
 	controls := &pumpFakeControls{

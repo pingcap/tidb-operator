@@ -32,7 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -218,7 +218,7 @@ func TiKVCapacity(limits corev1.ResourceList) string {
 	}
 	i, b := q.AsInt64()
 	if !b {
-		glog.Errorf("quantity %s can't be converted to int64", q.String())
+		klog.Errorf("quantity %s can't be converted to int64", q.String())
 		return defaultArgs
 	}
 	if i%humanize.GiByte == 0 {
@@ -245,6 +245,16 @@ func TiKVMemberName(clusterName string) string {
 // TiKVPeerMemberName returns tikv peer service name
 func TiKVPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv-peer", clusterName)
+}
+
+// TiFlashMemberName returns tiflash member name
+func TiFlashMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiflash", clusterName)
+}
+
+// TiFlashPeerMemberName returns tiflash peer service name
+func TiFlashPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiflash-peer", clusterName)
 }
 
 // TiDBMemberName returns tidb member name
@@ -436,7 +446,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		controllerObj, err := fn(meta.GetNamespace(), ref.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				glog.V(4).Infof("controller %s/%s of %s/%s not found, ignore",
+				klog.V(4).Infof("controller %s/%s of %s/%s not found, ignore",
 					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName())
 			} else {
 				utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s of %s/%s",

@@ -13,11 +13,6 @@
 
 package v1alpha1
 
-import (
-	"strconv"
-	"strings"
-)
-
 // Maintain a copy of PDConfig to make it more friendly with the kubernetes API:
 //
 //  - add 'omitempty' json and toml tag to avoid passing the empty value of primitive types to tidb-server, e.g. 0 of int
@@ -33,7 +28,6 @@ import (
 // PDConfig is the configuration of pd-server
 // +k8s:openapi-gen=true
 type PDConfig struct {
-
 	// +optional
 	ForceNewCluster *bool `json:"force-new-cluster,omitempty"`
 	// Optional: Defaults to true
@@ -124,6 +118,16 @@ type PDConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
+
+	// +optional
+	Dashboard *DashboardConfig `toml:"dashboard,omitempty" json:"dashboard,omitempty"`
+}
+
+// DashboardConfig is the configuration for tidb-dashboard.
+type DashboardConfig struct {
+	TiDBCAPath   string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
+	TiDBCertPath string `toml:"tidb-cert-path,omitempty" json:"tidb_cert_path,omitempty"`
+	TiDBKeyPath  string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
@@ -177,11 +181,16 @@ type PDReplicationConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +k8s:openapi-gen=false
 	// +optional
-	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
+	LocationLabels []string `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
-	// Immutable, change should be made through pd-ctl after cluster creation
+	// Immutable, change should be made through pd-ctl after cluster creation.
+	// Imported from v3.1.0
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
+
+	// When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.
+	// +optional
+	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,string,omitempty"`
 }
 
 // PDNamespaceConfig is to overwrite the global setting for specific namespace
@@ -247,8 +256,9 @@ type PDScheduleConfig struct {
 	// +optional
 	MaxStoreDownTime string `toml:"max-store-down-time,omitempty" json:"max-store-down-time,omitempty"`
 	// LeaderScheduleLimit is the max coexist leader schedules.
-	// Immutable, change should be made through pd-ctl after cluster creation
-	// Optional: Defaults to 4
+	// Immutable, change should be made through pd-ctl after cluster creation.
+	// Optional: Defaults to 4.
+	// Imported from v3.1.0
 	// +optional
 	LeaderScheduleLimit *uint64 `toml:"leader-schedule-limit,omitempty" json:"leader-schedule-limit,omitempty"`
 	// RegionScheduleLimit is the max coexist region schedules.
@@ -278,7 +288,8 @@ type PDScheduleConfig struct {
 	// +optional
 	HotRegionCacheHitsThreshold *uint64 `toml:"hot-region-cache-hits-threshold,omitempty" json:"hot-region-cache-hits-threshold,omitempty"`
 	// TolerantSizeRatio is the ratio of buffer size for balance scheduler.
-	// Immutable, change should be made through pd-ctl after cluster creation
+	// Immutable, change should be made through pd-ctl after cluster creation.
+	// Imported from v3.1.0
 	// +optional
 	TolerantSizeRatio *float64 `toml:"tolerant-size-ratio,omitempty" json:"tolerant-size-ratio,omitempty"`
 	//
@@ -337,6 +348,20 @@ type PDScheduleConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
 	Schedulers *PDSchedulerConfigs `toml:"schedulers,omitempty" json:"schedulers-v2,omitempty"` // json v2 is for the sake of compatible upgrade
+
+	// Only used to display
+	// +optional
+	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
+
+	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
+	// Imported from v3.1.0
+	// +optional
+	EnableOneWayMerge *bool `toml:"enable-one-way-merge" json:"enable-one-way-merge,string,omitempty"`
+	// EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
+	// This option only works when key type is "table".
+	// Imported from v3.1.0
+	// +optional
+	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge" json:"enable-cross-table-merge,string,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig
@@ -380,6 +405,10 @@ type PDSecurityConfig struct {
 	// KeyPath is the path of file that contains X509 key in PEM format.
 	// +optional
 	KeyPath string `toml:"key-path,omitempty" json:"key-path,omitempty"`
+	// CertAllowedCN is the Common Name that allowed
+	// +optional
+	// +k8s:openapi-gen=false
+	CertAllowedCN []string `toml:"cert-allowed-cn,omitempty" json:"cert-allowed-cn,omitempty"`
 }
 
 // PDServerConfig is the configuration for pd server.
@@ -388,6 +417,11 @@ type PDServerConfig struct {
 	// UseRegionStorage enables the independent region storage.
 	// +optional
 	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,string,omitempty"`
+	// MetricStorage is the cluster metric storage.
+	// Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
+	// Imported from v3.1.0
+	// +optional
+	MetricStorage *string `toml:"metric-storage" json:"metric-storage,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -403,35 +437,18 @@ type PDMetricConfig struct {
 // +k8s:openapi-gen=true
 type FileLogConfig struct {
 	// Log filename, leave empty to disable file log.
-	Filename string `toml:"filename,omitempty" json:"filename,omitempty"`
+	// +optional
+	Filename *string `toml:"filename,omitempty" json:"filename,omitempty"`
 	// Is log rotate enabled.
-	LogRotate bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
+	// +optional
+	LogRotate *bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
 	// Max size for a single file, in MB.
-	MaxSize int `toml:"max-size,omitempty" json:"max-size,omitempty"`
+	// +optional
+	MaxSize *int `toml:"max-size,omitempty" json:"max-size,omitempty"`
 	// Max log keep days, default is never deleting.
-	MaxDays int `toml:"max-days,omitempty" json:"max-days,omitempty"`
+	// +optional
+	MaxDays *int `toml:"max-days,omitempty" json:"max-days,omitempty"`
 	// Maximum number of old log files to retain.
-	MaxBackups int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
-}
-
-//StringSlice is more friendly to json encode/decode
-type StringSlice []string
-
-// MarshalJSON returns the size as a JSON string.
-func (s StringSlice) MarshalJSON() ([]byte, error) {
-	return []byte(strconv.Quote(strings.Join(s, ","))), nil
-}
-
-// UnmarshalJSON parses a JSON string into the bytesize.
-func (s *StringSlice) UnmarshalJSON(text []byte) error {
-	data, err := strconv.Unquote(string(text))
-	if err != nil {
-		return err
-	}
-	if len(data) == 0 {
-		*s = nil
-		return nil
-	}
-	*s = strings.Split(data, ",")
-	return nil
+	// +optional
+	MaxBackups *int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
 }

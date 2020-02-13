@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -66,14 +66,14 @@ func (oa *operatorActions) LabelNodes() error {
 		err := wait.PollImmediate(3*time.Second, time.Minute, func() (bool, error) {
 			n, err := oa.kubeCli.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
 			if err != nil {
-				glog.Errorf("get node:[%s] failed! error: %v", node.Name, err)
+				klog.Errorf("get node:[%s] failed! error: %v", node.Name, err)
 				return false, nil
 			}
 			index := i % RackNum
 			n.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
 			_, err = oa.kubeCli.CoreV1().Nodes().Update(n)
 			if err != nil {
-				glog.Errorf("label node:[%s] failed! error: %v", node.Name, err)
+				klog.Errorf("label node:[%s] failed! error: %v", node.Name, err)
 				return false, nil
 			}
 			return true, nil

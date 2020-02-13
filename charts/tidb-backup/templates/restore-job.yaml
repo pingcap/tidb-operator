@@ -25,9 +25,16 @@ spec:
     {{- end }}
     spec:
       restartPolicy: OnFailure
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
       containers:
       - name: tidb-restore-job
         image: {{ .Values.image.backup }}
+        imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+    {{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+    {{- end }}
         command:
         - /bin/sh
         - -c
@@ -74,10 +81,20 @@ spec:
             secretKeyRef:
               name: {{ .Values.secretName }}
               key: password
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+    {{- end }}
       volumes:
       - name: data
         persistentVolumeClaim:
-    {{- if .Values.scheduledBackupName }}
+    {{- if not .Values.restoreUsingExistingVolume }}
+          claimName: restore-{{ .Values.name }}
+    {{- else if .Values.scheduledBackupName }}
           claimName: {{ .Values.name }}-scheduled-backup
     {{- else }}
           claimName: {{ .Values.name }}

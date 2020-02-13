@@ -23,9 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	core "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -35,7 +33,7 @@ func TestConfigMapControlCreatesConfigMaps(t *testing.T) {
 	tc := newTidbCluster()
 	cm := newConfigMap()
 	fakeClient := &fake.Clientset{}
-	control := NewRealConfigMapControl(fakeClient, nil, recorder)
+	control := NewRealConfigMapControl(fakeClient, recorder)
 	fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		create := action.(core.CreateAction)
 		return true, create.GetObject(), nil
@@ -54,7 +52,7 @@ func TestConfigMapControlCreatesConfigMapFailed(t *testing.T) {
 	tc := newTidbCluster()
 	cm := newConfigMap()
 	fakeClient := &fake.Clientset{}
-	control := NewRealConfigMapControl(fakeClient, nil, recorder)
+	control := NewRealConfigMapControl(fakeClient, recorder)
 	fakeClient.AddReactor("create", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
@@ -73,7 +71,7 @@ func TestConfigMapControlUpdateConfigMap(t *testing.T) {
 	cm := newConfigMap()
 	cm.Data["file"] = "test"
 	fakeClient := &fake.Clientset{}
-	control := NewRealConfigMapControl(fakeClient, nil, recorder)
+	control := NewRealConfigMapControl(fakeClient, recorder)
 	fakeClient.AddReactor("update", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
 		return true, update.GetObject(), nil
@@ -90,13 +88,9 @@ func TestConfigMapControlUpdateConfigMapConflictSuccess(t *testing.T) {
 	cm := newConfigMap()
 	cm.Data["file"] = "test"
 	fakeClient := &fake.Clientset{}
-	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	oldcm := newConfigMap()
 	oldcm.Data["file"] = "test2"
-	err := indexer.Add(oldcm)
-	g.Expect(err).To(Succeed())
-	cmLister := corelisters.NewConfigMapLister(indexer)
-	control := NewRealConfigMapControl(fakeClient, cmLister, recorder)
+	control := NewRealConfigMapControl(fakeClient, recorder)
 	conflict := false
 	fakeClient.AddReactor("update", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		update := action.(core.UpdateAction)
@@ -117,7 +111,7 @@ func TestConfigMapControlDeleteConfigMap(t *testing.T) {
 	tc := newTidbCluster()
 	cm := newConfigMap()
 	fakeClient := &fake.Clientset{}
-	control := NewRealConfigMapControl(fakeClient, nil, recorder)
+	control := NewRealConfigMapControl(fakeClient, recorder)
 	fakeClient.AddReactor("delete", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
@@ -134,7 +128,7 @@ func TestConfigMapControlDeleteConfigMapFailed(t *testing.T) {
 	tc := newTidbCluster()
 	cm := newConfigMap()
 	fakeClient := &fake.Clientset{}
-	control := NewRealConfigMapControl(fakeClient, nil, recorder)
+	control := NewRealConfigMapControl(fakeClient, recorder)
 	fakeClient.AddReactor("delete", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})

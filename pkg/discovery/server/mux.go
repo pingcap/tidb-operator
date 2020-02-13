@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery"
 	"k8s.io/client-go/kubernetes"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type server struct {
@@ -38,17 +38,17 @@ func StartServer(cli versioned.Interface, kubeCli kubernetes.Interface, port int
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(svr.newHandler))
 	restful.Add(ws)
 
-	glog.Infof("starting TiDB Discovery server, listening on 0.0.0.0:%d", port)
-	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	klog.Infof("starting TiDB Discovery server, listening on 0.0.0.0:%d", port)
+	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
 func (svr *server) newHandler(req *restful.Request, resp *restful.Response) {
 	encodedAdvertisePeerURL := req.PathParameter("advertise-peer-url")
 	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
 	if err != nil {
-		glog.Errorf("failed to decode advertise-peer-url: %s", encodedAdvertisePeerURL)
+		klog.Errorf("failed to decode advertise-peer-url: %s", encodedAdvertisePeerURL)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			glog.Errorf("failed to writeError: %v", err)
+			klog.Errorf("failed to writeError: %v", err)
 		}
 		return
 	}
@@ -56,15 +56,15 @@ func (svr *server) newHandler(req *restful.Request, resp *restful.Response) {
 
 	result, err := svr.discovery.Discover(advertisePeerURL)
 	if err != nil {
-		glog.Errorf("failed to discover: %s, %v", advertisePeerURL, err)
+		klog.Errorf("failed to discover: %s, %v", advertisePeerURL, err)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			glog.Errorf("failed to writeError: %v", err)
+			klog.Errorf("failed to writeError: %v", err)
 		}
 		return
 	}
 
-	glog.Infof("generated args for %s: %s", advertisePeerURL, result)
+	klog.Infof("generated args for %s: %s", advertisePeerURL, result)
 	if _, err := io.WriteString(resp, result); err != nil {
-		glog.Errorf("failed to writeString: %s, %v", result, err)
+		klog.Errorf("failed to writeString: %s, %v", result, err)
 	}
 }

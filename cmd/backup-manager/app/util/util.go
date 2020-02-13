@@ -19,14 +19,22 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/spf13/pflag"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 var (
-	cmdHelpMsg string
+	cmdHelpMsg        string
+	supportedVersions = map[string]struct{}{
+		"3.1": {},
+		"4.0": {},
+	}
+	// DefaultVersion is the default tikv and br version
+	DefaultVersion = "4.0"
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
@@ -98,17 +106,10 @@ func NormalizeBucketURI(bucket string) string {
 	return strings.Replace(bucket, "://", ":", 1)
 }
 
-// SetFlagsFromEnv set the environment variable. Will override default values, but be overridden by command line parameters.
-func SetFlagsFromEnv(flags *pflag.FlagSet, prefix string) error {
-	flags.VisitAll(func(f *pflag.Flag) {
-		envVar := prefix + "_" + strings.Replace(strings.ToUpper(f.Name), "-", "_", -1)
-		value := os.Getenv(envVar)
-		if value != "" {
-			flags.Set(f.Name, value)
-		}
-	})
-
-	return nil
+// GetOptionValueFromEnv get option's value from environment variable. If unset, return empty string.
+func GetOptionValueFromEnv(option, envPrefix string) string {
+	envVar := envPrefix + "_" + strings.Replace(strings.ToUpper(option), "-", "_", -1)
+	return os.Getenv(envVar)
 }
 
 // ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.
@@ -119,7 +120,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config)...)
-	storageArgs, path, err := getRemoteStorage(backup.Spec.StorageProvider)
+	storageArgs, remotePath, err := getRemoteStorage(backup.Spec.StorageProvider)
 	if err != nil {
 		return nil, "", err
 	}
@@ -130,7 +131,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 	if backup.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
 		args = append(args, fmt.Sprintf("--table=%s", config.Table))
 	}
-	return args, path, nil
+	return args, remotePath, nil
 }
 
 // ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
@@ -158,16 +159,6 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 // constructBRGlobalOptions constructs BR basic global options.
 func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {
 	var args []string
-	args = append(args, fmt.Sprintf("--pd=%s", config.PDAddress))
-	if config.CA != "" {
-		args = append(args, fmt.Sprintf("--ca=%s", config.CA))
-	}
-	if config.Cert != "" {
-		args = append(args, fmt.Sprintf("--cert=%s", config.Cert))
-	}
-	if config.Key != "" {
-		args = append(args, fmt.Sprintf("--key=%s", config.Key))
-	}
 	if config.LogLevel != "" {
 		args = append(args, fmt.Sprintf("--log-level=%s", config.LogLevel))
 	}
@@ -178,4 +169,21 @@ func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {
 		args = append(args, fmt.Sprintf("--send-credentials-to-tikv=%t", *config.SendCredToTikv))
 	}
 	return args
+}
+
+// Suffix parses the major and minor version from the string and return the suffix
+func Suffix(version string) string {
+	numS := strings.Split(DefaultVersion, ".")
+	defaultSuffix := numS[0] + numS[1]
+
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return defaultSuffix
+	}
+	parsed := fmt.Sprintf("%d.%d", v.Major(), v.Minor())
+	if _, ok := supportedVersions[parsed]; ok {
+		return fmt.Sprintf("%d%d", v.Major(), v.Minor())
+	}
+	return defaultSuffix
 }

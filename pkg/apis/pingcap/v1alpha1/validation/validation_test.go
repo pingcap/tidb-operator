@@ -23,8 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// TODO: more UTs
-func TestValidateDeletedSlots(t *testing.T) {
+func TestValidateAnnotations(t *testing.T) {
 	successCases := []struct {
 		name string
 		tc   v1alpha1.TidbCluster
@@ -83,7 +82,7 @@ func TestValidateDeletedSlots(t *testing.T) {
 	}
 
 	for _, v := range successCases {
-		if errs := ValidateTidbCluster(&v.tc); len(errs) != 0 {
+		if errs := validateAnnotations(v.tc.ObjectMeta.Annotations, field.NewPath("metadata", "annotations")); len(errs) != 0 {
 			t.Errorf("[%s]: unexpected error: %v", v.name, errs)
 		}
 	}
@@ -160,7 +159,7 @@ func TestValidateDeletedSlots(t *testing.T) {
 	}
 
 	for _, v := range errorCases {
-		errs := ValidateTidbCluster(&v.tc)
+		errs := validateAnnotations(v.tc.ObjectMeta.Annotations, field.NewPath("metadata", "annotations"))
 		if len(errs) != len(v.errs) {
 			t.Errorf("[%s]: expected %d failures, got %d failures: %v", v.name, len(v.errs), len(errs), errs)
 			continue

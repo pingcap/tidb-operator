@@ -64,6 +64,7 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbinitializer"})
 
 	tidbInitializerInformer := informerFactory.Pingcap().V1alpha1().TidbInitializers()
+	tidbClusterInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
@@ -75,6 +76,7 @@ func NewController(
 				jobInformer.Lister(),
 				genericCli,
 				tidbInitializerInformer.Lister(),
+				tidbClusterInformer.Lister(),
 				typedControl,
 			),
 		),

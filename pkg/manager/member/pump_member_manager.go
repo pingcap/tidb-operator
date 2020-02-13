@@ -15,12 +15,14 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,11 +31,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
 	defaultPumpLogLevel = "info"
+	pumpCertVolumeMount = "pump-tls"
+	pumpCertPath        = "/var/lib/pump-tls"
 )
 
 type pumpMemberManager struct {
@@ -43,7 +47,6 @@ type pumpMemberManager struct {
 	cmControl    controller.ConfigMapControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
-	cmLister     corelisters.ConfigMapLister
 	podLister    corelisters.PodLister
 }
 
@@ -55,7 +58,6 @@ func NewPumpMemberManager(
 	cmControl controller.ConfigMapControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	cmLister corelisters.ConfigMapLister,
 	podLister corelisters.PodLister) manager.Manager {
 	return &pumpMemberManager{
 		setControl,
@@ -64,7 +66,6 @@ func NewPumpMemberManager(
 		cmControl,
 		setLister,
 		svcLister,
-		cmLister,
 		podLister,
 	}
 }
@@ -81,13 +82,22 @@ func (pmm *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 //syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
 func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
-
 	oldPumpSetTemp, err := pmm.setLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	notFound := errors.IsNotFound(err)
 	oldPumpSet := oldPumpSetTemp.DeepCopy()
+
+	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
+		return err
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for pump statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
 
 	cm, err := pmm.syncConfigMap(tc, oldPumpSet)
 	if err != nil {
@@ -106,15 +116,14 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return pmm.setControl.CreateStatefulSet(tc, newPumpSet)
 	}
 
-	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
-		return err
-	}
-
 	return updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
 }
 
 func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
 
 	tc.Status.Pump.StatefulSet = &set.Status
 
@@ -136,6 +145,10 @@ func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, se
 }
 
 func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for pump headless service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
 
 	newSvc := getNewPumpHeadlessService(tc)
 	oldSvc, err := pmm.svcLister.Services(newSvc.Namespace).Get(newSvc.Name)
@@ -236,15 +249,31 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
+	if tc.IsTLSClusterEnabled() {
+		securityMap := spec.Config["security"]
+		security := map[string]interface{}{}
+		if securityMap != nil {
+			security = securityMap.(map[string]interface{})
+		}
+
+		security["ssl-ca"] = path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)
+		security["ssl-cert"] = path.Join(pumpCertPath, corev1.TLSCertKey)
+		security["ssl-key"] = path.Join(pumpCertPath, corev1.TLSPrivateKeyKey)
+		spec.Config["security"] = security
+	}
+
 	confText, err := MarshalTOML(spec.Config)
 	if err != nil {
 		return nil, err
 	}
 
 	name := controller.PumpMemberName(tc.Name)
+	confTextStr := string(confText)
+
 	data := map[string]string{
-		"pump-config": string(confText),
+		"pump-config": confTextStr,
 	}
+
 	if basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
 		sum, err := Sha256Sum(data)
 		if err != nil {
@@ -297,6 +326,21 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			},
 		})
 	}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "data",
+			MountPath: "/data",
+		},
+		{
+			Name:      "config",
+			MountPath: "/etc/pump",
+		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: pumpCertVolumeMount, ReadOnly: true, MountPath: pumpCertPath,
+		})
+	}
 	containers := []corev1.Container{
 		{
 			Name:            "pump",
@@ -311,18 +355,9 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				Name:          "pump",
 				ContainerPort: 8250,
 			}},
-			Resources: controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
-			Env:       envs,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "data",
-					MountPath: "/data",
-				},
-				{
-					Name:      "config",
-					MountPath: "/etc/pump",
-				},
-			},
+			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
+			Env:          util.AppendEnv(envs, spec.Env()),
+			VolumeMounts: volumeMounts,
 		},
 	}
 
@@ -344,6 +379,16 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				},
 			},
 		},
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		volumes = append(volumes, corev1.Volume{
+			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
+				},
+			},
+		})
 	}
 
 	volumeClaims := []corev1.PersistentVolumeClaim{

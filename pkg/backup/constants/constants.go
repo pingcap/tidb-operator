@@ -49,4 +49,13 @@ const (
 
 	// BackupManagerEnvVarPrefix represents the environment variable used for tidb-backup-manager must include this prefix
 	BackupManagerEnvVarPrefix = "BACKUP_MANAGER"
+
+	// BR certificate storage path
+	BRCertPath = "/var/lib/br-tls"
+
+	// ServiceAccountCAPath is where is CABundle of serviceaccount locates
+	ServiceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+	// KMS secret env prefix
+	KMSSecretPrefix = "KMS_ENCRYPTED"
 )

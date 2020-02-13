@@ -39,6 +39,8 @@ ARGS="--pd={{ template "cluster.scheme" . }}://${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tikv/tikv.toml
 "
 
+{{ .Values.tikv.postArgScript }}
+
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
 exec /tikv-server ${ARGS}

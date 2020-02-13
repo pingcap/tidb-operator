@@ -20,7 +20,11 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/client-go/discovery"
+	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
@@ -30,12 +34,13 @@ import (
 )
 
 type MonitorManager struct {
-	typedControl     controller.TypedControlInterface
-	deploymentLister appslisters.DeploymentLister
-	tcLister         v1alpha1listers.TidbClusterLister
-	pvLister         corelisters.PersistentVolumeLister
-	pvControl        controller.PVControlInterface
-	recorder         record.EventRecorder
+	discoveryInterface discovery.CachedDiscoveryInterface
+	typedControl       controller.TypedControlInterface
+	deploymentLister   appslisters.DeploymentLister
+	tcLister           v1alpha1listers.TidbClusterLister
+	pvLister           corelisters.PersistentVolumeLister
+	pvControl          controller.PVControlInterface
+	recorder           record.EventRecorder
 }
 
 const (
@@ -52,12 +57,13 @@ func NewMonitorManager(
 	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	return &MonitorManager{
-		typedControl:     typedControl,
-		deploymentLister: kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		tcLister:         informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
-		pvControl:        controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
-		pvLister:         pvLister,
-		recorder:         recorder,
+		discoveryInterface: discoverycachedmemory.NewMemCacheClient(kubeCli.Discovery()),
+		typedControl:       typedControl,
+		deploymentLister:   kubeInformerFactory.Apps().V1().Deployments().Lister(),
+		tcLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
+		pvLister:           pvLister,
+		recorder:           recorder,
 	}
 }
 
@@ -105,8 +111,8 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 }
 
 func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
-	service := getMonitorService(monitor)
-	for _, svc := range service {
+	services := getMonitorService(monitor)
+	for _, svc := range services {
 		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
@@ -147,6 +153,10 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 	}
 
 	targetTcRef := monitor.Spec.Clusters[0]
+	if len(targetTcRef.Namespace) < 1 {
+		targetTcRef.Namespace = monitor.Namespace
+	}
+
 	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
 	if err != nil {
 		return err
@@ -169,7 +179,11 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 		return err
 	}
 
-	deployment := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
 	_, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
@@ -203,8 +217,31 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 		klog.Errorf("tm[%s/%s]'s serviceaccount failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
+	policyRules := []rbac.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Resources: []string{"pods"},
+			Verbs:     []string{"get", "list", "watch"},
+		},
+	}
+	if supported, err := utildiscovery.IsAPIGroupVersionSupported(mm.discoveryInterface, "security.openshift.io/v1"); err != nil {
+		return nil, err
+	} else if supported {
+		// We must use 'anyuid' SecurityContextConstraint to run our container as root.
+		// https://docs.openshift.com/container-platform/4.3/authentication/managing-security-context-constraints.html
+		policyRules = append(policyRules, rbac.PolicyRule{
+			APIGroups:     []string{"security.openshift.io"},
+			ResourceNames: []string{"anyuid"},
+			Resources:     []string{"securitycontextconstraints"},
+			Verbs:         []string{"use"},
+		})
+	}
 	if controller.ClusterScoped {
-		cr := getMonitorClusterRole(monitor)
+		policyRules = append(policyRules, rbac.PolicyRule{
+			NonResourceURLs: []string{"/metrics"},
+			Verbs:           []string{"get"},
+		})
+		cr := getMonitorClusterRole(monitor, policyRules)
 		cr, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, cr)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s clusterrole failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
@@ -219,7 +256,7 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 		return sa, nil
 	}
 
-	role := getMonitorRole(monitor)
+	role := getMonitorRole(monitor, policyRules)
 	role, err = mm.typedControl.CreateOrUpdateRole(monitor, role)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s role failed to sync,err: %v", monitor.Namespace, monitor.Name, err)

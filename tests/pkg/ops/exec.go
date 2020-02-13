@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // ExecOptions passed to ExecWithOptions
@@ -47,7 +47,7 @@ type ExecOptions struct {
 // returning stdout, stderr and error. `options` allowed for
 // additional parameters to be passed.
 func (cli *ClientOps) ExecWithOptions(options ExecOptions) (string, string, error) {
-	glog.Infof("ExecWithOptions %+v", options)
+	klog.Infof("ExecWithOptions %+v", options)
 
 	config, err := client.LoadConfig()
 	if err != nil {

@@ -67,22 +67,46 @@ $creds
 EOF
 
 cd "${backup_base_dir}"
+{{- if .Values.gcp.prefix }}
+tar -cf - "${backup_name}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/{{ .Values.gcp.prefix }}/${backup_name}/${backup_name}.tgz
+{{- else }}
 tar -cf - "${backup_name}" | pigz -p 16 \
   | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/${backup_name}/${backup_name}.tgz
+{{- end }}
 {{- end }}
 
 {{- if .Values.ceph }}
 uploader \
   --cloud=ceph \
+  {{- if .Values.ceph.prefix }}
+  --bucket={{ .Values.ceph.bucket }}/{{ .Values.ceph.prefix }} \
+  {{- else }}
   --bucket={{ .Values.ceph.bucket }} \
+  {{- end }}
   --endpoint={{ .Values.ceph.endpoint }} \
   --backup-dir=${dirname}
 {{- end }}
 
 {{- if .Values.s3 }}
-uploader \
-  --cloud=aws \
-  --region={{ .Values.s3.region }} \
-  --bucket={{ .Values.s3.bucket }} \
-  --backup-dir=${dirname}
+# Once we know there are no more credentials that will be logged we can run with -x
+set -x
+bucket={{ .Values.s3.bucket }}
+
+cat <<EOF > /tmp/rclone.conf
+[s3]
+type = s3
+provider = AWS
+env_auth = true
+region = {{ .Values.s3.region }}
+EOF
+
+cd "${backup_base_dir}"
+{{- if .Values.s3.prefix }}
+tar -cf - "${backup_name}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat s3:${bucket}/{{ .Values.s3.prefix }}/${backup_name}/${backup_name}.tgz
+{{- else }}
+tar -cf - "${backup_name}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat s3:${bucket}/${backup_name}/${backup_name}.tgz
+{{- end }}
 {{- end }}

@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // TidbClusterControlInterface manages TidbClusters
@@ -65,10 +65,10 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 		var updateErr error
 		updateTC, updateErr = rtc.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if updateErr == nil {
-			glog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
+			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
-		glog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
 		if updated, err := rtc.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache

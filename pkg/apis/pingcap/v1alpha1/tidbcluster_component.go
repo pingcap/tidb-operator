@@ -36,6 +36,7 @@ type ComponentAccessor interface {
 	DnsPolicy() corev1.DNSPolicy
 	ConfigUpdateStrategy() ConfigUpdateStrategy
 	BuildPodSpec() corev1.PodSpec
+	Env() []corev1.EnvVar
 }
 
 type componentAccessorImpl struct {
@@ -160,6 +161,10 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	return spec
 }
 
+func (a *componentAccessorImpl) Env() []corev1.EnvVar {
+	return a.ComponentSpec.Env
+}
+
 // BaseTiDBSpec returns the base spec of TiDB servers
 func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiDB.ComponentSpec}
@@ -168,6 +173,11 @@ func (tc *TidbCluster) BaseTiDBSpec() ComponentAccessor {
 // BaseTiKVSpec returns the base spec of TiKV servers
 func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
+}
+
+// BaseTiFlashSpec returns the base spec of TiFlash servers
+func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiFlash.ComponentSpec}
 }
 
 // BasePDSpec returns the base spec of PD servers

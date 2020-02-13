@@ -27,7 +27,7 @@ import (
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // JobControlInterface manages Jobs used in backup、restore and clean
@@ -60,9 +60,9 @@ func (rjc *realJobControl) CreateJob(object runtime.Object, job *batchv1.Job) er
 
 	_, err := rjc.kubeCli.BatchV1().Jobs(ns).Create(job)
 	if err != nil {
-		glog.Errorf("failed to create %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
+		klog.Errorf("failed to create %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
-		glog.V(4).Infof("create %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
+		klog.V(4).Infof("create %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
 	}
 	rjc.recordJobEvent("create", object, job, err)
 	return err
@@ -80,9 +80,9 @@ func (rjc *realJobControl) DeleteJob(object runtime.Object, job *batchv1.Job) er
 	}
 	err := rjc.kubeCli.BatchV1().Jobs(ns).Delete(jobName, opts)
 	if err != nil {
-		glog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
+		klog.Errorf("failed to delete %s job: [%s/%s], cluster: %s, err: %v", strings.ToLower(kind), ns, jobName, instanceName, err)
 	} else {
-		glog.V(4).Infof("delete %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
+		klog.V(4).Infof("delete %s job: [%s/%s] successfully, cluster: %s", strings.ToLower(kind), ns, jobName, instanceName)
 	}
 	rjc.recordJobEvent("delete", object, job, err)
 	return err

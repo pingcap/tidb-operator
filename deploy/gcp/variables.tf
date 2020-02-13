@@ -28,7 +28,7 @@ variable "tidb_version" {
 }
 
 variable "tidb_operator_version" {
-  default = "v1.0.6"
+  default = "v1.1.0-rc.2"
 }
 
 variable "tidb_operator_chart_version" {
@@ -134,7 +134,13 @@ variable "override_values" {
   description = "YAML formatted values that will be passed in to the tidb-cluster helm release"
   default     = ""
 }
+
 variable "override_values_file" {
   description = "The helm values file for TiDB Cluster, path is relative to current working dir"
   default     = ""
+}
+
+variable "create_tidb_cluster_release" {
+  description = "whether creating tidb-cluster helm release"
+  default     = false
 }

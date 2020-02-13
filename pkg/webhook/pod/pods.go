@@ -19,20 +19,18 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	apps "k8s.io/api/apps/v1"
-
-	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
@@ -52,11 +50,18 @@ const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 )
 
+var (
+	AstsControllerServiceAccounts string
+)
+
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
 
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
+	}
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		serviceAccounts.Insert(AstsControllerServiceAccounts)
 	}
 	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{
@@ -77,6 +82,13 @@ type admitPayload struct {
 	tc *v1alpha1.TidbCluster
 	// the pdClient for target tc
 	pdClient pdapi.PDClient
+}
+
+func (pc *PodAdmissionControl) MutatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	if ar.Operation != admission.Create && ar.Operation != admission.Update {
+		return util.ARSuccess()
+	}
+	return pc.mutatePod(ar)
 }
 
 func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
@@ -165,14 +177,10 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARSuccess()
 	}
 
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
-	if err != nil {
-		return util.ARFail(err)
-	}
-
-	// If there was only one replica for this statefulset,admit to delete it.
-	if *ownerStatefulSet.Spec.Replicas == 1 && ordinal == 0 {
-		klog.Infof("tc[%s/%s]'s pd only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
+	// When AdvancedStatefulSet is enabled, the ordinal of the last pod in the statefulset could be a non-zero number,
+	// so we let the deleting request of the last pod pass when spec.replicas <= 1 and status.replicas equals 1
+	if *ownerStatefulSet.Spec.Replicas <= 1 && ownerStatefulSet.Status.Replicas == 1 {
+		klog.Infof("tc[%s/%s]'s statefulset only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
 

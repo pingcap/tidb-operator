@@ -14,12 +14,15 @@
 package monitor
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -32,6 +35,10 @@ import (
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
+}
+
+func buildTidbMonitorLabel(name string) map[string]string {
+	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
 
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
@@ -67,12 +74,11 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		return nil, err
 	}
 
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	cm := &core.ConfigMap{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string]string{
@@ -86,12 +92,11 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 }
 
 func getMonitorSecret(monitor *v1alpha1.TidbMonitor) *core.Secret {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	return &core.Secret{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Data: map[string][]byte{
@@ -102,67 +107,47 @@ func getMonitorSecret(monitor *v1alpha1.TidbMonitor) *core.Secret {
 }
 
 func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccount {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	sa := &core.ServiceAccount{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 	}
 	return sa
 }
 
-func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor) *rbac.ClusterRole {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
 	return &rbac.ClusterRole{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
-		Rules: []rbac.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "list", "watch"},
-			},
-			{
-				NonResourceURLs: []string{"/metrics"},
-				Verbs:           []string{"get"},
-			},
-		},
+		Rules: policyRules,
 	}
 }
 
-func getMonitorRole(monitor *v1alpha1.TidbMonitor) *rbac.Role {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.Role {
 	return &rbac.Role{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
-		Rules: []rbac.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "list", "watch"},
-			},
-		},
+		Rules: policyRules,
 	}
 }
 
 func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	return &rbac.ClusterRoleBinding{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Subjects: []rbac.Subject{
@@ -182,12 +167,11 @@ func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole,
 }
 
 func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1alpha1.TidbMonitor) *rbac.RoleBinding {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
 	return &rbac.RoleBinding{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Subjects: []rbac.Subject{
@@ -206,7 +190,7 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) *apps.Deployment {
+func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.Deployment, error) {
 	deployment := getMonitorDeploymentSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, initContainer)
@@ -219,19 +203,25 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
 	deployment.Spec.Template.Spec.Volumes = volumes
-	return deployment
+	b, err := json.Marshal(deployment.Spec.Template.Spec)
+	if err != nil {
+		return nil, err
+	}
+	if deployment.Annotations == nil {
+		deployment.Annotations = map[string]string{}
+	}
+	deployment.Annotations[controller.LastAppliedPodTemplate] = string(b)
+	return deployment, nil
 }
 
 func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.Deployment {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor()
 	replicas := int32(1)
-	labels := label.NewMonitor().Instance(monitor.Name).Monitor()
 
 	deployment := &apps.Deployment{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Annotations,
 		},
@@ -241,11 +231,11 @@ func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Tid
 				Type: apps.RecreateDeploymentStrategyType,
 			},
 			Selector: &meta.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: buildTidbMonitorLabel(monitor.Name),
 			},
 			Template: core.PodTemplateSpec{
 				ObjectMeta: meta.ObjectMeta{
-					Labels: labels,
+					Labels: buildTidbMonitorLabel(monitor.Name),
 				},
 
 				Spec: core.PodSpec{
@@ -417,8 +407,8 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
-			Name:      "tls-pd-client",
-			MountPath: "/var/lib/pd-client-tls",
+			Name:      "cluster-client-tls",
+			MountPath: util.ClusterClientTLSPath,
 			ReadOnly:  true,
 		})
 	}
@@ -503,6 +493,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
+	sort.Sort(util.SortEnvByName(c.Env))
 	return c
 }
 
@@ -626,10 +617,10 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	if tc.IsTLSClusterEnabled() {
 		defaultMode := int32(420)
 		tlsPDClient := core.Volume{
-			Name: "tls-pd-client",
+			Name: "cluster-client-tls",
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
-					SecretName:  fmt.Sprintf("%s-pd-client", tc.Name),
+					SecretName:  util.ClusterClientTLSSecretName(tc.Name),
 					DefaultMode: &defaultMode,
 				},
 			},
@@ -641,12 +632,19 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 
 func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	var services []*core.Service
-	monitorLabel := label.New().Instance(monitor.Name).Monitor()
-	labels := label.NewMonitor().Instance(monitor.Name).Monitor()
 
 	reloaderPortName := "tcp-reloader"
 	prometheusPortName := "http-prometheus"
 	grafanaPortName := "http-grafana"
+
+	// currently monitor label haven't managedBy label due to 1.0 historical problem.
+	// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
+	// We would add managedBy label key during released 1.2 version
+	selector := map[string]string{
+		label.InstanceLabelKey:  monitor.Name,
+		label.NameLabelKey:      "tidb-cluster",
+		label.ComponentLabelKey: label.TiDBMonitorVal,
+	}
 
 	if monitor.BaseReloaderSpec().PortName() != nil {
 		reloaderPortName = *monitor.BaseReloaderSpec().PortName()
@@ -658,11 +656,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 	}
 
+	promethuesName := fmt.Sprintf("%s-prometheus", monitor.Name)
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
+			Name:            promethuesName,
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 		},
@@ -676,15 +675,20 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				},
 			},
 			Type:     monitor.Spec.Prometheus.Service.Type,
-			Selector: labels,
+			Selector: selector,
 		},
+	}
+	if monitor.BasePrometheusSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+		if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
+			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
+		}
 	}
 
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-reloader", monitor.Name),
+			Name:            fmt.Sprintf("%s-monitor-reloader", monitor.Name),
 			Namespace:       monitor.Namespace,
-			Labels:          monitorLabel,
+			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 		},
@@ -697,12 +701,15 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 					TargetPort: intstr.FromInt(9089),
 				},
 			},
-			Type: monitor.Spec.Reloader.Service.Type,
-			Selector: map[string]string{
-				label.InstanceLabelKey:  monitor.Name,
-				label.ComponentLabelKey: label.TiDBMonitorVal,
-			},
+			Type:     monitor.Spec.Reloader.Service.Type,
+			Selector: selector,
 		},
+	}
+
+	if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+		if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
+			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
+		}
 	}
 
 	services = append(services, prometheusService, reloaderService)
@@ -711,7 +718,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			ObjectMeta: meta.ObjectMeta{
 				Name:            fmt.Sprintf("%s-grafana", monitor.Name),
 				Namespace:       monitor.Namespace,
-				Labels:          monitorLabel,
+				Labels:          buildTidbMonitorLabel(monitor.Name),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 				Annotations:     monitor.Spec.Grafana.Service.Annotations,
 			},
@@ -724,25 +731,29 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 						TargetPort: intstr.FromInt(3000),
 					},
 				},
-				Type: monitor.Spec.Grafana.Service.Type,
-				Selector: map[string]string{
-					label.InstanceLabelKey:  monitor.Name,
-					label.ComponentLabelKey: label.TiDBMonitorVal,
-				},
+				Type:     monitor.Spec.Grafana.Service.Type,
+				Selector: selector,
 			},
 		}
+
+		if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+			if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
+				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+			}
+		}
+
 		services = append(services, grafanaService)
 	}
 	return services
 }
 
 func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
-	monitorLabel := label.New().Instance(monitor.Name).Monitor().Labels()
+	l := buildTidbMonitorLabel(monitor.Name)
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
 			Name:        GetMonitorObjectName(monitor),
 			Namespace:   monitor.Namespace,
-			Labels:      monitorLabel,
+			Labels:      l,
 			Annotations: monitor.Spec.Annotations,
 		},
 

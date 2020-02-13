@@ -25,7 +25,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	restclient "k8s.io/client-go/rest"
 )
@@ -98,11 +98,11 @@ func (c *TkcContext) ToTkcClientConfig() (*TkcClientConfig, error) {
 	// try loading tidb cluster config
 	tcConfigFile, err := tcConfigLocation()
 	if err != nil {
-		glog.V(4).Info("Error getting tidb cluster config file location")
+		klog.V(4).Info("Error getting tidb cluster config file location")
 	} else {
 		tcConfig, err := LoadFile(tcConfigFile)
 		if err != nil {
-			glog.V(4).Info("Error reading tidb cluster config file")
+			klog.V(4).Info("Error reading tidb cluster config file")
 			c.TidbClusterConfig = &TidbClusterConfig{}
 		} else {
 			c.TidbClusterConfig = tcConfig

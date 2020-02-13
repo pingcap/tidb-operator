@@ -84,6 +84,8 @@ const (
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
 	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
+	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
@@ -102,12 +104,34 @@ const (
 	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
 	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
 
+	// AnnTiDBConsecutiveScaleOutCount describes the least consecutive count to scale-out for tidb
+	AnnTiDBConsecutiveScaleOutCount = "tidb.tidb.pingcap.com/consecutive-scale-out-count"
+	// AnnTiDBConsecutiveScaleInCount describes the least consecutive count to scale-in for tidb
+	AnnTiDBConsecutiveScaleInCount = "tidb.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnTiKVConsecutiveScaleOutCount describes the least consecutive count to scale-out for tikv
+	AnnTiKVConsecutiveScaleOutCount = "tikv.tidb.pingcap.com/consecutive-scale-out-count"
+	// AnnTiKVConsecutiveScaleInCount describes the least consecutive count to scale-in for tikv
+	AnnTiKVConsecutiveScaleInCount = "tikv.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnAutoScalingTargetName describes the target TidbCluster Ref Name for the TidbCluserAutoScaler
+	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
+	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
+	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
+	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
+	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
+	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
+	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
+
+	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
+	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+	// TiFlashLabelVal is TiKV label value
+	TiFlashLabelVal string = "tiflash"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
@@ -172,10 +196,10 @@ func NewBackupSchedule() Label {
 	}
 }
 
-// NewMonitor initialize a new label for monitor of tidb-monitor
 func NewMonitor() Label {
 	return Label{
-		NameLabelKey:      TiDBMonitorVal,
+		// NameLabelKey is used to be compatible with helm monitor
+		NameLabelKey:      "tidb-cluster",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
@@ -282,6 +306,12 @@ func (l Label) TiDB() Label {
 // TiKV assigns tikv to component key in label
 func (l Label) TiKV() Label {
 	l.Component(TiKVLabelVal)
+	return l
+}
+
+// TiFlash assigns tiflash to component key in label
+func (l Label) TiFlash() Label {
+	l.Component(TiFlashLabelVal)
 	return l
 }
 

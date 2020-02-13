@@ -37,13 +37,27 @@ resource "local_file" "kubeconfig" {
   filename          = module.eks.kubeconfig_filename
 }
 
+locals {
+  kubeconfig      = "${var.config_output_path}kubeconfig"
+}
+
+resource "null_resource" "kubeconfig" {
+  provisioner "local-exec" {
+    command     = <<EOS
+echo "${local_file.kubeconfig.sensitive_content}" > "${local.kubeconfig}"
+EOS
+  }
+}
+
 provider "helm" {
   alias    = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
   kubernetes {
-    config_path = local_file.kubeconfig.filename
+    config_path = local.kubeconfig
+    # used to delay helm provisioner initialization in apply phrase
+    load_config_file = null_resource.kubeconfig.id != "" ? true : null
   }
 }
 

@@ -17,17 +17,18 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"text/template"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests/slack"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 // Keep will keep the fun running in the period, otherwise the fun return error
@@ -298,4 +299,22 @@ func waitForComponentStatus(c kubernetes.Interface, component string, statusType
 
 func IntPtr(i int) *int {
 	return &i
+}
+
+func DeployReleasedCRDOrDie(version string) {
+	cmd := fmt.Sprintf(`kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml`, version)
+	klog.Info(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		klog.Fatalf(fmt.Sprintf("failed to deploy crd: %v, %s", err, string(res)))
+	}
+}
+
+func CleanReleasedCRDOrDie(version string) {
+	cmd := fmt.Sprintf(`kubectl delete -f https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml`, version)
+	klog.Info(cmd)
+	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		klog.Fatalf(fmt.Sprintf("failed to clean crd: %v, %s", err, string(res)))
+	}
 }

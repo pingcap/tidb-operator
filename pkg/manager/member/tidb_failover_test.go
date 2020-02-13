@@ -19,6 +19,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -200,7 +201,7 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 				t.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(4))
+				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(3))
 				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},
@@ -382,7 +383,8 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 }
 
 func newTiDBFailover() Failover {
-	return &tidbFailover{tidbFailoverPeriod: time.Duration(5 * time.Minute)}
+	recorder := record.NewFakeRecorder(100)
+	return &tidbFailover{tidbFailoverPeriod: time.Duration(5 * time.Minute), recorder: recorder}
 }
 
 func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {

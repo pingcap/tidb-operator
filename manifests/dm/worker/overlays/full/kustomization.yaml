@@ -1,0 +1,4 @@
+bases:
+- ../../base
+patches:
+- dm-worker-pvc.yaml

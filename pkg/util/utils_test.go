@@ -16,9 +16,11 @@ package util
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -121,6 +123,66 @@ func TestGetPodOrdinals(t *testing.T) {
 			}
 			if !got.Equal(tt.deleteSlots) {
 				t.Errorf("expects %v got %v", tt.deleteSlots.List(), got.List())
+			}
+		})
+	}
+}
+
+func TestAppendEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		a    []corev1.EnvVar
+		b    []corev1.EnvVar
+		want []corev1.EnvVar
+	}{
+		{
+			name: "envs whose names exist are ignored",
+			a: []corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+				{
+					Name:  "xxx",
+					Value: "xxx",
+				},
+			},
+			b: []corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "barbar",
+				},
+				{
+					Name:  "new",
+					Value: "bar",
+				},
+				{
+					Name:  "xxx",
+					Value: "yyy",
+				},
+			},
+			want: []corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+				{
+					Name:  "xxx",
+					Value: "xxx",
+				},
+				{
+					Name:  "new",
+					Value: "bar",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := AppendEnv(tt.a, tt.b)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unwant (-want, +got): %s", diff)
 			}
 		})
 	}

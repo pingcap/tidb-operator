@@ -14,6 +14,8 @@
 package member
 
 import (
+	"encoding/json"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -81,8 +83,11 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery rolebinding: %v", err)
 	}
-
-	deploy, err := m.ctrl.CreateOrUpdateDeployment(tc, getTidbDiscoveryDeployment(tc))
+	d, err := getTidbDiscoveryDeployment(tc)
+	if err != nil {
+		return controller.RequeueErrorf("error generating discovery deployment: %v", err)
+	}
+	deploy, err := m.ctrl.CreateOrUpdateDeployment(tc, d)
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
@@ -111,9 +116,9 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment
 	}
 }
 
-func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) *appsv1.Deployment {
+func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, error) {
 	meta, l := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
-	return &appsv1.Deployment{
+	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
 			Replicas: controller.Int32Ptr(1),
@@ -150,6 +155,15 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) *appsv1.Deployment {
 			},
 		},
 	}
+	b, err := json.Marshal(d.Spec.Template.Spec)
+	if err != nil {
+		return nil, err
+	}
+	if d.Annotations == nil {
+		d.Annotations = map[string]string{}
+	}
+	d.Annotations[controller.LastAppliedPodTemplate] = string(b)
+	return d, nil
 }
 
 func getDiscoveryMeta(tc *v1alpha1.TidbCluster, nameFunc func(string) string) (metav1.ObjectMeta, label.Label) {

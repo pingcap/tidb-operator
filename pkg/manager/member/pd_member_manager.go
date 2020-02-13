@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -32,7 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
+)
+
+const (
+	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
+	pdClusterCertPath  = "/var/lib/pd-tls"
+	tidbClientCertPath = "/var/lib/tidb-client-tls"
 )
 
 type pdMemberManager struct {
@@ -40,7 +47,6 @@ type pdMemberManager struct {
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	podControl   controller.PodControlInterface
-	certControl  controller.CertControlInterface
 	typedControl controller.TypedControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
@@ -58,7 +64,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	podControl controller.PodControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -74,7 +79,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		setControl,
 		svcControl,
 		podControl,
-		certControl,
 		typedControl,
 		setLister,
 		svcLister,
@@ -103,6 +107,11 @@ func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -142,6 +151,11 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 }
 
 func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd headless service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -187,6 +201,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	setNotExist := errors.IsNotFound(err)
 
 	oldPDSet := oldPDSetTmp.DeepCopy()
+
+	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	cm, err := pmm.syncPDConfigMap(tc, oldPDSet)
 	if err != nil {
 		return err
@@ -200,25 +224,11 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := pmm.syncPDServerCerts(tc)
-			if err != nil {
-				return err
-			}
-			err = pmm.syncPDClientCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
 		tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{}
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
-	}
-
-	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
 	if !tc.Status.PD.Synced {
@@ -254,63 +264,12 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
 }
 
-func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-pd-client", tcName)
-
-	hostList := []string{
-		commonName,
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: commonName,
-		HostList:   hostList,
-		Component:  "pd",
-		Suffix:     "pd-client",
-	}
-
-	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.PDMemberName(tcName)
-	peerName := controller.PDPeerMemberName(tcName)
-
-	if pmm.certControl.CheckSecret(ns, svcName) {
+func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
 		return nil
 	}
 
-	hostList := []string{
-		svcName,
-		peerName,
-		fmt.Sprintf("%s.%s", svcName, ns),
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
-	}
-
-	ipList := []string{
-		"127.0.0.1", "::1", // able to access https endpoint via loopback network
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		IPList:     ipList,
-		Component:  "pd",
-		Suffix:     "pd",
-	}
-
-	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -364,7 +323,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 		name := memberHealth.Name
 		if len(name) == 0 {
-			glog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
+			klog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
 				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
@@ -389,6 +348,11 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
+	tc.Status.PD.Image = ""
+	c := filterContainer(set, "pd")
+	if c != nil {
+		tc.Status.PD.Image = c.Image
+	}
 
 	// k8s check
 	err = pmm.collectUnjoinedMembers(tc, set, pdStatus)
@@ -461,6 +425,9 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 		if svcSpec.ClusterIP != nil {
 			pdService.Spec.ClusterIP = *svcSpec.ClusterIP
 		}
+		if svcSpec.PortName != nil {
+			pdService.Spec.Ports[0].Name = *svcSpec.PortName
+		}
 	}
 	return pdService
 }
@@ -522,6 +489,16 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	return false, nil
 }
 
+func getFailureReplicas(tc *v1alpha1.TidbCluster) int {
+	failureReplicas := 0
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
+
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -542,6 +519,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
+		})
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
 	}
 
@@ -572,7 +554,16 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.PDMemberName(tcName),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
+				},
+			},
+		})
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBClientTLSSecretName(tc.Name),
 				},
 			},
 		})
@@ -587,12 +578,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	failureReplicas := 0
-	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
+	failureReplicas := getFailureReplicas(tc)
 
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
@@ -653,7 +639,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	pdContainer.Env = env
+	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
 	podSpec.Volumes = vols
 	podSpec.Containers = []corev1.Container{pdContainer}
 
@@ -709,6 +695,25 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if config == nil {
 		return nil, nil
 	}
+
+	// override CA if tls enabled
+	if tc.IsTLSClusterEnabled() {
+		if config.Security == nil {
+			config.Security = &v1alpha1.PDSecurityConfig{}
+		}
+		config.Security.CAPath = path.Join(pdClusterCertPath, tlsSecretRootCAKey)
+		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
+		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+		if config.Dashboard == nil {
+			config.Dashboard = &v1alpha1.DashboardConfig{}
+		}
+		config.Dashboard.TiDBCAPath = path.Join(tidbClientCertPath, tlsSecretRootCAKey)
+		config.Dashboard.TiDBCertPath = path.Join(tidbClientCertPath, corev1.TLSCertKey)
+		config.Dashboard.TiDBKeyPath = path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey)
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err

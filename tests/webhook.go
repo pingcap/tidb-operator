@@ -14,6 +14,7 @@
 package tests
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +42,7 @@ func (oa *operatorActions) setCabundleFromApiServer(info *OperatorConfig) error 
 		if !existed {
 			return fmt.Errorf("failed to get caBundle from configmap[%s/%s]", namespace, name)
 		}
-		info.Cabundle = content
+		info.Cabundle = base64.StdEncoding.EncodeToString([]byte(content))
 		return nil
 	}
 	return nil

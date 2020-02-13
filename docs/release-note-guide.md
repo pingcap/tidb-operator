@@ -6,6 +6,9 @@ When you write a release note for your pull request, make sure that your languag
 
     - ACTION REQUIRED: Add the `timezone` support for [all charts]
 
+  Then, add label `release-note-action-required` onto the PR. This is required
+  by [the tool we use to generate change log](generate-changelog.md).
+
 2. Every note starts with the "do" form of a verb. For example:
 
     - Support backup to S3 with [Backup & Restore (BR)](https://github.com/pingcap/br)

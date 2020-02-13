@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +35,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
+)
+
+const (
+	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
+	tikvClusterCertPath = "/var/lib/tikv-tls"
+
+	//find a better way to manage store only managed by tikv in Operator
+	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -41,7 +51,6 @@ type tikvMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	pdControl                    pdapi.PDControlInterface
-	certControl                  controller.CertControlInterface
 	typedControl                 controller.TypedControlInterface
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
@@ -55,10 +64,10 @@ type tikvMemberManager struct {
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
+func NewTiKVMemberManager(
+	pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -74,7 +83,6 @@ func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
 		nodeLister:   nodeLister,
 		setControl:   setControl,
 		svcControl:   svcControl,
-		certControl:  certControl,
 		typedControl: typedControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
@@ -123,6 +131,11 @@ func (tkmm *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for tikv service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -172,6 +185,16 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	setNotExist := errors.IsNotFound(err)
 
 	oldSet := oldSetTmp.DeepCopy()
+
+	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
+		return err
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for tikv statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	cm, err := tkmm.syncTiKVConfigMap(tc, oldSet)
 	if err != nil {
 		return err
@@ -186,22 +209,12 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := tkmm.syncTiKVServerCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
 		}
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
-	}
-
-	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
-		return err
 	}
 
 	if _, err := tkmm.setStoreLabelsForTiKV(tc); err != nil {
@@ -218,7 +231,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if tkmm.autoFailover {
+	if tkmm.autoFailover && tc.Spec.TiKV.MaxFailoverCount != nil {
 		if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
 			if err := tkmm.tikvFailover.Failover(tc); err != nil {
 				return err
@@ -227,34 +240,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	return updateStatefulSet(tkmm.setControl, tc, newSet, oldSet)
-}
-
-func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.TiKVMemberName(tcName)
-	peerName := controller.TiKVPeerMemberName(tcName)
-
-	if tkmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		peerName,
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		Component:  "tikv",
-		Suffix:     "tikv",
-	}
-
-	return tkmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -359,7 +344,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.TiKVMemberName(tcName),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiKVLabelVal),
 				},
 			},
 		})
@@ -442,7 +427,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		ImagePullPolicy: baseTiKVSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: tc.Spec.TiKV.Privileged,
+			Privileged: tc.TiKVContainerPrivilege(),
 		},
 		Ports: []corev1.ContainerPort{
 			{
@@ -466,11 +451,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
-	tikvContainer.Env = env
+	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
 	podSpec.Volumes = vols
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
 	podSpec.Containers = []corev1.Container{tikvContainer}
+	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -525,6 +511,17 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if config == nil {
 		return nil, nil
 	}
+
+	// override CA if tls enabled
+	if tc.IsTLSClusterEnabled() {
+		if config.Security == nil {
+			config.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.Security.CAPath = path.Join(tikvClusterCertPath, tlsSecretRootCAKey)
+		config.Security.CertPath = path.Join(tikvClusterCertPath, corev1.TLSCertKey)
+		config.Security.KeyPath = path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey)
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
@@ -565,6 +562,10 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 }
 
 func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
 	tc.Status.TiKV.StatefulSet = &set.Status
 	upgrading, err := tkmm.tikvStatefulSetIsUpgradingFn(tkmm.podLister, tkmm.pdControl, set, tc)
 	if err != nil {
@@ -588,7 +589,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(`%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
 	if err != nil {
 		return err
 	}
@@ -605,7 +606,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
 		if status.LastHeartbeatTime.IsZero() {
 			if oldStatus, ok := previousStores[status.ID]; ok {
-				glog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
+				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
 		}
@@ -637,6 +638,11 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
+	tc.Status.TiKV.Image = ""
+	c := filterContainer(set, "tikv")
+	if c != nil {
+		tc.Status.TiKV.Image = c.Image
+	}
 	return nil
 }
 
@@ -679,7 +685,16 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		return setCount, nil
 	}
 
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	if err != nil {
+		return -1, err
+	}
 	for _, store := range storesInfo.Stores {
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
 		status := tkmm.getTiKVStore(store)
 		if status == nil {
 			continue
@@ -694,19 +709,19 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		nodeName := pod.Spec.NodeName
 		ls, err := tkmm.getNodeLabels(nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
-			glog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
 		}
 
 		if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
 			if err != nil {
-				glog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
+				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
 				continue
 			}
 			if set {
 				setCount++
-				glog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
+				klog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
 			}
 		}
 	}

@@ -24,11 +24,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -71,7 +72,7 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 
 // SetStatefulSetLastAppliedConfigAnnotation set last applied config to Statefulset's annotation
 func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
-	setApply, err := encode(set.Spec)
+	setApply, err := util.Encode(set.Spec)
 	if err != nil {
 		return err
 	}
@@ -97,14 +98,6 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 	return spec, &spec.Template.Spec, nil
 }
 
-func encode(obj interface{}) (string, error) {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	if !apiequality.Semantic.DeepEqual(new.Annotations, old.Annotations) {
@@ -114,7 +107,7 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {
-			glog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
+			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
@@ -131,7 +124,7 @@ func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 	if ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldStsSpec)
 		if err != nil {
-			glog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
+			klog.Errorf("unmarshal PodTemplate: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
 		return apiequality.Semantic.DeepEqual(oldStsSpec.Template.Spec, new.Spec.Template.Spec)
@@ -142,7 +135,7 @@ func templateEqual(new *apps.StatefulSet, old *apps.StatefulSet) bool {
 // setUpgradePartition set statefulSet's rolling update partition
 func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
-	glog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
+	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }
 
 func imagePullFailed(pod *corev1.Pod) bool {
@@ -216,6 +209,10 @@ func MarshalTOML(v interface{}) ([]byte, error) {
 	return data, nil
 }
 
+func UnmarshalTOML(b []byte, obj interface{}) error {
+	return toml.Unmarshal(b, obj)
+}
+
 func Sha256Sum(v interface{}) (string, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -271,6 +268,12 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 // updateStatefulSet is a template function to update the statefulset of components
 func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alpha1.TidbCluster, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
+	if newSet.Annotations == nil {
+		newSet.Annotations = map[string]string{}
+	}
+	if oldSet.Annotations == nil {
+		oldSet.Annotations = map[string]string{}
+	}
 	if !statefulSetEqual(*newSet, *oldSet) || isOrphan {
 		set := *oldSet
 		// Retain the deprecated last applied pod template annotation for backward compatibility
@@ -284,6 +287,10 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 		}
 		set.Annotations = newSet.Annotations
+		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
+		if ok {
+			set.Annotations[label.AnnStsLastSyncTimestamp] = v
+		}
 		*set.Spec.Replicas = *newSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
 		if isOrphan {
@@ -298,5 +305,19 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 		return err
 	}
 
+	return nil
+}
+
+func clusterSecretName(tc *v1alpha1.TidbCluster, component string) string {
+	return fmt.Sprintf("%s-%s-cluster-secret", tc.Name, component)
+}
+
+// filter targetContainer by  containerName, If not find, then return nil
+func filterContainer(sts *apps.StatefulSet, containerName string) *corev1.Container {
+	for _, c := range sts.Spec.Template.Spec.Containers {
+		if c.Name == containerName {
+			return &c
+		}
+	}
 	return nil
 }

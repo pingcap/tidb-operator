@@ -26,7 +26,7 @@ func Run() error {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	// fix glog parse error
+	// fix klog parse error
 	flag.CommandLine.Parse([]string{})
 
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)

@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -47,6 +48,10 @@ const (
 	serverCertPath = "/var/lib/tidb-server-tls"
 	// serviceAccountCAPath is where is CABundle of serviceaccount locates
 	serviceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	// tlsSecretRootCAKey is the key used in tls secret for the root CA.
+	// When user use self-signed certificates, the root CA must be provided. We
+	// following the same convention used in Kubernetes service token.
+	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
 )
 
 type tidbMemberManager struct {
@@ -54,7 +59,6 @@ type tidbMemberManager struct {
 	svcControl                   controller.ServiceControlInterface
 	tidbControl                  controller.TiDBControlInterface
 	typedControl                 controller.TypedControlInterface
-	certControl                  controller.CertControlInterface
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
@@ -69,12 +73,10 @@ type tidbMemberManager struct {
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	tidbControl controller.TiDBControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
-	cmLister corelisters.ConfigMapLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
@@ -83,11 +85,9 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		svcControl:                   svcControl,
 		tidbControl:                  tidbControl,
 		typedControl:                 typedControl,
-		certControl:                  certControl,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,
-		cmLister:                     cmLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
 		tidbFailover:                 tidbFailover,
@@ -108,15 +108,21 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
-	// Sync Tidb StatefulSet
-	if err := tmm.syncTiDBStatefulSetForTidbCluster(tc); err != nil {
+	// Sync TiDB Service before syncing TiDB StatefulSet
+	if err := tmm.syncTiDBService(tc); err != nil {
 		return err
 	}
 
-	return tmm.syncTiDBService(tc)
+	// Sync TiDB StatefulSet
+	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
 }
 
 func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb headless service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -164,6 +170,15 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	setNotExist := errors.IsNotFound(err)
 
 	oldTiDBSet := oldTiDBSetTemp.DeepCopy()
+	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
+		return err
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	cm, err := tmm.syncTiDBConfigMap(tc, oldTiDBSet)
 	if err != nil {
 		return err
@@ -175,22 +190,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := tmm.syncTiDBClusterCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
-		if tc.Spec.TiDB.IsTLSClientEnabled() {
-			err := tmm.syncTiDBServerCerts(tc)
-			if err != nil {
-				return err
-			}
-			err = tmm.syncTiDBClientCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
 			return err
@@ -199,17 +198,13 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
-		return err
-	}
-
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}
 	}
 
-	if tmm.autoFailover {
+	if tmm.autoFailover && tc.Spec.TiDB.MaxFailoverCount != nil {
 		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
 		}
@@ -225,101 +220,11 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	return updateStatefulSet(tmm.setControl, tc, newTiDBSet, oldTiDBSet)
 }
 
-// syncTiDBClusterCerts creates the cert pair for TiDB if not exist, the cert
-// pair is used to communicate with other TiDB components, like TiKVs and PDs
-func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.TiDBMemberName(tcName)
-	peerName := controller.TiDBPeerMemberName(tcName)
-
-	if tmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		svcName,
-		peerName,
-		fmt.Sprintf("%s.%s", svcName, ns),
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s", peerName, ns),
-	}
-
-	ipList := []string{
-		"127.0.0.1", "::1", // able to access https endpoint via loopback network
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		IPList:     ipList,
-		Component:  "tidb",
-		Suffix:     "tidb",
-	}
-
-	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-// syncTiDBServerCerts creates the cert pair for TiDB if not exist, the cert
-// pair is used to communicate with DB clients with encrypted connections
-func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) error {
-	suffix := "tidb-server"
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := fmt.Sprintf("%s-%s", tcName, suffix)
-
-	if tmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		svcName,
-		fmt.Sprintf("%s.%s", svcName, ns),
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		Component:  "tidb",
-		Suffix:     suffix,
-	}
-
-	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-// syncTiDBClientCerts creates the cert pair for TiDB if not exist, the cert
-// pair is used for DB clients to connect to TiDB server with encrypted connections
-func (tmm *tidbMemberManager) syncTiDBClientCerts(tc *v1alpha1.TidbCluster) error {
-	suffix := "tidb-client"
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-%s", tcName, suffix)
-
-	if tmm.certControl.CheckSecret(ns, commonName) {
-		return nil
-	}
-
-	hostList := []string{
-		commonName,
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: commonName,
-		HostList:   hostList,
-		Component:  "tidb",
-		Suffix:     suffix,
-	}
-
-	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
 func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
 
 	newSvc := getNewTiDBServiceOrNil(tc)
 	// TODO: delete tidb service if user remove the service spec deliberately
@@ -408,17 +313,17 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.ClusterSSLCA = pointer.StringPtr(serviceAccountCAPath)
-		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, "cert"))
-		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, "key"))
+		config.Security.ClusterSSLCA = pointer.StringPtr(path.Join(clusterCertPath, tlsSecretRootCAKey))
+		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSCertKey))
+		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
-		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, "cert"))
-		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, "key"))
+		config.Security.SSLCA = pointer.StringPtr(path.Join(serverCertPath, tlsSecretRootCAKey))
+		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSCertKey))
+		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
 	}
 	confText, err := MarshalTOML(config)
 	if err != nil {
@@ -474,10 +379,13 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	instanceName := tc.GetInstanceName()
 	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
 	svcName := controller.TiDBMemberName(tcName)
-
+	portName := "mysql-client"
+	if svcSpec.PortName != nil {
+		portName = *svcSpec.PortName
+	}
 	ports := []corev1.ServicePort{
 		{
-			Name:       "mysql-client",
+			Name:       portName,
 			Port:       4000,
 			TargetPort: intstr.FromInt(4000),
 			Protocol:   corev1.ProtocolTCP,
@@ -551,6 +459,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	headlessSvcName := controller.TiDBPeerMemberName(tcName)
 	baseTiDBSpec := tc.BaseTiDBSpec()
 	instanceName := tc.GetInstanceName()
 	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
@@ -598,16 +507,17 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.TiDBMemberName(tcName),
+					SecretName: util.ClusterTLSSecretName(tcName, label.TiDBLabelVal),
 				},
 			},
 		})
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		secretName := tlsClientSecretName(tc)
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-%s", controller.TiDBMemberName(tcName), "server"),
+					SecretName: secretName,
 				},
 			},
 		})
@@ -693,12 +603,28 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:  "SLOW_LOG_FILE",
 			Value: slowLogFileEnvVal,
 		},
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
 	}
 
-	scheme := corev1.URISchemeHTTP
-	if tc.IsTLSClusterEnabled() {
-		scheme = corev1.URISchemeHTTPS
-	}
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.TiDBImage(),
@@ -718,13 +644,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
-		Env:          envs,
+		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/status",
-					Port:   intstr.FromInt(10080),
-					Scheme: scheme,
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(4000),
 				},
 			},
 			InitialDelaySeconds: int32(10),
@@ -773,6 +697,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 }
 
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
+
 	tc.Status.TiDB.StatefulSet = &set.Status
 
 	upgrading, err := tmm.tidbStatefulSetIsUpgradingFn(tmm.podLister, set, tc)
@@ -816,7 +745,11 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		tidbStatus[name] = newTidbMember
 	}
 	tc.Status.TiDB.Members = tidbStatus
-
+	tc.Status.TiDB.Image = ""
+	c := filterContainer(set, "tidb")
+	if c != nil {
+		tc.Status.TiDB.Image = c.Image
+	}
 	return nil
 }
 
@@ -845,6 +778,10 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 		}
 	}
 	return false, nil
+}
+
+func tlsClientSecretName(tc *v1alpha1.TidbCluster) string {
+	return fmt.Sprintf("%s-server-secret", controller.TiDBMemberName(tc.Name))
 }
 
 type FakeTiDBMemberManager struct {

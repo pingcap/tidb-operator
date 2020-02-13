@@ -21,11 +21,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
@@ -34,12 +33,11 @@ type TiDBDiscovery interface {
 }
 
 type tidbDiscovery struct {
-	cli         versioned.Interface
-	certControl controller.CertControlInterface
-	lock        sync.Mutex
-	clusters    map[string]*clusterInfo
-	tcGetFn     func(ns, tcName string) (*v1alpha1.TidbCluster, error)
-	pdControl   pdapi.PDControlInterface
+	cli       versioned.Interface
+	lock      sync.Mutex
+	clusters  map[string]*clusterInfo
+	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
+	pdControl pdapi.PDControlInterface
 }
 
 type clusterInfo struct {
@@ -65,7 +63,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
 	}
-	glog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
+	klog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
 	strArr := strings.Split(advertisePeerUrl, ".")
 	if len(strArr) != 4 {
 		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)

@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.1.0-beta.1
+  image: pingcap/tidb-operator:v1.1.0-rc.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -48,6 +48,15 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
+  ## affinity defines discovery scheduling rules,it's default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+
 # Whether enable ConfigMap Rollout management.
 # When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
 # This feature is only available in tidb-operator v1.0 or higher.
@@ -55,10 +64,23 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
-# Whether enable TLS connections between server nodes.
-# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
-# certificates will be generated automatically (if not already present).
-enableTLSCluster: false
+# Whether enable the TLS connection between TiDB server components
+tlsCluster:
+  # The steps to enable this feature:
+  #   1. Generate TiDB server components certificates and a client-side certifiacete for them.
+  #      There are multiple ways to generate these certificates:
+  #        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
+  #        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+  #        - or use cert-manager signed certificates: https://cert-manager.io/
+  #   2. Create one secret object for one component which contains the certificates created above.
+  #      The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.
+  #        For PD: kubectl create secret generic <clusterName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        Same for other components.
+  #   3. Then create the TiDB cluster with `tlsCluster.enabled` set to `true`.
+  enabled: false
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
@@ -75,9 +97,12 @@ pd:
 
   # pd Service
   # we can only specify clusterIP and loadBalancerIP now
-  service:
-    clusterIP: "None"
-
+  service: {}
+    # type: "< default use global service type >"
+    # loadBalancerIP: "<if you set service type as loadBalancerIP,you can specify loadBalancerIP>"
+    # clusterIP: "<if you set service type as ClusterIP,you can specify ClusterIP>"
+    # annotations: {} "<the default name will be used>"
+    # portName: "client"
   replicas: 3
   image: pingcap/pd:v3.0.8
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
@@ -284,6 +309,13 @@ tikv:
   # After waiting for 5 minutes, TiDB Operator creates a new TiKV node if this TiKV node is still down.
   # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.
   maxFailoverCount: 3
+  # postArgscript is the script executed after the normal tikv instance start args is built,
+  # it is recommended to modify the args constructor logic if you have any special needs.
+  postArgScript: |
+    if [ ! -z "${STORE_LABELS:-}" ]; then
+      LABELS=" --labels ${STORE_LABELS} "
+      ARGS="${ARGS}${LABELS}"
+    fi
 
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
@@ -396,9 +428,11 @@ tidb:
   service:
     type: NodePort
     exposeStatus: true
+    # portName: "mysql-client"
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
   separateSlowLog: true
+
   slowLogTailer:
     image: busybox:1.26.2
     resources:
@@ -411,12 +445,12 @@ tidb:
 
   initializer:
     resources: {}
-    # limits:
-    #  cpu: 100m
-    #  memory: 100Mi
-    # requests:
-    #  cpu: 100m
-    #  memory: 100Mi
+    #  limits:
+    #    cpu: 100m
+    #    memory: 100Mi
+    #  requests:
+    #    cpu: 100m
+    #    memory: 100Mi
 
   # tidb plugin configuration
   plugin:
@@ -428,10 +462,22 @@ tidb:
     list: ["whitelist-1"]
 
   # Whether enable TLS connection between TiDB server and MySQL client.
-  # When enabled, TiDB will accept TLS encrypted connections from MySQL client, certificates will be generated
-  # automatically.
-  # Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
-  enableTLSClient: false
+  # https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/
+  tlsClient:
+    # The steps to enable this feature:
+    #   1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
+    #      There are multiple ways to generate certificates:
+    #        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/
+    #        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+    #        - or use cert-manager signed certificates: https://cert-manager.io/
+    #   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
+    #      The name of this Secret must be: <clusterName>-tidb-server-secret.
+    #        kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    #   3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+    #      The name of this Secret must be: <clusterName>-tidb-client-secret.
+    #        kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    #   4. Then create the TiDB cluster with `tlsClient.enabled` set to `true`.
+    enabled: false
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -596,6 +642,7 @@ binlog:
     # pump configurations (change to the tags of your pump version),
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
+    # [security] section will be generated automatically if tlsCluster.enabled is set to true so users do not need to configure it.
     # config: |
     #   gc = 7
     #   heartbeat-interval = 2
@@ -683,7 +730,7 @@ binlog:
 scheduledBackup:
   create: false
   # https://github.com/pingcap/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:20191217
+  mydumperImage: pingcap/tidb-cloud-backup:20200229
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -724,6 +771,7 @@ scheduledBackup:
   # backup to gcp
   gcp: {}
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores the gcp service account credentials json file
   # The service account must have read/write permission to the above bucket.
   # Read the following document to create the service account and download the credentials file as credentials.json:
@@ -744,6 +792,7 @@ scheduledBackup:
   s3: {}
   # region: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores s3 object store access key and secret key
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
@@ -756,6 +805,15 @@ scheduledBackup:
     requests: {}
     #   cpu: 4000m
     #   memory: 4Gi
+
+  ## affinity defines pd scheduling rules,it's default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
 
 importer:
   create: false

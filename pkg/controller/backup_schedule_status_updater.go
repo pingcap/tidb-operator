@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -68,7 +68,7 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		_, updateErr := bss.cli.PingcapV1alpha1().BackupSchedules(ns).Update(bs)
 		if updateErr == nil {
-			glog.Infof("BackupSchedule: [%s/%s] updated successfully", ns, bsName)
+			klog.Infof("BackupSchedule: [%s/%s] updated successfully", ns, bsName)
 			return nil
 		}
 		if updated, err := bss.bsLister.BackupSchedules(ns).Get(bsName); err == nil {

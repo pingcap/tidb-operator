@@ -31,7 +31,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 var cfg *tests.Config
@@ -46,7 +46,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	go func() {
-		glog.Info(http.ListenAndServe(":6060", nil))
+		klog.Info(http.ListenAndServe(":6060", nil))
 	}()
 	metrics.StartServer()
 	cfg = tests.ParseConfigOrDie()
@@ -124,6 +124,7 @@ func run() {
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
 
+	klog.Infof(fmt.Sprintf("allclusters: %v", allClusters))
 	for _, cluster := range allClusters {
 		oa.CleanTidbClusterOrDie(cluster)
 	}
@@ -146,9 +147,9 @@ func run() {
 		for _, cluster := range clusters {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckDisasterToleranceOrDie(cluster)
-			go oa.BeginInsertDataToOrDie(cluster)
+			oa.BeginInsertDataToOrDie(cluster)
 		}
-
+		klog.Infof("clusters deployed and checked")
 		// scale out
 		for _, cluster := range clusters {
 			cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -158,6 +159,7 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckDisasterToleranceOrDie(cluster)
 		}
+		klog.Infof("clusters scale out and checked")
 
 		// scale in
 		for _, cluster := range clusters {
@@ -168,19 +170,19 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckDisasterToleranceOrDie(cluster)
 		}
+		klog.Infof("clusters scale in and checked")
 
 		// upgrade
 		namespace := os.Getenv("NAMESPACE")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
-			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 			cluster.UpgradeAll(upgradeVersion)
 			oa.UpgradeTidbClusterOrDie(cluster)
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
+		klog.Infof("clusters upgraded in checked")
 
 		// configuration change
 		for _, cluster := range clusters {
@@ -210,10 +212,12 @@ func run() {
 		}
 		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
+		klog.Infof("clusters configurations updated in checked")
 
 		for _, cluster := range clusters {
 			oa.CheckDisasterToleranceOrDie(cluster)
 		}
+		klog.Infof("clusters DisasterTolerance checked")
 
 		// backup and restore
 		for i := range backupTargets {
@@ -222,11 +226,13 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
 		}
 		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
+		klog.Infof("clusters backup and restore checked")
 
 		// delete operator
 		oa.CleanOperatorOrDie(ocfg)
 		oa.CheckOperatorDownOrDie(deployedClusters)
 		oa.DeployOperatorOrDie(ocfg)
+		klog.Infof("clusters operator deleted and redeployed, checked")
 
 		// stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()
@@ -236,16 +242,20 @@ func run() {
 		time.Sleep(3 * time.Minute)
 		fta.StartNodeOrDie(physicalNode, node)
 		oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
+		oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
 		oa.CheckRecoverOrDie(deployedClusters)
 		for _, cluster := range deployedClusters {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
+		klog.Infof("clusters node stopped and restarted, checked")
 
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		klog.Infof("clusters truncate sst file and checked failover")
 
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
 
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
@@ -254,23 +264,27 @@ func run() {
 		time.Sleep(3 * time.Minute)
 		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
 		fta.StartETCDOrDie(faultEtcd)
+		klog.Infof("clusters stop on etcd and restart")
 
 		// stop all etcds
 		fta.StopETCDOrDie()
 		time.Sleep(10 * time.Minute)
 		fta.StartETCDOrDie()
 		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
+		klog.Infof("clusters stop all etcd and restart")
 
 		// stop all kubelets
 		fta.StopKubeletOrDie()
 		time.Sleep(10 * time.Minute)
 		fta.StartKubeletOrDie()
 		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
+		klog.Infof("clusters stop all kubelets and restart")
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
 		fta.StopKubeProxyOrDie()
 		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
 		fta.StartKubeProxyOrDie()
+		klog.Infof("clusters stop all kube-proxy and restart")
 
 		// stop all kube-scheduler pods
 		for _, physicalNode := range cfg.APIServers {
@@ -284,6 +298,7 @@ func run() {
 				fta.StartKubeSchedulerOrDie(vNode.IP)
 			}
 		}
+		klog.Infof("clusters stop all kube-scheduler and restart")
 
 		// stop all kube-controller-manager pods
 		for _, physicalNode := range cfg.APIServers {
@@ -297,14 +312,17 @@ func run() {
 				fta.StartKubeControllerManagerOrDie(vNode.IP)
 			}
 		}
+		klog.Infof("clusters stop all kube-controller and restart")
 
 		// stop one kube-apiserver pod
 		faultApiServer := tests.SelectNode(cfg.APIServers)
+		klog.Infof("fault ApiServer Node name = %s", faultApiServer)
 		fta.StopKubeAPIServerOrDie(faultApiServer)
 		defer fta.StartKubeAPIServerOrDie(faultApiServer)
 		time.Sleep(3 * time.Minute)
 		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
 		fta.StartKubeAPIServerOrDie(faultApiServer)
+		klog.Infof("clusters stop one kube-apiserver and restart")
 
 		time.Sleep(time.Minute)
 		// stop all kube-apiserver pods
@@ -319,6 +337,7 @@ func run() {
 				fta.StartKubeAPIServerOrDie(vNode.IP)
 			}
 		}
+		klog.Infof("clusters stop all kube-apiserver and restart")
 		time.Sleep(time.Minute)
 	}
 
@@ -381,7 +400,7 @@ func run() {
 	}
 
 	slack.SuccessCount++
-	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
+	klog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
 
 func newOperatorConfig() *tests.OperatorConfig {
@@ -442,6 +461,7 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 			"discovery.image":                cfg.OperatorImage,
 			"tikv.defaultcfBlockCacheSize":   "8GB",
 			"tikv.writecfBlockCacheSize":     "2GB",
+			"pvReclaimPolicy":                "Delete",
 		},
 		Args: map[string]string{
 			"binlog.drainer.workerCount": "1024",

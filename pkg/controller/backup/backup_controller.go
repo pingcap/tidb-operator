@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // Controller controls backup.
@@ -62,19 +62,19 @@ func NewController(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "backup"})
 
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, recorder)
 	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
-	backupCleaner := backup.NewBackupCleaner(statusUpdater, secretInformer.Lister(), jobInformer.Lister(), jobControl)
+	backupCleaner := backup.NewBackupCleaner(statusUpdater, kubeCli, jobInformer.Lister(), jobControl)
 
 	bkc := &Controller{
 		kubeClient: kubeCli,
@@ -84,10 +84,11 @@ func NewController(
 			backup.NewBackupManager(
 				backupCleaner,
 				statusUpdater,
-				secretInformer.Lister(),
+				kubeCli,
 				jobInformer.Lister(),
 				jobControl,
 				pvcInformer.Lister(),
+				tcInformer.Lister(),
 				pvcControl,
 			),
 		),
@@ -115,8 +116,8 @@ func (bkc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer bkc.queue.ShutDown()
 
-	glog.Info("Starting backup controller")
-	defer glog.Info("Shutting down backup controller")
+	klog.Info("Starting backup controller")
+	defer klog.Info("Shutting down backup controller")
 
 	for i := 0; i < workers; i++ {
 		go wait.Until(bkc.worker, time.Second, stopCh)
@@ -142,10 +143,10 @@ func (bkc *Controller) processNextWorkItem() bool {
 	defer bkc.queue.Done(key)
 	if err := bkc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			glog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
 			bkc.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
-			glog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
+			klog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
 			bkc.queue.AddRateLimited(key)
@@ -160,7 +161,7 @@ func (bkc *Controller) processNextWorkItem() bool {
 func (bkc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		glog.V(4).Infof("Finished syncing Backup %q (%v)", key, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -169,7 +170,7 @@ func (bkc *Controller) sync(key string) error {
 	}
 	backup, err := bkc.backupLister.Backups(ns).Get(name)
 	if errors.IsNotFound(err) {
-		glog.Infof("Backup has been deleted %v", key)
+		klog.Infof("Backup has been deleted %v", key)
 		return nil
 	}
 	if err != nil {
@@ -190,27 +191,27 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
-		glog.Infof("backup %s/%s is being deleted", ns, name)
+		klog.Infof("backup %s/%s is being deleted", ns, name)
 		bkc.enqueueBackup(newBackup)
 		return
 	}
 
 	if v1alpha1.IsBackupInvalid(newBackup) {
-		glog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
+		klog.V(4).Infof("backup %s/%s is invalid, skipping.", ns, name)
 		return
 	}
 
 	if v1alpha1.IsBackupComplete(newBackup) {
-		glog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
+		klog.V(4).Infof("backup %s/%s is Complete, skipping.", ns, name)
 		return
 	}
 
 	if v1alpha1.IsBackupScheduled(newBackup) {
-		glog.V(4).Infof("backup %s/%s is already scheduled, skipping", ns, name)
+		klog.V(4).Infof("backup %s/%s is already scheduled, skipping", ns, name)
 		return
 	}
 
-	glog.V(4).Infof("backup object %s/%s enqueue", ns, name)
+	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	bkc.enqueueBackup(newBackup)
 }
 

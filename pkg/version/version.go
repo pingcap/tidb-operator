@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"runtime"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 var (
@@ -35,8 +35,8 @@ func PrintVersionInfo() {
 
 // LogVersionInfo print version info at startup
 func LogVersionInfo() {
-	glog.Infof("Welcome to TiDB Operator.")
-	glog.Infof("TiDB Operator Version: %#v", Get())
+	klog.Infof("Welcome to TiDB Operator.")
+	klog.Infof("TiDB Operator Version: %#v", Get())
 }
 
 // Get returns the overall codebase version. It's for detecting

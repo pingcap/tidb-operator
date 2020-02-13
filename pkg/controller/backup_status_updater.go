@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -63,7 +63,7 @@ func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition
 		if isUpdate {
 			_, updateErr := bcu.cli.PingcapV1alpha1().Backups(ns).Update(backup)
 			if updateErr == nil {
-				glog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
 				return nil
 			}
 			if updated, err := bcu.backupLister.Backups(ns).Get(backupName); err == nil {

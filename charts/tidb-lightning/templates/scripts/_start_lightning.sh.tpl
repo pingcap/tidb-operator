@@ -2,6 +2,16 @@
 data_dir={{ .Values.dataSource.local.hostPath }}
 {{- else if .Values.dataSource.adhoc.pvcName -}}
 data_dir=/var/lib/tidb-lightning/{{ .Values.dataSource.adhoc.backupName | default .Values.dataSource.adhoc.pvcName }}
+{{- else if .Values.dataSource.remote.directory -}}
+data_dir=/var/lib/tidb-lightning
+if [ -z "$(ls -A ${data_dir})" ]; then
+    if [ ! -z ${FAIL_FAST} ]; then
+        exit 1
+    else
+        echo "No files in data dir, please exec into my container to diagnose"
+        tail -f /dev/null
+    fi
+fi
 {{- else -}}
 data_dir=$(dirname $(find /var/lib/tidb-lightning -name metadata 2>/dev/null) 2>/dev/null)
 if [ -z $data_dir ]; then

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/config"
 	"k8s.io/kubernetes/test/e2e/framework/testfiles"
@@ -42,9 +43,22 @@ func handleFlags() {
 	flag.Parse()
 }
 
+func init() {
+	framework.RegisterProvider("kind", func() (framework.ProviderInterface, error) {
+		return framework.NullProvider{}, nil
+	})
+	framework.RegisterProvider("openshift", func() (framework.ProviderInterface, error) {
+		return framework.NullProvider{}, nil
+	})
+}
+
 func TestMain(m *testing.M) {
 	// Register test flags, then parse flags.
 	handleFlags()
+
+	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
+		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
+	})
 
 	// Now that we know which Viper config (if any) was chosen,
 	// parse it and update those options which weren't already set via command line flags

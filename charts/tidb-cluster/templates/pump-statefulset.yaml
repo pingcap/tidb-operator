@@ -55,6 +55,11 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/pump
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+        - name: pump-tls
+          mountPath: /var/lib/pump-tls
+          readOnly: true
+      {{- end }}
         resources:
 {{ toYaml .Values.binlog.pump.resources | indent 10 }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
@@ -73,6 +78,11 @@ spec:
           items:
           - key: pump-config
             path: pump.toml
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: pump-tls
+        secret:
+          secretName: {{ include "pump.tlsSecretName" . }}
+    {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: data

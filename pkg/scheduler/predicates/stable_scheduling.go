@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -93,10 +93,10 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 	nodeName := p.findPreviousNodeInTC(tc, pod)
 
 	if nodeName != "" {
-		glog.V(2).Infof("found previous node %q for pod %q in TiDB cluster %q", nodeName, podName, tcName)
+		klog.V(2).Infof("found previous node %q for pod %q in TiDB cluster %q", nodeName, podName, tcName)
 		for _, node := range nodes {
 			if node.Name == nodeName {
-				glog.V(2).Infof("previous node %q for pod %q in TiDB cluster %q exists in candicates, filter out other nodes", nodeName, podName, tcName)
+				klog.V(2).Infof("previous node %q for pod %q in TiDB cluster %q exists in candicates, filter out other nodes", nodeName, podName, tcName)
 				return []apiv1.Node{node}, nil
 			}
 		}
@@ -104,7 +104,7 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 	}
 
 	msg := fmt.Sprintf("no previous node exists for pod %q in TiDB cluster %s/%s", podName, ns, tcName)
-	glog.Warning(msg)
+	klog.Warning(msg)
 
 	return nodes, errors.New(msg)
 }
