@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -24,6 +25,14 @@ import (
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
+)
+
+const (
+	annScaleOutSuffix = "tidb.pingcap.com/consecutive-scale-out-count"
+	annScaleInSuffix  = "tidb.pingcap.com/consecutive-scale-in-count"
+
+	invalidMemberTypeErrorMsg    = "tac[%s/%s] invalid set MemberType:%s"
+	invalidTacAnnotationErrorMsg = "tac[%s/%s]'s tc[%s/%s] annotation invalid set,err:%v"
 )
 
 var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
@@ -135,4 +144,105 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 		}
 	}
+}
+
+// updateConsecutiveCount would update the tc annotation depended by the given replicas in each reconciling
+func updateConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler,
+	memberType v1alpha1.MemberType, currentReplicas int32, recommendedReplicas int32) error {
+	if tc.Annotations == nil {
+		tc.Annotations = map[string]string{}
+	}
+
+	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
+	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
+
+	var scaleOutCount int
+	var scaleInCount int
+	scaleOutCount, scaleInCount = 0, 0
+	var err error
+
+	if v, existed := tc.Annotations[targetScaleOutAnn]; existed {
+		scaleOutCount, err = strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
+		}
+	}
+
+	if v, existed := tc.Annotations[targetScaleInAnn]; existed {
+		scaleInCount, err = strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
+		}
+	}
+
+	if currentReplicas < recommendedReplicas {
+		// scale-out
+		scaleOutCount = scaleOutCount + 1
+		scaleInCount = 0
+	} else if currentReplicas > recommendedReplicas {
+		// scale-in
+		scaleOutCount = 0
+		scaleInCount = scaleInCount + 1
+	} else {
+		scaleOutCount = 0
+		scaleInCount = 0
+	}
+
+	// update tc annotation
+	tc.Annotations[targetScaleOutAnn] = fmt.Sprintf("%d", scaleOutCount)
+	tc.Annotations[targetScaleInAnn] = fmt.Sprintf("%d", scaleInCount)
+	return nil
+}
+
+func checkConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler,
+	memberType v1alpha1.MemberType, currentReplicas int32, recommendedReplicas int32) (bool, error) {
+	if currentReplicas == recommendedReplicas {
+		return false, nil
+	}
+	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
+	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
+	currentScaleOutCount, err := strconv.Atoi(tc.Annotations[targetScaleOutAnn])
+	if err != nil {
+		return false, err
+	}
+	currentScaleInCount, err := strconv.Atoi(tc.Annotations[targetScaleInAnn])
+	if err != nil {
+		return false, err
+	}
+	switch memberType {
+	case v1alpha1.TiDBMemberType:
+		if currentReplicas < recommendedReplicas {
+			// scale-out
+			if currentScaleOutCount < *tac.Spec.TiDB.ScaleOutThreshold {
+				return false, nil
+			}
+		} else {
+			// scale-in, no-scaling would be return nil at first
+			if currentScaleInCount < *tac.Spec.TiDB.ScaleInThreshold {
+				return false, nil
+			}
+		}
+	case v1alpha1.TiKVMemberType:
+		if currentReplicas < recommendedReplicas {
+			// scale-out
+			if currentScaleOutCount < *tac.Spec.TiKV.ScaleOutThreshold {
+				return false, nil
+			}
+		} else {
+			// scale-in, no-scaling would be return nil at first
+			if currentScaleInCount < *tac.Spec.TiDB.ScaleInThreshold {
+				return false, nil
+			}
+		}
+	default:
+		return false, fmt.Errorf(invalidMemberTypeErrorMsg, tac.Namespace, tac.Name, memberType)
+	}
+	return true, nil
+}
+
+func emptyConsecutiveCount(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) {
+	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
+	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
+	tc.Annotations[targetScaleOutAnn] = "0"
+	tc.Annotations[targetScaleInAnn] = "0"
 }

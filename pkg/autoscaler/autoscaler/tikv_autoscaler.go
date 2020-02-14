@@ -42,20 +42,39 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	//}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
 	if targetReplicas == tc.Spec.TiKV.Replicas {
+		emptyConsecutiveCount(tc, v1alpha1.TiKVMemberType)
 		return nil
 	}
-	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
-	if targetReplicas > tc.Spec.TiKV.Replicas {
-		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
+	if err := updateConsecutiveCount(tc, tac, v1alpha1.TiKVMemberType, tc.Spec.TiKV.Replicas, targetReplicas); err != nil {
+		return err
 	}
-	ableToScale, err := checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiKVMemberType)
+
+	ableToScale, err := checkConsecutiveCount(tc, tac, v1alpha1.TiKVMemberType, tc.Spec.TiKV.Replicas, targetReplicas)
 	if err != nil {
 		return err
 	}
 	if !ableToScale {
 		return nil
 	}
-	tc.Spec.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
+
+	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
+	if targetReplicas > tc.Spec.TiKV.Replicas {
+		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
+	}
+	ableToScale, err = checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiKVMemberType)
+	if err != nil {
+		return err
+	}
+	if !ableToScale {
+		return nil
+	}
+
+	updateTcTiKVAnnIfScale(tc)
 	tc.Spec.TiKV.Replicas = targetReplicas
 	return nil
+}
+
+func updateTcTiKVAnnIfScale(tc *v1alpha1.TidbCluster) {
+	tc.Spec.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
+	emptyConsecutiveCount(tc, v1alpha1.TiKVMemberType)
 }
