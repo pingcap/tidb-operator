@@ -220,11 +220,11 @@ func checkConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 	}
 	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
 	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
-	currentScaleOutCount, err := strconv.Atoi(tc.Annotations[targetScaleOutAnn])
+	currentScaleOutCount, err := strconv.ParseInt(tc.Annotations[targetScaleOutAnn], 10, 32)
 	if err != nil {
 		return false, err
 	}
-	currentScaleInCount, err := strconv.Atoi(tc.Annotations[targetScaleInAnn])
+	currentScaleInCount, err := strconv.ParseInt(tc.Annotations[targetScaleInAnn], 10, 32)
 	if err != nil {
 		return false, err
 	}
@@ -232,24 +232,24 @@ func checkConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 	case v1alpha1.TiDBMemberType:
 		if currentReplicas < recommendedReplicas {
 			// scale-out
-			if currentScaleOutCount < *tac.Spec.TiDB.ScaleOutThreshold {
+			if int32(currentScaleOutCount) < *tac.Spec.TiDB.ScaleOutThreshold {
 				return false, nil
 			}
 		} else {
 			// scale-in, no-scaling would be return nil at first
-			if currentScaleInCount < *tac.Spec.TiDB.ScaleInThreshold {
+			if int32(currentScaleInCount) < *tac.Spec.TiDB.ScaleInThreshold {
 				return false, nil
 			}
 		}
 	case v1alpha1.TiKVMemberType:
 		if currentReplicas < recommendedReplicas {
 			// scale-out
-			if currentScaleOutCount < *tac.Spec.TiKV.ScaleOutThreshold {
+			if int32(currentScaleOutCount) < *tac.Spec.TiKV.ScaleOutThreshold {
 				return false, nil
 			}
 		} else {
 			// scale-in, no-scaling would be return nil at first
-			if currentScaleInCount < *tac.Spec.TiDB.ScaleInThreshold {
+			if int32(currentScaleInCount) < *tac.Spec.TiDB.ScaleInThreshold {
 				return false, nil
 			}
 		}
