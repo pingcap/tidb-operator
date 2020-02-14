@@ -339,6 +339,21 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MetricsTimeWindowSeconds != nil {
+		in, out := &in.MetricsTimeWindowSeconds, &out.MetricsTimeWindowSeconds
+		*out = new(int32)
+		**out = **in
+	}
+	if in.ScaleOutThreshold != nil {
+		in, out := &in.ScaleOutThreshold, &out.ScaleOutThreshold
+		*out = new(int32)
+		**out = **in
+	}
+	if in.ScaleInThreshold != nil {
+		in, out := &in.ScaleInThreshold, &out.ScaleInThreshold
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
