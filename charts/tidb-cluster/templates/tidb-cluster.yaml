@@ -99,9 +99,9 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end }}
-  {{- if .Values.tidb.extraSANDomain }}
-    extraSANDomain:
-    {{- range .Values.tidb.extraSANDomain }}
+  {{- if .Values.tidb.extraSANDomainList }}
+    extraSANDomainList:
+    {{- range .Values.tidb.extraSANDomainList }}
     - {{ . }}
     {{- end }}
   {{- end }}
