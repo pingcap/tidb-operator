@@ -436,8 +436,8 @@ tidb:
   # extraSANIPList:
   #   - 1.1.1.1
   #   - 2.2.2.2
-  # # extra SAN Domain when you set tidb.enableTLSClient to true
-  # extraSANDomain:
+  # # extra SAN Domain List when you set tidb.enableTLSClient to true
+  # extraSANDomainList:
   #   - example1.com
   #   - example2.com
 

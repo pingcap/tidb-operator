@@ -288,8 +288,8 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		fmt.Sprintf("%s.%s.svc", svcName, ns),
 		"localhost",
 	}
-	if len(tc.Spec.TiDB.ExtraSANDomain) != 0 {
-		hostList = append(hostList, tc.Spec.TiDB.ExtraSANDomain...)
+	if len(tc.Spec.TiDB.ExtraSANDomainList) != 0 {
+		hostList = append(hostList, tc.Spec.TiDB.ExtraSANDomainList...)
 	}
 
 	ipList := []string{
