@@ -124,14 +124,14 @@ type BasicAutoScalerSpec struct {
 	// the auto-scaling would be performed.
 	// If not set, the default value is 1 which means it would perform with no threshold.
 	// +optional
-	ScaleOutThreshold *int `json:"scaleOutThreshold,omitempty"`
+	ScaleOutThreshold *int32 `json:"scaleOutThreshold,omitempty"`
 
 	// ScaleInThreshold describe the consecutive threshold for the auto-scaling,
 	// if the consecutive counts of the scale-int result in auto-scaling reach this number,
 	// the auto-scaling would be performed.
 	// If not set, the default value is 1 which means it would perform with no threshold.
 	// +optional
-	ScaleInThreshold *int `json:"scaleInThreshold,omitempty"`
+	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
 }
 
 // TODO: sync status
