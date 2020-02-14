@@ -312,6 +312,12 @@ type TiDBSpec struct {
 	// +optional
 	EnableTLSClient *bool `json:"enableTLSClient,omitempty"`
 
+	// extra SAN IP list when setting EnableTLSClient to true
+	ExtraSANIPList []string `json:"extraSANIPList,omitempty"`
+
+	// extra SAN Domain when setting EnableTLSClient to true
+	ExtraSANDomain []string `json:"extraSANDomain,omitempty"`
+
 	// The spec of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`

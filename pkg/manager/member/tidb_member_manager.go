@@ -241,8 +241,11 @@ func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) err
 		svcName,
 		peerName,
 		fmt.Sprintf("%s.%s", svcName, ns),
+		fmt.Sprintf("%s.%s.svc", svcName, ns),
 		fmt.Sprintf("%s.%s", peerName, ns),
+		fmt.Sprintf("%s.%s.svc", peerName, ns),
 		fmt.Sprintf("*.%s.%s", peerName, ns),
+		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
 	}
 
 	ipList := []string{
@@ -268,15 +271,33 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 	suffix := "tidb-server"
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	svcName := fmt.Sprintf("%s-%s", tcName, suffix)
+	svcName := controller.TiDBMemberName(tcName)
 
 	if tmm.certControl.CheckSecret(ns, svcName) {
 		return nil
 	}
 
+	svc, err := tmm.svcLister.Services(ns).Get(svcName)
+	if err != nil {
+		return err
+	}
+
 	hostList := []string{
 		svcName,
 		fmt.Sprintf("%s.%s", svcName, ns),
+		fmt.Sprintf("%s.%s.svc", svcName, ns),
+		"localhost",
+	}
+	if len(tc.Spec.TiDB.ExtraSANDomain) != 0 {
+		hostList = append(hostList, tc.Spec.TiDB.ExtraSANDomain...)
+	}
+
+	ipList := []string{
+		"127.0.0.1", "::1",
+		svc.Spec.ClusterIP,
+	}
+	if len(tc.Spec.TiDB.ExtraSANIPList) != 0 {
+		ipList = append(ipList, tc.Spec.TiDB.ExtraSANIPList...)
 	}
 
 	certOpts := &controller.TiDBClusterCertOptions{
@@ -284,6 +305,7 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		Instance:   tcName,
 		CommonName: svcName,
 		HostList:   hostList,
+		IPList:     ipList,
 		Component:  "tidb",
 		Suffix:     suffix,
 	}
