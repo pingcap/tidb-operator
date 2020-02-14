@@ -346,12 +346,12 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 	}
 	if in.ScaleOutThreshold != nil {
 		in, out := &in.ScaleOutThreshold, &out.ScaleOutThreshold
-		*out = new(int32)
+		*out = new(int)
 		**out = **in
 	}
 	if in.ScaleInThreshold != nil {
 		in, out := &in.ScaleInThreshold, &out.ScaleInThreshold
-		*out = new(int32)
+		*out = new(int)
 		**out = **in
 	}
 	return

@@ -94,7 +94,7 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, o
 }
 
 //TODO: sync tac status
-func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTCSpec *v1alpha1.TidbClusterSpec,
+func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbClusterSpec,
 	tac *v1alpha1.TidbClusterAutoScaler) error {
 	return nil
 }

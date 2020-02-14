@@ -42,20 +42,38 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	//}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {
+		emptyConsecutiveCount(tc, v1alpha1.TiDBMemberType)
 		return nil
 	}
-	intervalSeconds := tac.Spec.TiDB.ScaleInIntervalSeconds
-	if targetReplicas > tc.Spec.TiDB.Replicas {
-		intervalSeconds = tac.Spec.TiDB.ScaleOutIntervalSeconds
+	if err := updateConsecutiveCount(tc, tac, v1alpha1.TiDBMemberType, tc.Spec.TiDB.Replicas, targetReplicas); err != nil {
+		return err
 	}
-	ableToScale, err := checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiDBMemberType)
+
+	ableToScale, err := checkConsecutiveCount(tc, tac, v1alpha1.TiDBMemberType, tc.Spec.TiDB.Replicas, targetReplicas)
 	if err != nil {
 		return err
 	}
 	if !ableToScale {
 		return nil
 	}
-	tc.Spec.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
+
+	intervalSeconds := tac.Spec.TiDB.ScaleInIntervalSeconds
+	if targetReplicas > tc.Spec.TiDB.Replicas {
+		intervalSeconds = tac.Spec.TiDB.ScaleOutIntervalSeconds
+	}
+	ableToScale, err = checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiDBMemberType)
+	if err != nil {
+		return err
+	}
+	if !ableToScale {
+		return nil
+	}
+	updateTcTiDBAnnIfScale(tc)
 	tc.Spec.TiDB.Replicas = targetReplicas
 	return nil
+}
+
+func updateTcTiDBAnnIfScale(tc *v1alpha1.TidbCluster) {
+	tc.Spec.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
+	emptyConsecutiveCount(tc, v1alpha1.TiDBMemberType)
 }
