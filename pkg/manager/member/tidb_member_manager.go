@@ -288,17 +288,13 @@ func (tmm *tidbMemberManager) syncTiDBServerCerts(tc *v1alpha1.TidbCluster) erro
 		fmt.Sprintf("%s.%s.svc", svcName, ns),
 		"localhost",
 	}
-	if len(tc.Spec.TiDB.ExtraSANDomainList) != 0 {
-		hostList = append(hostList, tc.Spec.TiDB.ExtraSANDomainList...)
-	}
+	hostList = append(hostList, tc.Spec.TiDB.ExtraSANDomainList...)
 
 	ipList := []string{
 		"127.0.0.1", "::1",
 		svc.Spec.ClusterIP,
 	}
-	if len(tc.Spec.TiDB.ExtraSANIPList) != 0 {
-		ipList = append(ipList, tc.Spec.TiDB.ExtraSANIPList...)
-	}
+	ipList = append(ipList, tc.Spec.TiDB.ExtraSANIPList...)
 
 	certOpts := &controller.TiDBClusterCertOptions{
 		Namespace:  ns,
