@@ -112,6 +112,26 @@ type BasicAutoScalerSpec struct {
 	// If not set, the default metric will be set to 80% average CPU utilization.
 	// +optional
 	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty"`
+
+	// MetricsTimeWindowSeconds describe the time window seconds for the metrics
+	// to be queried in the Prometheus.
+	// If not set, the default value would be 180.
+	// +optional
+	MetricsTimeWindowSeconds *int32 `json:"metricsTimeWindowSeconds,omitempty"`
+
+	// ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
+	// if the consecutive counts of the scale-out result in auto-scaling reach this number,
+	// the auto-scaling would be performed.
+	// If not set, the default value is 1 which means it would perform with no threshold.
+	// +optional
+	ScaleOutThreshold *int32 `json:"scaleOutThreshold,omitempty"`
+
+	// ScaleInThreshold describe the consecutive threshold for the auto-scaling,
+	// if the consecutive counts of the scale-int result in auto-scaling reach this number,
+	// the auto-scaling would be performed.
+	// If not set, the default value is 1 which means it would perform with no threshold.
+	// +optional
+	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
 }
 
 // TODO: sync status

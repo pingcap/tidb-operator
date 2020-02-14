@@ -7067,6 +7067,12 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
+                metricsTimeWindowSeconds:
+                  description: MetricsTimeWindowSeconds describe the time window seconds
+                    for the metrics to be queried in the Prometheus. If not set, the
+                    default value would be 180.
+                  format: int32
+                  type: integer
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
@@ -7079,10 +7085,26 @@ spec:
                     will be set to 500
                   format: int32
                   type: integer
+                scaleInThreshold:
+                  description: ScaleInThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-int
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 1 which means it
+                    would perform with no threshold.
+                  format: int32
+                  type: integer
                 scaleOutIntervalSeconds:
                   description: ScaleOutIntervalSeconds represents the duration seconds
                     between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds
                     will be set to 300
+                  format: int32
+                  type: integer
+                scaleOutThreshold:
+                  description: ScaleOutThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-out
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 1 which means it
+                    would perform with no threshold.
                   format: int32
                   type: integer
               required:
@@ -7109,6 +7131,12 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
+                metricsTimeWindowSeconds:
+                  description: MetricsTimeWindowSeconds describe the time window seconds
+                    for the metrics to be queried in the Prometheus. If not set, the
+                    default value would be 180.
+                  format: int32
+                  type: integer
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
@@ -7121,10 +7149,26 @@ spec:
                     will be set to 500
                   format: int32
                   type: integer
+                scaleInThreshold:
+                  description: ScaleInThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-int
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 1 which means it
+                    would perform with no threshold.
+                  format: int32
+                  type: integer
                 scaleOutIntervalSeconds:
                   description: ScaleOutIntervalSeconds represents the duration seconds
                     between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds
                     will be set to 300
+                  format: int32
+                  type: integer
+                scaleOutThreshold:
+                  description: ScaleOutThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-out
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 1 which means it
+                    would perform with no threshold.
                   format: int32
                   type: integer
               required:
