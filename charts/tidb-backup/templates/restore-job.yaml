@@ -25,6 +25,8 @@ spec:
     {{- end }}
     spec:
       restartPolicy: OnFailure
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
       containers:
       - name: tidb-restore-job
         image: {{ .Values.image.backup }}
