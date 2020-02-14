@@ -257,11 +257,10 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-pd", tcName)
+	commonName := fmt.Sprintf("%s-pd-client", tcName)
 
 	hostList := []string{
 		commonName,
-		fmt.Sprintf("%s.%s", commonName, tc.Namespace),
 	}
 
 	certOpts := &controller.TiDBClusterCertOptions{
