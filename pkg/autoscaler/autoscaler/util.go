@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
+	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -144,6 +145,12 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		if tac.Spec.TiKV.MetricsTimeWindowSeconds == nil {
 			tac.Spec.TiKV.MetricsTimeWindowSeconds = pointer.Int32Ptr(180)
 		}
+		if tac.Spec.TiKV.ScaleOutIntervalSeconds == nil {
+			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+		}
+		if tac.Spec.TiKV.ScaleInIntervalSeconds == nil {
+			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(300)
+		}
 	}
 
 	if tac.Spec.TiDB != nil {
@@ -161,6 +168,12 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		}
 		if tac.Spec.TiDB.MetricsTimeWindowSeconds == nil {
 			tac.Spec.TiDB.MetricsTimeWindowSeconds = pointer.Int32Ptr(180)
+		}
+		if tac.Spec.TiDB.ScaleOutIntervalSeconds == nil {
+			tac.Spec.TiDB.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+		}
+		if tac.Spec.TiDB.ScaleInIntervalSeconds == nil {
+			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(300)
 		}
 	}
 }
@@ -264,4 +277,10 @@ func emptyConsecutiveCount(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberT
 	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
 	tc.Annotations[targetScaleOutAnn] = "0"
 	tc.Annotations[targetScaleInAnn] = "0"
+}
+
+//TODO: calculate the recommended replicas from Prometheus
+func calculateRecommendedReplicas(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType,
+	client promClient.Client) int32 {
+	return 0
 }
