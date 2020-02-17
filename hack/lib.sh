@@ -34,6 +34,10 @@ HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=2.9.1
 KIND_VERSION=0.7.0
 KIND_BIN=$OUTPUT_BIN/kind
+KUBETEST2_VERSION=v0.0.1+a810685993a3e100f4c51bc346cdc05eaf753922
+KUBETEST2_GKE_VERSION=v0.0.1+a3755779de7f745733de10f9bf63e01cf0864f9d
+KUBETEST2_KIND_VERSION=v0.0.1+d8d70a33d2cc5df85786b7724ac61c221bad3e18
+KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
 
@@ -145,4 +149,34 @@ function hack::wait_for_success() {
         fi
     done
     return 1
+}
+
+function hack::__verify_kubetest2() {
+    local n="$1"
+    local h="$2"
+    if test -x "$OUTPUT_BIN/$n"; then
+        local tmph=$(sha1sum $OUTPUT_BIN/$n | awk '{print $1}')
+        [[ "$tmph" == "$h" ]]
+        return
+    fi
+    return 1
+}
+
+function hack::__ensure_kubetest2() {
+    local n="$1"
+    IFS=+ read -r v h <<<"$2"
+    if hack::__verify_kubetest2 $n $h; then
+        return 0
+    fi
+    tmpfile=$(mktemp)
+    trap "test -f $tmpfile && rm $tmpfile" RETURN
+    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$v/$n.gz | gunzip > $tmpfile
+    mv $tmpfile $OUTPUT_BIN/$n
+    chmod +x $OUTPUT_BIN/$n
+}
+
+function hack::ensure_kubetest2() {
+    hack::__ensure_kubetest2 kubetest2 $KUBETEST2_VERSION
+    hack::__ensure_kubetest2 kubetest2-gke $KUBETEST2_GKE_VERSION
+    hack::__ensure_kubetest2 kubetest2-kind $KUBETEST2_KIND_VERSION
 }
