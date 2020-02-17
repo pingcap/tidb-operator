@@ -45,7 +45,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	return syncTiKVAfterCalculated(tc, tac, currentReplicas, targetReplicas, tc.Spec.TiKV.Replicas-currentReplicas)
 }
 
-// syncTiDBAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
+// syncTiKVAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
 // duration between each auto-scaling. If either of them is not meet, the auto-scaling would be rejected.
 // If the auto-scaling is permitted, the timestamp would be recorded and the Consecutive count would be zeroed.
 // The currentReplicas of TiKV calculated in auto-scaling is the count of the StateUp TiKV instance, so we need to
