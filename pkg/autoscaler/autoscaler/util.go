@@ -137,10 +137,10 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
 		}
 		if tac.Spec.TiKV.ScaleInThreshold == nil {
-			tac.Spec.TiKV.ScaleInThreshold = pointer.Int32Ptr(1)
+			tac.Spec.TiKV.ScaleInThreshold = pointer.Int32Ptr(3)
 		}
 		if tac.Spec.TiKV.ScaleOutThreshold == nil {
-			tac.Spec.TiKV.ScaleOutThreshold = pointer.Int32Ptr(1)
+			tac.Spec.TiKV.ScaleOutThreshold = pointer.Int32Ptr(3)
 		}
 		if tac.Spec.TiKV.MetricsTimeWindowSeconds == nil {
 			tac.Spec.TiKV.MetricsTimeWindowSeconds = pointer.Int32Ptr(180)
@@ -161,10 +161,10 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 		}
 		if tac.Spec.TiDB.ScaleInThreshold == nil {
-			tac.Spec.TiDB.ScaleInThreshold = pointer.Int32Ptr(1)
+			tac.Spec.TiDB.ScaleInThreshold = pointer.Int32Ptr(3)
 		}
 		if tac.Spec.TiDB.ScaleOutThreshold == nil {
-			tac.Spec.TiDB.ScaleOutThreshold = pointer.Int32Ptr(1)
+			tac.Spec.TiDB.ScaleOutThreshold = pointer.Int32Ptr(3)
 		}
 		if tac.Spec.TiDB.MetricsTimeWindowSeconds == nil {
 			tac.Spec.TiDB.MetricsTimeWindowSeconds = pointer.Int32Ptr(180)
