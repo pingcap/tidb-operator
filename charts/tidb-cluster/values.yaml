@@ -446,7 +446,7 @@ tidb:
     userGenerated:
       # secretName is the name of the secret which stores user-defined tidb server certificate, key and ca, create it with:
       # kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=cert=<tidb server certificate file path> --from-file=key=<tidb server key file path> --from-file=ca=<ca file path>
-      secretName: "demo-tls-secret"
+      secretName: "demo-tidb-server-secret"
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
