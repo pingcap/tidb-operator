@@ -339,11 +339,15 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 }
 
 func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
-	enableTLSClient := tidb.EnableTLSClient
-	if enableTLSClient == nil {
-		return defaultEnableTLSClient
+	return tidb.TLSClient != nil && tidb.TLSClient.Enabled
+}
+
+func (tidb *TiDBSpec) IsUserGeneratedCertificate() bool {
+	if !tidb.IsTLSClientEnabled() {
+		return false
 	}
-	return *enableTLSClient
+
+	return tidb.TLSClient.UserGenerated != nil && tidb.TLSClient.UserGenerated.SecretName != ""
 }
 
 func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
