@@ -24,7 +24,7 @@ import (
 
 func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
 	if tac.Spec.TiDB == nil {
-		emptyConsecutiveCount(tc, v1alpha1.TiDBMemberType)
+		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 		return nil
 	}
 	sts, err := am.stsLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiDBMemberType))
@@ -32,14 +32,14 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return err
 	}
 	if !checkAutoScalingPrerequisites(tc, sts, v1alpha1.TiDBMemberType) {
-		emptyConsecutiveCount(tc, v1alpha1.TiDBMemberType)
+		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 		return nil
 	}
 	currentReplicas := tc.Spec.TiDB.Replicas
 	targetReplicas := calculateRecommendedReplicas(tac, v1alpha1.TiDBMemberType, client)
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {
-		emptyConsecutiveCount(tc, v1alpha1.TiDBMemberType)
+		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 		return nil
 	}
 	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas)
@@ -49,11 +49,11 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 // duration between each auto-scaling. If either of them is not meet, the auto-scaling would be rejected.
 // If the auto-scaling is permitted, the timestamp would be recorded and the Consecutive count would be zeroed.
 func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
-	if err := updateConsecutiveCount(tc, tac, v1alpha1.TiDBMemberType, currentReplicas, recommendedReplicas); err != nil {
+	if err := updateConsecutiveCount(tac, v1alpha1.TiDBMemberType, currentReplicas, recommendedReplicas); err != nil {
 		return err
 	}
 
-	ableToScale, err := checkConsecutiveCount(tc, tac, v1alpha1.TiDBMemberType, currentReplicas, recommendedReplicas)
+	ableToScale, err := checkConsecutiveCount(tac, v1alpha1.TiDBMemberType, currentReplicas, recommendedReplicas)
 	if err != nil {
 		return err
 	}
@@ -71,12 +71,12 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if !ableToScale {
 		return nil
 	}
-	updateTcTiDBAnnIfScale(tc)
+	updateTcTiDBAnnIfScale(tac)
 	tc.Spec.TiDB.Replicas = recommendedReplicas
 	return nil
 }
 
-func updateTcTiDBAnnIfScale(tc *v1alpha1.TidbCluster) {
-	tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
-	emptyConsecutiveCount(tc, v1alpha1.TiDBMemberType)
+func updateTcTiDBAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
+	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
+	emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 }

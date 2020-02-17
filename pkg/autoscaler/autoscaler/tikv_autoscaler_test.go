@@ -41,13 +41,13 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 		tac := newTidbClusterAutoScaler()
 		tc := newTidbCluster()
 		tc.Spec.TiKV.Replicas = test.currentReplicas + test.failureReplicas
-		tc.Annotations[label.AnnTiKVConsecutiveScaleInCount] = fmt.Sprintf("%d", test.currentScaleInCount)
-		tc.Annotations[label.AnnTiKVConsecutiveScaleOutCount] = fmt.Sprintf("%d", test.currentScaleOutCount)
+		tac.Annotations[label.AnnTiKVConsecutiveScaleInCount] = fmt.Sprintf("%d", test.currentScaleInCount)
+		tac.Annotations[label.AnnTiKVConsecutiveScaleOutCount] = fmt.Sprintf("%d", test.currentScaleOutCount)
 
 		err := syncTiKVAfterCalculated(tc, tac, test.currentReplicas, test.recommendedReplicas, test.failureReplicas)
 		g.Expect(err).ShouldNot(HaveOccurred())
 
-		_, existed := tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+		_, existed := tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 		g.Expect(existed).Should(Equal(test.autoScalingPermitted))
 		if test.autoScalingPermitted {
 			g.Expect(tc.Spec.TiKV.Replicas).Should(Equal(test.recommendedReplicas + test.failureReplicas))

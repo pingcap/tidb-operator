@@ -38,15 +38,14 @@ func TestUpdateConsecutiveCount(t *testing.T) {
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
-		tc := newTidbCluster()
 		tac := newTidbClusterAutoScaler()
-		tc.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)] = fmt.Sprintf("%d", test.currentScaleOutCount)
-		tc.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)] = fmt.Sprintf("%d", test.currentScaleInCount)
+		tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)] = fmt.Sprintf("%d", test.currentScaleOutCount)
+		tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)] = fmt.Sprintf("%d", test.currentScaleInCount)
 
-		err := updateConsecutiveCount(tc, tac, test.memberType, test.currentReplicas, test.recommendedReplicas)
+		err := updateConsecutiveCount(tac, test.memberType, test.currentReplicas, test.recommendedReplicas)
 		g.Expect(err).ShouldNot(HaveOccurred())
-		updatedScaleOutCountAnnValue := tc.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)]
-		updatedScaleInCountAnnValue := tc.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)]
+		updatedScaleOutCountAnnValue := tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)]
+		updatedScaleInCountAnnValue := tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)]
 		g.Expect(updatedScaleOutCountAnnValue).Should(Equal(test.expectedScaleOutAnnValue))
 		g.Expect(updatedScaleInCountAnnValue).Should(Equal(test.expectedScaleInAnnValue))
 	}
@@ -124,13 +123,11 @@ func TestCheckConsecutiveCount(t *testing.T) {
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
-
-		tc := newTidbCluster()
-		tc.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)] = fmt.Sprintf("%d", test.scaleOutCount)
-		tc.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)] = fmt.Sprintf("%d", test.scaleInCount)
-
 		tac := newTidbClusterAutoScaler()
-		ableScale, err := checkConsecutiveCount(tc, tac, test.memberType, test.currentReplicas, test.recommendedReplicas)
+		tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)] = fmt.Sprintf("%d", test.scaleOutCount)
+		tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)] = fmt.Sprintf("%d", test.scaleInCount)
+
+		ableScale, err := checkConsecutiveCount(tac, test.memberType, test.currentReplicas, test.recommendedReplicas)
 		g.Expect(err).ShouldNot(HaveOccurred())
 		g.Expect(ableScale).Should(Equal(test.ableScale))
 	}
@@ -181,6 +178,7 @@ func TestCheckConsecutiveCount(t *testing.T) {
 
 func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
 	tac := &v1alpha1.TidbClusterAutoScaler{}
+	tac.Annotations = map[string]string{}
 	tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 	tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{}
 	tac.Spec.TiKV.ScaleOutThreshold = pointer.Int32Ptr(2)

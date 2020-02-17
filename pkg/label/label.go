@@ -110,6 +110,10 @@ const (
 	AnnTiKVConsecutiveScaleOutCount = "tikv.tidb.pingcap.com/consecutive-scale-out-count"
 	// AnnTiKVConsecutiveScaleInCount describes the least consecutive count to scale-in for tikv
 	AnnTiKVConsecutiveScaleInCount = "tikv.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnAutoScalingTargetName describes the target TidbCluster Ref Name for the TidbCluserAutoScaler
+	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
+	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
+	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
