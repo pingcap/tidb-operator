@@ -233,6 +233,9 @@ func checkConsecutiveCount(tac *v1alpha1.TidbClusterAutoScaler,
 	}
 	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
 	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
+	if tac.Annotations == nil {
+		return false, fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, "tac annotations empty")
+	}
 	currentScaleOutCount, err := strconv.ParseInt(tac.Annotations[targetScaleOutAnn], 10, 32)
 	if err != nil {
 		return false, err
