@@ -3583,6 +3583,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"tlsClientCertSecretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret name which stores user custom TiDB Server cert, key and ca",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"slowLogTailer": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The spec of the slow log tailer sidecar",

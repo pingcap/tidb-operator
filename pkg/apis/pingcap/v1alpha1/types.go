@@ -318,6 +318,10 @@ type TiDBSpec struct {
 	// extra SAN Domain list when setting EnableTLSClient to true
 	ExtraSANDomainList []string `json:"extraSANDomainList,omitempty"`
 
+	// Secret name which stores user custom TiDB Server cert, key and ca
+	// +optional
+	TLSClientCertSecretName string `json:"tlsClientCertSecretName,omitempty"`
+
 	// The spec of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`

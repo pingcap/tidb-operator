@@ -181,7 +181,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 				return err
 			}
 		}
-		if tc.Spec.TiDB.IsTLSClientEnabled() {
+		if tc.Spec.TiDB.IsTLSClientEnabled() && tc.Spec.TiDB.TLSClientCertSecretName == "" {
 			err := tmm.syncTiDBServerCerts(tc)
 			if err != nil {
 				return err
@@ -434,7 +434,12 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
+		// user supply custom tidb server cert, key and ca
+		if tc.Spec.TiDB.TLSClientCertSecretName != "" {
+			config.Security.SSLCA = pointer.StringPtr(path.Join(serverCertPath, "ca"))
+		} else {
+			config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
+		}
 		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, "cert"))
 		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, "key"))
 	}
@@ -622,10 +627,17 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		var secretName string
+		sn := tc.Spec.TiDB.TLSClientCertSecretName
+		if sn != "" {
+			secretName = sn
+		} else {
+			secretName = fmt.Sprintf("%s-%s", controller.TiDBMemberName(tcName), "server")
+		}
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-%s", controller.TiDBMemberName(tcName), "server"),
+					SecretName: secretName,
 				},
 			},
 		})
