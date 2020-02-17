@@ -7060,6 +7060,10 @@ spec:
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
+                MetricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7090,10 +7094,24 @@ spec:
                     will be set to 500
                   format: int32
                   type: integer
+                scaleInThreshold:
+                  description: ScaleInThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-in
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 5.
+                  format: int32
+                  type: integer
                 scaleOutIntervalSeconds:
                   description: ScaleOutIntervalSeconds represents the duration seconds
                     between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds
                     will be set to 300
+                  format: int32
+                  type: integer
+                scaleOutThreshold:
+                  description: ScaleOutThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-out
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 3.
                   format: int32
                   type: integer
               required:
@@ -7102,6 +7120,10 @@ spec:
             tikv:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
+                MetricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7132,10 +7154,24 @@ spec:
                     will be set to 500
                   format: int32
                   type: integer
+                scaleInThreshold:
+                  description: ScaleInThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-in
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 5.
+                  format: int32
+                  type: integer
                 scaleOutIntervalSeconds:
                   description: ScaleOutIntervalSeconds represents the duration seconds
                     between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds
                     will be set to 300
+                  format: int32
+                  type: integer
+                scaleOutThreshold:
+                  description: ScaleOutThreshold describe the consecutive threshold
+                    for the auto-scaling, if the consecutive counts of the scale-out
+                    result in auto-scaling reach this number, the auto-scaling would
+                    be performed. If not set, the default value is 3.
                   format: int32
                   type: integer
               required:
