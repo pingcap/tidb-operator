@@ -7100,8 +7100,7 @@ spec:
                   description: ScaleInThreshold describe the consecutive threshold
                     for the auto-scaling, if the consecutive counts of the scale-int
                     result in auto-scaling reach this number, the auto-scaling would
-                    be performed. If not set, the default value is 1 which means it
-                    would perform with no threshold.
+                    be performed. If not set, the default value is 3.
                   format: int32
                   type: integer
                 scaleOutIntervalSeconds:
@@ -7114,8 +7113,7 @@ spec:
                   description: ScaleOutThreshold describe the consecutive threshold
                     for the auto-scaling, if the consecutive counts of the scale-out
                     result in auto-scaling reach this number, the auto-scaling would
-                    be performed. If not set, the default value is 1 which means it
-                    would perform with no threshold.
+                    be performed. If not set, the default value is 3.
                   format: int32
                   type: integer
               required:
@@ -7164,8 +7162,7 @@ spec:
                   description: ScaleInThreshold describe the consecutive threshold
                     for the auto-scaling, if the consecutive counts of the scale-int
                     result in auto-scaling reach this number, the auto-scaling would
-                    be performed. If not set, the default value is 1 which means it
-                    would perform with no threshold.
+                    be performed. If not set, the default value is 3.
                   format: int32
                   type: integer
                 scaleOutIntervalSeconds:
@@ -7178,8 +7175,7 @@ spec:
                   description: ScaleOutThreshold describe the consecutive threshold
                     for the auto-scaling, if the consecutive counts of the scale-out
                     result in auto-scaling reach this number, the auto-scaling would
-                    be performed. If not set, the default value is 1 which means it
-                    would perform with no threshold.
+                    be performed. If not set, the default value is 3.
                   format: int32
                   type: integer
               required:
