@@ -306,16 +306,9 @@ func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
 	}
 	name := tac.Annotations[label.AnnAutoScalingTargetName]
 	namespace := tac.Annotations[label.AnnAutoScalingTargetNamespace]
-	if len(name) < 1 && len(namespace) < 1 {
-		resetAutoScalingAnn(tac)
+	if name == tac.Spec.Cluster.Name && namespace == tac.Spec.Cluster.Namespace {
 		return
 	}
-	// If the name and namespace was set in annotations, compare it and update the annoataion
-	if len(name) > 0 && len(namespace) > 0 {
-		if name != tac.Spec.Cluster.Name || namespace != tac.Spec.Cluster.Namespace {
-			resetAutoScalingAnn(tac)
-		}
-		return
-	}
+	// If not satisfied, reset tac Ann
 	resetAutoScalingAnn(tac)
 }
