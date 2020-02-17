@@ -42,7 +42,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
 		return nil
 	}
-	return syncTiKVAfterCalculated(tc, tac, currentReplicas, targetReplicas, tc.Spec.TiKV.Replicas-currentReplicas)
+	return syncTiKVAfterCalculated(tc, tac, currentReplicas, targetReplicas)
 }
 
 // syncTiKVAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
@@ -50,7 +50,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 // If the auto-scaling is permitted, the timestamp would be recorded and the Consecutive count would be zeroed.
 // The currentReplicas of TiKV calculated in auto-scaling is the count of the StateUp TiKV instance, so we need to
 // add the number of other state tikv instance replicas when we update the TidbCluster.Spec.TiKV.Replicas
-func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas, failureStoreCount int32) error {
+func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
 	if err := updateConsecutiveCount(tac, v1alpha1.TiKVMemberType, currentReplicas, recommendedReplicas); err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 		return nil
 	}
 	updateTcTiKVAnnIfScale(tac)
-	tc.Spec.TiKV.Replicas = recommendedReplicas + failureStoreCount
+	tc.Spec.TiKV.Replicas = recommendedReplicas
 	return nil
 }
 
