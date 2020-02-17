@@ -432,6 +432,14 @@ tidb:
   # automatically.
   # Note: TLS connection is not forced on the server side, plain connections are also accepted after enableing.
   enableTLSClient: false
+  # # extra SAN IP list when you set tidb.enableTLSClient to true
+  # extraSANIPList:
+  #   - 1.1.1.1
+  #   - 2.2.2.2
+  # # extra SAN Domain List when you set tidb.enableTLSClient to true
+  # extraSANDomainList:
+  #   - example1.com
+  #   - example2.com
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
