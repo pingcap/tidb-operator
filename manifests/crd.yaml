@@ -3988,6 +3988,10 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                tlsClientCertSecretName:
+                  description: Secret name which stores user custom TiDB Server cert,
+                    key and ca
+                  type: string
                 tolerations:
                   description: 'Tolerations of the component. Override the cluster-level
                     tolerations if non-empty Optional: Defaults to cluster-level setting'

@@ -105,6 +105,9 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end }}
+  {{- if .Values.tidb.tlsClientCertSecretName }}
+    tlsClientCertSecretName: {{ .Values.tidb.tlsClientCertSecretName }}
+  {{- end }}
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
     imagePullPolicy: {{ .Values.tidb.imagePullPolicy | default "IfNotPresent" }}
