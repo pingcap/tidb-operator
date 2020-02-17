@@ -14,6 +14,7 @@
 package member
 
 import (
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
@@ -74,7 +75,9 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := tc.TiDBStsActualReplicas() - 1; i >= 0; i-- {
+	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+		i := podOrdinals[_i]
 		podName := tidbPodName(tcName, i)
 		pod, err := tdu.podLister.Pods(ns).Get(podName)
 		if err != nil {

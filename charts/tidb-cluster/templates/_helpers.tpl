@@ -91,7 +91,7 @@ config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
     {{- end -}}
-    {{- if or .Values.enableTLSCluster .Values.enableTLSClient }}
+    {{- if or .Values.enableTLSCluster .Values.tidb.enableTLSClient }}
   [security]
     {{- end -}}
     {{- if .Values.enableTLSCluster }}

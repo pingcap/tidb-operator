@@ -1,8 +1,12 @@
-{{- if (or (eq .Values.mode "backup") (eq .Values.mode "scheduled-restore")) }}
+{{- if (or (eq .Values.mode "backup") (eq .Values.mode "scheduled-restore") (and (eq .Values.mode "restore") (not .Values.restoreUsingExistingVolume))) }}
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
+  {{- if eq .Values.mode "restore" }}
+  name: restore-{{ tpl .Values.name . }}
+  {{- else }}
   name: {{ tpl .Values.name . }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: tidb-operator

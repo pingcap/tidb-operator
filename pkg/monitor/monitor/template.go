@@ -14,133 +14,37 @@
 package monitor
 
 import (
-	"bytes"
-	"html/template"
+	"time"
+
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+	"gopkg.in/yaml.v2"
+	"k8s.io/klog"
 )
 
-var prometheusConfigTpl = template.Must(template.New("monitor-configmap").Parse(`global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-{{- if .AlertmanagerURL }}
-alerting:
-  alertmanagers:
-  - static_configs:
-    - targets:
-      - {{ .AlertmanagerURL }}
-{{- end }}
-scrape_configs:
-  - job_name: 'tidb-cluster'
-    scrape_interval: 15s
-    honor_labels: true
-    kubernetes_sd_configs:
-    - role: pod
-      namespaces:
-        names:
-        {{- range .ReleaseNamespaces }}
-        - {{ . }}
-        {{- end}}
-    tls_config:
-      insecure_skip_verify: true
-    {{- if .EnableTLSCluster }}
-      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-      cert_file: /var/lib/pd-client-tls/cert
-      key_file: /var/lib/pd-client-tls/key
+const (
+	instanceLabel    = "__meta_kubernetes_pod_label_app_kubernetes_io_instance"
+	componentLabel   = "__meta_kubernetes_pod_label_app_kubernetes_io_component"
+	scrapeLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_scrape"
+	metricsPathLabel = "__meta_kubernetes_pod_annotation_prometheus_io_path"
+	ioPortLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_port"
+	namespaceLabel   = "__meta_kubernetes_namespace"
+	podNameLabel     = "__meta_kubernetes_pod_name"
+	nodeNameLabel    = "__meta_kubernetes_pod_node_name"
+	podIPLabel       = "__meta_kubernetes_pod_ip"
+	caFilePath       = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	certFilePath     = "/var/lib/pd-client-tls/cert"
+	keyFilePath      = "/var/lib/pd-client-tls/key"
+)
 
-    scheme: https
-    {{- end }}
-    relabel_configs:
-    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-      action: keep
-      regex: {{ .ReleaseTargetRegex }}
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-      action: keep
-      regex: true
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-      action: replace
-      target_label: __metrics_path__
-      regex: (.+)
-    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-      action: replace
-      regex: ([^:]+)(?::\d+)?;(\d+)
-      replacement: $1:$2
-      target_label: __address__
-    - source_labels: [__meta_kubernetes_namespace]
-      action: replace
-      target_label: kubernetes_namespace
-    - source_labels: [__meta_kubernetes_pod_node_name]
-      action: replace
-      target_label: kubernetes_node
-    - source_labels: [__meta_kubernetes_pod_ip]
-      action: replace
-      target_label: kubernetes_pod_ip
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: replace
-      target_label: instance
-    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-      action: replace
-      target_label: cluster
-    {{- if .EnableTLSCluster }}
-    # This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
-    # be removed after TiKV fix this issue
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: drop
-      regex: .*\-tikv\-\d*$
-    {{- end }}
-  {{- if .EnableTLSCluster }}
-  # This is a workaround of https://github.com/tikv/tikv/issues/5340 and should
-  # be removed after TiKV fix this issue
-  - job_name: 'tidb-cluster-tikv'
-    scrape_interval: 15s
-    honor_labels: true
-    kubernetes_sd_configs:
-    - role: pod
-      namespaces:
-        names:
-		{{- range .ReleaseNamespaces }}
-		- {{ . }}
-  		{{- end }}
-    tls_config:
-      insecure_skip_verify: true
-    scheme: http
-    relabel_configs:
-    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-      action: keep
-      regex: {{ .ReleaseTargetRegex }}
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-      action: keep
-      regex: true
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-      action: replace
-      target_label: __metrics_path__
-      regex: (.+)
-    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-      action: replace
-      regex: ([^:]+)(?::\d+)?;(\d+)
-      replacement: $1:$2
-      target_label: __address__
-    - source_labels: [__meta_kubernetes_namespace]
-      action: replace
-      target_label: kubernetes_namespace
-    - source_labels: [__meta_kubernetes_pod_node_name]
-      action: replace
-      target_label: kubernetes_node
-    - source_labels: [__meta_kubernetes_pod_ip]
-      action: replace
-      target_label: kubernetes_pod_ip
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: keep
-      regex: .*\-tikv\-\d*$
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: replace
-      target_label: instance
-    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
-      action: replace
-      target_label: cluster
-  {{- end }}
-rule_files:
-  - '/prometheus-rules/rules/*.rules.yml'`))
-
-var dashBoardConfig = `{
+var (
+	truePattern     config.Regexp
+	allMatchPattern config.Regexp
+	portPattern     config.Regexp
+	tikvPattern     config.Regexp
+	pdPattern       config.Regexp
+	tidbPattern     config.Regexp
+	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
         {
@@ -154,23 +58,218 @@ var dashBoardConfig = `{
         }
     ]
 }`
+)
+
+func init() {
+	var err error
+	truePattern, err = config.NewRegexp("true")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	allMatchPattern, err = config.NewRegexp("(.+)")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	portPattern, err = config.NewRegexp("([^:]+)(?::\\d+)?;(\\d+)")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	tikvPattern, err = config.NewRegexp(".*\\-tikv\\-\\d*$")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	pdPattern, err = config.NewRegexp("pd")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	tidbPattern, err = config.NewRegexp("tidb")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+}
 
 type MonitorConfigModel struct {
 	AlertmanagerURL    string
 	ReleaseNamespaces  []string
-	ReleaseTargetRegex string
+	ReleaseTargetRegex *config.Regexp
 	EnableTLSCluster   bool
 }
 
-func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
-	return renderTemplateFunc(prometheusConfigTpl, model)
+func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
+	var c = config.Config{
+		AlertingConfig: config.AlertingConfig{
+			AlertRelabelConfigs: nil,
+			AlertmanagerConfigs: nil,
+			XXX:                 nil,
+		},
+		GlobalConfig: config.GlobalConfig{
+			ScrapeInterval:     model.Duration(15 * time.Second),
+			EvaluationInterval: model.Duration(15 * time.Second),
+		},
+		RuleFiles: []string{
+			"/prometheus-rules/rules/*.rules.yml",
+		},
+		ScrapeConfigs: []*config.ScrapeConfig{
+			scrapeJob("pd", pdPattern, cmodel),
+			scrapeJob("tidb", tidbPattern, cmodel),
+			scrapeJob("tikv", tikvPattern, cmodel),
+		},
+	}
+	return &c
 }
 
-func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {
-	buff := new(bytes.Buffer)
-	err := tpl.Execute(buff, model)
+func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfigModel) *config.ScrapeConfig {
+	return &config.ScrapeConfig{
+
+		JobName:        name,
+		ScrapeInterval: model.Duration(15 * time.Second),
+		HonorLabels:    true,
+		ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+			KubernetesSDConfigs: []*config.KubernetesSDConfig{
+				{
+					Role: "pod",
+					NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
+						Names: cmodel.ReleaseNamespaces,
+					},
+				},
+			},
+		},
+		HTTPClientConfig: config.HTTPClientConfig{
+			TLSConfig: config.TLSConfig{
+				InsecureSkipVerify: true,
+			},
+			XXX: map[string]interface{}{
+				"scheme": "http",
+			},
+		},
+		RelabelConfigs: []*config.RelabelConfig{
+			{
+				SourceLabels: model.LabelNames{
+					instanceLabel,
+				},
+				Action: config.RelabelKeep,
+				Regex:  *cmodel.ReleaseTargetRegex,
+			},
+			{
+				SourceLabels: model.LabelNames{
+					componentLabel,
+				},
+				Action: config.RelabelKeep,
+				Regex:  componentPattern,
+			},
+			{
+				SourceLabels: model.LabelNames{
+					scrapeLabel,
+				},
+				Action: config.RelabelKeep,
+				Regex:  truePattern,
+			},
+			{
+				SourceLabels: model.LabelNames{
+					metricsPathLabel,
+				},
+				Action:      config.RelabelReplace,
+				TargetLabel: "__metrics_path__",
+				Regex:       allMatchPattern,
+			},
+			{
+				SourceLabels: model.LabelNames{
+					"__address__",
+					ioPortLabel,
+				},
+				Action:      config.RelabelReplace,
+				Regex:       portPattern,
+				Replacement: "$1:$2",
+				TargetLabel: "__address__",
+			},
+			{
+				SourceLabels: model.LabelNames{
+					namespaceLabel,
+				},
+				Action:      config.RelabelReplace,
+				TargetLabel: "kubernetes_namespace",
+			},
+			{
+				SourceLabels: model.LabelNames{
+					podNameLabel,
+				},
+				Action:      config.RelabelReplace,
+				TargetLabel: "instance",
+			},
+			{
+				SourceLabels: model.LabelNames{
+					instanceLabel,
+				},
+				Action:      config.RelabelReplace,
+				TargetLabel: "cluster",
+			},
+			{
+				SourceLabels: model.LabelNames{
+					podNameLabel,
+				},
+				Action:      config.RelabelReplace,
+				TargetLabel: "instance",
+			},
+			{
+				SourceLabels: model.LabelNames{
+					instanceLabel,
+				},
+				Action:      config.RelabelReplace,
+				TargetLabel: "cluster",
+			},
+		},
+	}
+
+}
+
+func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
+	pc.AlertingConfig = config.AlertingConfig{
+		AlertmanagerConfigs: []*config.AlertmanagerConfig{
+			{
+				ServiceDiscoveryConfig: config.ServiceDiscoveryConfig{
+					StaticConfigs: []*config.TargetGroup{
+						{
+							Targets: []model.LabelSet{
+								map[model.LabelName]model.LabelValue{
+									"targets": model.LabelValue(cmodel.AlertmanagerURL),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func addTlsConfig(pc *config.Config) {
+
+	for id, sconfig := range pc.ScrapeConfigs {
+		// TiKV doesn't support scheme https for now.
+		// And we should fix it after TiKV fix this issue: https://github.com/tikv/tikv/issues/5340
+		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" {
+			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:   caFilePath,
+				CertFile: certFilePath,
+				KeyFile:  keyFilePath,
+			}
+			pc.ScrapeConfigs[id] = sconfig
+			sconfig.HTTPClientConfig.XXX["scheme"] = "https"
+		}
+	}
+}
+
+func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
+	pc := newPrometheusConfig(model)
+	if model.EnableTLSCluster {
+		addTlsConfig(pc)
+	}
+	if len(model.AlertmanagerURL) > 0 {
+		addAlertManagerUrl(pc, model)
+	}
+	bs, err := yaml.Marshal(pc)
 	if err != nil {
 		return "", err
 	}
-	return buff.String(), nil
+	return string(bs), nil
 }

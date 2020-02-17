@@ -312,6 +312,12 @@ type TiDBSpec struct {
 	// +optional
 	EnableTLSClient *bool `json:"enableTLSClient,omitempty"`
 
+	// extra SAN IP list when setting EnableTLSClient to true
+	ExtraSANIPList []string `json:"extraSANIPList,omitempty"`
+
+	// extra SAN Domain list when setting EnableTLSClient to true
+	ExtraSANDomainList []string `json:"extraSANDomainList,omitempty"`
+
 	// The spec of the slow log tailer sidecar
 	// +optional
 	SlowLogTailer *TiDBSlowLogTailerSpec `json:"slowLogTailer,omitempty"`
@@ -756,6 +762,10 @@ type BackupSpec struct {
 type BRConfig struct {
 	// PDAddress is the PD address of the tidb cluster
 	PDAddress string `json:"pd"`
+	// DB is the specific DB which will be backed-up or restored
+	DB string `json:"db,omitempty"`
+	// Table is the specific table which will be backed-up or restored
+	Table string `json:"table,omitempty"`
 	// CA is the CA certificate path for TLS connection
 	CA string `json:"ca,omitempty"`
 	// Cert is the certificate path for TLS connection
@@ -925,6 +935,8 @@ const (
 	RestoreFailed RestoreConditionType = "Failed"
 	// RestoreRetryFailed means this failure can be retried
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
+	// RestoreInvalid means invalid restore CR.
+	RestoreInvalid RestoreConditionType = "Invalid"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
@@ -940,7 +952,7 @@ type RestoreCondition struct {
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
 	// To is the tidb cluster that needs to restore.
-	To TiDBAccessConfig `json:"to"`
+	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
@@ -950,7 +962,9 @@ type RestoreSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
-	StorageSize string `json:"storageSize"`
+	StorageSize string `json:"storageSize,omitempty"`
+	// BR is the configs for BR.
+	BR *BRConfig `json:"br,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.

@@ -45,11 +45,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
-	utildiscovery "github.com/pingcap/tidb-operator/tests/e2e/util/discovery"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
+	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -151,7 +152,7 @@ const (
 
 type OperatorActions interface {
 	CleanCRDOrDie()
-	InstallCRDOrDie()
+	InstallCRDOrDie(info *OperatorConfig)
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -470,13 +471,15 @@ func (oa *operatorActions) CleanCRDOrDie() {
 }
 
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
-func (oa *operatorActions) InstallCRDOrDie() {
-	if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
-		glog.Fatal(err)
-	} else if isSupported {
-		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
-	} else {
-		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+func (oa *operatorActions) InstallCRDOrDie(info *OperatorConfig) {
+	if info.Enabled(features.AdvancedStatefulSet) {
+		if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
+			glog.Fatal(err)
+		} else if isSupported {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+		} else {
+			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
+		}
 	}
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
@@ -489,7 +492,6 @@ func (oa *operatorActions) InstallCRDOrDie() {
 	if err != nil {
 		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
-	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
@@ -711,6 +713,8 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	ns := info.Namespace
 	tcName := info.ClusterName
 
+	oa.StopInsertDataTo(info)
+
 	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			label.InstanceLabelKey: tcName,
@@ -809,6 +813,11 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
+	}
+
+	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(blockWriterPodName(info), nil)
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete blockwriter pod %v", err)
 	}
 
 	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
@@ -1031,7 +1040,7 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: info.Namespace,
-			Name:      "blockwriter",
+			Name:      blockWriterPodName(info),
 			Labels: map[string]string{
 				"app": "blockwriter",
 			},
@@ -1098,6 +1107,8 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
+
+	info.blockWriterPod = nil
 }
 
 func (oa *operatorActions) manifestPath(tag string) string {
@@ -1406,6 +1417,10 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
+		return false, nil
+	}
+
 	if tc.Status.PD.StatefulSet == nil {
 		glog.Infof("tidbcluster: %s/%s .status.PD.StatefulSet is nil", ns, tcName)
 		return false, nil
@@ -1479,6 +1494,10 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
+		return false, nil
+	}
+
 	if tc.Status.TiKV.StatefulSet == nil {
 		glog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
 		return false, nil
@@ -1543,6 +1562,10 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tidbSet) {
 		return false, nil
 	}
 
@@ -3465,4 +3488,8 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 		}
 		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
+}
+
+func blockWriterPodName(info *TidbClusterConfig) string {
+	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
 }
