@@ -7098,7 +7098,7 @@ spec:
                   description: ScaleInThreshold describe the consecutive threshold
                     for the auto-scaling, if the consecutive counts of the scale-in
                     result in auto-scaling reach this number, the auto-scaling would
-                    be performed. If not set, the default value is 3.
+                    be performed. If not set, the default value is 5.
                   format: int32
                   type: integer
                 scaleOutIntervalSeconds:
@@ -7158,7 +7158,7 @@ spec:
                   description: ScaleInThreshold describe the consecutive threshold
                     for the auto-scaling, if the consecutive counts of the scale-in
                     result in auto-scaling reach this number, the auto-scaling would
-                    be performed. If not set, the default value is 3.
+                    be performed. If not set, the default value is 5.
                   format: int32
                   type: integer
                 scaleOutIntervalSeconds:

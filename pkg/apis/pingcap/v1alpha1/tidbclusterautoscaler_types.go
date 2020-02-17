@@ -127,7 +127,7 @@ type BasicAutoScalerSpec struct {
 	// ScaleInThreshold describe the consecutive threshold for the auto-scaling,
 	// if the consecutive counts of the scale-in result in auto-scaling reach this number,
 	// the auto-scaling would be performed.
-	// If not set, the default value is 3.
+	// If not set, the default value is 5.
 	// +optional
 	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
 }
