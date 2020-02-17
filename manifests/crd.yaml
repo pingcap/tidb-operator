@@ -7060,6 +7060,10 @@ spec:
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
+                MetricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7078,12 +7082,6 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
-                metricsTimeWindowSeconds:
-                  description: MetricsTimeWindowSeconds describe the time window seconds
-                    for the metrics to be queried in the Prometheus. If not set, the
-                    default value would be 180.
-                  format: int32
-                  type: integer
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
@@ -7122,6 +7120,10 @@ spec:
             tikv:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
+                MetricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7140,12 +7142,6 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
-                metricsTimeWindowSeconds:
-                  description: MetricsTimeWindowSeconds describe the time window seconds
-                    for the metrics to be queried in the Prometheus. If not set, the
-                    default value would be 180.
-                  format: int32
-                  type: integer
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.

@@ -808,11 +808,11 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							},
 						},
 					},
-					"metricsTimeWindowSeconds": {
+					"MetricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeWindowSeconds describe the time window seconds for the metrics to be queried in the Prometheus. If not set, the default value would be 180.",
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"scaleOutThreshold": {
@@ -5705,11 +5705,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
-					"metricsTimeWindowSeconds": {
+					"MetricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeWindowSeconds describe the time window seconds for the metrics to be queried in the Prometheus. If not set, the default value would be 180.",
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"scaleOutThreshold": {
@@ -6605,11 +6605,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
-					"metricsTimeWindowSeconds": {
+					"MetricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeWindowSeconds describe the time window seconds for the metrics to be queried in the Prometheus. If not set, the default value would be 180.",
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"scaleOutThreshold": {
