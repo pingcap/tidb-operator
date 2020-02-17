@@ -77,7 +77,9 @@ spec:
       volumes:
       - name: data
         persistentVolumeClaim:
-    {{- if .Values.scheduledBackupName }}
+    {{- if not .Values.restoreUsingExistingVolume }}
+          claimName: restore-{{ .Values.name }}
+    {{- else if .Values.scheduledBackupName }}
           claimName: {{ .Values.name }}-scheduled-backup
     {{- else }}
           claimName: {{ .Values.name }}
