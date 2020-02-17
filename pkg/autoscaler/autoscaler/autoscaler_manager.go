@@ -16,6 +16,8 @@ package autoscaler
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -57,8 +59,14 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	tcNamespace := tac.Spec.Cluster.Namespace
 	tc, err := am.tcLister.TidbClusters(tcNamespace).Get(tcName)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			// Target TidbCluster Ref is deleted, empty the auto-scaling status
+			emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
+			emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+		}
 		return err
 	}
+	checkAndUpdateTacAnn(tac)
 	oldTCSpec := tc.Spec.DeepCopy()
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err

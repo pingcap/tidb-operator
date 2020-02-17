@@ -33,7 +33,7 @@ const (
 	annScaleInSuffix  = "tidb.pingcap.com/consecutive-scale-in-count"
 
 	invalidMemberTypeErrorMsg    = "tac[%s/%s] invalid set MemberType:%s"
-	invalidTacAnnotationErrorMsg = "tac[%s/%s]'s tc[%s/%s] annotation invalid set,err:%v"
+	invalidTacAnnotationErrorMsg = "tac[%s/%s] annotation invalid set,err:%v"
 )
 
 var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
@@ -59,13 +59,13 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tc *v1alpha1.TidbCluster, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
-	if tc.Annotations == nil {
-		tc.Annotations = map[string]string{}
+func checkStsAutoScalingInterval(tac *v1alpha1.TidbCluster, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
 	}
-	lastAutoScalingTimestamp, existed := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+	lastAutoScalingTimestamp, existed := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 	if memberType == v1alpha1.TiKVMemberType {
-		lastAutoScalingTimestamp, existed = tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+		lastAutoScalingTimestamp, existed = tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 	}
 	if !existed {
 		return true, nil
@@ -179,10 +179,10 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 }
 
 // updateConsecutiveCount would update the tc annotation depended by the given replicas in each reconciling
-func updateConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler,
+func updateConsecutiveCount(tac *v1alpha1.TidbClusterAutoScaler,
 	memberType v1alpha1.MemberType, currentReplicas int32, recommendedReplicas int32) error {
-	if tc.Annotations == nil {
-		tc.Annotations = map[string]string{}
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
 	}
 
 	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
@@ -193,17 +193,17 @@ func updateConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterA
 	scaleOutCount, scaleInCount = 0, 0
 	var err error
 
-	if v, existed := tc.Annotations[targetScaleOutAnn]; existed {
+	if v, existed := tac.Annotations[targetScaleOutAnn]; existed {
 		scaleOutCount, err = strconv.Atoi(v)
 		if err != nil {
-			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
+			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, err)
 		}
 	}
 
-	if v, existed := tc.Annotations[targetScaleInAnn]; existed {
+	if v, existed := tac.Annotations[targetScaleInAnn]; existed {
 		scaleInCount, err = strconv.Atoi(v)
 		if err != nil {
-			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, tc.Namespace, tc.Name, err)
+			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, err)
 		}
 	}
 
@@ -221,23 +221,23 @@ func updateConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterA
 	}
 
 	// update tc annotation
-	tc.Annotations[targetScaleOutAnn] = fmt.Sprintf("%d", scaleOutCount)
-	tc.Annotations[targetScaleInAnn] = fmt.Sprintf("%d", scaleInCount)
+	tac.Annotations[targetScaleOutAnn] = fmt.Sprintf("%d", scaleOutCount)
+	tac.Annotations[targetScaleInAnn] = fmt.Sprintf("%d", scaleInCount)
 	return nil
 }
 
-func checkConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler,
+func checkConsecutiveCount(tac *v1alpha1.TidbClusterAutoScaler,
 	memberType v1alpha1.MemberType, currentReplicas int32, recommendedReplicas int32) (bool, error) {
 	if currentReplicas == recommendedReplicas {
 		return false, nil
 	}
 	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
 	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
-	currentScaleOutCount, err := strconv.ParseInt(tc.Annotations[targetScaleOutAnn], 10, 32)
+	currentScaleOutCount, err := strconv.ParseInt(tac.Annotations[targetScaleOutAnn], 10, 32)
 	if err != nil {
 		return false, err
 	}
-	currentScaleInCount, err := strconv.ParseInt(tc.Annotations[targetScaleInAnn], 10, 32)
+	currentScaleInCount, err := strconv.ParseInt(tac.Annotations[targetScaleInAnn], 10, 32)
 	if err != nil {
 		return false, err
 	}
@@ -272,15 +272,50 @@ func checkConsecutiveCount(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAu
 	return true, nil
 }
 
-func emptyConsecutiveCount(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) {
+func emptyAutoScalingCountAnn(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) {
 	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
 	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
-	tc.Annotations[targetScaleOutAnn] = "0"
-	tc.Annotations[targetScaleInAnn] = "0"
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
+	}
+	tac.Annotations[targetScaleOutAnn] = "0"
+	tac.Annotations[targetScaleInAnn] = "0"
 }
 
 //TODO: calculate the recommended replicas from Prometheus
 func calculateRecommendedReplicas(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType,
 	client promClient.Client) int32 {
 	return 0
+}
+
+func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {
+	emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
+	emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+	tac.Annotations[label.AnnAutoScalingTargetNamespace] = tac.Spec.Cluster.Namespace
+	tac.Annotations[label.AnnAutoScalingTargetName] = tac.Spec.Cluster.Name
+}
+
+// checkAndUpdateTacRef would compare the target tidbcluster ref stored in the annotations
+// and in the Spec. It not equal, the previous stored status would be empty and the stored Ref
+// would be updated.
+func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
+		resetAutoScalingAnn(tac)
+		return
+	}
+	name := tac.Annotations[label.AnnAutoScalingTargetName]
+	namespace := tac.Annotations[label.AnnAutoScalingTargetNamespace]
+	if len(name) < 1 && len(namespace) < 1 {
+		resetAutoScalingAnn(tac)
+		return
+	}
+	// If the name and namespace was set in annotations, compare it and update the annoataion
+	if len(name) > 0 && len(namespace) > 0 {
+		if name != tac.Spec.Cluster.Name || namespace != tac.Spec.Cluster.Namespace {
+			resetAutoScalingAnn(tac)
+		}
+		return
+	}
+	resetAutoScalingAnn(tac)
 }
