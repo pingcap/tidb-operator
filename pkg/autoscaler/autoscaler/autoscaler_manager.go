@@ -20,6 +20,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
+	"k8s.io/apimachinery/pkg/api/errors"
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
@@ -57,8 +58,14 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	tcNamespace := tac.Spec.Cluster.Namespace
 	tc, err := am.tcLister.TidbClusters(tcNamespace).Get(tcName)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			// Target TidbCluster Ref is deleted, empty the auto-scaling status
+			emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
+			emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+		}
 		return err
 	}
+	checkAndUpdateTacAnn(tac)
 	oldTCSpec := tc.Spec.DeepCopy()
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err
@@ -94,7 +101,7 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, o
 }
 
 //TODO: sync tac status
-func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTCSpec *v1alpha1.TidbClusterSpec,
+func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbClusterSpec,
 	tac *v1alpha1.TidbClusterAutoScaler) error {
 	return nil
 }
