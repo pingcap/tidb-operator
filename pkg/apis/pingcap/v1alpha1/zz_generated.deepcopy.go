@@ -339,9 +339,9 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.MetricsTimeWindowSeconds != nil {
-		in, out := &in.MetricsTimeWindowSeconds, &out.MetricsTimeWindowSeconds
-		*out = new(int32)
+	if in.MetricsTimeDuration != nil {
+		in, out := &in.MetricsTimeDuration, &out.MetricsTimeDuration
+		*out = new(string)
 		**out = **in
 	}
 	if in.ScaleOutThreshold != nil {

@@ -113,11 +113,9 @@ type BasicAutoScalerSpec struct {
 	// +optional
 	Metrics []v2beta2.MetricSpec `json:"metrics,omitempty"`
 
-	// MetricsTimeWindowSeconds describe the time window seconds for the metrics
-	// to be queried in the Prometheus.
-	// If not set, the default value would be 180.
+	// MetricsTimeDuration describe the Time duration to be queried in the Prometheus
 	// +optional
-	MetricsTimeWindowSeconds *int32 `json:"metricsTimeWindowSeconds,omitempty"`
+	MetricsTimeDuration *string `json:"MetricsTimeDuration,omitempty"`
 
 	// ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
 	// if the consecutive counts of the scale-out result in auto-scaling reach this number,
