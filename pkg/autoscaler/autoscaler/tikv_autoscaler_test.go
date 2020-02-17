@@ -32,7 +32,6 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 		currentScaleOutCount     int32
 		expectedScaleOutAnnValue string
 		expectedScaleInAnnValue  string
-		failureReplicas          int32
 		autoScalingPermitted     bool
 	}
 	testFn := func(test *testcase) {
@@ -40,19 +39,19 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 
 		tac := newTidbClusterAutoScaler()
 		tc := newTidbCluster()
-		tc.Spec.TiKV.Replicas = test.currentReplicas + test.failureReplicas
+		tc.Spec.TiKV.Replicas = test.currentReplicas
 		tac.Annotations[label.AnnTiKVConsecutiveScaleInCount] = fmt.Sprintf("%d", test.currentScaleInCount)
 		tac.Annotations[label.AnnTiKVConsecutiveScaleOutCount] = fmt.Sprintf("%d", test.currentScaleOutCount)
 
-		err := syncTiKVAfterCalculated(tc, tac, test.currentReplicas, test.recommendedReplicas, test.failureReplicas)
+		err := syncTiKVAfterCalculated(tc, tac, test.currentReplicas, test.recommendedReplicas)
 		g.Expect(err).ShouldNot(HaveOccurred())
 
 		_, existed := tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 		g.Expect(existed).Should(Equal(test.autoScalingPermitted))
 		if test.autoScalingPermitted {
-			g.Expect(tc.Spec.TiKV.Replicas).Should(Equal(test.recommendedReplicas + test.failureReplicas))
+			g.Expect(tc.Spec.TiKV.Replicas).Should(Equal(test.recommendedReplicas))
 		} else {
-			g.Expect(tc.Spec.TiKV.Replicas).Should(Equal(test.currentReplicas + test.failureReplicas))
+			g.Expect(tc.Spec.TiKV.Replicas).Should(Equal(test.currentReplicas))
 		}
 	}
 
@@ -65,18 +64,6 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 			currentScaleOutCount:     1,
 			expectedScaleOutAnnValue: "0",
 			expectedScaleInAnnValue:  "0",
-			failureReplicas:          0,
-			autoScalingPermitted:     true,
-		},
-		{
-			name:                     "tikv scale-out, permitted, one failure Instance",
-			currentReplicas:          3,
-			recommendedReplicas:      4,
-			currentScaleInCount:      0,
-			currentScaleOutCount:     1,
-			expectedScaleInAnnValue:  "0",
-			expectedScaleOutAnnValue: "0",
-			failureReplicas:          1,
 			autoScalingPermitted:     true,
 		},
 		{
@@ -87,7 +74,6 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 			currentScaleOutCount:     0,
 			expectedScaleInAnnValue:  "0",
 			expectedScaleOutAnnValue: "1",
-			failureReplicas:          0,
 			autoScalingPermitted:     false,
 		},
 		{
@@ -98,19 +84,6 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 			currentScaleOutCount:     0,
 			expectedScaleInAnnValue:  "0",
 			expectedScaleOutAnnValue: "0",
-			failureReplicas:          0,
-			autoScalingPermitted:     true,
-		},
-
-		{
-			name:                     "tikv scale-in, permitted, one failure instance",
-			currentReplicas:          4,
-			recommendedReplicas:      3,
-			currentScaleInCount:      1,
-			currentScaleOutCount:     0,
-			expectedScaleInAnnValue:  "0",
-			expectedScaleOutAnnValue: "0",
-			failureReplicas:          1,
 			autoScalingPermitted:     true,
 		},
 		{
@@ -121,7 +94,6 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 			currentScaleOutCount:     0,
 			expectedScaleInAnnValue:  "1",
 			expectedScaleOutAnnValue: "0",
-			failureReplicas:          0,
 			autoScalingPermitted:     false,
 		},
 		{
@@ -132,7 +104,6 @@ func TestSyncTiKVAfterCalculated(t *testing.T) {
 			currentScaleOutCount:     0,
 			expectedScaleInAnnValue:  "0",
 			expectedScaleOutAnnValue: "0",
-			failureReplicas:          0,
 			autoScalingPermitted:     false,
 		},
 	}
