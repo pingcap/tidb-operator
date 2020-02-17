@@ -3555,6 +3555,34 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"extraSANIPList": {
+						SchemaProps: spec.SchemaProps{
+							Description: "extra SAN IP list when setting EnableTLSClient to true",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"extraSANDomainList": {
+						SchemaProps: spec.SchemaProps{
+							Description: "extra SAN Domain list when setting EnableTLSClient to true",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 					"slowLogTailer": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The spec of the slow log tailer sidecar",

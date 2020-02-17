@@ -93,6 +93,18 @@ spec:
     maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
   tidb:
     enableTLSClient: {{ .Values.tidb.enableTLSClient | default false }}
+  {{- if .Values.tidb.extraSANIPList }}
+    extraSANIPList:
+    {{- range .Values.tidb.extraSANIPList }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.tidb.extraSANDomainList }}
+    extraSANDomainList:
+    {{- range .Values.tidb.extraSANDomainList }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
     imagePullPolicy: {{ .Values.tidb.imagePullPolicy | default "IfNotPresent" }}

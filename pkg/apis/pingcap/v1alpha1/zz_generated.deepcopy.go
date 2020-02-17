@@ -2469,6 +2469,16 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ExtraSANIPList != nil {
+		in, out := &in.ExtraSANIPList, &out.ExtraSANIPList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.ExtraSANDomainList != nil {
+		in, out := &in.ExtraSANDomainList, &out.ExtraSANDomainList
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.SlowLogTailer != nil {
 		in, out := &in.SlowLogTailer, &out.SlowLogTailer
 		*out = new(TiDBSlowLogTailerSpec)

@@ -3783,6 +3783,17 @@ spec:
                   description: 'Whether enable the TLS connection between the SQL
                     client and TiDB server Optional: Defaults to false'
                   type: boolean
+                extraSANDomainList:
+                  description: extra SAN Domain list when setting EnableTLSClient
+                    to true
+                  items:
+                    type: string
+                  type: array
+                extraSANIPList:
+                  description: extra SAN IP list when setting EnableTLSClient to true
+                  items:
+                    type: string
+                  type: array
                 hostNetwork:
                   description: 'Whether Hostnetwork of the component is enabled. Override
                     the cluster-level setting if present Optional: Defaults to cluster-level
