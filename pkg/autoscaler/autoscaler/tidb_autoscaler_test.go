@@ -42,6 +42,7 @@ func TestSyncTiDBAfterCalculated(t *testing.T) {
 		tc.Spec.TiDB.Replicas = test.currentReplicas
 		tac.Annotations[label.AnnTiDBConsecutiveScaleInCount] = fmt.Sprintf("%d", test.currentScaleInCount)
 		tac.Annotations[label.AnnTiDBConsecutiveScaleOutCount] = fmt.Sprintf("%d", test.currentScaleOutCount)
+		tac.Spec.TiKV = nil
 
 		err := syncTiDBAfterCalculated(tc, tac, test.currentReplicas, test.recommendedReplicas)
 		g.Expect(err).ShouldNot(HaveOccurred())
