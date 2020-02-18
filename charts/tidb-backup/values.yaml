@@ -84,6 +84,11 @@ restoreOptions: "-t 16"
 # When a GC happens, the current time minus this value is the safe point.
 tikvGCLifeTime: 720h
 
+# By default, restores are performed by binding to an existing volume containing backup data.
+# To restore from gcp, ceph, or s3, set this to false to create a new volume to load the backup into
+# This setting only affects the "restore" mode.
+restoreUsingExistingVolume: true
+
 # By default, the backup/restore uses PV to store/load backup data
 # You can choose to store/load backup data to/from gcp, ceph or s3 bucket by enabling the following corresponding section:
 
