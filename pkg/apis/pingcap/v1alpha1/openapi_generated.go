@@ -808,7 +808,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							},
 						},
 					},
-					"MetricsTimeDuration": {
+					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
@@ -5705,7 +5705,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
-					"MetricsTimeDuration": {
+					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
@@ -6605,7 +6605,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
-					"MetricsTimeDuration": {
+					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
