@@ -86,6 +86,7 @@ func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	return nil
 }
 
+//TODO: fetch tikv instances info from pdapi in future
 func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 	var instances []string
 	for _, store := range tc.Status.TiKV.Stores {
