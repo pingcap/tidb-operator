@@ -29,6 +29,10 @@ image:
   # https://github.com/pingcap/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:20191217
 
+## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+nodeSelector: {}
+
 # Add additional labels for backup/restore job's pod
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 extraLabels: {}
