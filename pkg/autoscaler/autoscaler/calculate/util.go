@@ -49,19 +49,21 @@ func GenMetricType(tac *v1alpha1.TidbClusterAutoScaler, metric autoscalingv2beta
 	return "", fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 }
 
-func filterContainer(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, contarinerName string) (*corev1.Container, error) {
+// filterContainer is to filter the specific container from the given statefulset(tidb/tikv)
+func filterContainer(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, containerName string) (*corev1.Container, error) {
 	for _, c := range sts.Spec.Template.Spec.Containers {
-		if c.Name == contarinerName {
+		if c.Name == containerName {
 			return &c, nil
 		}
 	}
-	return nil, fmt.Errorf("tac[%s/%s]'s Target Tidb have not tidb container", tac.Namespace, tac.Name)
+	return nil, fmt.Errorf("tac[%s/%s]'s Target have not %s container", tac.Namespace, tac.Name, containerName)
 }
 
 const (
 	statusSuccess = "success"
 )
 
+// Response is used to marshal the data queried from Prometheus
 type Response struct {
 	Status string `json:"status"`
 	Data   Data   `json:"data"`
