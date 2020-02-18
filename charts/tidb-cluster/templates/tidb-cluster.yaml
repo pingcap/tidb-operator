@@ -94,7 +94,7 @@ spec:
   tidb:
   {{- if .Values.tidb.tlsClient }}
     tlsClient:
-{{ toYaml .Values.tidb.tlsClient | indent 4 }}
+{{ toYaml .Values.tidb.tlsClient | indent 6 }}
   {{- end }}
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
