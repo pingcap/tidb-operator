@@ -343,11 +343,7 @@ func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
 }
 
 func (tidb *TiDBSpec) IsUserGeneratedCertificate() bool {
-	if !tidb.IsTLSClientEnabled() {
-		return false
-	}
-
-	return tidb.TLSClient.UserGenerated != nil && tidb.TLSClient.UserGenerated.SecretName != ""
+	return tidb.IsTLSClientEnabled() && tidb.TLSClient.SecretName != ""
 }
 
 func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {

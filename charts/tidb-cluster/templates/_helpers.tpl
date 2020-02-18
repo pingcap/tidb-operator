@@ -100,7 +100,7 @@ config-file: |-
   cluster-ssl-key = "/var/lib/tidb-tls/key"
     {{- end -}}
     {{- if .Values.tidb.tlsClient.enabled }}
-    {{- if .Values.tidb.tlsClient.userGenerated.secretName }}
+    {{- if .Values.tidb.tlsClient.secretName }}
   ssl-ca = "/var/lib/tidb-server-tls/ca"
     {{- else }}
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
