@@ -20,6 +20,14 @@ func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec) autoscalingv2beta2.M
 	return metrics[0]
 }
 
+// MetricType describe the current Supported Metric Type to calculate the recommended Replicas
+type MetricType string
+
+const (
+	MetricTypeCPU MetricType = "cpu"
+	//metricTypeQPS MetricType = "qps"
+)
+
 // genMetricType return the supported MetricType in Operator by kubernetes auto-scaling MetricType
 func GenMetricType(tac *v1alpha1.TidbClusterAutoScaler, metric autoscalingv2beta2.MetricSpec) (MetricType, error) {
 	if metric.Type == autoscalingv2beta2.ResourceMetricSourceType && metric.Resource != nil && metric.Resource.Name == corev1.ResourceCPU {
@@ -37,9 +45,30 @@ func filterContainer(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSe
 	return nil, fmt.Errorf("tac[%s/%s]'s Target Tidb have not tidb container", tac.Namespace, tac.Name)
 }
 
-func extractCpuRequestsRadio(c *corev1.Container) (float64, error) {
-	if c.Resources.Requests.Cpu() == nil {
-		return 0, fmt.Errorf("container[%s] cpu requests is empty", c.Name)
-	}
-	return float64(c.Resources.Requests.Cpu().MilliValue()) / 1000.0, nil
+const (
+	statusSuccess = "success"
+)
+
+type Response struct {
+	Status string `json:"status"`
+	Data   Data   `json:"data"`
+}
+
+type Data struct {
+	ResultType string   `json:"resultType"`
+	Result     []Result `json:"result"`
+}
+
+type Result struct {
+	Metric Metric        `json:"metric"`
+	Value  []interface{} `json:"value"`
+}
+
+type Metric struct {
+	Cluster             string `json:"cluster,omitempty"`
+	Instance            string `json:"instance"`
+	Job                 string `json:"job,omitempty"`
+	KubernetesNamespace string `json:"kubernetes_namespace,omitempty"`
+	KubernetesNode      string `json:"kubernetes_node,omitempty"`
+	KubernetesPodIp     string `json:"kubernetes_pod_ip,omitempty"`
 }
