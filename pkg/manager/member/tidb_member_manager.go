@@ -633,7 +633,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		var secretName string
 		if tc.Spec.TiDB.IsUserGeneratedCertificate() {
-			secretName = tc.Spec.TiDB.TLSClient.UserGenerated.SecretName
+			secretName = tc.Spec.TiDB.TLSClient.SecretName
 		} else {
 			secretName = fmt.Sprintf("%s-%s", controller.TiDBMemberName(tcName), "server")
 		}
