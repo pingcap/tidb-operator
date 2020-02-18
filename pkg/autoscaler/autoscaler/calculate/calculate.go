@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -31,6 +32,8 @@ const (
 	InvalidTacMetricConfigureMsg = "tac[%s/%s] metric configure invalid"
 	CpuSumMetricsErrorMsg        = "tac[%s/%s] cpu sum metrics error,can't calculate past %s cpu metrics,might casued by promthesu restart with no persistance"
 	queryPath                    = "/api/v1/query"
+
+	float64EqualityThreshold = 1e-9
 )
 
 func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
@@ -60,14 +63,6 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
 	return nil
 }
 
-// MetricType describe the current Supported Metric Type to calculate the recommended Replicas
-type MetricType string
-
-const (
-	MetricTypeCPU MetricType = "cpu"
-	//metricTypeQPS MetricType = "qps"
-)
-
 func sumByInstanceFromResponse(instances []string, resp *Response) (float64, error) {
 	s := sets.String{}
 	for _, instance := range instances {
@@ -87,35 +82,21 @@ func sumByInstanceFromResponse(instances []string, resp *Response) (float64, err
 }
 
 // calculate func calculate the recommended replicas by given usageRadio and currentReplicas
-func calculate(currentValue float64, targetValue float64, currentReplicas int32) int32 {
+func calculate(currentValue float64, targetValue float64, currentReplicas int32) (int32, error) {
+	if almostEqual(targetValue, 0.0) {
+		return 0, fmt.Errorf("targetValue in calculate func can't be zero")
+	}
 	usageRadio := currentValue / targetValue
-	return int32(math.Ceil(usageRadio * float64(currentReplicas)))
+	return int32(math.Ceil(usageRadio * float64(currentReplicas))), nil
 }
 
-const (
-	statusSuccess = "success"
-)
-
-type Response struct {
-	Status string `json:"status"`
-	Data   Data   `json:"data"`
+func almostEqual(a, b float64) bool {
+	return math.Abs(a-b) <= float64EqualityThreshold
 }
 
-type Data struct {
-	ResultType string   `json:"resultType"`
-	Result     []Result `json:"result"`
-}
-
-type Result struct {
-	Metric Metric        `json:"metric"`
-	Value  []interface{} `json:"value"`
-}
-
-type Metric struct {
-	Cluster             string `json:"cluster,omitempty"`
-	Instance            string `json:"instance"`
-	Job                 string `json:"job,omitempty"`
-	KubernetesNamespace string `json:"kubernetes_namespace,omitempty"`
-	KubernetesNode      string `json:"kubernetes_node,omitempty"`
-	KubernetesPodIp     string `json:"kubernetes_pod_ip,omitempty"`
+func extractCpuRequestsRadio(c *corev1.Container) (float64, error) {
+	if c.Resources.Requests.Cpu() == nil || c.Resources.Requests.Cpu().MilliValue() < 1 {
+		return 0, fmt.Errorf("container[%s] cpu requests is empty", c.Name)
+	}
+	return float64(c.Resources.Requests.Cpu().MilliValue()) / 1000.0, nil
 }

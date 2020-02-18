@@ -54,8 +54,10 @@ func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.Statef
 	cpuSecsTotal := sum1 - sum2
 	durationSeconds := duration.Seconds()
 	utilizationRadio := float64(*metric.Resource.Target.AverageUtilization) / 100.0
-	expectedCpuSecs := cpuRequestsRadio * durationSeconds * float64(currentReplicas) * utilizationRadio
-
-	rc := calculate(cpuSecsTotal, expectedCpuSecs, int32(currentReplicas))
-	return int32(rc), nil
+	expectedCpuSecsTotal := cpuRequestsRadio * durationSeconds * float64(currentReplicas) * utilizationRadio
+	rc, err := calculate(cpuSecsTotal, expectedCpuSecsTotal, int32(currentReplicas))
+	if err != nil {
+		return 0, err
+	}
+	return rc, nil
 }

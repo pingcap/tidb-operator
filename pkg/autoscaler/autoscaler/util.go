@@ -264,7 +264,7 @@ func checkConsecutiveCount(tac *v1alpha1.TidbClusterAutoScaler,
 			}
 		} else {
 			// scale-in, no-scaling would be return nil at first
-			if int32(currentScaleInCount) < *tac.Spec.TiDB.ScaleInThreshold {
+			if int32(currentScaleInCount) < *tac.Spec.TiKV.ScaleInThreshold {
 				return false, nil
 			}
 		}
