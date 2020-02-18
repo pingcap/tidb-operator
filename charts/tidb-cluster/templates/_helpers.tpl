@@ -102,7 +102,7 @@ config-file: |-
     {{- if .Values.tidb.tlsClient.enabled }}
     {{- if .Values.tidb.tlsClient.userGenerated.secretName }}
   ssl-ca = "/var/lib/tidb-server-tls/ca"
-    {{- else -}}
+    {{- else }}
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     {{- end }}
   ssl-cert = "/var/lib/tidb-server-tls/cert"
