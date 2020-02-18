@@ -7060,10 +7060,6 @@ spec:
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
-                MetricsTimeDuration:
-                  description: MetricsTimeDuration describe the Time duration to be
-                    queried in the Prometheus
-                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7082,6 +7078,10 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
+                metricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
@@ -7120,10 +7120,6 @@ spec:
             tikv:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
-                MetricsTimeDuration:
-                  description: MetricsTimeDuration describe the Time duration to be
-                    queried in the Prometheus
-                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7142,6 +7138,10 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
+                metricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
