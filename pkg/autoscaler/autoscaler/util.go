@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
-	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -283,12 +282,6 @@ func emptyAutoScalingCountAnn(tac *v1alpha1.TidbClusterAutoScaler, memberType v1
 	}
 	tac.Annotations[targetScaleOutAnn] = "0"
 	tac.Annotations[targetScaleInAnn] = "0"
-}
-
-//TODO: calculate the recommended replicas from Prometheus
-func calculateRecommendedReplicas(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType,
-	client promClient.Client) int32 {
-	return 0
 }
 
 func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {

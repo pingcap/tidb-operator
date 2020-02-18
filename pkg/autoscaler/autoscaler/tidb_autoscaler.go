@@ -14,12 +14,15 @@
 package autoscaler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
@@ -36,7 +39,11 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	currentReplicas := tc.Spec.TiDB.Replicas
-	targetReplicas := calculateRecommendedReplicas(tac, v1alpha1.TiDBMemberType, client)
+	instances := filterTidbInstances(tc)
+	targetReplicas, err := calculateTidbMetrics(tac, sts, client, instances)
+	if err != nil {
+		return err
+	}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
@@ -79,4 +86,26 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 func updateTcTiDBAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
 	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
 	emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
+}
+
+func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
+	metric := calculate.FilterMetrics(tac.Spec.TiDB.Metrics)
+	mType, err := calculate.GenMetricType(tac, metric)
+	if err != nil {
+		return 0, err
+	}
+	switch mType {
+	case calculate.MetricTypeCPU:
+		return calculate.CalculateCpuMetrics(tac, sts, client, instances, metric, calculate.TidbSumCpuMetricsPattern, *tac.Spec.TiDB.MetricsTimeDuration, v1alpha1.TiDBMemberType)
+	default:
+		return 0, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
+	}
+}
+
+func filterTidbInstances(tc *v1alpha1.TidbCluster) []string {
+	var instances []string
+	for i := 0; int32(i) < tc.Spec.TiDB.Replicas; i++ {
+		instances = append(instances, operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, int32(i)))
+	}
+	return instances
 }
