@@ -1,3 +1,16 @@
+// Copyright 2020 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package calculate
 
 import (
@@ -8,8 +21,10 @@ import (
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
 )
 
+//TODO: create issue to explain how auto-scaling algorithm based by cpu metrics work
 func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet,
 	client promClient.Client, instances []string, metric autoscalingv2beta2.MetricSpec,
 	queryPattern, timeWindow string, memberType v1alpha1.MemberType) (int32, error) {
@@ -60,4 +75,11 @@ func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.Statef
 		return 0, err
 	}
 	return rc, nil
+}
+
+func extractCpuRequestsRadio(c *corev1.Container) (float64, error) {
+	if c.Resources.Requests.Cpu() == nil || c.Resources.Requests.Cpu().MilliValue() < 1 {
+		return 0, fmt.Errorf("container[%s] cpu requests is empty", c.Name)
+	}
+	return float64(c.Resources.Requests.Cpu().MilliValue()) / 1000.0, nil
 }

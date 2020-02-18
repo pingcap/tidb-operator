@@ -22,7 +22,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -63,6 +62,7 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
 	return nil
 }
 
+// sumByInstanceFromResponse sum the value in Response of each instance from Prometheus
 func sumByInstanceFromResponse(instances []string, resp *Response) (float64, error) {
 	s := sets.String{}
 	for _, instance := range instances {
@@ -92,11 +92,4 @@ func calculate(currentValue float64, targetValue float64, currentReplicas int32)
 
 func almostEqual(a, b float64) bool {
 	return math.Abs(a-b) <= float64EqualityThreshold
-}
-
-func extractCpuRequestsRadio(c *corev1.Container) (float64, error) {
-	if c.Resources.Requests.Cpu() == nil || c.Resources.Requests.Cpu().MilliValue() < 1 {
-		return 0, fmt.Errorf("container[%s] cpu requests is empty", c.Name)
-	}
-	return float64(c.Resources.Requests.Cpu().MilliValue()) / 1000.0, nil
 }
