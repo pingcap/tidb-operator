@@ -28,34 +28,34 @@ const (
 )
 
 //TODO: create issue to explain how auto-scaling algorithm based on cpu metrics work
-func CalculateCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, sq *SingleQuery, sts *appsv1.StatefulSet,
+func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, sq *SingleQuery, sts *appsv1.StatefulSet,
 	client promClient.Client, memberType v1alpha1.MemberType, duration time.Duration) (int32, error) {
 	metric := sq.Metric
 	instances := sq.Instances
 
 	if metric.Resource == nil || metric.Resource.Target.AverageUtilization == nil {
-		return 0, fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
+		return -1, fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
 	currentReplicas := len(instances)
 	c, err := filterContainer(tac, sts, memberType.String())
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	cpuRequestsRatio, err := extractCpuRequestsRatio(c)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	r := &Response{}
 	err = queryMetricsFromPrometheus(tac, client, sq, r)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	sum, err := sumForEachInstance(instances, r)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	if sum < 0 {
-		return 0, fmt.Errorf(CpuSumMetricsErrorMsg, tac.Namespace, tac.Name, duration.String())
+		return -1, fmt.Errorf(CpuSumMetricsErrorMsg, tac.Namespace, tac.Name, duration.String())
 	}
 	cpuSecsTotal := sum
 	durationSeconds := duration.Seconds()
