@@ -69,6 +69,9 @@ func sumByInstanceFromResponse(instances []string, resp *Response) (float64, err
 		s.Insert(instance)
 	}
 	sum := 0.0
+	if len(resp.Data.Result) < 1 {
+		return 0, fmt.Errorf("metrics Response return zero info")
+	}
 	for _, r := range resp.Data.Result {
 		if s.Has(r.Metric.Instance) {
 			v, err := strconv.ParseFloat(r.Value[1].(string), 64)
