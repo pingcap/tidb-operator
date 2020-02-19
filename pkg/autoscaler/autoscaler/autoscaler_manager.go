@@ -24,17 +24,21 @@ import (
 	promClient "github.com/prometheus/client_golang/api"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type autoScalerManager struct {
+	cli        versioned.Interface
 	genericCli client.Client
 	tcControl  controller.TidbClusterControlInterface
-	tcLister   v1alpha1listers.TidbClusterLister
+	taLister   v1alpha1listers.TidbClusterAutoScalerLister
 	stsLister  appslisters.StatefulSetLister
 	recorder   record.EventRecorder
 }
@@ -48,9 +52,9 @@ func NewAutoScalerManager(
 	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 	return &autoScalerManager{
+		cli:        cli,
 		genericCli: genericCli,
 		tcControl:  controller.NewRealTidbClusterControl(cli, tcLister, recorder),
-		tcLister:   tcLister,
 		stsLister:  stsLister,
 		recorder:   recorder,
 	}
@@ -67,8 +71,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		tac.Spec.Cluster.Namespace = tac.Namespace
 	}
 
-	tcNamespace := tac.Spec.Cluster.Namespace
-	tc, err := am.tcLister.TidbClusters(tcNamespace).Get(tcName)
+	tc, err := am.cli.PingcapV1alpha1().TidbClusters(tac.Spec.Cluster.Namespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
@@ -123,5 +126,32 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, o
 //TODO: sync tac status
 func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster,
 	tac *v1alpha1.TidbClusterAutoScaler) error {
-	return nil
+	return am.updateTidbClusterAutoScaler(tac)
+}
+
+func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClusterAutoScaler) error {
+
+	ns := tac.GetNamespace()
+	tacName := tac.GetName()
+	oldTac := tac.DeepCopy()
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		_, updateErr = am.cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
+		if updateErr == nil {
+			klog.Infof("TidbClusterAutoScaler: [%s/%s] updated successfully", ns, tacName)
+			return nil
+		}
+		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
+
+		if updated, err := am.taLister.TidbClusterAutoScalers(ns).Get(tacName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			tac = updated.DeepCopy()
+			tac.Annotations = oldTac.Annotations
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbClusterAutoScaler %s/%s from lister: %v", ns, tacName, err))
+		}
+		return updateErr
+	})
 }
