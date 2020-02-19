@@ -92,20 +92,34 @@ func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 	metric := calculate.FilterMetrics(tac.Spec.TiDB.Metrics)
 	mType, err := calculate.GenMetricType(tac, metric)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
+	duration, err := time.ParseDuration(*tac.Spec.TiDB.MetricsTimeDuration)
+	if err != nil {
+		return -1, err
+	}
+	sq := &calculate.SingleQuery{
+		Timestamp: time.Now().Unix(),
+		Instances: instances,
+		Metric:    metric,
+		Quary:     fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiDB.MetricsTimeDuration),
+	}
+
 	switch mType {
 	case calculate.MetricTypeCPU:
-		return calculate.CalculateCpuMetrics(tac, sts, client, instances, metric, calculate.TidbSumCpuMetricsPattern, *tac.Spec.TiDB.MetricsTimeDuration, v1alpha1.TiDBMemberType)
+		return calculate.CalculateRecomendedReplicasByCpuCosts(tac, sq, sts, client, v1alpha1.TiDBMemberType, duration)
 	default:
-		return 0, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
+		return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
 }
 
 func filterTidbInstances(tc *v1alpha1.TidbCluster) []string {
 	var instances []string
-	for i := 0; int32(i) < tc.Spec.TiDB.Replicas; i++ {
-		instances = append(instances, operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, int32(i)))
+	for i := 0; int32(i) < tc.Status.TiDB.StatefulSet.Replicas; i++ {
+		podName := operatorUtils.GetPodName(tc, v1alpha1.TiDBMemberType, int32(i))
+		if _, existed := tc.Status.TiDB.FailureMembers[podName]; !existed {
+			instances = append(instances, podName)
+		}
 	}
 	return instances
 }

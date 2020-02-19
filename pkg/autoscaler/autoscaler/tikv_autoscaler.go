@@ -106,12 +106,24 @@ func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 	metric := calculate.FilterMetrics(tac.Spec.TiKV.Metrics)
 	mType, err := calculate.GenMetricType(tac, metric)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
+
+	duration, err := time.ParseDuration(*tac.Spec.TiKV.MetricsTimeDuration)
+	if err != nil {
+		return -1, err
+	}
+	sq := &calculate.SingleQuery{
+		Timestamp: time.Now().Unix(),
+		Instances: instances,
+		Metric:    metric,
+		Quary:     fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiKV.MetricsTimeDuration),
+	}
+
 	switch mType {
 	case calculate.MetricTypeCPU:
-		return calculate.CalculateCpuMetrics(tac, sts, client, instances, metric, calculate.TikvSumCpuMetricsPattern, *tac.Spec.TiKV.MetricsTimeDuration, v1alpha1.TiKVMemberType)
+		return calculate.CalculateRecomendedReplicasByCpuCosts(tac, sq, sts, client, v1alpha1.TiKVMemberType, duration)
 	default:
-		return 0, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
+		return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
 }

@@ -22,6 +22,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// MetricType describe the current Supported Metric Type to calculate the recommended Replicas
+type MetricType string
+
+const (
+	MetricTypeCPU MetricType = "cpu"
+	//metricTypeQPS MetricType = "qps"
+)
+
 // currently, we only choose one metrics to be computed.
 // If there exists several metrics, we tend to choose ResourceMetricSourceType metric
 func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec) autoscalingv2beta2.MetricSpec {
@@ -32,14 +40,6 @@ func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec) autoscalingv2beta2.M
 	}
 	return metrics[0]
 }
-
-// MetricType describe the current Supported Metric Type to calculate the recommended Replicas
-type MetricType string
-
-const (
-	MetricTypeCPU MetricType = "cpu"
-	//metricTypeQPS MetricType = "qps"
-)
 
 // genMetricType return the supported MetricType in Operator by kubernetes auto-scaling MetricType
 func GenMetricType(tac *v1alpha1.TidbClusterAutoScaler, metric autoscalingv2beta2.MetricSpec) (MetricType, error) {

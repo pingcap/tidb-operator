@@ -20,59 +20,50 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 )
 
-//TODO: create issue to explain how auto-scaling algorithm based by cpu metrics work
-func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet,
-	client promClient.Client, instances []string, metric autoscalingv2beta2.MetricSpec,
-	queryPattern, timeWindow string, memberType v1alpha1.MemberType) (int32, error) {
+const (
+	CpuSumMetricsErrorMsg = "tac[%s/%s] cpu sum metrics error, can't calculate the past %s cpu metrics, may caused by prometheus restart while data persistence not enabled"
+)
+
+//TODO: create issue to explain how auto-scaling algorithm based on cpu metrics work
+func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, sq *SingleQuery, sts *appsv1.StatefulSet,
+	client promClient.Client, memberType v1alpha1.MemberType, duration time.Duration) (int32, error) {
+	metric := sq.Metric
+	instances := sq.Instances
+
 	if metric.Resource == nil || metric.Resource.Target.AverageUtilization == nil {
-		return 0, fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
+		return -1, fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
 	currentReplicas := len(instances)
 	c, err := filterContainer(tac, sts, memberType.String())
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	cpuRequestsRatio, err := extractCpuRequestsRatio(c)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-	now := time.Now()
-	duration, err := time.ParseDuration(timeWindow)
-	if err != nil {
-		return 0, err
-	}
-	prvious := now.Truncate(duration)
 	r := &Response{}
-	err = queryMetricsFromPrometheus(tac, fmt.Sprintf(queryPattern, tac.Spec.Cluster.Name), client, now.Unix(), r)
+	err = queryMetricsFromPrometheus(tac, client, sq, r)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-	sum1, err := sumByInstanceFromResponse(instances, r)
+	sum, err := sumForEachInstance(instances, r)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-	err = queryMetricsFromPrometheus(tac, fmt.Sprintf(queryPattern, tac.Spec.Cluster.Name), client, prvious.Unix(), r)
-	if err != nil {
-		return 0, err
+	if sum < 0 {
+		return -1, fmt.Errorf(CpuSumMetricsErrorMsg, tac.Namespace, tac.Name, duration.String())
 	}
-	sum2, err := sumByInstanceFromResponse(instances, r)
-	if err != nil {
-		return 0, err
-	}
-	if sum1-sum2 < 0 {
-		return 0, fmt.Errorf(CpuSumMetricsErrorMsg, tac.Namespace, tac.Name, timeWindow)
-	}
-	cpuSecsTotal := sum1 - sum2
+	cpuSecsTotal := sum
 	durationSeconds := duration.Seconds()
 	utilizationRatio := float64(*metric.Resource.Target.AverageUtilization) / 100.0
 	expectedCpuSecsTotal := cpuRequestsRatio * durationSeconds * float64(currentReplicas) * utilizationRatio
 	rc, err := calculate(cpuSecsTotal, expectedCpuSecsTotal, int32(currentReplicas))
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	return rc, nil
 }

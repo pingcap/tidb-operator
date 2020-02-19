@@ -22,21 +22,29 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
-	TikvSumCpuMetricsPattern     = `sum(tikv_thread_cpu_seconds_total{cluster="%s"}) by (instance)`
-	TidbSumCpuMetricsPattern     = `sum(process_cpu_seconds_total{cluster="%s",job="tidb"}) by (instance)`
-	InvalidTacMetricConfigureMsg = "tac[%s/%s] metric configure invalid"
-	CpuSumMetricsErrorMsg        = "tac[%s/%s] cpu sum metrics error,can't calculate past %s cpu metrics,might caused by prometheus restart with no persistence"
+	TikvSumCpuMetricsPattern     = `sum(increase(tikv_thread_cpu_seconds_total{cluster="%s"}[%s])) by (instance)`
+	TidbSumCpuMetricsPattern     = `sum(increase(process_cpu_seconds_total{cluster="%s",job="tidb"}[%s])) by (instance)`
+	InvalidTacMetricConfigureMsg = "tac[%s/%s] metric configuration invalid"
 	queryPath                    = "/api/v1/query"
 
 	float64EqualityThreshold = 1e-9
 )
 
-func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
-	query string, client promClient.Client, timestamp int64, resp *Response) error {
+type SingleQuery struct {
+	Timestamp int64
+	Quary     string
+	Instances []string
+	Metric    autoscalingv2beta2.MetricSpec
+}
+
+func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, sq *SingleQuery, resp *Response) error {
+	query := sq.Quary
+	timestamp := sq.Timestamp
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", *tac.Spec.MetricsUrl, queryPath), nil)
 	if err != nil {
 		return err
@@ -50,25 +58,31 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
 		return err
 	}
 	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("tac[%s/%s]' query error,status code:%d", tac.Namespace, tac.Name, r.StatusCode)
+		return fmt.Errorf("tac[%s/%s] query error, status code:%d", tac.Namespace, tac.Name, r.StatusCode)
 	}
 	err = json.Unmarshal(body, resp)
 	if err != nil {
 		return err
 	}
 	if resp.Status != statusSuccess {
-		return fmt.Errorf("tac[%s/%s]' query error, response stataus:%v", tac.Namespace, tac.Name, resp.Status)
+		return fmt.Errorf("tac[%s/%s] query error, response status: %v", tac.Namespace, tac.Name, resp.Status)
 	}
 	return nil
 }
 
-// sumByInstanceFromResponse sum the value in Response of each instance from Prometheus
-func sumByInstanceFromResponse(instances []string, resp *Response) (float64, error) {
+// sumForEachInstance sum the value in Response of each instance from Prometheus
+func sumForEachInstance(instances []string, resp *Response) (float64, error) {
+	if resp == nil {
+		return 0, fmt.Errorf("metrics response from Promethus can't be empty")
+	}
 	s := sets.String{}
 	for _, instance := range instances {
 		s.Insert(instance)
 	}
 	sum := 0.0
+	if len(resp.Data.Result) < 1 {
+		return 0, fmt.Errorf("metrics Response return zero info")
+	}
 	for _, r := range resp.Data.Result {
 		if s.Has(r.Metric.Instance) {
 			v, err := strconv.ParseFloat(r.Value[1].(string), 64)
@@ -84,7 +98,7 @@ func sumByInstanceFromResponse(instances []string, resp *Response) (float64, err
 // calculate func calculate the recommended replicas by given usageRatio and currentReplicas
 func calculate(currentValue float64, targetValue float64, currentReplicas int32) (int32, error) {
 	if almostEqual(targetValue, 0.0) {
-		return 0, fmt.Errorf("targetValue in calculate func can't be zero")
+		return -1, fmt.Errorf("targetValue in calculate func can't be zero")
 	}
 	usageRatio := currentValue / targetValue
 	return int32(math.Ceil(usageRatio * float64(currentReplicas))), nil
