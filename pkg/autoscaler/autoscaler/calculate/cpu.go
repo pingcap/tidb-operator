@@ -36,7 +36,7 @@ func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.Statef
 	if err != nil {
 		return 0, err
 	}
-	cpuRequestsRadio, err := extractCpuRequestsRadio(c)
+	cpuRequestsRatio, err := extractCpuRequestsRatio(c)
 	if err != nil {
 		return 0, err
 	}
@@ -68,8 +68,8 @@ func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.Statef
 	}
 	cpuSecsTotal := sum1 - sum2
 	durationSeconds := duration.Seconds()
-	utilizationRadio := float64(*metric.Resource.Target.AverageUtilization) / 100.0
-	expectedCpuSecsTotal := cpuRequestsRadio * durationSeconds * float64(currentReplicas) * utilizationRadio
+	utilizationRatio := float64(*metric.Resource.Target.AverageUtilization) / 100.0
+	expectedCpuSecsTotal := cpuRequestsRatio * durationSeconds * float64(currentReplicas) * utilizationRatio
 	rc, err := calculate(cpuSecsTotal, expectedCpuSecsTotal, int32(currentReplicas))
 	if err != nil {
 		return 0, err
@@ -77,7 +77,7 @@ func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.Statef
 	return rc, nil
 }
 
-func extractCpuRequestsRadio(c *corev1.Container) (float64, error) {
+func extractCpuRequestsRatio(c *corev1.Container) (float64, error) {
 	if c.Resources.Requests.Cpu() == nil || c.Resources.Requests.Cpu().MilliValue() < 1 {
 		return 0, fmt.Errorf("container[%s] cpu requests is empty", c.Name)
 	}
