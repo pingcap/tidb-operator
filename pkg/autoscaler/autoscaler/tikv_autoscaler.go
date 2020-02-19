@@ -58,23 +58,12 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 // The currentReplicas of TiKV calculated in auto-scaling is the count of the StateUp TiKV instance, so we need to
 // add the number of other state tikv instance replicas when we update the TidbCluster.Spec.TiKV.Replicas
 func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
-	if err := updateConsecutiveCount(tac, v1alpha1.TiKVMemberType, currentReplicas, recommendedReplicas); err != nil {
-		return err
-	}
-
-	ableToScale, err := checkConsecutiveCount(tac, v1alpha1.TiKVMemberType, currentReplicas, recommendedReplicas)
-	if err != nil {
-		return err
-	}
-	if !ableToScale {
-		return nil
-	}
 
 	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
 	if recommendedReplicas > tc.Spec.TiKV.Replicas {
 		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
 	}
-	ableToScale, err = checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiKVMemberType)
+	ableToScale, err := checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiKVMemberType)
 	if err != nil {
 		return err
 	}
@@ -99,7 +88,6 @@ func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 
 func updateTcTiKVAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
 	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
-	emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
 }
 
 func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
