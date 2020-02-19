@@ -195,6 +195,7 @@ func NewController(
 				pvControl,
 			),
 			mm.NewPumpMemberManager(
+				certControl,
 				setControl,
 				svcControl,
 				typedControl,
