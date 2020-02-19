@@ -27,7 +27,6 @@ import (
 
 func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
 	if tac.Spec.TiDB == nil {
-		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 		return nil
 	}
 	sts, err := am.stsLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiDBMemberType))
@@ -35,7 +34,6 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return err
 	}
 	if !checkAutoScalingPrerequisites(tc, sts, v1alpha1.TiDBMemberType) {
-		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 		return nil
 	}
 	currentReplicas := tc.Spec.TiDB.Replicas
@@ -46,7 +44,6 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {
-		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 		return nil
 	}
 	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas)
