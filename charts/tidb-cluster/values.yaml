@@ -56,7 +56,7 @@ discovery:
 enableConfigMapRollout: true
 
 # Whether enable TLS connections between server nodes.
-# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# When enabled, PD/TiDB/TiKV/PUMP will use TLS encrypted connections to transfer data between each node,
 # certificates will be generated automatically (if not already present).
 enableTLSCluster: false
 
