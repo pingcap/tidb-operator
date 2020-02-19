@@ -58,7 +58,7 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tac *v1alpha1.TidbCluster, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
+func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
 	}
