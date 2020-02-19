@@ -46,6 +46,11 @@ func TestUpdateConsecutiveCount(t *testing.T) {
 		g.Expect(err).ShouldNot(HaveOccurred())
 		updatedScaleOutCountAnnValue := tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)]
 		updatedScaleInCountAnnValue := tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)]
+		if test.memberType == v1alpha1.TiKVMemberType {
+			tac.Spec.TiDB = nil
+		} else if test.memberType == v1alpha1.TiDBMemberType {
+			tac.Spec.TiKV = nil
+		}
 		g.Expect(updatedScaleOutCountAnnValue).Should(Equal(test.expectedScaleOutAnnValue))
 		g.Expect(updatedScaleInCountAnnValue).Should(Equal(test.expectedScaleInAnnValue))
 	}
@@ -126,6 +131,11 @@ func TestCheckConsecutiveCount(t *testing.T) {
 		tac := newTidbClusterAutoScaler()
 		tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleOutSuffix)] = fmt.Sprintf("%d", test.scaleOutCount)
 		tac.Annotations[fmt.Sprintf("%s.%s", test.memberType, annScaleInSuffix)] = fmt.Sprintf("%d", test.scaleInCount)
+		if test.memberType == v1alpha1.TiKVMemberType {
+			tac.Spec.TiDB = nil
+		} else if test.memberType == v1alpha1.TiDBMemberType {
+			tac.Spec.TiKV = nil
+		}
 
 		ableScale, err := checkConsecutiveCount(tac, test.memberType, test.currentReplicas, test.recommendedReplicas)
 		g.Expect(err).ShouldNot(HaveOccurred())
