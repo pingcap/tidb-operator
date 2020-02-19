@@ -29,7 +29,7 @@ const (
 	TikvSumCpuMetricsPattern     = `sum(tikv_thread_cpu_seconds_total{cluster="%s"}) by (instance)`
 	TidbSumCpuMetricsPattern     = `sum(process_cpu_seconds_total{cluster="%s",job="tidb"}) by (instance)`
 	InvalidTacMetricConfigureMsg = "tac[%s/%s] metric configure invalid"
-	CpuSumMetricsErrorMsg        = "tac[%s/%s] cpu sum metrics error,can't calculate past %s cpu metrics,might casued by promthesu restart with no persistance"
+	CpuSumMetricsErrorMsg        = "tac[%s/%s] cpu sum metrics error,can't calculate past %s cpu metrics,might caused by prometheus restart with no persistence"
 	queryPath                    = "/api/v1/query"
 
 	float64EqualityThreshold = 1e-9
