@@ -24,7 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-//TODO: create issue to explain how auto-scaling algorithm based by cpu metrics work
+//TODO: create issue to explain how auto-scaling algorithm based on cpu metrics work
 func CalculateCpuMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet,
 	client promClient.Client, instances []string, metric autoscalingv2beta2.MetricSpec,
 	queryPattern, timeWindow string, memberType v1alpha1.MemberType) (int32, error) {
