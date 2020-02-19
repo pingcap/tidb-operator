@@ -107,7 +107,7 @@ func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 
 	switch mType {
 	case calculate.MetricTypeCPU:
-		return calculate.CalculateCpuCosts(tac, sq, sts, client, v1alpha1.TiDBMemberType, duration)
+		return calculate.CalculateRecomendedReplicasByCpuCosts(tac, sq, sts, client, v1alpha1.TiDBMemberType, duration)
 	default:
 		return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
