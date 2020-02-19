@@ -63,7 +63,7 @@ func CalculateCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, sq *SingleQuery, sts
 	expectedCpuSecsTotal := cpuRequestsRatio * durationSeconds * float64(currentReplicas) * utilizationRatio
 	rc, err := calculate(cpuSecsTotal, expectedCpuSecsTotal, int32(currentReplicas))
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 	return rc, nil
 }
