@@ -808,6 +808,27 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							},
 						},
 					},
+					"metricsTimeDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scaleOutThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"maxReplicas"},
 			},
@@ -5655,6 +5676,27 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
+					"metricsTimeDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scaleOutThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"maxReplicas"},
 			},
@@ -6532,6 +6574,27 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 									},
 								},
 							},
+						},
+					},
+					"metricsTimeDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scaleOutThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 				},
