@@ -81,13 +81,13 @@ func sumByInstanceFromResponse(instances []string, resp *Response) (float64, err
 	return sum, nil
 }
 
-// calculate func calculate the recommended replicas by given usageRadio and currentReplicas
+// calculate func calculate the recommended replicas by given usageRatio and currentReplicas
 func calculate(currentValue float64, targetValue float64, currentReplicas int32) (int32, error) {
 	if almostEqual(targetValue, 0.0) {
 		return 0, fmt.Errorf("targetValue in calculate func can't be zero")
 	}
-	usageRadio := currentValue / targetValue
-	return int32(math.Ceil(usageRadio * float64(currentReplicas))), nil
+	usageRatio := currentValue / targetValue
+	return int32(math.Ceil(usageRatio * float64(currentReplicas))), nil
 }
 
 func almostEqual(a, b float64) bool {
