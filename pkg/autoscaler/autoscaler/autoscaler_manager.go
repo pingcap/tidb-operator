@@ -17,30 +17,42 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	promClient "github.com/prometheus/client_golang/api"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	kubeinformers "k8s.io/client-go/informers"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type autoScalerManager struct {
-	tcLister  v1alpha1listers.TidbClusterLister
-	stsLister appslisters.StatefulSetLister
-	recorder  record.EventRecorder
+	genericCli client.Client
+	tcControl  controller.TidbClusterControlInterface
+	tcLister   v1alpha1listers.TidbClusterLister
+	stsLister  appslisters.StatefulSetLister
+	recorder   record.EventRecorder
 }
 
 func NewAutoScalerManager(
+	cli versioned.Interface,
+	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	recorder record.EventRecorder) *autoScalerManager {
+	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 	return &autoScalerManager{
-		tcLister:  informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
-		stsLister: kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
-		recorder:  recorder,
+		genericCli: genericCli,
+		tcControl:  controller.NewRealTidbClusterControl(cli, tcLister, recorder),
+		tcLister:   tcLister,
+		stsLister:  stsLister,
+		recorder:   recorder,
 	}
 }
 
@@ -62,18 +74,19 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
 			emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 			emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+			return nil
 		}
 		return err
 	}
 	checkAndUpdateTacAnn(tac)
-	oldTCSpec := tc.Spec.DeepCopy()
+	oldTc := tc.DeepCopy()
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err
 	}
-	if err := am.syncTidbClusterReplicas(tc, oldTCSpec); err != nil {
+	if err := am.syncTidbClusterReplicas(tc, oldTc); err != nil {
 		return err
 	}
-	return am.syncAutoScalingStatus(tc, oldTCSpec, tac)
+	return am.syncAutoScalingStatus(tc, oldTc, tac)
 }
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
@@ -86,22 +99,29 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	}
 	defaultTAC(tac)
 	if err := am.syncTiKV(tc, tac, client); err != nil {
-		return err
+		emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
 	}
 	if err := am.syncTiDB(tc, tac, client); err != nil {
-		return err
+		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
 	}
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
 	return nil
 }
 
-//TODO: sync TidbCluster.Spec.Replicas
-func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, oldTCSpec *v1alpha1.TidbClusterSpec) error {
+func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster) error {
+	if apiequality.Semantic.DeepEqual(tc, oldTc) {
+		return nil
+	}
+	newTc := tc.DeepCopy()
+	_, err := am.tcControl.UpdateTidbCluster(newTc, &newTc.Status, &oldTc.Status)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 //TODO: sync tac status
-func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbClusterSpec,
+func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster,
 	tac *v1alpha1.TidbClusterAutoScaler) error {
 	return nil
 }
