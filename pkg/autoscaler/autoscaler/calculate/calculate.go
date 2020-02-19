@@ -57,7 +57,7 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
 		return err
 	}
 	if resp.Status != statusSuccess {
-		return fmt.Errorf("tac[%s/%s]' query error, response stataus:%v", tac.Namespace, tac.Name, resp.Status)
+		return fmt.Errorf("tac[%s/%s] query error, response status: %v", tac.Namespace, tac.Name, resp.Status)
 	}
 	return nil
 }
