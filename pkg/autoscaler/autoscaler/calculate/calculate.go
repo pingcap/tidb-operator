@@ -50,7 +50,7 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler,
 		return err
 	}
 	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf("tac[%s/%s]' query error,status code:%d", tac.Namespace, tac.Name, r.StatusCode)
+		return fmt.Errorf("tac[%s/%s] query error, status code:%d", tac.Namespace, tac.Name, r.StatusCode)
 	}
 	err = json.Unmarshal(body, resp)
 	if err != nil {
