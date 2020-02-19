@@ -14,12 +14,15 @@
 package autoscaler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
@@ -35,8 +38,12 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
 		return nil
 	}
-	currentReplicas := getStateUpReplicas(tc)
-	targetReplicas := calculateRecommendedReplicas(tac, v1alpha1.TiKVMemberType, client)
+	instances := filterTiKVInstances(tc)
+	currentReplicas := int32(len(instances))
+	targetReplicas, err := calculateTikvMetrics(tac, sts, client, instances)
+	if err != nil {
+		return err
+	}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
 	if targetReplicas == tc.Spec.TiKV.Replicas {
 		emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
@@ -79,17 +86,44 @@ func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	return nil
 }
 
-func getStateUpReplicas(tc *v1alpha1.TidbCluster) int32 {
-	count := 0
+//TODO: fetch tikv instances info from pdapi in future
+func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
+	var instances []string
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.State == v1alpha1.TiKVStateUp {
-			count = count + 1
+			instances = append(instances, store.PodName)
 		}
 	}
-	return int32(count)
+	return instances
 }
 
 func updateTcTiKVAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
 	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
 	emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+}
+
+func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
+	metric := calculate.FilterMetrics(tac.Spec.TiKV.Metrics)
+	mType, err := calculate.GenMetricType(tac, metric)
+	if err != nil {
+		return -1, err
+	}
+
+	duration, err := time.ParseDuration(*tac.Spec.TiKV.MetricsTimeDuration)
+	if err != nil {
+		return -1, err
+	}
+	sq := &calculate.SingleQuery{
+		Timestamp: time.Now().Unix(),
+		Instances: instances,
+		Metric:    metric,
+		Quary:     fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiKV.MetricsTimeDuration),
+	}
+
+	switch mType {
+	case calculate.MetricTypeCPU:
+		return calculate.CalculateRecomendedReplicasByCpuCosts(tac, sq, sts, client, v1alpha1.TiKVMemberType, duration)
+	default:
+		return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
+	}
 }
