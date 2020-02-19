@@ -34,10 +34,13 @@ HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.0.1+a810685993a3e100f4c51bc346cdc05eaf753922
-KUBETEST2_GKE_VERSION=v0.0.1+a3755779de7f745733de10f9bf63e01cf0864f9d
-KUBETEST2_KIND_VERSION=v0.0.1+d8d70a33d2cc5df85786b7724ac61c221bad3e18
+KUBETEST2_VERSION=v0.0.2+8e0a95176a86e6bdbc0b5aa18c40fa5542828d15
+KUBETEST2_GKE_VERSION=v0.0.2+5b16ede1983db0dfc384145f4c559db15f80c14f
+KUBETEST2_EKS_VERSION=v0.0.2+ddbcc8482c65d8f230511a73b1188791af96ed6b
+KUBETEST2_KIND_VERSION=v0.0.2+a81b87d6155611e5561c9642d25a14d4911fb8a7
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
+AWS_K8S_TESTER_VERSION=v0.6.2
+AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
 
@@ -168,7 +171,7 @@ function hack::__ensure_kubetest2() {
     if hack::__verify_kubetest2 $n $h; then
         return 0
     fi
-    tmpfile=$(mktemp)
+    local tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
     curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$v/$n.gz | gunzip > $tmpfile
     mv $tmpfile $OUTPUT_BIN/$n
@@ -179,4 +182,25 @@ function hack::ensure_kubetest2() {
     hack::__ensure_kubetest2 kubetest2 $KUBETEST2_VERSION
     hack::__ensure_kubetest2 kubetest2-gke $KUBETEST2_GKE_VERSION
     hack::__ensure_kubetest2 kubetest2-kind $KUBETEST2_KIND_VERSION
+    hack::__ensure_kubetest2 kubetest2-eks $KUBETEST2_EKS_VERSION
+}
+
+function hack::verify_aws_k8s_tester() {
+    if test -x $AWS_K8S_TESTER_BIN; then
+        [[ "$($AWS_K8S_TESTER_BIN version | awk '/ReleaseVersion/ {print $2}')" == "$AWS_K8S_TESTER_VERSION" ]]
+        return
+    fi
+    return 1
+}
+
+function hack::ensure_aws_k8s_tester() {
+    if hack::verify_aws_k8s_tester; then
+        return
+    fi
+	local DOWNLOAD_URL=https://github.com/aws/aws-k8s-tester/releases/download
+    local tmpfile=$(mktemp)
+    trap "test -f $tmpfile && rm $tmpfile" RETURN
+    curl --retry 10 -L -o $tmpfile https://github.com/aws/aws-k8s-tester/releases/download/$AWS_K8S_TESTER_VERSION/aws-k8s-tester-$AWS_K8S_TESTER_VERSION-$OS-$ARCH
+	mv $tmpfile $AWS_K8S_TESTER_BIN
+	chmod +x $AWS_K8S_TESTER_BIN
 }

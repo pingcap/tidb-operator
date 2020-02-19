@@ -46,31 +46,34 @@ Usage: hack/e2e.sh [-h] -- [extra test args]
 
 Environments:
 
-    PROVIDER            Kubernetes provider, e.g. kind, gke, defaults: kind
-    DOCKER_REGISTRY     image docker registry
-    IMAGE_TAG           image tag
-    CLUSTER             the name of e2e cluster, defaults: tidb-operator
-    KUBECONFIG          path to the kubeconfig file, defaults: ~/.kube/config
-    SKIP_BUILD          skip building binaries
-    SKIP_IMAGE_BUILD    skip build and push images
-    SKIP_UP             skip starting the cluster
-    SKIP_DOWN           skip shutting down the cluster
-    SKIP_TEST           skip running the test
-    KUBE_VERSION        the version of Kubernetes to test against
-    KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
-    DOCKER_IO_MIRROR    configure mirror for docker.io
-    GCR_IO_MIRROR       configure mirror for gcr.io
-    QUAY_IO_MIRROR      configure mirror for quay.io
-    KIND_DATA_HOSTPATH  (kind only) the host path of data directory for kind cluster, defaults: none
-    GCP_PROJECT         (gke only) the GCP project to run in
-    GCP_SERVICE_ACCOUNT (gke only) the GCP service account to use
-    GCP_REGION          (gke only) the GCP region, if specified a regional cluster is creaetd
-    GCP_ZONE            (gke only) the GCP zone, if specified a zonal cluster is created
-    GCP_SSH_PRIVATE_KEY (gke only) the path to the private ssh key
-    GCP_SSH_PUBLIC_KEY  (gke only) the path to the public ssh key
-    GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
-    GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
-    GINKGO_NO_COLOR     if set to `y`, suppress color output in default reporter
+    PROVIDER              Kubernetes provider, e.g. kind, gke, eks, defaults: kind
+    DOCKER_REGISTRY       image docker registry
+    IMAGE_TAG             image tag
+    CLUSTER               the name of e2e cluster, defaults: tidb-operator
+    KUBECONFIG            path to the kubeconfig file, defaults: ~/.kube/config
+    SKIP_BUILD            skip building binaries
+    SKIP_IMAGE_BUILD      skip build and push images
+    SKIP_UP               skip starting the cluster
+    SKIP_DOWN             skip shutting down the cluster
+    SKIP_TEST             skip running the test
+    KUBE_VERSION          the version of Kubernetes to test against
+    KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
+    DOCKER_IO_MIRROR      configure mirror for docker.io
+    GCR_IO_MIRROR         configure mirror for gcr.io
+    QUAY_IO_MIRROR        configure mirror for quay.io
+    KIND_DATA_HOSTPATH    (kind only) the host path of data directory for kind cluster, defaults: none
+    GCP_PROJECT           (gke only) the GCP project to run in
+    GCP_SERVICE_ACCOUNT   (gke only) the GCP service account to use
+    GCP_REGION            (gke only) the GCP region, if specified a regional cluster is creaetd
+    GCP_ZONE              (gke only) the GCP zone, if specified a zonal cluster is created
+    GCP_SSH_PRIVATE_KEY   (gke only) the path to the private ssh key
+    GCP_SSH_PUBLIC_KEY    (gke only) the path to the public ssh key
+    AWS_ACCESS_KEY_ID     (eks only) the aws access key id
+    AWS_SECRET_ACCESS_KEY (eks only) the aws secret access key
+    AWS_REGION            (eks only) the aws region
+    GINKGO_NODES          ginkgo nodes to run specs, defaults: 1
+    GINKGO_PARALLEL       if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
+    GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
 
 Examples:
 
@@ -103,10 +106,7 @@ Examples:
 
 5) run e2e with gke provider locally
 
-    You need install Google Cloud SDK first, then prepare GCP servie account
-    and configure ssh key pairs
-
-    GCP service account must be created with following permissions:
+    You need prepare GCP service account with the following permissions:
 
         - Compute Network Admin
         - Kubernetes Engine Admin
@@ -121,11 +121,32 @@ Examples:
 
     Then run with following additional GCP-specific environments:
 
-    export GCP_PROJECT=<project>
-    export GCP_SERVICE_ACCOUNT=<path-to-gcp-service-account>
-    export GCP_ZONE=us-central1-b
+        export GCP_PROJECT=<project>
+        export GCP_SERVICE_ACCOUNT=<path-to-gcp-service-account>
+        export GCP_ZONE=us-central1-b
 
-    ./hack/e2e.sh -- <e2e args>
+        PROVIDER=gke ./hack/e2e.sh -- <e2e args>
+
+    If you run the outside of the dev containter started by
+    ./hack/run-in-container.sh, Google Cloud SDK must be installed on you
+    machine.
+
+6) run e2e with eks provider locally
+
+    You need configure your aws credential and region or set it via following
+    environments:
+
+        export AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+        export AWS_SECRET_ACCESS_KEY=<your-aws-secret-key-id>
+        export AWS_REGION=<your-aws-region>
+
+    then run e2e with eks provider:
+
+        PROVIDER=eks ./hack/e2e.sh -- <e2e args>
+
+    If you run the outside of the dev containter started by
+    ./hack/run-in-container.sh, AWS CLI must be installed on you
+    machine.
 
 EOF
 
@@ -166,6 +187,9 @@ GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_SSH_PRIVATE_KEY=${GCP_SSH_PRIVATE_KEY:-}
 GCP_SSH_PUBLIC_KEY=${GCP_SSH_PUBLIC_KEY:-}
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+AWS_REGION=${AWS_REGION:-}
 KUBE_VERSION=${KUBE_VERSION:-v1.12.10}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
@@ -186,6 +210,9 @@ echo "GCP_PROJECT: $GCP_PROJECT"
 echo "GCP_SERVICE_ACCOUNT: $GCP_SERVICE_ACCOUNT"
 echo "GCP_REGION: $GCP_REGION"
 echo "GCP_ZONE: $GCP_ZONE"
+echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
+echo "AWS_REGION: $AWS_REGION"
 echo "KUBE_VERSION: $KUBE_VERSION"
 echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
@@ -384,7 +411,7 @@ elif [ "$PROVIDER" == "gke" ]; then
         echo "error: GCP_REGION or GCP_ZONE cannot be both set"
         exit 1
     fi
-	echo "info: preparing ssh keypairs for GCP"
+    echo "info: preparing ssh keypairs for GCP"
     if [ ! -d ~/.ssh ]; then
         mkdir ~/.ssh
     fi
@@ -414,6 +441,23 @@ elif [ "$PROVIDER" == "gke" ]; then
             --zone "$GCP_ZONE"
         )
     fi
+elif [ "$PROVIDER" == "eks" ]; then
+    hack::ensure_aws_k8s_tester
+    if [ -n "$AWS_REGION" ]; then
+        aws configure set default.region "$AWS_REGION"
+    fi
+    if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+        aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    fi
+    if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+        aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    fi
+    export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
+    export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
+    export AWS_K8S_TESTER_EKS_ADD_ON_NLB_HELLO_WORLD_ENABLE="false"
+    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS='{"aws-k8s-tester-tidb-operator-mng":{"name":"aws-k8s-tester-tidb-operator-mng","ami-type":"AL2_x86_64","asg-min-size":3,"asg-max-size":3,"asg-desired-capacity":3,"instance-types":["c5.xlarge"],"volume-size":40}}'
+    # override KUBECONFIG
+    KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
 else
     echo "error: unsupported provider '$PROVIDER'"
     exit 1
@@ -428,6 +472,11 @@ export IMAGE_TAG
 export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$PATH:$OUTPUT_BIN
+
+# Environments for kubetest2
+if [ -n "${REPORT_DIR:-}" ]; then
+    export ARTIFACTS=${REPORT_DIR:-}
+fi
 
 hack::ensure_kubetest2
 echo "info: run 'kubetest2 ${kubetest2_args[@]} -- hack/run-e2e.sh $@'"
