@@ -60,8 +60,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
-			emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
-			emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+			resetAutoScalingAnn(tac)
 		}
 		return err
 	}
