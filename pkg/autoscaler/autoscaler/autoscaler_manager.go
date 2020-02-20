@@ -22,7 +22,6 @@ import (
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	promClient "github.com/prometheus/client_golang/api"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -97,10 +96,14 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 		return err
 	}
 	defaultTAC(tac)
+	oldTikvReplicas := tc.Spec.TiKV.Replicas
 	if err := am.syncTiKV(tc, tac, c); err != nil {
+		tc.Spec.TiKV.Replicas = oldTikvReplicas
 		klog.Errorf("tac[%s/%s] tikv sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
+	oldTidbReplicas := tc.Spec.TiDB.Replicas
 	if err := am.syncTiDB(tc, tac, c); err != nil {
+		tc.Spec.TiDB.Replicas = oldTidbReplicas
 		klog.Errorf("tac[%s/%s] tidb sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
@@ -108,7 +111,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 }
 
 func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster) error {
-	if apiequality.Semantic.DeepEqual(tc, oldTc) {
+	if tc.Spec.TiDB.Replicas == oldTc.Spec.TiDB.Replicas && tc.Spec.TiKV.Replicas == oldTc.Spec.TiKV.Replicas {
 		return nil
 	}
 	newTc := tc.DeepCopy()
