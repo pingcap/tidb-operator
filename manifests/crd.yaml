@@ -3779,21 +3779,6 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
-                enableTLSClient:
-                  description: 'Whether enable the TLS connection between the SQL
-                    client and TiDB server Optional: Defaults to false'
-                  type: boolean
-                extraSANDomainList:
-                  description: extra SAN Domain list when setting EnableTLSClient
-                    to true
-                  items:
-                    type: string
-                  type: array
-                extraSANIPList:
-                  description: extra SAN IP list when setting EnableTLSClient to true
-                  items:
-                    type: string
-                  type: array
                 hostNetwork:
                   description: 'Whether Hostnetwork of the component is enabled. Override
                     the cluster-level setting if present Optional: Defaults to cluster-level
@@ -3988,6 +3973,7 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                tlsClient: {}
                 tolerations:
                   description: 'Tolerations of the component. Override the cluster-level
                     tolerations if non-empty Optional: Defaults to cluster-level setting'
