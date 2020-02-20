@@ -177,7 +177,7 @@ type TidbClusterSpec struct {
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Base tolerations of TiDB cluster Pods, components may add more tolreations upon this respectively
+	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
@@ -775,6 +775,12 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// Affinity of backup Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -985,6 +991,12 @@ type RestoreSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BR is the configs for BR.
 	BR *BRConfig `json:"br,omitempty"`
+	// Base tolerations of restore Pods, components may add more tolerations upon this respectively
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// Affinity of restore Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
