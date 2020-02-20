@@ -169,7 +169,11 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 		return err
 	}
 
-	deployment := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
 	_, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
