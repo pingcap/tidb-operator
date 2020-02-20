@@ -452,7 +452,7 @@ elif [ "$PROVIDER" == "eks" ]; then
     if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
         aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
     fi
-    mngName=kubetest.eks.$CLUSTER.mng.$RANDOM
+    mngName=$CLUSTER-mng-$RANDOM
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
     export AWS_K8S_TESTER_EKS_ADD_ON_NLB_HELLO_WORLD_ENABLE="false"
