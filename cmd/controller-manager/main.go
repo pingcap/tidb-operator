@@ -188,7 +188,7 @@ func main() {
 		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
 		var autoScalerController *autoscaler.Controller
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-			autoScalerController = autoscaler.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
+			autoScalerController = autoscaler.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		}
 		// Start informer factories after all controller are initialized.
 		informerFactory.Start(ctx.Done())
