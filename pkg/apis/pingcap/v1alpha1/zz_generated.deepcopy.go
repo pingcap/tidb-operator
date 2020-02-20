@@ -276,6 +276,18 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 		*out = new(BRConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(v1.Affinity)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1905,6 +1917,18 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	if in.BR != nil {
 		in, out := &in.BR, &out.BR
 		*out = new(BRConfig)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
 	return
