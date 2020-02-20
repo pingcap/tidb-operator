@@ -220,12 +220,12 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
 	deployment.Spec.Template.Spec.Volumes = volumes
-	if deployment.Annotations == nil {
-		deployment.Annotations = map[string]string{}
-	}
 	b, err := json.Marshal(deployment.Spec.Template.Spec)
 	if err != nil {
 		return nil, err
+	}
+	if deployment.Annotations == nil {
+		deployment.Annotations = map[string]string{}
 	}
 	deployment.Annotations[controller.LastAppliedPodTemplate] = string(b)
 	return deployment, nil
