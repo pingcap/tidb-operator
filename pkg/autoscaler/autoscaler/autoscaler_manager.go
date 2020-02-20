@@ -72,8 +72,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
-			emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
-			emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+			resetAutoScalingAnn(tac)
 			return nil
 		}
 		return err
@@ -99,10 +98,10 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	}
 	defaultTAC(tac)
 	if err := am.syncTiKV(tc, tac, c); err != nil {
-		emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
+		klog.Errorf("tac[%s/%s] tikv sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
 	if err := am.syncTiDB(tc, tac, c); err != nil {
-		emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
+		klog.Errorf("tac[%s/%s] tidb sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
 	return nil
