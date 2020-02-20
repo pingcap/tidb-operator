@@ -211,8 +211,8 @@ function e2e::image_load() {
     elif [ "$PROVIDER" == "gke" ]; then
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
         gcloud auth configure-docker
-        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$IMAGE_TAG
-        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$IMAGE_TAG
+        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$CLUSTER-$IMAGE_TAG
+        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
         docker tag $TIDB_OPERATOR_IMAGE $GCP_TIDB_OPERATOR_IMAGE
         docker tag $E2E_IMAGE $GCP_E2E_IMAGE
         echo "info: pushing $GCP_TIDB_OPERATOR_IMAGE"
@@ -233,8 +233,8 @@ function e2e::image_load() {
         local ecrURL=$(e2e::__ecr_url)
         echo "info: logging in $ecrURL"
         aws ecr get-login-password | docker login --username AWS --password-stdin $ecrURL
-        AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$IMAGE_TAG
-        AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$IMAGE_TAG
+        AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$CLUSTER-$IMAGE_TAG
+        AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
         docker tag $TIDB_OPERATOR_IMAGE $AWS_TIDB_OPERATOR_IMAGE
         docker tag $E2E_IMAGE $AWS_E2E_IMAGE
         echo "info: pushing $AWS_TIDB_OPERATOR_IMAGE"
