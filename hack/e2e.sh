@@ -456,12 +456,14 @@ elif [ "$PROVIDER" == "eks" ]; then
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
     export AWS_K8S_TESTER_EKS_ADD_ON_NLB_HELLO_WORLD_ENABLE="false"
-    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":3,"asg-max-size":3,"asg-desired-capacity":3,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName")
+    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":%d,"asg-max-size":%d,"asg-desired-capacity":%d,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName" "$KUBE_WORKERS" "$KUBE_WORKERS" "$KUBE_WORKERS")
     # override KUBECONFIG
     KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
-    # clear previous created private key to work around permission issue on this file
-    if test -f $HOME/.ssh/kube_aws_rsa; then
-        rm -f $HOME/.ssh/kube_aws_rsa
+    if [ -z "$SKIP_UP" ]; then
+        # clear previous created private key to work around permission issue on this file
+        if test -f $HOME/.ssh/kube_aws_rsa; then
+            rm -f $HOME/.ssh/kube_aws_rsa
+        fi
     fi
 else
     echo "error: unsupported provider '$PROVIDER'"
