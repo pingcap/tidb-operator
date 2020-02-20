@@ -452,10 +452,11 @@ elif [ "$PROVIDER" == "eks" ]; then
     if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
         aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
     fi
+    mngName=kubetest.eks.$CLUSTER.mng.$(xxd -l5  -ps /dev/urandom)
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
     export AWS_K8S_TESTER_EKS_ADD_ON_NLB_HELLO_WORLD_ENABLE="false"
-    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS='{"aws-k8s-tester-tidb-operator-mng":{"name":"aws-k8s-tester-tidb-operator-mng","ami-type":"AL2_x86_64","asg-min-size":3,"asg-max-size":3,"asg-desired-capacity":3,"instance-types":["c5.xlarge"],"volume-size":40}}'
+    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":3,"asg-max-size":3,"asg-desired-capacity":3,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName")
     # override KUBECONFIG
     KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
     # clear previous created private key to work around permission issue on this file
