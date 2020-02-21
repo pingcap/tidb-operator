@@ -67,6 +67,12 @@ def call(BUILD_BRANCH) {
                             # deploy to staging
                             export KUBECONFIG=/home/jenkins/.kubeconfig/operator_staging
                             ./linux-amd64/helm upgrade --install tidb-operator charts/tidb-operator --namespace=tidb-admin --set-string operatorImage=hub.pingcap.net/jenkins/tidb-operator:${GITHASH} -f values.yaml
+
+                            # ensure kubectl
+                            wget https://storage.googleapis.com/kubernetes-release/release/v1.12.2/bin/linux/amd64/kubectl
+                            chmod +x ./kubectl
+                            mv ./kubectl ./linux-amd64/kubectl
+                            ./linux-amd64/kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
                             """
                         }
                     }
