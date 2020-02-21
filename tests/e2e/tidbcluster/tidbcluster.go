@@ -283,7 +283,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
-		go oa.BeginInsertDataToOrDie(&clusterA)
+		oa.BeginInsertDataToOrDie(&clusterA)
 
 		// backup and restore
 		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
@@ -348,27 +348,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err)
 
-		ginkgo.By(fmt.Sprintf("Sync TiDB service properties"))
+		ginkgo.By("Sync TiDB service properties")
 
+		ginkgo.By("Updating TiDB service")
 		svcType := corev1.ServiceTypeNodePort
 		trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
-
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Expected get TiDB cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Service.Type = svcType
 			tc.Spec.TiDB.Service.ExternalTrafficPolicy = &trafficPolicy
 			tc.Spec.TiDB.Service.Annotations = map[string]string{
 				"test": "test",
 			}
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
-			if err != nil && !errors.IsConflict(err) {
-				return false, err
-			}
-			if errors.IsConflict(err) {
-				e2elog.Logf("conflicts when updating tidbcluster, retry...")
-				return false, nil
-			}
+			return nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Waiting for the TiDB service to be synced")
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 			svc, err := c.CoreV1().Services(ns).Get(controller.TiDBMemberName(tcName), metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
@@ -414,51 +410,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		pullPolicy := corev1.PullIfNotPresent
-		tc.Spec.Pump = &v1alpha1.PumpSpec{
-			BaseImage: "pingcap/tidb-binlog",
-			ComponentSpec: v1alpha1.ComponentSpec{
-				Version:         &cluster.ClusterVersion,
-				ImagePullPolicy: &pullPolicy,
-				Affinity: &corev1.Affinity{
-					PodAntiAffinity: &corev1.PodAntiAffinity{
-						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-							{
-								PodAffinityTerm: corev1.PodAffinityTerm{
-									Namespaces:  []string{cluster.Namespace},
-									TopologyKey: "rack",
-								},
-								Weight: 50,
-							},
-						},
-					},
-				},
-				Tolerations: []corev1.Toleration{
-					{
-						Effect:   corev1.TaintEffectNoSchedule,
-						Key:      "node-role",
-						Operator: corev1.TolerationOpEqual,
-						Value:    "tidb",
-					},
-				},
-				SchedulerName:        pointer.StringPtr("default-scheduler"),
-				ConfigUpdateStrategy: &updateStrategy,
-			},
-			Replicas:         1,
-			StorageClassName: pointer.StringPtr("local-storage"),
-			ResourceRequirements: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("10Gi"),
-				},
-			},
-			GenericConfig: tcconfig.New(map[string]interface{}{
-				"addr":               "0.0.0.0:8250",
-				"gc":                 7,
-				"data-dir":           "/data",
-				"heartbeat-interval": 2,
-			}),
-		}
-
 		// If using advanced statefulset, we must upgrade all Kubernetes statefulsets to advanced statefulsets first.
 		if ocfg.Enabled(features.AdvancedStatefulSet) {
 			stsList, err := c.AppsV1().StatefulSets(ns).List(metav1.ListOptions{})
@@ -475,7 +426,53 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oldRev := oldPumpSet.Status.CurrentRevision
 		framework.ExpectEqual(oldPumpSet.Status.UpdateRevision, oldRev, "Expected pump is not upgrading")
 
-		tcUpdated, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			pullPolicy := corev1.PullIfNotPresent
+			tc.Spec.Pump = &v1alpha1.PumpSpec{
+				BaseImage: "pingcap/tidb-binlog",
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Version:         &cluster.ClusterVersion,
+					ImagePullPolicy: &pullPolicy,
+					Affinity: &corev1.Affinity{
+						PodAntiAffinity: &corev1.PodAntiAffinity{
+							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+								{
+									PodAffinityTerm: corev1.PodAffinityTerm{
+										Namespaces:  []string{cluster.Namespace},
+										TopologyKey: "rack",
+									},
+									Weight: 50,
+								},
+							},
+						},
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Effect:   corev1.TaintEffectNoSchedule,
+							Key:      "node-role",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "tidb",
+						},
+					},
+					SchedulerName:        pointer.StringPtr("default-scheduler"),
+					ConfigUpdateStrategy: &updateStrategy,
+				},
+				Replicas:         1,
+				StorageClassName: pointer.StringPtr("local-storage"),
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+				GenericConfig: tcconfig.New(map[string]interface{}{
+					"addr":               "0.0.0.0:8250",
+					"gc":                 7,
+					"data-dir":           "/data",
+					"heartbeat-interval": 2,
+				}),
+			}
+			return nil
+		})
 		framework.ExpectNoError(err, "Expected update tc")
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
@@ -487,7 +484,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("error get pump statefulset: %v", err)
 				return false, nil
 			}
-			if !metav1.IsControlledBy(pumpSet, tcUpdated) {
+			if !metav1.IsControlledBy(pumpSet, tc) {
 				e2elog.Logf("expect pump staetfulset adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
@@ -509,7 +506,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("error get pump configmap: %v", err)
 				return false, nil
 			}
-			if !metav1.IsControlledBy(pumpConfigMap, tcUpdated) {
+			if !metav1.IsControlledBy(pumpConfigMap, tc) {
 				e2elog.Logf("expect pump configmap adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
@@ -522,7 +519,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("error get pump peer service: %v", err)
 				return false, nil
 			}
-			if !metav1.IsControlledBy(pumpPeerSvc, tcUpdated) {
+			if !metav1.IsControlledBy(pumpPeerSvc, tc) {
 				e2elog.Logf("expect pump peer service adopted by tidbcluster, still waiting...")
 				return false, nil
 			}
@@ -674,6 +671,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		f := func(name, namespace string, uid types.UID) (bool, error) {
 			pod, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
+				if errors.IsNotFound(err) {
+					// ignore not found error (pod is deleted and recreated again in restarting)
+					return false, nil
+				}
 				return false, err
 			}
 			if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
@@ -704,7 +705,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("should be operable without helm [API]", func() {
-		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV2Version)
+		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV3Version)
 		err := genericCli.Create(context.TODO(), tc)
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -721,7 +722,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster scaled out and ready")
 
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV3Version
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
 			return nil
 		})
 		framework.ExpectNoError(err, "Expected TiDB cluster updated")
@@ -750,11 +751,126 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
-		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, false)
+		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
+
+		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+		pvName := pvc.Spec.VolumeName
+		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
+		value, existed := pv.Labels[label.ComponentLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, label.TiDBMonitorVal)
+		value, existed = pv.Labels[label.InstanceLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, "e2e-monitor")
+		value, existed = pv.Labels[label.InstanceLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, "e2e-monitor")
+		value, existed = pv.Labels[label.ManagedByLabelKey]
+		framework.ExpectEqual(existed, true)
+		framework.ExpectEqual(value, label.TiDBOperator)
+	})
+
+	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
+		if !ocfg.Enabled(features.AdvancedStatefulSet) {
+			framework.Skipf("AdvancedStatefulSet feature of default operator is not enabled, skipping")
+		}
+		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV3Version)
+		tc.Spec.PD.Replicas = 5
+		tc.Spec.TiKV.Replicas = 4
+		tc.Spec.TiDB.Replicas = 3
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Scaling in the cluster by deleting some pods not at the end")
+		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			if tc.Annotations == nil {
+				tc.Annotations = map[string]string{}
+			}
+			tc.Annotations[label.AnnPDDeleteSlots] = "[1]"
+			tc.Annotations[label.AnnTiKVDeleteSlots] = "[0]"
+			tc.Annotations[label.AnnTiDBDeleteSlots] = "[1]"
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			return nil
+		})
+		framework.ExpectNoError(err)
+		ginkgo.By("Checking for tidb cluster is ready")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Upgrding the cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			return nil
+		})
+		framework.ExpectNoError(err)
+		ginkgo.By("Checking for tidb cluster is ready")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+	})
+
+	ginkgo.It("tidb-scale: clear TiDB failureMembers when scale TiDB to zero", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", "")
+		cluster.Resources["pd.replicas"] = "3"
+		cluster.Resources["tikv.replicas"] = "1"
+		cluster.Resources["tidb.replicas"] = "1"
+
+		cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+		oa.DeployTidbClusterOrDie(&cluster)
+
+		e2elog.Logf("checking tidb cluster [%s/%s] failed member", cluster.Namespace, cluster.ClusterName)
+		ns := cluster.Namespace
+		tcName := cluster.ClusterName
+		err := wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
+			var tc *v1alpha1.TidbCluster
+			var err error
+			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+				return false, nil
+			}
+			if len(tc.Status.TiDB.FailureMembers) == 0 {
+				e2elog.Logf("the number of failed member is zero")
+				return false, nil
+			}
+			e2elog.Logf("the number of failed member is not zero (current: %d)", len(tc.Status.TiDB.FailureMembers))
+			return true, nil
+		})
+		framework.ExpectNoError(err, "tidb failover not work")
+
+		cluster.ScaleTiDB(0)
+		oa.ScaleTidbClusterOrDie(&cluster)
+
+		e2elog.Logf("checking tidb cluster [%s/%s] scale to zero", cluster.Namespace, cluster.ClusterName)
+		err = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
+			var tc *v1alpha1.TidbCluster
+			var err error
+			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+				return false, nil
+			}
+			if tc.Status.TiDB.StatefulSet.Replicas != 0 {
+				e2elog.Logf("failed to scale tidb member to zero (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				return false, nil
+			}
+			if len(tc.Status.TiDB.FailureMembers) != 0 {
+				e2elog.Logf("failed to clear fail member (current: %d)", len(tc.Status.TiDB.FailureMembers))
+				return false, nil
+			}
+			e2elog.Logf("scale tidb member to zero successfully")
+			return true, nil
+		})
+		framework.ExpectNoError(err, "not clear TiDB failureMembers when scale TiDB to zero")
 	})
 })
 

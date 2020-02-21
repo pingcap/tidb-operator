@@ -29,6 +29,8 @@ admissionWebhook:
     # TODO: enable validating and defaulting after we ease the constrain
     validating: false
     defaulting: false
+features:
+  - AutoScaling=true
 '''
 
 def call(BUILD_BRANCH) {

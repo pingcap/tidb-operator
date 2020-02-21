@@ -46,6 +46,13 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+
+	// ensure auth plugins are loaded
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	// ensure that cloud providers are loaded
+	_ "k8s.io/kubernetes/test/e2e/framework/providers/aws"
+	_ "k8s.io/kubernetes/test/e2e/framework/providers/gce"
 )
 
 // This is modified from framework.SetupSuite().
@@ -198,11 +205,11 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
 	if e2econfig.TestConfig.InstallOperator {
+		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		ginkgo.By("Installing CRDs")
 		oa.CleanCRDOrDie()
-		oa.InstallCRDOrDie()
+		oa.InstallCRDOrDie(ocfg)
 		ginkgo.By("Installing tidb-operator")
-		ocfg := e2econfig.NewDefaultOperatorConfig(e2econfig.TestConfig)
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
 	} else {

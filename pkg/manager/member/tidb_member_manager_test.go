@@ -1617,8 +1617,8 @@ func TestGetTiDBConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						EnableTLSClient: pointer.BoolPtr(true),
-						Config:          &v1alpha1.TiDBConfig{},
+						TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},

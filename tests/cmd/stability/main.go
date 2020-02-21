@@ -402,9 +402,9 @@ func newOperatorConfig() *tests.OperatorConfig {
 		WebhookConfigName:  "webhook-config",
 		ImagePullPolicy:    v1.PullAlways,
 		TestMode:           true,
-		WebhookEnabled:     false,
+		WebhookEnabled:     true,
 		PodWebhookEnabled:  false,
-		StsWebhookEnabled:  false,
+		StsWebhookEnabled:  true,
 	}
 }
 
@@ -418,6 +418,7 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		UserName:         "root",
 		Password:         "admin",

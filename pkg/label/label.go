@@ -97,6 +97,24 @@ const (
 	// TiKVDeleteSlots is annotation key of tikv delete slots.
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
 
+	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
+	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
+	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
+	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
+
+	// AnnTiDBConsecutiveScaleOutCount describes the least consecutive count to scale-out for tidb
+	AnnTiDBConsecutiveScaleOutCount = "tidb.tidb.pingcap.com/consecutive-scale-out-count"
+	// AnnTiDBConsecutiveScaleInCount describes the least consecutive count to scale-in for tidb
+	AnnTiDBConsecutiveScaleInCount = "tidb.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnTiKVConsecutiveScaleOutCount describes the least consecutive count to scale-out for tikv
+	AnnTiKVConsecutiveScaleOutCount = "tikv.tidb.pingcap.com/consecutive-scale-out-count"
+	// AnnTiKVConsecutiveScaleInCount describes the least consecutive count to scale-in for tikv
+	AnnTiKVConsecutiveScaleInCount = "tikv.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnAutoScalingTargetName describes the target TidbCluster Ref Name for the TidbCluserAutoScaler
+	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
+	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
+	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
