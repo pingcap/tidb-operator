@@ -12,7 +12,6 @@ spec:
           name: data
   volumeClaimTemplates:
   - metadata:
-      creationTimestamp: null
       name: data
     spec:
       accessModes:
@@ -22,5 +21,3 @@ spec:
         requests:
           storage: 10Gi
       storageClassName: local-storage
-    status:
-      phase: Pending

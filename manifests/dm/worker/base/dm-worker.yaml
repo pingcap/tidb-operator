@@ -47,7 +47,7 @@ spec:
           value: dm-worker
         - name: TZ
           value: UTC
-        image: 127.0.0.1:30002/pingcap/dm:2040
+        image: pingcap/dm:ha-alpha
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 8
