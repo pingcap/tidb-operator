@@ -15,7 +15,7 @@ package autoscaler
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 )
@@ -24,14 +24,16 @@ type ControlInterface interface {
 	ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error
 }
 
-func NewDefaultAutoScalerControl(recorder record.EventRecorder, ctrl controller.TypedControlInterface) ControlInterface {
-	return &defaultAutoScalerControl{recoder: recorder, typedControl: ctrl}
+func NewDefaultAutoScalerControl(recorder record.EventRecorder, asm autoscaler.AutoScalerManager) ControlInterface {
+	return &defaultAutoScalerControl{
+		recoder:           recorder,
+		autoScalerManager: asm,
+	}
 }
 
 type defaultAutoScalerControl struct {
-	recoder      record.EventRecorder
-	typedControl controller.TypedControlInterface
-	//	autoScalerManager
+	recoder           record.EventRecorder
+	autoScalerManager autoscaler.AutoScalerManager
 }
 
 func (tac *defaultAutoScalerControl) ResconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
@@ -42,9 +44,8 @@ func (tac *defaultAutoScalerControl) ResconcileAutoScaler(ta *v1alpha1.TidbClust
 	return errors.NewAggregate(errs)
 }
 
-//TODO: sync autoScaler
 func (tac *defaultAutoScalerControl) reconcileAutoScaler(ta *v1alpha1.TidbClusterAutoScaler) error {
-	return nil
+	return tac.autoScalerManager.Sync(ta)
 }
 
 var _ ControlInterface = &defaultAutoScalerControl{}

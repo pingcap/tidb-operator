@@ -53,7 +53,7 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 		return util.ARFail(err)
 	}
 	tcName := payload.tc.Name
-	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
 	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
 
 	isMember, err := IsPodInPdMembers(payload.tc, payload.pod, payload.pdClient)

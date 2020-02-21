@@ -30,3 +30,4 @@ source "${ROOT}/hack/lib.sh"
 hack::ensure_kind
 hack::ensure_kubectl
 hack::ensure_helm
+hack::ensure_kubetest2

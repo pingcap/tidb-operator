@@ -43,6 +43,7 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/GoogleCloudPlatform/cloudsql-proxy v0.0.0-20190605020000-c4ba1fdf4d36/go.mod h1:aJ4qN3TfrelA6NZ6AXsXRfmEVaYin3EDbSPJrKS8OXo=
+github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20190822182118-27a4ced34534 h1:N7lSsF+R7wSulUADi36SInSQA3RvfO/XclHQfedr0qk=
 github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20190822182118-27a4ced34534/go.mod h1:iroGtC8B3tQiqtds1l+mgk/BBOrxbqjH+eUfFQYRc14=
 github.com/JeffAshton/win_pdh v0.0.0-20161109143554-76bb4ee9f0ab/go.mod h1:3VYc5hodBMJ5+l/7J4xAyMeuM2PNuepvHlGs8yilUCA=
 github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd/go.mod h1:64YHyfSL2R96J44Nlwm39UHepQbyR5q10x7iYa1ks2E=
@@ -1001,6 +1002,7 @@ gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/errgo.v2 v2.1.0/go.mod h1:hNsd1EY+bozCKY1Ytp96fpM3vjJbqLJn88ws8XvfDNI=
 gopkg.in/fsnotify.v1 v1.4.7 h1:xOHLXZwVvI9hhs+cLKq5+I5onOuwQLhQwiu63xxlHs4=
 gopkg.in/fsnotify.v1 v1.4.7/go.mod h1:Tz8NjZHkW78fSQdbUxIjBTcgA1z1m8ZHf0WmKUhAMys=
+gopkg.in/gcfg.v1 v1.2.0 h1:0HIbH907iBTAntm+88IJV2qmJALDAh8sPekI9Vc1fm0=
 gopkg.in/gcfg.v1 v1.2.0/go.mod h1:yesOnuUOFQAhST5vPY4nbZsb/huCgGGXlipJsBn0b3o=
 gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2/go.mod h1:Xk6kEKp8OKb+X14hQBKWaSkCsqBpgog8nAV2xsGOxlo=
 gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df/go.mod h1:LRQQ+SO6ZHR7tOkpBDuZnXENFzX8qRjMDMyPD6BRkCw=
@@ -1018,6 +1020,7 @@ gopkg.in/square/go-jose.v2 v2.2.2 h1:orlkJ3myw8CN1nVQHBFfloD+L3egixIa4FvUP6RosSA
 gopkg.in/square/go-jose.v2 v2.2.2/go.mod h1:M9dMgbHiYLoDGQrXy7OpJDJWiKiU//h+vD76mk0e1AI=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 h1:uRGJdciOHaEIrze2W8Q3AKkepLTh2hOroT7a+7czfdQ=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7/go.mod h1:dt/ZhP58zS4L8KSrWDmTeBkI65Dw0HsyUHuEVlX15mw=
+gopkg.in/warnings.v0 v0.1.1 h1:XM28wIgFzaBmeZ5dNHIpWLQpt/9DGKxk+rCg/22nnYE=
 gopkg.in/warnings.v0 v0.1.1/go.mod h1:jksf8JmL6Qr/oQM2OXTHunEvvTAsrWBLb6OOjuVWRNI=
 gopkg.in/yaml.v2 v2.0.0-20170812160011-eb3733d160e7/go.mod h1:JAlM8MvJe8wmxCU4Bli9HhUf9+ttbYbLASfIpnQbh74=
 gopkg.in/yaml.v2 v2.0.0/go.mod h1:JAlM8MvJe8wmxCU4Bli9HhUf9+ttbYbLASfIpnQbh74=
@@ -1083,6 +1086,7 @@ k8s.io/kubectl v0.0.0-20190918164019-21692a0861df/go.mod h1:AjffgL1ZYSrbpRJHER9v
 k8s.io/kubelet v0.0.0-20190918162654-250a1838aa2c/go.mod h1:LGhpyzd/3AkWcFcQJ3yO1UxMnJ6urMkCYfCp4iVxhjs=
 k8s.io/kubernetes v1.16.0 h1:WPaqle2JWogVzLxhN6IK67u62IHKKrtYF7MS4FVR4/E=
 k8s.io/kubernetes v1.16.0/go.mod h1:nlP2zevWKRGKuaaVbKIwozU0Rjg9leVDXkL4YTtjmVs=
+k8s.io/legacy-cloud-providers v0.0.0-20190918163543-cfa506e53441 h1:JkEasocl8SM6+H65kaEUjtLAOFYzwaQOVTDdy5DLOXk=
 k8s.io/legacy-cloud-providers v0.0.0-20190918163543-cfa506e53441/go.mod h1:Phw/j+7dcoTPXRkv9Nyi3RJuA6SVSoHlc7M5K1pHizM=
 k8s.io/metrics v0.0.0-20190918162108-227c654b2546/go.mod h1:XUFuIsGbIqaUga6Ivs02cCzxNjY4RPRvYnW0KhmnpQY=
 k8s.io/repo-infra v0.0.0-20181204233714-00fe14e3d1a3/go.mod h1:+G1xBfZDfVFsm1Tj/HNCvg4QqWx8rJ2Fxpqr1rqp/gQ=

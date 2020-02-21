@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +25,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -166,7 +166,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 		return util.ARFail(err)
 	}
 	tcName := payload.tc.Name
-	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
 
 	if !isInOrdinal {
 		err = payload.pdClient.DeleteStore(store.Store.Id)

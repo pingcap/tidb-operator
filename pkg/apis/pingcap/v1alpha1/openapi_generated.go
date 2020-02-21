@@ -808,6 +808,27 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							},
 						},
 					},
+					"metricsTimeDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scaleOutThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"maxReplicas"},
 			},
@@ -3527,11 +3548,10 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
-					"enableTLSClient": {
+					"tlsClient": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to false",
-							Type:        []string{"boolean"},
-							Format:      "",
+							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to nil",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"),
 						},
 					},
 					"slowLogTailer": {
@@ -3565,7 +3585,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -5656,6 +5676,27 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							},
 						},
 					},
+					"metricsTimeDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scaleOutThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"maxReplicas"},
 			},
@@ -6533,6 +6574,27 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 									},
 								},
 							},
+						},
+					},
+					"metricsTimeDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scaleOutThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scaleInThreshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 				},
