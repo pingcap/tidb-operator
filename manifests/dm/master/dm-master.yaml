@@ -50,7 +50,7 @@ spec:
           value: dm-master
         - name: TZ
           value: UTC
-        image: 127.0.0.1:30002/pingcap/dm:2040
+        image: pingcap/dm:ha-alpha
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 8
@@ -93,7 +93,6 @@ spec:
     type: RollingUpdate
   volumeClaimTemplates:
   - metadata:
-      creationTimestamp: null
       name: data
     spec:
       accessModes:
@@ -103,8 +102,6 @@ spec:
         requests:
           storage: 10Gi
       storageClassName: local-storage
-    status:
-      phase: Pending
 ---
 apiVersion: v1
 kind: Service
