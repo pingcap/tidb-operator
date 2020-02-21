@@ -106,22 +106,22 @@ spec:
     status:
       phase: Pending
 ---
-    apiVersion: v1
-    kind: Service
-    metadata:
-      labels:
-        app.kubernetes.io/component: dm-master
-      name: dm-master
-    spec:
-      ports:
-      - name: client
-        port: 8261
-        protocol: TCP
-        targetPort: 8261
-      selector:
-        app.kubernetes.io/component: dm-master
-      sessionAffinity: None
-      type: ClusterIP
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: dm-master
+  name: dm-master
+spec:
+  ports:
+  - name: client
+    port: 8261
+    protocol: TCP
+    targetPort: 8261
+  selector:
+    app.kubernetes.io/component: dm-master
+  sessionAffinity: None
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
