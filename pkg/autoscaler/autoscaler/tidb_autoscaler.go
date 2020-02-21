@@ -57,7 +57,7 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if recommendedReplicas > currentReplicas {
 		intervalSeconds = tac.Spec.TiDB.ScaleOutIntervalSeconds
 	}
-	ableToScale, err := checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiDBMemberType)
+	ableToScale, err := checkStsAutoScalingInterval(tac, *intervalSeconds, v1alpha1.TiDBMemberType)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 }
 
 func updateTcTiDBAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
-	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = time.Now().String()
+	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 }
 
 func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
