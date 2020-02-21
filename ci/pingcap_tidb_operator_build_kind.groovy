@@ -238,16 +238,16 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def MIRRORS = "DOCKER_IO_MIRROR=http://172.16.4.143:5000 QUAY_IO_MIRROR=http://172.16.4.143:5001"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]' --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --ginkgo.skip='\\[Serial\\]' --operator-features AdvancedStatefulSet=true", artifacts)
 		}
 		builds["E2E v1.17.0"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- -preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.17 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=8 KUBE_VERSION=v1.17.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.17.0_ ./hack/e2e.sh -- -preload-images --ginkgo.skip='\\[Serial\\]'", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
-			build("${MIRRORS} IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
+			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12-serial IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
 		}
 		builds.failFast = false
 		parallel builds
