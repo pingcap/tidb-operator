@@ -74,6 +74,7 @@ Environments:
     GINKGO_NODES          ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL       if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
     GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
+    RUNNER_SUITE_NAME     the suite name of runner
 
 Examples:
 
@@ -195,6 +196,7 @@ KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
 GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
+RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 
 echo "PROVIDER: $PROVIDER"
 echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
@@ -359,6 +361,12 @@ fi
 kubetest2_args=(
     $PROVIDER
 )
+
+if [ -n "$RUNNER_SUITE_NAME" ]; then
+    kubetest2_args+=(
+        --suite-name "$RUNNER_SUITE_NAME"
+    )
+fi
 
 if [ -z "$SKIP_UP" ]; then
     kubetest2_args+=(--up)
