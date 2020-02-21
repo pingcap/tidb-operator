@@ -158,6 +158,11 @@ for ((i = 1; i <= 32; i++)) {
         mount --bind vol$i vol$i
     fi
 }
+echo "info: increase max open files for containers"
+if ! grep -qF "OPTIONS" /etc/sysconfig/docker; then
+    echo 'OPTIONS="--default-ulimit nofile=1024000:1024000"' >> /etc/sysconfig/docker
+fi
+systemctl restart docker
 '
 EOF
         done <<< "$(e2e::__eks_instances)"
