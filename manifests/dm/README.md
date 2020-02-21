@@ -1,0 +1,46 @@
+---
+title: Deploy DM on Kubernetes
+summary: Deploy DM on Kubernetes
+category: how-to
+---
+
+# Deploy DM on Kubernetes
+
+This document describes how to deploy DM of the new HA architecture with the yamls in this directory.
+
+## Deploy dm-master
+
+{{< copyable "shell-regular" >}}
+
+``` shell
+kubectl create -f master/dm-master.yaml -n <namespace>
+```
+
+> **Note: **
+>
+> - `3` replicas are deployed by default.
+> - `storageClassName` is set to `local-storage` by default.
+
+## Deploy dm-worker
+
+- If you only need to use DM for incremental data migration, no need to create PVC for dm-worker, just deploy it with below command:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl kustomize worker/base | kubectl apply -f - -n <namespace>
+    ```
+
+- If you need to use DM for both full and incremental data migration, you have to create PVC for dm-worker, deploy it with below command:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl kustomize worker/overlays/full | kubectl apply -f - -n <namespace>
+    ```
+
+> **Note: **
+>
+> - `3` replicas are deployed by default.
+> - `storageClassName` is set to `local-storage` for PVC by default.
+> - If PVCs are created, they are mounted to `/data` directory.
