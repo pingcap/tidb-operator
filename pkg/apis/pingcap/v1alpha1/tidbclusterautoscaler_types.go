@@ -115,7 +115,7 @@ type BasicAutoScalerSpec struct {
 
 	// MetricsTimeDuration describe the Time duration to be queried in the Prometheus
 	// +optional
-	MetricsTimeDuration *string `json:"MetricsTimeDuration,omitempty"`
+	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
 
 	// ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
 	// if the consecutive counts of the scale-out result in auto-scaling reach this number,

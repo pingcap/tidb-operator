@@ -3779,21 +3779,6 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
-                enableTLSClient:
-                  description: 'Whether enable the TLS connection between the SQL
-                    client and TiDB server Optional: Defaults to false'
-                  type: boolean
-                extraSANDomainList:
-                  description: extra SAN Domain list when setting EnableTLSClient
-                    to true
-                  items:
-                    type: string
-                  type: array
-                extraSANIPList:
-                  description: extra SAN IP list when setting EnableTLSClient to true
-                  items:
-                    type: string
-                  type: array
                 hostNetwork:
                   description: 'Whether Hostnetwork of the component is enabled. Override
                     the cluster-level setting if present Optional: Defaults to cluster-level
@@ -3988,6 +3973,7 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                tlsClient: {}
                 tolerations:
                   description: 'Tolerations of the component. Override the cluster-level
                     tolerations if non-empty Optional: Defaults to cluster-level setting'
@@ -7060,10 +7046,6 @@ spec:
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
-                MetricsTimeDuration:
-                  description: MetricsTimeDuration describe the Time duration to be
-                    queried in the Prometheus
-                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7082,6 +7064,10 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
+                metricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
@@ -7120,10 +7106,6 @@ spec:
             tikv:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
-                MetricsTimeDuration:
-                  description: MetricsTimeDuration describe the Time duration to be
-                    queried in the Prometheus
-                  type: string
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -7142,6 +7124,10 @@ spec:
                     metric will be set to 80% average CPU utilization.
                   items: {}
                   type: array
+                metricsTimeDuration:
+                  description: MetricsTimeDuration describe the Time duration to be
+                    queried in the Prometheus
+                  type: string
                 minReplicas:
                   description: minReplicas is the lower limit for the number of replicas
                     to which the autoscaler can scale down.  It defaults to 1 pod.
