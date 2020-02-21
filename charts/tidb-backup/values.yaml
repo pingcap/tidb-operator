@@ -29,6 +29,10 @@ image:
   # https://github.com/pingcap/tidb-cloud-backup
   backup: pingcap/tidb-cloud-backup:20191217
 
+## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+nodeSelector: {}
+
 # Add additional labels for backup/restore job's pod
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 extraLabels: {}
@@ -79,6 +83,11 @@ restoreOptions: "-t 16"
 # The time limit during which data is retained for each GC when backup, in the format of Go Duration.
 # When a GC happens, the current time minus this value is the safe point.
 tikvGCLifeTime: 720h
+
+# By default, restores are performed by binding to an existing volume containing backup data.
+# To restore from gcp, ceph, or s3, set this to false to create a new volume to load the backup into
+# This setting only affects the "restore" mode.
+restoreUsingExistingVolume: true
 
 # By default, the backup/restore uses PV to store/load backup data
 # You can choose to store/load backup data to/from gcp, ceph or s3 bucket by enabling the following corresponding section:
