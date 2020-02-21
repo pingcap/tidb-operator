@@ -60,7 +60,7 @@ func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if recommendedReplicas > tc.Spec.TiKV.Replicas {
 		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
 	}
-	ableToScale, err := checkStsAutoScalingInterval(tc, *intervalSeconds, v1alpha1.TiKVMemberType)
+	ableToScale, err := checkStsAutoScalingInterval(tac, *intervalSeconds, v1alpha1.TiKVMemberType)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 }
 
 func updateTcTiKVAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
-	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = time.Now().String()
+	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 }
 
 func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
