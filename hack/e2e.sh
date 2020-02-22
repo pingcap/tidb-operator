@@ -399,6 +399,9 @@ if [ "$PROVIDER" == "kind" ]; then
     fi
     kubetest2_args+=(--image-name $image)
     kubetest2_args+=(
+        # add some retires because kind may fail to start the cluster when the
+        # load is high
+        --up-retries 3
         --cluster-name "$CLUSTER"
         --config "$tmpfile"
         --verbosity 4
