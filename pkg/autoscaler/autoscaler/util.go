@@ -14,7 +14,6 @@
 package autoscaler
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
@@ -58,7 +57,7 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
-func checkStsAutoScalingInterval(tac *v1alpha1.TidbCluster, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
+func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
 	}
@@ -177,116 +176,7 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 	}
 }
 
-// updateConsecutiveCount would update the tc annotation depended by the given replicas in each reconciling
-func updateConsecutiveCount(tac *v1alpha1.TidbClusterAutoScaler,
-	memberType v1alpha1.MemberType, currentReplicas int32, recommendedReplicas int32) error {
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-	}
-
-	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
-	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
-
-	var scaleOutCount int
-	var scaleInCount int
-	scaleOutCount, scaleInCount = 0, 0
-	var err error
-
-	if v, existed := tac.Annotations[targetScaleOutAnn]; existed {
-		scaleOutCount, err = strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, err)
-		}
-	}
-
-	if v, existed := tac.Annotations[targetScaleInAnn]; existed {
-		scaleInCount, err = strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, err)
-		}
-	}
-
-	if currentReplicas < recommendedReplicas {
-		// scale-out
-		scaleOutCount = scaleOutCount + 1
-		scaleInCount = 0
-	} else if currentReplicas > recommendedReplicas {
-		// scale-in
-		scaleOutCount = 0
-		scaleInCount = scaleInCount + 1
-	} else {
-		scaleOutCount = 0
-		scaleInCount = 0
-	}
-
-	// update tc annotation
-	tac.Annotations[targetScaleOutAnn] = fmt.Sprintf("%d", scaleOutCount)
-	tac.Annotations[targetScaleInAnn] = fmt.Sprintf("%d", scaleInCount)
-	return nil
-}
-
-func checkConsecutiveCount(tac *v1alpha1.TidbClusterAutoScaler,
-	memberType v1alpha1.MemberType, currentReplicas int32, recommendedReplicas int32) (bool, error) {
-	if currentReplicas == recommendedReplicas {
-		return false, nil
-	}
-	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
-	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
-	if tac.Annotations == nil {
-		return false, fmt.Errorf(invalidTacAnnotationErrorMsg, tac.Namespace, tac.Name, "tac annotations empty")
-	}
-	currentScaleOutCount, err := strconv.ParseInt(tac.Annotations[targetScaleOutAnn], 10, 32)
-	if err != nil {
-		return false, err
-	}
-	currentScaleInCount, err := strconv.ParseInt(tac.Annotations[targetScaleInAnn], 10, 32)
-	if err != nil {
-		return false, err
-	}
-	switch memberType {
-	case v1alpha1.TiDBMemberType:
-		if currentReplicas < recommendedReplicas {
-			// scale-out
-			if int32(currentScaleOutCount) < *tac.Spec.TiDB.ScaleOutThreshold {
-				return false, nil
-			}
-		} else {
-			// scale-in, no-scaling would be return nil at first
-			if int32(currentScaleInCount) < *tac.Spec.TiDB.ScaleInThreshold {
-				return false, nil
-			}
-		}
-	case v1alpha1.TiKVMemberType:
-		if currentReplicas < recommendedReplicas {
-			// scale-out
-			if int32(currentScaleOutCount) < *tac.Spec.TiKV.ScaleOutThreshold {
-				return false, nil
-			}
-		} else {
-			// scale-in, no-scaling would be return nil at first
-			if int32(currentScaleInCount) < *tac.Spec.TiKV.ScaleInThreshold {
-				return false, nil
-			}
-		}
-	default:
-		return false, fmt.Errorf(invalidMemberTypeErrorMsg, tac.Namespace, tac.Name, memberType)
-	}
-	return true, nil
-}
-
-func emptyAutoScalingCountAnn(tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) {
-	targetScaleOutAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleOutSuffix)
-	targetScaleInAnn := fmt.Sprintf("%s.%s", memberType.String(), annScaleInSuffix)
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-	}
-	tac.Annotations[targetScaleOutAnn] = "0"
-	tac.Annotations[targetScaleInAnn] = "0"
-}
-
 func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {
-	emptyAutoScalingCountAnn(tac, v1alpha1.TiDBMemberType)
-	emptyAutoScalingCountAnn(tac, v1alpha1.TiKVMemberType)
 	tac.Annotations[label.AnnAutoScalingTargetNamespace] = tac.Spec.Cluster.Namespace
 	tac.Annotations[label.AnnAutoScalingTargetName] = tac.Spec.Cluster.Name
 }
