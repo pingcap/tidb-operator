@@ -34,10 +34,10 @@ HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.0.5+8b0d44d839810c125ee4ab12004d1ede2dc88004
-KUBETEST2_EKS_VERSION=v0.0.5+b5182f351791f085f1ff6c51f8c370887c5d99ec
-KUBETEST2_GKE_VERSION=v0.0.5+bc2913cac967200792f00479bc2e6ac57bcfdb3b
-KUBETEST2_KIND_VERSION=v0.0.5+8b81fb1be19fd0419b5b0f3dff497042385f6b72
+KUBETEST2_VERSION=v0.0.6+81d814748ab990ecd893cd1313edfb82400752bd
+KUBETEST2_EKS_VERSION=v0.0.6+d6afb853359f35999c6aa3c06ec96cb8ebcbd032
+KUBETEST2_GKE_VERSION=v0.0.6+12f40220e086ff4d4aa86b98d05cfc62f17d9cf9
+KUBETEST2_KIND_VERSION=v0.0.6+b4be23daed89152e595dc3ad4826d104107edc62
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
 AWS_K8S_TESTER_VERSION=v0.6.2
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
@@ -173,6 +173,7 @@ function hack::__ensure_kubetest2() {
     fi
     local tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
+    echo "info: downloading $n $v"
     curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$v/$n.gz | gunzip > $tmpfile
     mv $tmpfile $OUTPUT_BIN/$n
     chmod +x $OUTPUT_BIN/$n
