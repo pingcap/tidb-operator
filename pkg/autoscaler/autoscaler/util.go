@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -174,6 +175,12 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 		}
 	}
+
+	if tac.Spec.Monitor != nil {
+		if len(tac.Spec.Monitor.Namespace) < 1 {
+			tac.Spec.Monitor.Namespace = tac.Namespace
+		}
+	}
 }
 
 func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {
@@ -197,4 +204,18 @@ func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
 	}
 	// If not satisfied, reset tac Ann
 	resetAutoScalingAnn(tac)
+}
+
+func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
+	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
+		return "", fmt.Errorf("tac[%s/%s]' metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
+	}
+	conn := ""
+	if tac.Spec.Monitor != nil {
+		conn = fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace)
+	}
+	if tac.Spec.MetricsUrl != nil {
+		conn = *tac.Spec.MetricsUrl
+	}
+	return conn, nil
 }
