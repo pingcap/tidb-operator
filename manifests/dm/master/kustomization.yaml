@@ -1,0 +1,10 @@
+resources:
+- dm-master.yaml
+configMapGenerator:
+- name: dm-master-config
+  files:
+  - config/config.toml
+generatorOptions:
+  labels:
+    app.kubernetes.io/component: dm-master
+

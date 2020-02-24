@@ -10,10 +10,12 @@ This document describes how to deploy DM of the new HA architecture with the yam
 
 ## Deploy dm-master
 
+Update the rpc configs if necessary in `master/config/config.toml`.
+
 {{< copyable "shell-regular" >}}
 
 ``` shell
-kubectl create -f master/dm-master.yaml -n <namespace>
+kubectl apply -k master -n <namespace>
 ```
 
 > **Note: **
@@ -28,7 +30,7 @@ kubectl create -f master/dm-master.yaml -n <namespace>
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl kustomize worker/base | kubectl apply -f - -n <namespace>
+    kubectl apply -k worker/base -n <namespace>
     ```
 
 - If you need to use DM for both full and incremental data migration, you have to create PVC for dm-worker, deploy it with below command:
@@ -36,7 +38,7 @@ kubectl create -f master/dm-master.yaml -n <namespace>
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl kustomize worker/overlays/full | kubectl apply -f - -n <namespace>
+    kubectl apply -k worker/overlays/full -n <namespace>
     ```
 
 > **Note: **
