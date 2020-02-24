@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	})
 
 	// tidb-operator with AdvancedStatefulSet feature enabled
-	ginkgo.Context("[Feature: AdvancedStatefulSet And Webhook]", func() {
+	ginkgo.Context("[Feature: AdvancedStatefulSet][Feature: Webhook]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
