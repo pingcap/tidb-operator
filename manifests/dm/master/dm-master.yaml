@@ -26,7 +26,8 @@ spec:
       containers:
       - command:
         - /dm-master
-        - -data-dir=/data
+        - --data-dir=/data
+        - --config=/etc/config/config.toml
         - --name=$(MY_POD_NAME)
         - --master-addr=:8261
         - --advertise-addr=$(MY_POD_NAME).$(PEER_SERVICE_NAME).$(NAMESPACE):8261
@@ -82,11 +83,17 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
+        - mountPath: /etc/config
+          name: config
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          name: dm-master-config
+        name: config
   updateStrategy:
     rollingUpdate:
       partition: 3
