@@ -7043,6 +7043,19 @@ spec:
                 the pd could provide it. MetricsUrl represents the url to fetch the
                 metrics info
               type: string
+            monitor:
+              description: TidbMonitorRef reference to a TidbMonitor
+              properties:
+                name:
+                  description: Name is the name of TidbMonitor object
+                  type: string
+                namespace:
+                  description: Namespace is the namespace that TidbMonitor object
+                    locates, default to the same namespace with TidbClusterAutoScaler
+                  type: string
+              required:
+              - name
+              type: object
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
