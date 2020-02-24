@@ -103,6 +103,7 @@ function hack::ensure_helm() {
     fi
     local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
     curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
+    ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
 }
 
 function hack::verify_kind() {
@@ -123,6 +124,7 @@ function hack::ensure_kind() {
     curl --retry 10 -L -o $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
     mv $tmpfile $KIND_BIN
     chmod +x $KIND_BIN
+    ln -s $KIND_BIN /usr/local/bin/kind
 }
 
 # hack::version_ge "$v1" "$v2" checks whether "v1" is greater or equal to "v2"
