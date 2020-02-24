@@ -126,7 +126,9 @@ function hack::ensure_kind() {
     curl --retry 10 -L -o $tmpfile https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-$(uname)-amd64
     mv $tmpfile $KIND_BIN
     chmod +x $KIND_BIN
-    ln -s $KIND_BIN /usr/local/bin/kind
+    if [ "${HOSTNAME:-}" == "tidb-operator-dev" ]; then
+        ln -s $KIND_BIN /usr/local/bin/kind
+    fi
 }
 
 # hack::version_ge "$v1" "$v2" checks whether "v1" is greater or equal to "v2"
