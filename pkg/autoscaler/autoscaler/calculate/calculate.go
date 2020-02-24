@@ -36,6 +36,7 @@ const (
 )
 
 type SingleQuery struct {
+	Endpoint  string
 	Timestamp int64
 	Quary     string
 	Instances []string
@@ -45,7 +46,7 @@ type SingleQuery struct {
 func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, sq *SingleQuery, resp *Response) error {
 	query := sq.Quary
 	timestamp := sq.Timestamp
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", *tac.Spec.MetricsUrl, queryPath), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", sq.Endpoint, queryPath), nil)
 	if err != nil {
 		return err
 	}
