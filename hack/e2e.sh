@@ -485,7 +485,7 @@ else
     exit 1
 fi
 
-if [ ! -f /usr/local/bin/helm ]; then
+if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/helm ]; then
     ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
 fi
 
