@@ -103,7 +103,9 @@ function hack::ensure_helm() {
     fi
     local HELM_URL=http://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-${OS}-${ARCH}.tar.gz
     curl --retry 10 -L -s "$HELM_URL" | tar --strip-components 1 -C $OUTPUT_BIN -zxf - ${OS}-${ARCH}/helm
-    ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
+    if [ "${HOSTNAME:-}" == "tidb-operator-dev" ]; then
+        ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
+    fi
 }
 
 function hack::verify_kind() {
