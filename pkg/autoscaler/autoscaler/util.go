@@ -208,7 +208,7 @@ func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
 
 func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
-		return "", fmt.Errorf("tac[%s/%s]' metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
+		return "", fmt.Errorf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
 	}
 	conn := ""
 	if tac.Spec.Monitor != nil {
