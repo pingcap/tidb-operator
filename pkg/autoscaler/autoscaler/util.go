@@ -210,12 +210,8 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
 		return "", fmt.Errorf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)
 	}
-	conn := ""
-	if tac.Spec.Monitor != nil {
-		conn = fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace)
-	}
 	if tac.Spec.MetricsUrl != nil {
-		conn = *tac.Spec.MetricsUrl
+		return *tac.Spec.MetricsUrl, nil
 	}
-	return conn, nil
+	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
 }
