@@ -17,7 +17,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -136,15 +138,44 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Inter
 
 // checkFormerPodRestartStatus checks whether there are any former pod is going to be restarted
 // return true if existed
-func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alpha1.MemberType, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) (bool, error) {
-	for i := replicas - 1; i > ordinal; i-- {
-		podName := memberUtil.MemberPodName(tc.Name, i, memberType)
+func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alpha1.MemberType, payload *admitPayload, ordinal int32) (bool, error) {
+	namespace := payload.tc.Namespace
+	tc := payload.tc
+	replicas := *payload.ownerStatefulSet.Spec.Replicas
+
+	f := func(name string, ordinal int32, memberType v1alpha1.MemberType) (bool, error) {
+		podName := memberUtil.MemberPodName(tc.Name, ordinal, memberType)
 		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
 			return true, nil
+		}
+		return false, nil
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		for k := range helper.GetPodOrdinals(replicas, payload.ownerStatefulSet) {
+			if k > ordinal {
+				existed, err := f(tc.Name, k, memberType)
+				if err != nil {
+					return false, err
+				}
+				if existed {
+					return true, nil
+				}
+			}
+		}
+	} else {
+		for i := replicas - 1; i > ordinal; i-- {
+			existed, err := f(tc.Name, i, memberType)
+			if err != nil {
+				return false, err
+			}
+			if existed {
+				return true, nil
+			}
 		}
 	}
 	return false, nil

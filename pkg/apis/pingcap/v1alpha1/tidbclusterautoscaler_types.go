@@ -58,6 +58,11 @@ type TidbClusterAutoScalerSpec struct {
 	// +optional
 	MetricsUrl *string `json:"metricsUrl,omitempty"`
 
+	// TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
+	// Operator will use MetricsUrl
+	// +optional
+	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
+
 	// TiKV represents the auto-scaling spec for tikv
 	// +optional
 	TiKV *TikvAutoScalerSpec `json:"tikv,omitempty"`
@@ -130,6 +135,18 @@ type BasicAutoScalerSpec struct {
 	// If not set, the default value is 5.
 	// +optional
 	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// TidbMonitorRef reference to a TidbMonitor
+type TidbMonitorRef struct {
+	// Namespace is the namespace that TidbMonitor object locates,
+	// default to the same namespace with TidbClusterAutoScaler
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// Name is the name of TidbMonitor object
+	Name string `json:"name"`
 }
 
 // TODO: sync status

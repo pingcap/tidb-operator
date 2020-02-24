@@ -21,7 +21,6 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	promClient "github.com/prometheus/client_golang/api"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -88,21 +87,14 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 }
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
-	if tac.Spec.MetricsUrl == nil {
-		return fmt.Errorf("tidbclusterAutoScaler[%s/%s]' metrics url should be defined explicitly", tac.Namespace, tac.Name)
-	}
-	c, err := promClient.NewClient(promClient.Config{Address: *tac.Spec.MetricsUrl})
-	if err != nil {
-		return err
-	}
 	defaultTAC(tac)
 	oldTikvReplicas := tc.Spec.TiKV.Replicas
-	if err := am.syncTiKV(tc, tac, c); err != nil {
+	if err := am.syncTiKV(tc, tac); err != nil {
 		tc.Spec.TiKV.Replicas = oldTikvReplicas
 		klog.Errorf("tac[%s/%s] tikv sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
 	oldTidbReplicas := tc.Spec.TiDB.Replicas
-	if err := am.syncTiDB(tc, tac, c); err != nil {
+	if err := am.syncTiDB(tc, tac); err != nil {
 		tc.Spec.TiDB.Replicas = oldTidbReplicas
 		klog.Errorf("tac[%s/%s] tidb sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
