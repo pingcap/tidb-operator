@@ -2297,7 +2297,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		)
 		glog.Info(getTSCmd)
 
-		res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
+		res, err := exec.Command("/bin/bash", "-c", getTSCmd).CombinedOutput()
 		if err != nil {
 			glog.Errorf("failed to get ts %v, %s", err, string(res))
 			return false, nil
