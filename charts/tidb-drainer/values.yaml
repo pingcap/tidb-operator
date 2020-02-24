@@ -7,6 +7,7 @@ timezone: UTC
 
 # Change the name of the statefulset and pod
 # The default is clusterName-ReleaseName-drainer
+# Do not change the name of an existing running drainer: this is unsupported.
 # drainerName:
 
 # clusterName is the TiDB cluster name that should backup from or restore to.
