@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	})
 
 	// tidb-operator with AdvancedStatefulSet feature enabled
-	ginkgo.Context("[Feature: AdvancedStatefulSet]", func() {
+	ginkgo.Context("[Feature: AdvancedStatefulSet][Feature: Webhook]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
@@ -123,9 +123,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					"StableScheduling=true",
 					"AdvancedStatefulSet=true",
 				},
-				LogLevel:        "4",
-				ImagePullPolicy: v1.PullIfNotPresent,
-				TestMode:        true,
+				LogLevel:          "4",
+				ImagePullPolicy:   v1.PullIfNotPresent,
+				TestMode:          true,
+				WebhookEnabled:    true,
+				PodWebhookEnabled: true,
+				StsWebhookEnabled: false,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
