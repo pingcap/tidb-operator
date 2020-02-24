@@ -74,7 +74,7 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
-	tikvPattern, err = config.NewRegexp(".*\\-tikv\\-\\d*$")
+	tikvPattern, err = config.NewRegexp("tikv")
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
