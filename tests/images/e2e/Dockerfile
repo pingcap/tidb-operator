@@ -1,9 +1,10 @@
-FROM alpine:3.10
+FROM debian:buster-slim
 
 ENV KUBECTL_VERSION=v1.12.2
 ENV HELM_VERSION=v2.9.1
 
-RUN apk update && apk add --no-cache ca-certificates curl git openssl bash mysql-client
+RUN apt-get update && \
+    apt-get install -y ca-certificates curl git openssl default-mysql-client unzip
 RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
@@ -13,6 +14,9 @@ RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VER
     mv linux-amd64/helm /usr/local/bin/helm && \
     rm -rf linux-amd64 && \
     rm helm-${HELM_VERSION}-linux-amd64.tar.gz
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install
 
 ADD tidb-operator /charts/e2e/tidb-operator
 ADD tidb-cluster /charts/e2e/tidb-cluster

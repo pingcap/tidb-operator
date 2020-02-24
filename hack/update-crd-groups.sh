@@ -38,3 +38,4 @@ to-crdgen generate restore >> $crd_target
 to-crdgen generate backupschedule >> $crd_target
 to-crdgen generate tidbmonitor >> $crd_target
 to-crdgen generate tidbinitializer >> $crd_target
+to-crdgen generate tidbclusterautoscaler >> $crd_target

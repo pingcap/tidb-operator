@@ -15,7 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +25,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -58,7 +58,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 
 	// If the tikv pod is deleted by restarter, it is necessary to check former tikv restart status
 	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
-		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.TiKVMemberType, payload.tc, namespace, ordinal, *payload.ownerStatefulSet.Spec.Replicas)
+		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.TiKVMemberType, payload, ordinal)
 		if err != nil {
 			return util.ARFail(err)
 		}
@@ -91,7 +91,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 		}
 	}
 
-	if storeInfo == nil || storeInfo.Store == nil {
+	if !existed || storeInfo == nil || storeInfo.Store == nil {
 		klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] can't be found store", namespace, tcName, namespace, name)
 		return pc.admitDeleteUselessTiKVPod(payload)
 	}
@@ -166,7 +166,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 		return util.ARFail(err)
 	}
 	tcName := payload.tc.Name
-	isUpgrading := IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
 
 	if !isInOrdinal {
 		err = payload.pdClient.DeleteStore(store.Store.Id)
