@@ -489,7 +489,7 @@ if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/helm ]; then
     ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
 fi
 
-if [ ! -f /usr/local/bin/kind ]; then
+if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/kind ]; then
     ln -s $KIND_BIN /usr/local/bin/kind
 fi
 
