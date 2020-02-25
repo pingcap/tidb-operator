@@ -18,7 +18,7 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 - Support user-defined tidb server/client certificate ([#1714](https://github.com/pingcap/tidb-operator/pull/1714), [@weekface](https://github.com/weekface))
 - Add an option for tidb-backup chart to allow reusing existing PVC or not for restore ([#1708](https://github.com/pingcap/tidb-operator/pull/1708), [@mightyguava](https://github.com/mightyguava))
 - Add `resources`, `imagePullPolicy` and `nodeSelector` field for tidb-backup chart ([#1705](https://github.com/pingcap/tidb-operator/pull/1705), [@mightyguava](https://github.com/mightyguava))
-- Add more SANs to tidb server certificate ([#1702](https://github.com/pingcap/tidb-operator/pull/1702), [@weekface](https://github.com/weekface))
+- Add more SAN(Subject Alternative Name)s to tidb server certificate ([#1702](https://github.com/pingcap/tidb-operator/pull/1702), [@weekface](https://github.com/weekface))
 - Able to migrate existing Kubernetes StatefulSets to Advanced StatefulSets automatically when AdvancedStatfulSet feature is enabled ([#1580](https://github.com/pingcap/tidb-operator/pull/1580), [@cofyc](https://github.com/cofyc))
 - Fix the bug in admission webhook which causes PD pod deleting error and permit the deleting pod request for pd and tikv when PVC is not found. ([#1568](https://github.com/pingcap/tidb-operator/pull/1568), [@Yisaer](https://github.com/Yisaer))
 - Limit the restart rate for pd and tikv, only one instance would be restarted at each time ([#1532](https://github.com/pingcap/tidb-operator/pull/1532), [@Yisaer](https://github.com/Yisaer))
