@@ -218,6 +218,8 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      backup.Spec.Affinity,
+			Tolerations:   backup.Spec.Tolerations,
 			Volumes: []corev1.Volume{
 				{
 					Name: label.BackupJobLabelVal,
@@ -281,6 +283,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      backup.Spec.Affinity,
+			Tolerations:   backup.Spec.Tolerations,
 		},
 	}
 
