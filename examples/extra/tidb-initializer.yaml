@@ -1,0 +1,9 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbInitializer
+metadata:
+  name: basic
+spec:
+  image: tnir/mysqlclient
+  cluster:
+    name: basic
+  initSql: "create database test;"
