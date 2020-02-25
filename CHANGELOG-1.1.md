@@ -1,10 +1,39 @@
+# TiDB Operator v1.1.0-beta.2 Release Notes
+
+This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
+
+## Changes since v1.1.0-beta.1
+
+## Action Required
+
+- `--default-storage-class-name` and `--default-backup-storage-class-name `are abandoned, storage class defaults to Kubernetes default storage class right now. If you have set default storage class different than Kubernetes default storage class, please set them explicitly in your tidb cluster helm or YAML files. ([#1581](https://github.com/pingcap/tidb-operator/pull/1581), [@cofyc](https://github.com/cofyc))
+
+## Other Notable Changes
+
+- Allow users to configure affinity and tolerations for `Backup` and `Restore` ([#1737](https://github.com/pingcap/tidb-operator/pull/1737), [@Smana](https://github.com/Smana))
+- Make AdvancedStatefulSet and Admission Webhook could work together. ([#1640](https://github.com/pingcap/tidb-operator/pull/1640), [@Yisaer](https://github.com/Yisaer))
+- Add a basic deployment example of TiDB cluster ([#1573](https://github.com/pingcap/tidb-operator/pull/1573), [@aylei](https://github.com/aylei))
+- Support TidbCluster Auto-scaling feature based by CPU average utilization load. ([#1731](https://github.com/pingcap/tidb-operator/pull/1731), [@Yisaer](https://github.com/Yisaer))
+- Support user-defined tidb server/client certificate ([#1714](https://github.com/pingcap/tidb-operator/pull/1714), [@weekface](https://github.com/weekface))
+- Add an option for tidb-backup chart to allow reusing existing PVC or not for restore ([#1712](https://github.com/pingcap/tidb-operator/pull/1712), [@sre-bot](https://github.com/sre-bot))
+- Add `resources`, `imagePullPolicy` and `nodeSelector` field for tidb-backup chart ([#1705](https://github.com/pingcap/tidb-operator/pull/1705), [@mightyguava](https://github.com/mightyguava))
+- Add more SANs to tidb server certificate ([#1702](https://github.com/pingcap/tidb-operator/pull/1702), [@weekface](https://github.com/weekface))
+- Able to migrate existing Kubernetes StatefulSets to Advanced StatefulSets automatically when AdvancedStatfulSet feature is enabled ([#1580](https://github.com/pingcap/tidb-operator/pull/1580), [@cofyc](https://github.com/cofyc))
+- Fix the bug in admission webhook which causes PD pod deleting error and permit the deleting pod request for pd and tikv when PVC is not found. ([#1568](https://github.com/pingcap/tidb-operator/pull/1568), [@Yisaer](https://github.com/Yisaer))
+- Limit the restart rate for pd and tikv, only one instance would be restarted at each time ([#1532](https://github.com/pingcap/tidb-operator/pull/1532), [@Yisaer](https://github.com/Yisaer))
+- Adding default ClusterRef namespace for TidbMonitor as same as it deployed and fix the bug when TidbMonitor's Pod can't be created when Spec.PrometheusSpec.logLevel is missing. ([#1500](https://github.com/pingcap/tidb-operator/pull/1500), [@Yisaer](https://github.com/Yisaer))
+- Refine logs for `TidbMonitor` and `TidbInitializer` controller ([#1493](https://github.com/pingcap/tidb-operator/pull/1493), [@aylei](https://github.com/aylei))
+- Avoid unnecessary updates to `Service` and `Deployment` of discovery ([#1499](https://github.com/pingcap/tidb-operator/pull/1499), [@aylei](https://github.com/aylei))
+- Remove some not very useful update events ([#1486](https://github.com/pingcap/tidb-operator/pull/1486), [@weekface](https://github.com/weekface))
+
+
 # TiDB Operator v1.1.0-beta.1 Release Notes
 
 This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
 
 ## Changes since v1.0.0
 
-### Action required
+### Action Required
 
 - ACTION REQUIRED: Add the `timezone` support for [all charts](https://github.com/pingcap/tidb-operator/tree/master/charts) ([#1122](https://github.com/pingcap/tidb-operator/pull/1122), [@weekface](https://github.com/weekface)).
   
@@ -17,7 +46,7 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
   
   All images' time zone maintained by `tidb-operator` is `UTC`. If you use your own images, you need to make sure that the time zone inside your images is `UTC`. 
 
-### Other notable changes
+### Other Notable Changes
 
 - Support backup to S3 with [Backup & Restore (BR)](https://github.com/pingcap/br) ([#1280](https://github.com/pingcap/tidb-operator/pull/1280), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Add basic defaulting and validating for `TidbCluster` ([#1429](https://github.com/pingcap/tidb-operator/pull/1429), [@aylei](https://github.com/aylei))
