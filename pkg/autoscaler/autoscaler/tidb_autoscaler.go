@@ -25,7 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
+func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	if tac.Spec.TiDB == nil {
 		return nil
 	}
@@ -38,7 +38,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	}
 	currentReplicas := tc.Spec.TiDB.Replicas
 	instances := filterTidbInstances(tc)
-	targetReplicas, err := calculateTidbMetrics(tac, sts, client, instances)
+	targetReplicas, err := calculateTidbMetrics(tac, sts, instances)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,15 @@ func updateTcTiDBAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
 	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 }
 
-func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
+func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, instances []string) (int32, error) {
+	ep, err := genMetricsEndpoint(tac)
+	if err != nil {
+		return -1, err
+	}
+	client, err := promClient.NewClient(promClient.Config{Address: ep})
+	if err != nil {
+		return -1, err
+	}
 	metric := calculate.FilterMetrics(tac.Spec.TiDB.Metrics)
 	mType, err := calculate.GenMetricType(tac, metric)
 	if err != nil {
@@ -84,6 +92,7 @@ func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 		return -1, err
 	}
 	sq := &calculate.SingleQuery{
+		Endpoint:  ep,
 		Timestamp: time.Now().Unix(),
 		Instances: instances,
 		Metric:    metric,

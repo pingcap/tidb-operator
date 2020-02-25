@@ -202,6 +202,8 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      restore.Spec.Affinity,
+			Tolerations:   restore.Spec.Tolerations,
 			Volumes: []corev1.Volume{
 				{
 					Name: label.RestoreJobLabelVal,
