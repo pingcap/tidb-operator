@@ -8,14 +8,15 @@ This is a pre-release of `v1.1.0`, which focuses on the usability, extensibility
 
 - `--default-storage-class-name` and `--default-backup-storage-class-name `are abandoned, storage class defaults to Kubernetes default storage class right now. If you have set default storage class different than Kubernetes default storage class, please set them explicitly in your tidb cluster helm or YAML files. ([#1581](https://github.com/pingcap/tidb-operator/pull/1581), [@cofyc](https://github.com/cofyc))
 
+
 ## Other Notable Changes
 
 - Allow users to configure affinity and tolerations for `Backup` and `Restore` ([#1737](https://github.com/pingcap/tidb-operator/pull/1737), [@Smana](https://github.com/Smana))
 - Make AdvancedStatefulSet and Admission Webhook could work together. ([#1640](https://github.com/pingcap/tidb-operator/pull/1640), [@Yisaer](https://github.com/Yisaer))
-- Add a basic deployment example of TiDB cluster ([#1573](https://github.com/pingcap/tidb-operator/pull/1573), [@aylei](https://github.com/aylei))
-- Support TidbCluster Auto-scaling feature based by CPU average utilization load. ([#1731](https://github.com/pingcap/tidb-operator/pull/1731), [@Yisaer](https://github.com/Yisaer))
+- Add a basic deployment example of managing TiDB cluster with custom resources only. ([#1573](https://github.com/pingcap/tidb-operator/pull/1573), [@aylei](https://github.com/aylei))
+- Support TidbCluster Auto-scaling feature based on CPU average utilization load. ([#1731](https://github.com/pingcap/tidb-operator/pull/1731), [@Yisaer](https://github.com/Yisaer))
 - Support user-defined tidb server/client certificate ([#1714](https://github.com/pingcap/tidb-operator/pull/1714), [@weekface](https://github.com/weekface))
-- Add an option for tidb-backup chart to allow reusing existing PVC or not for restore ([#1712](https://github.com/pingcap/tidb-operator/pull/1712), [@sre-bot](https://github.com/sre-bot))
+- Add an option for tidb-backup chart to allow reusing existing PVC or not for restore ([#1708](https://github.com/pingcap/tidb-operator/pull/1708), [@mightyguava](https://github.com/mightyguava))
 - Add `resources`, `imagePullPolicy` and `nodeSelector` field for tidb-backup chart ([#1705](https://github.com/pingcap/tidb-operator/pull/1705), [@mightyguava](https://github.com/mightyguava))
 - Add more SANs to tidb server certificate ([#1702](https://github.com/pingcap/tidb-operator/pull/1702), [@weekface](https://github.com/weekface))
 - Able to migrate existing Kubernetes StatefulSets to Advanced StatefulSets automatically when AdvancedStatfulSet feature is enabled ([#1580](https://github.com/pingcap/tidb-operator/pull/1580), [@cofyc](https://github.com/cofyc))
