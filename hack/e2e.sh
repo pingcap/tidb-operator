@@ -53,6 +53,7 @@ Environments:
     KUBECONFIG            path to the kubeconfig file, defaults: ~/.kube/config
     SKIP_BUILD            skip building binaries
     SKIP_IMAGE_BUILD      skip build and push images
+    SKIP_IMAGE_LOAD       skip load images
     SKIP_UP               skip starting the cluster
     SKIP_DOWN             skip shutting down the cluster
     SKIP_TEST             skip running the test
@@ -75,6 +76,7 @@ Environments:
     GINKGO_PARALLEL       if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
     GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
     RUNNER_SUITE_NAME     the suite name of runner
+    SKIP_GINKGO           if set to `y`, skip ginkgo
 
 Examples:
 
@@ -177,6 +179,7 @@ CLUSTER=${CLUSTER:-tidb-operator}
 KUBECONFIG=${KUBECONFIG:-~/.kube/config}
 SKIP_BUILD=${SKIP_BUILD:-}
 SKIP_IMAGE_BUILD=${SKIP_IMAGE_BUILD:-}
+SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
 SKIP_TEST=${SKIP_TEST:-}
@@ -196,6 +199,7 @@ KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
 GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
+SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 
 echo "PROVIDER: $PROVIDER"
@@ -481,12 +485,22 @@ else
     exit 1
 fi
 
+if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/helm ]; then
+    ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
+fi
+
+if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/kind ]; then
+    ln -s $KIND_BIN /usr/local/bin/kind
+fi
+
 # Environments for hack/run-e2e.sh
 export PROVIDER
 export CLUSTER
 export KUBECONFIG
 export GCP_PROJECT
 export IMAGE_TAG
+export SKIP_GINKGO
+export SKIP_IMAGE_LOAD
 export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$PATH:$OUTPUT_BIN
