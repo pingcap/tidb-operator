@@ -16,7 +16,7 @@ operatorImage: pingcap/tidb-operator:v1.1.0-beta.2
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
-# tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-beta.2
 
 #
 # Enable or disable tidb-operator features:
