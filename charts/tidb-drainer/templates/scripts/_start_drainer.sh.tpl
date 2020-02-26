@@ -26,7 +26,7 @@ done
 
 /drainer \
 -L={{ .Values.logLevel | default "info" }} \
--pd-urls=http://{{ .Values.clusterName }}-pd:2379 \
+-pd-urls={{ include "cluster.scheme" . }}://{{ .Values.clusterName }}-pd:2379 \
 -addr=`echo ${HOSTNAME}`.{{ include "drainer.name" . }}:8249 \
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.disableDetect | default false }} \
