@@ -20,9 +20,9 @@ usage() {
 create-cert.sh
 create certification for pump and drainer conponent
 
-  --namespace    the namespace of component belongs
-  --component    name of component (pump, drainer)
-  --cluster      cluster name of component belongs
+  --namespace    The namespace of the component
+  --component    The name of the component (e.g. pump, drainer)
+  --cluster      The TiDB cluster name of the component for
 EOF
     exit 1
 }
@@ -61,7 +61,7 @@ if [ -z ${cluster} ]; then
 fi
 
 service=${cluster}-${component}
-secret=${cluster}-${namespace}-${component}
+secret=${cluster}-${component}
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"

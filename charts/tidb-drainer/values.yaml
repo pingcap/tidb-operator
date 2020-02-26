@@ -43,12 +43,6 @@ config: |
   [syncer.to]
   dir = "/data/pb"
 
-security: |
-  [security]
-  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  ssl-cert = "/var/lib/drainer-tls/cert.pem"
-  ssl-key = "/var/lib/drainer-tls/key.pem"
-
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little

@@ -119,7 +119,7 @@ config-file: |-
 Encapsulate pump configmap data for consistent digest calculation
 */}}
 {{- define "pump.tlsSecretName" -}}
-{{ .Values.clusterName }}-{{ .Release.Namespace }}-pump
+{{ .Values.clusterName }}-pump
 {{- end -}}
 
 {{- define "pump-configmap.data" -}}
