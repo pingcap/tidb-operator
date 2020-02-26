@@ -122,6 +122,8 @@ while true; do
     if [ "$?" -eq 0 ]; then
         break
     fi
+    sleep 1
+    echo "INFO: failed to get csr, try again after 1 s."
 done
 
  # approve and fetch the signed certificate
