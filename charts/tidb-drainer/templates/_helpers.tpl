@@ -6,7 +6,7 @@
 {{- end -}}
 
 {{- define "drainer.tlsSecretName" -}}
-{{ .Values.clusterName }}-{{ .Release.Namespace }}-drainer
+{{ .Values.clusterName }}-drainer
 {{- end -}}
 
 {{/*
@@ -18,7 +18,10 @@ config-file: |-
 {{ .Values.config | indent 2 }}
     {{- end -}}
     {{- if .Values.enableTLSCluster }}
-{{ .Values.security | indent 2 }}
+  [security]
+  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  ssl-cert = "/var/lib/drainer-tls/cert"
+  ssl-key = "/var/lib/drainer-tls/key"
     {{- end -}}
 {{- end -}}
 
