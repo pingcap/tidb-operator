@@ -150,13 +150,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
-			clusterName := "deploy"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, clusterName, "", "")
-			cluster.Resources["pd.replicas"] = "3"
-			cluster.Resources["tikv.replicas"] = "5"
-			cluster.Resources["tidb.replicas"] = "3"
-			oa.DeployTidbClusterOrDie(&cluster)
-			oa.CheckTidbClusterStatusOrDie(&cluster)
+			clusterName := "scaling-with-asts"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 5
+			tc.Spec.TiDB.Replicas = 5
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
 
 			scalingTests := []struct {
 				name        string
@@ -260,14 +262,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				framework.ExpectNoError(err)
 
 				ginkgo.By(fmt.Sprintf("Waiting for all pods of tidb cluster component %s (sts: %s/%s) are in desired state (replicas: %d, delete slots: %v)", st.component, ns, stsName, st.replicas, st.deleteSlots.List()))
-				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
+				err = wait.PollImmediate(time.Second*5, time.Minute*15, func() (bool, error) {
 					// check replicas and delete slots are synced
 					sts, err = hc.AppsV1().StatefulSets(ns).Get(stsName, metav1.GetOptions{})
 					if err != nil {
 						return false, nil
 					}
 					if *sts.Spec.Replicas != st.replicas {
-						klog.Infof("replicas of sts %s/%s is %d, expects %d", ns, stsName, sts.Spec.Replicas, st.replicas)
+						klog.Infof("replicas of sts %s/%s is %d, expects %d", ns, stsName, *sts.Spec.Replicas, st.replicas)
 						return false, nil
 					}
 					if !helper.GetDeleteSlots(sts).Equal(st.deleteSlots) {
@@ -292,7 +294,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 			}
 
-			oa.CheckTidbClusterStatusOrDie(&cluster)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
 		})
 	})
 
