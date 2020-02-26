@@ -610,6 +610,7 @@ binlog:
 
     # Please refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/pump/pump.toml for the default
     # pump configurations (change to the tags of your pump version),
+    # [security] section is automatically generated if enableTLSCluster is true users do not need to configure it
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
     # config: |
