@@ -143,7 +143,7 @@ fi
 
  # create the secret with CA cert and server cert/key
 kubectl create secret generic ${secret} \
-        --from-file=key.pem=${tmpdir}/server-key.pem \
-        --from-file=cert.pem=${tmpdir}/server-cert.pem \
+        --from-file=key=${tmpdir}/server-key.pem \
+        --from-file=cert=${tmpdir}/server-cert.pem \
         --dry-run -o yaml |
     kubectl -n ${namespace} apply -f -
