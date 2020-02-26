@@ -5696,13 +5696,13 @@ spec:
                       type: object
                     security:
                       properties:
-                        ca_path:
+                        ca-path:
                           type: string
-                        cert_path:
+                        cert-path:
                           type: string
                         cipher_file:
                           type: string
-                        key_path:
+                        key-path:
                           type: string
                         override_ssl_target:
                           type: string
