@@ -137,7 +137,7 @@ scrape_configs:
     regex: target
     action: keep
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
-    regex: .*\-tikv\-\d*$
+    regex: tikv
     action: keep
   - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
     regex: "true"

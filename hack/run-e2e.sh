@@ -26,6 +26,7 @@ PROVIDER=${PROVIDER:-}
 CLUSTER=${CLUSTER:-}
 GCP_PROJECT=${GCP_PROJECT:-}
 IMAGE_TAG=${IMAGE_TAG:-}
+SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
@@ -38,6 +39,7 @@ GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 # in parallel
 GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
 GINKGO_STREAM=${GINKGO_STREAM:-y}
+SKIP_GINKGO=${SKIP_GINKGO:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -114,7 +116,7 @@ for ((i = 1; i <= 32; i++)) {
 }
 EOF
         done
-    else
+    elif [ "$PROVIDER" == "gke" ]; then
         # disks are created under /mnt/stateful_partition directory
         # https://cloud.google.com/container-optimized-os/docs/concepts/disks-and-filesystem
         for n in $($KUBECTL_BIN --context $KUBECONTEXT get nodes -ojsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
@@ -136,10 +138,50 @@ for ((i = 1; i <= 32; i++)) {
 }
 '"'"
         done
+    elif [ "$PROVIDER" == "eks" ]; then
+        while IFS=$'\n' read -r line; do
+            read -r id dns <<< $line
+            echo "info: prepare disks on $dns"
+            ssh -T -o "StrictHostKeyChecking no" -i ~/.ssh/kube_aws_rsa ec2-user@$dns <<'EOF'
+sudo bash -c '
+test -d /mnt/disks || mkdir -p /mnt/disks
+df -h /mnt/disks
+if mountpoint /mnt/disks &>/dev/null; then
+    echo "info: /mnt/disks is a mountpoint"
+else
+    echo "info: /mnt/disks is not a mountpoint, creating local volumes on the rootfs"
+fi
+cd /mnt/disks
+for ((i = 1; i <= 32; i++)) {
+    if [ ! -d vol$i ]; then
+        mkdir vol$i
+    fi
+    if ! mountpoint vol$i &>/dev/null; then
+        mount --bind vol$i vol$i
+    fi
+}
+echo "info: increase max open files for containers"
+if ! grep -qF "OPTIONS" /etc/sysconfig/docker; then
+    echo 'OPTIONS="--default-ulimit nofile=1024000:1024000"' >> /etc/sysconfig/docker
+fi
+systemctl restart docker
+'
+EOF
+        done <<< "$(e2e::__eks_instances)"
     fi
     echo "info: installing local-volume-provisioner"
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
     e2e::__wait_for_ds kube-system local-volume-provisioner
+}
+
+function e2e::__eks_instances() {
+    aws ec2 describe-instances --filter Name=tag:eks:cluster-name,Values=$CLUSTER --query 'Reservations[*].Instances[*].{InstanceId:InstanceId,PublicDnsName:PublicDnsName}' --output text
+}
+
+function e2e::__ecr_url() {
+    local account_id=$(aws sts get-caller-identity | awk '/Account/ { gsub("\x27", "", $2); print $2}')
+    local region=$(aws configure get region)
+    echo "${account_id}.dkr.ecr.${region}.amazonaws.com"
 }
 
 function e2e::get_kube_version() {
@@ -176,8 +218,8 @@ function e2e::image_load() {
     elif [ "$PROVIDER" == "gke" ]; then
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
         gcloud auth configure-docker
-        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$IMAGE_TAG
-        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$IMAGE_TAG
+        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$CLUSTER-$IMAGE_TAG
+        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
         docker tag $TIDB_OPERATOR_IMAGE $GCP_TIDB_OPERATOR_IMAGE
         docker tag $E2E_IMAGE $GCP_E2E_IMAGE
         echo "info: pushing $GCP_TIDB_OPERATOR_IMAGE"
@@ -186,6 +228,28 @@ function e2e::image_load() {
         docker push $GCP_E2E_IMAGE
         TIDB_OPERATOR_IMAGE=$GCP_TIDB_OPERATOR_IMAGE
         E2E_IMAGE=$GCP_E2E_IMAGE
+    elif [ "$PROVIDER" == "eks" ]; then
+        for repoName in e2e/tidb-operator e2e/tidb-operator-e2e; do
+            local ret=0
+            aws ecr describe-repositories --repository-names $repoName || ret=$?
+            if [ $ret -ne 0 ]; then
+                echo "info: creating repository $repoName"
+                aws ecr create-repository --repository-name $repoName
+            fi
+        done
+        local ecrURL=$(e2e::__ecr_url)
+        echo "info: logging in $ecrURL"
+        aws ecr get-login-password | docker login --username AWS --password-stdin $ecrURL
+        AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$CLUSTER-$IMAGE_TAG
+        AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
+        docker tag $TIDB_OPERATOR_IMAGE $AWS_TIDB_OPERATOR_IMAGE
+        docker tag $E2E_IMAGE $AWS_E2E_IMAGE
+        echo "info: pushing $AWS_TIDB_OPERATOR_IMAGE"
+        docker push $AWS_TIDB_OPERATOR_IMAGE
+        echo "info: pushing $AWS_E2E_IMAGE"
+        docker push $AWS_E2E_IMAGE
+        TIDB_OPERATOR_IMAGE=$AWS_TIDB_OPERATOR_IMAGE
+        E2E_IMAGE=$AWS_E2E_IMAGE
     else
         echo "info: unsupported provider '$PROVIDER', skip loading images"
     fi
@@ -199,9 +263,17 @@ if [ -z "$KUBECONTEXT" ]; then
     echo "info: KUBECONTEXT is not set, current context $KUBECONTEXT is used"
 fi
 
-e2e::image_load
+if [ -z "$SKIP_IMAGE_LOAD" ]; then
+    e2e::image_load
+fi
+
 e2e::setup_local_pvs
 e2e::setup_helm_server
+
+if [ -n "$SKIP_GINKGO" ]; then
+    echo "info: skipping ginkgo"
+    exit 0
+fi
 
 echo "info: start to run e2e process"
 
@@ -261,6 +333,13 @@ docker_args=(
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
 )
+
+if [ "$PROVIDER" == "eks" ]; then
+    # aws credential is required to get token for EKS
+    docker_args+=(
+        -v $HOME/.aws:/root/.aws
+    )
+fi
 
 if [ -n "$REPORT_DIR" ]; then
     docker_args+=(
