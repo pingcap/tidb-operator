@@ -118,10 +118,20 @@ config-file: |-
 {{/*
 Encapsulate pump configmap data for consistent digest calculation
 */}}
+{{- define "pump.tlsSecretName" -}}
+{{ .Values.clusterName }}-pump
+{{- end -}}
+
 {{- define "pump-configmap.data" -}}
 pump-config: |-
     {{- if .Values.binlog.pump.config }}
 {{ .Values.binlog.pump.config | indent 2 }}
+    {{- if .Values.enableTLSCluster }}
+  [security]
+  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  ssl-cert = "/var/lib/pump-tls/cert"
+  ssl-key = "/var/lib/pump-tls/key"
+    {{- end -}}
     {{- else -}}
 {{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
