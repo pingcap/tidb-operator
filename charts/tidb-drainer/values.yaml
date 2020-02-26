@@ -35,6 +35,7 @@ initialCommitTs: 0
 enableTLSCluster: false
 
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
+# [security] section is automatically generated if enableTLSCluster is true users do not need to configure it
 config: |
   detect-interval = 10
   compressor = ""
