@@ -15,6 +15,8 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"strconv"
 	"time"
 
@@ -48,7 +50,8 @@ func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	} else if scaling < 0 {
 		return tsd.ScaleIn(tc, oldSet, newSet)
 	}
-	return nil
+	// we only sync auto scaler annotations when we are finishing syncing scaling
+	return tsd.SyncAutoScalerAnn(tc, oldSet)
 }
 
 func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -190,6 +193,46 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
 
+func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+	currentScalingSlots := util.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
+	if currentScalingSlots.Len() < 1 {
+		return nil
+	}
+	currentOrdinals := helper.GetPodOrdinals(tc.Spec.TiKV.Replicas, actual)
+	if !currentOrdinals.HasAll(currentScalingSlots.List()...) {
+		recycledOrdinalAnnSets := currentScalingSlots.Difference(currentOrdinals)
+		currentScalingSlots = currentScalingSlots.Delete(recycledOrdinalAnnSets.List()...)
+		if currentScalingSlots.Len() < 1 {
+			delete(tc.Annotations, label.AnnTiKVAutoScalingOutOrdinals)
+			return nil
+		}
+		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = fmt.Sprintf("%v", currentScalingSlots.List())
+		return nil
+	}
+
+	pdClient := tsd.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, *tc.Spec.EnableTLSCluster)
+	for k, _ := range currentScalingSlots {
+		podName := util.GetPodName(tc, v1alpha1.TiKVMemberType, k)
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.PodName == podName {
+				id, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
+				ok, err := pdClient.SetStoreLabels(id, hostRegionLabel)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("")
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
 type fakeTiKVScaler struct{}
 
 // NewFakeTiKVScaler returns a fake tikv Scaler
@@ -213,5 +256,9 @@ func (fsd *fakeTiKVScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.Statef
 
 func (fsd *fakeTiKVScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
+	return nil
+}
+
+func (fsd *fakeTiKVScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	return nil
 }

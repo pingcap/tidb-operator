@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -24,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 )
 
@@ -214,4 +216,12 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 		return *tac.Spec.MetricsUrl, nil
 	}
 	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
+}
+
+func genJsonFromSets(sets sets.Int32) (string, error) {
+	b, err := json.Marshal(sets.List())
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }

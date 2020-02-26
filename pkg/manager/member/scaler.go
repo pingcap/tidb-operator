@@ -35,6 +35,12 @@ const (
 	skipReasonScalerAnnDeferDeletingIsEmpty = "scaler: pvc annotations defer deleting is empty"
 )
 
+var (
+	hostRegionLabel = map[string]string{
+		"specialUse": "hotRegion",
+	}
+)
+
 // Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
 	// Scale scales the cluster. It does nothing if scaling is not needed.
@@ -43,6 +49,8 @@ type Scaler interface {
 	ScaleOut(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// ScaleIn scales in the cluster
 	ScaleIn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
+	// SyncAutoScalerAnn would sync Ann created by AutoScaler
+	SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error
 }
 
 type generalScaler struct {

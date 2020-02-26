@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -46,13 +47,13 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		return nil
 	}
-	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas)
+	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas, sts)
 }
 
 // syncTiDBAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
 // duration between each auto-scaling. If either of them is not meet, the auto-scaling would be rejected.
 // If the auto-scaling is permitted, the timestamp would be recorded and the Consecutive count would be zeroed.
-func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
+func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
 	intervalSeconds := tac.Spec.TiDB.ScaleInIntervalSeconds
 	if recommendedReplicas > currentReplicas {
 		intervalSeconds = tac.Spec.TiDB.ScaleOutIntervalSeconds
@@ -64,13 +65,27 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if !ableToScale {
 		return nil
 	}
-	updateTcTiDBAnnIfScale(tac)
-	tc.Spec.TiDB.Replicas = recommendedReplicas
-	return nil
+	return updateTcTiDBIfScale(tc, tac, currentReplicas, recommendedReplicas, sts)
 }
 
-func updateTcTiDBAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
+func updateTcTiDBIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
 	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
+	if recommendedReplicas > currentReplicas {
+		newlyScaleOutOrdinalSets := helper.GetPodOrdinals(recommendedReplicas, sts).Difference(helper.GetPodOrdinals(currentReplicas, sts))
+		if newlyScaleOutOrdinalSets.Len() > 0 {
+			if tc.Annotations == nil {
+				tc.Annotations = map[string]string{}
+			}
+			existed := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiDBMemberType)
+			v, err := genJsonFromSets(newlyScaleOutOrdinalSets.Union(existed))
+			if err != nil {
+				return err
+			}
+			tc.Annotations[label.AnnTiDBAutoScalingOutOrdinals] = fmt.Sprintf("%v", v)
+		}
+	}
+	tc.Spec.TiDB.Replicas = recommendedReplicas
+	return nil
 }
 
 func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, instances []string) (int32, error) {

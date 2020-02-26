@@ -126,3 +126,32 @@ func IsStatefulSetScaling(set *appsv1.StatefulSet) bool {
 func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
 	return fmt.Sprintf("%s-%s", tc.Name, memberType.String())
 }
+
+func GetAutoScalingOutSlots(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) sets.Int32 {
+	s := sets.Int32{}
+	l := ""
+	switch memberType {
+	case v1alpha1.PDMemberType:
+		return s
+	case v1alpha1.TiKVMemberType:
+		l = label.AnnTiKVAutoScalingOutOrdinals
+	case v1alpha1.TiDBMemberType:
+		l = label.AnnTiDBAutoScalingOutOrdinals
+	default:
+		return s
+	}
+	if tc.Annotations == nil {
+		return s
+	}
+	v, existed := tc.Annotations[l]
+	if !existed {
+		return s
+	}
+	var slice []int32
+	err := json.Unmarshal([]byte(v), &slice)
+	if err != nil {
+		return s
+	}
+	s.Insert(slice...)
+	return s
+}
