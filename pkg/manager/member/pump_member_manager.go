@@ -261,8 +261,8 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			confTextStr,
 			"[security]",
 			serviceAccountCAPath,
-			path.Join(clusterCertPath, "cert.pem"),
-			path.Join(clusterCertPath, "key.pem")}, "\n")
+			path.Join(pumpCertPath, "cert"),
+			path.Join(pumpCertPath, "key")}, "\n")
 	}
 	data := map[string]string{
 		"pump-config": confTextStr,
