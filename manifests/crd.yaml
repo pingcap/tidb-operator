@@ -675,10 +675,6 @@ spec:
               description: 'Whether enable PVC reclaim for orphan PVC left by statefulset
                 scale-in Optional: Defaults to false'
               type: boolean
-            enableTLSCluster:
-              description: 'Enable TLS connection between TiDB server components Optional:
-                Defaults to false'
-              type: boolean
             helper:
               description: HelperSpec contains details of helper component
               properties:
@@ -6048,6 +6044,7 @@ spec:
             timezone:
               description: 'Time zone of TiDB cluster Pods Optional: Defaults to UTC'
               type: string
+            tlsCluster: {}
             tolerations:
               description: Base tolerations of TiDB cluster Pods, components may add
                 more tolerations upon this respectively

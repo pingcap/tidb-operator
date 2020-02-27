@@ -28,7 +28,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{- define "cluster.scheme" -}}
-{{ if .Values.enableTLSCluster }}https{{ else }}http{{ end }}
+{{ if and .Values.tlsCluster .Values.tlsCluster.enabled  }}https{{ else }}http{{ end }}
 {{- end -}}
 
 {{/*
@@ -41,11 +41,13 @@ config-file: |-
     {{- if .Values.pd.config }}
 {{ .Values.pd.config | indent 2 }}
     {{- end -}}
-    {{- if .Values.enableTLSCluster }}
+    {{- if .Values.tlsCluster }}
+    {{- if .Values.tlsCluster.enabled }}
   [security]
   cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   cert-path = "/var/lib/pd-tls/tls.crt"
   key-path = "/var/lib/pd-tls/tls.key"
+    {{- end -}}
     {{- end -}}
 
 {{- end -}}
@@ -64,11 +66,13 @@ config-file: |-
     {{- if .Values.tikv.config }}
 {{ .Values.tikv.config | indent 2 }}
     {{- end -}}
-    {{- if .Values.enableTLSCluster }}
+    {{- if .Values.tlsCluster }}
+    {{- if .Values.tlsCluster.enabled }}
   [security]
   ca-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   cert-path = "/var/lib/tikv-tls/tls.crt"
   key-path = "/var/lib/tikv-tls/tls.key"
+    {{- end -}}
     {{- end -}}
 
 {{- end -}}
@@ -91,14 +95,17 @@ config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
     {{- end -}}
-    {{- if or .Values.enableTLSCluster .Values.tidb.tlsClient.enabled }}
+    {{- if or (and .Values.tlsCluster .Values.tlsCluster.enabled) (and .Values.tidb.tlsClient .Values.tidb.tlsClient.enabled) }}
   [security]
     {{- end -}}
-    {{- if .Values.enableTLSCluster }}
+    {{- if .Values.tlsCluster }}
+    {{- if .Values.tlsCluster.enabled }}
   cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
     {{- end -}}
+    {{- end -}}
+    {{- if .Values.tidb.tlsClient }}
     {{- if .Values.tidb.tlsClient.enabled }}
     {{- if .Values.tidb.tlsClient.secretName }}
   ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
@@ -107,6 +114,7 @@ config-file: |-
     {{- end }}
   ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
   ssl-key = "/var/lib/tidb-server-tls/tls.key"
+    {{- end -}}
     {{- end -}}
 
 {{- end -}}
@@ -126,11 +134,13 @@ Encapsulate pump configmap data for consistent digest calculation
 pump-config: |-
     {{- if .Values.binlog.pump.config }}
 {{ .Values.binlog.pump.config | indent 2 }}
-    {{- if .Values.enableTLSCluster }}
+    {{- if .Values.tlsCluster }}
+    {{- if .Values.tlsCluster.enabled }}
   [security]
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   ssl-cert = "/var/lib/pump-tls/tls.crt"
   ssl-key = "/var/lib/pump-tls/tls.key"
+    {{- end -}}
     {{- end -}}
     {{- else -}}
 {{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}

@@ -21,7 +21,7 @@ scrape_configs:
   {{- end }}
   tls_config:
     insecure_skip_verify: true
-  {{- if .Values.enableTLSCluster }}
+  {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     cert_file: /var/lib/pd-client-tls/tls.crt
     key_file: /var/lib/pd-client-tls/tls.key
@@ -73,7 +73,7 @@ scrape_configs:
   {{- end }}
   tls_config:
     insecure_skip_verify: true
-  {{- if .Values.enableTLSCluster }}
+  {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     cert_file: /var/lib/pd-client-tls/tls.crt
     key_file: /var/lib/pd-client-tls/tls.key
@@ -127,7 +127,7 @@ scrape_configs:
     insecure_skip_verify: true
 # TiKV doesn't support scheme https for now. 
 # And we should fix it after TiKV fix this issue: https://github.com/tikv/tikv/issues/5340
-# {{- if .Values.enableTLSCluster }}
+# {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
 #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 #     cert_file: /var/lib/pd-client-tls/tls.crt
 #     key_file: /var/lib/pd-client-tls/tls.key
