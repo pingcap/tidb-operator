@@ -194,7 +194,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 }
 
 // SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
-// For the existed auto-scaling slots, we would add special hot region label the its store by pdapi.
+// For the auto-scaling slots, we would add the special hot region label to the store with pdapi.
 func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	currentScalingSlots := util.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
 	if currentScalingSlots.Len() < 1 {
