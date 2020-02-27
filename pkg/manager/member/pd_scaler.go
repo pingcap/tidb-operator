@@ -47,7 +47,7 @@ func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, n
 	} else if scaling < 0 {
 		return psd.ScaleIn(tc, oldSet, newSet)
 	}
-	return nil
+	return psd.SyncAutoScalerAnn(tc, oldSet)
 }
 
 func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -167,6 +167,10 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	return nil
 }
 
+func (psd *pdScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+	return nil
+}
+
 type fakePDScaler struct{}
 
 // NewFakePDScaler returns a fake Scaler
@@ -190,5 +194,9 @@ func (fsd *fakePDScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.Stateful
 
 func (fsd *fakePDScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
+	return nil
+}
+
+func (fsd *fakePDScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	return nil
 }
