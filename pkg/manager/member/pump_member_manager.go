@@ -260,9 +260,9 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		confTextStr = strings.Join([]string{
 			confTextStr,
 			"[security]",
-			serviceAccountCAPath,
-			path.Join(pumpCertPath, "cert"),
-			path.Join(pumpCertPath, "key")}, "\n")
+			fmt.Sprintf("ssl-ca = \"%s\"", serviceAccountCAPath),
+			fmt.Sprintf("ssl-cert = \"%s\"", path.Join(pumpCertPath, "cert")),
+			fmt.Sprintf("ssl-key = \"%s\"", path.Join(pumpCertPath, "key"))}, "\n")
 	}
 	data := map[string]string{
 		"pump-config": confTextStr,
