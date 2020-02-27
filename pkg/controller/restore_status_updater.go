@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -63,7 +63,7 @@ func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condit
 		if isUpdate {
 			_, updateErr := rcu.cli.PingcapV1alpha1().Restores(ns).Update(restore)
 			if updateErr == nil {
-				glog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
+				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil
 			}
 			if updated, err := rcu.restoreLister.Restores(ns).Get(restoreName); err == nil {

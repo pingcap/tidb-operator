@@ -46,7 +46,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/component-base/logs"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -95,36 +95,36 @@ func main() {
 
 	hostName, err := os.Hostname()
 	if err != nil {
-		glog.Fatalf("failed to get hostname: %v", err)
+		klog.Fatalf("failed to get hostname: %v", err)
 	}
 
 	ns := os.Getenv("NAMESPACE")
 	if ns == "" {
-		glog.Fatal("NAMESPACE environment variable not set")
+		klog.Fatal("NAMESPACE environment variable not set")
 	}
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
+		klog.Fatalf("failed to get config: %v", err)
 	}
 
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
+		klog.Fatalf("failed to create Clientset: %v", err)
 	}
 	var kubeCli kubernetes.Interface
 	kubeCli, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
+		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 	asCli, err := asclientset.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
+		klog.Fatalf("failed to get advanced-statefulset Clientset: %v", err)
 	}
 	// TODO: optimize the read of genericCli with the shared cache
 	genericCli, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
-		glog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
+		klog.Fatalf("failed to get the generic kube-apiserver client: %v", err)
 	}
 
 	// note that kubeCli here must not be the hijacked one
@@ -177,7 +177,7 @@ func main() {
 		// Upgrade before running any controller logic. If it fails, we wait
 		// for process supervisor to restart it again.
 		if err := operatorUpgrader.Upgrade(); err != nil {
-			glog.Fatalf("failed to upgrade: %v", err)
+			klog.Fatalf("failed to upgrade: %v", err)
 		}
 
 		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod)
@@ -197,15 +197,15 @@ func main() {
 		// Wait for all started informers' cache were synced.
 		for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
 			if !synced {
-				glog.Fatalf("error syncing informer for %v", v)
+				klog.Fatalf("error syncing informer for %v", v)
 			}
 		}
 		for v, synced := range kubeInformerFactory.WaitForCacheSync(wait.NeverStop) {
 			if !synced {
-				glog.Fatalf("error syncing informer for %v", v)
+				klog.Fatalf("error syncing informer for %v", v)
 			}
 		}
-		glog.Infof("cache of informer factories sync successfully")
+		klog.Infof("cache of informer factories sync successfully")
 
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
@@ -218,7 +218,7 @@ func main() {
 		wait.Forever(func() { tcController.Run(workers, ctx.Done()) }, waitDuration)
 	}
 	onStopped := func() {
-		glog.Fatalf("leader election lost")
+		klog.Fatalf("leader election lost")
 	}
 
 	// leader election for multiple tidb-controller-manager instances
@@ -235,5 +235,5 @@ func main() {
 		})
 	}, waitDuration)
 
-	glog.Fatal(http.ListenAndServe(":6060", nil))
+	klog.Fatal(http.ListenAndServe(":6060", nil))
 }

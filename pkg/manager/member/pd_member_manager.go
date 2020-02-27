@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -224,7 +224,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if err := pmm.syncTidbClusterStatus(tc, oldPDSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
 	if !tc.Status.PD.Synced {
@@ -370,7 +370,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 		name := memberHealth.Name
 		if len(name) == 0 {
-			glog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
+			klog.Warningf("PD member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], memberHealth Info: [%v] in [%s/%s]",
 				id, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
