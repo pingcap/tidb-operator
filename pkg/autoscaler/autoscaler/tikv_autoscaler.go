@@ -92,7 +92,7 @@ func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAuto
 				tc.Annotations = map[string]string{}
 			}
 			existed := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
-			v, err := operatorUtils.GenJsonFromSets(newlyScaleOutOrdinalSets.Union(existed))
+			v, err := operatorUtils.Encode(newlyScaleOutOrdinalSets.Union(existed).List())
 			if err != nil {
 				return err
 			}

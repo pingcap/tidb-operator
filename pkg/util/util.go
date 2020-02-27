@@ -156,8 +156,8 @@ func GetAutoScalingOutSlots(tc *v1alpha1.TidbCluster, memberType v1alpha1.Member
 	return s
 }
 
-func GenJsonFromSets(sets sets.Int32) (string, error) {
-	b, err := json.Marshal(sets.List())
+func Encode(obj interface{}) (string, error) {
+	b, err := json.Marshal(obj)
 	if err != nil {
 		return "", err
 	}
