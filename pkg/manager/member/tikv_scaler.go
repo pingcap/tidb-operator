@@ -233,7 +233,7 @@ func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.
 					return err
 				}
 				if !ok {
-					return fmt.Errorf("tc[%s/%s]'s pod[%s] failed to add label hot special region", tc.Namespace, tc.Name, podName)
+					return fmt.Errorf("tc[%s/%s]'s pod[%s] failed to add special hot region label", tc.Namespace, tc.Name, podName)
 				}
 				break
 			}
