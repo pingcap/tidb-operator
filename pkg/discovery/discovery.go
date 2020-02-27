@@ -25,7 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
@@ -65,7 +65,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if advertisePeerUrl == "" {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
 	}
-	glog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
+	klog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
 	strArr := strings.Split(advertisePeerUrl, ".")
 	if len(strArr) != 4 {
 		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)

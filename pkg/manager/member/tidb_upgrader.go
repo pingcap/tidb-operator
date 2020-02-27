@@ -19,7 +19,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type tidbUpgrader struct {
@@ -70,7 +70,7 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tidb.
 		// Therefore, in the production environment, we should try to avoid modifying the tidb statefulset update strategy directly.
 		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		glog.Warningf("tidbcluster: [%s/%s] tidb statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
+		klog.Warningf("tidbcluster: [%s/%s] tidb statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
 	}
 

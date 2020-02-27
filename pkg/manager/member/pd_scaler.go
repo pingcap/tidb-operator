@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // TODO add e2e test specs
@@ -59,7 +59,7 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 		return nil
 	}
 
-	glog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+	klog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
 	}
 
-	glog.Infof("scaling in pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
+	klog.Infof("scaling in pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 
 	if controller.PodWebhookEnabled {
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
@@ -137,10 +137,10 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 
 	err := pdClient.DeleteMember(memberName)
 	if err != nil {
-		glog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
+		klog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
 		return err
 	}
-	glog.Infof("pd scale in: delete member %s successfully", memberName)
+	klog.Infof("pd scale in: delete member %s successfully", memberName)
 
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
@@ -156,11 +156,11 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 
 	_, err = psd.pvcControl.UpdatePVC(tc, pvc)
 	if err != nil {
-		glog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
+		klog.Errorf("pd scale in: failed to set pvc %s/%s annotation: %s to %s",
 			ns, pvcName, label.AnnPVCDeferDeleting, now)
 		return err
 	}
-	glog.Infof("pd scale in: set pvc %s/%s annotation: %s to %s",
+	klog.Infof("pd scale in: set pvc %s/%s annotation: %s to %s",
 		ns, pvcName, label.AnnPVCDeferDeleting, now)
 
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
