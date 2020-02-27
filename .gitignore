@@ -37,5 +37,5 @@ kubeconfig
 
 # local output directory
 /output/
-# local artifacts directory
-/artifacts/
+# kubetest2 default artifacts directory
+/_artifacts/

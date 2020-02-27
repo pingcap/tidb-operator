@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -34,6 +35,11 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	glog "k8s.io/klog"
+)
+
+const (
+	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
+	tikvClusterCertPath = "/var/lib/tikv-tls"
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -525,6 +531,17 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if config == nil {
 		return nil, nil
 	}
+
+	// override CA if tls enabled
+	if tc.IsTLSClusterEnabled() {
+		if config.Security == nil {
+			config.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.Security.CAPath = serviceAccountCAPath
+		config.Security.CertPath = path.Join(tikvClusterCertPath, "cert")
+		config.Security.KeyPath = path.Join(tikvClusterCertPath, "key")
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
