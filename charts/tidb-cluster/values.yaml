@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.1.0-beta.1
+  image: pingcap/tidb-operator:v1.1.0-beta.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -56,7 +56,7 @@ discovery:
 enableConfigMapRollout: true
 
 # Whether enable TLS connections between server nodes.
-# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# When enabled, PD/TiDB/TiKV/PUMP will use TLS encrypted connections to transfer data between each node,
 # certificates will be generated automatically (if not already present).
 enableTLSCluster: false
 
@@ -612,6 +612,7 @@ binlog:
     # pump configurations (change to the tags of your pump version),
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
+    # [security] section will be generated automatically if enableTLSCluster is set to true so users do not need to configure it.
     # config: |
     #   gc = 7
     #   heartbeat-interval = 2
