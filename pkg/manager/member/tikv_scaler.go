@@ -214,7 +214,7 @@ func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.
 		if err != nil {
 			return err
 		}
-		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = fmt.Sprintf("%v", v)
+		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = v
 		return nil
 	}
 

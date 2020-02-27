@@ -96,7 +96,7 @@ func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAuto
 			if err != nil {
 				return err
 			}
-			tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = fmt.Sprintf("%v", v)
+			tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = v
 		}
 	}
 	tc.Spec.TiKV.Replicas = recommendedReplicas
