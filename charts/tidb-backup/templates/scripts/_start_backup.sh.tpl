@@ -67,14 +67,23 @@ $creds
 EOF
 
 cd "${backup_base_dir}"
+{{- if .Values.gcp.prefix }}
+tar -cf - "${backup_name}" | pigz -p 16 \
+  | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/{{ .Values.gcp.prefix }}/${backup_name}/${backup_name}.tgz
+{{- else }}
 tar -cf - "${backup_name}" | pigz -p 16 \
   | rclone --config /tmp/rclone.conf rcat gcp:${bucket}/${backup_name}/${backup_name}.tgz
+{{- end }}
 {{- end }}
 
 {{- if .Values.ceph }}
 uploader \
   --cloud=ceph \
+  {{- if .Values.ceph.prefix }}
+  --bucket={{ .Values.ceph.bucket }}/{{ .Values.ceph.prefix }} \
+  {{- else }}
   --bucket={{ .Values.ceph.bucket }} \
+  {{- end }}
   --endpoint={{ .Values.ceph.endpoint }} \
   --backup-dir=${dirname}
 {{- end }}
@@ -83,6 +92,10 @@ uploader \
 uploader \
   --cloud=aws \
   --region={{ .Values.s3.region }} \
+  {{- if .Values.s3.prefix }}
+  --bucket={{ .Values.s3.bucket }}/{{ .Values.s3.prefix }} \
+  {{- else }}
   --bucket={{ .Values.s3.bucket }} \
+  {{- end }}
   --backup-dir=${dirname}
 {{- end }}
