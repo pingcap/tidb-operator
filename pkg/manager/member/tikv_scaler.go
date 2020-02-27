@@ -220,7 +220,7 @@ func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.
 
 	// For the existed auto-scaling slots, we would add special hot region label the its store by pdapi.
 	pdClient := tsd.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, *tc.Spec.EnableTLSCluster)
-	for k, _ := range currentScalingSlots {
+	for k := range currentScalingSlots {
 		podName := util.GetPodName(tc, v1alpha1.TiKVMemberType, k)
 		for _, store := range tc.Status.TiKV.Stores {
 			if store.PodName == podName {
