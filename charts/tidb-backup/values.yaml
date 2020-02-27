@@ -104,6 +104,7 @@ restoreUsingExistingVolume: true
 # backup to or restore from gcp bucket, the backup path is in the form of <clusterName>-<name>
 gcp: {}
   # bucket: ""
+  # prefix: ""
   # secretName is not necessary on GKE if you use the workload identity feature
   # secretName is the name of the secret which stores the gcp service account credentials json file
   # The service account must have read/write permission to the above bucket.
@@ -117,6 +118,7 @@ gcp: {}
 ceph: {}
   # endpoint: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores ceph object store access key and secret key
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
@@ -126,6 +128,7 @@ ceph: {}
 s3: {}
   # region: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores s3 object store access key and secret key
   # This is not necessary on AWS. Instead you should be able to get the credentials from the EKS service IAM role.
   # You can create the secret by:
