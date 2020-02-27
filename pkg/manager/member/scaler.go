@@ -35,6 +35,7 @@ const (
 	skipReasonScalerAnnDeferDeletingIsEmpty = "scaler: pvc annotations defer deleting is empty"
 )
 
+// TODO: add document to explain the hot region label
 var (
 	hostRegionLabel = map[string]string{
 		"specialUse": "hotRegion",
