@@ -12,7 +12,7 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.0-beta.2
+operatorImage: operator:v1
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
@@ -90,7 +90,7 @@ scheduler:
       memory: 50Mi
   kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
   # This will default to matching your kubernetes version
-  # kubeSchedulerImageTag:
+  kubeSchedulerImageTag: v1.16.4
   ## affinity defines pod scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity

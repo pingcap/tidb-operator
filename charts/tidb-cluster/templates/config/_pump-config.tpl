@@ -35,7 +35,7 @@ sync-log = {{ .Values.binlog.pump.syncLog | default true }}
 # write-buffer = 67108864
 # write-L0-pause-trigger = 24
 # write-L0-slowdown-trigger = 17
-{{ if .Values.enableTLSCluster }}
+{{ if and .Values.tlsCluster .Values.tlsCluster.enabled }}
 [security]
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.
 ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"

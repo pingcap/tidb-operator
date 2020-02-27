@@ -21,7 +21,10 @@ spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   enablePVReclaim: {{ .Values.enablePVReclaim }}
   timezone: {{ .Values.timezone | default "UTC" }}
-  enableTLSCluster: {{ .Values.enableTLSCluster | default false }}
+{{- if .Values.tlsCluster }}
+  tlsCluster:
+  {{ toYaml .Values.tlsCluster | indent 4 }}
+{{- end }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
