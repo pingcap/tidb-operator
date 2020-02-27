@@ -18,10 +18,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	glog "k8s.io/klog"
@@ -48,7 +50,8 @@ func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	} else if scaling < 0 {
 		return tsd.ScaleIn(tc, oldSet, newSet)
 	}
-	return nil
+	// we only sync auto scaler annotations when we are finishing syncing scaling
+	return tsd.SyncAutoScalerAnn(tc, oldSet)
 }
 
 func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -190,6 +193,55 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	return fmt.Errorf("TiKV %s/%s not found in cluster", ns, podName)
 }
 
+// SyncAutoScalerAnn would reclaim the auto-scaling out slots if the target pod is no longer existed
+// For the auto-scaling slots, we would add the special hot region label to the store with pdapi.
+func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+	currentScalingSlots := util.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
+	if currentScalingSlots.Len() < 1 {
+		return nil
+	}
+	currentOrdinals := helper.GetPodOrdinals(tc.Spec.TiKV.Replicas, actual)
+
+	// reclaim the auto-scaling out slots if the target pod is no longer existed
+	if !currentOrdinals.HasAll(currentScalingSlots.List()...) {
+		reclaimedSlots := currentScalingSlots.Difference(currentOrdinals)
+		currentScalingSlots = currentScalingSlots.Delete(reclaimedSlots.List()...)
+		if currentScalingSlots.Len() < 1 {
+			delete(tc.Annotations, label.AnnTiKVAutoScalingOutOrdinals)
+			return nil
+		}
+		v, err := util.Encode(currentScalingSlots.List())
+		if err != nil {
+			return err
+		}
+		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = v
+		return nil
+	}
+
+	// For the auto-scaling slots, we would add the special hot region label to the store with pdapi.
+	pdClient := tsd.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, *tc.Spec.EnableTLSCluster)
+	for k := range currentScalingSlots {
+		podName := util.GetPodName(tc, v1alpha1.TiKVMemberType, k)
+		for _, store := range tc.Status.TiKV.Stores {
+			if store.PodName == podName {
+				id, err := strconv.ParseUint(store.ID, 10, 64)
+				if err != nil {
+					return err
+				}
+				ok, err := pdClient.SetStoreLabels(id, hostRegionLabel)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("tc[%s/%s]'s pod[%s] failed to add special hot region label", tc.Namespace, tc.Name, podName)
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
 type fakeTiKVScaler struct{}
 
 // NewFakeTiKVScaler returns a fake tikv Scaler
@@ -213,5 +265,9 @@ func (fsd *fakeTiKVScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.Statef
 
 func (fsd *fakeTiKVScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
+	return nil
+}
+
+func (fsd *fakeTiKVScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
 	return nil
 }
