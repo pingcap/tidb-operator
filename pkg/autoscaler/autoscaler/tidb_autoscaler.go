@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -65,25 +64,12 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if !ableToScale {
 		return nil
 	}
-	return updateTcTiDBIfScale(tc, tac, currentReplicas, recommendedReplicas, sts)
+	return updateTcTiDBIfScale(tc, tac, recommendedReplicas)
 }
 
-func updateTcTiDBIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
+// Currently we didnt' record the auto-scaling out slot for tidb, because it is pointless for now.
+func updateTcTiDBIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, recommendedReplicas int32) error {
 	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
-	if recommendedReplicas > currentReplicas {
-		newlyScaleOutOrdinalSets := helper.GetPodOrdinals(recommendedReplicas, sts).Difference(helper.GetPodOrdinals(currentReplicas, sts))
-		if newlyScaleOutOrdinalSets.Len() > 0 {
-			if tc.Annotations == nil {
-				tc.Annotations = map[string]string{}
-			}
-			existed := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiDBMemberType)
-			v, err := genJsonFromSets(newlyScaleOutOrdinalSets.Union(existed))
-			if err != nil {
-				return err
-			}
-			tc.Annotations[label.AnnTiDBAutoScalingOutOrdinals] = fmt.Sprintf("%v", v)
-		}
-	}
 	tc.Spec.TiDB.Replicas = recommendedReplicas
 	return nil
 }

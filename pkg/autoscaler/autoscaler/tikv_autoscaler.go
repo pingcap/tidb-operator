@@ -82,6 +82,7 @@ func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 	return instances
 }
 
+// we record the auto-scaling out slot for tikv, in order to add special hot labels when they are created
 func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
 	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 	if recommendedReplicas > currentReplicas {
