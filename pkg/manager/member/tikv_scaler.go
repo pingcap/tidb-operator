@@ -210,7 +210,11 @@ func (tsd *tikvScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.
 			delete(tc.Annotations, label.AnnTiKVAutoScalingOutOrdinals)
 			return nil
 		}
-		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = fmt.Sprintf("%v", currentScalingSlots.List())
+		v, err := util.GenJsonFromSets(currentScalingSlots)
+		if err != nil {
+			return err
+		}
+		tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = fmt.Sprintf("%v", v)
 		return nil
 	}
 
