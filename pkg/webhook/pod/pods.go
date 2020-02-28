@@ -81,6 +81,14 @@ type admitPayload struct {
 	pdClient pdapi.PDClient
 }
 
+func (pc *PodAdmissionControl) MutatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	if ar.Operation != admission.Create && ar.Operation != admission.Update {
+		return util.ARSuccess()
+	}
+	klog.Infof("receive mutation core mutate pod")
+	return pc.mutatePod(ar)
+}
+
 func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 
 	name := ar.Name

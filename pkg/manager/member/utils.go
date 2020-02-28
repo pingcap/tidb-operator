@@ -209,6 +209,10 @@ func MarshalTOML(v interface{}) ([]byte, error) {
 	return data, nil
 }
 
+func UnmarshalTOML(b []byte, obj interface{}) error {
+	return toml.Unmarshal(b, obj)
+}
+
 func Sha256Sum(v interface{}) (string, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
