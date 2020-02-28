@@ -123,7 +123,7 @@ func NewCommandStartServer(builders []*builders.APIGroupBuilder, stopCh <-chan s
 	klog.InitFlags(klogFlags)
 	flags.AddGoFlagSet(klogFlags)
 
-	// Sync the glog and klog flags.
+	// Sync the klog and klog flags.
 	klogFlags.VisitAll(func(f *flag.Flag) {
 		goFlag := flag.CommandLine.Lookup(f.Name)
 		if goFlag != nil {

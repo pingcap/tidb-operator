@@ -25,7 +25,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // GeneralPVCControlInterface manages PVCs used in backup and restore's pvc
@@ -57,9 +57,9 @@ func (gpc *realGeneralPVCControl) CreatePVC(object runtime.Object, pvc *corev1.P
 
 	_, err := gpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Create(pvc)
 	if err != nil {
-		glog.Errorf("failed to create pvc: [%s/%s], %s: %s, %v", ns, pvcName, kind, instanceName, err)
+		klog.Errorf("failed to create pvc: [%s/%s], %s: %s, %v", ns, pvcName, kind, instanceName, err)
 	} else {
-		glog.V(4).Infof("create pvc: [%s/%s] successfully, %s: %s", ns, pvcName, kind, instanceName)
+		klog.V(4).Infof("create pvc: [%s/%s] successfully, %s: %s", ns, pvcName, kind, instanceName)
 	}
 	gpc.recordPVCEvent("create", object, pvc, err)
 	return err

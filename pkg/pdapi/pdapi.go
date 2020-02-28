@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
@@ -118,7 +118,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		if tlsEnabled {
 			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
 			if err != nil {
-				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+				klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 			}
 		}
@@ -541,10 +541,10 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return nil
 	}
 	if res.StatusCode == http.StatusOK {
-		glog.Infof("call DELETE method: %s success", apiURL)
+		klog.Infof("call DELETE method: %s success", apiURL)
 	} else {
 		err2 := httputil.ReadErrorBody(res.Body)
-		glog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
+		klog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
 	}
 
 	// pd will return an error with the body contains "scheduler not found" if the scheduler is not found

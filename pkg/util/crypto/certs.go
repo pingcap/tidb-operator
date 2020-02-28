@@ -24,7 +24,7 @@ import (
 	"io/ioutil"
 	"net"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -97,11 +97,11 @@ func ReadCACerts() (*x509.CertPool, error) {
 	// load k8s CA cert
 	caCert, err := ioutil.ReadFile(k8sCAFile)
 	if err != nil {
-		glog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
+		klog.Errorf("fail to read CA file %s, error: %v", k8sCAFile, err)
 		return nil, err
 	}
 	if ok := rootCAs.AppendCertsFromPEM(caCert); !ok {
-		glog.Warningf("fail to append CA file to pool, using system CAs only")
+		klog.Warningf("fail to append CA file to pool, using system CAs only")
 	}
 	return rootCAs, nil
 }
