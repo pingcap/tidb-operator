@@ -195,7 +195,7 @@ admissionWebhook:
     ## validating hook validates the correctness of the resources under pingcap.com group
     validating: false
     ## defaulting hook set default values for the the resources under pingcap.com group
-    defaulting: false
+    defaulting: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:
