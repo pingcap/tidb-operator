@@ -215,9 +215,21 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 			}
 		}
 	} else {
+		var backupNamespace, pdAddress string
+		if backupSpec.BackupNamespace == "" {
+			backupNamespace = ns
+		} else {
+			backupNamespace = backupSpec.BackupNamespace
+		}
+		if backupSpec.EnableTLSClient {
+			pdAddress = fmt.Sprintf("https://%s-pd.%s", backupSpec.Cluster, backupNamespace)
+		} else {
+			pdAddress = fmt.Sprintf("http://%s-pd.%s", backupSpec.Cluster, backupNamespace)
+		}
+
 		if backupSpec.S3 != nil {
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,
-				strings.ReplaceAll(backupSpec.BR.PDAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
+				strings.ReplaceAll(pdAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
 		}
 	}
 

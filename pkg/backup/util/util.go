@@ -298,9 +298,10 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if backup.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		if backup.Spec.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
+
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
 			backup.Spec.Type != v1alpha1.BackupTypeDB &&
@@ -349,8 +350,8 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if restore.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		if restore.Spec.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&

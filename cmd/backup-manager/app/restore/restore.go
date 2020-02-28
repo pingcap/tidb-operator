@@ -16,9 +16,11 @@ package restore
 import (
 	"fmt"
 	"os/exec"
+	"path"
 
 	glog "k8s.io/klog"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
@@ -33,10 +35,25 @@ func (ro *Options) String() string {
 }
 
 func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
+	var restoreNamespace string
 	args, err := constructBROptions(restore)
 	if err != nil {
 		return err
 	}
+	if restore.Spec.RestoreNamespace == "" {
+		restoreNamespace = ro.Namespace
+	} else {
+		restoreNamespace = restore.Spec.RestoreNamespace
+	}
+	if restore.Spec.EnableTLSClient {
+		args = append(args, fmt.Sprintf("--pd=https://%s-pd.%s", restore.Spec.Cluster, restoreNamespace))
+		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, "key")))
+	} else {
+		args = append(args, fmt.Sprintf("--pd=http://%s-pd.%s", restore.Spec.Cluster, restoreNamespace))
+	}
+
 	var restoreType string
 	if restore.Spec.Type == "" {
 		restoreType = string(v1alpha1.BackupTypeFull)

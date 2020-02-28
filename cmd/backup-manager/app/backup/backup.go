@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path"
 
 	"github.com/gogo/protobuf/proto"
 	glog "k8s.io/klog"
@@ -39,10 +40,25 @@ func (bo *Options) String() string {
 }
 
 func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
-	args, path, err := constructOptions(backup)
+	var backupNamespace string
+	args, remotePath, err := constructOptions(backup)
 	if err != nil {
 		return "", err
 	}
+	if backup.Spec.BackupNamespace == "" {
+		backupNamespace = bo.Namespace
+	} else {
+		backupNamespace = backup.Spec.BackupNamespace
+	}
+	if backup.Spec.EnableTLSClient {
+		args = append(args, fmt.Sprintf("--pd=https://%s-pd.%s", backup.Spec.Cluster, backupNamespace))
+		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, "key")))
+	} else {
+		args = append(args, fmt.Sprintf("--pd=http://%s-pd.%s", backup.Spec.Cluster, backupNamespace))
+	}
+
 	var btype string
 	if backup.Spec.Type == "" {
 		btype = string(v1alpha1.BackupTypeFull)
@@ -57,10 +73,10 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	glog.Infof("Running br command with args: %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
-		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
+		return remotePath, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
 	}
 	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
-	return path, nil
+	return remotePath, nil
 }
 
 // getCommitTs get backup position from `EndVersion` in BR backup meta
@@ -94,9 +110,9 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 
 // constructOptions constructs options for BR and also return the remote path
 func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	args, path, err := util.ConstructBRGlobalOptionsForBackup(backup)
+	args, remotePath, err := util.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
-		return args, path, err
+		return args, remotePath, err
 	}
 	config := backup.Spec.BR
 	if config.Concurrency != nil {
@@ -111,7 +127,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
-	return args, path, nil
+	return args, remotePath, nil
 }
 
 // getBackupSize get the backup data size from remote
