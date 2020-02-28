@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -48,12 +48,12 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	glog.Infof("Running br command with args: %v", fullArgs)
+	klog.Infof("Running br command with args: %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, fullArgs, string(output), err)
 	}
-	glog.Infof("Restore data for cluster %s successfully, output: %s", ro, string(output))
+	klog.Infof("Restore data for cluster %s successfully, output: %s", ro, string(output))
 	return nil
 }
 

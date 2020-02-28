@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -87,10 +87,10 @@ func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 
 	err = gs.pvcControl.DeletePVC(tc, pvc)
 	if err != nil {
-		glog.Errorf("scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
+		klog.Errorf("scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
 		return skipReason, err
 	}
-	glog.Infof("scale out: delete pvc %s/%s successfully", ns, pvcName)
+	klog.Infof("scale out: delete pvc %s/%s successfully", ns, pvcName)
 
 	return skipReason, nil
 }
@@ -107,11 +107,11 @@ func setReplicasAndDeleteSlots(newSet *apps.StatefulSet, replicas int32, deleteS
 	*newSet.Spec.Replicas = replicas
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		helper.SetDeleteSlots(newSet, deleteSlots)
-		glog.Infof("scale statefulset: %s/%s replicas from %d to %d (delete slots: %v)",
+		klog.Infof("scale statefulset: %s/%s replicas from %d to %d (delete slots: %v)",
 			newSet.GetNamespace(), newSet.GetName(), oldReplicas, replicas, deleteSlots.List())
 		return
 	}
-	glog.Infof("scale statefulset: %s/%s replicas from %d to %d",
+	klog.Infof("scale statefulset: %s/%s replicas from %d to %d",
 		newSet.GetNamespace(), newSet.GetName(), oldReplicas, replicas)
 }
 

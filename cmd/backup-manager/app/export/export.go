@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/mholt/archiver"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -114,7 +114,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, output: %s, err: %v", bo, bucketURI, string(output), err)
 	}
 
-	glog.Infof("upload cluster %s backup data to %s successfully, now move it to permanent URL %s", bo, tmpDestBucket, destBucket)
+	klog.Infof("upload cluster %s backup data to %s successfully, now move it to permanent URL %s", bo, tmpDestBucket, destBucket)
 
 	// the backup was a success
 	// remove .tmp extension

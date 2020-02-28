@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // Manager mainly used to manage backup related work
@@ -48,7 +48,7 @@ func NewManager(
 func (bm *Manager) ProcessBackup() error {
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {
-		glog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
+		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -76,7 +76,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup) error {
 
 	backupFullPath, err := bm.backupData(backup)
 	if err != nil {
-		glog.Errorf("backup cluster %s data failed, err: %s", bm, err)
+		klog.Errorf("backup cluster %s data failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -84,13 +84,13 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup) error {
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
+	klog.Infof("backup cluster %s data to %s success", bm, backupFullPath)
 
 	// Note: The size get from remote may be incorrect because the blobs
 	// are eventually consistent.
 	size, err := getBackupSize(backup)
 	if err != nil {
-		glog.Errorf("Get size for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
+		klog.Errorf("Get size for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -98,11 +98,11 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup) error {
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
+	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
 
 	commitTs, err := getCommitTs(backup)
 	if err != nil {
-		glog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
+		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -110,7 +110,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup) error {
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("get cluster %s commitTs %d success", bm, commitTs)
+	klog.Infof("get cluster %s commitTs %d success", bm, commitTs)
 
 	finish := time.Now()
 

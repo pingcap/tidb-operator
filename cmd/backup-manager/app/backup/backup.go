@@ -20,7 +20,7 @@ import (
 	"os/exec"
 
 	"github.com/gogo/protobuf/proto"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -54,12 +54,12 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		btype,
 	}
 	fullArgs = append(fullArgs, args...)
-	glog.Infof("Running br command with args: %v", fullArgs)
+	klog.Infof("Running br command with args: %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
 		return path, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
 	}
-	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
+	klog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
 	return path, nil
 }
 

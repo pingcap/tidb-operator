@@ -19,7 +19,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -48,7 +48,7 @@ func NewManager(
 func (rm *Manager) ProcessRestore() error {
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.RestoreName)
 	if err != nil {
-		glog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.RestoreName, err)
+		klog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.RestoreName, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -75,7 +75,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore) error {
 	}
 
 	if err := rm.restoreData(restore); err != nil {
-		glog.Errorf("restore cluster %s from %s failed, err: %s", rm, restore.Spec.Type, err)
+		klog.Errorf("restore cluster %s from %s failed, err: %s", rm, restore.Spec.Type, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -83,7 +83,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore) error {
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
+	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
 
 	finish := time.Now()
 	restore.Status.TimeStarted = metav1.Time{Time: started}

@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 var (
@@ -163,7 +163,7 @@ func SendWarnMsg(msg string) error {
 func NotifyAndPanic(err error) {
 	sendErr := SendErrMsg(fmt.Sprintf("Succeed %d times, then failed: %s", SuccessCount, err.Error()))
 	if sendErr != nil {
-		glog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
+		klog.Warningf("failed to notify slack[%s] the massage: %v,error: %v", WebhookURL, err, sendErr)
 	}
 	time.Sleep(3 * time.Second)
 	panic(err)
@@ -173,7 +173,7 @@ func NotifyAndCompletedf(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	sendErr := SendGoodMsg(msg)
 	if sendErr != nil {
-		glog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
+		klog.Warningf("failed to notify slack[%s] the massage: %s,error: %v", WebhookURL, msg, sendErr)
 	}
-	glog.Infof(msg)
+	klog.Infof(msg)
 }
