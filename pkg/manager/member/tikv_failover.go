@@ -18,7 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type tikvFailover struct {
@@ -54,7 +54,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			if tc.Spec.TiKV.MaxFailoverCount != nil {
 				maxFailoverCount := *tc.Spec.TiKV.MaxFailoverCount
 				if maxFailoverCount > 0 && len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
-					glog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
+					klog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
 					return nil
 				}
 			}

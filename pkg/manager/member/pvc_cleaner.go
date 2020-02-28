@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -170,7 +170,7 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			if err != nil {
 				return skipReason, fmt.Errorf("cluster %s/%s patch pv %s to %s failed, err: %v", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete, err)
 			}
-			glog.Infof("cluster %s/%s patch pv %s to policy %s success", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete)
+			klog.Infof("cluster %s/%s patch pv %s to policy %s success", ns, tcName, pvName, corev1.PersistentVolumeReclaimDelete)
 		}
 
 		apiPVC, err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
@@ -190,7 +190,7 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 		if err := rpc.pvcControl.DeletePVC(tc, pvc); err != nil {
 			return skipReason, fmt.Errorf("cluster %s/%s delete pvc %s failed, err: %v", ns, tcName, pvcName, err)
 		}
-		glog.Infof("cluster %s/%s reclaim pv %s success, pvc %s", ns, tcName, pvName, pvcName)
+		klog.Infof("cluster %s/%s reclaim pv %s success, pvc %s", ns, tcName, pvName, pvcName)
 	}
 	return skipReason, nil
 }
@@ -217,7 +217,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 		if pvc.Annotations[label.AnnPVCDeferDeleting] != "" {
 			if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; !exist {
 				// The defer deleting PVC without pod scheduling annotation, do nothing
-				glog.V(4).Infof("cluster %s/%s defer delete pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
+				klog.V(4).Infof("cluster %s/%s defer delete pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
 				skipReason[pvcName] = skipReasonPVCCleanerDeferDeletePVCNotHasLock
 				continue
 			}
@@ -247,14 +247,14 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 
 		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; !exist {
 			// The PVC without pod scheduling annotation, do nothing
-			glog.V(4).Infof("cluster %s/%s pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
+			klog.V(4).Infof("cluster %s/%s pvc %s has not pod scheduling annotation, skip clean", ns, tcName, pvcName)
 			skipReason[pvcName] = skipReasonPVCCleanerPVCNotHasLock
 			continue
 		}
 
 		if pvc.Status.Phase != corev1.ClaimBound || pod.Spec.NodeName == "" {
 			// This pod has not been scheduled yet, no need to clean up the pvc pod schedule annotation
-			glog.V(4).Infof("cluster %s/%s pod %s has not been scheduled yet, skip clean pvc %s pod schedule annotation", ns, tcName, podName, pvcName)
+			klog.V(4).Infof("cluster %s/%s pod %s has not been scheduled yet, skip clean pvc %s pod schedule annotation", ns, tcName, podName, pvcName)
 			skipReason[pvcName] = skipReasonPVCCleanerPodWaitingForScheduling
 			continue
 		}
@@ -263,7 +263,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 		if _, err := rpc.pvcControl.UpdatePVC(tc, pvc); err != nil {
 			return skipReason, fmt.Errorf("cluster %s/%s remove pvc %s pod scheduling annotation faild, err: %v", ns, tcName, pvcName, err)
 		}
-		glog.Infof("cluster %s/%s, clean pvc %s pod scheduling annotation successfully", ns, tcName, pvcName)
+		klog.Infof("cluster %s/%s, clean pvc %s pod scheduling annotation successfully", ns, tcName, pvcName)
 	}
 
 	return skipReason, nil

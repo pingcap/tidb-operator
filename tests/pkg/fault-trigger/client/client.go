@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // Client is a fault-trigger client
@@ -153,7 +153,7 @@ func (c *client) ListVMs() ([]*manager.VM, error) {
 	url := util.GenURL(fmt.Sprintf("%s%s/vms", c.cfg.Addr, api.APIPrefix))
 	data, err := c.get(url)
 	if err != nil {
-		glog.Errorf("failed to get %s: %v", url, err)
+		klog.Errorf("failed to get %s: %v", url, err)
 		return nil, err
 	}
 
@@ -174,7 +174,7 @@ func (c *client) StartVM(vm *manager.VM) error {
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/start", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("faled to post %s: %v", url, err)
+		klog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -190,7 +190,7 @@ func (c *client) StopVM(vm *manager.VM) error {
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/stop", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("faled to post %s: %v", url, err)
+		klog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -240,7 +240,7 @@ func (c *client) StopKubeControllerManager() error {
 func (c *client) startService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/start", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("failed to post %s: %v", url, err)
+		klog.Errorf("failed to post %s: %v", url, err)
 		return err
 	}
 
@@ -250,7 +250,7 @@ func (c *client) startService(serviceName string) error {
 func (c *client) stopService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/stop", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("failed to post %s: %v", url, err)
+		klog.Errorf("failed to post %s: %v", url, err)
 		return err
 	}
 

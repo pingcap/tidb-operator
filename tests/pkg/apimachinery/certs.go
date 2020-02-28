@@ -20,7 +20,7 @@ import (
 
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/pkiutil"
 )
 
@@ -35,32 +35,32 @@ type CertContext struct {
 func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 	certDir, err := ioutil.TempDir("", "test-e2e-server-cert")
 	if err != nil {
-		glog.Errorf("Failed to create a temp dir for cert generation %v", err)
+		klog.Errorf("Failed to create a temp dir for cert generation %v", err)
 		return nil, err
 	}
 	defer os.RemoveAll(certDir)
 	signingKey, err := pkiutil.NewPrivateKey()
 	if err != nil {
-		glog.Errorf("Failed to create CA private key %v", err)
+		klog.Errorf("Failed to create CA private key %v", err)
 		return nil, err
 	}
 	signingCert, err := cert.NewSelfSignedCACert(cert.Config{CommonName: "e2e-server-cert-ca"}, signingKey)
 	if err != nil {
-		glog.Errorf("Failed to create CA cert for apiserver %v", err)
+		klog.Errorf("Failed to create CA cert for apiserver %v", err)
 		return nil, err
 	}
 	caCertFile, err := ioutil.TempFile(certDir, "ca.crt")
 	if err != nil {
-		glog.Errorf("Failed to create a temp file for ca cert generation %v", err)
+		klog.Errorf("Failed to create a temp file for ca cert generation %v", err)
 		return nil, err
 	}
 	if err := ioutil.WriteFile(caCertFile.Name(), pkiutil.EncodeCertPEM(signingCert), 0644); err != nil {
-		glog.Errorf("Failed to write CA cert %v", err)
+		klog.Errorf("Failed to write CA cert %v", err)
 		return nil, err
 	}
 	key, err := pkiutil.NewPrivateKey()
 	if err != nil {
-		glog.Errorf("Failed to create private key for %v", err)
+		klog.Errorf("Failed to create private key for %v", err)
 		return nil, err
 	}
 	signedCert, err := pkiutil.NewSignedCert(
@@ -71,21 +71,21 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		key, signingCert, signingKey,
 	)
 	if err != nil {
-		glog.Errorf("Failed to create cert%v", err)
+		klog.Errorf("Failed to create cert%v", err)
 		return nil, err
 	}
 	certFile, err := ioutil.TempFile(certDir, "server.crt")
 	if err != nil {
-		glog.Errorf("Failed to create a temp file for cert generation %v", err)
+		klog.Errorf("Failed to create a temp file for cert generation %v", err)
 		return nil, err
 	}
 	keyFile, err := ioutil.TempFile(certDir, "server.key")
 	if err != nil {
-		glog.Errorf("Failed to create a temp file for key generation %v", err)
+		klog.Errorf("Failed to create a temp file for key generation %v", err)
 		return nil, err
 	}
 	if err = ioutil.WriteFile(certFile.Name(), pkiutil.EncodeCertPEM(signedCert), 0600); err != nil {
-		glog.Errorf("Failed to write cert file %v", err)
+		klog.Errorf("Failed to write cert file %v", err)
 		return nil, err
 	}
 	keyPEM, err := keyutil.MarshalPrivateKeyToPEM(key)
@@ -93,7 +93,7 @@ func SetupServerCert(namespaceName, serviceName string) (*CertContext, error) {
 		return nil, err
 	}
 	if err = ioutil.WriteFile(keyFile.Name(), keyPEM, 0644); err != nil {
-		glog.Errorf("Failed to write key file %v", err)
+		klog.Errorf("Failed to write key file %v", err)
 		return nil, err
 	}
 	return &CertContext{
