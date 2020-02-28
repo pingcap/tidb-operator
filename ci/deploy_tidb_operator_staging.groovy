@@ -28,7 +28,7 @@ admissionWebhook:
     pods: true
     # TODO: enable validating and defaulting after we ease the constrain
     validating: false
-    defaulting: false
+    defaulting: true
 features:
   - AutoScaling=true
 '''
