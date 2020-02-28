@@ -6,26 +6,21 @@ spec:
   version: v3.0.8
   timezone: UTC
   pvReclaimPolicy: Delete
-  tlsCluster:
-    enabled: true
   pd:
     baseImage: pingcap/pd
-    replicas: 1
+    replicas: 3
     requests:
       storage: "1Gi"
     config: {}
   tikv:
     baseImage: pingcap/tikv
-    replicas: 1
+    replicas: 3
     requests:
       storage: "50Gi"
-    config:
-      log-level: "debug"
+    config: {}
   tidb:
     baseImage: pingcap/tidb
-    replicas: 3
+    replicas: 2
     service:
       type: ClusterIP
-    config:
-      log:
-        level: "debug"
+    config: {}
