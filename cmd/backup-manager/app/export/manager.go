@@ -26,7 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // BackupManager mainly used to manage backup related work
@@ -52,7 +52,7 @@ func NewBackupManager(
 func (bm *BackupManager) ProcessBackup() error {
 	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
 	if err != nil {
-		glog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
+		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -65,19 +65,19 @@ func (bm *BackupManager) ProcessBackup() error {
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
 		db, err = util.OpenDB(bm.getDSN(constants.TidbMetaDB))
 		if err != nil {
-			glog.Warningf("can't open connection to tidb cluster %s, err: %v", bm, err)
+			klog.Warningf("can't open connection to tidb cluster %s, err: %v", bm, err)
 			return false, nil
 		}
 
 		if err := db.Ping(); err != nil {
-			glog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
+			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			return false, nil
 		}
 		return true, nil
 	})
 
 	if err != nil {
-		glog.Errorf("cluster %s connect failed, err: %s", bm, err)
+		klog.Errorf("cluster %s connect failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -103,7 +103,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	oldTikvGCTime, err := bm.getTikvGCLifeTime(db)
 	if err != nil {
-		glog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
+		klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -111,11 +111,11 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
+	klog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
 
 	oldTikvGCTimeDuration, err := time.ParseDuration(oldTikvGCTime)
 	if err != nil {
-		glog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
+		klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -125,7 +125,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	tikvGCTimeDuration, err := time.ParseDuration(constants.TikvGCLifeTime)
 	if err != nil {
-		glog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
+		klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -136,7 +136,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.setTikvGCLifeTime(db, constants.TikvGCLifeTime)
 		if err != nil {
-			glog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
+			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
 			return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
@@ -144,12 +144,12 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Message: err.Error(),
 			})
 		}
-		glog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
+		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 	}
 
 	backupFullPath, err := bm.dumpTidbClusterData()
 	if err != nil {
-		glog.Errorf("dump cluster %s data failed, err: %s", bm, err)
+		klog.Errorf("dump cluster %s data failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -157,12 +157,12 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
+	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
 
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.setTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
-			glog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
+			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
 			return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Type:    v1alpha1.BackupFailed,
 				Status:  corev1.ConditionTrue,
@@ -170,13 +170,13 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Message: err.Error(),
 			})
 		}
-		glog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
+		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
 	}
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
 	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
 	err = archiveBackupData(backupFullPath, archiveBackupPath)
 	if err != nil {
-		glog.Errorf("archive cluster %s backup data %s failed, err: %s", bm, archiveBackupPath, err)
+		klog.Errorf("archive cluster %s backup data %s failed, err: %s", bm, archiveBackupPath, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -184,11 +184,11 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
+	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
 	size, err := getBackupSize(archiveBackupPath)
 	if err != nil {
-		glog.Errorf("get cluster %s archived backup file %s size %d failed, err: %s", bm, archiveBackupPath, size, err)
+		klog.Errorf("get cluster %s archived backup file %s size %d failed, err: %s", bm, archiveBackupPath, size, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -196,11 +196,11 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
+	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
 
 	commitTs, err := getCommitTsFromMetadata(backupFullPath)
 	if err != nil {
-		glog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
+		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -208,13 +208,13 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("get cluster %s commitTs %s success", bm, commitTs)
+	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
 
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
 	bucketURI := bm.getDestBucketURI(remotePath)
 	err = bm.backupDataToRemote(archiveBackupPath, bucketURI)
 	if err != nil {
-		glog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
+		klog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -222,7 +222,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	glog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
+	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
 
 	finish := time.Now()
 

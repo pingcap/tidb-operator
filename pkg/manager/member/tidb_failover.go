@@ -18,7 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type tidbFailover struct {
@@ -41,14 +41,14 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
 		if exist && tidbMember.Health {
 			delete(tc.Status.TiDB.FailureMembers, tidbMember.Name)
-			glog.Infof("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
+			klog.Infof("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
 		}
 	}
 
 	if tc.Spec.TiDB.MaxFailoverCount != nil {
 		maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
 		if maxFailoverCount > 0 && len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
-			glog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
+			klog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
 			return nil
 		}
 	}
