@@ -96,8 +96,8 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 			name:                     "normal",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: false,
-			err:        false,
-			setCreated: true,
+			err:                      false,
+			setCreated:               true,
 		},
 		{
 			name: "tikv is not available",
@@ -105,15 +105,15 @@ func TestTiDBMemberManagerSyncCreate(t *testing.T) {
 				tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{}
 			},
 			errWhenCreateStatefulSet: false,
-			err:        true,
-			setCreated: false,
+			err:                      true,
+			setCreated:               false,
 		},
 		{
 			name:                     "error when create statefulset",
 			prepare:                  nil,
 			errWhenCreateStatefulSet: true,
-			err:        true,
-			setCreated: false,
+			err:                      true,
+			setCreated:               false,
 		},
 	}
 
@@ -195,7 +195,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: false,
-			err: false,
+			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(int(*set.Spec.Replicas)).To(Equal(5))
@@ -209,7 +209,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 			},
 			errWhenUpdateStatefulSet: true,
-			err: true,
+			err:                      true,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
@@ -220,7 +220,7 @@ func TestTiDBMemberManagerSyncUpdate(t *testing.T) {
 				tc.Spec.TiDB.SeparateSlowLog = pointer.BoolPtr(true)
 			},
 			errWhenUpdateStatefulSet: false,
-			err: false,
+			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(set.Spec.Template.Spec.Containers).To(HaveLen(2))
@@ -1495,7 +1495,7 @@ func TestGetNewTiDBService(t *testing.T) {
 					},
 				},
 				Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeLoadBalancer,
+					Type:                  corev1.ServiceTypeLoadBalancer,
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 					Ports: []corev1.ServicePort{
 						{
@@ -1753,7 +1753,7 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 				}
 			},
 			errWhenUpdateStatefulSet: false,
-			err: false,
+			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, tc *v1alpha1.TidbCluster, err error) {
 				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
 				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
@@ -1771,7 +1771,7 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 				}
 			},
 			errWhenUpdateStatefulSet: false,
-			err: false,
+			err:                      false,
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, tc *v1alpha1.TidbCluster, err error) {
 				g.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
 				g.Expect(*set.Spec.Replicas).To(Equal(int32(0)))
