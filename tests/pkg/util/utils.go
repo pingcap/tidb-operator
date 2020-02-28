@@ -19,7 +19,7 @@ import (
 	"os/exec"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -70,7 +70,7 @@ func ListK8sNodes(kubectlPath, labels string) ([]string, error) {
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("get k8s nodes is empty")
 	}
-	glog.Infof("get k8s nodes success: %s, labels: %s", nodes, labels)
+	klog.Infof("get k8s nodes success: %s, labels: %s", nodes, labels)
 	return nodes, nil
 }
 

@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -33,7 +34,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
+)
+
+const (
+	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
+	tikvClusterCertPath = "/var/lib/tikv-tls"
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -525,6 +531,17 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if config == nil {
 		return nil, nil
 	}
+
+	// override CA if tls enabled
+	if tc.IsTLSClusterEnabled() {
+		if config.Security == nil {
+			config.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.Security.CAPath = serviceAccountCAPath
+		config.Security.CertPath = path.Join(tikvClusterCertPath, "cert")
+		config.Security.KeyPath = path.Join(tikvClusterCertPath, "key")
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
@@ -605,7 +622,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
 		if status.LastHeartbeatTime.IsZero() {
 			if oldStatus, ok := previousStores[status.ID]; ok {
-				glog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
+				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
 		}
@@ -694,19 +711,19 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		nodeName := pod.Spec.NodeName
 		ls, err := tkmm.getNodeLabels(nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
-			glog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
 		}
 
 		if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
 			if err != nil {
-				glog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
+				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
 				continue
 			}
 			if set {
 				setCount++
-				glog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
+				klog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
 			}
 		}
 	}

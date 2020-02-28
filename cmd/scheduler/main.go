@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/component-base/logs"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 var (
@@ -56,19 +56,19 @@ func main() {
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		glog.Fatalf("failed to get config: %v", err)
+		klog.Fatalf("failed to get config: %v", err)
 	}
 	kubeCli, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("failed to get kubernetes Clientset: %v", err)
+		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 	cli, err := versioned.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("failed to create Clientset: %v", err)
+		klog.Fatalf("failed to create Clientset: %v", err)
 	}
 
 	go wait.Forever(func() {
 		server.StartServer(kubeCli, cli, port)
 	}, 5*time.Second)
-	glog.Fatal(http.ListenAndServe(":6060", nil))
+	klog.Fatal(http.ListenAndServe(":6060", nil))
 }

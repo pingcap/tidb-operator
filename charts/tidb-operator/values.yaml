@@ -12,11 +12,11 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.0-beta.1
+operatorImage: pingcap/tidb-operator:v1.1.0-beta.2
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
-# tidbBackupManagerImage: pingcap/tidb-backup-manager:latest
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-beta.2
 
 #
 # Enable or disable tidb-operator features:
@@ -195,7 +195,7 @@ admissionWebhook:
     ## validating hook validates the correctness of the resources under pingcap.com group
     validating: false
     ## defaulting hook set default values for the the resources under pingcap.com group
-    defaulting: false
+    defaulting: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:
