@@ -23,7 +23,7 @@ spec:
   timezone: {{ .Values.timezone | default "UTC" }}
 {{- if .Values.tlsCluster }}
   tlsCluster:
-  {{ toYaml .Values.tlsCluster | indent 4 }}
+{{ toYaml .Values.tlsCluster | indent 4 }}
 {{- end }}
   services:
 {{ toYaml .Values.services | indent 4 }}
