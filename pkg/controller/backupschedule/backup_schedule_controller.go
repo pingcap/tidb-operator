@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // Controller controls restore.
@@ -62,7 +62,7 @@ func NewController(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "backupSchedule"})
@@ -111,8 +111,8 @@ func (bsc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer bsc.queue.ShutDown()
 
-	glog.Info("Starting backup schedule controller")
-	defer glog.Info("Shutting down backup schedule controller")
+	klog.Info("Starting backup schedule controller")
+	defer klog.Info("Shutting down backup schedule controller")
 
 	for i := 0; i < workers; i++ {
 		go wait.Until(bsc.worker, time.Second, stopCh)
@@ -138,10 +138,10 @@ func (bsc *Controller) processNextWorkItem() bool {
 	defer bsc.queue.Done(key)
 	if err := bsc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			glog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Infof("BackupSchedule: %v, still need sync: %v, requeuing", key.(string), err)
 			bsc.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
-			glog.V(4).Infof("BackupSchedule: %v, ignore err: %v, waiting for the next sync", key.(string), err)
+			klog.V(4).Infof("BackupSchedule: %v, ignore err: %v, waiting for the next sync", key.(string), err)
 		} else {
 			utilruntime.HandleError(fmt.Errorf("BackupSchedule: %v, sync failed, err: %v, requeuing", key.(string), err))
 			bsc.queue.AddRateLimited(key)
@@ -156,7 +156,7 @@ func (bsc *Controller) processNextWorkItem() bool {
 func (bsc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		glog.V(4).Infof("Finished syncing BackupSchedule %q (%v)", key, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing BackupSchedule %q (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -165,7 +165,7 @@ func (bsc *Controller) sync(key string) error {
 	}
 	bs, err := bsc.bsLister.BackupSchedules(ns).Get(name)
 	if errors.IsNotFound(err) {
-		glog.Infof("BackupSchedule has been deleted %v", key)
+		klog.Infof("BackupSchedule has been deleted %v", key)
 		return nil
 	}
 	if err != nil {

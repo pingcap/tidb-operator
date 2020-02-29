@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.1.0-beta.1
+  image: pingcap/tidb-operator:v1.1.0-beta.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -56,7 +56,7 @@ discovery:
 enableConfigMapRollout: true
 
 # Whether enable TLS connections between server nodes.
-# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# When enabled, PD/TiDB/TiKV/PUMP will use TLS encrypted connections to transfer data between each node,
 # certificates will be generated automatically (if not already present).
 enableTLSCluster: false
 
@@ -614,6 +614,7 @@ binlog:
     # pump configurations (change to the tags of your pump version),
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
+    # [security] section will be generated automatically if enableTLSCluster is set to true so users do not need to configure it.
     # config: |
     #   gc = 7
     #   heartbeat-interval = 2
@@ -774,6 +775,15 @@ scheduledBackup:
     requests: {}
     #   cpu: 4000m
     #   memory: 4Gi
+
+  ## affinity defines pd scheduling rules,it's default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
 
 importer:
   create: false

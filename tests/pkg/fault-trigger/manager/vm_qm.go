@@ -18,7 +18,7 @@ import (
 	"os/exec"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type QMVMManager struct {
@@ -33,7 +33,7 @@ func (qm *QMVMManager) ListVMs() ([]*VM, error) {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return nil, err
 	}
 	vms := qm.parserVMs(string(output))
@@ -45,11 +45,11 @@ func (qm *QMVMManager) StartVM(vm *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	glog.Infof("virtual machine %s is started", vm.Name)
+	klog.Infof("virtual machine %s is started", vm.Name)
 
 	return nil
 }
@@ -59,11 +59,11 @@ func (qm *QMVMManager) StopVM(vm *VM) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	glog.Infof("virtual machine %s is stopped", vm.Name)
+	klog.Infof("virtual machine %s is stopped", vm.Name)
 	return nil
 }
 

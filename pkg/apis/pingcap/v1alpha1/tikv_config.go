@@ -194,11 +194,11 @@ type TiKVRaftDBConfig struct {
 // +k8s:openapi-gen=true
 type TiKVSecurityConfig struct {
 	// +optional
-	CAPath string `json:"ca_path,omitempty" toml:"ca_path,omitempty"`
+	CAPath string `json:"ca-path,omitempty" toml:"ca-path,omitempty"`
 	// +optional
-	CertPath string `json:"cert_path,omitempty" toml:"cert_path,omitempty"`
+	CertPath string `json:"cert-path,omitempty" toml:"cert-path,omitempty"`
 	// +optional
-	KeyPath string `json:"key_path,omitempty" toml:"key_path,omitempty"`
+	KeyPath string `json:"key-path,omitempty" toml:"key-path,omitempty"`
 	// +optional
 	OverrideSslTarget string `json:"override_ssl_target,omitempty" toml:"override_ssl_target,omitempty"`
 	// +optional

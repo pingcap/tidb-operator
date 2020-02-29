@@ -14,6 +14,7 @@
 package monitor
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -206,7 +207,7 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) *apps.Deployment {
+func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.Deployment, error) {
 	deployment := getMonitorDeploymentSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, initContainer)
@@ -219,7 +220,15 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
 	deployment.Spec.Template.Spec.Volumes = volumes
-	return deployment
+	b, err := json.Marshal(deployment.Spec.Template.Spec)
+	if err != nil {
+		return nil, err
+	}
+	if deployment.Annotations == nil {
+		deployment.Annotations = map[string]string{}
+	}
+	deployment.Annotations[controller.LastAppliedPodTemplate] = string(b)
+	return deployment, nil
 }
 
 func getMonitorDeploymentSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.TidbMonitor) *apps.Deployment {
