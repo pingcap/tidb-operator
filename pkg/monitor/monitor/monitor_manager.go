@@ -147,6 +147,10 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 	}
 
 	targetTcRef := monitor.Spec.Clusters[0]
+	if len(targetTcRef.Namespace) < 1 {
+		targetTcRef.Namespace = monitor.Namespace
+	}
+
 	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
 	if err != nil {
 		return err
