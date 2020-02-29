@@ -14,22 +14,28 @@
 package pod
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
-
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 )
 
 const (
-	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
+	tikvNotBootstrapped  = `TiKV cluster not bootstrapped, please start TiKV first"`
+	evictSchedulerLeader = "evict-leader-scheduler"
 )
+
+// Payload only used to unmarshal the data from pdapi
+type Payload struct {
+	StoreIdRanges map[string]interface{} `json:"store-id-ranges"`
+}
 
 func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
 
@@ -54,17 +60,18 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 	}
 
 	if stores.Count < 1 {
+		klog.Infof("tikv create no store pod[%s]", name)
 		return util.ARSuccess()
 	}
 
 	if len(evictLeaderSchedulers) < 1 {
+		klog.Infof("tikv create no evict pod[%s]", name)
 		return util.ARSuccess()
 	}
 
-	schedulerIds := sets.String{}
-	for _, s := range evictLeaderSchedulers {
-		id := strings.Split(s, "-")[3]
-		schedulerIds.Insert(id)
+	schedulerIds, err := filterLeaderEvictScheduler(evictLeaderSchedulers, pdClient)
+	if err != nil {
+		return util.ARFail(err)
 	}
 
 	// if the pod which is going to be created already have a store and was in evictLeaderSchedulers,
@@ -83,4 +90,36 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 	}
 
 	return util.ARSuccess()
+}
+
+func filterLeaderEvictScheduler(evictLeaderSchedulers []string, pdClient pdapi.PDClient) (sets.String, error) {
+	schedulerIds := sets.String{}
+	if len(evictLeaderSchedulers) == 1 && evictLeaderSchedulers[0] == evictSchedulerLeader {
+		c, err := pdClient.GetConfig()
+		if err != nil {
+			return schedulerIds, err
+		}
+		if c.Schedule != nil {
+			if c.Schedule.SchedulersPayload == nil {
+				c.Schedule.SchedulersPayload = map[string]string{}
+			}
+			v, ok := c.Schedule.SchedulersPayload[evictSchedulerLeader]
+			if ok {
+				payload := &Payload{}
+				err := json.Unmarshal([]byte(v), payload)
+				if err != nil {
+					return schedulerIds, err
+				}
+				for k, _ := range payload.StoreIdRanges {
+					schedulerIds.Insert(k)
+				}
+			}
+		}
+	} else {
+		for _, s := range evictLeaderSchedulers {
+			id := strings.Split(s, "-")[3]
+			schedulerIds.Insert(id)
+		}
+	}
+	return schedulerIds, nil
 }
