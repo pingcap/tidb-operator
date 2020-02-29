@@ -94,11 +94,11 @@ set -x
 bucket={{ .Values.s3.bucket }}
 
 cat <<EOF > /tmp/rclone.conf
-[aws]
+[s3]
 type = s3
 provider = AWS
 env_auth = true
-region = us-west-2
+region = {{ .Values.s3.region }}
 EOF
 
 cd "${backup_base_dir}"
