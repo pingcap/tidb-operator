@@ -190,9 +190,5 @@ webhooks:
         apiGroups: [ "pingcap.com"]
         apiVersions: ["v1alpha1"]
         resources: ["tidbclusters"]
-      - operations: ["CREATE"]
-        apiGroups: [""]
-        apiVersions: ["v1"]
-        resources: ["pods"]
 {{- end }}
 {{- end }}

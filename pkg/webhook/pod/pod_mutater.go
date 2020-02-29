@@ -26,13 +26,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 )
 
 func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
-		klog.Errorf("admission validating failed: cannot unmarshal %s to %T", ar.Kind, pod)
 		return util.ARFail(err)
 	}
 	original := pod.DeepCopy()
@@ -44,7 +42,6 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 	if !l.IsTiKV() {
 		return util.ARSuccess()
 	}
-	klog.Infof("receive mutation core mutate tikv pod")
 
 	tcName, exist := pod.Labels[label.InstanceLabelKey]
 	if !exist {
@@ -59,33 +56,25 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 		}
 		return util.ARFail(err)
 	}
-	klog.Infof("annotations =%v", tc.Annotations)
 	podName := pod.Name
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(podName)
 	if err != nil {
 		return util.ARFail(err)
 	}
 	sets := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
-	klog.Infof("sets = %v", sets.List())
-
 	if !sets.Has(ordinal) {
-		klog.Infof("receive mutation core mutate tikv normal pod")
 		return util.ARSuccess()
 	}
 
-	klog.Infof("receive mutation core mutate tikv auto-scaling pod")
 	cmName := fmt.Sprintf("%s-autoscaling", controller.TiKVMemberName(tcName))
-	klog.Infof("origin pod %v", original)
 	for _, v := range pod.Spec.Volumes {
 		if v.Name == "config" && v.ConfigMap != nil {
-			klog.Info("here! find it !!!!!!!!!!!!1")
 			v.ConfigMap.LocalObjectReference = corev1.LocalObjectReference{
 				Name: cmName,
 			}
 			break
 		}
 	}
-	klog.Infof("update pod %v", pod)
 	patch, err := util.CreateJsonPatch(original, pod)
 	if err != nil {
 		return util.ARFail(err)

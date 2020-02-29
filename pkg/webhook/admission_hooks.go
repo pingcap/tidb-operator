@@ -56,7 +56,6 @@ func (a *AdmissionHook) ValidatingResource() (plural schema.GroupVersionResource
 }
 
 func (a *AdmissionHook) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
-	klog.Info("here validate1!")
 	if !a.initialized {
 		return &admission.AdmissionResponse{
 			Allowed: false,
@@ -97,20 +96,21 @@ func (a *AdmissionHook) MutatingResource() (plural schema.GroupVersionResource, 
 }
 
 func (a *AdmissionHook) Admit(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
-	klog.Infof("receive mutation")
+	name := ar.Name
+	namespace := ar.Namespace
+	kind := ar.Kind.Kind
+	klog.Infof("receive mutation request for %s[%s/%s]", kind, namespace, name)
+
 	resp := a.strategyAC.Mutate(ar)
 	if !resp.Allowed {
 		return resp
 	}
-	klog.Infof("receive mutation pod")
 	// see if other ACs are interested in this resource
-	klog.Infof("ar kind %s", ar.Kind.Kind)
 	switch ar.Kind.Kind {
 	case "Pod":
 		if "" != ar.Kind.Group {
 			return a.unknownAdmissionRequest(ar)
 		}
-		klog.Infof("receive mutation core pod")
 		return a.podAC.MutatePods(ar)
 	default:
 		return resp

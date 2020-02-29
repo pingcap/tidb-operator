@@ -85,7 +85,6 @@ func (pc *PodAdmissionControl) MutatePods(ar *admission.AdmissionRequest) *admis
 	if ar.Operation != admission.Create && ar.Operation != admission.Update {
 		return util.ARSuccess()
 	}
-	klog.Infof("receive mutation core mutate pod")
 	return pc.mutatePod(ar)
 }
 
