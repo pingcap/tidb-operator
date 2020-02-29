@@ -54,6 +54,10 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
+	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
+		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
+	})
+
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		klog.Fatalf("failed to get config: %v", err)
