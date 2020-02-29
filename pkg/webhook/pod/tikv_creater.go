@@ -60,12 +60,10 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 	}
 
 	if stores.Count < 1 {
-		klog.Infof("tikv create no store pod[%s]", name)
 		return util.ARSuccess()
 	}
 
 	if len(evictLeaderSchedulers) < 1 {
-		klog.Infof("tikv create no evict pod[%s]", name)
 		return util.ARSuccess()
 	}
 
