@@ -195,7 +195,7 @@ admissionWebhook:
     pods: true
     ## validating hook validates the correctness of the resources under pingcap.com group
     pingcapResources: false
-    ## mutation webhook would mutate the given request for the specific resource and operation
+  ## mutation webhook would mutate the given request for the specific resource and operation
   mutation:
     ## defaulting hook set default values for the the resources under pingcap.com group
     pingcapResources: true
