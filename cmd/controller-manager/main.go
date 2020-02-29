@@ -93,6 +93,10 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
+	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
+		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
+	})
+
 	hostName, err := os.Hostname()
 	if err != nil {
 		klog.Fatalf("failed to get hostname: %v", err)
