@@ -90,6 +90,8 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 	return util.ARSuccess()
 }
 
+// This is method is to make compatible between old pdapi version and 4.0 pdapi version.
+// To get more detail, see: https://github.com/pingcap/tidb-operator/pull/1831
 func filterLeaderEvictScheduler(evictLeaderSchedulers []string, pdClient pdapi.PDClient) (sets.String, error) {
 	schedulerIds := sets.String{}
 	if len(evictLeaderSchedulers) == 1 && evictLeaderSchedulers[0] == evictSchedulerLeader {
@@ -108,7 +110,7 @@ func filterLeaderEvictScheduler(evictLeaderSchedulers []string, pdClient pdapi.P
 				if err != nil {
 					return schedulerIds, err
 				}
-				for k, _ := range payload.StoreIdRanges {
+				for k := range payload.StoreIdRanges {
 					schedulerIds.Insert(k)
 				}
 			}
