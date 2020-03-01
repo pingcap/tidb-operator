@@ -14,7 +14,6 @@
 package export
 
 import (
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
@@ -32,18 +31,9 @@ import (
 
 // BackupOpts contains the input arguments to the backup command
 type BackupOpts struct {
-	Namespace   string
-	BackupName  string
+	util.GenericBackupOptions
 	Bucket      string
-	Host        string
-	Port        int32
-	Password    string
-	User        string
 	StorageType string
-}
-
-func (bo *BackupOpts) String() string {
-	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
 }
 
 func (bo *BackupOpts) getBackupFullPath() string {
@@ -57,26 +47,6 @@ func (bo *BackupOpts) getBackupRelativePath() string {
 
 func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
-}
-
-func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
-	var tikvGCTime string
-	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
-	row := db.QueryRow(sql, constants.TikvGCVariable)
-	err := row.Scan(&tikvGCTime)
-	if err != nil {
-		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
-	}
-	return tikvGCTime, nil
-}
-
-func (bo *BackupOpts) setTikvGCLifeTime(db *sql.DB, gcTime string) error {
-	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
-	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
-	if err != nil {
-		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
-	}
-	return nil
 }
 
 func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
@@ -123,10 +93,6 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
 	return nil
-}
-
-func (bo *BackupOpts) getDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, db)
 }
 
 /*
