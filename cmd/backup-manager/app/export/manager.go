@@ -63,7 +63,7 @@ func (bm *BackupManager) ProcessBackup() error {
 
 	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		db, err = util.OpenDB(bm.getDSN(constants.TidbMetaDB))
+		db, err = util.OpenDB(bm.GetDSN(constants.TidbMetaDB))
 		if err := db.Ping(); err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			return false, nil
@@ -96,7 +96,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return err
 	}
 
-	oldTikvGCTime, err := bm.getTikvGCLifeTime(db)
+	oldTikvGCTime, err := bm.GetTikvGCLifeTime(db)
 	if err != nil {
 		klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -148,7 +148,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.setTikvGCLifeTime(db, constants.TikvGCLifeTime)
+		err = bm.SetTikvGCLifeTime(db, constants.TikvGCLifeTime)
 		if err != nil {
 			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
 			return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -163,7 +163,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	backupFullPath, backupErr := bm.dumpTidbClusterData()
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.setTikvGCLifeTime(db, oldTikvGCTime)
+		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
 			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
 			return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{

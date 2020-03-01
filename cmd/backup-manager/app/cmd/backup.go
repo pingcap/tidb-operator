@@ -30,7 +30,7 @@ import (
 
 // NewBackupCommand implements the backup command
 func NewBackupCommand() *cobra.Command {
-	bo := backup.Options{}
+	bo := backup.BackupOpts{}
 
 	cmd := &cobra.Command{
 		Use:   "backup",
@@ -51,7 +51,7 @@ func NewBackupCommand() *cobra.Command {
 	return cmd
 }
 
-func runBackup(backupOpts backup.Options, kubecfg string) error {
+func runBackup(backupOpts backup.BackupOpts, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
