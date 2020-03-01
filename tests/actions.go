@@ -408,19 +408,19 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                              oi.Image,
-		"controllerManager.autoFailover":             "true",
-		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
-		"controllerManager.logLevel":                 oi.LogLevel,
-		"scheduler.logLevel":                         "4",
-		"imagePullPolicy":                            string(oi.ImagePullPolicy),
-		"testMode":                                   strconv.FormatBool(oi.TestMode),
-		"admissionWebhook.cabundle":                  oi.Cabundle,
-		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
-		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
-		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
-		"admissionWebhook.hooksEnabled.defaulting":   strconv.FormatBool(oi.DefaultingEnabled),
-		"admissionWebhook.hooksEnabled.validating":   strconv.FormatBool(oi.ValidatingEnabled),
+		"operatorImage":                                oi.Image,
+		"controllerManager.autoFailover":               "true",
+		"scheduler.kubeSchedulerImageName":             oi.SchedulerImage,
+		"controllerManager.logLevel":                   oi.LogLevel,
+		"scheduler.logLevel":                           "4",
+		"imagePullPolicy":                              string(oi.ImagePullPolicy),
+		"testMode":                                     strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle":                    oi.Cabundle,
+		"admissionWebhook.create":                      strconv.FormatBool(oi.WebhookEnabled),
+		"admissionWebhook.validation.pods":             strconv.FormatBool(oi.PodWebhookEnabled),
+		"admissionWebhook.validation.statefulSets":     strconv.FormatBool(oi.StsWebhookEnabled),
+		"admissionWebhook.mutation.pingcapResources":   strconv.FormatBool(oi.DefaultingEnabled),
+		"admissionWebhook.validation.pingcapResources": strconv.FormatBool(oi.ValidatingEnabled),
 	}
 	if oi.ControllerManagerReplicas != nil {
 		set["controllerManager.replicas"] = strconv.Itoa(*oi.ControllerManagerReplicas)
