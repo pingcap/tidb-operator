@@ -204,7 +204,7 @@ admissionWebhook:
   failurePolicy:
     ## the validation webhook would check the request of the given resources, and the failurePolicy is recommended as Fail
     validation: Fail
-    ## the mutation webhook would mutate th erequest of the given resources, and the failurePolicy is recommended as Ignore
+    ## the mutation webhook would mutate the request of the given resources, and the failurePolicy is recommended as Ignore
     mutation: Ignore
   ## tidb-admission-webhook deployed as kubernetes apiservice server
   ## refer to https://github.com/openshift/generic-admission-server
