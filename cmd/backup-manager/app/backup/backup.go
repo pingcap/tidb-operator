@@ -15,6 +15,7 @@ package backup
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"os/exec"
@@ -32,6 +33,10 @@ import (
 type Options struct {
 	Namespace  string
 	BackupName string
+	Host       string
+	Port       int32
+	Password   string
+	User       string
 }
 
 func (bo *Options) String() string {
@@ -61,6 +66,30 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	}
 	klog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
 	return path, nil
+}
+
+func (bo *Options) getTikvGCLifeTime(db *sql.DB) (string, error) {
+	var tikvGCTime string
+	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
+	row := db.QueryRow(sql, constants.TikvGCVariable)
+	err := row.Scan(&tikvGCTime)
+	if err != nil {
+		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
+	}
+	return tikvGCTime, nil
+}
+
+func (bo *Options) setTikvGCLifeTime(db *sql.DB, gcTime string) error {
+	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
+	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
+	if err != nil {
+		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
+	}
+	return nil
+}
+
+func (bo *Options) getDSN(db string) string {
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, db)
 }
 
 // getCommitTs get backup position from `EndVersion` in BR backup meta
