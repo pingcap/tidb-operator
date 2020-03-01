@@ -64,11 +64,6 @@ func (bm *BackupManager) ProcessBackup() error {
 	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
 		db, err = util.OpenDB(bm.getDSN(constants.TidbMetaDB))
-		if err != nil {
-			klog.Warningf("can't open connection to tidb cluster %s, err: %v", bm, err)
-			return false, nil
-		}
-
 		if err := db.Ping(); err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			return false, nil
@@ -123,16 +118,35 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: err.Error(),
 		})
 	}
-	tikvGCTimeDuration, err := time.ParseDuration(constants.TikvGCLifeTime)
-	if err != nil {
-		klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
-		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ParseDefaultTikvGCLifeTimeFailed",
-			Message: err.Error(),
-		})
+
+	var tikvGCTimeDuration time.Duration
+	var tikvGCLifeTime string
+	if backup.Spec.TikvGCLifeTime != nil {
+		tikvGCLifeTime = *backup.Spec.TikvGCLifeTime
+		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+		if err != nil {
+			klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TikvGCVariable, err)
+			return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
+				Message: err.Error(),
+			})
+		}
+	} else {
+		tikvGCLifeTime = constants.TikvGCLifeTime
+		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+		if err != nil {
+			klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
+			return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
+				Message: err.Error(),
+			})
+		}
 	}
+
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.setTikvGCLifeTime(db, constants.TikvGCLifeTime)
 		if err != nil {
@@ -147,18 +161,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 	}
 
-	backupFullPath, err := bm.dumpTidbClusterData()
-	if err != nil {
-		klog.Errorf("dump cluster %s data failed, err: %s", bm, err)
-		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "DumpTidbClusterFailed",
-			Message: err.Error(),
-		})
-	}
-	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
-
+	backupFullPath, backupErr := bm.dumpTidbClusterData()
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.setTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
@@ -172,6 +175,17 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		}
 		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
 	}
+	if backupErr != nil {
+		klog.Errorf("dump cluster %s data failed, err: %s", bm, err)
+		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "DumpTidbClusterFailed",
+			Message: backupErr.Error(),
+		})
+	}
+	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
+
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
 	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
 	err = archiveBackupData(backupFullPath, archiveBackupPath)
