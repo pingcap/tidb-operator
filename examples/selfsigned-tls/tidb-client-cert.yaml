@@ -1,0 +1,30 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: tidb-client-cert
+spec:
+  secretName: tidb-client-cert
+  subject:
+    organizationalUnits:
+    - "TiDB Operator"
+  organization:
+  - "PingCAP"
+  duration: "8760h" # 364 days
+  commonName: "basic-tidb"
+  dnsNames:
+  - basic-tidb.default
+  - basic-tidb.default.svc
+  - basic-tidb-peer.default
+  - basic-tidb-peer.default.svc
+  - "*.basic-tidb-peer.default"
+  - "*.basic-tidb-peer.default.svc"
+  - "localhost"
+  ipAddresses:
+  - "127.0.0.1"
+  - "::1"
+  usages:
+  - "client auth"
+  - "server auth"
+  issuerRef:
+    name: selfsigned-cert-issuer
+    kind: Issuer
