@@ -40,9 +40,8 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 	if string(tc.Spec.ImagePullPolicy) == "" {
 		tc.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
-	if tc.Spec.EnableTLSCluster == nil {
-		d := false
-		tc.Spec.EnableTLSCluster = &d
+	if tc.Spec.TLSCluster == nil {
+		tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: false}
 	}
 	if tc.Spec.EnablePVReclaim == nil {
 		d := false
