@@ -34,10 +34,7 @@ HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.0.6+81d814748ab990ecd893cd1313edfb82400752bd
-KUBETEST2_EKS_VERSION=v0.0.6+d6afb853359f35999c6aa3c06ec96cb8ebcbd032
-KUBETEST2_GKE_VERSION=v0.0.6+12f40220e086ff4d4aa86b98d05cfc62f17d9cf9
-KUBETEST2_KIND_VERSION=v0.0.6+b4be23daed89152e595dc3ad4826d104107edc62
+KUBETEST2_VERSION=v0.0.7
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
 AWS_K8S_TESTER_VERSION=v0.6.2
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
@@ -156,10 +153,10 @@ function hack::wait_for_success() {
 
 function hack::__verify_kubetest2() {
     local n="$1"
-    local h="$2"
+    local v="$2"
     if test -x "$OUTPUT_BIN/$n"; then
-        local tmph=$(sha1sum $OUTPUT_BIN/$n | awk '{print $1}')
-        [[ "$tmph" == "$h" ]]
+        local tmpv=$($OUTPUT_BIN/$n --version 2 >/dev/null | awk '{print $2}')
+        [[ "$tmpv" == "$v" ]]
         return
     fi
     return 1
@@ -167,23 +164,22 @@ function hack::__verify_kubetest2() {
 
 function hack::__ensure_kubetest2() {
     local n="$1"
-    IFS=+ read -r v h <<<"$2"
-    if hack::__verify_kubetest2 $n $h; then
+    if hack::__verify_kubetest2 $n $KUBETEST2_VERSION; then
         return 0
     fi
     local tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    echo "info: downloading $n $v"
-    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$v/$n.gz | gunzip > $tmpfile
+    echo "info: downloading $n $KUBETEST2_VERSION"
+    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$KUBETEST2_VERSION/$n-$OS-$ARCH.gz | gunzip > $tmpfile
     mv $tmpfile $OUTPUT_BIN/$n
     chmod +x $OUTPUT_BIN/$n
 }
 
 function hack::ensure_kubetest2() {
-    hack::__ensure_kubetest2 kubetest2 $KUBETEST2_VERSION
-    hack::__ensure_kubetest2 kubetest2-gke $KUBETEST2_GKE_VERSION
-    hack::__ensure_kubetest2 kubetest2-kind $KUBETEST2_KIND_VERSION
-    hack::__ensure_kubetest2 kubetest2-eks $KUBETEST2_EKS_VERSION
+    hack::__ensure_kubetest2 kubetest2
+    hack::__ensure_kubetest2 kubetest2-gke
+    hack::__ensure_kubetest2 kubetest2-kind
+    hack::__ensure_kubetest2 kubetest2-eks
 }
 
 function hack::verify_aws_k8s_tester() {
