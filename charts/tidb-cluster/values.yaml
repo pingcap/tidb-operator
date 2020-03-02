@@ -76,8 +76,8 @@ pd:
   # pd Service
   # we can only specify clusterIP and loadBalancerIP now
   service:
-    clusterIP: "None"
-    portName: "None"
+#    clusterIP: "ClusterIP"
+    portName: "mysql-client"
 
   replicas: 3
   image: pingcap/pd:v3.0.8
@@ -397,7 +397,7 @@ tidb:
   service:
     type: NodePort
     exposeStatus: true
-    portName: "None"
+    portName: "client"
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
   separateSlowLog: true
