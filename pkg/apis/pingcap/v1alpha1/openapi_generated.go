@@ -1935,6 +1935,21 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 							},
 						},
 					},
+					"schedulers-payload": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Only used to display",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
