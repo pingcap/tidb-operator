@@ -73,7 +73,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	if err != nil {
 		return remotePath, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
 	}
-	glog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
+	klog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
 	return remotePath, nil
 }
 

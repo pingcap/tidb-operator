@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
 )
 
 type backupManager struct {
@@ -250,7 +249,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	return job, "", nil
 }
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
-	glog.Info("by jony %#v", backup)
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
@@ -266,19 +264,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
-	volumeMounts := []corev1.VolumeMount{
-		{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
-	}
-	volumes := []corev1.Volume{
-		{
-			Name: label.BackupJobLabelVal,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: backup.GetBackupPVCName(),
-				},
-			},
-		},
-	}
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
 	if backup.Spec.EnableTLSClient {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,

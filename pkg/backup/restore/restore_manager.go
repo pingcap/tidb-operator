@@ -181,31 +181,6 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
-	volumeMounts := []corev1.VolumeMount{
-		{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
-	}
-	volumes := []corev1.Volume{
-		{
-			Name: label.RestoreJobLabelVal,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: restore.GetRestorePVCName(),
-				},
-			},
-		},
-	}
-	if restore.Spec.EnableTLSClient {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
-		})
-		volumes = append(volumes, corev1.Volume{
-			Name: "br-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(restore.Spec.Cluster)),
-				},
-			},
-		})
-	}
 
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
@@ -220,14 +195,25 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
-					VolumeMounts:    volumeMounts,
-					Env:             envVars,
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
+					},
+					Env: envVars,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
 			Affinity:      restore.Spec.Affinity,
 			Tolerations:   restore.Spec.Tolerations,
-			Volumes:       volumes,
+			Volumes: []corev1.Volume{
+				{
+					Name: label.RestoreJobLabelVal,
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: restore.GetRestorePVCName(),
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -264,7 +250,20 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
-
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+	if restore.Spec.EnableTLSClient {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "br-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(restore.Spec.Cluster)),
+				},
+			},
+		})
+	}
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -278,9 +277,11 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
+					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},
 			},
+			Volumes:       volumes,
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
