@@ -99,10 +99,7 @@ func filterLeaderEvictScheduler(evictLeaderSchedulers []string, pdClient pdapi.P
 		if err != nil {
 			return schedulerIds, err
 		}
-		if c.Schedule != nil {
-			if c.Schedule.SchedulersPayload == nil {
-				c.Schedule.SchedulersPayload = map[string]string{}
-			}
+		if c.Schedule != nil && c.Schedule.SchedulersPayload != nil {
 			v, ok := c.Schedule.SchedulersPayload[evictSchedulerLeader]
 			if ok {
 				payload := &Payload{}
