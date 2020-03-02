@@ -40,8 +40,8 @@ sync-log = {{ .Values.binlog.pump.syncLog | default true }}
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.
 ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 # Path of file that contains X509 certificate in PEM format for connection with cluster components.
-ssl-cert = "/var/lib/pump-tls/cert"
+ssl-cert = "/var/lib/pump-tls/tls.crt"
 # Path of file that contains X509 key in PEM format for connection with cluster components.
-ssl-key = "/var/lib/pump-tls/key"
+ssl-key = "/var/lib/pump-tls/tls.key"
 {{- end -}}
 
