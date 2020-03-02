@@ -40,11 +40,15 @@ func (bo *Options) String() string {
 }
 
 func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
+	clusterNamespace := backup.Spec.BR.ClusterNamespace
+	if backup.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = backup.Namespace
+	}
 	args, remotePath, err := constructOptions(backup)
 	if err != nil {
 		return "", err
 	}
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, backup.Spec.BR.ClusterNamespace))
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
 	if backup.Spec.BR.EnableTLSClient {
 		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))

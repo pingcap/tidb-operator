@@ -35,11 +35,15 @@ func (ro *Options) String() string {
 }
 
 func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
+	clusterNamespace := restore.Spec.BR.ClusterNamespace
+	if restore.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = restore.Namespace
+	}
 	args, err := constructBROptions(restore)
 	if err != nil {
 		return err
 	}
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, restore.Spec.BR.ClusterNamespace))
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
 	if restore.Spec.BR.EnableTLSClient {
 		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))

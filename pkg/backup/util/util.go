@@ -298,15 +298,9 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if backup.Spec.BR != nil {
-			if backup.Spec.BR.Cluster == "" {
-				return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
-			}
-			if backup.Spec.BR.ClusterNamespace == "" {
-				backup.Spec.BR.ClusterNamespace = ns
-			}
+		if backup.Spec.BR.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
-
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
 			backup.Spec.Type != v1alpha1.BackupTypeDB &&
@@ -355,13 +349,8 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if restore.Spec.BR != nil {
-			if restore.Spec.BR.Cluster == "" {
-				return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
-			}
-			if restore.Spec.BR.ClusterNamespace == "" {
-				restore.Spec.BR.ClusterNamespace = ns
-			}
+		if restore.Spec.BR.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&
