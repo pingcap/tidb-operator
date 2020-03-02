@@ -337,6 +337,10 @@ type PDScheduleConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
 	Schedulers *PDSchedulerConfigs `toml:"schedulers,omitempty" json:"schedulers-v2,omitempty"` // json v2 is for the sake of compatible upgrade
+
+	// Only used to display
+	// +optional
+	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig

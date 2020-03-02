@@ -74,6 +74,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 
 	if controller.PodWebhookEnabled {
 		setUpgradePartition(newSet, 0)
+		return nil
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
