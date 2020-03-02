@@ -64,7 +64,7 @@ func (bm *BackupManager) ProcessBackup() error {
 	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
 		db, err = util.OpenDB(bm.GetDSN(constants.TidbMetaDB))
-		if err := db.Ping(); err != nil {
+		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			return false, nil
 		}
