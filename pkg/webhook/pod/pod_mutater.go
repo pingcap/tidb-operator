@@ -19,6 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -56,17 +57,33 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 		}
 		return util.ARFail(err)
 	}
-	podName := pod.Name
-	ordinal, err := operatorUtils.GetOrdinalFromPodName(podName)
+
+	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+		err := pc.tikvHotRegionSchedule(tc, pod)
+		if err != nil {
+			return util.ARFail(err)
+		}
+	}
+
+	patch, err := util.CreateJsonPatch(original, pod)
 	if err != nil {
 		return util.ARFail(err)
 	}
+	return util.ARPatch(patch)
+}
+
+func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	podName := pod.Name
+	ordinal, err := operatorUtils.GetOrdinalFromPodName(podName)
+	if err != nil {
+		return err
+	}
 	sets := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
 	if !sets.Has(ordinal) {
-		return util.ARSuccess()
+		return nil
 	}
 
-	cmName := fmt.Sprintf("%s-autoscaling", controller.TiKVMemberName(tcName))
+	cmName := fmt.Sprintf("%s-autoscaling", controller.TiKVMemberName(tc.Name))
 	for _, v := range pod.Spec.Volumes {
 		if v.Name == "config" && v.ConfigMap != nil {
 			v.ConfigMap.LocalObjectReference = corev1.LocalObjectReference{
@@ -75,9 +92,5 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 			break
 		}
 	}
-	patch, err := util.CreateJsonPatch(original, pod)
-	if err != nil {
-		return util.ARFail(err)
-	}
-	return util.ARPatch(patch)
+	return nil
 }
