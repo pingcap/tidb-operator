@@ -7723,6 +7723,12 @@ spec:
             storageSize:
               description: StorageSize is the request storage size for backup job
               type: string
+            tikvGCLifeTime:
+              description: TikvGCLifeTime is to specify the safe gc life time for
+                restore. The time limit during which data is retained for each GC,
+                in the format of Go Duration. When a GC happens, the current time
+                minus this value is the safe point.
+              type: string
             to:
               description: TiDBAccessConfig defines the configuration for access tidb
                 cluster

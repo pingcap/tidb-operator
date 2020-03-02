@@ -985,6 +985,10 @@ type RestoreSpec struct {
 	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// TikvGCLifeTime is to specify the safe gc life time for restore.
+	// The time limit during which data is retained for each GC, in the format of Go Duration.
+	// When a GC happens, the current time minus this value is the safe point.
+	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Restore data storage.

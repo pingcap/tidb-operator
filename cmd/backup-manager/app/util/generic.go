@@ -20,25 +20,26 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 )
 
-// GenericBackupOptions contains the generic input arguments to the backup command
-type GenericBackupOptions struct {
-	Namespace  string
-	BackupName string
-	Host       string
-	Port       int32
-	Password   string
-	User       string
+// GenericOptions contains the generic input arguments to the backup/restore command
+type GenericOptions struct {
+	Namespace string
+	// ResourceName can be the name of a backup or restore resource
+	ResourceName string
+	Host         string
+	Port         int32
+	Password     string
+	User         string
 }
 
-func (bo *GenericBackupOptions) String() string {
-	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
+func (bo *GenericOptions) String() string {
+	return fmt.Sprintf("%s/%s", bo.Namespace, bo.ResourceName)
 }
 
-func (bo *GenericBackupOptions) GetDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, db)
+func (bo *GenericOptions) GetDSN() string {
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB)
 }
 
-func (bo *GenericBackupOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {
+func (bo *GenericOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {
 	var tikvGCTime string
 	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
 	row := db.QueryRow(sql, constants.TikvGCVariable)
@@ -49,7 +50,7 @@ func (bo *GenericBackupOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {
 	return tikvGCTime, nil
 }
 
-func (bo *GenericBackupOptions) SetTikvGCLifeTime(db *sql.DB, gcTime string) error {
+func (bo *GenericOptions) SetTikvGCLifeTime(db *sql.DB, gcTime string) error {
 	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
 	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
 	if err != nil {

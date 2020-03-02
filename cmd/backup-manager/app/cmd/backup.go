@@ -19,7 +19,6 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -42,12 +41,7 @@ func NewBackupCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
-	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
-	cmd.Flags().StringVar(&bo.Host, "host", "", "Tidb cluster access address")
-	cmd.Flags().Int32Var(&bo.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
-	cmd.Flags().StringVar(&bo.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
-	cmd.Flags().StringVar(&bo.User, "user", "", "User for login tidb cluster")
-	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
+	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
 	return cmd
 }
 
