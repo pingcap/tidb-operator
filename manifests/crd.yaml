@@ -1607,6 +1607,9 @@ spec:
                             after cluster creation Optional: Defaults to 64'
                           format: int64
                           type: integer
+                        schedulers-payload:
+                          description: Only used to display
+                          type: object
                         schedulers-v2:
                           description: Schedulers support for loding customized schedulers
                             Immutable, change should be made through pd-ctl after
