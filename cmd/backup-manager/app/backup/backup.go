@@ -28,12 +28,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
-// BackupOpts contains the input arguments to the backup command
-type BackupOpts struct {
+// Options contains the input arguments to the backup command
+type Options struct {
 	util.GenericBackupOptions
 }
 
-func (bo *BackupOpts) backupData(backup *v1alpha1.Backup) (string, error) {
+func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	args, path, err := constructOptions(backup)
 	if err != nil {
 		return "", err

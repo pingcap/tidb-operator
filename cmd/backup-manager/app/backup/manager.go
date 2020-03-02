@@ -33,14 +33,14 @@ import (
 type Manager struct {
 	backupLister  listers.BackupLister
 	StatusUpdater controller.BackupConditionUpdaterInterface
-	BackupOpts
+	Options
 }
 
 // NewManager return a Manager
 func NewManager(
 	backupLister listers.BackupLister,
 	statusUpdater controller.BackupConditionUpdaterInterface,
-	backupOpts BackupOpts) *Manager {
+	backupOpts Options) *Manager {
 	return &Manager{
 		backupLister,
 		statusUpdater,

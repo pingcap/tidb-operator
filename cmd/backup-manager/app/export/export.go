@@ -29,27 +29,27 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 )
 
-// BackupOpts contains the input arguments to the backup command
-type BackupOpts struct {
+// Options contains the input arguments to the backup command
+type Options struct {
 	util.GenericBackupOptions
 	Bucket      string
 	StorageType string
 }
 
-func (bo *BackupOpts) getBackupFullPath() string {
+func (bo *Options) getBackupFullPath() string {
 	return filepath.Join(constants.BackupRootPath, bo.getBackupRelativePath())
 }
 
-func (bo *BackupOpts) getBackupRelativePath() string {
+func (bo *Options) getBackupRelativePath() string {
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
 	return fmt.Sprintf("%s/%s", bo.Bucket, backupName)
 }
 
-func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
+func (bo *Options) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
-func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
+func (bo *Options) dumpTidbClusterData() (string, error) {
 	bfPath := bo.getBackupFullPath()
 	err := util.EnsureDirectoryExist(bfPath)
 	if err != nil {
@@ -75,7 +75,7 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 	return bfPath, nil
 }
 
-func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
+func (bo *Options) backupDataToRemote(source, bucketURI string) error {
 	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
