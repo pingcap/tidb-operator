@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
@@ -78,10 +78,10 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(tc *v1alpha1.TidbCluster, se
 		var updateErr error
 		updatedSS, updateErr = sc.kubeCli.AppsV1().StatefulSets(ns).Update(set)
 		if updateErr == nil {
-			glog.Infof("TidbCluster: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, tcName, ns, setName)
+			klog.Infof("TidbCluster: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, tcName, ns, setName)
 			return nil
 		}
-		glog.Errorf("failed to update TidbCluster: [%s/%s]'s StatefulSet: [%s/%s], error: %v", ns, tcName, ns, setName, updateErr)
+		klog.Errorf("failed to update TidbCluster: [%s/%s]'s StatefulSet: [%s/%s], error: %v", ns, tcName, ns, setName, updateErr)
 
 		if updated, err := sc.setLister.StatefulSets(ns).Get(setName); err == nil {
 			// make a copy so we don't mutate the shared cache

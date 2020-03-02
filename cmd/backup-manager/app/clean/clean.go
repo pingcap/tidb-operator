@@ -19,7 +19,7 @@ import (
 	"io"
 	"os/exec"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -53,12 +53,12 @@ func (bo *Options) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
 		if err != nil {
 			return err
 		}
-		glog.Infof("Prepare to delete %s for cluster %s", obj.Key, bo)
+		klog.Infof("Prepare to delete %s for cluster %s", obj.Key, bo)
 		err = s.Delete(context.Background(), obj.Key)
 		if err != nil {
 			return err
 		}
-		glog.Infof("Delete %s for cluster %s successfully", obj.Key, bo)
+		klog.Infof("Delete %s for cluster %s successfully", obj.Key, bo)
 	}
 	return nil
 }
@@ -70,6 +70,6 @@ func (bo *Options) cleanRemoteBackupData(bucket string) error {
 		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, output: %s, err: %v", bo, string(output), err)
 	}
 
-	glog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
+	klog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
 	return nil
 }

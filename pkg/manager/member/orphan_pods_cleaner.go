@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -146,10 +146,10 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 		}
 		err = opc.podControl.DeletePod(tc, pod)
 		if err != nil {
-			glog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
+			klog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
 			return skipReason, err
 		}
-		glog.Infof("orphan pods cleaner: clean orphan pod: %s/%s successfully", ns, podName)
+		klog.Infof("orphan pods cleaner: clean orphan pod: %s/%s successfully", ns, podName)
 	}
 
 	return skipReason, nil

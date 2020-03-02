@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	certlisters "k8s.io/client-go/listers/certificates/v1beta1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // TiDBClusterCertOptions contains information needed to create new certificates
@@ -78,7 +78,7 @@ func (rcc *realCertControl) Create(or metav1.OwnerReference, certOpts *TiDBClust
 
 	// generate certificate if not exist
 	if rcc.secControl.Check(certOpts.Namespace, csrName) {
-		glog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, certOpts.Namespace, csrName)
+		klog.Infof("Secret %s already exist, reusing the key pair. TidbCluster: %s/%s", csrName, certOpts.Namespace, csrName)
 		return nil
 	}
 
@@ -108,7 +108,7 @@ func (rcc *realCertControl) Create(or metav1.OwnerReference, certOpts *TiDBClust
 
 	csrCh, err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Watch(watchReq)
 	if err != nil {
-		glog.Errorf("error watch CSR for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
+		klog.Errorf("error watch CSR for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (rcc *realCertControl) Create(or metav1.OwnerReference, certOpts *TiDBClust
 	for {
 		select {
 		case <-tick:
-			glog.Infof("CSR still not approved for [%s/%s]: %s, retry later", certOpts.Namespace, certOpts.Instance, csrName)
+			klog.Infof("CSR still not approved for [%s/%s]: %s, retry later", certOpts.Namespace, certOpts.Instance, csrName)
 			continue
 		case event, ok := <-watchCh:
 			if !ok {
@@ -133,7 +133,7 @@ func (rcc *realCertControl) Create(or metav1.OwnerReference, certOpts *TiDBClust
 			if updatedCSR.UID == csr.UID &&
 				approveCond == capi.CertificateApproved &&
 				updatedCSR.Status.Certificate != nil {
-				glog.Infof("signed certificate for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
+				klog.Infof("signed certificate for [%s/%s]: %s", certOpts.Namespace, certOpts.Instance, csrName)
 
 				// save signed certificate and key to secret
 				err = rcc.secControl.Create(or, certOpts, updatedCSR.Status.Certificate, key)
@@ -179,13 +179,13 @@ func (rcc *realCertControl) sendCSR(or metav1.OwnerReference, ns, instance strin
 	}
 
 	if csr != nil {
-		glog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
+		klog.Infof("found exist CSR %s/%s created by tidb-operator, overwriting", ns, csrName)
 		delOpts := &types.DeleteOptions{TypeMeta: types.TypeMeta{Kind: "CertificateSigningRequest"}}
 		err := rcc.kubeCli.CertificatesV1beta1().CertificateSigningRequests().Delete(csrName, delOpts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete exist old CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 		}
-		glog.Infof("exist old CSR deleted for [%s/%s]: %s", ns, instance, csrName)
+		klog.Infof("exist old CSR deleted for [%s/%s]: %s", ns, instance, csrName)
 		return rcc.sendCSR(or, ns, instance, rawCSR, csrName)
 	}
 
@@ -214,7 +214,7 @@ func (rcc *realCertControl) sendCSR(or metav1.OwnerReference, ns, instance strin
 	if err != nil {
 		return resp, fmt.Errorf("failed to create CSR for [%s/%s]: %s, error: %v", ns, instance, csrName, err)
 	}
-	glog.Infof("CSR created for [%s/%s]: %s", ns, instance, csrName)
+	klog.Infof("CSR created for [%s/%s]: %s", ns, instance, csrName)
 	return resp, nil
 }
 

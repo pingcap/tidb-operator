@@ -46,13 +46,13 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		return nil
 	}
-	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas)
+	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas, sts)
 }
 
 // syncTiDBAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
 // duration between each auto-scaling. If either of them is not meet, the auto-scaling would be rejected.
 // If the auto-scaling is permitted, the timestamp would be recorded and the Consecutive count would be zeroed.
-func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
+func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
 	intervalSeconds := tac.Spec.TiDB.ScaleInIntervalSeconds
 	if recommendedReplicas > currentReplicas {
 		intervalSeconds = tac.Spec.TiDB.ScaleOutIntervalSeconds
@@ -64,13 +64,14 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if !ableToScale {
 		return nil
 	}
-	updateTcTiDBAnnIfScale(tac)
-	tc.Spec.TiDB.Replicas = recommendedReplicas
-	return nil
+	return updateTcTiDBIfScale(tc, tac, recommendedReplicas)
 }
 
-func updateTcTiDBAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
+// Currently we didnt' record the auto-scaling out slot for tidb, because it is pointless for now.
+func updateTcTiDBIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, recommendedReplicas int32) error {
 	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
+	tc.Spec.TiDB.Replicas = recommendedReplicas
+	return nil
 }
 
 func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, instances []string) (int32, error) {
