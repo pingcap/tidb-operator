@@ -32,7 +32,7 @@ import (
 
 // NewExportCommand implements the backup command
 func NewExportCommand() *cobra.Command {
-	bo := export.BackupOpts{}
+	bo := export.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "export",
@@ -55,7 +55,7 @@ func NewExportCommand() *cobra.Command {
 	return cmd
 }
 
-func runExport(backupOpts export.BackupOpts, kubecfg string) error {
+func runExport(backupOpts export.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
