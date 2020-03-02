@@ -33,8 +33,8 @@ const (
 	nodeNameLabel    = "__meta_kubernetes_pod_node_name"
 	podIPLabel       = "__meta_kubernetes_pod_ip"
 	caFilePath       = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	certFilePath     = "/var/lib/pd-client-tls/cert"
-	keyFilePath      = "/var/lib/pd-client-tls/key"
+	certFilePath     = "/var/lib/pd-client-tls/tls.crt"
+	keyFilePath      = "/var/lib/pd-client-tls/tls.key"
 )
 
 var (
