@@ -252,14 +252,14 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if restore.Spec.EnableTLSClient {
+	if restore.Spec.BR.EnableTLSClient {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
 		})
 		volumes = append(volumes, corev1.Volume{
 			Name: "br-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(restore.Spec.Cluster)),
+					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(restore.Spec.BR.Cluster)),
 				},
 			},
 		})

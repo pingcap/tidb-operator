@@ -215,13 +215,8 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 			}
 		}
 	} else {
-		var backupNamespace, pdAddress string
-		if backupSpec.BackupNamespace == "" {
-			backupNamespace = ns
-		} else {
-			backupNamespace = backupSpec.BackupNamespace
-		}
-		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.Cluster, backupNamespace)
+		var pdAddress string
+		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, backupSpec.BR.ClusterNamespace)
 
 		if backupSpec.S3 != nil {
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,

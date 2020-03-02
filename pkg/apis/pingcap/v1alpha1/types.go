@@ -781,21 +781,17 @@ type BackupSpec struct {
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
-	// Whether enable TLS in TiDBCluster
-	// Optional: Defaults to false
-	// +optional
-	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
-	// ClusterName of backup cluster
-	// Required
-	Cluster string `json:"cluster,omitempty"`
-	// Namespace of backup cluster
-	// Optional: Defaults to namespace of backup job
-	BackupNamespace string `json:"backupNamespace,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
+	// Whether enable TLS in TiDBCluster
+	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
+	// ClusterName of backup cluster
+	Cluster string `json:"cluster,omitempty"`
+	// Namespace of backup/restore cluster
+	ClusterNamespace string `json:"clusterNamespace,omitempty"`
 	// DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
 	// Table is the specific table which will be backed-up or restored
@@ -999,16 +995,6 @@ type RestoreSpec struct {
 	// Affinity of restore Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
-	// Whether enable TLS in TiDBCluster
-	// Optional: Defaults to false
-	// +optional
-	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
-	// ClusterName of restore cluster
-	// Required
-	Cluster string `json:"cluster,omitempty"`
-	// Namespace of restore cluster
-	// Optional: Defaults to namespace of restore job
-	RestoreNamespace string `json:"restoreNamespace,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.

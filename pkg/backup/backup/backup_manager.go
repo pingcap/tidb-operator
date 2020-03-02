@@ -208,7 +208,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullIfNotPresent,
+					ImagePullPolicy: corev1.PullAlways,
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
 					},
@@ -266,14 +266,14 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if backup.Spec.EnableTLSClient {
+	if backup.Spec.BR.EnableTLSClient {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
 		})
 		volumes = append(volumes, corev1.Volume{
 			Name: "br-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(backup.Spec.Cluster)),
+					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(backup.Spec.BR.Cluster)),
 				},
 			},
 		})
@@ -290,7 +290,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullIfNotPresent,
+					ImagePullPolicy: corev1.PullAlways,
 					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},
