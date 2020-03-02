@@ -116,6 +116,18 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			})
 			return err
 		}
+
+		reason, err = bm.ensureBackupPVCExist(backup)
+		if err != nil {
+			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Type:    v1alpha1.BackupRetryFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			})
+			return err
+		}
+
 	} else {
 		// not found backup job, so we need to create it
 		job, reason, err = bm.makeBackupJob(backup)
@@ -128,17 +140,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			})
 			return err
 		}
-	}
-
-	reason, err = bm.ensureBackupPVCExist(backup)
-	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  reason,
-			Message: err.Error(),
-		})
-		return err
 	}
 
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {

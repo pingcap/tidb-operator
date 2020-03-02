@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Options struct {
@@ -46,8 +47,8 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
 	if restore.Spec.BR.EnableTLSClient {
 		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
-		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))
-		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, "key")))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, corev1.TLSPrivateKeyKey)))
 	}
 
 	var restoreType string
