@@ -538,8 +538,8 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			config.Security = &v1alpha1.TiKVSecurityConfig{}
 		}
 		config.Security.CAPath = serviceAccountCAPath
-		config.Security.CertPath = path.Join(tikvClusterCertPath, "cert")
-		config.Security.KeyPath = path.Join(tikvClusterCertPath, "key")
+		config.Security.CertPath = path.Join(tikvClusterCertPath, corev1.TLSCertKey)
+		config.Security.KeyPath = path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
 
 	confText, err := MarshalTOML(config)
