@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -65,9 +66,10 @@ func (rsc *realSecretControl) Create(or metav1.OwnerReference, certOpts *TiDBClu
 			OwnerReferences: []metav1.OwnerReference{or},
 		},
 		Data: map[string][]byte{
-			"cert": cert,
-			"key":  key,
+			v1.TLSCertKey:       cert,
+			v1.TLSPrivateKeyKey: key,
 		},
+		Type: v1.SecretTypeTLS,
 	}
 
 	_, err := rsc.kubeCli.CoreV1().Secrets(certOpts.Namespace).Create(secret)
@@ -84,7 +86,7 @@ func (rsc *realSecretControl) Load(ns string, secretName string) ([]byte, []byte
 		return nil, nil, err
 	}
 
-	return secret.Data["cert"], secret.Data["key"], nil
+	return secret.Data[v1.TLSCertKey], secret.Data[v1.TLSPrivateKeyKey], nil
 }
 
 // Check returns true if the secret already exist
