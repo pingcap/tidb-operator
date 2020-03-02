@@ -176,7 +176,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
 	}
 	if backupErr != nil {
-		klog.Errorf("dump cluster %s data failed, err: %s", bm, err)
+		klog.Errorf("dump cluster %s data failed, err: %s", bm, backupErr)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,

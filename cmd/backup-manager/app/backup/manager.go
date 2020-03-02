@@ -180,7 +180,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
 	}
 	if backupErr != nil {
-		klog.Errorf("backup cluster %s data failed, err: %s", bm, err)
+		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
