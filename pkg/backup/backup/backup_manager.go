@@ -188,11 +188,8 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	args := []string{
 		"export",
 		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--host=%s", backup.Spec.From.Host),
-		fmt.Sprintf("--port=%d", backup.Spec.From.Port),
-		fmt.Sprintf("--user=%s", backup.Spec.From.User),
-		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
@@ -271,9 +268,6 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--host=%s", backup.Spec.From.Host),
-		fmt.Sprintf("--port=%d", backup.Spec.From.Port),
-		fmt.Sprintf("--user=%s", backup.Spec.From.User),
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)

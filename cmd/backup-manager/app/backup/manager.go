@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
@@ -48,11 +49,29 @@ func NewManager(
 	}
 }
 
+func (bm *Manager) setOptions(backup *v1alpha1.Backup) {
+	bm.Options.Host = backup.Spec.From.Host
+
+	if backup.Spec.From.Port != 0 {
+		bm.Options.Port = backup.Spec.From.Port
+	} else {
+		bm.Options.Port = bkconstants.DefaultTidbPort
+	}
+
+	if backup.Spec.From.User != "" {
+		bm.Options.User = backup.Spec.From.User
+	} else {
+		bm.Options.User = bkconstants.DefaultTidbUser
+	}
+
+	bm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+}
+
 // ProcessBackup used to process the backup logic
 func (bm *Manager) ProcessBackup() error {
-	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
+	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)
 	if err != nil {
-		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
+		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.ResourceName, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -65,9 +84,11 @@ func (bm *Manager) ProcessBackup() error {
 		return fmt.Errorf("no br config in %s", bm)
 	}
 
+	bm.setOptions(backup)
+
 	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		db, err = util.OpenDB(bm.GetDSN(constants.TidbMetaDB))
+		db, err = util.OpenDB(bm.GetDSN())
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			return false, nil
