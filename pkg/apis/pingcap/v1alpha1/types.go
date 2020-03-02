@@ -630,12 +630,17 @@ type TLSCluster struct {
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 
-	// Secret name which stores user-defined TiDB components certificate,
-	// including the authentication among TiDB, TiKV and PD,
-	// between TiKV Control and TiKV, between PD Control and PD,
-	// between TiKV peers, and between PD peers.
+	// Secret name which stores user-defined PD certificate, key and ca
 	// +optional
-	SecretName string `json:"secretName,omitempty"`
+	PdSecretName string `json:"pdSecretName,omitempty"`
+
+	// Secret name which stores user-defined TiKV certificate, key and ca
+	// +optional
+	TikvSecretName string `json:"tikvSecretName,omitempty"`
+
+	// Secret name which stores user-defined TiDB certificate, key and ca
+	// +optional
+	TidbSecretName string `json:"tidbSecretName,omitempty"`
 
 	// Auto-generated certificate
 	// +optional
