@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -84,8 +85,8 @@ func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName stri
 		}
 	}
 
-	clientCert, certExists := secret.Data["cert"]
-	clientKey, keyExists := secret.Data["key"]
+	clientCert, certExists := secret.Data[v1.TLSCertKey]
+	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
 	if !certExists || !keyExists {
 		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", namespace, secretName)
 	}
