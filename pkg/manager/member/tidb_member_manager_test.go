@@ -1651,11 +1651,11 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					"startup-script": "",
 					"config-file": `[security]
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  ssl-cert = "/var/lib/tidb-server-tls/cert"
-  ssl-key = "/var/lib/tidb-server-tls/key"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
   cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cluster-ssl-cert = "/var/lib/tidb-tls/cert"
-  cluster-ssl-key = "/var/lib/tidb-tls/key"
+  cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
+  cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
 `,
 				},
 			},
