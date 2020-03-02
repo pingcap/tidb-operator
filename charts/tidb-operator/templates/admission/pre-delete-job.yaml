@@ -1,4 +1,4 @@
-{{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.hooksEnabled.pods ) }}
+{{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -96,5 +96,5 @@ spec:
             - "-c"
             - |
               set -e
-              kubectl delete validatingWebhookConfigurations.admissionregistration.k8s.io validation-delete-tidb-admission-webhook-cfg || true
+              kubectl delete validatingWebhookConfigurations.admissionregistration.k8s.io validation-tidb-pod-webhook-cfg || true
 {{- end }}
