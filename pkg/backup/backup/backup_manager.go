@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	glog "k8s.io/klog"
 )
 
 type backupManager struct {
@@ -116,18 +117,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			})
 			return err
 		}
-
-		reason, err = bm.ensureBackupPVCExist(backup)
-		if err != nil {
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupRetryFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			})
-			return err
-		}
-
 	} else {
 		// not found backup job, so we need to create it
 		job, reason, err = bm.makeBackupJob(backup)
@@ -140,6 +129,17 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 			})
 			return err
 		}
+	}
+
+	reason, err = bm.ensureBackupPVCExist(backup)
+	if err != nil {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupRetryFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  reason,
+			Message: err.Error(),
+		})
+		return err
 	}
 
 	if err := bm.jobControl.CreateJob(backup, job); err != nil {
@@ -197,6 +197,75 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
+	// TODO: need add ResourceRequirement for backup job
+	podSpec := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: backupLabel.Labels(),
+		},
+		Spec: corev1.PodSpec{
+			ServiceAccountName: constants.DefaultServiceAccountName,
+			Containers: []corev1.Container{
+				{
+					Name:            label.BackupJobLabelVal,
+					Image:           controller.TidbBackupManagerImage,
+					Args:            args,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
+					},
+					Env: envVars,
+				},
+			},
+			RestartPolicy: corev1.RestartPolicyNever,
+			Affinity:      backup.Spec.Affinity,
+			Tolerations:   backup.Spec.Tolerations,
+			Volumes: []corev1.Volume{
+				{
+					Name: label.BackupJobLabelVal,
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: backup.GetBackupPVCName(),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      backup.GetBackupJobName(),
+			Namespace: ns,
+			Labels:    backupLabel,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetBackupOwnerRef(backup),
+			},
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: controller.Int32Ptr(0),
+			Template:     *podSpec,
+		},
+	}
+
+	return job, "", nil
+}
+func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+	glog.Info("by jony %#v", backup)
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	if err != nil {
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+	}
+
+	args := []string{
+		"backup",
+		fmt.Sprintf("--namespace=%s", ns),
+		fmt.Sprintf("--backupName=%s", name),
+	}
+
+	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	volumeMounts := []corev1.VolumeMount{
 		{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
 	}
@@ -223,7 +292,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
-	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: backupLabel.Labels(),
@@ -235,7 +303,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},
@@ -244,61 +312,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Affinity:      backup.Spec.Affinity,
 			Tolerations:   backup.Spec.Tolerations,
 			Volumes:       volumes,
-		},
-	}
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      backup.GetBackupJobName(),
-			Namespace: ns,
-			Labels:    backupLabel,
-			OwnerReferences: []metav1.OwnerReference{
-				controller.GetBackupOwnerRef(backup),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(0),
-			Template:     *podSpec,
-		},
-	}
-
-	return job, "", nil
-}
-func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
-	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-	}
-
-	args := []string{
-		"backup",
-		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--backupName=%s", name),
-	}
-
-	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
-
-	podSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
-		},
-		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
-			Containers: []corev1.Container{
-				{
-					Name:            label.BackupJobLabelVal,
-					Image:           controller.TidbBackupManagerImage,
-					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
-					Env:             envVars,
-				},
-			},
-			RestartPolicy: corev1.RestartPolicyNever,
-			Affinity:      backup.Spec.Affinity,
-			Tolerations:   backup.Spec.Tolerations,
 		},
 	}
 

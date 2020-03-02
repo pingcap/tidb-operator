@@ -221,11 +221,7 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		} else {
 			backupNamespace = backupSpec.BackupNamespace
 		}
-		if backupSpec.EnableTLSClient {
-			pdAddress = fmt.Sprintf("https://%s-pd.%s", backupSpec.Cluster, backupNamespace)
-		} else {
-			pdAddress = fmt.Sprintf("http://%s-pd.%s", backupSpec.Cluster, backupNamespace)
-		}
+		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.Cluster, backupNamespace)
 
 		if backupSpec.S3 != nil {
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,

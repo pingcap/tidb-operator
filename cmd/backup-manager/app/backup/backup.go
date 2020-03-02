@@ -50,13 +50,11 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	} else {
 		backupNamespace = backup.Spec.BackupNamespace
 	}
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.Cluster, backupNamespace))
 	if backup.Spec.EnableTLSClient {
-		args = append(args, fmt.Sprintf("--pd=https://%s-pd.%s", backup.Spec.Cluster, backupNamespace))
 		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, "key")))
-	} else {
-		args = append(args, fmt.Sprintf("--pd=http://%s-pd.%s", backup.Spec.Cluster, backupNamespace))
 	}
 
 	var btype string

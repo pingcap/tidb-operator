@@ -45,13 +45,12 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	} else {
 		restoreNamespace = restore.Spec.RestoreNamespace
 	}
+
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.Cluster, restoreNamespace))
 	if restore.Spec.EnableTLSClient {
-		args = append(args, fmt.Sprintf("--pd=https://%s-pd.%s", restore.Spec.Cluster, restoreNamespace))
 		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, "cert")))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, "key")))
-	} else {
-		args = append(args, fmt.Sprintf("--pd=http://%s-pd.%s", restore.Spec.Cluster, restoreNamespace))
 	}
 
 	var restoreType string
