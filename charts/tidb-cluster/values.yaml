@@ -397,7 +397,7 @@ tidb:
   service:
     type: NodePort
     exposeStatus: true
-    portName: "client"
+    portName: "mysql-client"
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
   separateSlowLog: true
