@@ -725,8 +725,8 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			config.Security = &v1alpha1.PDSecurityConfig{}
 		}
 		config.Security.CAPath = serviceAccountCAPath
-		config.Security.CertPath = path.Join(pdClusterCertPath, "cert")
-		config.Security.KeyPath = path.Join(pdClusterCertPath, "key")
+		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
+		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
 
 	confText, err := MarshalTOML(config)

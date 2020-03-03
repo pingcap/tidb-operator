@@ -23,8 +23,8 @@ scrape_configs:
     insecure_skip_verify: true
   {{- if .Values.enableTLSCluster }}
     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    cert_file: /var/lib/pd-client-tls/cert
-    key_file: /var/lib/pd-client-tls/key
+    cert_file: /var/lib/pd-client-tls/tls.crt
+    key_file: /var/lib/pd-client-tls/tls.key
   scheme: https
   {{- end }}
   relabel_configs:
@@ -75,8 +75,8 @@ scrape_configs:
     insecure_skip_verify: true
   {{- if .Values.enableTLSCluster }}
     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    cert_file: /var/lib/pd-client-tls/cert
-    key_file: /var/lib/pd-client-tls/key
+    cert_file: /var/lib/pd-client-tls/tls.crt
+    key_file: /var/lib/pd-client-tls/tls.key
   scheme: https
   {{- end }}
   relabel_configs:
@@ -129,8 +129,8 @@ scrape_configs:
 # And we should fix it after TiKV fix this issue: https://github.com/tikv/tikv/issues/5340
 # {{- if .Values.enableTLSCluster }}
 #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-#     cert_file: /var/lib/pd-client-tls/cert
-#     key_file: /var/lib/pd-client-tls/key
+#     cert_file: /var/lib/pd-client-tls/tls.crt
+#     key_file: /var/lib/pd-client-tls/tls.key
 #   scheme: https
 # {{- end }}
   relabel_configs:

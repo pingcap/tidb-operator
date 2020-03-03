@@ -47,6 +47,10 @@ const (
 	serverCertPath = "/var/lib/tidb-server-tls"
 	// serviceAccountCAPath is where is CABundle of serviceaccount locates
 	serviceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	// tlsSecretRootCAKey is the key used in tls secret for the root CA.
+	// When user use self-signed certificates, the root CA must be provided. We
+	// following the same convention used in Kubernetes service token.
+	tlsSecretRootCAKey = corev1.ServiceAccountRootCAKey
 )
 
 type tidbMemberManager struct {
@@ -430,20 +434,20 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			config.Security = &v1alpha1.Security{}
 		}
 		config.Security.ClusterSSLCA = pointer.StringPtr(serviceAccountCAPath)
-		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, "cert"))
-		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, "key"))
+		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSCertKey))
+		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
 		if tc.Spec.TiDB.IsUserGeneratedCertificate() {
-			config.Security.SSLCA = pointer.StringPtr(path.Join(serverCertPath, "ca"))
+			config.Security.SSLCA = pointer.StringPtr(path.Join(serverCertPath, tlsSecretRootCAKey))
 		} else {
 			config.Security.SSLCA = pointer.StringPtr(serviceAccountCAPath)
 		}
-		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, "cert"))
-		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, "key"))
+		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSCertKey))
+		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
 	}
 	confText, err := MarshalTOML(config)
 	if err != nil {
