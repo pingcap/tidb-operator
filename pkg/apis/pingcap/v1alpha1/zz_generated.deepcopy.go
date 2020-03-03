@@ -1309,6 +1309,13 @@ func (in *PDScheduleConfig) DeepCopyInto(out *PDScheduleConfig) {
 			}
 		}
 	}
+	if in.SchedulersPayload != nil {
+		in, out := &in.SchedulersPayload, &out.SchedulersPayload
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
