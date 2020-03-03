@@ -149,6 +149,43 @@ type TidbMonitorRef struct {
 	Name string `json:"name"`
 }
 
-// TODO: sync status
+// BasicAutoScalerSpec describes the basic status for auto-scaling
+type BaseAutoScalerStatus struct {
+	// name is the name of the given metric
+	Name string `json:"name,omitempty"`
+
+	// CurrentValue is the current value of the metric.
+	CurrentValue float64 `json:"value,omitempty"`
+
+	// TargetValue is the target value of the metric.
+	TargetValue float64 `json:"value,omitempty"`
+
+	// lastScaleTime is the last time the HorizontalPodAutoscaler scaled the number of pods,
+	// used by the autoscaler to control how often the number of pods is changed.
+	// +optional
+	LastScaleTime string `json:"lastScaleTime,omitempty" protobuf:"bytes,2,opt,name=lastScaleTime"`
+
+	// currentReplicas is current number of replicas of pods managed by this autoscaler,
+	// as last seen by the autoscaler.
+	CurrentReplicas int32 `json:"currentReplicas" protobuf:"varint,3,opt,name=currentReplicas"`
+
+	// desiredReplicas is the desired number of replicas of pods managed by this autoscaler,
+	// as last calculated by the autoscaler.
+	DesiredReplicas int32 `json:"desiredReplicas" protobuf:"varint,4,opt,name=desiredReplicas"`
+}
+
+// TiKVAutoScalerStatus describes the status for tikv auto-scaling
+type TiKVAutoScalerStatus struct {
+	BaseAutoScalerStatus `json:",inline"`
+}
+
+// TiDBAutoScalerStatus describes the status for tidb auto-scaling
+type TiDBAutoScalerStatus struct {
+	BaseAutoScalerStatus `json:",inline"`
+}
+
+// TidbClusterAutoSclaerStatus describes the status for TidbClusterAutoScaler
 type TidbClusterAutoSclaerStatus struct {
+	TikvStatus TiKVAutoScalerStatus `json:"tikv,omitempty"`
+	TiDBStatus TiDBAutoScalerStatus `json:"tidb,omitempty"`
 }

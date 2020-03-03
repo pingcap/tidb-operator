@@ -100,6 +100,7 @@ func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAuto
 		}
 	}
 	tc.Spec.TiKV.Replicas = recommendedReplicas
+	tac.Status.TikvStatus.LastScaleTime = time.Now().Format(time.RFC3339)
 	return nil
 }
 

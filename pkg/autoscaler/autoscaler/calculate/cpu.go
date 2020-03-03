@@ -15,6 +15,7 @@ package calculate
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -65,6 +66,24 @@ func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, 
 	if err != nil {
 		return -1, err
 	}
+
+	switch memberType {
+	case v1alpha1.TiDBMemberType:
+		tac.Status.TiDBStatus.Name = string(MetricTypeCPU)
+		tac.Status.TiDBStatus.CurrentValue = cpuSecsTotal
+		tac.Status.TiDBStatus.TargetValue = expectedCpuSecsTotal
+		tac.Status.TiDBStatus.CurrentReplicas = int32(currentReplicas)
+		tac.Status.TiDBStatus.DesiredReplicas = rc
+	case v1alpha1.TiKVMemberType:
+		tac.Status.TikvStatus.Name = string(MetricTypeCPU)
+		tac.Status.TikvStatus.CurrentValue = cpuSecsTotal
+		tac.Status.TikvStatus.TargetValue = expectedCpuSecsTotal
+		tac.Status.TikvStatus.CurrentReplicas = int32(currentReplicas)
+		tac.Status.TikvStatus.DesiredReplicas = rc
+	default:
+		klog.Errorf("unsupport type - %s", memberType)
+	}
+
 	return rc, nil
 }
 
