@@ -76,7 +76,10 @@ pd:
   # pd Service
   # we can only specify clusterIP and loadBalancerIP now
   service:
-    clusterIP: "None"
+    # type: "<the default name will be used>"
+    # loadBalancerIP: "<the default name will be used>"
+    # clusterIP: "<>"
+    annotations: {}
 
   replicas: 3
   image: pingcap/pd:v3.0.8
