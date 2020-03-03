@@ -76,7 +76,7 @@ pd:
   # pd Service
   # we can only specify clusterIP and loadBalancerIP now
   service:
-#    clusterIP: "ClusterIP"
+    clusterIP: "None"
     portName: "client"
 
   replicas: 3
