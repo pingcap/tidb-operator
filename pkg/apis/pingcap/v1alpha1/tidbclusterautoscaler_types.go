@@ -155,10 +155,10 @@ type BaseAutoScalerStatus struct {
 	Name string `json:"name,omitempty"`
 
 	// CurrentValue is the current value of the metric.
-	CurrentValue float64 `json:"value,omitempty"`
+	CurrentValue float64 `json:"currentValue,omitempty"`
 
 	// TargetValue is the target value of the metric.
-	TargetValue float64 `json:"value,omitempty"`
+	TargetValue float64 `json:"targetValue,omitempty"`
 
 	// lastScaleTime is the last time the HorizontalPodAutoscaler scaled the number of pods,
 	// used by the autoscaler to control how often the number of pods is changed.
@@ -176,12 +176,12 @@ type BaseAutoScalerStatus struct {
 
 // TiKVAutoScalerStatus describes the status for tikv auto-scaling
 type TiKVAutoScalerStatus struct {
-	BaseAutoScalerStatus `json:",inline"`
+	BaseAutoScalerStatus `json:"tikv,omitempty"`
 }
 
 // TiDBAutoScalerStatus describes the status for tidb auto-scaling
 type TiDBAutoScalerStatus struct {
-	BaseAutoScalerStatus `json:",inline"`
+	BaseAutoScalerStatus `json:"tidb,omitempty"`
 }
 
 // TidbClusterAutoSclaerStatus describes the status for TidbClusterAutoScaler
