@@ -39,7 +39,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateS3CertEnvVar(useIAM bool, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -86,24 +86,29 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, stri
 			Name:  "AWS_STORAGE_CLASS",
 			Value: s3.StorageClass,
 		},
-		{
-			Name: "AWS_ACCESS_KEY_ID",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-					Key:                  constants.S3AccessKey,
+	}
+
+	if !useIAM {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name: "AWS_ACCESS_KEY_ID",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+						Key:                  constants.S3AccessKey,
+					},
 				},
 			},
-		},
-		{
-			Name: "AWS_SECRET_ACCESS_KEY",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-					Key:                  constants.S3SecretKey,
+			{
+				Name: "AWS_SECRET_ACCESS_KEY",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+						Key:                  constants.S3SecretKey,
+					},
 				},
 			},
-		},
+		}...)
 	}
 	return envVars, "", nil
 }
@@ -148,7 +153,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	storageType := GetStorageType(provider)
@@ -165,13 +170,15 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 			return certEnv, "GetS3SecretFailed", err
 		}
 
-		keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
-		if !exist {
-			err := fmt.Errorf("s3 secret %s/%s missing some keys %s", ns, s3SecretName, keyStr)
-			return certEnv, "s3KeyNotExist", err
+		if !useIAM {
+			keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
+			if !exist {
+				err := fmt.Errorf("s3 secret %s/%s missing some keys %s", ns, s3SecretName, keyStr)
+				return certEnv, "s3KeyNotExist", err
+			}
 		}
 
-		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(useIAM, provider.S3.DeepCopy())
 		if err != nil {
 			return certEnv, reason, err
 		}

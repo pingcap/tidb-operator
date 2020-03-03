@@ -114,6 +114,8 @@ const (
 	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
 	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
 	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
+	// AnnAWSIAM describes the IAM role use in s3 interfaces
+	AnnAWSIAM = "iam.amazonaws.com/role"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"

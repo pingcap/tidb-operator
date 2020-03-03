@@ -162,17 +162,21 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	annotations := map[string]string{}
+	iam, useIAM := backup.Annotations[label.AnnAWSIAM]
+	if useIAM {
+		annotations[label.AnnAWSIAM] = iam
+	}
 
 	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
-
 	envVars = append(envVars, storageEnv...)
 	// TODO: make pvc request storage size configurable
 	reason, err = bm.ensureBackupPVCExist(backup)
@@ -235,9 +239,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backup.GetBackupJobName(),
-			Namespace: ns,
-			Labels:    backupLabel,
+			Name:        backup.GetBackupJobName(),
+			Namespace:   ns,
+			Labels:      backupLabel,
+			Annotations: annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
@@ -253,8 +258,13 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	annotations := map[string]string{}
+	iam, useIAM := backup.Annotations[label.AnnAWSIAM]
+	if useIAM {
+		annotations[label.AnnAWSIAM] = iam
+	}
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -290,9 +300,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backup.GetBackupJobName(),
-			Namespace: ns,
-			Labels:    backupLabel,
+			Name:        backup.GetBackupJobName(),
+			Namespace:   ns,
+			Labels:      backupLabel,
+			Annotations: annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
