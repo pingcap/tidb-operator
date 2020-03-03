@@ -89,9 +89,11 @@ pd:
   # pd Service
   # we can only specify clusterIP and loadBalancerIP now
   service:
-    clusterIP: "None"
+    # type: "< default use global service type >"
+    # loadBalancerIP: "<if you set service type as loadBalancerIP,you can specify loadBalancerIP>"
+    # clusterIP: "<if you set service type as ClusterIP,you can specify ClusterIP>"
+    # annotations: {} "<the default name will be used>"
     # portName: "client"
-
   replicas: 3
   image: pingcap/pd:v3.0.8
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
