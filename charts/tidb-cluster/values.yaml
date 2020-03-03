@@ -56,7 +56,7 @@ discovery:
 enableConfigMapRollout: true
 
 # Whether enable TLS connections between server nodes.
-# When enabled, PD/TiDB/TiKV will use TLS encrypted connections to transfer data between each node,
+# When enabled, PD/TiDB/TiKV/PUMP will use TLS encrypted connections to transfer data between each node,
 # certificates will be generated automatically (if not already present).
 enableTLSCluster: false
 
@@ -435,7 +435,7 @@ tidb:
     # # secretName is the name of the secret that stores user-defined tidb server certificate, key and ca...
     # # If not specified but tls client is enabled, certificated signed by k8s is created automatically.
     # # Create this secret with the following command:
-    # # kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=cert=<tidb server certificate file path> --from-file=key=<tidb server key file path> --from-file=ca=<ca file path>
+    # # kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<tidb server certificate file path> --from-file=tls.key=<tidb server key file path> --from-file=ca.crt=<ca file path>
     # secretName: "demo-tidb-server-secret"
 
     # Auto-generated certificate in k8s: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
@@ -612,6 +612,7 @@ binlog:
     # pump configurations (change to the tags of your pump version),
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
+    # [security] section will be generated automatically if enableTLSCluster is set to true so users do not need to configure it.
     # config: |
     #   gc = 7
     #   heartbeat-interval = 2

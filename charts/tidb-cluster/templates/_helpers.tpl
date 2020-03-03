@@ -44,8 +44,8 @@ config-file: |-
     {{- if .Values.enableTLSCluster }}
   [security]
   cacert-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cert-path = "/var/lib/pd-tls/cert"
-  key-path = "/var/lib/pd-tls/key"
+  cert-path = "/var/lib/pd-tls/tls.crt"
+  key-path = "/var/lib/pd-tls/tls.key"
     {{- end -}}
 
 {{- end -}}
@@ -67,8 +67,8 @@ config-file: |-
     {{- if .Values.enableTLSCluster }}
   [security]
   ca-path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cert-path = "/var/lib/tikv-tls/cert"
-  key-path = "/var/lib/tikv-tls/key"
+  cert-path = "/var/lib/tikv-tls/tls.crt"
+  key-path = "/var/lib/tikv-tls/tls.key"
     {{- end -}}
 
 {{- end -}}
@@ -96,17 +96,17 @@ config-file: |-
     {{- end -}}
     {{- if .Values.enableTLSCluster }}
   cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cluster-ssl-cert = "/var/lib/tidb-tls/cert"
-  cluster-ssl-key = "/var/lib/tidb-tls/key"
+  cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
+  cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
     {{- end -}}
     {{- if .Values.tidb.tlsClient.enabled }}
     {{- if .Values.tidb.tlsClient.secretName }}
-  ssl-ca = "/var/lib/tidb-server-tls/ca"
+  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
     {{- else }}
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     {{- end }}
-  ssl-cert = "/var/lib/tidb-server-tls/cert"
-  ssl-key = "/var/lib/tidb-server-tls/key"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
     {{- end -}}
 
 {{- end -}}
@@ -118,10 +118,20 @@ config-file: |-
 {{/*
 Encapsulate pump configmap data for consistent digest calculation
 */}}
+{{- define "pump.tlsSecretName" -}}
+{{ .Values.clusterName }}-pump
+{{- end -}}
+
 {{- define "pump-configmap.data" -}}
 pump-config: |-
     {{- if .Values.binlog.pump.config }}
 {{ .Values.binlog.pump.config | indent 2 }}
+    {{- if .Values.enableTLSCluster }}
+  [security]
+  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  ssl-cert = "/var/lib/pump-tls/tls.crt"
+  ssl-key = "/var/lib/pump-tls/tls.key"
+    {{- end -}}
     {{- else -}}
 {{ tuple "config/_pump-config.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
     {{- end -}}
