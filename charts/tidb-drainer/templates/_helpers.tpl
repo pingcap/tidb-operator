@@ -20,8 +20,8 @@ config-file: |-
     {{- if .Values.enableTLSCluster }}
   [security]
   ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  ssl-cert = "/var/lib/drainer-tls/cert"
-  ssl-key = "/var/lib/drainer-tls/key"
+  ssl-cert = "/var/lib/drainer-tls/tls.crt"
+  ssl-key = "/var/lib/drainer-tls/tls.key"
     {{- end -}}
 {{- end -}}
 
