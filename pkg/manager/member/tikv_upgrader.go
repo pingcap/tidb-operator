@@ -89,6 +89,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 
 	if controller.PodWebhookEnabled {
 		setUpgradePartition(newSet, 0)
+		return nil
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
