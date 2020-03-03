@@ -788,7 +788,7 @@ type BackupSpec struct {
 type BRConfig struct {
 	// Whether enable TLS in TiDBCluster
 	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
-	// ClusterName of backup cluster
+	// ClusterName of backup/restore cluster
 	Cluster string `json:"cluster,omitempty"`
 	// Namespace of backup/restore cluster
 	ClusterNamespace string `json:"clusterNamespace,omitempty"`

@@ -384,7 +384,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 					},
 					"cluster": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ClusterName of backup cluster",
+							Description: "ClusterName of backup/restore cluster",
 							Type:        []string{"string"},
 							Format:      "",
 						},

@@ -6749,7 +6749,7 @@ spec:
                   description: Checksum specifies whether to run checksum after backup
                   type: boolean
                 cluster:
-                  description: ClusterName of backup cluster
+                  description: ClusterName of backup/restore cluster
                   type: string
                 clusterNamespace:
                   description: Namespace of backup/restore cluster
@@ -7580,7 +7580,7 @@ spec:
                   description: Checksum specifies whether to run checksum after backup
                   type: boolean
                 cluster:
-                  description: ClusterName of backup cluster
+                  description: ClusterName of backup/restore cluster
                   type: string
                 clusterNamespace:
                   description: Namespace of backup/restore cluster
@@ -8453,7 +8453,7 @@ spec:
                         backup
                       type: boolean
                     cluster:
-                      description: ClusterName of backup cluster
+                      description: ClusterName of backup/restore cluster
                       type: string
                     clusterNamespace:
                       description: Namespace of backup/restore cluster
