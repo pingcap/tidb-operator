@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -44,8 +43,7 @@ func NewRestoreCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
-	cmd.Flags().StringVar(&ro.RestoreName, "restoreName", "", "Restore CRD object name")
-	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
+	cmd.Flags().StringVar(&ro.ResourceName, "restoreName", "", "Restore CRD object name")
 	return cmd
 }
 
