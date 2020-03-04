@@ -225,6 +225,11 @@ ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tikv/tikv.toml
 "
 
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"
 exec /tikv-server ${ARGS}

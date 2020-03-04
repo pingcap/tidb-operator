@@ -16,7 +16,7 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
-
+	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
@@ -35,7 +36,6 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 		return util.ARFail(err)
 	}
 	original := pod.DeepCopy()
-
 	l := label.Label(pod.Labels)
 	if !l.IsManagedByTiDBOperator() {
 		return util.ARSuccess()
@@ -43,7 +43,6 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 	if !l.IsTiKV() {
 		return util.ARSuccess()
 	}
-
 	tcName, exist := pod.Labels[label.InstanceLabelKey]
 	if !exist {
 		return util.ARSuccess()
@@ -83,12 +82,33 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		return nil
 	}
 
-	cmName := fmt.Sprintf("%s-autoscaling", controller.TiKVMemberName(tc.Name))
-	for _, v := range pod.Spec.Volumes {
-		if v.Name == "config" && v.ConfigMap != nil {
-			v.ConfigMap.LocalObjectReference = corev1.LocalObjectReference{
-				Name: cmName,
-			}
+	cmName := controller.TiKVMemberName(tc.Name)
+	cm, err := pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
+	if err != nil {
+		klog.Infof("cm[%s/%s] found error,err %v", tc.Namespace, cmName, err)
+		return err
+	}
+	v, ok := cm.Data["config-file"]
+	if !ok {
+		return fmt.Errorf("tc[%s/%s]'s tikv config[config-file] is missing", tc.Namespace, tc.Name)
+	}
+	config := &v1alpha1.TiKVConfig{}
+	err = toml.Unmarshal([]byte(v), config)
+	if err != nil {
+		return err
+	}
+	if config.Server == nil {
+		config.Server = &v1alpha1.TiKVServerConfig{}
+	}
+	if config.Server.Labels == nil {
+		config.Server.Labels = map[string]string{}
+	}
+	// TODO: add document to explain the hot region label
+	config.Server.Labels["specialUse"] = "hotRegion"
+	for id, c := range pod.Spec.Containers {
+		if c.Name == "tikv" {
+			appendExtraLabelsENVForTiKV(config.Server.Labels, &c)
+			pod.Spec.Containers[id] = c
 			break
 		}
 	}
