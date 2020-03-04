@@ -139,7 +139,6 @@ func NewController(
 				pdFailover,
 			),
 			mm.NewTiKVMemberManager(
-				cmInformer.Lister(),
 				pdControl,
 				setControl,
 				svcControl,
