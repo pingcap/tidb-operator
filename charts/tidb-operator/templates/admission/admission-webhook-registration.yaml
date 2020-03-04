@@ -194,8 +194,8 @@ webhooks:
       caBundle: null
       {{- end }}
     rules:
-      - operations: [ "CREATE" ]
-        apiGroups: [ ""]
+      - operations: ["CREATE"]
+        apiGroups: [""]
         apiVersions: ["v1"]
         resources: ["pods"]
 {{- end }}
