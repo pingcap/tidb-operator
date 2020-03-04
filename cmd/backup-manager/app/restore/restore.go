@@ -18,21 +18,15 @@ import (
 	"os/exec"
 	"path"
 
-	"k8s.io/klog"
-
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 )
 
 type Options struct {
-	Namespace   string
-	RestoreName string
-}
-
-func (ro *Options) String() string {
-	return fmt.Sprintf("%s/%s", ro.Namespace, ro.RestoreName)
+	util.GenericOptions
 }
 
 func (ro *Options) restoreData(restore *v1alpha1.Restore) error {

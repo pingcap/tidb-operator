@@ -188,11 +188,8 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	args := []string{
 		"export",
 		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--host=%s", backup.Spec.From.Host),
-		fmt.Sprintf("--port=%d", backup.Spec.From.Port),
-		fmt.Sprintf("--user=%s", backup.Spec.From.User),
-		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
@@ -249,14 +246,22 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	return job, "", nil
 }
+
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	if err != nil {
+		return nil, reason, err
+	}
+
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
+
+	envVars = append(envVars, storageEnv...)
 
 	args := []string{
 		"backup",

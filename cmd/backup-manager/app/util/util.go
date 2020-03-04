@@ -98,17 +98,10 @@ func NormalizeBucketURI(bucket string) string {
 	return strings.Replace(bucket, "://", ":", 1)
 }
 
-// SetFlagsFromEnv set the environment variable. Will override default values, but be overridden by command line parameters.
-func SetFlagsFromEnv(flags *pflag.FlagSet, prefix string) error {
-	flags.VisitAll(func(f *pflag.Flag) {
-		envVar := prefix + "_" + strings.Replace(strings.ToUpper(f.Name), "-", "_", -1)
-		value := os.Getenv(envVar)
-		if value != "" {
-			flags.Set(f.Name, value)
-		}
-	})
-
-	return nil
+// GetOptionValueFromEnv get option's value from environment variable. If unset, return empty string.
+func GetOptionValueFromEnv(option, envPrefix string) string {
+	envVar := envPrefix + "_" + strings.Replace(strings.ToUpper(option), "-", "_", -1)
+	return os.Getenv(envVar)
 }
 
 // ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.

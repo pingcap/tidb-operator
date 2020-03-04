@@ -21,23 +21,17 @@ import (
 	"path"
 
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/klog"
-
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	Namespace  string
-	BackupName string
-}
-
-func (bo *Options) String() string {
-	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
+	util.GenericOptions
 }
 
 func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {

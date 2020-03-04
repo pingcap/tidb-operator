@@ -174,9 +174,6 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		"import",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
-		fmt.Sprintf("--host=%s", restore.Spec.To.Host),
-		fmt.Sprintf("--port=%d", restore.Spec.To.Port),
-		fmt.Sprintf("--user=%s", restore.Spec.To.User),
 		fmt.Sprintf("--backupPath=%s", backupPath),
 	}
 
@@ -238,11 +235,17 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
+	if err != nil {
+		return nil, reason, err
+	}
+
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
 
+	envVars = append(envVars, storageEnv...)
 	args := []string{
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
