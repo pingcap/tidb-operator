@@ -9,6 +9,12 @@ RUN wget -nv https://github.com/ncw/rclone/releases/download/${VERSION}/rclone-$
 	&& chmod 755 /usr/local/bin/rclone \
 	&& rm -rf rclone-${VERSION}-linux-amd64.zip rclone-${VERSION}-linux-amd64
 
+RUN wget -nv http://download.pingcap.org/br-latest-linux-amd64.tar.gz \
+    && tar -xzf br-latest-linux-amd64.tar.gz \
+    && mv bin/br /usr/local/bin \
+    && chmod 755 /usr/local/bin/br \
+    && rm -rf br-latest-linux-amd64.tar.gz
+
 COPY bin/tidb-backup-manager /tidb-backup-manager
 COPY entrypoint.sh /entrypoint.sh
 
