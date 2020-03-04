@@ -27,7 +27,7 @@ name: fullbackup-{{ date "200601021504" .Release.Time }}
 image:
   pullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup
-  backup: pingcap/tidb-cloud-backup:20191217
+  backup: pingcap/tidb-cloud-backup:20200229
 
 ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
 ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
