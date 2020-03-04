@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -188,12 +187,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-		if err := tkmm.syncTiKVAutoScalingConfigMap(tc); err != nil {
-			return err
-		}
-	}
-
 	newSet, err := getNewTiKVSetForTidbCluster(tc, cm)
 	if err != nil {
 		return err
@@ -293,47 +286,6 @@ func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *
 	}
 
 	return tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
-}
-
-func (tkmm *tikvMemberManager) syncTiKVAutoScalingConfigMap(tc *v1alpha1.TidbCluster) error {
-
-	cm, err := tkmm.cmLister.ConfigMaps(tc.Namespace).Get(controller.TiKVMemberName(tc.Name))
-	if err != nil {
-		return err
-	}
-	v, ok := cm.Data["config-file"]
-	if !ok {
-		return fmt.Errorf("tc[%s/%s]'s tikv config[config-file] is missing", tc.Namespace, tc.Name)
-	}
-	config := &v1alpha1.TiKVConfig{}
-	err = UnmarshalTOML([]byte(v), config)
-	if err != nil {
-		return err
-	}
-	if config.Server == nil {
-		config.Server = &v1alpha1.TiKVServerConfig{}
-	}
-	if config.Server.Labels == nil {
-		config.Server.Labels = map[string]string{}
-	}
-	// TODO: add document to explain the hot region label
-	config.Server.Labels["specialUse"] = "hotRegion"
-
-	confText, err := MarshalTOML(config)
-	if err != nil {
-		return err
-	}
-
-	newCm := &corev1.ConfigMap{}
-	newCm.Data = cm.Data
-	newCm.Labels = cm.Labels
-	newCm.Annotations = cm.Annotations
-	newCm.Name = fmt.Sprintf("%s-autoscaling", cm.Name)
-	newCm.Namespace = cm.Namespace
-
-	newCm.Data["config-file"] = string(confText)
-	_, err = tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
-	return err
 }
 
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
