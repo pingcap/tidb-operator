@@ -215,9 +215,16 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 			}
 		}
 	} else {
+		var pdAddress, clusterNamespace string
+		clusterNamespace = backupSpec.BR.ClusterNamespace
+		if backupSpec.BR.ClusterNamespace == "" {
+			clusterNamespace = ns
+		}
+		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, clusterNamespace)
+
 		if backupSpec.S3 != nil {
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,
-				strings.ReplaceAll(backupSpec.BR.PDAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
+				strings.ReplaceAll(pdAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
 		}
 	}
 
