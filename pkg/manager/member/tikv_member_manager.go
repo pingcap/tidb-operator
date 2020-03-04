@@ -44,7 +44,6 @@ const (
 
 // tikvMemberManager implements manager.Manager.
 type tikvMemberManager struct {
-	cmLister                     corelisters.ConfigMapLister
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	pdControl                    pdapi.PDControlInterface
@@ -63,7 +62,6 @@ type tikvMemberManager struct {
 
 // NewTiKVMemberManager returns a *tikvMemberManager
 func NewTiKVMemberManager(
-	cmLister corelisters.ConfigMapLister,
 	pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
@@ -78,7 +76,6 @@ func NewTiKVMemberManager(
 	tikvScaler Scaler,
 	tikvUpgrader Upgrader) manager.Manager {
 	kvmm := tikvMemberManager{
-		cmLister:     cmLister,
 		pdControl:    pdControl,
 		podLister:    podLister,
 		nodeLister:   nodeLister,
