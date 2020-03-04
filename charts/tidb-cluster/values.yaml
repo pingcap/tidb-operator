@@ -401,7 +401,7 @@ tidb:
   separateSlowLog: true
 
   # Add --advertise-address to TiDB's startup parameters
-	enableAdvertiseAddress: false
+  enableAdvertiseAddress: false
 
   slowLogTailer:
     image: busybox:1.26.2
