@@ -6745,15 +6745,15 @@ spec:
             br:
               description: BRConfig contains config for BR
               properties:
-                ca:
-                  description: CA is the CA certificate path for TLS connection
-                  type: string
-                cert:
-                  description: Cert is the certificate path for TLS connection
-                  type: string
                 checksum:
                   description: Checksum specifies whether to run checksum after backup
                   type: boolean
+                cluster:
+                  description: ClusterName of backup/restore cluster
+                  type: string
+                clusterNamespace:
+                  description: Namespace of backup/restore cluster
+                  type: string
                 concurrency:
                   description: Concurrency is the size of thread pool on each node
                     that execute the backup task
@@ -6762,18 +6762,15 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                key:
-                  description: Key is the private key path for TLS connection
-                  type: string
+                enableTLSClient:
+                  description: Whether enable TLS in TiDBCluster
+                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
                 onLine:
                   description: OnLine specifies whether online during restore
                   type: boolean
-                pd:
-                  description: PDAddress is the PD address of the tidb cluster
-                  type: string
                 rateLimit:
                   description: RateLimit is the rate limit of the backup task, MB/s
                     per node
@@ -6796,7 +6793,7 @@ spec:
                     e.g. 1m, 1h
                   type: string
               required:
-              - pd
+              - cluster
               type: object
             from:
               description: TiDBAccessConfig defines the configuration for access tidb
@@ -7587,15 +7584,15 @@ spec:
             br:
               description: BRConfig contains config for BR
               properties:
-                ca:
-                  description: CA is the CA certificate path for TLS connection
-                  type: string
-                cert:
-                  description: Cert is the certificate path for TLS connection
-                  type: string
                 checksum:
                   description: Checksum specifies whether to run checksum after backup
                   type: boolean
+                cluster:
+                  description: ClusterName of backup/restore cluster
+                  type: string
+                clusterNamespace:
+                  description: Namespace of backup/restore cluster
+                  type: string
                 concurrency:
                   description: Concurrency is the size of thread pool on each node
                     that execute the backup task
@@ -7604,18 +7601,15 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                key:
-                  description: Key is the private key path for TLS connection
-                  type: string
+                enableTLSClient:
+                  description: Whether enable TLS in TiDBCluster
+                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
                 onLine:
                   description: OnLine specifies whether online during restore
                   type: boolean
-                pd:
-                  description: PDAddress is the PD address of the tidb cluster
-                  type: string
                 rateLimit:
                   description: RateLimit is the rate limit of the backup task, MB/s
                     per node
@@ -7638,7 +7632,7 @@ spec:
                     e.g. 1m, 1h
                   type: string
               required:
-              - pd
+              - cluster
               type: object
             gcs:
               description: GcsStorageProvider represents the google cloud storage
@@ -8470,16 +8464,16 @@ spec:
                 br:
                   description: BRConfig contains config for BR
                   properties:
-                    ca:
-                      description: CA is the CA certificate path for TLS connection
-                      type: string
-                    cert:
-                      description: Cert is the certificate path for TLS connection
-                      type: string
                     checksum:
                       description: Checksum specifies whether to run checksum after
                         backup
                       type: boolean
+                    cluster:
+                      description: ClusterName of backup/restore cluster
+                      type: string
+                    clusterNamespace:
+                      description: Namespace of backup/restore cluster
+                      type: string
                     concurrency:
                       description: Concurrency is the size of thread pool on each
                         node that execute the backup task
@@ -8489,18 +8483,15 @@ spec:
                       description: DB is the specific DB which will be backed-up or
                         restored
                       type: string
-                    key:
-                      description: Key is the private key path for TLS connection
-                      type: string
+                    enableTLSClient:
+                      description: Whether enable TLS in TiDBCluster
+                      type: boolean
                     logLevel:
                       description: LogLevel is the log level
                       type: string
                     onLine:
                       description: OnLine specifies whether online during restore
                       type: boolean
-                    pd:
-                      description: PDAddress is the PD address of the tidb cluster
-                      type: string
                     rateLimit:
                       description: RateLimit is the rate limit of the backup task,
                         MB/s per node
@@ -8523,7 +8514,7 @@ spec:
                         e.g. 1m, 1h
                       type: string
                   required:
-                  - pd
+                  - cluster
                   type: object
                 from:
                   description: TiDBAccessConfig defines the configuration for access
