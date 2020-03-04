@@ -97,6 +97,9 @@ e2e-build:
 e2e:
 	./hack/e2e.sh
 
+e2e-examples:
+	./hack/e2e-examples.sh
+
 stability-test-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/blockwriter ./tests/cmd/blockwriter
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/stability-test/bin/stability-test ./tests/cmd/stability
