@@ -74,7 +74,7 @@ spec:
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
           {{- end }}
-          {{- if or .Values.scheduledBackup.ceph .Values.scheduledBackup.s3 }}
+          {{- if or .Values.scheduledBackup.ceph.secretName .Values.scheduledBackup.s3.secretName }}
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
