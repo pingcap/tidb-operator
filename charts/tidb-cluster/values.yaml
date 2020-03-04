@@ -700,7 +700,7 @@ binlog:
 scheduledBackup:
   create: false
   # https://github.com/pingcap/tidb-cloud-backup
-  mydumperImage: pingcap/tidb-cloud-backup:20191217
+  mydumperImage: pingcap/tidb-cloud-backup:20200229
   mydumperImagePullPolicy: IfNotPresent
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -741,6 +741,7 @@ scheduledBackup:
   # backup to gcp
   gcp: {}
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores the gcp service account credentials json file
   # The service account must have read/write permission to the above bucket.
   # Read the following document to create the service account and download the credentials file as credentials.json:
@@ -761,6 +762,7 @@ scheduledBackup:
   s3: {}
   # region: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores s3 object store access key and secret key
   # You can create the secret by:
   # kubectl create secret generic s3-backup-secret --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>

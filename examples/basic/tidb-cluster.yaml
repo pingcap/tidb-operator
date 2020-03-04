@@ -16,7 +16,7 @@ spec:
     baseImage: pingcap/tikv
     replicas: 3
     requests:
-      storage: "50Gi"
+      storage: "1Gi"
     config: {}
   tidb:
     baseImage: pingcap/tidb
