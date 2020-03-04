@@ -26,28 +26,67 @@ const (
 )
 
 func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
-	if tc.Spec.TiDB.BaseImage == "" {
-		tc.Spec.TiDB.BaseImage = defaultTiDBImage
+	setTidbClusterSpecDefault(tc)
+	setPdSpecDefault(tc)
+	setTikvSpecDefault(tc)
+	setTidbSpecDefault(tc)
+	if tc.Spec.Pump != nil {
+		setPumpSpecDefault(tc)
 	}
-	if tc.Spec.TiKV.BaseImage == "" {
-		tc.Spec.TiKV.BaseImage = defaultTiKVImage
+}
+
+// setTidbClusterSpecDefault is only managed the property under Spec
+func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
+	if string(tc.Spec.ImagePullPolicy) == "" {
+		tc.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
-	if tc.Spec.PD.BaseImage == "" {
-		tc.Spec.PD.BaseImage = defaultPDImage
+	if tc.Spec.EnableTLSCluster == nil {
+		d := false
+		tc.Spec.EnableTLSCluster = &d
 	}
-	if tc.Spec.Pump != nil && tc.Spec.Pump.BaseImage == "" {
-		tc.Spec.Pump.BaseImage = defaultBinlogImage
+	if tc.Spec.EnablePVReclaim == nil {
+		d := false
+		tc.Spec.EnablePVReclaim = &d
 	}
+}
+
+func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.TiDB.Config == nil {
 		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 	}
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiDB.Version != nil {
+		if tc.Spec.TiDB.BaseImage == "" {
+			tc.Spec.TiDB.BaseImage = defaultTiDBImage
+		}
+	}
+}
+
+func setTikvSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.TiKV.Config == nil {
 		tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
 	}
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiKV.Version != nil {
+		if tc.Spec.TiKV.BaseImage == "" {
+			tc.Spec.TiKV.BaseImage = defaultTiKVImage
+		}
+	}
+}
+
+func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.PD.Config == nil {
 		tc.Spec.PD.Config = &v1alpha1.PDConfig{}
 	}
-	if string(tc.Spec.ImagePullPolicy) == "" {
-		tc.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	if len(tc.Spec.Version) > 0 || tc.Spec.PD.Version != nil {
+		if tc.Spec.PD.BaseImage == "" {
+			tc.Spec.PD.BaseImage = defaultPDImage
+		}
+	}
+}
+
+func setPumpSpecDefault(tc *v1alpha1.TidbCluster) {
+	if len(tc.Spec.Version) > 0 || tc.Spec.Pump.Version != nil {
+		if tc.Spec.Pump.BaseImage == "" {
+			tc.Spec.Pump.BaseImage = defaultBinlogImage
+		}
 	}
 }

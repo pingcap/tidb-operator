@@ -192,16 +192,12 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	args := []string{
 		"export",
 		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--host=%s", backup.Spec.From.Host),
-		fmt.Sprintf("--port=%d", backup.Spec.From.Port),
-		fmt.Sprintf("--user=%s", backup.Spec.From.User),
-		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
-
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -255,6 +251,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	return job, "", nil
 }
+
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
@@ -264,10 +261,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		annotations[label.AnnAWSIAM] = iam
 	}
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	if err != nil {
+		return nil, reason, err
+	}
+
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
+
+	envVars = append(envVars, storageEnv...)
 
 	args := []string{
 		"backup",
@@ -276,6 +280,20 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+	if backup.Spec.BR.EnableTLSClient {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "br-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(backup.Spec.BR.Cluster)),
+				},
+			},
+		})
+	}
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -289,12 +307,14 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
+					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
 			Affinity:      backup.Spec.Affinity,
 			Tolerations:   backup.Spec.Tolerations,
+			Volumes:       volumes,
 		},
 	}
 

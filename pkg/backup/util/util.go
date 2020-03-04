@@ -294,19 +294,20 @@ func GetBackupDataPath(provider v1alpha1.StorageProvider) (string, string, error
 func ValidateBackup(backup *v1alpha1.Backup) error {
 	ns := backup.Namespace
 	name := backup.Name
+
+	if backup.Spec.From.Host == "" {
+		return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+	}
+	if backup.Spec.From.SecretName == "" {
+		return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+	}
 	if backup.Spec.BR == nil {
-		if backup.Spec.From.Host == "" {
-			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		}
-		if backup.Spec.From.SecretName == "" {
-			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-		}
 		if backup.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if backup.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		if backup.Spec.BR.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
 		if backup.Spec.Type != "" &&
 			backup.Spec.Type != v1alpha1.BackupTypeFull &&
@@ -345,19 +346,20 @@ func ValidateBackup(backup *v1alpha1.Backup) error {
 func ValidateRestore(restore *v1alpha1.Restore) error {
 	ns := restore.Namespace
 	name := restore.Name
+
+	if restore.Spec.To.Host == "" {
+		return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
+	}
+	if restore.Spec.To.SecretName == "" {
+		return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
+	}
 	if restore.Spec.BR == nil {
-		if restore.Spec.To.Host == "" {
-			return fmt.Errorf("missing cluster config in spec of %s/%s", ns, name)
-		}
-		if restore.Spec.To.SecretName == "" {
-			return fmt.Errorf("missing tidbSecretName config in spec of %s/%s", ns, name)
-		}
 		if restore.Spec.StorageSize == "" {
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if restore.Spec.BR.PDAddress == "" {
-			return fmt.Errorf("pd address should be configured for BR in spec of %s/%s", ns, name)
+		if restore.Spec.BR.Cluster == "" {
+			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
 		if restore.Spec.Type != "" &&
 			restore.Spec.Type != v1alpha1.BackupTypeFull &&

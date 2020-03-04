@@ -98,17 +98,10 @@ func NormalizeBucketURI(bucket string) string {
 	return strings.Replace(bucket, "://", ":", 1)
 }
 
-// SetFlagsFromEnv set the environment variable. Will override default values, but be overridden by command line parameters.
-func SetFlagsFromEnv(flags *pflag.FlagSet, prefix string) error {
-	flags.VisitAll(func(f *pflag.Flag) {
-		envVar := prefix + "_" + strings.Replace(strings.ToUpper(f.Name), "-", "_", -1)
-		value := os.Getenv(envVar)
-		if value != "" {
-			flags.Set(f.Name, value)
-		}
-	})
-
-	return nil
+// GetOptionValueFromEnv get option's value from environment variable. If unset, return empty string.
+func GetOptionValueFromEnv(option, envPrefix string) string {
+	envVar := envPrefix + "_" + strings.Replace(strings.ToUpper(option), "-", "_", -1)
+	return os.Getenv(envVar)
 }
 
 // ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.
@@ -119,7 +112,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config)...)
-	storageArgs, path, err := getRemoteStorage(backup.Spec.StorageProvider)
+	storageArgs, remotePath, err := getRemoteStorage(backup.Spec.StorageProvider)
 	if err != nil {
 		return nil, "", err
 	}
@@ -130,7 +123,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 	if backup.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
 		args = append(args, fmt.Sprintf("--table=%s", config.Table))
 	}
-	return args, path, nil
+	return args, remotePath, nil
 }
 
 // ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
@@ -158,16 +151,6 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 // constructBRGlobalOptions constructs BR basic global options.
 func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {
 	var args []string
-	args = append(args, fmt.Sprintf("--pd=%s", config.PDAddress))
-	if config.CA != "" {
-		args = append(args, fmt.Sprintf("--ca=%s", config.CA))
-	}
-	if config.Cert != "" {
-		args = append(args, fmt.Sprintf("--cert=%s", config.Cert))
-	}
-	if config.Key != "" {
-		args = append(args, fmt.Sprintf("--key=%s", config.Key))
-	}
 	if config.LogLevel != "" {
 		args = append(args, fmt.Sprintf("--log-level=%s", config.LogLevel))
 	}

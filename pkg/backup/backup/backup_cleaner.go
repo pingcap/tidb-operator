@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // BackupCleaner implements the logic for cleaning backup
@@ -63,7 +63,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	glog.Infof("start to clean backup %s/%s", ns, name)
+	klog.Infof("start to clean backup %s/%s", ns, name)
 
 	cleanJobName := backup.GetCleanJobName()
 	_, err := bc.jobLister.Jobs(ns).Get(cleanJobName)

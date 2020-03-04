@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -119,7 +119,7 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
 		return err
 	}
 
@@ -260,9 +260,9 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		confTextStr = strings.Join([]string{
 			confTextStr,
 			"[security]",
-			serviceAccountCAPath,
-			path.Join(pumpCertPath, "cert"),
-			path.Join(pumpCertPath, "key")}, "\n")
+			fmt.Sprintf("ssl-ca = \"%s\"", serviceAccountCAPath),
+			fmt.Sprintf("ssl-cert = \"%s\"", path.Join(pumpCertPath, corev1.TLSCertKey)),
+			fmt.Sprintf("ssl-key = \"%s\"", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))}, "\n")
 	}
 	data := map[string]string{
 		"pump-config": confTextStr,

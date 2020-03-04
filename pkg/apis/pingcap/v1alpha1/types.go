@@ -765,6 +765,10 @@ type BackupSpec struct {
 	From TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// TikvGCLifeTime is to specify the safe gc life time for backup.
+	// The time limit during which data is retained for each GC, in the format of Go Duration.
+	// When a GC happens, the current time minus this value is the safe point.
+	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
@@ -786,18 +790,16 @@ type BackupSpec struct {
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
-	// PDAddress is the PD address of the tidb cluster
-	PDAddress string `json:"pd"`
+	// Whether enable TLS in TiDBCluster
+	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
+	// ClusterName of backup/restore cluster
+	Cluster string `json:"cluster"`
+	// Namespace of backup/restore cluster
+	ClusterNamespace string `json:"clusterNamespace,omitempty"`
 	// DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
 	// Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
-	// CA is the CA certificate path for TLS connection
-	CA string `json:"ca,omitempty"`
-	// Cert is the certificate path for TLS connection
-	Cert string `json:"cert,omitempty"`
-	// Key is the private key path for TLS connection
-	Key string `json:"key,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`
 	// StatusAddr is the HTTP listening address for the status report service. Set to empty string to disable
@@ -981,6 +983,10 @@ type RestoreSpec struct {
 	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.
 	Type BackupType `json:"backupType,omitempty"`
+	// TikvGCLifeTime is to specify the safe gc life time for restore.
+	// The time limit during which data is retained for each GC, in the format of Go Duration.
+	// When a GC happens, the current time minus this value is the safe point.
+	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Restore data storage.

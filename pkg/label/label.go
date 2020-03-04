@@ -116,6 +116,10 @@ const (
 	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
 	// AnnAWSIAM describes the IAM role use in s3 interfaces
 	AnnAWSIAM = "iam.amazonaws.com/role"
+	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
+	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
+	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
+	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"

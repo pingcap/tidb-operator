@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -41,7 +41,7 @@ func NewBackupCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
-	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
+	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
 	return cmd
 }
 
@@ -63,7 +63,7 @@ func runBackup(backupOpts backup.Options, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	glog.Infof("start to process backup %s", backupOpts.String())
+	klog.Infof("start to process backup %s", backupOpts.String())
 	bm := backup.NewManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessBackup()
 }
