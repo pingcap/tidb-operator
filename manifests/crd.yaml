@@ -6792,6 +6792,8 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
+              required:
+              - cluster
               type: object
             from:
               description: TiDBAccessConfig defines the configuration for access tidb
@@ -7623,6 +7625,8 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
+              required:
+              - cluster
               type: object
             gcs:
               description: GcsStorageProvider represents the google cloud storage
@@ -8497,6 +8501,8 @@ spec:
                       description: TimeAgo is the history version of the backup task,
                         e.g. 1m, 1h
                       type: string
+                  required:
+                  - cluster
                   type: object
                 from:
                   description: TiDBAccessConfig defines the configuration for access
