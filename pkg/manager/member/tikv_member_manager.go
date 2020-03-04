@@ -303,7 +303,7 @@ func (tkmm *tikvMemberManager) syncTiKVAutoScalingConfigMap(tc *v1alpha1.TidbClu
 	}
 	v, ok := cm.Data["config-file"]
 	if !ok {
-		return fmt.Errorf("")
+		return fmt.Errorf("tc[%s/%s]'s tikv config[config-file] is missing", tc.Namespace, tc.Name)
 	}
 	config := &v1alpha1.TiKVConfig{}
 	err = UnmarshalTOML([]byte(v), config)
@@ -318,7 +318,6 @@ func (tkmm *tikvMemberManager) syncTiKVAutoScalingConfigMap(tc *v1alpha1.TidbClu
 	}
 	// TODO: add document to explain the hot region label
 	config.Server.Labels["specialUse"] = "hotRegion"
-	klog.Infof("%v", config)
 
 	confText, err := MarshalTOML(config)
 	if err != nil {
