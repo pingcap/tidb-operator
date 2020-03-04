@@ -17,6 +17,7 @@ jobs:
         - "check-setup check"
         - "docker e2e-docker cli"
         - "test GOFLAGS=-race"
+        - "e2e-examples"
     steps:
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
