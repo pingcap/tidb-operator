@@ -296,6 +296,11 @@ type TiDBSpec struct {
 	// +optional
 	BinlogEnabled *bool `json:"binlogEnabled,omitempty"`
 
+	// Add --advertise-address to TiDB's startup parameters
+	// Optional: Defaults to false
+	// +optional
+	EnableAdvertiseAddress *bool `json:"enableAdvertiseAddress,omitempty"`
+
 	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
 	// Optional: Defaults to 0
 	// +kubebuilder:validation:Minimum=0

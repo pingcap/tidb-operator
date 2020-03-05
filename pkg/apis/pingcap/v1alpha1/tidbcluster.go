@@ -22,13 +22,14 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage      = "busybox:1.26.2"
-	defaultTimeZone         = "UTC"
-	defaultEnableTLSCluster = false
-	defaultEnableTLSClient  = false
-	defaultExposeStatus     = true
-	defaultSeparateSlowLog  = true
-	defaultEnablePVReclaim  = false
+	defaultHelperImage                = "busybox:1.26.2"
+	defaultTimeZone                   = "UTC"
+	defaultEnableTLSCluster           = false
+	defaultEnableTLSClient            = false
+	defaultExposeStatus               = true
+	defaultSeparateSlowLog            = true
+	defaultEnablePVReclaim            = false
+	defaultEnableTiDBAdvertiseAddress = false
 )
 
 var (
@@ -340,6 +341,13 @@ func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 
 func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
 	return tidb.TLSClient != nil && tidb.TLSClient.Enabled
+}
+
+func (tidb *TiDBSpec) IsAdvertiseAddressEnabled() bool {
+	if tidb.EnableAdvertiseAddress == nil {
+		return defaultEnableTiDBAdvertiseAddress
+	}
+	return *tidb.EnableAdvertiseAddress
 }
 
 func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
