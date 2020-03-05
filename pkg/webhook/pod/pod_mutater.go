@@ -81,7 +81,7 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		return nil
 	}
 
-	cm, err := pc.getTikvConfigMap(tc)
+	cm, err := pc.getTikvConfigMap(tc, pod)
 	if err != nil {
 		klog.Infof("tc[%s/%s]'s tikv configmap not found error,err %v", tc.Namespace, tc.Name, err)
 		return err
@@ -113,17 +113,17 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 	return nil
 }
 
-func (pc *PodAdmissionControl) getTikvConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	selector, err := label.New().Instance(tc.Name).TiKV().Selector()
-	if err != nil {
-		return nil, err
+// Get tikv original configmap from the pod spec template volume
+func (pc *PodAdmissionControl) getTikvConfigMap(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.ConfigMap, error) {
+	cnName := ""
+	for _, v := range pod.Spec.Volumes {
+		if (v.Name == "config" || v.Name == "startup-script") && v.ConfigMap != nil {
+			cnName = v.ConfigMap.Name
+			break
+		}
 	}
-	cmlist, err := pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
-	if err != nil {
-		return nil, err
+	if cnName == "" {
+		return nil, fmt.Errorf("tc[%s/%s] 's tikv configmap can't find", tc.Namespace, tc.Name)
 	}
-	if len(cmlist.Items) < 1 {
-		return nil, fmt.Errorf("tc[%s/%s]'s tikv configmap failed to find", tc.Namespace, tc.Name)
-	}
-	return &cmlist.Items[0], nil
+	return pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cnName, metav1.GetOptions{})
 }
