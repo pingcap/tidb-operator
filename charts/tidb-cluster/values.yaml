@@ -406,6 +406,10 @@ tidb:
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
   separateSlowLog: true
+
+  # Add --advertise-address to TiDB's startup parameters
+  enableAdvertiseAddress: false
+
   slowLogTailer:
     image: busybox:1.26.2
     resources:
