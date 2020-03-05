@@ -35,13 +35,6 @@ const (
 	skipReasonScalerAnnDeferDeletingIsEmpty = "scaler: pvc annotations defer deleting is empty"
 )
 
-// TODO: add document to explain the hot region label
-var (
-	hostRegionLabel = map[string]string{
-		"specialUse": "hotRegion",
-	}
-)
-
 // Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
 	// Scale scales the cluster. It does nothing if scaling is not needed.

@@ -180,3 +180,26 @@ func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alph
 	}
 	return false, nil
 }
+
+func appendExtraLabelsENVForTiKV(labels map[string]string, container *core.Container) {
+	s := ""
+	for k, v := range labels {
+		s = fmt.Sprintf("%s,%s", s, fmt.Sprintf("%s=%s", k, v))
+	}
+	s = s[1:]
+	existed := false
+	for id, env := range container.Env {
+		if env.Name == "STORE_LABELS" {
+			env.Value = fmt.Sprintf("%s,%s", env.Value, s)
+			container.Env[id] = env
+			existed = true
+			break
+		}
+	}
+	if !existed {
+		container.Env = append(container.Env, core.EnvVar{
+			Name:  "STORE_LABELS",
+			Value: s,
+		})
+	}
+}
