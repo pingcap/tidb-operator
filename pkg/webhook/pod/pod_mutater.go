@@ -82,7 +82,7 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		return nil
 	}
 
-	cmName := controller.TiKVMemberName(tc.Name)
+	cmName := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
 	cm, err := pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
 	if err != nil {
 		klog.Infof("cm[%s/%s] found error,err %v", tc.Namespace, cmName, err)
