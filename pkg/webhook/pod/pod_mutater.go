@@ -83,7 +83,7 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 
 	cm, err := pc.getTikvConfigMap(tc, pod)
 	if err != nil {
-		klog.Infof("tc[%s/%s]'s tikv configmap not found error,err %v", tc.Namespace, tc.Name, err)
+		klog.Infof("tc[%s/%s]'s tikv %s configmap not found, error: %v", tc.Namespace, tc.Name, pod.Name, err)
 		return err
 	}
 	v, ok := cm.Data["config-file"]
