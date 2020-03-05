@@ -604,6 +604,16 @@ type PumpStatus struct {
 // TiDBTLSClient can enable TLS connection between TiDB server and MySQL client
 type TiDBTLSClient struct {
 	// When enabled, TiDB will accept TLS encrypted connections from MySQL client
+	// The steps to enable this feature:
+	//   1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
+	//      There are multiple ways to generate certificates:
+	//        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/
+	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+	//        - or use cert-manager signed certificates: https://cert-manager.io/
+	//   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
+	//      The name of this Secret must be: <clusterName>-tidb-server-secret.
+	//        kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//   3. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 }
