@@ -96,7 +96,25 @@ func (a *AdmissionHook) MutatingResource() (plural schema.GroupVersionResource, 
 }
 
 func (a *AdmissionHook) Admit(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
-	return a.strategyAC.Mutate(ar)
+	name := ar.Name
+	namespace := ar.Namespace
+	kind := ar.Kind.Kind
+	klog.Infof("receive mutation request for %s[%s/%s]", kind, namespace, name)
+
+	resp := a.strategyAC.Mutate(ar)
+	if !resp.Allowed {
+		return resp
+	}
+	// see if other ACs are interested in this resource
+	switch ar.Kind.Kind {
+	case "Pod":
+		if "" != ar.Kind.Group {
+			return a.unknownAdmissionRequest(ar)
+		}
+		return a.podAC.MutatePods(ar)
+	default:
+		return resp
+	}
 }
 
 // any special initialization goes here
