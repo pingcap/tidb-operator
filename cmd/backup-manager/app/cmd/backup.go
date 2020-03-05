@@ -41,7 +41,7 @@ func NewBackupCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
-	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
+	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
 	return cmd
 }
 
