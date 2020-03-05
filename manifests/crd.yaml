@@ -3782,6 +3782,10 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
+                enableAdvertiseAddress:
+                  description: 'Add --advertise-address to TiDB''s startup parameters
+                    Optional: Defaults to false'
+                  type: boolean
                 hostNetwork:
                   description: 'Whether Hostnetwork of the component is enabled. Override
                     the cluster-level setting if present Optional: Defaults to cluster-level
@@ -6907,6 +6911,12 @@ spec:
             storageSize:
               description: StorageSize is the request storage size for backup job
               type: string
+            tikvGCLifeTime:
+              description: TikvGCLifeTime is to specify the safe gc life time for
+                backup. The time limit during which data is retained for each GC,
+                in the format of Go Duration. When a GC happens, the current time
+                minus this value is the safe point.
+              type: string
             tolerations:
               description: Base tolerations of backup Pods, components may add more
                 tolerations upon this respectively
@@ -7719,6 +7729,12 @@ spec:
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
+              type: string
+            tikvGCLifeTime:
+              description: TikvGCLifeTime is to specify the safe gc life time for
+                restore. The time limit during which data is retained for each GC,
+                in the format of Go Duration. When a GC happens, the current time
+                minus this value is the safe point.
               type: string
             to:
               description: TiDBAccessConfig defines the configuration for access tidb
@@ -8622,6 +8638,12 @@ spec:
                 storageSize:
                   description: StorageSize is the request storage size for backup
                     job
+                  type: string
+                tikvGCLifeTime:
+                  description: TikvGCLifeTime is to specify the safe gc life time
+                    for backup. The time limit during which data is retained for each
+                    GC, in the format of Go Duration. When a GC happens, the current
+                    time minus this value is the safe point.
                   type: string
                 tolerations:
                   description: Base tolerations of backup Pods, components may add

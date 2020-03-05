@@ -723,6 +723,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"tikvGCLifeTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TikvGCLifeTime is to specify the safe gc life time for backup. The time limit during which data is retained for each GC, in the format of Go Duration. When a GC happens, the current time minus this value is the safe point.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"s3": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
@@ -2787,6 +2794,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"tikvGCLifeTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TikvGCLifeTime is to specify the safe gc life time for restore. The time limit during which data is retained for each GC, in the format of Go Duration. When a GC happens, the current time minus this value is the safe point.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"s3": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
@@ -3584,6 +3598,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					"binlogEnabled": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable TiDB Binlog, it is encouraged to not set this field and rely on the default behavior Optional: Defaults to true if PumpSpec is non-nil, otherwise false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enableAdvertiseAddress": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Add --advertise-address to TiDB's startup parameters Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
