@@ -715,20 +715,8 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 	envs := []corev1.EnvVar{
 		{
-			Name: "NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		},
-		{
 			Name:  "CLUSTER_NAME",
 			Value: tc.GetName(),
-		},
-		{
-			Name:  "HEADLESS_SERVICE_NAME",
-			Value: headlessSvcName,
 		},
 		{
 			Name:  "TZ",
@@ -744,22 +732,35 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
+	if tc.Spec.TiDB.IsAdvertiseAddressEnabled() {
+		advertiseEnvs := []corev1.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+			{
+				Name:  "HEADLESS_SERVICE_NAME",
+				Value: headlessSvcName,
+			},
+		}
+		envs = append(envs, advertiseEnvs...)
+	}
+
 	scheme := corev1.URISchemeHTTP
 	if tc.IsTLSClusterEnabled() {
 		scheme = corev1.URISchemeHTTPS
-	}
-
-	podSpec := baseTiDBSpec.BuildPodSpec()
-	if baseTiDBSpec.HostNetwork() {
-		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
-		envs = append(envs, corev1.EnvVar{
-			Name: "POD_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
-				},
-			},
-		})
 	}
 
 	containers = append(containers, corev1.Container{
@@ -794,10 +795,15 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	})
 
+	podSpec := baseTiDBSpec.BuildPodSpec()
 	podSpec.Containers = containers
 	podSpec.Volumes = vols
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
+
+	if baseTiDBSpec.HostNetwork() {
+		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
+	}
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), baseTiDBSpec.Annotations())
