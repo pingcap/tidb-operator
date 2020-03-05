@@ -51,12 +51,12 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 }
 
 func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
-	if tc.Spec.TiDB.BaseImage == "" {
-		tc.Spec.TiDB.BaseImage = defaultTiDBImage
+	if tc.Spec.TiDB.Config == nil {
+		tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 	}
 	if len(tc.Spec.Version) > 0 || tc.Spec.TiDB.Version != nil {
-		if tc.Spec.TiDB.Config == nil {
-			tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
+		if tc.Spec.TiDB.BaseImage == "" {
+			tc.Spec.TiDB.BaseImage = defaultTiDBImage
 		}
 	}
 }
