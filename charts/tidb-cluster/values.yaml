@@ -437,7 +437,7 @@ tidb:
     # The steps to enable this feature:
     #   1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
     #      There are multiple ways to generate certificates:
-    #        - users-provide certificates: https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/
+    #        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/
     #        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
     #        - or use cert-manager signed certificates: https://cert-manager.io/
     #   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
