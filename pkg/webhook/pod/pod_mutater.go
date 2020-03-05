@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
@@ -82,10 +81,9 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		return nil
 	}
 
-	cmName := controller.MemberConfigMapName(tc, v1alpha1.TiKVMemberType)
-	cm, err := pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
+	cm, err := pc.getTikvConfigMap(tc)
 	if err != nil {
-		klog.Infof("cm[%s/%s] found error,err %v", tc.Namespace, cmName, err)
+		klog.Infof("tc[%s/%s]'s tikv configmap not found error,err %v", tc.Namespace, tc.Name, err)
 		return err
 	}
 	v, ok := cm.Data["config-file"]
@@ -113,4 +111,19 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		}
 	}
 	return nil
+}
+
+func (pc *PodAdmissionControl) getTikvConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
+	selector, err := label.New().Instance(tc.Name).TiKV().Selector()
+	if err != nil {
+		return nil, err
+	}
+	cmlist, err := pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+	if len(cmlist.Items) < 1 {
+		return nil, fmt.Errorf("tc[%s/%s]'s tikv configmap failed to find", tc.Namespace, tc.Name)
+	}
+	return &cmlist.Items[0], nil
 }
