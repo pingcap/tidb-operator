@@ -35,7 +35,12 @@ spec:
           - /usr/local/bin/tidb-controller-manager
           - -default-storage-class-name={{ .Values.defaultStorageClassName }}
           - -cluster-scoped={{ .Values.clusterScoped }}
-          - -auto-failover={{ .Values.controllerManager.autoFailover | default true }}
+         {{- if eq .Values.controllerManager.autoFailover true }}
+          - -auto-failover=true
+         {{- end }}
+         {{- if eq .Values.controllerManager.autoFailover false }}
+          - -auto-failover=false
+         {{- end }}
           - -pd-failover-period={{ .Values.controllerManager.pdFailoverPeriod | default "5m" }}
           - -tikv-failover-period={{ .Values.controllerManager.tikvFailoverPeriod | default "5m" }}
           - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
