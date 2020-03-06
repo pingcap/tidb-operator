@@ -55,10 +55,23 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
-# Whether enable TLS connections between server nodes.
-# When enabled, PD/TiDB/TiKV/PUMP will use TLS encrypted connections to transfer data between each node,
-# certificates will be generated automatically (if not already present).
-enableTLSCluster: false
+# Whether enable the TLS connection between TiDB server components
+tlsCluster:
+  # The steps to enable this feature:
+  #   1. Generate TiDB server components certificates and a client-side certifiacete for them.
+  #      There are multiple ways to generate these certificates:
+  #        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
+  #        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+  #        - or use cert-manager signed certificates: https://cert-manager.io/
+  #   2. Create one secret object for one component which contains the certificates created above.
+  #      The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.
+  #        For PD: kubectl create secret generic <clusterName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #        Same for other components.
+  #   3. Then create the TiDB cluster with `tlsCluster.enabled` set to `true`.
+  enabled: false
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
@@ -616,7 +629,7 @@ binlog:
     # pump configurations (change to the tags of your pump version),
     # just follow the format in the file and configure in the 'config' section
     # as below if you want to customize any configuration.
-    # [security] section will be generated automatically if enableTLSCluster is set to true so users do not need to configure it.
+    # [security] section will be generated automatically if tlsCluster.enabled is set to true so users do not need to configure it.
     # config: |
     #   gc = 7
     #   heartbeat-interval = 2

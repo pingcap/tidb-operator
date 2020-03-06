@@ -28,6 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+var (
+	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
+)
+
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
 	ordinalInt, err := strconv.Atoi(ordinalStr)
@@ -162,4 +166,8 @@ func Encode(obj interface{}) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func ClusterClientTLSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-cluster-client-secret", tcName)
 }

@@ -180,12 +180,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := tmm.syncTiDBClusterCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		err = tmm.setControl.CreateStatefulSet(tc, newTiDBSet)
 		if err != nil {
 			return err
@@ -218,46 +212,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	return updateStatefulSet(tmm.setControl, tc, newTiDBSet, oldTiDBSet)
-}
-
-// syncTiDBClusterCerts creates the cert pair for TiDB if not exist, the cert
-// pair is used to communicate with other TiDB components, like TiKVs and PDs
-func (tmm *tidbMemberManager) syncTiDBClusterCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.TiDBMemberName(tcName)
-	peerName := controller.TiDBPeerMemberName(tcName)
-
-	if tmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		svcName,
-		peerName,
-		fmt.Sprintf("%s.%s", svcName, ns),
-		fmt.Sprintf("%s.%s.svc", svcName, ns),
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("%s.%s.svc", peerName, ns),
-		fmt.Sprintf("*.%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
-	}
-
-	ipList := []string{
-		"127.0.0.1", "::1", // able to access https endpoint via loopback network
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		IPList:     ipList,
-		Component:  "tidb",
-		Suffix:     "tidb",
-	}
-
-	return tmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
@@ -349,7 +303,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.Security{}
 		}
-		config.Security.ClusterSSLCA = pointer.StringPtr(serviceAccountCAPath)
+		config.Security.ClusterSSLCA = pointer.StringPtr(path.Join(clusterCertPath, tlsSecretRootCAKey))
 		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSCertKey))
 		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 	}
@@ -541,7 +495,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.TiDBMemberName(tcName),
+					SecretName: clusterSecretName(tc, label.TiDBLabelVal),
 				},
 			},
 		})
