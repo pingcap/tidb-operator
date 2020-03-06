@@ -77,7 +77,7 @@ pd:
   # we can only specify clusterIP and loadBalancerIP now
   service:
     clusterIP: "None"
-    portName: "client"
+    # portName: "client"
 
   replicas: 3
   image: pingcap/pd:v3.0.8
