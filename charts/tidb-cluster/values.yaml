@@ -285,6 +285,13 @@ tikv:
   # After waiting for 5 minutes, TiDB Operator creates a new TiKV node if this TiKV node is still down.
   # maxFailoverCount is used to configure the maximum number of TiKV nodes that TiDB Operator can create when failover occurs.
   maxFailoverCount: 3
+  # postArgscript is the script executed after the normal tikv instance start args is built,
+  # it is recommended to modify the args constructor logic if you have any special needs.
+  postArgScript: |
+    if [ ! -z "${STORE_LABELS:-}" ]; then
+      LABELS=" --labels ${STORE_LABELS} "
+      ARGS="${ARGS}${LABELS}"
+    fi
 
 tidb:
   # Please refer to https://github.com/pingcap/tidb/blob/master/config/config.toml.example for the default
@@ -401,6 +408,10 @@ tidb:
     # annotations:
       # cloud.google.com/load-balancer-type: Internal
   separateSlowLog: true
+
+  # Add --advertise-address to TiDB's startup parameters
+  enableAdvertiseAddress: false
+
   slowLogTailer:
     image: busybox:1.26.2
     resources:

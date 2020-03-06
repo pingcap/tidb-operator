@@ -456,10 +456,11 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	plugins := tc.Spec.TiDB.Plugins
 	startScript, err := RenderTiDBStartScript(&TidbStartScriptModel{
-		ClusterName:     tc.Name,
-		EnablePlugin:    len(plugins) > 0,
-		PluginDirectory: "/plugins",
-		PluginList:      strings.Join(plugins, ","),
+		ClusterName:            tc.Name,
+		EnableAdvertiseAddress: tc.Spec.TiDB.IsAdvertiseAddressEnabled(),
+		EnablePlugin:           len(plugins) > 0,
+		PluginDirectory:        "/plugins",
+		PluginList:             strings.Join(plugins, ","),
 	})
 	if err != nil {
 		return nil, err
@@ -583,6 +584,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	headlessSvcName := controller.TiDBPeerMemberName(tcName)
 	baseTiDBSpec := tc.BaseTiDBSpec()
 	instanceName := tc.GetInstanceName()
 	tidbConfigMap := controller.MemberConfigMapName(tc, v1alpha1.TiDBMemberType)
@@ -733,10 +735,37 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
+	if tc.Spec.TiDB.IsAdvertiseAddressEnabled() {
+		advertiseEnvs := []corev1.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+			{
+				Name: "NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+			{
+				Name:  "HEADLESS_SERVICE_NAME",
+				Value: headlessSvcName,
+			},
+		}
+		envs = append(envs, advertiseEnvs...)
+	}
+
 	scheme := corev1.URISchemeHTTP
 	if tc.IsTLSClusterEnabled() {
 		scheme = corev1.URISchemeHTTPS
 	}
+
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.TiDBImage(),
