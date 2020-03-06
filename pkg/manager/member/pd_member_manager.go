@@ -18,6 +18,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -704,6 +705,12 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				}},
 		},
 	}
+
+	// TODO: add link to explain why we add this annotation
+	if pdSet.Annotations == nil {
+		pdSet.Annotations = map[string]string{}
+	}
+	pdSet.Annotations[label.AnnStsLastSyncTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 
 	return pdSet, nil
 }
