@@ -188,8 +188,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	if err != nil {
 		return err
 	}
-	// refer: https://github.com/pingcap/tidb-operator/pull/1875
-	addLastTimestampAnnotation(newSet)
 
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)

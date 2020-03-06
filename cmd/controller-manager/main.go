@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/pingcap/tidb-operator/pkg/controller/periodicity"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -51,16 +52,17 @@ import (
 )
 
 var (
-	printVersion       bool
-	workers            int
-	autoFailover       bool
-	pdFailoverPeriod   time.Duration
-	tikvFailoverPeriod time.Duration
-	tidbFailoverPeriod time.Duration
-	leaseDuration      = 15 * time.Second
-	renewDuration      = 5 * time.Second
-	retryPeriod        = 3 * time.Second
-	waitDuration       = 5 * time.Second
+	printVersion        bool
+	workers             int
+	autoFailover        bool
+	pdFailoverPeriod    time.Duration
+	tikvFailoverPeriod  time.Duration
+	tidbFailoverPeriod  time.Duration
+	leaseDuration       = 15 * time.Second
+	renewDuration       = 5 * time.Second
+	retryPeriod         = 3 * time.Second
+	waitDuration        = 5 * time.Second
+	periodicityDuration = 1 * time.Minute
 )
 
 func init() {
@@ -78,6 +80,7 @@ func init() {
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
 	flag.StringVar(&controller.TidbDiscoveryImage, "tidb-discovery-image", "pingcap/tidb-operator:latest", "The image of the tidb discovery service")
 	flag.BoolVar(&controller.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
+	flag.DurationVar(&periodicityDuration, "periodicity-duration", 1*time.Minute, "the interval duration between each 2 syncing for periodicity controller")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 
 	flag.Parse()
@@ -190,6 +193,8 @@ func main() {
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
+		periodicityController := periodicity.NewController(kubeCli, informerFactory, kubeInformerFactory)
+
 		var autoScalerController *autoscaler.Controller
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 			autoScalerController = autoscaler.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -216,6 +221,7 @@ func main() {
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbInitController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbMonitorController.Run(workers, ctx.Done()) }, waitDuration)
+		go wait.Forever(func() { periodicityController.Run() }, periodicityDuration)
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 			go wait.Forever(func() { autoScalerController.Run(workers, ctx.Done()) }, waitDuration)
 		}

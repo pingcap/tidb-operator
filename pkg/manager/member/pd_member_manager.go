@@ -201,9 +201,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if err != nil {
 		return err
 	}
-	// refer: https://github.com/pingcap/tidb-operator/pull/1875
-	addLastTimestampAnnotation(newPDSet)
-
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {

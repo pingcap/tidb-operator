@@ -18,8 +18,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -292,6 +290,10 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 		if err != nil {
 			return err
 		}
+		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
+		if ok {
+			newSet.Annotations[label.AnnStsLastSyncTimestamp] = v
+		}
 		_, err = setCtl.UpdateStatefulSet(tc, &set)
 		return err
 	}
@@ -299,9 +301,14 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 	return nil
 }
 
-func addLastTimestampAnnotation(sts *apps.StatefulSet) {
+func SetLastAppliedPodTemplateAnn(sts *apps.StatefulSet) error {
 	if sts.Annotations == nil {
 		sts.Annotations = map[string]string{}
 	}
-	sts.Annotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
+	b, err := json.Marshal(sts.Spec.Template.Spec)
+	if err != nil {
+		return err
+	}
+	sts.Annotations[controller.LastAppliedPodTemplate] = string(b)
+	return nil
 }
