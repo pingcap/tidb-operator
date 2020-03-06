@@ -61,7 +61,8 @@ type tikvMemberManager struct {
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
+func NewTiKVMemberManager(
+	pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	certControl controller.CertControlInterface,

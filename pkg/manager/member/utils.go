@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -71,7 +72,7 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 
 // SetStatefulSetLastAppliedConfigAnnotation set last applied config to Statefulset's annotation
 func SetStatefulSetLastAppliedConfigAnnotation(set *apps.StatefulSet) error {
-	setApply, err := encode(set.Spec)
+	setApply, err := util.Encode(set.Spec)
 	if err != nil {
 		return err
 	}
@@ -95,14 +96,6 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 	}
 
 	return spec, &spec.Template.Spec, nil
-}
-
-func encode(obj interface{}) (string, error) {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
 }
 
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
@@ -214,6 +207,10 @@ func MarshalTOML(v interface{}) ([]byte, error) {
 	}
 	data := buff.Bytes()
 	return data, nil
+}
+
+func UnmarshalTOML(b []byte, obj interface{}) error {
+	return toml.Unmarshal(b, obj)
 }
 
 func Sha256Sum(v interface{}) (string, error) {
