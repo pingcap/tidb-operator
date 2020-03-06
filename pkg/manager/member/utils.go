@@ -303,5 +303,5 @@ func addLastTimestampAnnotation(sts *apps.StatefulSet) {
 	if sts.Annotations == nil {
 		sts.Annotations = map[string]string{}
 	}
-	sts.Annotations[label.AnnStsLastSyncTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
+	sts.Annotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
 }
