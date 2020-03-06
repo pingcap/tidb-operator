@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -33,7 +34,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
-	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -66,23 +66,19 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
 // It loads in-cluster root ca if caCert is empty.
 func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, caCert []byte) (*tls.Config, error) {
-	secretName := fmt.Sprintf("%s-pd-client", tcName)
+	secretName := util.ClusterClientTLSSecretName(tcName)
 	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}
 
-	var rootCAs *x509.CertPool
+	rootCAs := x509.NewCertPool()
 	var tlsCert tls.Certificate
 
 	if len(caCert) > 0 {
-		rootCAs = x509.NewCertPool()
 		rootCAs.AppendCertsFromPEM(caCert)
 	} else {
-		rootCAs, err = certutil.ReadCACerts()
-		if err != nil {
-			return nil, err
-		}
+		rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
 	}
 
 	clientCert, certExists := secret.Data[v1.TLSCertKey]

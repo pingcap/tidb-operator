@@ -206,16 +206,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := pmm.syncPDServerCerts(tc)
-			if err != nil {
-				return err
-			}
-			err = pmm.syncPDClientCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		if err := pmm.setControl.CreateStatefulSet(tc, newPDSet); err != nil {
 			return err
 		}
@@ -258,62 +248,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
-}
-
-func (pmm *pdMemberManager) syncPDClientCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	commonName := fmt.Sprintf("%s-pd-client", tcName)
-
-	hostList := []string{
-		commonName,
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: commonName,
-		HostList:   hostList,
-		Component:  "pd",
-		Suffix:     "pd-client",
-	}
-
-	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
-}
-
-func (pmm *pdMemberManager) syncPDServerCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.PDMemberName(tcName)
-	peerName := controller.PDPeerMemberName(tcName)
-
-	if pmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		svcName,
-		peerName,
-		fmt.Sprintf("%s.%s", svcName, ns),
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
-	}
-
-	ipList := []string{
-		"127.0.0.1", "::1", // able to access https endpoint via loopback network
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		IPList:     ipList,
-		Component:  "pd",
-		Suffix:     "pd",
-	}
-
-	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
@@ -581,7 +515,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.PDMemberName(tcName),
+					SecretName: clusterSecretName(tc, label.PDLabelVal),
 				},
 			},
 		})
@@ -724,7 +658,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.PDSecurityConfig{}
 		}
-		config.Security.CAPath = serviceAccountCAPath
+		config.Security.CAPath = path.Join(pdClusterCertPath, tlsSecretRootCAKey)
 		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}

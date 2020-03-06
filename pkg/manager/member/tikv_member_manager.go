@@ -193,12 +193,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := tkmm.syncTiKVServerCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
@@ -234,34 +228,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	return updateStatefulSet(tkmm.setControl, tc, newSet, oldSet)
-}
-
-func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.TiKVMemberName(tcName)
-	peerName := controller.TiKVPeerMemberName(tcName)
-
-	if tkmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		peerName,
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		Component:  "tikv",
-		Suffix:     "tikv",
-	}
-
-	return tkmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -366,7 +332,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.TiKVMemberName(tcName),
+					SecretName: clusterSecretName(tc, label.TiKVLabelVal),
 				},
 			},
 		})
@@ -538,7 +504,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.TiKVSecurityConfig{}
 		}
-		config.Security.CAPath = serviceAccountCAPath
+		config.Security.CAPath = path.Join(tikvClusterCertPath, tlsSecretRootCAKey)
 		config.Security.CertPath = path.Join(tikvClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey)
 	}

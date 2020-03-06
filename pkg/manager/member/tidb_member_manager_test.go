@@ -1628,7 +1628,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					EnableTLSCluster: pointer.BoolPtr(true),
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 					TiDB: v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
@@ -1669,7 +1669,7 @@ func TestGetTiDBConfigMap(t *testing.T) {
   ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
   ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
   ssl-key = "/var/lib/tidb-server-tls/tls.key"
-  cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  cluster-ssl-ca = "/var/lib/tidb-tls/ca.crt"
   cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
 `,
