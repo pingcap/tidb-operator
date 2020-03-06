@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -296,4 +297,11 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 	}
 
 	return nil
+}
+
+func addLastTimestampAnnotation(sts *apps.StatefulSet) {
+	if sts.Annotations == nil {
+		sts.Annotations = map[string]string{}
+	}
+	sts.Annotations[label.AnnStsLastSyncTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 }

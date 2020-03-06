@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -189,6 +188,9 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	if err != nil {
 		return err
 	}
+	// refer: https://github.com/pingcap/tidb-operator/pull/1875
+	addLastTimestampAnnotation(newSet)
+
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
@@ -511,12 +513,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		},
 	}
-
-	// refer: https://github.com/pingcap/tidb-operator/pull/1875
-	if tikvset.Annotations == nil {
-		tikvset.Annotations = map[string]string{}
-	}
-	tikvset.Annotations[label.AnnStsLastSyncTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 
 	return tikvset, nil
 }
