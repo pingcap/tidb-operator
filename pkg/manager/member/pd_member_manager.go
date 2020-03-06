@@ -706,7 +706,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		},
 	}
 
-	// TODO: add link to explain why we add this annotation
+	// refer: https://github.com/pingcap/tidb-operator/pull/1875
 	if pdSet.Annotations == nil {
 		pdSet.Annotations = map[string]string{}
 	}
