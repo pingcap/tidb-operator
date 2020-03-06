@@ -18,7 +18,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -202,6 +201,9 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if err != nil {
 		return err
 	}
+	// refer: https://github.com/pingcap/tidb-operator/pull/1875
+	addLastTimestampAnnotation(newPDSet)
+
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newPDSet)
 		if err != nil {
@@ -705,12 +707,6 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				}},
 		},
 	}
-
-	// refer: https://github.com/pingcap/tidb-operator/pull/1875
-	if pdSet.Annotations == nil {
-		pdSet.Annotations = map[string]string{}
-	}
-	pdSet.Annotations[label.AnnStsLastSyncTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 
 	return pdSet, nil
 }
