@@ -91,7 +91,7 @@ config-file: |-
     {{- if .Values.tidb.config }}
 {{ .Values.tidb.config | indent 2 }}
     {{- end -}}
-    {{- if or .Values.enableTLSCluster .Values.tidb.tlsClient.enabled }}
+    {{- if or .Values.enableTLSCluster (and .Values.tidb.tlsClient .Values.tidb.tlsClient.enabled) }}
   [security]
     {{- end -}}
     {{- if .Values.enableTLSCluster }}
@@ -99,12 +99,8 @@ config-file: |-
   cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
     {{- end -}}
-    {{- if .Values.tidb.tlsClient.enabled }}
-    {{- if .Values.tidb.tlsClient.secretName }}
+    {{- if and .Values.tidb.tlsClient .Values.tidb.tlsClient.enabled }}
   ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
-    {{- else }}
-  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    {{- end }}
   ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
   ssl-key = "/var/lib/tidb-server-tls/tls.key"
     {{- end -}}
