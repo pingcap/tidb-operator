@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
@@ -82,10 +81,9 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		return nil
 	}
 
-	cmName := controller.TiKVMemberName(tc.Name)
-	cm, err := pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cmName, metav1.GetOptions{})
+	cm, err := pc.getTikvConfigMap(tc, pod)
 	if err != nil {
-		klog.Infof("cm[%s/%s] found error,err %v", tc.Namespace, cmName, err)
+		klog.Infof("tc[%s/%s]'s tikv %s configmap not found, error: %v", tc.Namespace, tc.Name, pod.Name, err)
 		return err
 	}
 	v, ok := cm.Data["config-file"]
@@ -113,4 +111,19 @@ func (pc *PodAdmissionControl) tikvHotRegionSchedule(tc *v1alpha1.TidbCluster, p
 		}
 	}
 	return nil
+}
+
+// Get tikv original configmap from the pod spec template volume
+func (pc *PodAdmissionControl) getTikvConfigMap(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.ConfigMap, error) {
+	cnName := ""
+	for _, v := range pod.Spec.Volumes {
+		if (v.Name == "config" || v.Name == "startup-script") && v.ConfigMap != nil {
+			cnName = v.ConfigMap.Name
+			break
+		}
+	}
+	if cnName == "" {
+		return nil, fmt.Errorf("tc[%s/%s] 's tikv configmap can't find", tc.Namespace, tc.Name)
+	}
+	return pc.kubeCli.CoreV1().ConfigMaps(tc.Namespace).Get(cnName, metav1.GetOptions{})
 }
