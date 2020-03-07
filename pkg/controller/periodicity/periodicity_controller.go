@@ -87,7 +87,7 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 		sts.Annotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
 		newSts, err := c.statefulSetControl.UpdateStatefulSet(tc, sts)
 		if err != nil {
-			klog.Errorf("update error sts[%s],err:%v", sts.Name, err)
+			klog.Errorf("failed to update statefulset %q, error: %v", sts.Name, err)
 			errs = append(errs, err)
 		}
 		klog.Infof("newSts[%s], annotation value=%v", newSts.Name, newSts.Annotations)
