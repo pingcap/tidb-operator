@@ -280,6 +280,10 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 		}
 		set.Annotations = newSet.Annotations
+		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
+		if ok {
+			set.Annotations[label.AnnStsLastSyncTimestamp] = v
+		}
 		*set.Spec.Replicas = *newSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
 		if isOrphan {
@@ -289,10 +293,6 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 		err := SetStatefulSetLastAppliedConfigAnnotation(&set)
 		if err != nil {
 			return err
-		}
-		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
-		if ok {
-			newSet.Annotations[label.AnnStsLastSyncTimestamp] = v
 		}
 		_, err = setCtl.UpdateStatefulSet(tc, &set)
 		return err
