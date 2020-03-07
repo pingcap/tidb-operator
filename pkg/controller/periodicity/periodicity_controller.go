@@ -10,7 +10,14 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+// This controller updates StatefulSets managed by our operator periodically.
+// This is necessary when the pod admission webhook is used. Because we will
+// deny pod deletion requests if the pod is not ready for deletion. However,
+// retry duration on StatefulSet in its controller grows exponentially on
+// failures. So we need to update StatefulSets to trigger events, then they
+// will be put into the process queue of StatefulSet controller constantly.
+// Refer to https://github.com/pingcap/tidb-operator/pull/1875 and
+// https://github.com/pingcap/tidb-operator/issues/1846 for more details.
 package periodicity
 
 import (
