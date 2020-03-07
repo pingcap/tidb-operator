@@ -81,7 +81,7 @@ func (c *Controller) run() {
 	}
 }
 
-// refer: https://github.com/pingcap/tidb-operator/pull/1875
+// in this sync function, we update all stateful sets the operator managed and log errors
 func (c *Controller) syncStatefulSetTimeStamp() error {
 	selector, err := label.New().Selector()
 	if err != nil {
