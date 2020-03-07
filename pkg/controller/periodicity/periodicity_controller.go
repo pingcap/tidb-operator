@@ -90,7 +90,7 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 			klog.Errorf("failed to update statefulset %q, error: %v", sts.Name, err)
 			errs = append(errs, err)
 		}
-		klog.Infof("newSts[%s], annotation value=%v", newSts.Name, newSts.Annotations)
+		klog.Infof("successfully updated statefulset %q", newSts.Name)
 	}
 	return errors.NewAggregate(errs)
 }
