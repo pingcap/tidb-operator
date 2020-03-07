@@ -188,7 +188,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	if err != nil {
 		return err
 	}
-
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
@@ -511,7 +510,6 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		},
 	}
-
 	return tikvset, nil
 }
 
