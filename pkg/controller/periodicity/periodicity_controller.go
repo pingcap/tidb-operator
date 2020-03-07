@@ -10,6 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 // This controller updates StatefulSets managed by our operator periodically.
 // This is necessary when the pod admission webhook is used. Because we will
 // deny pod deletion requests if the pod is not ready for deletion. However,
