@@ -16,7 +16,6 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/pingcap/tidb-operator/pkg/controller/periodicity"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -30,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	"github.com/pingcap/tidb-operator/pkg/controller/periodicity"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
