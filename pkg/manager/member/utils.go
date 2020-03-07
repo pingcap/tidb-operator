@@ -300,15 +300,3 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 
 	return nil
 }
-
-func SetLastAppliedPodTemplateAnn(sts *apps.StatefulSet) error {
-	if sts.Annotations == nil {
-		sts.Annotations = map[string]string{}
-	}
-	b, err := json.Marshal(sts.Spec.Template.Spec)
-	if err != nil {
-		return err
-	}
-	sts.Annotations[controller.LastAppliedPodTemplate] = string(b)
-	return nil
-}
