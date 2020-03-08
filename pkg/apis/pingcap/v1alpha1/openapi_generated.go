@@ -2929,7 +2929,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"provider", "secretName"},
+				Required: []string{"provider"},
 			},
 		},
 	}

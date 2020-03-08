@@ -705,7 +705,7 @@ type S3StorageProvider struct {
 	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// Prefix for the keys.
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
