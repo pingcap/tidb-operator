@@ -159,7 +159,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		annotations[label.AnnAWSIAM] = iam
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, useIAM, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -246,7 +246,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		annotations[label.AnnAWSIAM] = iam
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, useIAM, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}

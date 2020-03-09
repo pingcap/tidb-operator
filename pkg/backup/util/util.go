@@ -109,6 +109,13 @@ func GenerateS3CertEnvVar(useIAM bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 				},
 			},
 		}...)
+	} else {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name:  "AWS_DEFAULT_REGION",
+				Value: s3.Region,
+			},
+		}...)
 	}
 	return envVars, "", nil
 }
@@ -156,6 +163,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
+	var err error
 	storageType := GetStorageType(provider)
 
 	switch storageType {
@@ -163,14 +171,15 @@ func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StoragePro
 		if provider.S3 == nil {
 			return certEnv, "S3ConfigIsEmpty", errors.New("s3 config is empty")
 		}
-		s3SecretName := provider.S3.SecretName
-		secret, err := secretLister.Secrets(ns).Get(s3SecretName)
-		if err != nil {
-			err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
-			return certEnv, "GetS3SecretFailed", err
-		}
 
 		if !useIAM {
+			s3SecretName := provider.S3.SecretName
+			secret, err := secretLister.Secrets(ns).Get(s3SecretName)
+			if err != nil {
+				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
+				return certEnv, "GetS3SecretFailed", err
+			}
+
 			keyStr, exist := CheckAllKeysExistInSecret(secret, constants.S3AccessKey, constants.S3SecretKey)
 			if !exist {
 				err := fmt.Errorf("s3 secret %s/%s missing some keys %s", ns, s3SecretName, keyStr)
@@ -212,8 +221,9 @@ func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StoragePro
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useIAM bool, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
+	var passwordKey string
 	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
@@ -226,9 +236,15 @@ func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, secretLister corel
 		return certEnv, "KeyNotExist", err
 	}
 
+	if useIAM {
+		passwordKey = fmt.Sprintf("%s_%s_%s", constants.KMSSecretPrefix, constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
+	} else {
+		passwordKey = fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
+	}
+
 	certEnv = []corev1.EnvVar{
 		{
-			Name: fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey)),
+			Name: passwordKey,
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{Name: tidbSecretName},

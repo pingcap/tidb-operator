@@ -168,7 +168,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		annotations[label.AnnAWSIAM] = iam
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, useIAM, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -201,7 +201,8 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
+			Labels:      backupLabel.Labels(),
+			Annotations: annotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: constants.DefaultServiceAccountName,
@@ -261,7 +262,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		annotations[label.AnnAWSIAM] = iam
 	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, useIAM, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -297,7 +298,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
+			Labels:      backupLabel.Labels(),
+			Annotations: annotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: constants.DefaultServiceAccountName,
