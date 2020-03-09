@@ -4,6 +4,7 @@
 {{- else -}}
 {{ .Values.clusterName }}-{{ .Release.Name }}-drainer
 {{- end -}}
+{{- end -}}
 
 {{- define "drainer.tlsSecretName" -}}
 {{ .Values.clusterName }}-drainer
