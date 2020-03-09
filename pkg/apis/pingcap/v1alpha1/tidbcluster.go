@@ -350,10 +350,6 @@ func (tidb *TiDBSpec) IsAdvertiseAddressEnabled() bool {
 	return *tidb.EnableAdvertiseAddress
 }
 
-func (tidb *TiDBSpec) IsUserGeneratedCertificate() bool {
-	return tidb.IsTLSClientEnabled() && tidb.TLSClient.SecretName != ""
-}
-
 func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
 	separateSlowLog := tidb.SeparateSlowLog
 	if separateSlowLog == nil {
