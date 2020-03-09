@@ -18,7 +18,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -281,6 +280,10 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 			set.Spec.Template.Annotations[LastAppliedConfigAnnotation] = podConfig
 		}
 		set.Annotations = newSet.Annotations
+		v, ok := oldSet.Annotations[label.AnnStsLastSyncTimestamp]
+		if ok {
+			set.Annotations[label.AnnStsLastSyncTimestamp] = v
+		}
 		*set.Spec.Replicas = *newSet.Spec.Replicas
 		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
 		if isOrphan {
