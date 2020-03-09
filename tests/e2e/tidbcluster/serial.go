@@ -598,8 +598,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 
-			newTC.Spec.PD.Config.Replication = &v1alpha1.PDReplicationConfig{
-				MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
+			newTC.Spec.PD.Config = &v1alpha1.PDConfig{
+				Replication: &v1alpha1.PDReplicationConfig{
+					MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
+				},
 			}
 			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
 			framework.ExpectError(err, "PD replication config is immutable through CR")
