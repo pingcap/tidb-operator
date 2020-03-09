@@ -84,6 +84,8 @@ const (
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
 	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
+	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
