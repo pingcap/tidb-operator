@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	"github.com/pingcap/tidb-operator/pkg/controller/periodicity"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
@@ -190,6 +191,12 @@ func main() {
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
+
+		var periodicityController *periodicity.Controller
+		if controller.PodWebhookEnabled {
+			periodicityController = periodicity.NewController(kubeCli, informerFactory, kubeInformerFactory)
+		}
+
 		var autoScalerController *autoscaler.Controller
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 			autoScalerController = autoscaler.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -216,6 +223,9 @@ func main() {
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbInitController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbMonitorController.Run(workers, ctx.Done()) }, waitDuration)
+		if controller.PodWebhookEnabled {
+			go wait.Forever(func() { periodicityController.Run(ctx.Done()) }, waitDuration)
+		}
 		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
 			go wait.Forever(func() { autoScalerController.Run(workers, ctx.Done()) }, waitDuration)
 		}
