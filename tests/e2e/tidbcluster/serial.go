@@ -590,9 +590,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
 				e2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
 			}
-			if isNil, err := gomega.BeNil().Match(newTC.Spec.TiDB.Config); isNil {
-				e2elog.Failf("Expected tidb.config has default value set, %v", err)
-			}
 
 			ginkgo.By("Validating should reject illegal update")
 			newTC.Labels = map[string]string{
