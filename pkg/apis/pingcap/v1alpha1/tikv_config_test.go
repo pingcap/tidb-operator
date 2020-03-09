@@ -1,4 +1,4 @@
-// Copyright 2020. PingCAP, Inc.
+// Copyright 2020 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,4 +69,3 @@ func TestTiKVConfig(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(&tUnmarshaled).To(Equal(c))
 }
-
