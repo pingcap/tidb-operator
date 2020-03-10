@@ -4666,31 +4666,31 @@ spec:
                           type: integer
                         region-max-keys:
                           description: 'When the number of keys in Region [a,e) exceeds
-                            the `region_max_keys`, it will be split into several Regions
+                            the `region-max-keys`, it will be split into several Regions
                             [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
-                            [b,c), [c,d) will be `region_split_keys`. See also: region-split-keys
+                            [b,c), [c,d) will be `region-split-keys`. See also: region-split-keys
                             Optional: Defaults to 1440000 optional'
                           format: int64
                           type: integer
                         region-max-size:
-                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                          description: 'When Region [a,e) size exceeds `region-max-size`,
                             it will be split into several Regions [a,b), [b,c), [c,d),
-                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region-split-size`
                             (or a little larger). See also: region-split-size Optional:
                             Defaults to 144MB optional'
                           type: string
                         region-split-keys:
                           description: 'When the number of keys in Region [a,e) exceeds
-                            the `region_max_keys`, it will be split into several Regions
+                            the `region-max-keys`, it will be split into several Regions
                             [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
-                            [b,c), [c,d) will be `region_split_keys`. See also: region-max-keys
+                            [b,c), [c,d) will be `region-split-keys`. See also: region-max-keys
                             Optional: Defaults to 960000 optional'
                           format: int64
                           type: integer
                         region-split-size:
-                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                          description: 'When Region [a,e) size exceeds `region-max-size`,
                             it will be split into several Regions [a,b), [b,c), [c,d),
-                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region-split-size`
                             (or a little larger). See also: region-max-size Optional:
                             Defaults to 96MB optional'
                           type: string
@@ -4704,37 +4704,37 @@ spec:
                       type: object
                     gc:
                       properties:
-                        "\tbatch_keys":
+                        "\tbatch-keys":
                           description: 'Optional: Defaults to 512'
                           format: int64
                           type: integer
-                        "\tmax_write_bytes_per_sec":
+                        "\tmax-write-bytes-per-sec":
                           type: string
                       type: object
                     import:
                       properties:
-                        import_dir:
+                        import-dir:
                           type: string
-                        max_open_engines:
+                        max-open-engines:
                           format: int64
                           type: integer
-                        max_prepare_duration:
+                        max-prepare-duration:
                           type: string
-                        num_import_jobs:
+                        num-import-jobs:
                           format: int64
                           type: integer
-                        num_import_sst_jobs:
+                        num-import-sst-jobs:
                           format: int64
                           type: integer
-                        num_threads:
+                        num-threads:
                           format: int64
                           type: integer
-                        region_split_size:
+                        region-split-size:
                           type: string
-                        stream_channel_window:
+                        stream-channel-window:
                           format: int64
                           type: integer
-                        upload_speed_limit:
+                        upload-speed-limit:
                           type: string
                       type: object
                     log-file:
@@ -4757,20 +4757,20 @@ spec:
                           items:
                             type: string
                           type: array
-                        retry_interval:
+                        retry-interval:
                           description: |-
                             The interval at which to retry a PD connection initialization.
 
                             Default is 300ms. Optional: Defaults to 300ms
                           type: string
-                        retry_log_every:
+                        retry-log-every:
                           description: |-
                             If the client observes the same error message on retry, it can repeat the message only every `n` times.
 
                             Default is 10. Set to 1 to disable this feature. Optional: Defaults to 10
                           format: int64
                           type: integer
-                        retry_max_count:
+                        retry-max-count:
                           description: |-
                             The maximum number of times to retry a PD connection initialization.
 
@@ -4780,13 +4780,13 @@ spec:
                       type: object
                     raftdb:
                       properties:
-                        allow_concurrent_memtable_write:
+                        allow-concurrent-memtable-write:
                           type: boolean
-                        bytes_per_sync:
+                        bytes-per-sync:
                           type: string
-                        compaction_readahead_size:
+                        compaction-readahead-size:
                           type: string
-                        create_if_missing:
+                        create-if-missing:
                           type: boolean
                         defaultcf:
                           description: TiKVCfConfig is the config of a cf
@@ -4897,48 +4897,48 @@ spec:
                             write-buffer-size:
                               type: string
                           type: object
-                        enable_pipelined_write:
+                        enable-pipelined-write:
                           type: boolean
-                        enable_statistics:
+                        enable-statistics:
                           type: boolean
-                        info_log_dir:
+                        info-log-dir:
                           type: string
-                        info_log_keep_log_file_num:
+                        info-log-keep-log-file-num:
                           format: int64
                           type: integer
-                        info_log_max_size:
+                        info-log-max-size:
                           type: string
-                        info_log_roll_time:
+                        info-log-roll-time:
                           type: string
-                        max_background_jobs:
+                        max-background-jobs:
                           format: int64
                           type: integer
-                        max_manifest_file_size:
+                        max-manifest-file-size:
                           type: string
-                        max_open_files:
+                        max-open-files:
                           format: int64
                           type: integer
-                        max_sub_compactions:
+                        max-sub-compactions:
                           format: int64
                           type: integer
-                        max_total_wal_size:
+                        max-total-wal-size:
                           type: string
-                        stats_dump_period:
+                        stats-dump-period:
                           type: string
-                        use_direct_io_for_flush_and_compaction:
+                        use-direct-io-for-flush-and-compaction:
                           type: boolean
-                        wal_bytes_per_sync:
+                        wal-bytes-per-sync:
                           type: string
-                        wal_dir:
+                        wal-dir:
                           type: string
-                        wal_recovery_mode:
+                        wal-recovery-mode:
                           type: string
-                        wal_size_limit:
+                        wal-size-limit:
                           type: string
-                        wal_ttl_seconds:
+                        wal-ttl-seconds:
                           format: int64
                           type: integer
-                        writable_file_max_buffer_size:
+                        writable-file-max-buffer-size:
                           type: string
                       type: object
                     raftstore:
@@ -5120,61 +5120,61 @@ spec:
                       properties:
                         coprocessor:
                           properties:
-                            high_concurrency:
+                            high-concurrency:
                               description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
-                            low_concurrency:
+                            low-concurrency:
                               description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_high:
+                            max-tasks-per-worker-high:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_low:
+                            max-tasks-per-worker-low:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_normal:
+                            max-tasks-per-worker-normal:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            normal_concurrency:
+                            normal-concurrency:
                               description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
-                            stack_size:
+                            stack-size:
                               description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
                         storage:
                           properties:
-                            high_concurrency:
+                            high-concurrency:
                               description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
-                            low_concurrency:
+                            low-concurrency:
                               description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_high:
+                            max-tasks-per-worker-high:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_low:
+                            max-tasks-per-worker-low:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_normal:
+                            max-tasks-per-worker-normal:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            normal_concurrency:
+                            normal-concurrency:
                               description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
-                            stack_size:
+                            stack-size:
                               description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
@@ -5707,11 +5707,11 @@ spec:
                           type: string
                         cert-path:
                           type: string
-                        cipher_file:
+                        cipher-file:
                           type: string
                         key-path:
                           type: string
-                        override_ssl_target:
+                        override-ssl-target:
                           type: string
                       type: object
                     server:
@@ -5760,15 +5760,15 @@ spec:
                         grpc-keepalive-timeout:
                           description: 'Optional: Defaults to 3s'
                           type: string
+                        grpc-memory-pool-quota:
+                          description: 'Optional: Defaults to 32G'
+                          type: string
                         grpc-raft-conn-num:
                           description: 'Optional: Defaults to 10'
                           format: int32
                           type: integer
                         grpc-stream-initial-window-size:
                           description: 'Optional: Defaults to 2MB'
-                          type: string
-                        grpc_memory_pool_quota:
-                          description: 'Optional: Defaults to 32G'
                           type: string
                         heavy-load-threshold:
                           format: int32
