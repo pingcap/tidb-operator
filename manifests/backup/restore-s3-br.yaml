@@ -6,6 +6,8 @@ metadata:
   namespace: test1
 spec:
   # backupType: full
+  # useKMS: false
+  # serviceAccount: myServiceAccount
   br:
     pd: 10.233.40.168:2379
     # db: <db-name>

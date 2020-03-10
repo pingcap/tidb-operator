@@ -5,7 +5,9 @@ metadata:
   name: demo1-backup-s3
   namespace: test1
 spec:
-  #backupType: full
+  # backupType: full
+  # useKMS: false
+  # serviceAccount: myServiceAccount
   br:
     pd: 10.233.40.168:2379
     # ca: <ca>
