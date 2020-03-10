@@ -184,7 +184,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("TLS between TiDB components", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster-tls", "admin", "")
 		cluster.Resources["pd.replicas"] = "3"
 		cluster.Resources["tikv.replicas"] = "3"
 		cluster.Resources["tidb.replicas"] = "2"
