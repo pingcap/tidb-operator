@@ -188,6 +188,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		cluster.Resources["pd.replicas"] = "3"
 		cluster.Resources["tikv.replicas"] = "3"
 		cluster.Resources["tidb.replicas"] = "2"
+		cluster.Resources["tlsCluster.enabled"] = "true"
 
 		ginkgo.By("Creating user-defined certs between PD/TiKV/TiDB")
 
