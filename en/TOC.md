@@ -3,7 +3,7 @@
 <!-- markdownlint-disable MD007 -->
 <!-- markdownlint-disable MD032 -->
 
-## Documentation List
+## TOC
 
 - [About TiDB Operator](tidb-operator-overview.md)
 + Get Started
