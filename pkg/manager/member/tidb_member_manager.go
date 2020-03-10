@@ -416,10 +416,13 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	instanceName := tc.GetInstanceName()
 	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
 	svcName := controller.TiDBMemberName(tcName)
-
+	portName := "mysql-client"
+	if svcSpec.PortName != nil {
+		portName = *svcSpec.PortName
+	}
 	ports := []corev1.ServicePort{
 		{
-			Name:       "mysql-client",
+			Name:       portName,
 			Port:       4000,
 			TargetPort: intstr.FromInt(4000),
 			Protocol:   corev1.ProtocolTCP,
