@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"path"
 	"reflect"
 	"regexp"
@@ -332,7 +333,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: clusterSecretName(tc, label.TiKVLabelVal),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiKVLabelVal),
 				},
 			},
 		})

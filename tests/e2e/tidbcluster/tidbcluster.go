@@ -142,13 +142,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					"tikv.resources.limits.storage": "1G",
 				},
 			},
-			{
-				Version: utilimage.TiDBTLSVersion,
-				Name:    "basic-v3-cluster-tls",
-				Values: map[string]string{
-					"enableTLSCluster": "true",
-				},
-			},
 		}
 
 		for _, clusterCfg := range clusterCfgs {
@@ -188,6 +181,38 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				oa.CheckTidbClusterStatusOrDie(&cluster)
 			})
 		}
+	})
+
+	ginkgo.It("TLS between TiDB components", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
+		cluster.Resources["pd.replicas"] = "3"
+		cluster.Resources["tikv.replicas"] = "3"
+		cluster.Resources["tidb.replicas"] = "2"
+
+		ginkgo.By("Creating user-defined certs between PD/TiKV/TiDB")
+
+		_, err := c.CoreV1().Secrets(ns).Create(fixture.NewTLSClusterSecret(&cluster, label.PDLabelVal))
+		framework.ExpectNoError(err, "Failed to create PD cluster tls secret")
+		_, err = c.CoreV1().Secrets(ns).Create(fixture.NewTLSClusterSecret(&cluster, label.TiKVLabelVal))
+		framework.ExpectNoError(err, "Failed to create TiKV cluster tls secret")
+		_, err = c.CoreV1().Secrets(ns).Create(fixture.NewTLSClusterSecret(&cluster, label.TiDBLabelVal))
+		framework.ExpectNoError(err, "Failed to create TiDB cluster tls secret")
+
+		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
+		oa.DeployTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+		oa.CheckDisasterToleranceOrDie(&cluster)
+
+		// scale
+		cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
+		oa.ScaleTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+		oa.CheckDisasterToleranceOrDie(&cluster)
+
+		cluster.ScaleTiDB(2).ScaleTiKV(4).ScalePD(3)
+		oa.ScaleTidbClusterOrDie(&cluster)
+		oa.CheckTidbClusterStatusOrDie(&cluster)
+		oa.CheckDisasterToleranceOrDie(&cluster)
 	})
 
 	/**

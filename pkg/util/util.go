@@ -171,3 +171,7 @@ func Encode(obj interface{}) (string, error) {
 func ClusterClientTLSSecretName(tcName string) string {
 	return fmt.Sprintf("%s-cluster-client-secret", tcName)
 }
+
+func ClusterTLSSecretName(tcName, component string) string {
+	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
+}

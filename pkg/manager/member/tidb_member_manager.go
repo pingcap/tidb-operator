@@ -498,7 +498,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: clusterSecretName(tc, label.TiDBLabelVal),
+					SecretName: util.ClusterTLSSecretName(tcName, label.TiDBLabelVal),
 				},
 			},
 		})

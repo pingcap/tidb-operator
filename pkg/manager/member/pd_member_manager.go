@@ -515,7 +515,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		vols = append(vols, corev1.Volume{
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: clusterSecretName(tc, label.PDLabelVal),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
 				},
 			},
 		})
