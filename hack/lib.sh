@@ -155,7 +155,7 @@ function hack::__verify_kubetest2() {
     local n="$1"
     local v="$2"
     if test -x "$OUTPUT_BIN/$n"; then
-        local tmpv=$($OUTPUT_BIN/$n --version 2 >/dev/null | awk '{print $2}')
+        local tmpv=$($OUTPUT_BIN/$n --version 2>&1 | awk '{print $2}')
         [[ "$tmpv" == "$v" ]]
         return
     fi
