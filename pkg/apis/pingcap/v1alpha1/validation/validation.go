@@ -88,15 +88,6 @@ func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path
 	if spec.PD.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
 	}
-	if spec.TiDB.Config == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("tidb.config"), spec.TiDB.Config, "tidb.config must not be nil"))
-	}
-	if spec.TiKV.Config == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("tikv.config"), spec.TiKV.Config, "tidb.config must not be nil"))
-	}
-	if spec.PD.Config == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("pd.config"), spec.PD.Config, "tidb.config must not be nil"))
-	}
 	return allErrs
 }
 
