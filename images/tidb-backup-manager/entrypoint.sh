@@ -16,7 +16,6 @@
 set -e
 
 echo "Create rclone.conf file."
-
 cat <<EOF > /tmp/rclone.conf
 [s3]
 type = s3
