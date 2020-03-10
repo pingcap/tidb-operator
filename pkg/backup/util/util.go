@@ -87,6 +87,8 @@ func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 			Value: s3.StorageClass,
 		},
 	}
+	accessKeyName := "AWS_ACCESS_KEY_ID"
+	secretKeyName := "AWS_SECRET_ACCESS_KEY"
 	if useKMS {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
@@ -94,51 +96,30 @@ func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 				Value: s3.Region,
 			},
 		}...)
-		if s3.SecretName != "" {
-			envVars = append(envVars, []corev1.EnvVar{
-				{
-					Name: fmt.Sprintf("%s_AWS_ACCESS_KEY_ID", constants.KMSSecretPrefix),
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-							Key:                  constants.S3AccessKey,
-						},
+		accessKeyName = fmt.Sprintf("%s_AWS_ACCESS_KEY_ID", constants.KMSSecretPrefix)
+		secretKeyName = fmt.Sprintf("%s_AWS_SECRET_ACCESS_KEY", constants.KMSSecretPrefix)
+	}
+	if s3.SecretName != "" {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name: accessKeyName,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+						Key:                  constants.S3AccessKey,
 					},
 				},
-				{
-					Name: fmt.Sprintf("%s_AWS_SECRET_ACCESS_KEY", constants.KMSSecretPrefix),
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-							Key:                  constants.S3SecretKey,
-						},
+			},
+			{
+				Name: secretKeyName,
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+						Key:                  constants.S3SecretKey,
 					},
 				},
-			}...)
-		}
-	} else {
-		if s3.SecretName != "" {
-			envVars = append(envVars, []corev1.EnvVar{
-				{
-					Name: "AWS_ACCESS_KEY_ID",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-							Key:                  constants.S3AccessKey,
-						},
-					},
-				},
-				{
-					Name: "AWS_SECRET_ACCESS_KEY",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-							Key:                  constants.S3SecretKey,
-						},
-					},
-				},
-			}...)
-		}
+			},
+		}...)
 	}
 	return envVars, "", nil
 }
