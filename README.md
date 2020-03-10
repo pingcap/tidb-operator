@@ -2,7 +2,7 @@
 
 This repository stores all the source files of TiDB in Kubernetes documentation. That is, the documentation for [TiDB Operator](https://github.com/pingcap/tidb-operator).
 
-- `en`: documentation in English
+- `en`: [documentation in English](/en/TOC.md)
 - `zh`: documentation in Chinese
 
 > **Note:**
