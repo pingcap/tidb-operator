@@ -14,14 +14,6 @@ $ export GOPATH=$HOME/go
 $ export PATH=$PATH:$GOPATH/bin
 ```
 
-## Dependency management
-
-TiDB Operator uses [retool](https://github.com/twitchtv/retool) to manage Go related tools.
-
-```sh
-$ go get -u github.com/twitchtv/retool
-```
-
 ## Workflow
 
 ### Step 1: Fork TiDB Operator on GitHub
@@ -111,6 +103,49 @@ $ make check
 
 This will show errors if your code change does not pass checks (e.g. fmt,
 lint). Please fix them before submitting the PR.
+
+#### Start tidb-operator locally and do manual tests
+
+We uses [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to
+start a Kubernetes cluster locally and
+[kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) must be
+installed to access Kubernetes cluster.
+
+You can refer to their official references to install them on your machine, or
+run the following command to install them into our local binary directory:
+`output/bin`.
+
+```
+$ hack/install-up-operator.sh -i
+$ export PATH=$(pwd)/output/bin:$PATH
+```
+
+Make sure they are installed correctly:
+
+```
+$ kind --version
+...
+$ kubectl version --client
+...
+```
+
+Create a Kubernetes cluster with `kind`:
+
+```
+$ kind create cluster
+```
+
+Build and run tidb-operator:
+
+```
+$ ./hack/local-up-operator.sh
+```
+
+Start a basic TiDB cluster:
+
+```
+$ kubectl apply -f examples/basic/tidb-cluster.yaml
+```
 
 #### Run unit tests
 
