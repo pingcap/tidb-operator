@@ -39,7 +39,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(useIAM bool, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -87,35 +87,58 @@ func GenerateS3CertEnvVar(useIAM bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 			Value: s3.StorageClass,
 		},
 	}
-
-	if !useIAM {
-		envVars = append(envVars, []corev1.EnvVar{
-			{
-				Name: "AWS_ACCESS_KEY_ID",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-						Key:                  constants.S3AccessKey,
-					},
-				},
-			},
-			{
-				Name: "AWS_SECRET_ACCESS_KEY",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
-						Key:                  constants.S3SecretKey,
-					},
-				},
-			},
-		}...)
-	} else {
+	if useKMS {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
 				Name:  "AWS_DEFAULT_REGION",
 				Value: s3.Region,
 			},
 		}...)
+		if s3.SecretName != "" {
+			envVars = append(envVars, []corev1.EnvVar{
+				{
+					Name: fmt.Sprintf("%s_AWS_ACCESS_KEY_ID", constants.KMSSecretPrefix),
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+							Key:                  constants.S3AccessKey,
+						},
+					},
+				},
+				{
+					Name: fmt.Sprintf("%s_AWS_SECRET_ACCESS_KEY", constants.KMSSecretPrefix),
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+							Key:                  constants.S3SecretKey,
+						},
+					},
+				},
+			}...)
+		}
+	} else {
+		if s3.SecretName != "" {
+			envVars = append(envVars, []corev1.EnvVar{
+				{
+					Name: "AWS_ACCESS_KEY_ID",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+							Key:                  constants.S3AccessKey,
+						},
+					},
+				},
+				{
+					Name: "AWS_SECRET_ACCESS_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
+							Key:                  constants.S3SecretKey,
+						},
+					},
+				},
+			}...)
+		}
 	}
 	return envVars, "", nil
 }
@@ -160,7 +183,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	var err error
@@ -172,8 +195,8 @@ func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StoragePro
 			return certEnv, "S3ConfigIsEmpty", errors.New("s3 config is empty")
 		}
 
-		if !useIAM {
-			s3SecretName := provider.S3.SecretName
+		s3SecretName := provider.S3.SecretName
+		if s3SecretName != "" {
 			secret, err := secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
 				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
@@ -187,7 +210,7 @@ func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StoragePro
 			}
 		}
 
-		certEnv, reason, err = GenerateS3CertEnvVar(useIAM, provider.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(useKMS, provider.S3.DeepCopy())
 		if err != nil {
 			return certEnv, reason, err
 		}
@@ -221,7 +244,7 @@ func GenerateStorageCertEnv(ns string, useIAM bool, provider v1alpha1.StoragePro
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useIAM bool, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useKMS bool, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var passwordKey string
 	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
@@ -236,7 +259,7 @@ func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useIAM bool, secre
 		return certEnv, "KeyNotExist", err
 	}
 
-	if useIAM {
+	if useKMS {
 		passwordKey = fmt.Sprintf("%s_%s_%s", constants.KMSSecretPrefix, constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))
 	} else {
 		passwordKey = fmt.Sprintf("%s_%s", constants.BackupManagerEnvVarPrefix, strings.ToUpper(constants.TidbPasswordKey))

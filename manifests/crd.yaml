@@ -6900,6 +6900,9 @@ spec:
               required:
               - provider
               type: object
+            serviceAccount:
+              description: Specify service account of backup
+              type: string
             storageClassName:
               description: The storageClassName of the persistent volume for Backup
                 data storage. Defaults to Kubernetes default storage class.
@@ -6954,6 +6957,9 @@ spec:
                     type: string
                 type: object
               type: array
+            useKMS:
+              description: Use KMS to encrypt the secrets
+              type: boolean
           type: object
       type: object
   version: v1alpha1
@@ -7715,6 +7721,9 @@ spec:
               required:
               - provider
               type: object
+            serviceAccount:
+              description: Specify service account of restore
+              type: string
             storageClassName:
               description: The storageClassName of the persistent volume for Restore
                 data storage. Defaults to Kubernetes default storage class.
@@ -7792,6 +7801,9 @@ spec:
                     type: string
                 type: object
               type: array
+            useKMS:
+              description: Use KMS to encrypt the secrets
+              type: boolean
           type: object
       type: object
   version: v1alpha1
@@ -8619,6 +8631,9 @@ spec:
                   required:
                   - provider
                   type: object
+                serviceAccount:
+                  description: Specify service account of backup
+                  type: string
                 storageClassName:
                   description: The storageClassName of the persistent volume for Backup
                     data storage. Defaults to Kubernetes default storage class.
@@ -8674,6 +8689,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                useKMS:
+                  description: Use KMS to encrypt the secrets
+                  type: boolean
               type: object
             maxBackups:
               description: MaxBackups is to specify how many backups we want to keep

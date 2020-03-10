@@ -114,8 +114,6 @@ const (
 	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
 	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
 	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
-	// AnnAWSIAM describes the IAM role use in s3 interfaces
-	AnnAWSIAM = "iam.amazonaws.com/role"
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
 	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out

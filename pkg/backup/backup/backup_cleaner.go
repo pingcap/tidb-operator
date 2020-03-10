@@ -111,13 +111,8 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	annotations := map[string]string{}
-	iam, useIAM := backup.Annotations[label.AnnAWSIAM]
-	if useIAM {
-		annotations[label.AnnAWSIAM] = iam
-	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bc.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -132,7 +127,8 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
+			Labels:      backupLabel.Labels(),
+			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: constants.DefaultServiceAccountName,
@@ -151,10 +147,9 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        backup.GetCleanJobName(),
-			Namespace:   ns,
-			Labels:      backupLabel,
-			Annotations: annotations,
+			Name:      backup.GetCleanJobName(),
+			Namespace: ns,
+			Labels:    backupLabel,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},

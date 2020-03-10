@@ -153,18 +153,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
-	annotations := map[string]string{}
-	iam, useIAM := restore.Annotations[label.AnnAWSIAM]
-	if useIAM {
-		annotations[label.AnnAWSIAM] = iam
-	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, useIAM, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -183,14 +178,19 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
+	serviceAccount := constants.DefaultServiceAccountName
+	if restore.Spec.ServiceAccount != "" {
+		serviceAccount = restore.Spec.ServiceAccount
+	}
 
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: restoreLabel.Labels(),
+			Labels:      restoreLabel.Labels(),
+			Annotations: restore.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
@@ -221,10 +221,9 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        restore.GetRestoreJobName(),
-			Namespace:   ns,
-			Labels:      restoreLabel,
-			Annotations: annotations,
+			Name:      restore.GetRestoreJobName(),
+			Namespace: ns,
+			Labels:    restoreLabel,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetRestoreOwnerRef(restore),
 			},
@@ -240,18 +239,13 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
-	annotations := map[string]string{}
-	iam, useIAM := restore.Annotations[label.AnnAWSIAM]
-	if useIAM {
-		annotations[label.AnnAWSIAM] = iam
-	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, useIAM, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -278,13 +272,19 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		})
 	}
+
+	serviceAccount := constants.DefaultServiceAccountName
+	if restore.Spec.ServiceAccount != "" {
+		serviceAccount = restore.Spec.ServiceAccount
+	}
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: restoreLabel.Labels(),
+			Labels:      restoreLabel.Labels(),
+			Annotations: restore.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
@@ -302,10 +302,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        restore.GetRestoreJobName(),
-			Namespace:   ns,
-			Labels:      restoreLabel,
-			Annotations: annotations,
+			Name:      restore.GetRestoreJobName(),
+			Namespace: ns,
+			Labels:    restoreLabel,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetRestoreOwnerRef(restore),
 			},

@@ -162,18 +162,13 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	annotations := map[string]string{}
-	iam, useIAM := backup.Annotations[label.AnnAWSIAM]
-	if useIAM {
-		annotations[label.AnnAWSIAM] = iam
-	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, useIAM, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -197,15 +192,19 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      backupLabel.Labels(),
-			Annotations: annotations,
+			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
@@ -236,10 +235,9 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        backup.GetBackupJobName(),
-			Namespace:   ns,
-			Labels:      backupLabel,
-			Annotations: annotations,
+			Name:      backup.GetBackupJobName(),
+			Namespace: ns,
+			Labels:    backupLabel,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
@@ -256,18 +254,13 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	annotations := map[string]string{}
-	iam, useIAM := backup.Annotations[label.AnnAWSIAM]
-	if useIAM {
-		annotations[label.AnnAWSIAM] = iam
-	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, useIAM, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, useIAM, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -296,13 +289,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      backupLabel.Labels(),
-			Annotations: annotations,
+			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
@@ -322,10 +319,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        backup.GetBackupJobName(),
-			Namespace:   ns,
-			Labels:      backupLabel,
-			Annotations: annotations,
+			Name:      backup.GetBackupJobName(),
+			Namespace: ns,
+			Labels:    backupLabel,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupOwnerRef(backup),
 			},
