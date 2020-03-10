@@ -467,6 +467,9 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 		if svcSpec.ClusterIP != nil {
 			pdService.Spec.ClusterIP = *svcSpec.ClusterIP
 		}
+		if svcSpec.PortName != nil {
+			pdService.Spec.Ports[0].Name = *svcSpec.PortName
+		}
 	}
 	return pdService
 }
