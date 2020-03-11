@@ -55,7 +55,4 @@ const (
 
 	// ServiceAccountCAPath is where is CABundle of serviceaccount locates
 	ServiceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-
-	// KMS secret env prefix
-	KMSSecretPrefix = "KMS_ENCRYPTED"
 )

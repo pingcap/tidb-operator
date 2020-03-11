@@ -8,7 +8,6 @@ metadata:
     # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
   # backupType: full
-  # useKMS: false
   # serviceAccount: myServiceAccount
   br:
     cluster: myCluster

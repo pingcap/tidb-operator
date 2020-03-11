@@ -51,11 +51,6 @@ else
 fi
 
 BACKUP_BIN=/tidb-backup-manager
-if [[ -n "${AWS_DEFAULT_REGION}"]]; then
-	EXEC_COMMAND="exec"
-else
-	EXEC_COMMAND="/usr/local/bin/shush exec --"
-fi
 
 cat /tmp/rclone.conf
 
@@ -64,27 +59,27 @@ case "$1" in
     backup)
         shift 1
         echo "$BACKUP_BIN backup $@"
-        $EXEC_COMMAND $BACKUP_BIN backup "$@"
+        exec $BACKUP_BIN backup "$@"
         ;;
     export)
         shift 1
         echo "$BACKUP_BIN export $@"
-        $EXEC_COMMAND $BACKUP_BIN export "$@"
+        exec $BACKUP_BIN export "$@"
         ;;
     restore)
         shift 1
         echo "$BACKUP_BIN restore $@"
-        $EXEC_COMMAND $BACKUP_BIN restore "$@"
+        exec $BACKUP_BIN restore "$@"
         ;;
     import)
         shift 1
         echo "$BACKUP_BIN import $@"
-        $EXEC_COMMAND $BACKUP_BIN import "$@"
+        exec $BACKUP_BIN import "$@"
         ;;
     clean)
         shift 1
         echo "$BACKUP_BIN clean $@"
-        $EXEC_COMMAND $BACKUP_BIN clean "$@"
+        exec $BACKUP_BIN clean "$@"
         ;;
     *)
         echo "Usage: $0 {backup|restore|clean}"
