@@ -6899,8 +6899,10 @@ spec:
                   type: string
               required:
               - provider
-              - secretName
               type: object
+            serviceAccount:
+              description: Specify service account of backup
+              type: string
             storageClassName:
               description: The storageClassName of the persistent volume for Backup
                 data storage. Defaults to Kubernetes default storage class.
@@ -7715,8 +7717,10 @@ spec:
                   type: string
               required:
               - provider
-              - secretName
               type: object
+            serviceAccount:
+              description: Specify service account of restore
+              type: string
             storageClassName:
               description: The storageClassName of the persistent volume for Restore
                 data storage. Defaults to Kubernetes default storage class.
@@ -8620,8 +8624,10 @@ spec:
                       type: string
                   required:
                   - provider
-                  - secretName
                   type: object
+                serviceAccount:
+                  description: Specify service account of backup
+                  type: string
                 storageClassName:
                   description: The storageClassName of the persistent volume for Backup
                     data storage. Defaults to Kubernetes default storage class.
