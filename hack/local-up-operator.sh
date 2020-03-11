@@ -33,6 +33,7 @@ This commands run tidb-operator in Kubernetes.
 Usage: hack/local-up-operator.sh [-hd]
 
     -h      show this message and exit
+    -i      install dependencies only
 
 Environments:
 
@@ -48,11 +49,15 @@ Environments:
 EOF
 }
 
-while getopts "h?" opt; do
+installOnly=false
+while getopts "h?i" opt; do
     case "$opt" in
     h|\?)
         usage
         exit 0
+        ;;
+    i)
+      installOnly=true
         ;;
     esac
 done
@@ -67,7 +72,12 @@ IMAGE_TAG=${IMAGE_TAG:-latest}
 SKIP_IMAGE_BUILD=${SKIP_IMAGE_BUILD:-}
 
 hack::ensure_kubectl
+hack::ensure_kind
 hack::ensure_helm
+
+if [[ "$installOnly" == "true" ]]; then
+    exit 0
+fi
 
 function hack::create_namespace() {
     local ns="$1"

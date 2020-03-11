@@ -26,8 +26,8 @@ spec:
     # port: 4000
     # user: root
   s3:
-    provider: ceph
-    endpoint: http://10.233.57.220
-    secretName: ceph-secret
+    provider: aws
+    region: us-west-2
     bucket: backup
     prefix: test1-demo1
+    # secretName: aws-secret

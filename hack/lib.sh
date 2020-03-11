@@ -34,7 +34,7 @@ HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.0.7
+KUBETEST2_VERSION=v0.0.8
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
 AWS_K8S_TESTER_VERSION=v0.6.2
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
@@ -155,7 +155,7 @@ function hack::__verify_kubetest2() {
     local n="$1"
     local v="$2"
     if test -x "$OUTPUT_BIN/$n"; then
-        local tmpv=$($OUTPUT_BIN/$n --version 2 >/dev/null | awk '{print $2}')
+        local tmpv=$($OUTPUT_BIN/$n --version 2>&1 | awk '{print $2}')
         [[ "$tmpv" == "$v" ]]
         return
     fi

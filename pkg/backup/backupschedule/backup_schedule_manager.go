@@ -233,9 +233,10 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      bs.GetBackupCRDName(timestamp),
-			Labels:    bsLabel.Labels(),
+			Namespace:   ns,
+			Name:        bs.GetBackupCRDName(timestamp),
+			Labels:      bsLabel.Labels(),
+			Annotations: bs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupScheduleOwnerRef(bs),
 			},

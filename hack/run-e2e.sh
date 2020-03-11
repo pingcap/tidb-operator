@@ -25,6 +25,9 @@ source $ROOT/hack/lib.sh
 PROVIDER=${PROVIDER:-}
 CLUSTER=${CLUSTER:-}
 GCP_PROJECT=${GCP_PROJECT:-}
+GCP_REGION=${GCP_REGION:-}
+GCP_ZONE=${GCP_ZONE:-}
+GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
 IMAGE_TAG=${IMAGE_TAG:-}
 SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
@@ -119,8 +122,8 @@ EOF
     elif [ "$PROVIDER" == "gke" ]; then
         # disks are created under /mnt/stateful_partition directory
         # https://cloud.google.com/container-optimized-os/docs/concepts/disks-and-filesystem
-        for n in $($KUBECTL_BIN --context $KUBECONTEXT get nodes -ojsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
-            gcloud compute ssh $n --command 'sudo bash -c '"'"'
+        for n in $($KUBECTL_BIN --context "$KUBECONTEXT" get nodes -ojsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
+            gcloud compute ssh e2e@$n --command 'sudo bash -c '"'"'
 test -d /mnt/stateful_partition/disks || mkdir -p /mnt/stateful_partition/disks
 df -h /mnt/stateful_partition/disks
 test -d /mnt/disks || mkdir -p /mnt/disks
@@ -258,9 +261,28 @@ function e2e::image_load() {
 hack::ensure_kubectl
 hack::ensure_helm
 
+if [ "$PROVIDER" == "gke" ]; then
+    if [ -n "$GCP_CREDENTIALS" ]; then
+        gcloud auth activate-service-account --key-file "$GCP_CREDENTIALS"
+    fi
+    if [ -n "$GCP_REGION" ]; then
+        gcloud config set compute/region "$GCP_REGION"
+    fi
+    if [ -n "$GCP_ZONE" ]; then
+        gcloud config set compute/zone "$GCP_ZONE"
+    fi
+    gcloud container clusters get-credentials "$CLUSTER"
+elif [ "$PROVIDER" == "eks" ]; then
+    :
+fi
+
 if [ -z "$KUBECONTEXT" ]; then
-    KUBECONTEXT=$(kubectl config current-context)
     echo "info: KUBECONTEXT is not set, current context $KUBECONTEXT is used"
+    KUBECONTEXT=$(kubectl config current-context 2>/dev/null) || true
+    if [ -z "$KUBECONTEXT" ]; then
+        echo "error: KUBECONTEXT cannot be detected"
+        exit 1
+    fi
 fi
 
 if [ -z "$SKIP_IMAGE_LOAD" ]; then
@@ -298,7 +320,7 @@ e2e_args=(
     ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
     --
-    --provider=skeleton
+    --provider=${PROVIDER}
     --clean-start=true
     --delete-namespace-on-failure=false
     --repo-root=$ROOT
@@ -339,6 +361,16 @@ if [ "$PROVIDER" == "eks" ]; then
     docker_args+=(
         -v $HOME/.aws:/root/.aws
     )
+elif [ "$PROVIDER" == "gke" ]; then
+	e2e_args+=(
+		--gce-project ${GCP_PROJECT}
+		--gce-region ${GCP_REGION}
+		--gce-zone ${GCP_ZONE}
+	)
+	docker_args+=(
+		-v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
+		--env GOOGLE_APPLICATION_CREDENTIALS=${GCP_CREDENTIALS}
+	)
 fi
 
 if [ -n "$REPORT_DIR" ]; then
