@@ -1,10 +1,10 @@
 ---
-title: Restore Data From S3-Compatible Storage
+title: Restore Data from S3-Compatible Storage
 summary: Learn how to restore data from the S3-compatible storage.
 category: how-to
 ---
 
-# Restore Data From S3-Compatible Storage
+# Restore Data from S3-Compatible Storage
 
 This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [`loader`](https://pingcap.com/docs/stable/reference/tools/loader) is used to perform the restoration.
 

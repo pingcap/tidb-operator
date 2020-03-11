@@ -33,9 +33,9 @@
     - [Helm Charts-Based Backup and Restoration](backup-and-restore-using-helm-charts.md)
     + CRD-Based Backup and Restoration
       - [Back up Data to GCS](backup-to-gcs.md)
-      - [Restore Data From GCS](restore-from-gcs.md)
+      - [Restore Data from GCS](restore-from-gcs.md)
       - [Back up Data to S3-Compatible Storage](backup-to-s3.md)
-      - [Restore Data From S3-Compatible Storage](restore-from-s3.md)
+      - [Restore Data from S3-Compatible Storage](restore-from-s3.md)
   - [Restore Data with TiDB Lightning](restore-data-using-tidb-lightning.md)
   - [Collect TiDB Logs](collect-tidb-logs.md)
   - [Maintain TiDB Binlog](maintain-tidb-binlog.md)

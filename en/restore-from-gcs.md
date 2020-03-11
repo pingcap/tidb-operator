@@ -1,10 +1,10 @@
 ---
-title: Restore Data From GCS
+title: Restore Data from GCS
 summary: Learn how to restore the backup data from GCS.
 category: how-to
 ---
 
-# Restore Data From GCS
+# Restore Data from GCS
 
 This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [`loader`](https://pingcap.com/docs/stable/reference/tools/loader) is used to perform the restoration.
 
