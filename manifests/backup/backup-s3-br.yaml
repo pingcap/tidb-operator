@@ -4,8 +4,8 @@ kind: Backup
 metadata:
   name: demo1-backup-s3
   namespace: test1
-  annotations:
-    iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
+  # annotations:
+    # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
   # backupType: full
   # useKMS: false
