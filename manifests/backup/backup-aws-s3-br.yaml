@@ -21,13 +21,13 @@ spec:
     # checksum: true
     # sendCredToTikv: true
   from:
-    host: myHost
+    host: 172.30.6.56
     secretName: mySecret
     # port: 4000
     # user: root
   s3:
     provider: aws
-    region: myRegion
+    region: us-west-2
     bucket: backup
     prefix: test1-demo1
     # secretName: aws-secret

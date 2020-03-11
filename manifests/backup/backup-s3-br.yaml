@@ -21,7 +21,7 @@ spec:
     # checksum: true
     # sendCredToTikv: true
   from:
-    host: myHost
+    host: 172.30.6.56
     secretName: mySecret
     # port: 4000
     # user: root
