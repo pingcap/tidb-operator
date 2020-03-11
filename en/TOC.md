@@ -29,7 +29,13 @@
   - [Destroy a TiDB cluster](destroy-a-tidb-cluster.md)
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
   - [Maintain a Hosting Kubernetes Node](maintain-a-kubernetes-node.md)
-  - [Backup and Restore](backup-and-restore.md)
+  + Backup and Restore
+    - [Helm Charts-Based Backup and Restoration](backup-and-restore-using-helm-charts.md)
+    + CRD-Based Backup and Restoration
+      - [Back up TiDB Cluster Data to GCS](backup-to-gcs.md)
+      - [Restore Data From GCS](restore-from-gcs.md)
+      - [Back up TiDB Cluster Data to S3-Compatible Storage](backup-to-s3.md)
+      - [Restore Data From S3-Compatible Storage](restore-from-s3.md)
   - [Restore Data with TiDB Lightning](restore-data-using-tidb-lightning.md)
   - [Collect TiDB Logs](collect-tidb-logs.md)
   - [Maintain TiDB Binlog](maintain-tidb-binlog.md)
