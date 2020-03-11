@@ -123,6 +123,10 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).CleanJob().Backup(name)
 
 	podSpec := &corev1.PodTemplateSpec{
@@ -131,7 +135,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
