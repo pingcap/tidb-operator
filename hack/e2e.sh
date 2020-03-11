@@ -64,11 +64,12 @@ Environments:
     QUAY_IO_MIRROR        configure mirror for quay.io
     KIND_DATA_HOSTPATH    (kind only) the host path of data directory for kind cluster, defaults: none
     GCP_PROJECT           (gke only) the GCP project to run in
-    GCP_SERVICE_ACCOUNT   (gke only) the GCP service account to use
+    GCP_CREDENTIALS       (gke only) the GCP service account to use
     GCP_REGION            (gke only) the GCP region, if specified a regional cluster is creaetd
     GCP_ZONE              (gke only) the GCP zone, if specified a zonal cluster is created
     GCP_SSH_PRIVATE_KEY   (gke only) the path to the private ssh key
     GCP_SSH_PUBLIC_KEY    (gke only) the path to the public ssh key
+    GCP_MACHINE_TYPE      (gke only) the machine type of instance, defaults: n1-standard-4
     AWS_ACCESS_KEY_ID     (eks only) the aws access key id
     AWS_SECRET_ACCESS_KEY (eks only) the aws secret access key
     AWS_REGION            (eks only) the aws region
@@ -115,6 +116,7 @@ Examples:
         - Kubernetes Engine Admin
         - Service Account User
         - Storage Admin
+        - Compute Instance Admin (v1)
 
     You can create ssh keypair with ssh-keygen at  ~/.ssh/google_compute_engine
     or specifc existing ssh keypair with following environments:
@@ -125,7 +127,7 @@ Examples:
     Then run with following additional GCP-specific environments:
 
         export GCP_PROJECT=<project>
-        export GCP_SERVICE_ACCOUNT=<path-to-gcp-service-account>
+        export GCP_CREDENTIALS=<path-to-gcp-service-account>
         export GCP_ZONE=us-central1-b
 
         PROVIDER=gke ./hack/e2e.sh -- <e2e args>
@@ -186,11 +188,12 @@ SKIP_TEST=${SKIP_TEST:-}
 REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 GCP_PROJECT=${GCP_PROJECT:-}
-GCP_SERVICE_ACCOUNT=${GCP_SERVICE_ACCOUNT:-}
+GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
 GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_SSH_PRIVATE_KEY=${GCP_SSH_PRIVATE_KEY:-}
 GCP_SSH_PUBLIC_KEY=${GCP_SSH_PUBLIC_KEY:-}
+GCP_MACHINE_TYPE=${GCP_MACHINE_TYPE:-n1-standard-4}
 AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
 AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
 AWS_REGION=${AWS_REGION:-}
@@ -213,7 +216,7 @@ echo "SKIP_UP: $SKIP_UP"
 echo "SKIP_DOWN: $SKIP_DOWN"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "GCP_PROJECT: $GCP_PROJECT"
-echo "GCP_SERVICE_ACCOUNT: $GCP_SERVICE_ACCOUNT"
+echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
 echo "GCP_REGION: $GCP_REGION"
 echo "GCP_ZONE: $GCP_ZONE"
 echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
@@ -415,8 +418,8 @@ elif [ "$PROVIDER" == "gke" ]; then
         echo "error: GCP_PROJECT is required"
         exit 1
     fi
-    if [ -z "$GCP_SERVICE_ACCOUNT" ]; then
-        echo "error: GCP_SERVICE_ACCOUNT is required"
+    if [ -z "$GCP_CREDENTIALS" ]; then
+        echo "error: GCP_CREDENTIALS is required"
         exit 1
     fi
     if [ -z "$GCP_REGION" -a -z "$GCP_ZONE" ]; then
@@ -430,21 +433,25 @@ elif [ "$PROVIDER" == "gke" ]; then
     if [ ! -d ~/.ssh ]; then
         mkdir ~/.ssh
     fi
-    if [ ! -e ~/.ssh/google_compute_engine -o -n "$GCP_SSH_PRIVATE_KEY" ]; then
+    if [ ! -e ~/.ssh/google_compute_engine -a -n "$GCP_SSH_PRIVATE_KEY" ]; then
         echo "Copying $GCP_SSH_PRIVATE_KEY to ~/.ssh/google_compute_engine" >&2
         cp $GCP_SSH_PRIVATE_KEY ~/.ssh/google_compute_engine
         chmod 0600 ~/.ssh/google_compute_engine
     fi
-    if [ ! -e ~/.ssh/google_compute_engine.pub -o -n "$GCP_SSH_PUBLIC_KEY" ]; then
+    if [ ! -e ~/.ssh/google_compute_engine.pub -a -n "$GCP_SSH_PUBLIC_KEY" ]; then
         echo "Copying $GCP_SSH_PUBLIC_KEY to ~/.ssh/google_compute_engine.pub" >&2
         cp $GCP_SSH_PUBLIC_KEY ~/.ssh/google_compute_engine.pub
         chmod 0600 ~/.ssh/google_compute_engine.pub
     fi
+    ! read -r -d '' nodePoolsJSON <<EOF
+{"default":{"Nodes":${KUBE_WORKERS},"MachineType":"${GCP_MACHINE_TYPE}"}}
+EOF
     kubetest2_args+=(
         --cluster-name "$CLUSTER"
         --project "$GCP_PROJECT"
-        --gcp-service-account "$GCP_SERVICE_ACCOUNT"
+        --gcp-service-account "$GCP_CREDENTIALS"
         --environment prod
+        --node-pools "$nodePoolsJSON"
     )
     if [ -n "$GCP_REGION" ]; then
         kubetest2_args+=(
@@ -498,12 +505,15 @@ export PROVIDER
 export CLUSTER
 export KUBECONFIG
 export GCP_PROJECT
+export GCP_REGION
+export GCP_ZONE
+export GCP_CREDENTIALS
 export IMAGE_TAG
 export SKIP_GINKGO
 export SKIP_IMAGE_LOAD
 export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
-export PATH=$PATH:$OUTPUT_BIN
+export PATH=$OUTPUT_BIN:$PATH
 
 # Environments for kubetest2
 if [ -n "${REPORT_DIR:-}" ]; then
