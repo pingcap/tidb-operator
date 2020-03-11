@@ -3392,6 +3392,9 @@ spec:
                           description: Use socket file to write binlog, for compatible
                             with kafka version tidb-binlog.
                           type: string
+                        enable:
+                          description: optional
+                          type: boolean
                         ignore-error:
                           description: If IgnoreError is true, when writing binlog
                             meets error, TiDB would ignore the error.
@@ -3415,9 +3418,35 @@ spec:
                     enable-batch-dml:
                       description: 'Optional: Defaults to false'
                       type: boolean
+                    enable-dynamic-config:
+                      description: EnableDynamicConfig enables the TiDB to fetch configs
+                        from PD and update itself during runtime. see https://github.com/pingcap/tidb/pull/13660
+                        for more details.
+                      type: boolean
                     enable-streaming:
                       description: 'Optional: Defaults to false'
                       type: boolean
+                    experimental:
+                      description: 'Experimental controls the features that are still
+                        experimental: their semantics, interfaces are subject to change.
+                        Using these features in the production environment is not
+                        recommended.'
+                      properties:
+                        allow-auto-random:
+                          description: Whether enable the syntax like `auto_random(3)`
+                            on the primary key column.
+                          type: boolean
+                      type: object
+                    isolation-read:
+                      description: IsolationRead is the config for isolation read.
+                      properties:
+                        engines:
+                          description: Engines filters tidb-server access paths by
+                            engine type.
+                          items:
+                            type: string
+                          type: array
+                      type: object
                     lease:
                       description: 'Optional: Defaults to 45s'
                       type: string
@@ -3426,6 +3455,16 @@ spec:
                       properties:
                         disable-timestamp:
                           description: Disable automatic timestamps in output.
+                          type: boolean
+                        enable-error-stack:
+                          description: EnableErrorStack enables annotating logs with
+                            the full stack error message.
+                          type: boolean
+                        enable-slow-log:
+                          type: boolean
+                        enable-timestamp:
+                          description: EnableTimestamp enables automatic timestamps
+                            in log output.
                           type: boolean
                         expensive-threshold:
                           description: 'Optional: Defaults to 10000'
@@ -3468,6 +3507,8 @@ spec:
                           description: 'Optional: Defaults to 1'
                           format: int64
                           type: integer
+                        slow-query-file:
+                          type: string
                         slow-threshold:
                           description: 'Optional: Defaults to 300'
                           format: int64
@@ -3476,10 +3517,20 @@ spec:
                     lower-case-table-names:
                       format: int32
                       type: integer
+                    max-server-connections:
+                      description: MaxServerConnections is the maximum permitted number
+                        of simultaneous client connections.
+                      format: int64
+                      type: integer
                     mem-quota-query:
                       description: 'Optional: Defaults to 34359738368'
                       format: int64
                       type: integer
+                    new_collations_enabled_on_first_bootstrap:
+                      description: NewCollationsEnabledOnFirstBootstrap indicates
+                        if the new collations are enabled, it effects only when a
+                        TiDB cluster bootstrapped on the first time.
+                      type: boolean
                     oom-action:
                       description: 'Optional: Defaults to log'
                       type: string
@@ -3631,6 +3682,14 @@ spec:
                             networks.
                           type: string
                       type: object
+                    repair-mode:
+                      description: RepairMode indicates that the TiDB is in the repair
+                        mode for table meta.
+                      type: boolean
+                    repair-table-list:
+                      items:
+                        type: string
+                      type: array
                     run-ddl:
                       description: 'Optional: Defaults to true'
                       type: boolean
@@ -3643,6 +3702,10 @@ spec:
                           type: string
                         cluster-ssl-key:
                           type: string
+                        cluster-verify-cn:
+                          items:
+                            type: string
+                          type: array
                         skip-grant-table:
                           type: boolean
                         ssl-ca:
@@ -3680,6 +3743,13 @@ spec:
                     stmt-summary:
                       description: StmtSummary is the config for statement summary.
                       properties:
+                        enable:
+                          description: Enable statement summary or not.
+                          type: boolean
+                        history-size:
+                          description: The maximum history size of statement summary.
+                          format: int32
+                          type: integer
                         max-sql-length:
                           description: 'The maximum length of displayed normalized
                             SQL and sample SQL. Optional: Defaults to 4096'
@@ -3688,6 +3758,10 @@ spec:
                         max-stmt-count:
                           description: 'The maximum number of statements kept in memory.
                             Optional: Defaults to 100'
+                          format: int32
+                          type: integer
+                        refresh-interval:
+                          description: The refresh interval of statement summary.
                           format: int32
                           type: integer
                       type: object
@@ -3703,6 +3777,7 @@ spec:
                           description: 'CommitTimeout is the max time which command
                             ''commit'' will wait. Optional: Defaults to 41s'
                           type: string
+                        copr-cache: {}
                         grpc-connection-count:
                           description: 'GrpcConnectionCount is the max gRPC connections
                             that will be established with each tikv-server. Optional:
