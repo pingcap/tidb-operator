@@ -4,7 +4,7 @@
 
 <!--Tell us what you did and why. This is important to help reviewers and community members understand your PR.-->
 
-### Which TiDB version(s) do your changes apply to? (Required)
+### Which TiDB Operator version(s) do your changes apply to? (Required)
 
 <!--Tick the checkbox(es) below to choose the TiDB Operator version(s) that your changes apply to.-->
 
@@ -17,5 +17,5 @@
 
 <!--Give us some reference link(s) that might help quickly review and merge your PR, for example, a file link that supports why you changed the document.-->
 
-- This PR is translated from:<!--Give links here-->
-- Other reference link(s):<!--Give links here-->
+- This PR is translated from: <!--Give links here-->
+- Other reference link(s): <!--Give links here-->
