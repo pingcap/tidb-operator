@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: selfsigned-ca-cert
+spec:
+  secretName: selfsigned-ca-cert
+  commonName: "certmanager"
+  isCA: true
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
