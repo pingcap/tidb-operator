@@ -10,9 +10,9 @@ This document describes how to back up and restore the data of a TiDB cluster in
 
 For TiDB Operator 1.1 or later versions, it is recommended that you use the backup and restoration methods based on CustomResourceDefinition (CRD). Refer to the following documents for details:
 
-* [Back up TiDB Cluster Data to GCS](backup-to-gcs.md)
+* [Back up Data to GCS](backup-to-gcs.md)
 * [Restore Data From GCS](restore-from-gcs.md)
-* [Back up TiDB Cluster Data to S3-Compatible Storage](backup-to-s3.md)
+* [Back up Data to S3-Compatible Storage](backup-to-s3.md)
 * [Restore Data From S3-Compatible Storage](restore-from-s3.md)
 
 TiDB in Kubernetes supports two kinds of backup strategies (based on Helm charts):
