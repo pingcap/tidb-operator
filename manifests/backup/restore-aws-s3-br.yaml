@@ -1,8 +1,8 @@
 ---
 apiVersion: pingcap.com/v1alpha1
-kind: Backup
+kind: Restore
 metadata:
-  name: demo1-backup-s3
+  name: demo1-restore-s3-br
   namespace: test1
   # annotations:
     # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
@@ -11,8 +11,10 @@ spec:
   # serviceAccount: myServiceAccount
   br:
     cluster: myCluster
-    # clusterNamespce: <backup-namespace>
+    # clusterNamespce: <restore-namespace>
     # enableTLSClient: true
+    # db: <db-name>
+    # table: <table-name>
     # logLevel: info
     # statusAddr: <status-addr>
     # concurrency: 4
@@ -20,14 +22,14 @@ spec:
     # timeAgo: <time>
     # checksum: true
     # sendCredToTikv: true
-  from:
+  to:
     host: 172.30.6.56
     secretName: mySecret
     # port: 4000
     # user: root
   s3:
-    provider: ceph
-    endpoint: http://10.233.57.220
-    secretName: ceph-secret
+    provider: aws
+    region: us-west-2
     bucket: backup
     prefix: test1-demo1
+    # secretName: aws-secret

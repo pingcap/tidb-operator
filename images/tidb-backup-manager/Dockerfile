@@ -1,6 +1,5 @@
 FROM pingcap/tidb-enterprise-tools:latest
-
-ARG VERSION=v1.48.0
+ARG VERSION=v1.51.0
 RUN apk update && apk add ca-certificates
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${VERSION}/rclone-${VERSION}-linux-amd64.zip \

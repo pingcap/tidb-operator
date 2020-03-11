@@ -719,7 +719,7 @@ type S3StorageProvider struct {
 	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// Prefix for the keys.
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
@@ -804,6 +804,8 @@ type BackupSpec struct {
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Specify service account of backup
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1022,6 +1024,8 @@ type RestoreSpec struct {
 	// Affinity of restore Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Specify service account of restore
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
