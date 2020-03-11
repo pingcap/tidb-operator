@@ -52,8 +52,6 @@ fi
 
 BACKUP_BIN=/tidb-backup-manager
 
-cat /tmp/rclone.conf
-
 # exec command
 case "$1" in
     backup)
