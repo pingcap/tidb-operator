@@ -4,6 +4,8 @@ kind: BackupSchedule
 metadata:
   name: demo1-backup-schedule-s3
   namespace: test1
+  # annotations:
+    # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
   #maxBackups: 5
   #pause: true
