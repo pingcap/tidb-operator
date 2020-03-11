@@ -23,12 +23,16 @@ scheduler:
   replicas: 2
 admissionWebhook:
   create: true
+  replicas: 2
   validation:
     statefulSets: true
     pods: true
     pingcapResources: false
   mutation:
     pingcapResources: true
+  failurePolicy:
+    validation: Fail
+    mutation: Fail
 features:
   - AutoScaling=true
 '''
