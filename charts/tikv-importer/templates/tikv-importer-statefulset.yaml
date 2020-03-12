@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ template "cluster.name" . }}-importer
+  name: {{ .Values.clusterName }}-importer
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -14,7 +14,7 @@ spec:
       app.kubernetes.io/name: {{ template "chart.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: importer
-  serviceName: {{ template "cluster.name" . }}-importer
+  serviceName: {{ .Values.clusterName }}-importer
   replicas: 1
   template:
     metadata:
@@ -27,18 +27,18 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: importer
     spec:
-    {{- if .Values.importer.affinity }}
+    {{- if .Values.affinity }}
       affinity:
-{{ toYaml .Values.importer.affinity | indent 6 }}
+{{ toYaml .Values.affinity | indent 6 }}
     {{- end }}
-    {{- if .Values.importer.tolerations }}
+    {{- if .Values.tolerations }}
       tolerations:
-{{ toYaml .Values.importer.tolerations | indent 6 }}
+{{ toYaml .Values.tolerations | indent 6 }}
     {{- end }}
       containers:
       - name: importer
-        image: {{ .Values.importer.image }}
-        imagePullPolicy: {{ .Values.importer.imagePullPolicy | default "IfNotPresent"}}
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent"}}
         command:
         - /tikv-importer
         # tikv-importer does not support domain name: https://github.com/tikv/importer/issues/16
@@ -57,26 +57,24 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
-      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         - name: TZ
           value: {{ .Values.timezone | default "UTC" }}
-      {{- end }}
         volumeMounts:
         - name: data
           mountPath: /var/lib/tikv-importer
         - name: config
           mountPath: /etc/tikv-importer
-        {{- if .Values.importer.resources }}
+        {{- if .Values.resources }}
         resources:
-{{ toYaml .Values.importer.resources | indent 10 }}
+{{ toYaml .Values.resources | indent 10 }}
         {{- end }}
       - name: pushgateway
-        image: {{ .Values.importer.pushgatewayImage }}
-        imagePullPolicy: {{ .Values.importer.pushgatewayImagePullPolicy | default "IfNotPresent" }}
+        image: {{ .Values.pushgatewayImage }}
+        imagePullPolicy: {{ .Values.pushgatewayImagePullPolicy | default "IfNotPresent" }}
       volumes:
       - name: config
         configMap:
-          name: {{ template "cluster.name" . }}-importer-{{ template "importer-configmap.data-digest" . }}
+          name: {{ .Values.clusterName }}-importer-{{ template "importer-configmap.data-digest" . }}
           items:
           - key: config-file
             path: tikv-importer.toml
@@ -85,7 +83,7 @@ spec:
       name: data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: {{ .Values.importer.storageClassName }}
+      storageClassName: {{ .Values.storageClassName }}
       resources:
         requests:
-          storage: {{ .Values.importer.storage }}
+          storage: {{ .Values.storage }}
