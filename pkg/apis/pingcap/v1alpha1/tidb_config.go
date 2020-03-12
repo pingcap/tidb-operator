@@ -31,6 +31,7 @@ import (
 // initially copied from TiDB v3.0.6
 
 // TiDBConfig is the configuration of tidb-server
+// For more detail, refer to https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/
 // +k8s:openapi-gen=true
 type TiDBConfig struct {
 	// +optional
