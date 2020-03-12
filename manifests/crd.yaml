@@ -1344,6 +1344,8 @@ spec:
                       description: ElectionInterval is the interval for etcd Raft
                         election.
                       type: string
+                    enable-dynamic-config:
+                      type: boolean
                     enable-grpc-gateway:
                       description: 'Optional: Defaults to true'
                       type: boolean
@@ -1419,6 +1421,7 @@ spec:
                         level:
                           description: 'Log level. Optional: Defaults to info'
                           type: string
+                        sampling: {}
                       type: object
                     log-file:
                       description: Backward compatibility.
@@ -1456,6 +1459,10 @@ spec:
                     replication:
                       description: PDReplicationConfig is the replication configuration.
                       properties:
+                        enable-placement-rules:
+                          description: When PlacementRules feature is enabled. MaxReplicas
+                            and LocationLabels are not uesd any more.
+                          type: string
                         max-replicas:
                           description: 'MaxReplicas is the number of replicas for
                             each region. Immutable, change should be made through
@@ -1640,6 +1647,14 @@ spec:
                             be made through pd-ctl after cluster creation Optional:
                             Defaults to 1h'
                           type: string
+                        store-limit-mode:
+                          description: 'StoreLimitMode can be auto or manual, when
+                            set to auto, PD tries to change the store limit values
+                            according to the load state of the cluster dynamically.
+                            User can overwrite the auto-tuned value by pd-ctl, when
+                            the value is overwritten, the value is fixed until it
+                            is deleted. Default: manual'
+                          type: string
                         tolerant-size-ratio:
                           description: TolerantSizeRatio is the ratio of buffer size
                             for balance scheduler. Immutable, change should be made
@@ -1660,6 +1675,8 @@ spec:
                           description: CertPath is the path of file that contains
                             X509 certificate in PEM format.
                           type: string
+                        client-cert-auth:
+                          type: boolean
                         key-path:
                           description: KeyPath is the path of file that contains X509
                             key in PEM format.
