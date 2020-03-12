@@ -150,10 +150,10 @@ type TidbClusterSpec struct {
 	// +optional
 	EnablePVReclaim *bool `json:"enablePVReclaim,omitempty"`
 
-	// Enable TLS connection between TiDB server components
-	// Optional: Defaults to false
+	// Whether enable the TLS connection between TiDB server components
+	// Optional: Defaults to nil
 	// +optional
-	EnableTLSCluster *bool `json:"enableTLSCluster,omitempty"`
+	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 
 	// Whether Hostnetwork is enabled for TiDB cluster Pods
 	// Optional: Defaults to false
@@ -618,6 +618,29 @@ type TiDBTLSClient struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// TLSCluster can enable TLS connection between TiDB server components
+// https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/
+type TLSCluster struct {
+	// Enable mutual TLS authentication among TiDB components
+	// Once enabled, the mutual authentication applies to all components,
+	// and it does not support applying to only part of the components.
+	// The steps to enable this feature:
+	//   1. Generate TiDB server components certificates and a client-side certifiacete for them.
+	//      There are multiple ways to generate these certificates:
+	//        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
+	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+	//        - or use cert-manager signed certificates: https://cert-manager.io/
+	//   2. Create one secret object for one component which contains the certificates created above.
+	//      The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.
+	//        For PD: kubectl create secret generic <clusterName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        Same for other components.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -696,7 +719,7 @@ type S3StorageProvider struct {
 	Acl string `json:"acl,omitempty"`
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// Prefix for the keys.
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
@@ -781,6 +804,8 @@ type BackupSpec struct {
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Specify service account of backup
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -999,6 +1024,8 @@ type RestoreSpec struct {
 	// Affinity of restore Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Specify service account of restore
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.

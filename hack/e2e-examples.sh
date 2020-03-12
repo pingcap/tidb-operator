@@ -33,12 +33,19 @@ hack/local-up-operator.sh
 echo "info: testing examples"
 export PATH=$PATH:$OUTPUT_BIN
 hack::ensure_kubectl
-for t in $(find tests/examples/ -name '*.sh'); do
+
+cnt=0
+for t in $(find tests/examples/ -regextype sed -regex '.*/[0-9]\{3\}-.*\.sh'); do
     echo "info: testing $t"
     $t
     if [ $? -eq 0 ]; then
         echo "info: test $t passed"
     else
         echo "error: test $t failed"
+        $((cnt++))
     fi
 done
+if [ $cnt -gt 0 ]; then
+    echo "fatal: $cnt tests failed"
+    exit 1
+fi
