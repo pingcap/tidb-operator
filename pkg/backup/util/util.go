@@ -87,22 +87,12 @@ func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 			Value: s3.StorageClass,
 		},
 	}
-	accessKeyName := "AWS_ACCESS_KEY_ID"
-	secretKeyName := "AWS_SECRET_ACCESS_KEY"
-	if useKMS {
+	// KMS has to use with IAM for get credentail to decryption the code
+	// so if use KMS, the secretKey and accesssKey can be ignore
+	if s3.SecretName != "" && !useKMS {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
-				Name:  "AWS_DEFAULT_REGION",
-				Value: s3.Region,
-			},
-		}...)
-		accessKeyName = fmt.Sprintf("%s_AWS_ACCESS_KEY_ID", constants.KMSSecretPrefix)
-		secretKeyName = fmt.Sprintf("%s_AWS_SECRET_ACCESS_KEY", constants.KMSSecretPrefix)
-	}
-	if s3.SecretName != "" {
-		envVars = append(envVars, []corev1.EnvVar{
-			{
-				Name: accessKeyName,
+				Name: "AWS_ACCESS_KEY_ID",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
@@ -111,7 +101,7 @@ func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 				},
 			},
 			{
-				Name: secretKeyName,
+				Name: "AWS_SECRET_ACCESS_KEY",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: s3.SecretName},
@@ -177,7 +167,9 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 		}
 
 		s3SecretName := provider.S3.SecretName
-		if s3SecretName != "" {
+		// KMS has to use with IAM for get credentail to decryption the code
+		// so if use KMS, the secretKey and accesssKey can be ignore
+		if s3SecretName != "" && !useKMS {
 			secret, err := secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
 				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
