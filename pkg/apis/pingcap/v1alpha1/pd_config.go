@@ -16,6 +16,8 @@ package v1alpha1
 import (
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // Maintain a copy of PDConfig to make it more friendly with the kubernetes API:
@@ -33,7 +35,6 @@ import (
 // PDConfig is the configuration of pd-server
 // +k8s:openapi-gen=true
 type PDConfig struct {
-
 	// +optional
 	ForceNewCluster *bool `json:"force-new-cluster,omitempty"`
 	// Optional: Defaults to true
@@ -124,6 +125,9 @@ type PDConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
+
+	// +optional
+	EnableDynamicConfig *bool `toml:"enable-dynamic-config" json:"enable-dynamic-config,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
@@ -159,6 +163,14 @@ type PDLogConfig struct {
 	// message.
 	// +optional
 	DisableErrorVerbose *bool `toml:"disable-error-verbose,omitempty" json:"disable-error-verbose,omitempty"`
+
+	// SamplingConfig sets a sampling strategy for the logger. Sampling caps the
+	// global CPU and I/O load that logging puts on your process while attempting
+	// to preserve a representative subset of your logs.
+	//
+	// Values configured here are per-second. See zapcore.NewSampler for details.
+	// +optional
+	Sampling *zap.SamplingConfig `toml:"sampling" json:"sampling,omitempty"`
 }
 
 // PDReplicationConfig is the replication configuration.
@@ -182,6 +194,10 @@ type PDReplicationConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
+
+	// When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not uesd any more.
+	// +optional
+	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,string,omitempty"`
 }
 
 // PDNamespaceConfig is to overwrite the global setting for specific namespace
@@ -341,6 +357,15 @@ type PDScheduleConfig struct {
 	// Only used to display
 	// +optional
 	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
+
+	// StoreLimitMode can be auto or manual, when set to auto,
+	// PD tries to change the store limit values according to
+	// the load state of the cluster dynamically. User can
+	// overwrite the auto-tuned value by pd-ctl, when the value
+	// is overwritten, the value is fixed until it is deleted.
+	// Default: manual
+	// +optional
+	StoreLimitMode *string `toml:"store-limit-mode" json:"store-limit-mode,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig
@@ -384,6 +409,8 @@ type PDSecurityConfig struct {
 	// KeyPath is the path of file that contains X509 key in PEM format.
 	// +optional
 	KeyPath string `toml:"key-path,omitempty" json:"key-path,omitempty"`
+	// +optional
+	ClientCertAuth bool `toml:"client-cert-auth" json:"client-cert-auth,omitempty"`
 }
 
 // PDServerConfig is the configuration for pd server.

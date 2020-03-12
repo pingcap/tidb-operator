@@ -1586,6 +1586,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"enable-dynamic-config": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 				},
 			},
 		},
@@ -1656,11 +1662,17 @@ func schema_pkg_apis_pingcap_v1alpha1_PDLogConfig(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"sampling": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SamplingConfig sets a sampling strategy for the logger. Sampling caps the global CPU and I/O load that logging puts on your process while attempting to preserve a representative subset of your logs.\n\nValues configured here are per-second. See zapcore.NewSampler for details.",
+							Ref:         ref("go.uber.org/zap.SamplingConfig"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig", "go.uber.org/zap.SamplingConfig"},
 	}
 }
 
@@ -1766,6 +1778,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDReplicationConfig(ref common.ReferenceCa
 					"strictly-match-label": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels. Immutable, change should be made through pd-ctl after cluster creation",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"enable-placement-rules": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not uesd any more.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1972,6 +1991,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 							},
 						},
 					},
+					"store-limit-mode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoreLimitMode can be auto or manual, when set to auto, PD tries to change the store limit values according to the load state of the cluster dynamically. User can overwrite the auto-tuned value by pd-ctl, when the value is overwritten, the value is fixed until it is deleted. Default: manual",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -2047,6 +2073,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSecurityConfig(ref common.ReferenceCallb
 							Description: "KeyPath is the path of file that contains X509 key in PEM format.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"client-cert-auth": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 				},
