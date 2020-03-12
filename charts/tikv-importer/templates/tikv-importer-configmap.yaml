@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "cluster.name" . }}-importer-{{ template "importer-configmap.data-digest" . }}
+  name: {{ .Values.clusterName }}-importer-{{ template "importer-configmap.data-digest" . }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}

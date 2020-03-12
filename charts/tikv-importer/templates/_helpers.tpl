@@ -6,17 +6,13 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "cluster.name" -}}
-{{- default .Release.Name .Values.clusterName }}
-{{- end -}}
-
 {{/*
 Encapsulate tikv-importer configmap data for consistent digest calculation
 */}}
 {{- define "importer-configmap.data" -}}
 config-file: |-
-    {{- if .Values.importer.config }}
-{{ .Values.importer.config | indent 2 }}
+    {{- if .Values.config }}
+{{ .Values.config | indent 2 }}
     {{- end -}}
 {{- end -}}
 
