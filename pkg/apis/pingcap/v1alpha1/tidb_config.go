@@ -105,25 +105,25 @@ type TiDBConfig struct {
 	StmtSummary *StmtSummary `toml:"stmt-summary,omitempty" json:"stmt-summary,omitempty"`
 	// RepairMode indicates that the TiDB is in the repair mode for table meta.
 	// +optional
-	RepairMode bool `toml:"repair-mode" json:"repair-mode,omitempty"`
+	RepairMode *bool `toml:"repair-mode" json:"repair-mode,omitempty"`
 	// +optional
 	RepairTableList []string `toml:"repair-table-list" json:"repair-table-list,omitempty"`
 	// IsolationRead indicates that the TiDB reads data from which isolation level(engine and label).
 	// +optional
-	IsolationRead IsolationRead `toml:"isolation-read" json:"isolation-read,omitempty"`
+	IsolationRead *IsolationRead `toml:"isolation-read" json:"isolation-read,omitempty"`
 	// MaxServerConnections is the maximum permitted number of simultaneous client connections.
 	// +optional
-	MaxServerConnections uint32 `toml:"max-server-connections" json:"max-server-connections,omitempty"`
+	MaxServerConnections *uint32 `toml:"max-server-connections" json:"max-server-connections,omitempty"`
 	// NewCollationsEnabledOnFirstBootstrap indicates if the new collations are enabled, it effects only when a TiDB cluster bootstrapped on the first time.
 	// +optional
-	NewCollationsEnabledOnFirstBootstrap bool `toml:"new_collations_enabled_on_first_bootstrap" json:"new_collations_enabled_on_first_bootstrap,omitempty"`
+	NewCollationsEnabledOnFirstBootstrap *bool `toml:"new_collations_enabled_on_first_bootstrap" json:"new_collations_enabled_on_first_bootstrap,omitempty"`
 	// Experimental contains parameters for experimental features.
 	// +optional
-	Experimental Experimental `toml:"experimental" json:"experimental,omitempty"`
+	Experimental *Experimental `toml:"experimental" json:"experimental,omitempty"`
 	// EnableDynamicConfig enables the TiDB to fetch configs from PD and update itself during runtime.
 	// see https://github.com/pingcap/tidb/pull/13660 for more details.
 	// +optional
-	EnableDynamicConfig bool `toml:"enable-dynamic-config" json:"enable-dynamic-config,omitempty"`
+	EnableDynamicConfig *bool `toml:"enable-dynamic-config" json:"enable-dynamic-config,omitempty"`
 }
 
 // Log is the log section of config.
@@ -494,5 +494,5 @@ type IsolationRead struct {
 type Experimental struct {
 	// Whether enable the syntax like `auto_random(3)` on the primary key column.
 	// +optional
-	AllowAutoRandom bool `toml:"allow-auto-random" json:"allow-auto-random,omitempty"`
+	AllowAutoRandom *bool `toml:"allow-auto-random" json:"allow-auto-random,omitempty"`
 }
