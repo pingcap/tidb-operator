@@ -55,7 +55,7 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/pump
-      {{- if .Values.enableTLSCluster }}
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
         - name: pump-tls
           mountPath: /var/lib/pump-tls
           readOnly: true
@@ -78,7 +78,7 @@ spec:
           items:
           - key: pump-config
             path: pump.toml
-    {{- if .Values.enableTLSCluster }}
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
       - name: pump-tls
         secret:
           secretName: {{ include "pump.tlsSecretName" . }}
