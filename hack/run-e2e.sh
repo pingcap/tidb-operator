@@ -180,7 +180,7 @@ function e2e::__eks_instances() {
 }
 
 function e2e::__ecr_url() {
-    local account_id=$(aws sts get-caller-identity | awk '/Account/ { gsub("\x27", "", $2); print $2}')
+    local account_id=$(aws sts get-caller-identity --output text | awk '{print $1}')
     local region=$(aws configure get region)
     echo "${account_id}.dkr.ecr.${region}.amazonaws.com"
 }
@@ -271,16 +271,17 @@ if [ "$PROVIDER" == "gke" ]; then
     fi
     gcloud container clusters get-credentials "$CLUSTER"
 elif [ "$PROVIDER" == "eks" ]; then
-    :
+    aws eks update-kubeconfig --name "$CLUSTER"
 fi
 
 if [ -z "$KUBECONTEXT" ]; then
-    echo "info: KUBECONTEXT is not set, current context $KUBECONTEXT is used"
-    KUBECONTEXT=$(kubectl config current-context 2>/dev/null) || true
+    echo "info: KUBECONTEXT is not set, current context is used"
+    KUBECONTEXT=$($KUBECTL_BIN config current-context 2>/dev/null) || true
     if [ -z "$KUBECONTEXT" ]; then
-        echo "error: KUBECONTEXT cannot be detected"
+        echo "error: current context cannot be detected"
         exit 1
     fi
+    echo "info: current kubeconfig context is '$KUBECONTEXT'"
 fi
 
 e2e::image_load
@@ -310,7 +311,6 @@ e2e_args=(
     ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
     --
-    --provider=${PROVIDER}
     --clean-start=true
     --delete-namespace-on-failure=false
     --repo-root=$ROOT
@@ -323,13 +323,6 @@ e2e_args=(
     --chart-dir=/charts
     -v=4
 )
-
-if [ -n "$REPORT_DIR" ]; then
-    e2e_args+=(
-        --report-dir="${REPORT_DIR}"
-        --report-prefix="${REPORT_PREFIX}"
-    )
-fi
 
 e2e_args+=(${@:-})
 
@@ -347,23 +340,36 @@ docker_args=(
 )
 
 if [ "$PROVIDER" == "eks" ]; then
+    e2e_args+=(
+        --provider=aws
+        --gce-zone ${AWS_REGION}
+    )
     # aws credential is required to get token for EKS
     docker_args+=(
         -v $HOME/.aws:/root/.aws
     )
 elif [ "$PROVIDER" == "gke" ]; then
-	e2e_args+=(
-		--gce-project ${GCP_PROJECT}
-		--gce-region ${GCP_REGION}
-		--gce-zone ${GCP_ZONE}
-	)
-	docker_args+=(
-		-v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
-		--env GOOGLE_APPLICATION_CREDENTIALS=${GCP_CREDENTIALS}
-	)
+    e2e_args+=(
+        --provider=${PROVIDER}
+        --gce-project ${GCP_PROJECT}
+        --gce-region ${GCP_REGION}
+        --gce-zone ${GCP_ZONE}
+    )
+    docker_args+=(
+        -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
+        --env GOOGLE_APPLICATION_CREDENTIALS=${GCP_CREDENTIALS}
+    )
+else
+    e2e_args+=(
+        --provider=${PROVIDER}
+    )
 fi
 
 if [ -n "$REPORT_DIR" ]; then
+    e2e_args+=(
+        --report-dir="${REPORT_DIR}"
+        --report-prefix="${REPORT_PREFIX}"
+    )
     docker_args+=(
         -v $REPORT_DIR:$REPORT_DIR
     )
