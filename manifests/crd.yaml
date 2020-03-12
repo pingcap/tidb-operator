@@ -3376,7 +3376,8 @@ spec:
                     to true if PumpSpec is non-nil, otherwise false'
                   type: boolean
                 config:
-                  description: TiDBConfig is the configuration of tidb-server
+                  description: TiDBConfig is the configuration of tidb-server For
+                    more detail, refer to https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/
                   properties:
                     alter-primary-key:
                       description: 'Optional: Defaults to false'

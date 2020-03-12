@@ -3327,7 +3327,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TiDBConfig is the configuration of tidb-server",
+				Description: "TiDBConfig is the configuration of tidb-server For more detail, refer to https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"cors": {
