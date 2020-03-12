@@ -306,3 +306,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 
 	return nil
 }
+
+func clusterSecretName(tc *v1alpha1.TidbCluster, component string) string {
+	return fmt.Sprintf("%s-%s-cluster-secret", tc.Name, component)
+}

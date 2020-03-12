@@ -124,7 +124,7 @@ func NewOperatorActions(cli versioned.Interface,
 		framework.ExpectNoError(err)
 		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
-		oa.tidbControl = controller.NewDefaultTiDBControl()
+		oa.tidbControl = controller.NewDefaultTiDBControl(kubeCli)
 	}
 	oa.clusterEvents = make(map[string]*clusterEvent)
 	for _, c := range clusters {
