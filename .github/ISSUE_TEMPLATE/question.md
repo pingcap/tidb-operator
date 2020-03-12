@@ -12,9 +12,9 @@ Before submitting your question, make sure you have:
 
 - Searched existing Stack Overflow questions.
 - Googled your question.
-- Searched the open and closed [GitHub issues](https://github.com/pingcap/docs-tidb-operator/issues?q=is%3Aissue).
 - Read the documentation:
-  - [TiDB Operator Documentation (en)](https://github.com/pingcap/docs-tidb-operator/tree/master/en)
-  - [TiDB Operator Documentation (zh)](https://github.com/pingcap/docs-tidb-operator/tree/master/zh)
+  - [TiDB Operator (en)](https://github.com/pingcap/docs-tidb-operator/tree/master/en)
+  - [TiDB Operator (zh)](https://github.com/pingcap/docs-tidb-operator/tree/master/zh)
+<!-- Searched the open and closed [GitHub issues](https://github.com/pingcap/docs-tidb-operator/issues?q=is%3Aissue).-->
 
 Now, please describe your question here:
