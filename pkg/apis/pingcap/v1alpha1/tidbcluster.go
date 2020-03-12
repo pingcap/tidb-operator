@@ -300,11 +300,7 @@ func (tc *TidbCluster) GetClusterID() string {
 }
 
 func (tc *TidbCluster) IsTLSClusterEnabled() bool {
-	enableTLCluster := tc.Spec.EnableTLSCluster
-	if enableTLCluster == nil {
-		return defaultEnableTLSCluster
-	}
-	return *enableTLCluster
+	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
 func (tc *TidbCluster) Scheme() string {
