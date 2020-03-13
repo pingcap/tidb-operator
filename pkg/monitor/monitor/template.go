@@ -14,12 +14,14 @@
 package monitor
 
 import (
-	"time"
-
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"path"
+	"time"
 )
 
 const (
@@ -32,9 +34,6 @@ const (
 	podNameLabel     = "__meta_kubernetes_pod_name"
 	nodeNameLabel    = "__meta_kubernetes_pod_node_name"
 	podIPLabel       = "__meta_kubernetes_pod_ip"
-	caFilePath       = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	certFilePath     = "/var/lib/pd-client-tls/tls.crt"
-	keyFilePath      = "/var/lib/pd-client-tls/tls.key"
 )
 
 var (
@@ -249,9 +248,9 @@ func addTlsConfig(pc *config.Config) {
 		// And we should fix it after TiKV fix this issue: https://github.com/tikv/tikv/issues/5340
 		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
-				CAFile:   caFilePath,
-				CertFile: certFilePath,
-				KeyFile:  keyFilePath,
+				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),
+				KeyFile:  path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey),
 			}
 			pc.ScrapeConfigs[id] = sconfig
 			sconfig.HTTPClientConfig.XXX["scheme"] = "https"

@@ -142,13 +142,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					"tikv.resources.limits.storage": "1G",
 				},
 			},
-			{
-				Version: utilimage.TiDBTLSVersion,
-				Name:    "basic-v3-cluster-tls",
-				Values: map[string]string{
-					"enableTLSCluster": "true",
-				},
-			},
 		}
 
 		for _, clusterCfg := range clusterCfgs {

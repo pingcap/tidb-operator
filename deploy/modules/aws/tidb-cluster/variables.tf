@@ -131,7 +131,7 @@ variable "worker_group_launch_template_tags" {
 }
 
 variable "worker_ami_name_filter" {
-  description = "Additional name filter for AWS EKS worker AMI. Default behaviour will get latest for the cluster_version but could be set to a release from amazon-eks-ami, e.g. \"v20190220\""
+  description = "Additional name filter for AWS EKS worker AMI. Default behaviour will get the latest AMI for the cluster_version, but it could be set to a specific version, e.g. \"v20190220\", please check the `Packer version` in https://docs.aws.amazon.com/eks/latest/userguide/eks-linux-ami-versions.html for the supported AMI versions."
   default     = "v*"
 }
 
