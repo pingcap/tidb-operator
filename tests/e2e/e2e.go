@@ -122,12 +122,12 @@ func setupSuite() {
 		e2elog.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
 	}
 
-	// By using default storage class in GKE/EKS, network attached storage
+	// By using default storage class in GKE/EKS (aws), network attached storage
 	// which be used and we must clean them later.
 	// We set local-storage class as default for simplicity.
 	// The default storage class of kind is local-path-provisioner which
 	// consumes local storage like local-volume-provisioner.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "eks" {
+	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
 		framework.ExpectNoError(err)
