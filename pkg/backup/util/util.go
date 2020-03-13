@@ -152,7 +152,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	var err error
