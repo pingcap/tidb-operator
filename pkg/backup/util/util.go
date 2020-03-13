@@ -39,7 +39,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -87,8 +87,6 @@ func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 			Value: s3.StorageClass,
 		},
 	}
-	// KMS has to use with IAM for get credentail to decryption the code
-	// so if use KMS, the secretKey and accesssKey can be ignore
 	if s3.SecretName != "" {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
@@ -167,8 +165,6 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 		}
 
 		s3SecretName := provider.S3.SecretName
-		// KMS has to use with IAM for get credentail to decryption the code
-		// so if use KMS, the secretKey and accesssKey can be ignore
 		if s3SecretName != "" {
 			secret, err := secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
@@ -183,7 +179,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 			}
 		}
 
-		certEnv, reason, err = GenerateS3CertEnvVar(useKMS, provider.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy())
 		if err != nil {
 			return certEnv, reason, err
 		}
