@@ -219,8 +219,9 @@ echo "GCP_PROJECT: $GCP_PROJECT"
 echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
 echo "GCP_REGION: $GCP_REGION"
 echo "GCP_ZONE: $GCP_ZONE"
-echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
-echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
+# We shouldn't print aws credential environments.
+# echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+# echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
 echo "AWS_REGION: $AWS_REGION"
 echo "KUBE_VERSION: $KUBE_VERSION"
 echo "KUBE_WORKERS: $KUBE_WORKERS"
@@ -477,16 +478,12 @@ elif [ "$PROVIDER" == "eks" ]; then
     mngName=$CLUSTER-mng-$RANDOM
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
-    export AWS_K8S_TESTER_EKS_ADD_ON_NLB_HELLO_WORLD_ENABLE="false"
+    export AWS_K8S_TESTER_EKS_PARAMETERS_VERSION="1.15"
+    export AWS_K8S_TESTER_EKS_PARAMETERS_ENCRYPTION_CMK_CREATE="false"
+    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_ENABLE="true"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":%d,"asg-max-size":%d,"asg-desired-capacity":%d,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName" "$KUBE_WORKERS" "$KUBE_WORKERS" "$KUBE_WORKERS")
     # override KUBECONFIG
     KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
-    if [ -z "$SKIP_UP" ]; then
-        # clear previous created private key to work around permission issue on this file
-        if test -f $HOME/.ssh/kube_aws_rsa; then
-            rm -f $HOME/.ssh/kube_aws_rsa
-        fi
-    fi
 else
     echo "error: unsupported provider '$PROVIDER'"
     exit 1
