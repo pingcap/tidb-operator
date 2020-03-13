@@ -6955,7 +6955,7 @@ spec:
                 type: object
               type: array
             useKMS:
-              description: Use KMS to encrypt the secrets
+              description: Use KMS to decrypt the secrets
               type: boolean
           type: object
       type: object
@@ -7799,7 +7799,7 @@ spec:
                 type: object
               type: array
             useKMS:
-              description: Use KMS to encrypt the secrets
+              description: Use KMS to decrypt the secrets
               type: boolean
           type: object
       type: object
@@ -8687,7 +8687,7 @@ spec:
                     type: object
                   type: array
                 useKMS:
-                  description: Use KMS to encrypt the secrets
+                  description: Use KMS to decrypt the secrets
                   type: boolean
               type: object
             maxBackups:

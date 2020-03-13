@@ -774,7 +774,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"useKMS": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Use KMS to encrypt the secrets",
+							Description: "Use KMS to decrypt the secrets",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -2859,7 +2859,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"useKMS": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Use KMS to encrypt the secrets",
+							Description: "Use KMS to decrypt the secrets",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
