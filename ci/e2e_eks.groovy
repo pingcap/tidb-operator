@@ -1,5 +1,5 @@
 //
-// Jenkins pipeline for GKE e2e job.
+// Jenkins pipeline for EKS e2e job.
 //
 // This script is written in declarative syntax. Refer to
 // https://jenkins.io/doc/book/pipeline/syntax/ for more details.
@@ -58,8 +58,7 @@ pipeline {
         string(name: 'GIT_REF', defaultValue: 'master', description: 'git ref spec to checkout, e.g. master, release-1.1')
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889')
         string(name: 'CLUSTER', defaultValue: 'jenkins-tidb-operator-e2e', description: 'the name of the cluster')
-        string(name: 'GCP_PROJECT', defaultValue: 'smooth-tendril-207212', description: 'the GCP project ID')
-        string(name: 'GCP_ZONE', defaultValue: 'us-central1-b', description: 'the GCP zone')
+        string(name: 'AWS_REGION', defaultValue: 'us-west-2', description: 'the AWS region')
         string(name: 'GINKGO_NODES', defaultValue: '8', description: 'the number of ginkgo nodes')
     }
 
@@ -105,20 +104,18 @@ pipeline {
         stage("Run") {
             steps {
                 withCredentials([
-                    file(credentialsId: 'TIDB_OPERATOR_GCP_CREDENTIALS', variable: 'GCP_CREDENTIALS'),
-                    file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PRIVATE_KEY', variable: 'GCP_SSH_PRIVATE_KEY'),
-                    file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PUBLIC_KEY', variable: 'GCP_SSH_PUBLIC_KEY'),
+                    string(credentialsId: 'TIDB_OPERATOR_AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'TIDB_OPERATOR_AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
                 ]) {
                     sh """
                     #!/bin/bash
-                    export PROVIDER=gke
+                    export PROVIDER=eks
                     export CLUSTER=${params.CLUSTER}
-                    export GCP_ZONE=${params.GCP_ZONE}
-                    export GCP_PROJECT=${params.GCP_PROJECT}
+                    export AWS_REGION=${params.AWS_REGION}
                     export GINKGO_NODES=${params.GINKGO_NODES}
                     export REPORT_DIR=${ARTIFACTS}
                     echo "info: try to clean the cluster created previously"
-                    SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y ./hack/e2e.sh
+                    ./ci/aws-clean-eks.sh \$CLUSTER
                     echo "info: begin to run e2e"
                     ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]' --ginkgo.focus='\\[tidb-operator\\]'
                     """
