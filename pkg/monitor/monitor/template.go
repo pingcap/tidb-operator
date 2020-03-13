@@ -136,7 +136,7 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 		Replacement: "$1:$2",
 		TargetLabel: "__address__",
 	}
-	if name == label.PDLabelVal || name == label.TiDBLabelVal {
+	if name == label.PDLabelVal || name == label.TiDBLabelVal || name == label.TiKVLabelVal {
 		addressRelabelConfig = &config.RelabelConfig{
 			SourceLabels: model.LabelNames{
 				podNameLabel,
