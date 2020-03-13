@@ -89,7 +89,7 @@ func GenerateS3CertEnvVar(useKMS bool, s3 *v1alpha1.S3StorageProvider) ([]corev1
 	}
 	// KMS has to use with IAM for get credentail to decryption the code
 	// so if use KMS, the secretKey and accesssKey can be ignore
-	if s3.SecretName != "" && !useKMS {
+	if s3.SecretName != "" {
 		envVars = append(envVars, []corev1.EnvVar{
 			{
 				Name: "AWS_ACCESS_KEY_ID",
@@ -169,7 +169,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 		s3SecretName := provider.S3.SecretName
 		// KMS has to use with IAM for get credentail to decryption the code
 		// so if use KMS, the secretKey and accesssKey can be ignore
-		if s3SecretName != "" && !useKMS {
+		if s3SecretName != "" {
 			secret, err := secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
 				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
