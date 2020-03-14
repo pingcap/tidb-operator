@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gtank/cryptopasta"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -26,8 +27,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -53,6 +56,7 @@ type pdMemberManager struct {
 	podLister    corelisters.PodLister
 	epsLister    corelisters.EndpointsLister
 	pvcLister    corelisters.PersistentVolumeClaimLister
+	secretLister corelisters.SecretLister
 	pdScaler     Scaler
 	pdUpgrader   Upgrader
 	autoFailover bool
@@ -71,6 +75,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
+	secretLister corelisters.SecretLister,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
@@ -87,6 +92,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		podLister,
 		epsLister,
 		pvcLister,
+		secretLister,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,
@@ -197,6 +203,11 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if err != nil {
 		return err
 	}
+
+	if err = pmm.syncPDSecret(tc); err != nil {
+		return err
+	}
+
 	newPDSet, err := getNewPDSetForTidbCluster(tc, cm)
 	if err != nil {
 		return err
@@ -359,6 +370,20 @@ func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.
 	}
 
 	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+}
+
+// syncPDSecret syncs the Secret of PD
+func (pmm *pdMemberManager) syncPDSecret(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.PD.IsDashboardSessionSecretFixed() {
+		_, err := pmm.secretLister.Secrets(tc.Namespace).Get(dashboardSessionSecretName(tc))
+		if errors.IsNotFound(err) {
+			return pmm.typedControl.Create(tc, getDashboardSessionSecret(tc))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -596,6 +621,21 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
+
+	if tc.Spec.PD.IsDashboardSessionSecretFixed() {
+		env = append(env, corev1.EnvVar{
+			Name: "DASHBOARD_SESSION_SECRET",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: core.LocalObjectReference{
+						Name: dashboardSessionSecretName(tc),
+					},
+					Key: "encryption_key",
+				},
+			},
+		})
+	}
+
 	pdContainer.Env = env
 	podSpec.Volumes = vols
 	podSpec.Containers = []corev1.Container{pdContainer}
@@ -692,6 +732,22 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 	}
 	return cm, nil
+}
+
+func getDashboardSessionSecret(tc *v1alpha1.TidbCluster) *corev1.Secret {
+	secretLabel := label.New().Instance(tc.Name).PD().Labels()
+	dashboardEncryptionKey := cryptopasta.NewEncryptionKey()
+	return &corev1.Secret{
+		ObjectMeta: meta.ObjectMeta{
+			Name:            dashboardSessionSecretName(tc),
+			Namespace:       tc.Namespace,
+			Labels:          secretLabel,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+		},
+		Data: map[string][]byte{
+			"encryption_key": dashboardEncryptionKey[:],
+		},
+	}
 }
 
 func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {

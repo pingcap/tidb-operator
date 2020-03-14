@@ -133,6 +133,7 @@ func NewController(
 				podInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
+				secretInformer.Lister(),
 				pdScaler,
 				pdUpgrader,
 				autoFailover,

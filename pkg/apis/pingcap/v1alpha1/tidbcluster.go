@@ -369,6 +369,13 @@ func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
 	return *exposeStatus
 }
 
+func (pd *PDSpec) IsDashboardSessionSecretFixed() bool {
+	if pd.FixedDashboardSessionSecret == nil {
+		return false
+	}
+	return *pd.FixedDashboardSessionSecret
+}
+
 func (tc *TidbCluster) GetInstanceName() string {
 	labels := tc.ObjectMeta.GetLabels()
 	// Keep backward compatibility for helm.

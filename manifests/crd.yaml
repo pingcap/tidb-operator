@@ -1678,6 +1678,11 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
+                fixedDashboardSessionSecret:
+                  description: 'Supply a fixed session secret key by setting DASHBOARD_SESSION_SECRET
+                    env to keep TiDB Dashboard session valid after rebooting the PD
+                    server Optional: Defaults to false'
+                  type: boolean
                 hostNetwork:
                   description: 'Whether Hostnetwork of the component is enabled. Override
                     the cluster-level setting if present Optional: Defaults to cluster-level

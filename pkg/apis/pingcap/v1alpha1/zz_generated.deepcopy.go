@@ -1434,6 +1434,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(PDConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.FixedDashboardSessionSecret != nil {
+		in, out := &in.FixedDashboardSessionSecret, &out.FixedDashboardSessionSecret
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

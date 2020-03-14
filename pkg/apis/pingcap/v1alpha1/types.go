@@ -230,6 +230,11 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
+
+	// Supply a fixed session secret key by setting DASHBOARD_SESSION_SECRET env to keep TiDB Dashboard session valid after rebooting the PD server
+	// Optional: Defaults to false
+	// +optional
+	FixedDashboardSessionSecret *bool `json:"fixedDashboardSessionSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true

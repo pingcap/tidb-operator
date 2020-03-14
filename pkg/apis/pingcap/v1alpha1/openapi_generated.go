@@ -2240,6 +2240,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig"),
 						},
 					},
+					"fixedDashboardSessionSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Supply a fixed session secret key by setting DASHBOARD_SESSION_SECRET env to keep TiDB Dashboard session valid after rebooting the PD server Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
