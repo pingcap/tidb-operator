@@ -195,7 +195,7 @@ lint:
 tidy:
 	@echo "go mod tidy"
 	go mod tidy
-	# git diff -U --exit-code go.mod go.sum
+	git diff -U --exit-code go.mod go.sum
 
 check-gosec:
 	@echo "security checking"
