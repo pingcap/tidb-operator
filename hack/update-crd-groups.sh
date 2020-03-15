@@ -42,10 +42,12 @@ to-crdgen generate tidbclusterautoscaler >> $crd_target
 
 go install github.com/ahmetb/gen-crd-api-reference-docs
 
-DOCS_PATH="$GOPATH/src/github.com/ahmetb/gen-crd-api-reference-docs"
+DOCS_PATH="$ROOT/docs/api-references"
 
 gen-crd-api-reference-docs \
--config "$DOCS_PATH/example-config.json" \
+-config "$DOCS_PATH/config.json" \
 -template-dir "$DOCS_PATH/template" \
 -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \
--out-file "$ROOT/docs.html"
+-out-file "$DOCS_PATH/docs.html"
+
+go mod tidy
