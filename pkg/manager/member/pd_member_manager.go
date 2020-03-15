@@ -27,10 +27,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	testutil "github.com/pingcap/tidb-operator/tests/pkg/util"
 	apps "k8s.io/api/apps/v1"
-	core "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -627,7 +625,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "DASHBOARD_SESSION_SECRET",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: core.LocalObjectReference{
+					LocalObjectReference: corev1.LocalObjectReference{
 						Name: dashboardSessionSecretName(tc),
 					},
 					Key: "encryption_key",
@@ -738,7 +736,7 @@ func getDashboardSessionSecret(tc *v1alpha1.TidbCluster) *corev1.Secret {
 	secretLabel := label.New().Instance(tc.Name).PD().Labels()
 	dashboardEncryptionKey := testutil.RandString(32)
 	return &corev1.Secret{
-		ObjectMeta: meta.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:            dashboardSessionSecretName(tc),
 			Namespace:       tc.Namespace,
 			Labels:          secretLabel,
