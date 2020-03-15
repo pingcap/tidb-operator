@@ -19,13 +19,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gtank/cryptopasta"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	testutil "github.com/pingcap/tidb-operator/tests/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -736,7 +736,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 func getDashboardSessionSecret(tc *v1alpha1.TidbCluster) *corev1.Secret {
 	secretLabel := label.New().Instance(tc.Name).PD().Labels()
-	dashboardEncryptionKey := cryptopasta.NewEncryptionKey()
+	dashboardEncryptionKey := testutil.RandString(32)
 	return &corev1.Secret{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            dashboardSessionSecretName(tc),
@@ -745,7 +745,7 @@ func getDashboardSessionSecret(tc *v1alpha1.TidbCluster) *corev1.Secret {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: map[string][]byte{
-			"encryption_key": dashboardEncryptionKey[:],
+			"encryption_key": []byte(dashboardEncryptionKey),
 		},
 	}
 }
