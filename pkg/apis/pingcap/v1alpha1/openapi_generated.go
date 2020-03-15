@@ -1043,7 +1043,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Experimental(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"allow-auto-random": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether enable the syntax like `auto_random(3)` on the primary key column.",
+							Description: "Whether enable the syntax like `auto_random(3)` on the primary key column. imported from TiDB v3.1.0",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

@@ -3431,7 +3431,7 @@ spec:
                       properties:
                         allow-auto-random:
                           description: Whether enable the syntax like `auto_random(3)`
-                            on the primary key column.
+                            on the primary key column. imported from TiDB v3.1.0
                           type: boolean
                       type: object
                     isolation-read:
