@@ -14,7 +14,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: gcr.io/k8s-testimages/kubekins-e2e:v20191108-9467d02-master
+    image: gcr.io/k8s-testimages/kubekins-e2e:v20200311-1e25827-master
     command:
     - runner.sh
     # Clean containers on TERM signal in root process to avoid cgroup leaking.

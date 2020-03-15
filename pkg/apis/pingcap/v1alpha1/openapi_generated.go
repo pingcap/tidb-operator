@@ -772,6 +772,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
 						},
 					},
+					"useKMS": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Use KMS to decrypt the secrets",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"serviceAccount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Specify service account of backup",
@@ -2880,6 +2887,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Affinity of restore Pods",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
+					"useKMS": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Use KMS to decrypt the secrets",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"serviceAccount": {

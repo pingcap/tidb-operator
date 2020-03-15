@@ -6971,6 +6971,9 @@ spec:
                     type: string
                 type: object
               type: array
+            useKMS:
+              description: Use KMS to decrypt the secrets
+              type: boolean
           type: object
       type: object
   version: v1alpha1
@@ -7812,6 +7815,9 @@ spec:
                     type: string
                 type: object
               type: array
+            useKMS:
+              description: Use KMS to decrypt the secrets
+              type: boolean
           type: object
       type: object
   version: v1alpha1
@@ -8697,6 +8703,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                useKMS:
+                  description: Use KMS to decrypt the secrets
+                  type: boolean
               type: object
             maxBackups:
               description: MaxBackups is to specify how many backups we want to keep
