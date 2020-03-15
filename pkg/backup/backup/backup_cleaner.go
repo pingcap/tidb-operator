@@ -128,7 +128,6 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		serviceAccount = backup.Spec.ServiceAccount
 	}
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).CleanJob().Backup(name)
-
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      backupLabel.Labels(),

@@ -13,6 +13,7 @@ spec:
   schedule: "*/2 * * * *"
   backupTemplate:
     #backupType: full
+    # useKMS: false
     # serviceAccount: myServiceAccount
     br:
       cluster: myCluster
