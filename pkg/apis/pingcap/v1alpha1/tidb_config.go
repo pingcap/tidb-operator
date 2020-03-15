@@ -494,6 +494,7 @@ type IsolationRead struct {
 // +k8s:openapi-gen=true
 type Experimental struct {
 	// Whether enable the syntax like `auto_random(3)` on the primary key column.
+	// imported from TiDB v3.1.0
 	// +optional
 	AllowAutoRandom *bool `toml:"allow-auto-random" json:"allow-auto-random,omitempty"`
 }
