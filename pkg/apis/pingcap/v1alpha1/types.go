@@ -807,6 +807,8 @@ type BackupSpec struct {
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Use KMS to decrypt the secrets
+	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
@@ -1027,6 +1029,8 @@ type RestoreSpec struct {
 	// Affinity of restore Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Use KMS to decrypt the secrets
+	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }

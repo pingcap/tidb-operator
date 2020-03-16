@@ -67,6 +67,14 @@ func (tc *TidbCluster) TiKVImage() string {
 	return image
 }
 
+func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
+	if tc.Spec.TiKV.Privileged == nil {
+		pri := false
+		return &pri
+	}
+	return tc.Spec.TiKV.Privileged
+}
+
 func (tc *TidbCluster) TiDBImage() string {
 	image := tc.Spec.TiDB.Image
 	baseImage := tc.Spec.TiDB.BaseImage
