@@ -206,6 +206,7 @@ function hack::ensure_aws_k8s_tester() {
 
 function hack::verify_gen_crd_api_references_docs() {
     if test -x "$DOCS_BIN"; then
+        # TODO check version when the binary version is available.
         return
     fi
     return 1
