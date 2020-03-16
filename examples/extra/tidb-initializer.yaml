@@ -7,3 +7,4 @@ spec:
   cluster:
     name: basic
   initSql: "create database test;"
+  passwordSecret: "passwordSecret"

@@ -10,8 +10,6 @@ spec:
   tikv:
     minReplicas: 3
     maxReplicas: 4
-    scaleOutIntervalSeconds: 500
-    scaleInIntervalSeconds: 300
     metricsTimeDuration: "1m"
     metrics:
       - type: "Resource"
@@ -23,8 +21,6 @@ spec:
   tidb:
     minReplicas: 2
     maxReplicas: 3
-    scaleOutIntervalSeconds: 500
-    scaleInIntervalSeconds: 300
     metricsTimeDuration: "1m"
     metrics:
       - type: "Resource"
