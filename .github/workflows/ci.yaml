@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+    - master
+    - release-*
+
+jobs:
+
+  pull:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - "check-setup check"
+        - "docker e2e-docker cli"
+        - "test GOFLAGS=-race"
+        - "e2e-examples"
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: go/src/github.com/${{ github.repository }}
+
+    - name: make ${{ matrix.target }}
+      run: |
+        # workaround for https://github.com/actions/setup-go/issues/14
+        export GOPATH=${GITHUB_WORKSPACE}/go
+        export PATH=$PATH:$GOPATH/bin
+        make $target
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+      env:
+        target: ${{ matrix.target }}

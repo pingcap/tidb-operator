@@ -21,7 +21,10 @@ spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   enablePVReclaim: {{ .Values.enablePVReclaim }}
   timezone: {{ .Values.timezone | default "UTC" }}
-  enableTLSCluster: {{ .Values.enableTLSCluster | default false }}
+{{- if .Values.tlsCluster }}
+  tlsCluster:
+{{ toYaml .Values.tlsCluster | indent 4 }}
+{{- end }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
@@ -92,7 +95,10 @@ spec:
   {{- end }}
     maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
   tidb:
-    enableTLSClient: {{ .Values.tidb.enableTLSClient | default false }}
+  {{- if .Values.tidb.tlsClient }}
+    tlsClient:
+{{ toYaml .Values.tidb.tlsClient | indent 6 }}
+  {{- end }}
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
     imagePullPolicy: {{ .Values.tidb.imagePullPolicy | default "IfNotPresent" }}

@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -58,8 +58,8 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 		Writes(schedulerapiv1.HostPriorityList{}))
 	restful.Add(ws)
 
-	glog.Infof("start scheduler extender server, listening on 0.0.0.0:%d", port)
-	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	klog.Infof("start scheduler extender server, listening on 0.0.0.0:%d", port)
+	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
 func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
@@ -104,8 +104,8 @@ func (svr *server) prioritizeNode(req *restful.Request, resp *restful.Response) 
 }
 
 func errorResponse(resp *restful.Response, svcErr restful.ServiceError) {
-	glog.Error(svcErr.Message)
+	klog.Error(svcErr.Message)
 	if writeErr := resp.WriteServiceError(svcErr.Code, svcErr); writeErr != nil {
-		glog.Errorf("unable to write error: %v", writeErr)
+		klog.Errorf("unable to write error: %v", writeErr)
 	}
 }

@@ -1,0 +1,9 @@
+{{- if .Values.dataSource.remote.rcloneConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rclone-{{ include "tidb-lightning.name" . }}
+data:
+  config-file: |-
+{{ .Values.dataSource.remote.rcloneConfig | indent 4 }}
+{{- end }}

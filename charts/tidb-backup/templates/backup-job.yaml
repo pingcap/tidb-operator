@@ -33,6 +33,8 @@ spec:
       {{- if .Values.serviceAccount }}
       serviceAccount: {{ .Values.serviceAccount }}
       {{- end }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
       containers:
       - name: backup
         image: {{ .Values.image.backup }}
@@ -88,6 +90,14 @@ spec:
               name: {{ .Values.secretName }}
               key: password
       restartPolicy: OnFailure
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+    {{- end }}
       volumes:
       - name: data
         persistentVolumeClaim:

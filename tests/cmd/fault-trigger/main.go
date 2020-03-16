@@ -24,7 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 var (
@@ -52,5 +52,5 @@ func main() {
 		server.StartServer()
 	}, 5*time.Second)
 
-	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", pprofPort), nil))
+	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", pprofPort), nil))
 }

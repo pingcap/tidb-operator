@@ -46,22 +46,38 @@ Usage: hack/e2e.sh [-h] -- [extra test args]
 
 Environments:
 
-    DOCKER_REGISTRY     image docker registry
-    IMAGE_TAG           image tag
-    SKIP_BUILD          skip building binaries
-    SKIP_IMAGE_BUILD    skip build and push images
-    SKIP_UP             skip starting the cluster
-    SKIP_DOWN           skip shutting down the cluster
-    REUSE_CLUSTER       reuse existing cluster if found
-    KUBE_VERSION        the version of Kubernetes to test against
-    KUBE_WORKERS        the number of worker nodes (excludes master nodes), defaults: 3
-    DOCKER_IO_MIRROR    configure mirror for docker.io
-    GCR_IO_MIRROR       configure mirror for gcr.io
-    QUAY_IO_MIRROR      configure mirror for quay.io
-    KIND_DATA_HOSTPATH  (for kind) the host path of data directory for kind cluster, defaults: none
-    GINKGO_NODES        ginkgo nodes to run specs, defaults: 1
-    GINKGO_PARALLEL     if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
-    GINKGO_NO_COLOR     if set to `y`, suppress color output in default reporter
+    PROVIDER              Kubernetes provider, e.g. kind, gke, eks, defaults: kind
+    DOCKER_REGISTRY       image docker registry
+    IMAGE_TAG             image tag
+    CLUSTER               the name of e2e cluster, defaults: tidb-operator
+    KUBECONFIG            path to the kubeconfig file, defaults: ~/.kube/config
+    SKIP_BUILD            skip building binaries
+    SKIP_IMAGE_BUILD      skip build and push images
+    SKIP_IMAGE_LOAD       skip load images
+    SKIP_UP               skip starting the cluster
+    SKIP_DOWN             skip shutting down the cluster
+    SKIP_TEST             skip running the test
+    KUBE_VERSION          the version of Kubernetes to test against
+    KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
+    DOCKER_IO_MIRROR      configure mirror for docker.io
+    GCR_IO_MIRROR         configure mirror for gcr.io
+    QUAY_IO_MIRROR        configure mirror for quay.io
+    KIND_DATA_HOSTPATH    (kind only) the host path of data directory for kind cluster, defaults: none
+    GCP_PROJECT           (gke only) the GCP project to run in
+    GCP_CREDENTIALS       (gke only) the GCP service account to use
+    GCP_REGION            (gke only) the GCP region, if specified a regional cluster is creaetd
+    GCP_ZONE              (gke only) the GCP zone, if specified a zonal cluster is created
+    GCP_SSH_PRIVATE_KEY   (gke only) the path to the private ssh key
+    GCP_SSH_PUBLIC_KEY    (gke only) the path to the public ssh key
+    GCP_MACHINE_TYPE      (gke only) the machine type of instance, defaults: n1-standard-4
+    AWS_ACCESS_KEY_ID     (eks only) the aws access key id
+    AWS_SECRET_ACCESS_KEY (eks only) the aws secret access key
+    AWS_REGION            (eks only) the aws region
+    GINKGO_NODES          ginkgo nodes to run specs, defaults: 1
+    GINKGO_PARALLEL       if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
+    GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
+    RUNNER_SUITE_NAME     the suite name of runner
+    SKIP_GINKGO           if set to `y`, skip ginkgo
 
 Examples:
 
@@ -83,11 +99,59 @@ Examples:
 
 3) reuse the cluster and don't tear down it after the testing
 
-    REUSE_CLUSTER=y SKIP_DOWN=y ./hack/e2e.sh -- <e2e args>
+    # for the first time, skip the down phase
+    SKIP_DOWN=y ./hack/e2e.sh -- <e2e args>
+    # then skip both the up/down phase in subsequent tests
+    SKIP_UP=y SKIP_DOWN=y ./hack/e2e.sh -- <e2e args>
 
 4) use registry mirrors
 
     DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn ./hack/e2e.sh -- <e2e args>
+
+5) run e2e with gke provider locally
+
+    You need prepare GCP service account with the following permissions:
+
+        - Compute Network Admin
+        - Kubernetes Engine Admin
+        - Service Account User
+        - Storage Admin
+        - Compute Instance Admin (v1)
+
+    You can create ssh keypair with ssh-keygen at  ~/.ssh/google_compute_engine
+    or specifc existing ssh keypair with following environments:
+
+        export GCP_SSH_PRIVATE_KEY=<path-to-your-ssh-private-key>
+        export GCP_SSH_PUBLIC_KEY=<path-to-your-ssh-public-key>
+
+    Then run with following additional GCP-specific environments:
+
+        export GCP_PROJECT=<project>
+        export GCP_CREDENTIALS=<path-to-gcp-service-account>
+        export GCP_ZONE=us-central1-b
+
+        PROVIDER=gke ./hack/e2e.sh -- <e2e args>
+
+    If you run the outside of the dev containter started by
+    ./hack/run-in-container.sh, Google Cloud SDK must be installed on you
+    machine.
+
+6) run e2e with eks provider locally
+
+    You need configure your aws credential and region or set it via following
+    environments:
+
+        export AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+        export AWS_SECRET_ACCESS_KEY=<your-aws-secret-key-id>
+        export AWS_REGION=<your-aws-region>
+
+    then run e2e with eks provider:
+
+        PROVIDER=eks ./hack/e2e.sh -- <e2e args>
+
+    If you run the outside of the dev containter started by
+    ./hack/run-in-container.sh, AWS CLI must be installed on you
+    machine.
 
 EOF
 
@@ -110,34 +174,57 @@ hack::ensure_kind
 hack::ensure_kubectl
 hack::ensure_helm
 
+PROVIDER=${PROVIDER:-kind}
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
 IMAGE_TAG=${IMAGE_TAG:-latest}
 CLUSTER=${CLUSTER:-tidb-operator}
 KUBECONFIG=${KUBECONFIG:-~/.kube/config}
-KUBECONTEXT=kind-$CLUSTER
 SKIP_BUILD=${SKIP_BUILD:-}
 SKIP_IMAGE_BUILD=${SKIP_IMAGE_BUILD:-}
+SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
+SKIP_TEST=${SKIP_TEST:-}
 REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
+GCP_PROJECT=${GCP_PROJECT:-}
+GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
+GCP_REGION=${GCP_REGION:-}
+GCP_ZONE=${GCP_ZONE:-}
+GCP_SSH_PRIVATE_KEY=${GCP_SSH_PRIVATE_KEY:-}
+GCP_SSH_PUBLIC_KEY=${GCP_SSH_PUBLIC_KEY:-}
+GCP_MACHINE_TYPE=${GCP_MACHINE_TYPE:-n1-standard-4}
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+AWS_REGION=${AWS_REGION:-}
 KUBE_VERSION=${KUBE_VERSION:-v1.12.10}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
 GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
+SKIP_GINKGO=${SKIP_GINKGO:-}
+RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 
+echo "PROVIDER: $PROVIDER"
 echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
 echo "IMAGE_TAG: $IMAGE_TAG"
 echo "CLUSTER: $CLUSTER"
 echo "KUBECONFIG: $KUBECONFIG"
-echo "KUBECONTEXT: $KUBECONTEXT"
 echo "SKIP_BUILD: $SKIP_BUILD"
 echo "SKIP_IMAGE_BUILD: $SKIP_IMAGE_BUILD"
 echo "SKIP_UP: $SKIP_UP"
 echo "SKIP_DOWN: $SKIP_DOWN"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
+echo "GCP_PROJECT: $GCP_PROJECT"
+echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
+echo "GCP_REGION: $GCP_REGION"
+echo "GCP_ZONE: $GCP_ZONE"
+# We shouldn't print aws credential environments.
+# echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+# echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
+echo "AWS_REGION: $AWS_REGION"
 echo "KUBE_VERSION: $KUBE_VERSION"
+echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
@@ -165,21 +252,6 @@ function e2e::image_build() {
     DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker
 }
 
-function e2e::image_load() {
-    local names=(
-        pingcap/tidb-operator
-        pingcap/tidb-operator-e2e
-    )
-    for n in ${names[@]}; do
-        $KIND_BIN load docker-image --name $CLUSTER $DOCKER_REGISTRY/$n:$IMAGE_TAG
-    done
-}
-
-function e2e::cluster_exists() {
-    local name="$1"
-    $KIND_BIN get clusters | grep $CLUSTER &>/dev/null
-}
-
 function e2e::__restart_docker() {
     echo "info: restarting docker"
     service docker restart
@@ -201,43 +273,24 @@ function e2e::__restart_docker() {
     echo "info: done restarting docker"
 }
 
-# e2e::__cluster_is_alive checks if the cluster is alive or not
-function e2e::__cluster_is_alive() {
-    local ret=0
-    echo "info: checking the cluster version"
-    $KUBECTL_BIN --context $KUBECONTEXT version --short || ret=$?
-    return $ret
-}
-
-function e2e::up() {
-    if [ -n "$SKIP_UP" ]; then
-        echo "info: skip starting a new cluster"
-        return
-    fi
-    if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
-        echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
-cat <<EOF > /etc/docker/daemon.json
+function e2e::__configure_docker_mirror_for_dind() {
+    echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
+cat <<EOF > /etc/docker/daemon.json.tmp
 {
     "registry-mirrors": ["$DOCKER_IO_MIRROR"]
 }
 EOF
+    if diff /etc/docker/daemon.json.tmp /etc/docker/daemon.json 1>/dev/null 2>&1; then
+        echo "info: already configured"
+        rm /etc/docker/daemon.json.tmp
+    else
+        mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
         e2e::__restart_docker
     fi
-    if e2e::cluster_exists $CLUSTER; then
-        if [ -n "$REUSE_CLUSTER" ]; then
-            if e2e::__cluster_is_alive; then
-                echo "info: REUSE_CLUSTER is enabled and the cluster is alive, reusing it"
-                return
-            else
-                echo "info: REUSE_CLUSTER is enabled but the cluster is not alive, trying to recreate it"
-            fi
-        fi
-        echo "info: deleting the cluster '$CLUSTER'"
-        $KIND_BIN delete cluster --name $CLUSTER
-    fi
-    echo "info: starting a new cluster"
-    tmpfile=$(mktemp)
-    trap "test -f $tmpfile && rm $tmpfile" RETURN
+}
+
+function e2e::create_kindconfig() {
+    local tmpfile=${1}
     cat <<EOF > $tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -305,137 +358,165 @@ EOF
 EOF
         fi
     }
+}
+
+e2e::image_build
+
+if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
+    e2e::__configure_docker_mirror_for_dind
+fi
+
+kubetest2_args=(
+    $PROVIDER
+)
+
+if [ -n "$RUNNER_SUITE_NAME" ]; then
+    kubetest2_args+=(
+        --suite-name "$RUNNER_SUITE_NAME"
+    )
+fi
+
+if [ -z "$SKIP_UP" ]; then
+    kubetest2_args+=(--up)
+fi
+
+if [ -z "$SKIP_DOWN" ]; then
+    kubetest2_args+=(--down)
+fi
+
+if [ -z "$SKIP_TEST" ]; then
+    kubetest2_args+=(--test exec)
+fi
+
+if [ "$PROVIDER" == "kind" ]; then
+    tmpfile=$(mktemp)
+    trap "test -f $tmpfile && rm $tmpfile" EXIT
+    e2e::create_kindconfig $tmpfile
     echo "info: print the contents of kindconfig"
     cat $tmpfile
-    echo "info: end of the contents of kindconfig"
-    echo "info: creating the cluster '$CLUSTER'"
-    local image=""
+    image=""
     for v in ${!kind_node_images[*]}; do
         if [[ "$KUBE_VERSION" == "$v" ]]; then
             image=${kind_node_images[$v]}
             echo "info: image for $KUBE_VERSION: $image"
-            break
         fi
     done
     if [ -z "$image" ]; then
         echo "error: no image for $KUBE_VERSION, exit"
         exit 1
     fi
-    # Retry on error. Sometimes, kind will fail with the following error:
-    #
-    # OCI runtime create failed: container_linux.go:346: starting container process caused "process_linux.go:319: getting the final child's pid from pipe caused \"EOF\"": unknown
-    #
-    # TODO this error should be related to docker or linux kernel, find the root cause.
-    hack::wait_for_success 120 5 "$KIND_BIN create cluster --config $KUBECONFIG --name $CLUSTER --image $image --config $tmpfile -v 4"
-    # make it able to schedule pods on control-plane, then less resources we required
-    # This is disabled because when hostNetwork is used, pd requires 2379/2780
-    # which may conflict with etcd on control-plane.
-    #echo "info: remove 'node-role.kubernetes.io/master' taint from $CLUSTER-control-plane"
-    #kubectl taint nodes $CLUSTER-control-plane node-role.kubernetes.io/master-
-}
-
-function e2e::__wait_for_ds() {
-    local ns="$1"
-    local name="$2"
-    local retries="${3:-300}"
-    echo "info: waiting for pods of daemonset $ns/$name are ready (retries: $retries, interval: 1s)"
-    for ((i = 0; i < retries; i++)) {
-        read a b <<<$($KUBECTL_BIN --context $KUBECONTEXT -n $ns get ds/$name -ojsonpath='{.status.desiredNumberScheduled} {.status.numberReady}{"\n"}')
-        if [[ "$a" -gt 0 && "$a" -eq "$b" ]]; then
-            echo "info: all pods of daemonset $ns/$name are ready (desired: $a, ready: $b)"
-            return 0
-        fi
-        echo "info: pods of daemonset $ns/$name (desired: $a, ready: $b)"
-        sleep 1
-    }
-    echo "info: timed out waiting for pods of daemonset $ns/$name are ready"
-    return 1
-}
-
-function e2e::__wait_for_deploy() {
-    local ns="$1"
-    local name="$2"
-    local retries="${3:-300}"
-    echo "info: waiting for pods of deployment $ns/$name are ready (retries: $retries, interval: 1s)"
-    for ((i = 0; i < retries; i++)) {
-        read a b <<<$($KUBECTL_BIN --context $KUBECONTEXT -n $ns get deploy/$name -ojsonpath='{.spec.replicas} {.status.readyReplicas}{"\n"}')
-        if [[ "$a" -gt 0 && "$a" -eq "$b" ]]; then
-            echo "info: all pods of deployment $ns/$name are ready (desired: $a, ready: $b)"
-            return 0
-        fi
-        echo "info: pods of deployment $ns/$name (desired: $a, ready: $b)"
-        sleep 1
-    }
-    echo "info: timed out waiting for pods of deployment $ns/$name are ready"
-    return 1
-}
-
-function e2e::setup_local_pvs() {
-    echo "info: preparing disks"
-    for n in $($KIND_BIN get nodes --name=$CLUSTER); do
-        docker exec -i $n bash <<'EOF'
-test -d /mnt/disks || mkdir -p /mnt/disks
-df -h /mnt/disks
-if mountpoint /mnt/disks &>/dev/null; then
-    echo "info: /mnt/disks is a mountpoint"
-else
-    echo "info: /mnt/disks is not a mountpoint, creating local volumes on the rootfs"
-fi
-cd /mnt/disks
-for ((i = 1; i <= 32; i++)) {
-    if [ ! -d vol$i ]; then
-        mkdir vol$i
+    kubetest2_args+=(--image-name $image)
+    kubetest2_args+=(
+        # add some retires because kind may fail to start the cluster when the
+        # load is high
+        --up-retries 3
+        --cluster-name "$CLUSTER"
+        --config "$tmpfile"
+        --verbosity 4
+    )
+elif [ "$PROVIDER" == "gke" ]; then
+    if [ -z "$GCP_PROJECT" ]; then
+        echo "error: GCP_PROJECT is required"
+        exit 1
     fi
-    if ! mountpoint vol$i &>/dev/null; then
-        mount --bind vol$i vol$i
+    if [ -z "$GCP_CREDENTIALS" ]; then
+        echo "error: GCP_CREDENTIALS is required"
+        exit 1
     fi
-}
+    if [ -z "$GCP_REGION" -a -z "$GCP_ZONE" ]; then
+        echo "error: either GCP_REGION or GCP_ZONE must be specified"
+        exit 1
+    elif [ -n "$GCP_REGION" -a -n "$GCP_ZONE" ]; then
+        echo "error: GCP_REGION or GCP_ZONE cannot be both set"
+        exit 1
+    fi
+    echo "info: preparing ssh keypairs for GCP"
+    if [ ! -d ~/.ssh ]; then
+        mkdir ~/.ssh
+    fi
+    if [ ! -e ~/.ssh/google_compute_engine -a -n "$GCP_SSH_PRIVATE_KEY" ]; then
+        echo "Copying $GCP_SSH_PRIVATE_KEY to ~/.ssh/google_compute_engine" >&2
+        cp $GCP_SSH_PRIVATE_KEY ~/.ssh/google_compute_engine
+        chmod 0600 ~/.ssh/google_compute_engine
+    fi
+    if [ ! -e ~/.ssh/google_compute_engine.pub -a -n "$GCP_SSH_PUBLIC_KEY" ]; then
+        echo "Copying $GCP_SSH_PUBLIC_KEY to ~/.ssh/google_compute_engine.pub" >&2
+        cp $GCP_SSH_PUBLIC_KEY ~/.ssh/google_compute_engine.pub
+        chmod 0600 ~/.ssh/google_compute_engine.pub
+    fi
+    ! read -r -d '' nodePoolsJSON <<EOF
+{"default":{"Nodes":${KUBE_WORKERS},"MachineType":"${GCP_MACHINE_TYPE}"}}
 EOF
-    done
-    echo "info: installing local-volume-provisioner"
-    $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
-    e2e::__wait_for_ds kube-system local-volume-provisioner
-}
-
-function e2e::setup_helm_server() {
-    $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/tiller-rbac.yaml
-    if hack::version_ge $KUBE_VERSION "v1.16.0"; then
-        # workaround for https://github.com/helm/helm/issues/6374
-        # TODO remove this when we can upgrade to helm 2.15+, see https://github.com/helm/helm/pull/6462
-        $HELM_BIN init --service-account tiller --output yaml \
-            | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@' \
-            | sed 's@  replicas: 1@  replicas: 1\n  selector: {"matchLabels": {"app": "helm", "name": "tiller"}}@' \
-            | $KUBECTL_BIN --context $KUBECONTEXT apply -f -
-        echo "info: wait for tiller to be ready"
-        e2e::__wait_for_deploy kube-system tiller-deploy
-    else
-        $HELM_BIN init --service-account=tiller --wait
+    kubetest2_args+=(
+        --cluster-name "$CLUSTER"
+        --project "$GCP_PROJECT"
+        --gcp-service-account "$GCP_CREDENTIALS"
+        --environment prod
+        --node-pools "$nodePoolsJSON"
+    )
+    if [ -n "$GCP_REGION" ]; then
+        kubetest2_args+=(
+            --region "$GCP_REGION"
+        )
     fi
-    $HELM_BIN version
-}
-
-function e2e::down() {
-    if [ -n "$SKIP_DOWN" ]; then
-        echo "info: skip shutting down the cluster '$CLUSTER'"
-        return
+    if [ -n "$GCP_ZONE" ]; then
+        kubetest2_args+=(
+            --zone "$GCP_ZONE"
+        )
     fi
-    if ! e2e::cluster_exists $CLUSTER; then
-        echo "info: cluster '$CLUSTER' does not exist, skip shutting down the cluster"
-        return
+elif [ "$PROVIDER" == "eks" ]; then
+    hack::ensure_aws_k8s_tester
+    if [ -n "$AWS_REGION" ]; then
+        aws configure set default.region "$AWS_REGION"
     fi
-    $KIND_BIN delete cluster --name $CLUSTER
-}
+    if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+        aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    fi
+    if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+        aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    fi
+    mngName=$CLUSTER-mng-$RANDOM
+    export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
+    export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
+    export AWS_K8S_TESTER_EKS_PARAMETERS_VERSION="1.15"
+    export AWS_K8S_TESTER_EKS_PARAMETERS_ENCRYPTION_CMK_CREATE="false"
+    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_ENABLE="true"
+    export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":%d,"asg-max-size":%d,"asg-desired-capacity":%d,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName" "$KUBE_WORKERS" "$KUBE_WORKERS" "$KUBE_WORKERS")
+    # override KUBECONFIG
+    KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
+else
+    echo "error: unsupported provider '$PROVIDER'"
+    exit 1
+fi
 
-trap "e2e::down" EXIT
-e2e::up
-e2e::setup_local_pvs
-e2e::setup_helm_server
-e2e::image_build
-e2e::image_load
+if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/helm ]; then
+    ln -s $OUTPUT_BIN/helm /usr/local/bin/helm
+fi
 
+if [ "${HOSTNAME:-}" == "tidb-operator-dev" -a ! -f /usr/local/bin/kind ]; then
+    ln -s $KIND_BIN /usr/local/bin/kind
+fi
+
+# Environments for hack/run-e2e.sh
+export PROVIDER
+export CLUSTER
 export KUBECONFIG
-export KUBECONTEXT
+export GCP_PROJECT
+export GCP_REGION
+export GCP_ZONE
+export GCP_CREDENTIALS
+export IMAGE_TAG
+export SKIP_GINKGO
+export SKIP_IMAGE_LOAD
 export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
+export PATH=$OUTPUT_BIN:$PATH
 
-hack/run-e2e.sh "$@"
+# Environments for kubetest2
+if [ -n "${REPORT_DIR:-}" ]; then
+    export ARTIFACTS=${REPORT_DIR:-}
+fi
+
+hack::ensure_kubetest2
+echo "info: run 'kubetest2 ${kubetest2_args[@]} -- hack/run-e2e.sh $@'"
+$KUBETSTS2_BIN ${kubetest2_args[@]} -- hack/run-e2e.sh "$@"

@@ -27,7 +27,11 @@ name: fullbackup-{{ date "200601021504" .Release.Time }}
 image:
   pullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup
-  backup: pingcap/tidb-cloud-backup:20191217
+  backup: pingcap/tidb-cloud-backup:20200229
+
+## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+nodeSelector: {}
 
 # Add additional labels for backup/restore job's pod
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
@@ -35,6 +39,15 @@ extraLabels: {}
 
 # Add annotations for backup/restore job's pod
 annotations: {}
+
+## affinity defines pd scheduling rules,it's default settings is empty.
+## please read the affinity document before set your scheduling rule:
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+affinity: {}
+
+## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+tolerations: []
 
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore
@@ -80,12 +93,18 @@ restoreOptions: "-t 16"
 # When a GC happens, the current time minus this value is the safe point.
 tikvGCLifeTime: 720h
 
+# By default, restores are performed by binding to an existing volume containing backup data.
+# To restore from gcp, ceph, or s3, set this to false to create a new volume to load the backup into
+# This setting only affects the "restore" mode.
+restoreUsingExistingVolume: true
+
 # By default, the backup/restore uses PV to store/load backup data
 # You can choose to store/load backup data to/from gcp, ceph or s3 bucket by enabling the following corresponding section:
 
 # backup to or restore from gcp bucket, the backup path is in the form of <clusterName>-<name>
 gcp: {}
   # bucket: ""
+  # prefix: ""
   # secretName is not necessary on GKE if you use the workload identity feature
   # secretName is the name of the secret which stores the gcp service account credentials json file
   # The service account must have read/write permission to the above bucket.
@@ -99,6 +118,7 @@ gcp: {}
 ceph: {}
   # endpoint: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores ceph object store access key and secret key
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
@@ -108,6 +128,7 @@ ceph: {}
 s3: {}
   # region: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores s3 object store access key and secret key
   # This is not necessary on AWS. Instead you should be able to get the credentials from the EKS service IAM role.
   # You can create the secret by:

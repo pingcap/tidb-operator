@@ -14,45 +14,63 @@
 package restore
 
 import (
+	"database/sql"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
-// RestoreManager mainly used to manage backup related work
-type RestoreManager struct {
+type Manager struct {
 	restoreLister listers.RestoreLister
 	StatusUpdater controller.RestoreConditionUpdaterInterface
-	RestoreOpts
+	Options
 }
 
-// NewRestoreManager return a RestoreManager
-func NewRestoreManager(
+// NewManager return a RestoreManager
+func NewManager(
 	restoreLister listers.RestoreLister,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
-	backupOpts RestoreOpts) *RestoreManager {
-	return &RestoreManager{
+	restoreOpts Options) *Manager {
+	return &Manager{
 		restoreLister,
 		statusUpdater,
-		backupOpts,
+		restoreOpts,
 	}
 }
 
+func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
+	rm.Options.Host = restore.Spec.To.Host
+
+	if restore.Spec.To.Port != 0 {
+		rm.Options.Port = restore.Spec.To.Port
+	} else {
+		rm.Options.Port = bkconstants.DefaultTidbPort
+	}
+
+	if restore.Spec.To.User != "" {
+		rm.Options.User = restore.Spec.To.User
+	} else {
+		rm.Options.User = bkconstants.DefaultTidbUser
+	}
+
+	rm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+}
+
 // ProcessRestore used to process the restore logic
-func (rm *RestoreManager) ProcessRestore() error {
-	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.RestoreName)
+func (rm *Manager) ProcessRestore() error {
+	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)
 	if err != nil {
-		glog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.RestoreName, err)
+		klog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.ResourceName, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -60,24 +78,24 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Message: err.Error(),
 		})
 	}
+	if restore.Spec.BR == nil {
+		return fmt.Errorf("no br config in %s", rm)
+	}
 
+	rm.setOptions(restore)
+
+	var db *sql.DB
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		db, err := util.OpenDB(rm.getDSN(constants.TidbMetaDB))
+		db, err = util.OpenDB(rm.GetDSN())
 		if err != nil {
-			glog.Warningf("can't open connection to tidb cluster %s, err: %v", rm, err)
+			klog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
 			return false, nil
 		}
-
-		if err := db.Ping(); err != nil {
-			glog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
-			return false, nil
-		}
-		db.Close()
 		return true, nil
 	})
 
 	if err != nil {
-		glog.Errorf("cluster %s connect failed, err: %s", rm, err)
+		klog.Errorf("cluster %s connect failed, err: %s", rm, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
@@ -86,10 +104,11 @@ func (rm *RestoreManager) ProcessRestore() error {
 		})
 	}
 
-	return rm.performRestore(restore.DeepCopy())
+	defer db.Close()
+	return rm.performRestore(restore.DeepCopy(), db)
 }
 
-func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
+func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	started := time.Now()
 
 	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
@@ -100,45 +119,97 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 		return err
 	}
 
-	restoreDataPath := rm.getRestoreDataPath()
-	if err := rm.downloadBackupData(restoreDataPath); err != nil {
-		glog.Errorf("download cluster %s backup %s data failed, err: %s", rm, rm.BackupPath, err)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "DownloadBackupDataFailed",
-			Message: fmt.Sprintf("download backup %s data failed, err: %v", rm.BackupPath, err),
-		})
-	}
-	glog.Infof("download cluster %s backup %s data success", rm, rm.BackupPath)
-
-	restoreDataDir := filepath.Dir(restoreDataPath)
-	unarchiveDataPath, err := unarchiveBackupData(restoreDataPath, restoreDataDir)
+	oldTikvGCTime, err := rm.GetTikvGCLifeTime(db)
 	if err != nil {
-		glog.Errorf("unarchive cluster %s backup %s data failed, err: %s", rm, restoreDataPath, err)
+		klog.Errorf("cluster %s get %s failed, err: %s", rm, constants.TikvGCVariable, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
-			Reason:  "UnarchiveBackupDataFailed",
-			Message: fmt.Sprintf("unarchive backup %s data failed, err: %v", restoreDataPath, err),
+			Reason:  "GetTikvGCLifeTimeFailed",
+			Message: err.Error(),
 		})
 	}
-	glog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
+	klog.Infof("cluster %s %s is %s", rm, constants.TikvGCVariable, oldTikvGCTime)
 
-	err = rm.loadTidbClusterData(unarchiveDataPath)
+	oldTikvGCTimeDuration, err := time.ParseDuration(oldTikvGCTime)
 	if err != nil {
-		glog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
+		klog.Errorf("cluster %s parse old %s failed, err: %s", rm, constants.TikvGCVariable, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
-			Reason:  "LoaderBackupDataFailed",
-			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
+			Reason:  "ParseOldTikvGCLifeTimeFailed",
+			Message: err.Error(),
 		})
 	}
-	glog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
+
+	var tikvGCTimeDuration time.Duration
+	var tikvGCLifeTime string
+	if restore.Spec.TikvGCLifeTime != nil {
+		tikvGCLifeTime = *restore.Spec.TikvGCLifeTime
+		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+		if err != nil {
+			klog.Errorf("cluster %s parse configured %s failed, err: %s", rm, constants.TikvGCVariable, err)
+			return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
+				Message: err.Error(),
+			})
+		}
+	} else {
+		tikvGCLifeTime = constants.TikvGCLifeTime
+		tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
+		if err != nil {
+			klog.Errorf("cluster %s parse default %s failed, err: %s", rm, constants.TikvGCVariable, err)
+			return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
+				Message: err.Error(),
+			})
+		}
+	}
+
+	if oldTikvGCTimeDuration < tikvGCTimeDuration {
+		err = rm.SetTikvGCLifeTime(db, tikvGCLifeTime)
+		if err != nil {
+			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", rm, tikvGCLifeTime, err)
+			return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "SetTikvGCLifeTimeFailed",
+				Message: err.Error(),
+			})
+		}
+		klog.Infof("set cluster %s %s to %s success", rm, constants.TikvGCVariable, tikvGCLifeTime)
+	}
+
+	restoreErr := rm.restoreData(restore)
+	if oldTikvGCTimeDuration < tikvGCTimeDuration {
+		err = rm.SetTikvGCLifeTime(db, oldTikvGCTime)
+		if err != nil {
+			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", rm, oldTikvGCTime, err)
+			return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+				Type:    v1alpha1.RestoreFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  "ResetTikvGCLifeTimeFailed",
+				Message: err.Error(),
+			})
+		}
+		klog.Infof("reset cluster %s %s to %s success", rm, constants.TikvGCVariable, oldTikvGCTime)
+	}
+	if restoreErr != nil {
+		klog.Errorf("restore cluster %s from %s failed, err: %s", rm, restore.Spec.Type, restoreErr)
+		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "RestoreDataFromRemoteFailed",
+			Message: restoreErr.Error(),
+		})
+	}
+	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
 
 	finish := time.Now()
-
 	restore.Status.TimeStarted = metav1.Time{Time: started}
 	restore.Status.TimeCompleted = metav1.Time{Time: finish}
 

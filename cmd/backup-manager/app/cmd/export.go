@@ -21,18 +21,17 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/export"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // NewExportCommand implements the backup command
 func NewExportCommand() *cobra.Command {
-	bo := export.BackupOpts{}
+	bo := export.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "export",
@@ -44,18 +43,13 @@ func NewExportCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
-	cmd.Flags().StringVar(&bo.Host, "host", "", "Tidb cluster access address")
-	cmd.Flags().Int32Var(&bo.Port, "port", bkconstants.DefaultTidbPort, "Port number to use for connecting tidb cluster")
+	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
 	cmd.Flags().StringVar(&bo.Bucket, "bucket", "", "Bucket in which to store the backup data")
-	cmd.Flags().StringVar(&bo.Password, bkconstants.TidbPasswordKey, "", "Password to use when connecting to tidb cluster")
-	cmd.Flags().StringVar(&bo.User, "user", "", "User for login tidb cluster")
 	cmd.Flags().StringVar(&bo.StorageType, "storageType", "", "Backend storage type")
-	cmd.Flags().StringVar(&bo.BackupName, "backupName", "", "Backup CRD object name")
-	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
 	return cmd
 }
 
-func runExport(backupOpts export.BackupOpts, kubecfg string) error {
+func runExport(backupOpts export.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	cmdutil.CheckErr(err)
 	options := []informers.SharedInformerOption{
@@ -73,7 +67,7 @@ func runExport(backupOpts export.BackupOpts, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	glog.Infof("start to process backup %s", backupOpts.String())
+	klog.Infof("start to process backup %s", backupOpts.String())
 	bm := export.NewBackupManager(backupInformer.Lister(), statusUpdater, backupOpts)
 	return bm.ProcessBackup()
 }

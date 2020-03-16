@@ -84,6 +84,8 @@ const (
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
 	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
+	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
@@ -96,6 +98,28 @@ const (
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
 	// TiKVDeleteSlots is annotation key of tikv delete slots.
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
+
+	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
+	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
+	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
+	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
+
+	// AnnTiDBConsecutiveScaleOutCount describes the least consecutive count to scale-out for tidb
+	AnnTiDBConsecutiveScaleOutCount = "tidb.tidb.pingcap.com/consecutive-scale-out-count"
+	// AnnTiDBConsecutiveScaleInCount describes the least consecutive count to scale-in for tidb
+	AnnTiDBConsecutiveScaleInCount = "tidb.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnTiKVConsecutiveScaleOutCount describes the least consecutive count to scale-out for tikv
+	AnnTiKVConsecutiveScaleOutCount = "tikv.tidb.pingcap.com/consecutive-scale-out-count"
+	// AnnTiKVConsecutiveScaleInCount describes the least consecutive count to scale-in for tikv
+	AnnTiKVConsecutiveScaleInCount = "tikv.tidb.pingcap.com/consecutive-scale-in-count"
+	// AnnAutoScalingTargetName describes the target TidbCluster Ref Name for the TidbCluserAutoScaler
+	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
+	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
+	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
+	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
+	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
+	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
+	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"

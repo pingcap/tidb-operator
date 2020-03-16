@@ -5,7 +5,7 @@
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/tidb-lightning:v3.0.8
+image: pingcap/tidb-lightning:v3.0.9
 imagePullPolicy: IfNotPresent
 service:
   type: NodePort
@@ -25,19 +25,37 @@ dataSource:
     # pvcName: tidb-cluster-scheduled-backup
     # backupName: scheduled-backup-20190822-041004
   remote:
-    rcloneImage: tynor88/rclone
+    rcloneImage: pingcap/tidb-cloud-backup:20200229
     storageClassName: local-storage
     storage: 100Gi
     secretName: cloud-storage-secret
     path: s3:bench-data-us/sysbench/sbtest_16_1e7.tar.gz
     # Directory support downloading all files in a remote directory, shadow dataSoure.remote.path if present
     # directory: s3:bench-data-us
+    # If rcloneConfig is configured, then `secretName` will be ignored,
+    # `rcloneConfig` should only be used for the cases where no sensitive
+    # information need to be configured, e.g. the configuration as below,
+    # the Pod will get the credentials from the infrastructure.
+    #rcloneConfig: |
+    #  [s3]
+    #  type = s3
+    #  provider = AWS
+    #  env_auth = true
+    #  region = us-west-2
 
 targetTidbCluster:
   name: tidb-cluster
   # namespace is the target tidb cluster namespace, can be omitted if the lightning is deployed in the same namespace of the target tidb cluster
   namespace: ""
   user: root
+  # If the `secretName` and `secretUserKey` are set,
+  # the `user` will be ignored and the user in the
+  # `secretName` will be used by lightning.
+  # If the `secretName` and `secretPwdKey` are set, the
+  # password in the `secretName` will be used by lightning.
+  #secretName: ""
+  #secretUserKey: user
+  #secretPwdKey: password
 
 resources: {}
   # limits:

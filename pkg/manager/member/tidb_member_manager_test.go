@@ -725,6 +725,22 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 				g.Expect(svc.Spec.ClusterIP).To(Equal("8.8.8.8"))
 			},
 		},
+		{
+			name: "Create service with portName",
+			prepare: func(tc *v1alpha1.TidbCluster, _ *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type:     corev1.ServiceTypeClusterIP,
+						PortName: pointer.StringPtr("mysql-tidb"),
+					},
+				}
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc).NotTo(BeNil())
+				g.Expect(svc.Spec.Ports[0].Name).To(Equal("mysql-tidb"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1612,13 +1628,13 @@ func TestGetTiDBConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					EnableTLSCluster: pointer.BoolPtr(true),
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 					TiDB: v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						EnableTLSClient: pointer.BoolPtr(true),
-						Config:          &v1alpha1.TiDBConfig{},
+						TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
+						Config:    &v1alpha1.TiDBConfig{},
 					},
 				},
 			},
@@ -1650,12 +1666,12 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				Data: map[string]string{
 					"startup-script": "",
 					"config-file": `[security]
-  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  ssl-cert = "/var/lib/tidb-server-tls/cert"
-  ssl-key = "/var/lib/tidb-server-tls/key"
-  cluster-ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  cluster-ssl-cert = "/var/lib/tidb-tls/cert"
-  cluster-ssl-key = "/var/lib/tidb-tls/key"
+  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
+  cluster-ssl-ca = "/var/lib/tidb-tls/ca.crt"
+  cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
+  cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
 `,
 				},
 			},
