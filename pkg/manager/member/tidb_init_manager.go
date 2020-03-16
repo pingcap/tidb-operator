@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"path"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -31,6 +30,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 )
 
 const (
