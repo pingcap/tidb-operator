@@ -79,7 +79,7 @@ func TestTiKVMemberManagerSyncCreate(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &v1alpha1.PDConfig{
 				Replication: &v1alpha1.PDReplicationConfig{
-					LocationLabels: v1alpha1.StringSlice{"region", "zone", "rack", "host"},
+					LocationLabels: []string{"region", "zone", "rack", "host"},
 				},
 			}, nil
 		})
@@ -221,7 +221,7 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &v1alpha1.PDConfig{
 				Replication: &v1alpha1.PDReplicationConfig{
-					LocationLabels: v1alpha1.StringSlice{"region", "zone", "rack", "host"},
+					LocationLabels: []string{"region", "zone", "rack", "host"},
 				},
 			}, nil
 		})
@@ -483,7 +483,7 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
 			return &v1alpha1.PDConfig{
 				Replication: &v1alpha1.PDReplicationConfig{
-					LocationLabels: v1alpha1.StringSlice{"region", "zone", "rack", "host"},
+					LocationLabels: []string{"region", "zone", "rack", "host"},
 				},
 			}, nil
 		})
