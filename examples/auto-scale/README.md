@@ -8,7 +8,7 @@
 The following steps will create a TiDB cluster with monitoring and auto-scaler, the monitoring data is not persisted by default.
 
 **Prerequisites**: 
-- Has TiDB operator `v1.1.0-beta.1` or higher version installed. [Doc](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/tidb-operator/)
+- Has TiDB operator `v1.1.0-beta.2` or higher version installed. [Doc](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/tidb-operator/)
 - Has default `StorageClass` configured, and there are enough PVs (by default, 6 PVs are required) of that storageClass:
   
   This could by verified by the following command:
