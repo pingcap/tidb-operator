@@ -73,22 +73,18 @@ func isOwnedByTidbCluster(obj metav1.Object) bool {
 func (u *upgrader) Upgrade() error {
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		klog.Infof("Upgrader: migrating Kubernetes StatefulSets to Advanced StatefulSets")
-		// We should not check this, otherwise the controller-manager with
-		// advanced statefulset cannot be restarted when some clusters have
-		// delete slot annotations set.
-		// TODO find a better way
-		// tcList, err := u.cli.PingcapV1alpha1().TidbClusters(u.ns).List(metav1.ListOptions{})
-		// if err != nil {
-		// return err
-		// }
-		// for _, tc := range tcList.Items {
-		// // Existing delete slots annotations must be removed first. This is
-		// // a safety check to ensure no pods are affected in upgrading
-		// // process.
-		// if anns := deleteSlotAnns(&tc); len(anns) > 0 {
-		// return fmt.Errorf("Upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
-		// }
-		// }
+		tcList, err := u.cli.PingcapV1alpha1().TidbClusters(u.ns).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, tc := range tcList.Items {
+			// Existing delete slots annotations must be removed first. This is
+			// a safety check to ensure no pods are affected in upgrading
+			// process.
+			if anns := deleteSlotAnns(&tc); len(anns) > 0 {
+				return fmt.Errorf("Upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
+			}
+		}
 		stsList, err := u.kubeCli.AppsV1().StatefulSets(u.ns).List(metav1.ListOptions{})
 		if err != nil {
 			return err
