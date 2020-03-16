@@ -39,6 +39,10 @@ Initialize the cluster to create the users and create the database named `test`
 ```
 
 Wait for Initialize job done:
+```bash
+$ kubectl get pod | grep basic-tidb-initializer
+basic-tidb-initializer-whzn7               0/1     Completed   0          57s
+```
 
 
 ## Auto-scaling
