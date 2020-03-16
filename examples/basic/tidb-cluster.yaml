@@ -5,6 +5,11 @@ metadata:
 spec:
   version: v3.0.8
   timezone: UTC
+  tolerations: []
+  #  - key: node-role
+  #    operator: Equal
+  #    value: tidb
+  #    effect: "NoSchedule"
   pvReclaimPolicy: Delete
   pd:
     baseImage: pingcap/pd

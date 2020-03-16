@@ -129,6 +129,7 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: meta.Name,
+					Tolerations:        tc.Spec.Tolerations,
 					Containers: []corev1.Container{{
 						Name: "discovery",
 						Command: []string{

@@ -47,6 +47,13 @@ discovery:
     requests:
       cpu: 80m
       memory: 50Mi
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+  #  - key: node-role
+  #    operator: Equal
+  #    value: tidb
+  #    effect: "NoSchedule"
 
 # Whether enable ConfigMap Rollout management.
 # When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
@@ -190,7 +197,8 @@ pd:
 
   # Specify the security context of PD Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
-  podSecurityContext: {}
+  podSecurityContext:
+    {}
     # sysctls:
     # # You can enable these kernel parameters tuning to improve TiDB performance,
     # # when the kubelet is configured to allow unsafe sysctls
@@ -284,7 +292,8 @@ tikv:
 
   # Specify the security context of TiKV Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
-  podSecurityContext: {}
+  podSecurityContext:
+    {}
     # sysctls:
     # # You can enable these kernel parameters tuning to improve TiDB performance,
     # # when the kubelet is configured to allow unsafe sysctls
@@ -396,7 +405,8 @@ tidb:
 
   # Specify the security context of TiDB Pod.
   # refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
-  podSecurityContext: {}
+  podSecurityContext:
+    {}
     # sysctls:
     # # You can enable these kernel parameters tuning to improve TiDB performance,
     # # when the kubelet is configured to allow unsafe sysctls
@@ -419,7 +429,7 @@ tidb:
     exposeStatus: true
     # portName: "mysql-client"
     # annotations:
-      # cloud.google.com/load-balancer-type: Internal
+    # cloud.google.com/load-balancer-type: Internal
   separateSlowLog: true
 
   # Add --advertise-address to TiDB's startup parameters
@@ -509,7 +519,8 @@ monitor:
     service:
       type: NodePort
       portName: tcp-reloader
-    resources: {}
+    resources:
+      {}
       # limits:
       #  cpu: 50m
       #  memory: 64Mi
@@ -558,7 +569,8 @@ monitor:
       portName: http-prometheus
     reserveDays: 12
     # alertmanagerURL: ""
-  nodeSelector: {}
+  nodeSelector:
+    {}
     # kind: monitor
     # zone: cn-bj1-01,cn-bj1-02
     # region: cn-bj1
@@ -676,7 +688,8 @@ binlog:
     # downstream storage, equal to --dest-db-type
     # valid values are "mysql", "file", "tidb", "kafka"
     destDBType: file
-    mysql: {}
+    mysql:
+      {}
       # host: "127.0.0.1"
       # user: "root"
       # password: ""
@@ -684,7 +697,8 @@ binlog:
       # # Time and size limits for flash batch write
       # timeLimit: "30s"
       # sizeLimit: "100000"
-    kafka: {}
+    kafka:
+      {}
       # only need config one of zookeeper-addrs and kafka-addrs, will get kafka address if zookeeper-addrs is configed.
       # zookeeperAddrs: "127.0.0.1:2181"
       # kafkaAddrs: "127.0.0.1:9092"
@@ -810,7 +824,8 @@ importer:
   imagePullPolicy: IfNotPresent
   storageClassName: local-storage
   storage: 200Gi
-  resources: {}
+  resources:
+    {}
     # limits:
     #   cpu: 16000m
     #   memory: 8Gi

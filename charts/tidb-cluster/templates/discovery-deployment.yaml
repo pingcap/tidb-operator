@@ -30,6 +30,10 @@ spec:
       serviceAccount: {{ template "cluster.name" . }}-discovery
     {{- end }}
   {{- end }}
+  {{- if .Values.discovery.tolerations }}
+      tolerations:
+{{ toYaml .Values.discovery.tolerations | indent 8 }}
+  {{- end }}
       containers:
       - name: discovery
         image: {{ .Values.discovery.image }}
