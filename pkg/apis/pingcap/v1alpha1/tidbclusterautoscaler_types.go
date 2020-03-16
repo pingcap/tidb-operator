@@ -171,7 +171,7 @@ type BaseAutoScalerStatus struct {
 
 	// desiredReplicas is the desired number of replicas of pods managed by this autoscaler,
 	// as last calculated by the autoscaler.
-	DesiredReplicas int32 `json:"desiredReplicas" protobuf:"varint,4,opt,name=desiredReplicas"`
+	RecommendedReplicas int32 `json:"desiredReplicas" protobuf:"varint,4,opt,name=desiredReplicas"`
 }
 
 // TiKVAutoScalerStatus describes the status for tikv auto-scaling

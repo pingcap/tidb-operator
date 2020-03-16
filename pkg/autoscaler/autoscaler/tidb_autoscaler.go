@@ -71,7 +71,7 @@ func syncTiDBAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 func updateTcTiDBIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, recommendedReplicas int32) error {
 	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 	tc.Spec.TiDB.Replicas = recommendedReplicas
-	tac.Status.TikvStatus.LastScaleTime = time.Now().Format(time.RFC3339)
+	tac.Status.TiDBStatus.LastScaleTime = time.Now().Format(time.RFC3339)
 	return nil
 }
 

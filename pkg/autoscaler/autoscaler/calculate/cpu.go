@@ -15,13 +15,13 @@ package calculate
 
 import (
 	"fmt"
-	"k8s.io/klog"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 )
 
 const (
@@ -67,19 +67,20 @@ func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, 
 		return -1, err
 	}
 
+	currentCpuRadio := cpuSecsTotal / float64(currentReplicas) / cpuRequestsRatio / durationSeconds * 100.0
 	switch memberType {
 	case v1alpha1.TiDBMemberType:
 		tac.Status.TiDBStatus.Name = string(MetricTypeCPU)
-		tac.Status.TiDBStatus.CurrentValue = cpuSecsTotal
-		tac.Status.TiDBStatus.TargetValue = expectedCpuSecsTotal
+		tac.Status.TiDBStatus.CurrentValue = currentCpuRadio
+		tac.Status.TiDBStatus.TargetValue = float64(*metric.Resource.Target.AverageUtilization)
 		tac.Status.TiDBStatus.CurrentReplicas = int32(currentReplicas)
-		tac.Status.TiDBStatus.DesiredReplicas = rc
+		tac.Status.TiDBStatus.RecommendedReplicas = rc
 	case v1alpha1.TiKVMemberType:
 		tac.Status.TikvStatus.Name = string(MetricTypeCPU)
-		tac.Status.TikvStatus.CurrentValue = cpuSecsTotal
-		tac.Status.TikvStatus.TargetValue = expectedCpuSecsTotal
+		tac.Status.TikvStatus.CurrentValue = currentCpuRadio
+		tac.Status.TikvStatus.TargetValue = float64(*metric.Resource.Target.AverageUtilization)
 		tac.Status.TikvStatus.CurrentReplicas = int32(currentReplicas)
-		tac.Status.TikvStatus.DesiredReplicas = rc
+		tac.Status.TikvStatus.RecommendedReplicas = rc
 	default:
 		klog.Errorf("unsupport type - %s", memberType)
 	}
