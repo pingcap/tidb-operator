@@ -9,9 +9,8 @@ The following steps will create a TiDB cluster with monitoring, the monitoring d
 
 **Prerequisites**: 
 - Has TiDB operator `v1.1.0-beta.2` or higher version installed. [Doc](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/tidb-operator/)
-- Has Tidb Cluster has been installed in `../basic/*`
   
-
+  
 ## Initialize
 
 
@@ -35,29 +34,13 @@ You can aloso create other users and set their password:
 Initialize the cluster to create the users and create the database named `test`
 
 ```bash
-> kubectl -n <namespace> apply -f ./tidb-initializer.yaml
+> kubectl -n <namespace> apply -f ./
 ```
 
 Wait for Initialize job done:
 ```bash
 $ kubectl get pod | grep basic-tidb-initializer
-basic-tidb-initializer-whzn7               0/1     Completed   0          57s
-```
-
-
-## Auto-scaling
-
-> **Note:**
->
-> The Auto-scaling feature is still in alpha, you should enable this feature in TiDB Operator by setting values.yaml:
- ```yaml
-features:
-  AutoScaling=true
-```
-
-Auto-scale the cluster based on CPU load
-```bash
-> kubectl -n <namespace> apply -f ./tidb-cluster-auto-scaler.yaml
+initialize-demo-tidb-initializer-whzn7               0/1     Completed   0          57s
 ```
 
 ## Destroy

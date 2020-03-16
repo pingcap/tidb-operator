@@ -1,12 +1,12 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbClusterAutoScaler
 metadata:
-  name: basic
+  name: auto-scaling-demo
 spec:
   cluster:
-    name: basic
+    name: auto-scaling-demo
   monitor:
-    name: basic
+    name: auto-scaling-demo
   tikv:
     minReplicas: 3
     maxReplicas: 4
