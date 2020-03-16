@@ -26,7 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 
 	"gopkg.in/yaml.v2"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -158,7 +158,7 @@ func ParseConfigOrDie() *Config {
 		slack.NotifyAndPanic(err)
 	}
 
-	glog.Infof("using config: %+v", cfg)
+	klog.Infof("using config: %+v", cfg)
 	return cfg
 }
 

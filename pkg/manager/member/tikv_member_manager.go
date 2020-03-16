@@ -15,6 +15,8 @@ package member
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -33,7 +35,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
+)
+
+const (
+	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
+	tikvClusterCertPath = "/var/lib/tikv-tls"
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -55,7 +62,8 @@ type tikvMemberManager struct {
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
-func NewTiKVMemberManager(pdControl pdapi.PDControlInterface,
+func NewTiKVMemberManager(
+	pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	certControl controller.CertControlInterface,
@@ -186,12 +194,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		if err != nil {
 			return err
 		}
-		if tc.IsTLSClusterEnabled() {
-			err := tkmm.syncTiKVServerCerts(tc)
-			if err != nil {
-				return err
-			}
-		}
 		err = tkmm.setControl.CreateStatefulSet(tc, newSet)
 		if err != nil {
 			return err
@@ -227,34 +229,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	return updateStatefulSet(tkmm.setControl, tc, newSet, oldSet)
-}
-
-func (tkmm *tikvMemberManager) syncTiKVServerCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.TiKVMemberName(tcName)
-	peerName := controller.TiKVPeerMemberName(tcName)
-
-	if tkmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		peerName,
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s.svc", peerName, ns),
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		Component:  "tikv",
-		Suffix:     "tikv",
-	}
-
-	return tkmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -359,7 +333,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		vols = append(vols, corev1.Volume{
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.TiKVMemberName(tcName),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiKVLabelVal),
 				},
 			},
 		})
@@ -525,6 +499,17 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if config == nil {
 		return nil, nil
 	}
+
+	// override CA if tls enabled
+	if tc.IsTLSClusterEnabled() {
+		if config.Security == nil {
+			config.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.Security.CAPath = path.Join(tikvClusterCertPath, tlsSecretRootCAKey)
+		config.Security.CertPath = path.Join(tikvClusterCertPath, corev1.TLSCertKey)
+		config.Security.KeyPath = path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey)
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
@@ -605,7 +590,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
 		if status.LastHeartbeatTime.IsZero() {
 			if oldStatus, ok := previousStores[status.ID]; ok {
-				glog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
+				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
 				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
 			}
 		}
@@ -694,19 +679,19 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		nodeName := pod.Spec.NodeName
 		ls, err := tkmm.getNodeLabels(nodeName, locationLabels)
 		if err != nil || len(ls) == 0 {
-			glog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
+			klog.Warningf("node: [%s] has no node labels, skipping set store labels for Pod: [%s/%s]", nodeName, ns, podName)
 			continue
 		}
 
 		if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
 			if err != nil {
-				glog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
+				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
 				continue
 			}
 			if set {
 				setCount++
-				glog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
+				klog.Infof("pod: [%s/%s] set labels: %v successfully", ns, podName, ls)
 			}
 		}
 	}

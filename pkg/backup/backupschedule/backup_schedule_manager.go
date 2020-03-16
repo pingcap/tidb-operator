@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type backupScheduleManager struct {
@@ -160,7 +160,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 	now := time.Now()
 	if earliestTime.After(now) {
 		// timestamp fallback, waiting for the next backup schedule period
-		glog.Errorf("backup schedule %s/%s timestamp fallback, lastBackupTime: %s, now: %s",
+		klog.Errorf("backup schedule %s/%s timestamp fallback, lastBackupTime: %s, now: %s",
 			ns, bsName, earliestTime.Format(time.RFC3339), now.Format(time.RFC3339))
 		return nil, nil
 	}
@@ -184,13 +184,13 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 				bs.Status.AllBackupCleanTime = &metav1.Time{Time: time.Now()}
 				return nil, controller.RequeueErrorf("recovery backup schedule %s/%s from pause status, refresh AllBackupCleanTime.", ns, bsName)
 			}
-			glog.Errorf("Too many missed start backup schedule time (> 100). Check the clock.")
+			klog.Errorf("Too many missed start backup schedule time (> 100). Check the clock.")
 			return nil, nil
 		}
 	}
 
 	if len(scheduledTimes) == 0 {
-		glog.V(4).Infof("unmet backup schedule %s/%s start time, waiting for the next backup schedule period", ns, bsName)
+		klog.V(4).Infof("unmet backup schedule %s/%s start time, waiting for the next backup schedule period", ns, bsName)
 		return nil, nil
 	}
 	scheduledTime := scheduledTimes[len(scheduledTimes)-1]
@@ -215,9 +215,16 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 			}
 		}
 	} else {
+		var pdAddress, clusterNamespace string
+		clusterNamespace = backupSpec.BR.ClusterNamespace
+		if backupSpec.BR.ClusterNamespace == "" {
+			clusterNamespace = ns
+		}
+		pdAddress = fmt.Sprintf("%s-pd.%s:2379", backupSpec.BR.Cluster, clusterNamespace)
+
 		if backupSpec.S3 != nil {
 			backupSpec.S3.Prefix = path.Join(backupSpec.S3.Prefix,
-				strings.ReplaceAll(backupSpec.BR.PDAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
+				strings.ReplaceAll(pdAddress, ":", "-")+"-"+timestamp.UTC().Format(constants.TimeFormat))
 		}
 	}
 
@@ -226,9 +233,10 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 	backup := &v1alpha1.Backup{
 		Spec: backupSpec,
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      bs.GetBackupCRDName(timestamp),
-			Labels:    bsLabel.Labels(),
+			Namespace:   ns,
+			Name:        bs.GetBackupCRDName(timestamp),
+			Labels:      bsLabel.Labels(),
+			Annotations: bs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetBackupScheduleOwnerRef(bs),
 			},
@@ -253,7 +261,7 @@ func (bm *backupScheduleManager) backupGC(bs *v1alpha1.BackupSchedule) {
 		return
 	}
 	// TODO: When the backup schedule gc policy is not set, we should set a default backup gc policy.
-	glog.Warningf("backup schedule %s/%s does not set backup gc policy", ns, bsName)
+	klog.Warningf("backup schedule %s/%s does not set backup gc policy", ns, bsName)
 }
 
 func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSchedule) {
@@ -262,13 +270,13 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 
 	reservedTime, err := time.ParseDuration(*bs.Spec.MaxReservedTime)
 	if err != nil {
-		glog.Errorf("backup schedule %s/%s, invalid MaxReservedTime %s", ns, bsName, *bs.Spec.MaxReservedTime)
+		klog.Errorf("backup schedule %s/%s, invalid MaxReservedTime %s", ns, bsName, *bs.Spec.MaxReservedTime)
 		return
 	}
 
 	backupsList, err := bm.getBackupList(bs, false)
 	if err != nil {
-		glog.Errorf("backupGCByMaxReservedTime, err: %s", err)
+		klog.Errorf("backupGCByMaxReservedTime, err: %s", err)
 		return
 	}
 
@@ -279,11 +287,11 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 		}
 		// delete the expired backup
 		if err := bm.backupControl.DeleteBackup(backup); err != nil {
-			glog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
 		deleteCount += 1
-		glog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 
 	if deleteCount == len(backupsList) {
@@ -300,7 +308,7 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 
 	backupsList, err := bm.getBackupList(bs, true)
 	if err != nil {
-		glog.Errorf("backupGCByMaxBackups failed, err: %s", err)
+		klog.Errorf("backupGCByMaxBackups failed, err: %s", err)
 		return
 	}
 
@@ -311,11 +319,11 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(bs *v1alpha1.BackupSchedul
 		}
 		// delete the backup
 		if err := bm.backupControl.DeleteBackup(backup); err != nil {
-			glog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
 			return
 		}
 		deleteCount += 1
-		glog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
 	}
 
 	if deleteCount == len(backupsList) {

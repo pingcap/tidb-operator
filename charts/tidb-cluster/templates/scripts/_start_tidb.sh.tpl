@@ -26,7 +26,12 @@ then
     tail -f /dev/null
 fi
 
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
+{{- if .Values.tidb.enableAdvertiseAddress | default false }}
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
+{{- end }}
 --host=0.0.0.0 \
 --path=${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tidb/tidb.toml

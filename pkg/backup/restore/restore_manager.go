@@ -154,7 +154,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -174,21 +174,23 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		"import",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
-		fmt.Sprintf("--host=%s", restore.Spec.To.Host),
-		fmt.Sprintf("--port=%d", restore.Spec.To.Port),
-		fmt.Sprintf("--user=%s", restore.Spec.To.User),
 		fmt.Sprintf("--backupPath=%s", backupPath),
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
+	serviceAccount := constants.DefaultServiceAccountName
+	if restore.Spec.ServiceAccount != "" {
+		serviceAccount = restore.Spec.ServiceAccount
+	}
 
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: restoreLabel.Labels(),
+			Labels:      restoreLabel.Labels(),
+			Annotations: restore.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
@@ -238,11 +240,17 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
+	if err != nil {
+		return nil, reason, err
+	}
+
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
 
+	envVars = append(envVars, storageEnv...)
 	args := []string{
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
@@ -250,23 +258,44 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+	if restore.Spec.BR.EnableTLSClient {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "br-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(restore.Spec.BR.Cluster)),
+				},
+			},
+		})
+	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if restore.Spec.ServiceAccount != "" {
+		serviceAccount = restore.Spec.ServiceAccount
+	}
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: restoreLabel.Labels(),
+			Labels:      restoreLabel.Labels(),
+			Annotations: restore.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullAlways,
+					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},
 			},
+			Volumes:       volumes,
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
