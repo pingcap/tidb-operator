@@ -675,10 +675,6 @@ spec:
               description: 'Whether enable PVC reclaim for orphan PVC left by statefulset
                 scale-in Optional: Defaults to false'
               type: boolean
-            enableTLSCluster:
-              description: 'Enable TLS connection between TiDB server components Optional:
-                Defaults to false'
-              type: boolean
             helper:
               description: HelperSpec contains details of helper component
               properties:
@@ -1611,6 +1607,9 @@ spec:
                             after cluster creation Optional: Defaults to 64'
                           format: int64
                           type: integer
+                        schedulers-payload:
+                          description: Only used to display
+                          type: object
                         schedulers-v2:
                           description: Schedulers support for loding customized schedulers
                             Immutable, change should be made through pd-ctl after
@@ -3779,6 +3778,10 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
+                enableAdvertiseAddress:
+                  description: 'Add --advertise-address to TiDB''s startup parameters
+                    Optional: Defaults to false'
+                  type: boolean
                 hostNetwork:
                   description: 'Whether Hostnetwork of the component is enabled. Override
                     the cluster-level setting if present Optional: Defaults to cluster-level
@@ -4659,31 +4662,31 @@ spec:
                           type: integer
                         region-max-keys:
                           description: 'When the number of keys in Region [a,e) exceeds
-                            the `region_max_keys`, it will be split into several Regions
+                            the `region-max-keys`, it will be split into several Regions
                             [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
-                            [b,c), [c,d) will be `region_split_keys`. See also: region-split-keys
+                            [b,c), [c,d) will be `region-split-keys`. See also: region-split-keys
                             Optional: Defaults to 1440000 optional'
                           format: int64
                           type: integer
                         region-max-size:
-                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                          description: 'When Region [a,e) size exceeds `region-max-size`,
                             it will be split into several Regions [a,b), [b,c), [c,d),
-                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region-split-size`
                             (or a little larger). See also: region-split-size Optional:
                             Defaults to 144MB optional'
                           type: string
                         region-split-keys:
                           description: 'When the number of keys in Region [a,e) exceeds
-                            the `region_max_keys`, it will be split into several Regions
+                            the `region-max-keys`, it will be split into several Regions
                             [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b),
-                            [b,c), [c,d) will be `region_split_keys`. See also: region-max-keys
+                            [b,c), [c,d) will be `region-split-keys`. See also: region-max-keys
                             Optional: Defaults to 960000 optional'
                           format: int64
                           type: integer
                         region-split-size:
-                          description: 'When Region [a,e) size exceeds `region_max_size`,
+                          description: 'When Region [a,e) size exceeds `region-max-size`,
                             it will be split into several Regions [a,b), [b,c), [c,d),
-                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region_split_size`
+                            [d,e) and the size of [a,b), [b,c), [c,d) will be `region-split-size`
                             (or a little larger). See also: region-max-size Optional:
                             Defaults to 96MB optional'
                           type: string
@@ -4697,37 +4700,37 @@ spec:
                       type: object
                     gc:
                       properties:
-                        "\tbatch_keys":
+                        "\tbatch-keys":
                           description: 'Optional: Defaults to 512'
                           format: int64
                           type: integer
-                        "\tmax_write_bytes_per_sec":
+                        "\tmax-write-bytes-per-sec":
                           type: string
                       type: object
                     import:
                       properties:
-                        import_dir:
+                        import-dir:
                           type: string
-                        max_open_engines:
+                        max-open-engines:
                           format: int64
                           type: integer
-                        max_prepare_duration:
+                        max-prepare-duration:
                           type: string
-                        num_import_jobs:
+                        num-import-jobs:
                           format: int64
                           type: integer
-                        num_import_sst_jobs:
+                        num-import-sst-jobs:
                           format: int64
                           type: integer
-                        num_threads:
+                        num-threads:
                           format: int64
                           type: integer
-                        region_split_size:
+                        region-split-size:
                           type: string
-                        stream_channel_window:
+                        stream-channel-window:
                           format: int64
                           type: integer
-                        upload_speed_limit:
+                        upload-speed-limit:
                           type: string
                       type: object
                     log-file:
@@ -4750,20 +4753,20 @@ spec:
                           items:
                             type: string
                           type: array
-                        retry_interval:
+                        retry-interval:
                           description: |-
                             The interval at which to retry a PD connection initialization.
 
                             Default is 300ms. Optional: Defaults to 300ms
                           type: string
-                        retry_log_every:
+                        retry-log-every:
                           description: |-
                             If the client observes the same error message on retry, it can repeat the message only every `n` times.
 
                             Default is 10. Set to 1 to disable this feature. Optional: Defaults to 10
                           format: int64
                           type: integer
-                        retry_max_count:
+                        retry-max-count:
                           description: |-
                             The maximum number of times to retry a PD connection initialization.
 
@@ -4773,13 +4776,13 @@ spec:
                       type: object
                     raftdb:
                       properties:
-                        allow_concurrent_memtable_write:
+                        allow-concurrent-memtable-write:
                           type: boolean
-                        bytes_per_sync:
+                        bytes-per-sync:
                           type: string
-                        compaction_readahead_size:
+                        compaction-readahead-size:
                           type: string
-                        create_if_missing:
+                        create-if-missing:
                           type: boolean
                         defaultcf:
                           description: TiKVCfConfig is the config of a cf
@@ -4890,48 +4893,48 @@ spec:
                             write-buffer-size:
                               type: string
                           type: object
-                        enable_pipelined_write:
+                        enable-pipelined-write:
                           type: boolean
-                        enable_statistics:
+                        enable-statistics:
                           type: boolean
-                        info_log_dir:
+                        info-log-dir:
                           type: string
-                        info_log_keep_log_file_num:
+                        info-log-keep-log-file-num:
                           format: int64
                           type: integer
-                        info_log_max_size:
+                        info-log-max-size:
                           type: string
-                        info_log_roll_time:
+                        info-log-roll-time:
                           type: string
-                        max_background_jobs:
+                        max-background-jobs:
                           format: int64
                           type: integer
-                        max_manifest_file_size:
+                        max-manifest-file-size:
                           type: string
-                        max_open_files:
+                        max-open-files:
                           format: int64
                           type: integer
-                        max_sub_compactions:
+                        max-sub-compactions:
                           format: int64
                           type: integer
-                        max_total_wal_size:
+                        max-total-wal-size:
                           type: string
-                        stats_dump_period:
+                        stats-dump-period:
                           type: string
-                        use_direct_io_for_flush_and_compaction:
+                        use-direct-io-for-flush-and-compaction:
                           type: boolean
-                        wal_bytes_per_sync:
+                        wal-bytes-per-sync:
                           type: string
-                        wal_dir:
+                        wal-dir:
                           type: string
-                        wal_recovery_mode:
+                        wal-recovery-mode:
                           type: string
-                        wal_size_limit:
+                        wal-size-limit:
                           type: string
-                        wal_ttl_seconds:
+                        wal-ttl-seconds:
                           format: int64
                           type: integer
-                        writable_file_max_buffer_size:
+                        writable-file-max-buffer-size:
                           type: string
                       type: object
                     raftstore:
@@ -5113,61 +5116,61 @@ spec:
                       properties:
                         coprocessor:
                           properties:
-                            high_concurrency:
+                            high-concurrency:
                               description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
-                            low_concurrency:
+                            low-concurrency:
                               description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_high:
+                            max-tasks-per-worker-high:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_low:
+                            max-tasks-per-worker-low:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_normal:
+                            max-tasks-per-worker-normal:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            normal_concurrency:
+                            normal-concurrency:
                               description: 'Optional: Defaults to 8'
                               format: int64
                               type: integer
-                            stack_size:
+                            stack-size:
                               description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
                         storage:
                           properties:
-                            high_concurrency:
+                            high-concurrency:
                               description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
-                            low_concurrency:
+                            low-concurrency:
                               description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_high:
+                            max-tasks-per-worker-high:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_low:
+                            max-tasks-per-worker-low:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            max_tasks_per_worker_normal:
+                            max-tasks-per-worker-normal:
                               description: 'Optional: Defaults to 2000'
                               format: int64
                               type: integer
-                            normal_concurrency:
+                            normal-concurrency:
                               description: 'Optional: Defaults to 4'
                               format: int64
                               type: integer
-                            stack_size:
+                            stack-size:
                               description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
@@ -5696,15 +5699,15 @@ spec:
                       type: object
                     security:
                       properties:
-                        ca_path:
+                        ca-path:
                           type: string
-                        cert_path:
+                        cert-path:
                           type: string
-                        cipher_file:
+                        cipher-file:
                           type: string
-                        key_path:
+                        key-path:
                           type: string
-                        override_ssl_target:
+                        override-ssl-target:
                           type: string
                       type: object
                     server:
@@ -5753,15 +5756,15 @@ spec:
                         grpc-keepalive-timeout:
                           description: 'Optional: Defaults to 3s'
                           type: string
+                        grpc-memory-pool-quota:
+                          description: 'Optional: Defaults to 32G'
+                          type: string
                         grpc-raft-conn-num:
                           description: 'Optional: Defaults to 10'
                           format: int32
                           type: integer
                         grpc-stream-initial-window-size:
                           description: 'Optional: Defaults to 2MB'
-                          type: string
-                        grpc_memory_pool_quota:
-                          description: 'Optional: Defaults to 32G'
                           type: string
                         heavy-load-threshold:
                           format: int32
@@ -6048,6 +6051,7 @@ spec:
             timezone:
               description: 'Time zone of TiDB cluster Pods Optional: Defaults to UTC'
               type: string
+            tlsCluster: {}
             tolerations:
               description: Base tolerations of TiDB cluster Pods, components may add
                 more tolerations upon this respectively
@@ -6742,15 +6746,15 @@ spec:
             br:
               description: BRConfig contains config for BR
               properties:
-                ca:
-                  description: CA is the CA certificate path for TLS connection
-                  type: string
-                cert:
-                  description: Cert is the certificate path for TLS connection
-                  type: string
                 checksum:
                   description: Checksum specifies whether to run checksum after backup
                   type: boolean
+                cluster:
+                  description: ClusterName of backup/restore cluster
+                  type: string
+                clusterNamespace:
+                  description: Namespace of backup/restore cluster
+                  type: string
                 concurrency:
                   description: Concurrency is the size of thread pool on each node
                     that execute the backup task
@@ -6759,18 +6763,15 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                key:
-                  description: Key is the private key path for TLS connection
-                  type: string
+                enableTLSClient:
+                  description: Whether enable TLS in TiDBCluster
+                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
                 onLine:
                   description: OnLine specifies whether online during restore
                   type: boolean
-                pd:
-                  description: PDAddress is the PD address of the tidb cluster
-                  type: string
                 rateLimit:
                   description: RateLimit is the rate limit of the backup task, MB/s
                     per node
@@ -6793,7 +6794,7 @@ spec:
                     e.g. 1m, 1h
                   type: string
               required:
-              - pd
+              - cluster
               type: object
             from:
               description: TiDBAccessConfig defines the configuration for access tidb
@@ -6895,14 +6896,22 @@ spec:
                   type: string
               required:
               - provider
-              - secretName
               type: object
+            serviceAccount:
+              description: Specify service account of backup
+              type: string
             storageClassName:
               description: The storageClassName of the persistent volume for Backup
                 data storage. Defaults to Kubernetes default storage class.
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
+              type: string
+            tikvGCLifeTime:
+              description: TikvGCLifeTime is to specify the safe gc life time for
+                backup. The time limit during which data is retained for each GC,
+                in the format of Go Duration. When a GC happens, the current time
+                minus this value is the safe point.
               type: string
             tolerations:
               description: Base tolerations of backup Pods, components may add more
@@ -6945,6 +6954,9 @@ spec:
                     type: string
                 type: object
               type: array
+            useKMS:
+              description: Use KMS to decrypt the secrets
+              type: boolean
           type: object
       type: object
   version: v1alpha1
@@ -7578,15 +7590,15 @@ spec:
             br:
               description: BRConfig contains config for BR
               properties:
-                ca:
-                  description: CA is the CA certificate path for TLS connection
-                  type: string
-                cert:
-                  description: Cert is the certificate path for TLS connection
-                  type: string
                 checksum:
                   description: Checksum specifies whether to run checksum after backup
                   type: boolean
+                cluster:
+                  description: ClusterName of backup/restore cluster
+                  type: string
+                clusterNamespace:
+                  description: Namespace of backup/restore cluster
+                  type: string
                 concurrency:
                   description: Concurrency is the size of thread pool on each node
                     that execute the backup task
@@ -7595,18 +7607,15 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                key:
-                  description: Key is the private key path for TLS connection
-                  type: string
+                enableTLSClient:
+                  description: Whether enable TLS in TiDBCluster
+                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
                 onLine:
                   description: OnLine specifies whether online during restore
                   type: boolean
-                pd:
-                  description: PDAddress is the PD address of the tidb cluster
-                  type: string
                 rateLimit:
                   description: RateLimit is the rate limit of the backup task, MB/s
                     per node
@@ -7629,7 +7638,7 @@ spec:
                     e.g. 1m, 1h
                   type: string
               required:
-              - pd
+              - cluster
               type: object
             gcs:
               description: GcsStorageProvider represents the google cloud storage
@@ -7708,14 +7717,22 @@ spec:
                   type: string
               required:
               - provider
-              - secretName
               type: object
+            serviceAccount:
+              description: Specify service account of restore
+              type: string
             storageClassName:
               description: The storageClassName of the persistent volume for Restore
                 data storage. Defaults to Kubernetes default storage class.
               type: string
             storageSize:
               description: StorageSize is the request storage size for backup job
+              type: string
+            tikvGCLifeTime:
+              description: TikvGCLifeTime is to specify the safe gc life time for
+                restore. The time limit during which data is retained for each GC,
+                in the format of Go Duration. When a GC happens, the current time
+                minus this value is the safe point.
               type: string
             to:
               description: TiDBAccessConfig defines the configuration for access tidb
@@ -7781,6 +7798,9 @@ spec:
                     type: string
                 type: object
               type: array
+            useKMS:
+              description: Use KMS to decrypt the secrets
+              type: boolean
           type: object
       type: object
   version: v1alpha1
@@ -8455,16 +8475,16 @@ spec:
                 br:
                   description: BRConfig contains config for BR
                   properties:
-                    ca:
-                      description: CA is the CA certificate path for TLS connection
-                      type: string
-                    cert:
-                      description: Cert is the certificate path for TLS connection
-                      type: string
                     checksum:
                       description: Checksum specifies whether to run checksum after
                         backup
                       type: boolean
+                    cluster:
+                      description: ClusterName of backup/restore cluster
+                      type: string
+                    clusterNamespace:
+                      description: Namespace of backup/restore cluster
+                      type: string
                     concurrency:
                       description: Concurrency is the size of thread pool on each
                         node that execute the backup task
@@ -8474,18 +8494,15 @@ spec:
                       description: DB is the specific DB which will be backed-up or
                         restored
                       type: string
-                    key:
-                      description: Key is the private key path for TLS connection
-                      type: string
+                    enableTLSClient:
+                      description: Whether enable TLS in TiDBCluster
+                      type: boolean
                     logLevel:
                       description: LogLevel is the log level
                       type: string
                     onLine:
                       description: OnLine specifies whether online during restore
                       type: boolean
-                    pd:
-                      description: PDAddress is the PD address of the tidb cluster
-                      type: string
                     rateLimit:
                       description: RateLimit is the rate limit of the backup task,
                         MB/s per node
@@ -8508,7 +8525,7 @@ spec:
                         e.g. 1m, 1h
                       type: string
                   required:
-                  - pd
+                  - cluster
                   type: object
                 from:
                   description: TiDBAccessConfig defines the configuration for access
@@ -8610,8 +8627,10 @@ spec:
                       type: string
                   required:
                   - provider
-                  - secretName
                   type: object
+                serviceAccount:
+                  description: Specify service account of backup
+                  type: string
                 storageClassName:
                   description: The storageClassName of the persistent volume for Backup
                     data storage. Defaults to Kubernetes default storage class.
@@ -8619,6 +8638,12 @@ spec:
                 storageSize:
                   description: StorageSize is the request storage size for backup
                     job
+                  type: string
+                tikvGCLifeTime:
+                  description: TikvGCLifeTime is to specify the safe gc life time
+                    for backup. The time limit during which data is retained for each
+                    GC, in the format of Go Duration. When a GC happens, the current
+                    time minus this value is the safe point.
                   type: string
                 tolerations:
                   description: Base tolerations of backup Pods, components may add
@@ -8661,6 +8686,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                useKMS:
+                  description: Use KMS to decrypt the secrets
+                  type: boolean
               type: object
             maxBackups:
               description: MaxBackups is to specify how many backups we want to keep

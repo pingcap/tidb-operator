@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -29,14 +30,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
 	defaultPumpLogLevel = "info"
+	pumpCertVolumeMount = "pump-tls"
+	pumpCertPath        = "/var/lib/pump-tls"
 )
 
 type pumpMemberManager struct {
+	certControl  controller.CertControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	typedControl controller.TypedControlInterface
@@ -49,6 +53,7 @@ type pumpMemberManager struct {
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
 func NewPumpMemberManager(
+	certControl controller.CertControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	typedControl controller.TypedControlInterface,
@@ -58,6 +63,7 @@ func NewPumpMemberManager(
 	cmLister corelisters.ConfigMapLister,
 	podLister corelisters.PodLister) manager.Manager {
 	return &pumpMemberManager{
+		certControl,
 		setControl,
 		svcControl,
 		typedControl,
@@ -81,7 +87,6 @@ func (pmm *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 
 //syncPumpStatefulSetForTidbCluster sync statefulset status of pump to tidbcluster
 func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.TidbCluster) error {
-
 	oldPumpSetTemp, err := pmm.setLister.StatefulSets(tc.Namespace).Get(controller.PumpMemberName(tc.Name))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
@@ -92,6 +97,13 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	cm, err := pmm.syncConfigMap(tc, oldPumpSet)
 	if err != nil {
 		return err
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		err := pmm.syncPumpStatefulsetCerts(tc)
+		if err != nil {
+			return err
+		}
 	}
 
 	newPumpSet, err := getNewPumpStatefulSet(tc, cm)
@@ -107,7 +119,7 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
-		glog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
 		return err
 	}
 
@@ -242,9 +254,20 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	name := controller.PumpMemberName(tc.Name)
-	data := map[string]string{
-		"pump-config": string(confText),
+	confTextStr := string(confText)
+
+	if tc.IsTLSClusterEnabled() {
+		confTextStr = strings.Join([]string{
+			confTextStr,
+			"[security]",
+			fmt.Sprintf("ssl-ca = \"%s\"", serviceAccountCAPath),
+			fmt.Sprintf("ssl-cert = \"%s\"", path.Join(pumpCertPath, corev1.TLSCertKey)),
+			fmt.Sprintf("ssl-key = \"%s\"", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))}, "\n")
 	}
+	data := map[string]string{
+		"pump-config": confTextStr,
+	}
+
 	if basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
 		sum, err := Sha256Sum(data)
 		if err != nil {
@@ -297,6 +320,21 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			},
 		})
 	}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "data",
+			MountPath: "/data",
+		},
+		{
+			Name:      "config",
+			MountPath: "/etc/pump",
+		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: pumpCertVolumeMount, ReadOnly: true, MountPath: pumpCertPath,
+		})
+	}
 	containers := []corev1.Container{
 		{
 			Name:            "pump",
@@ -311,18 +349,9 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				Name:          "pump",
 				ContainerPort: 8250,
 			}},
-			Resources: controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
-			Env:       envs,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "data",
-					MountPath: "/data",
-				},
-				{
-					Name:      "config",
-					MountPath: "/etc/pump",
-				},
-			},
+			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
+			Env:          envs,
+			VolumeMounts: volumeMounts,
 		},
 	}
 
@@ -344,6 +373,16 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				},
 			},
 		},
+	}
+
+	if tc.IsTLSClusterEnabled() {
+		volumes = append(volumes, corev1.Volume{
+			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: controller.PumpMemberName(tc.Name),
+				},
+			},
+		})
 	}
 
 	volumeClaims := []corev1.PersistentVolumeClaim{
@@ -438,6 +477,43 @@ func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
 	}
 
 	return logLevel
+}
+
+// syncPumpStatefulsetCerts creates the cert pair for Pump if not exist, the cert
+// pair is used to communicate with other TiDB components, like TiDB and Drainer
+func (pmm *pumpMemberManager) syncPumpStatefulsetCerts(tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	svcName := controller.PumpMemberName(tcName)
+	peerName := controller.PumpPeerMemberName(tcName)
+
+	if pmm.certControl.CheckSecret(ns, svcName) {
+		return nil
+	}
+
+	hostList := []string{
+		svcName,
+		peerName,
+		fmt.Sprintf("%s.%s", svcName, ns),
+		fmt.Sprintf("%s.%s", peerName, ns),
+		fmt.Sprintf("*.%s.%s", peerName, ns),
+	}
+
+	ipList := []string{
+		"127.0.0.1", "::1", // able to access https endpoint via loopback network
+	}
+
+	certOpts := &controller.TiDBClusterCertOptions{
+		Namespace:  ns,
+		Instance:   tcName,
+		CommonName: svcName,
+		HostList:   hostList,
+		IPList:     ipList,
+		Component:  "pump",
+		Suffix:     "pump",
+	}
+
+	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (pmm *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {

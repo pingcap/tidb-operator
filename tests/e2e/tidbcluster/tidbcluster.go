@@ -142,13 +142,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					"tikv.resources.limits.storage": "1G",
 				},
 			},
-			{
-				Version: utilimage.TiDBTLSVersion,
-				Name:    "basic-v3-cluster-tls",
-				Values: map[string]string{
-					"enableTLSCluster": "true",
-				},
-			},
 		}
 
 		for _, clusterCfg := range clusterCfgs {
@@ -897,16 +890,16 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		Resources: map[string]string{
 			"pd.resources.limits.cpu":        "1000m",
 			"pd.resources.limits.memory":     "2Gi",
-			"pd.resources.requests.cpu":      "200m",
-			"pd.resources.requests.memory":   "200Mi",
+			"pd.resources.requests.cpu":      "20m",
+			"pd.resources.requests.memory":   "20Mi",
 			"tikv.resources.limits.cpu":      "2000m",
 			"tikv.resources.limits.memory":   "4Gi",
-			"tikv.resources.requests.cpu":    "200m",
-			"tikv.resources.requests.memory": "200Mi",
+			"tikv.resources.requests.cpu":    "20m",
+			"tikv.resources.requests.memory": "20Mi",
 			"tidb.resources.limits.cpu":      "2000m",
 			"tidb.resources.limits.memory":   "4Gi",
-			"tidb.resources.requests.cpu":    "200m",
-			"tidb.resources.requests.memory": "200Mi",
+			"tidb.resources.requests.cpu":    "20m",
+			"tidb.resources.requests.memory": "20Mi",
 			"tidb.initSql":                   strconv.Quote("create database e2e;"),
 			"discovery.image":                cfg.OperatorImage,
 		},

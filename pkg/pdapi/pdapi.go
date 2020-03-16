@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -26,13 +27,13 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	glog "k8s.io/klog"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
-	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -65,27 +66,23 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
 // It loads in-cluster root ca if caCert is empty.
 func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, caCert []byte) (*tls.Config, error) {
-	secretName := fmt.Sprintf("%s-pd-client", tcName)
+	secretName := util.ClusterClientTLSSecretName(tcName)
 	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}
 
-	var rootCAs *x509.CertPool
+	rootCAs := x509.NewCertPool()
 	var tlsCert tls.Certificate
 
 	if len(caCert) > 0 {
-		rootCAs = x509.NewCertPool()
 		rootCAs.AppendCertsFromPEM(caCert)
 	} else {
-		rootCAs, err = certutil.ReadCACerts()
-		if err != nil {
-			return nil, err
-		}
+		rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
 	}
 
-	clientCert, certExists := secret.Data["cert"]
-	clientKey, keyExists := secret.Data["key"]
+	clientCert, certExists := secret.Data[v1.TLSCertKey]
+	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
 	if !certExists || !keyExists {
 		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", namespace, secretName)
 	}
@@ -118,7 +115,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		if tlsEnabled {
 			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
 			if err != nil {
-				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+				klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 			}
 		}
@@ -541,10 +538,10 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return nil
 	}
 	if res.StatusCode == http.StatusOK {
-		glog.Infof("call DELETE method: %s success", apiURL)
+		klog.Infof("call DELETE method: %s success", apiURL)
 	} else {
 		err2 := httputil.ReadErrorBody(res.Body)
-		glog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
+		klog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
 	}
 
 	// pd will return an error with the body contains "scheduler not found" if the scheduler is not found

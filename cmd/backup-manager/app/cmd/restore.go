@@ -21,12 +21,11 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -44,8 +43,7 @@ func NewRestoreCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
-	cmd.Flags().StringVar(&ro.RestoreName, "restoreName", "", "Restore CRD object name")
-	util.SetFlagsFromEnv(cmd.Flags(), bkconstants.BackupManagerEnvVarPrefix)
+	cmd.Flags().StringVar(&ro.ResourceName, "restoreName", "", "Restore CRD object name")
 	return cmd
 }
 
@@ -67,7 +65,7 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), restoreInformer.Informer().HasSynced)
 
-	glog.Infof("start to process restore %s", restoreOpts.String())
+	klog.Infof("start to process restore %s", restoreOpts.String())
 	rm := restore.NewManager(restoreInformer.Lister(), statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
 }

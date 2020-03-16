@@ -27,18 +27,18 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 
 	"k8s.io/api/admission/v1beta1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
 // master of tikv.
 func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	glog.V(4).Infof("admitting pods")
+	klog.V(4).Infof("admitting pods")
 
 	podResource := metav1.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 	if ar.Request.Resource != podResource {
 		err := fmt.Errorf("expect resource to be %s", podResource)
-		glog.Errorf("%v", err)
+		klog.Errorf("%v", err)
 		return toAdmissionResponse(err)
 	}
 
@@ -51,22 +51,22 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 	reviewResponse.Allowed = false
 
 	if !wh.namespaces.Has(namespace) {
-		glog.V(4).Infof("%q is not in our namespaces %v, skip", namespace, wh.namespaces.List())
+		klog.V(4).Infof("%q is not in our namespaces %v, skip", namespace, wh.namespaces.List())
 		reviewResponse.Allowed = true
 		return &reviewResponse
 	}
 
 	pod, err := kubeCli.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		glog.Infof("api server send wrong pod info namespace %s name %s err %v", namespace, name, err)
+		klog.Infof("api server send wrong pod info namespace %s name %s err %v", namespace, name, err)
 		return &reviewResponse
 	}
 
-	glog.V(4).Infof("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
+	klog.V(4).Infof("delete %s pod [%s]", pod.Labels[label.ComponentLabelKey], pod.GetName())
 
 	tc, err := versionCli.PingcapV1alpha1().TidbClusters(namespace).Get(pod.Labels[label.InstanceLabelKey], metav1.GetOptions{})
 	if err != nil {
-		glog.Infof("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, pod.Labels[label.InstanceLabelKey], err)
+		klog.Infof("fail to fetch tidbcluster info namespace %s clustername(instance) %s err %v", namespace, pod.Labels[label.InstanceLabelKey], err)
 		return &reviewResponse
 	}
 
@@ -74,7 +74,7 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 
 	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {
-		glog.V(4).Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
+		klog.V(4).Infof("pod:[%s/%s] status is timestamp %s", namespace, name, pod.DeletionTimestamp)
 		reviewResponse.Allowed = true
 		return &reviewResponse
 	}
@@ -83,22 +83,22 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 
 		leader, err := pdClient.GetPDLeader()
 		if err != nil {
-			glog.Errorf("fail to get pd leader %v", err)
+			klog.Errorf("fail to get pd leader %v", err)
 			return &reviewResponse
 		}
 
 		if leader.Name == name && tc.Status.PD.StatefulSet.Replicas > 1 {
 			time.Sleep(10 * time.Second)
 			err := fmt.Errorf("pd is leader, can't be deleted namespace %s name %s", namespace, name)
-			glog.Error(err)
+			klog.Error(err)
 			sendErr := slack.SendErrMsg(err.Error())
 			if sendErr != nil {
-				glog.Error(sendErr)
+				klog.Error(sendErr)
 			}
 			// TODO use context instead
 			os.Exit(3)
 		}
-		glog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
+		klog.Infof("savely delete pod namespace %s name %s leader name %s", namespace, name, leader.Name)
 	}
 	reviewResponse.Allowed = true
 	return &reviewResponse

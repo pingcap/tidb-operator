@@ -16,6 +16,7 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -426,8 +427,8 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 
 	if tc.IsTLSClusterEnabled() {
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
-			Name:      "tls-pd-client",
-			MountPath: "/var/lib/pd-client-tls",
+			Name:      "cluster-client-tls",
+			MountPath: util.ClusterClientTLSPath,
 			ReadOnly:  true,
 		})
 	}
@@ -635,10 +636,10 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 	if tc.IsTLSClusterEnabled() {
 		defaultMode := int32(420)
 		tlsPDClient := core.Volume{
-			Name: "tls-pd-client",
+			Name: "cluster-client-tls",
 			VolumeSource: core.VolumeSource{
 				Secret: &core.SecretVolumeSource{
-					SecretName:  fmt.Sprintf("%s-pd-client", tc.Name),
+					SecretName:  util.ClusterClientTLSSecretName(tc.Name),
 					DefaultMode: &defaultMode,
 				},
 			},

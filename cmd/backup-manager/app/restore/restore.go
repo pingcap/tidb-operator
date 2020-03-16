@@ -16,27 +16,35 @@ package restore
 import (
 	"fmt"
 	"os/exec"
+	"path"
 
-	glog "k8s.io/klog"
-
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 )
 
 type Options struct {
-	Namespace   string
-	RestoreName string
-}
-
-func (ro *Options) String() string {
-	return fmt.Sprintf("%s/%s", ro.Namespace, ro.RestoreName)
+	util.GenericOptions
 }
 
 func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
+	clusterNamespace := restore.Spec.BR.ClusterNamespace
+	if restore.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = restore.Namespace
+	}
 	args, err := constructBROptions(restore)
 	if err != nil {
 		return err
 	}
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
+	if restore.Spec.BR.EnableTLSClient {
+		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, corev1.TLSPrivateKeyKey)))
+	}
+
 	var restoreType string
 	if restore.Spec.Type == "" {
 		restoreType = string(v1alpha1.BackupTypeFull)
@@ -48,12 +56,12 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		restoreType,
 	}
 	fullArgs = append(fullArgs, args...)
-	glog.Infof("Running br command with args: %v", fullArgs)
+	klog.Infof("Running br command with args: %v", fullArgs)
 	output, err := exec.Command("br", fullArgs...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, fullArgs, string(output), err)
 	}
-	glog.Infof("Restore data for cluster %s successfully, output: %s", ro, string(output))
+	klog.Infof("Restore data for cluster %s successfully, output: %s", ro, string(output))
 	return nil
 }
 

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // OpenDB opens db
@@ -29,7 +29,7 @@ func OpenDB(dsn string, maxIdleConns int) (*sql.DB, error) {
 	}
 
 	db.SetMaxIdleConns(maxIdleConns)
-	glog.V(4).Info("DB opens successfully")
+	klog.V(4).Info("DB opens successfully")
 	return db, nil
 }
 

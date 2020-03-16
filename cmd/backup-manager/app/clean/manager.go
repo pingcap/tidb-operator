@@ -17,7 +17,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -55,7 +55,7 @@ func (bm *Manager) ProcessCleanBackup() error {
 
 func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 	if backup.Status.BackupPath == "" {
-		glog.Errorf("cluster %s backup path is empty", bm)
+		klog.Errorf("cluster %s backup path is empty", bm)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -72,7 +72,7 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 	}
 
 	if err != nil {
-		glog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
+		klog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
@@ -81,7 +81,7 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 		})
 	}
 
-	glog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
+	klog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionTrue,

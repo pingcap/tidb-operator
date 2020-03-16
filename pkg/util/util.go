@@ -28,6 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+var (
+	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
+)
+
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]
 	ordinalInt, err := strconv.Atoi(ordinalStr)
@@ -125,4 +129,49 @@ func IsStatefulSetScaling(set *appsv1.StatefulSet) bool {
 
 func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
 	return fmt.Sprintf("%s-%s", tc.Name, memberType.String())
+}
+
+func GetAutoScalingOutSlots(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) sets.Int32 {
+	s := sets.Int32{}
+	l := ""
+	switch memberType {
+	case v1alpha1.PDMemberType:
+		return s
+	case v1alpha1.TiKVMemberType:
+		l = label.AnnTiKVAutoScalingOutOrdinals
+	case v1alpha1.TiDBMemberType:
+		l = label.AnnTiDBAutoScalingOutOrdinals
+	default:
+		return s
+	}
+	if tc.Annotations == nil {
+		return s
+	}
+	v, existed := tc.Annotations[l]
+	if !existed {
+		return s
+	}
+	var slice []int32
+	err := json.Unmarshal([]byte(v), &slice)
+	if err != nil {
+		return s
+	}
+	s.Insert(slice...)
+	return s
+}
+
+func Encode(obj interface{}) (string, error) {
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func ClusterClientTLSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-cluster-client-secret", tcName)
+}
+
+func ClusterTLSSecretName(tcName, component string) string {
+	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
 }
