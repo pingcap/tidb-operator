@@ -219,7 +219,7 @@ function hack::ensure_gen_crd_api_references_docs() {
     echo "Installing gen_crd_api_references_docs v$DOCS_VERSION..."
     tmpdir=$(mktemp -d)
     trap "test -d $tmpdir && rm -r $tmpdir" RETURN
-    curl --retry 10 -L -o ${tmpdir}/docs-bin.tar.gz https://github.com/ahmetb/gen-crd-api-reference-docs/releases/download/${DOCS_VERSION}/gen-crd-api-reference-docs_${OS}_${ARCH}.tar.gz
+    curl --retry 10 -L -o ${tmpdir}/docs-bin.tar.gz https://github.com/ahmetb/gen-crd-api-reference-docs/releases/download/v${DOCS_VERSION}/gen-crd-api-reference-docs_${OS}_${ARCH}.tar.gz
     tar -zvxf ${tmpdir}/docs-bin.tar.gz -C ${tmpdir}
     mv ${tmpdir}/gen-crd-api-reference-docs ${DOCS_BIN}
     chmod +x ${DOCS_BIN}
