@@ -34,7 +34,7 @@ DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 #
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
-DOCS_VERSION=${DOCS_VERSION:-v0.1.5}
+DOCS_VERSION=${DOCS_VERSION:-0.1.5}
 KIND_BIN=$OUTPUT_BIN/kind
 KUBETEST2_VERSION=v0.0.8
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
@@ -215,10 +215,10 @@ function hack::ensure_gen_crd_api_references_docs() {
     if hack::verify_gen_crd_api_references_docs; then
         return 0
     fi
-    echo "Installing gen_crd_api_references_docs $DOCS_VERSION..."
+    echo "Installing gen_crd_api_references_docs v$DOCS_VERSION..."
     tmpdir=$(mktemp -d)
     trap "test -d $tmpdir && rm -r $tmpdir" RETURN
-    curl --retry 10 -L -o ${tmpdir}/docs-bin.tar.gz https://github.com/ahmetb/gen-crd-api-reference-docs/releases/download/v0.1.5/gen-crd-api-reference-docs_darwin_amd64.tar.gz
+    curl --retry 10 -L -o ${tmpdir}/docs-bin.tar.gz https://github.com/ahmetb/gen-crd-api-reference-docs/releases/download/${DOCS_VERSION}/gen-crd-api-reference-docs_${OS}_${ARCH}.tar.gz
     tar -zvxf ${tmpdir}/docs-bin.tar.gz -C ${tmpdir}
     mv ${tmpdir}/gen-crd-api-reference-docs ${DOCS_BIN}
     chmod +x ${DOCS_BIN}
