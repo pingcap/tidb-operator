@@ -17,6 +17,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
@@ -40,14 +41,14 @@ to-crdgen generate tidbmonitor >> $crd_target
 to-crdgen generate tidbinitializer >> $crd_target
 to-crdgen generate tidbclusterautoscaler >> $crd_target
 
-go install github.com/ahmetb/gen-crd-api-reference-docs
+
+
+hack::ensure_gen_crd_api_references_docs
 
 DOCS_PATH="$ROOT/docs/api-references"
 
-gen-crd-api-reference-docs \
+${DOCS_BIN} \
 -config "$DOCS_PATH/config.json" \
 -template-dir "$DOCS_PATH/template" \
 -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \
 -out-file "$DOCS_PATH/docs.html"
-
-go mod tidy

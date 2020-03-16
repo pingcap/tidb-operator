@@ -14,8 +14,6 @@ Resource Types:
 </li><li>
 <a href="#pingcap.com/v1alpha1.BackupSchedule">BackupSchedule</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.DataResource">DataResource</a>
-</li><li>
 <a href="#pingcap.com/v1alpha1.Restore">Restore</a>
 </li><li>
 <a href="#pingcap.com/v1alpha1.TidbCluster">TidbCluster</a>
@@ -391,62 +389,6 @@ string
 <a href="#pingcap.com/v1alpha1.BackupScheduleStatus">
 BackupScheduleStatus
 </a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.DataResource">DataResource
-</h3>
-<p>
-<p>DataResource is a generic custom resource for storing custom data</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-pingcap.com/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>DataResource</code></td>
-</tr>
-<tr>
-<td>
-<code>metadata</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>data</code></br>
-<em>
-[]byte
 </em>
 </td>
 <td>
