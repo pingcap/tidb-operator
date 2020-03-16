@@ -26,7 +26,7 @@ You can create the root user and set its password by creating secret and link it
 > kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
 ```
 
-You can aloso create other users and set their password:
+You can also create other users and set their password:
 ```bash
 > kubectl create secret generic tidb-secret --from-literal=root=<root-password> --from-literal=developer=<developer-passowrd> --namespace=<namespace>
 ```
@@ -39,7 +39,7 @@ Initialize the cluster to create the users and create the database named `test`
 
 Wait for Initialize job done:
 ```bash
-$ kubectl get pod | grep basic-tidb-initializer
+$ kubectl get pod -n <namespace>| grep initialize-demo-tidb-initializer
 initialize-demo-tidb-initializer-whzn7               0/1     Completed   0          57s
 ```
 
