@@ -21,7 +21,18 @@ The following steps will create a TiDB cluster with monitoring, the monitoring d
 
 The following commands is assumed to be executed in this directory.
 
-Initialize the cluster to create the database
+You can create the root user and set its password by creating secret and link it to the Initializer:
+
+```bash
+> kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
+```
+
+You can aloso create other users and set their password:
+```bash
+> kubectl create secret generic tidb-secret --from-literal=root=<root-password> --from-literal=developer=<developer-passowrd> --namespace=<namespace>
+```
+
+Initialize the cluster to create the users and create the database named `test`
 
 ```bash
 > kubectl -n <namespace> apply -f ./tidb-initializer.yaml
