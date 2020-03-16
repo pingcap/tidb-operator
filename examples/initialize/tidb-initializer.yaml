@@ -1,11 +1,11 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbInitializer
 metadata:
-  name: basic
+  name: initialize-demo
 spec:
   image: tnir/mysqlclient
   imagePullPolicy: IfNotPresent
   cluster:
-    name: basic
+    name: initialize-demo
   initSql: "create database hello;"
   passwordSecret: "tidb-secret"
