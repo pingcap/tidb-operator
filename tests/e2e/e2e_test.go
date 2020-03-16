@@ -42,6 +42,12 @@ func handleFlags() {
 	flag.Parse()
 }
 
+func init() {
+	framework.RegisterProvider("kind", func() (framework.ProviderInterface, error) {
+		return framework.NullProvider{}, nil
+	})
+}
+
 func TestMain(m *testing.M) {
 	// Register test flags, then parse flags.
 	handleFlags()

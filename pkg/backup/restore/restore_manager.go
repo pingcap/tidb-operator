@@ -154,7 +154,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -178,14 +178,19 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
+	serviceAccount := constants.DefaultServiceAccountName
+	if restore.Spec.ServiceAccount != "" {
+		serviceAccount = restore.Spec.ServiceAccount
+	}
 
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: restoreLabel.Labels(),
+			Labels:      restoreLabel.Labels(),
+			Annotations: restore.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
@@ -235,7 +240,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -267,13 +272,19 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		})
 	}
+
+	serviceAccount := constants.DefaultServiceAccountName
+	if restore.Spec.ServiceAccount != "" {
+		serviceAccount = restore.Spec.ServiceAccount
+	}
 	// TODO: need add ResourceRequirement for restore job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: restoreLabel.Labels(),
+			Labels:      restoreLabel.Labels(),
+			Annotations: restore.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,

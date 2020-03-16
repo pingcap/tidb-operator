@@ -96,7 +96,7 @@ func NewController(
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
-	tidbControl := controller.NewDefaultTiDBControl()
+	tidbControl := controller.NewDefaultTiDBControl(kubeCli)
 	cmControl := controller.NewRealConfigMapControl(kubeCli, cmInformer.Lister(), recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)

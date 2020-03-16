@@ -34,9 +34,9 @@ HELM_BIN=$OUTPUT_BIN/helm
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.0.7
+KUBETEST2_VERSION=v0.0.8
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
-AWS_K8S_TESTER_VERSION=v0.6.2
+AWS_K8S_TESTER_VERSION=v0.7.4
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
@@ -184,7 +184,7 @@ function hack::ensure_kubetest2() {
 
 function hack::verify_aws_k8s_tester() {
     if test -x $AWS_K8S_TESTER_BIN; then
-        [[ "$($AWS_K8S_TESTER_BIN version | awk '/ReleaseVersion/ {print $2}')" == "$AWS_K8S_TESTER_VERSION" ]]
+        [[ "$($AWS_K8S_TESTER_BIN version | jq '."release-version"' -r)" == "$AWS_K8S_TESTER_VERSION" ]]
         return
     fi
     return 1
