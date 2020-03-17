@@ -40,9 +40,9 @@ import (
 
 const (
 	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
-	tikvClusterCertPath   = "/var/lib/tikv-tls"
+	tikvClusterCertPath = "/var/lib/tikv-tls"
 
-	//TODO find a better way to manage store only managed by tikv in Operator
+	//find a better way to manage store only managed by tikv in Operator
 	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`
 )
 
