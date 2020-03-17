@@ -135,7 +135,7 @@ rules:
   verbs: ["get", "list", "watch", "create", "update", "delete"]
 - apiGroups: [""]
   resources: ["secrets"]
-  verbs: ["create", "get", "list", "watch"]
+  verbs: ["create", "update", "get", "list", "watch"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "watch", "create", "update", "delete"]
