@@ -11,17 +11,26 @@ category: how-to
 
 ## AWS 账号的三种权限授予方式
 
+在 AWS 云环境中， 不同的类型的 kubernetes 集群提供了不同的权限授予方式。本文测试了以下三种权限授予方式。
+
 1. 通过传入 AWS 账号的 AccessKey 和 SecretKey 进行授权:
 
     AWS 的客户端支持读取进程环境变量中的 `AWS_ACCESS_KEY_ID` 以及 `AWS_SECRET_ACCESS_KEY` 来获取与之相关联的用户或者角色的权限。
 
-2. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 pod 进行授权:
+2. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `Pod` 进行授权:
 
-    通过将用户的 IAM 角色与所运行的 pod 资源进行绑定，使 pod 中运行的进程获得角色所拥有的权限, 这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
+    通过将用户的 `IAM` 角色与所运行的 `Pod` 资源进行绑定，使 `Pod` 中运行的进程获得角色所拥有的权限, 这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
 
-3. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 ServiceAccount 进行授权:
+> **注意：**
+>
+> - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境, 并且部署 TiDB Operator 以及 TiDB 集群。
+> - 该模式不适用与 [`hostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy) 网络模式，请确保参数 `spec.tikv.hostNetwork` 参数为 `false`。
 
-    通过将用户的 IAM 角色与 kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定, 从而使得使用该 serviceAccount 账号的 pod 都拥有该角色所拥有的权限，这种授权方式由 [`EKS`](https://aws.amazon.com/cn/eks/) 服务提供。
+3. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `ServiceAccount` 进行授权:
+
+    通过将用户的 `IAM` 角色与 kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定, 从而使得使用该 `ServiceAccount` 账号的 `Pod` 都拥有该角色所拥有的权限，这种授权方式由 [`EKS`](https://aws.amazon.com/cn/eks/) 服务提供。
+
+> - 使用该授权模式时，可以参考[`AWS 官方文档`](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 eks 集群, 并且部署 TiDB Operator 以及 TiDB 集群。
 
 ## Ad-hoc 全量备份
 
@@ -75,15 +84,11 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
-3. 搭建 kube2iam 环境:
-
-    可以参考[`kube2iam repo`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境。
-
-4. 创建 IAM 角色:
+3. 创建 IAM 角色:
 	
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[`文档`](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
-5. 绑定 IAM 到 tikv 节点:
+4. 绑定 IAM 到 tikv 节点:
 
     在使用 BR 备份的过程中，tikv 节点和 br 节点一样需要对 S3 存储进行读写操作，所以这里需要给 tikv 节点打上 annotation 来绑定 IAM 角色。
 
@@ -503,7 +508,7 @@ kubectl get bks -n test1 -owide
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 
-从以上两个示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定 S3 兼容存储相关的配置，该配置与 Ad-hoc 全量备份到兼容 S3 的存储配置完全一样，可参考[备份数据到兼容 S3 的存储](#备份数据到兼容-s3-的存储)。下面介绍 `backupSchedule` 独有的配置项：
+从以上两个示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定 S3 兼容存储相关的配置，该配置与 Ad-hoc 全量备份到兼容 S3 的存储配置完全一样，可参考[使用 br 备份数据到 AWS S3 的存储](#使用 br 备份数据到 AWS S3 的存储)。下面介绍 `backupSchedule` 独有的配置项：
 
 + `.spec.maxBackups`：一种备份保留策略，决定定时备份最多可保留的备份个数。超过该数目，就会将过时的备份删除。如果将该项设置为 `0`，则表示保留所有备份。
 + `.spec.maxReservedTime`：一种备份保留策略，按时间保留备份。例如将该参数设置为 `24h`，表示只保留最近 24 小时内的备份条目。超过这个时间的备份都会被清除。时间设置格式参考 [`func ParseDuration`](https://golang.org/pkg/time/#ParseDuration)。如果同时设置最大备份保留个数和最长备份保留时间，则以最长备份保留时间为准。
