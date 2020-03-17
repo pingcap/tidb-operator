@@ -85,7 +85,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     ```
 
 3. 创建 IAM 角色:
-	
+
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
 4. 绑定 IAM 到 tikv 节点:
@@ -98,7 +98,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl edit tc demo1 -n test1
     ```
 
-	找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 tikv 节点重启后，查看节点是否加上了这个 annotation。
+    找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 tikv 节点重启后，查看节点是否加上了这个 annotation。
 
 > **注意：**
 >
@@ -128,14 +128,14 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
 4. 创建 IAM 角色:
 
-	可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
 
 5. 绑定 IAM 到 ServiceAccount 资源上:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-	kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
+    kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
     ```
 
 6. 将 ServiceAccount 绑定到 tikv pod:
@@ -146,7 +146,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl edit tc demo1 -n test1
     ```
 
-	将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 tikv 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
+    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 tikv 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
 
 > **注意：**
 >
@@ -165,7 +165,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     `backup-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: Backup
     metadata:
@@ -208,13 +208,13 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     `backup-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: Backup
     metadata:
       name: demo1-backup-s3
       namespace: test1
-	  annotations:
+      annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
       backupType: full
@@ -252,7 +252,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     `backup-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: Backup
     metadata:
@@ -260,7 +260,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       namespace: test1
     spec:
       backupType: full
-	  serviceAccount: tidb-backup-manager
+      serviceAccount: tidb-backup-manager
       br:
         cluster: demo1
         sendCredToTikv: false
@@ -284,7 +284,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         prefix: my-folder
     ```
 
-以上三个个示例分别使用三种授权模式将数据到处到 Amazon S3 存储上。Amazon S3 的 `region`、`acl`、`endpoint`、`storageClass` 配置项均可以省略。其余非 Amazon S3 的但是兼容 S3 的存储均可使用和 Amazon S3 类似的配置。可参考上面例子中 Ceph 的配置，省略不需要配置的字段。
+以上三个示例分别使用三种授权模式将数据到处到 Amazon S3 存储上。Amazon S3 的 `region`、`acl`、`endpoint`、`storageClass` 配置项均可以省略。其余非 Amazon S3 的但是兼容 S3 的存储均可使用和 Amazon S3 类似的配置。可参考上面例子中 Ceph 的配置，省略不需要配置的字段。
 
 Amazon S3 支持以下几种 access-control list (ACL) 策略：
 
@@ -358,7 +358,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
     `backup-scheduler-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
@@ -406,7 +406,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
     `backup-scheduler-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
@@ -455,7 +455,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
     `backup-scheduler-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
@@ -466,7 +466,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
       #pause: true
       maxReservedTime: "3h"
       schedule: "*/2 * * * *"
-	  serviceAccount: tidb-backup-manager
+      serviceAccount: tidb-backup-manager
       backupTemplate:
         backupType: full
         br:

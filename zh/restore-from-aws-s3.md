@@ -81,7 +81,7 @@ category: how-to
     ```
 
 3. 创建 IAM 角色:
-	
+    
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Restore` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
 4. 绑定 IAM 到 tikv 节点:
@@ -94,7 +94,7 @@ category: how-to
     kubectl edit tc demo2 -n test2
     ```
 
-	找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 tikv 节点重启后，查看节点是否加上了这个 annotation。
+    找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 tikv 节点重启后，查看节点是否加上了这个 annotation。
 
 > **注意：**
 >
@@ -124,14 +124,14 @@ category: how-to
 
 4. 创建 IAM 角色:
 
-	可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
 
 5. 绑定 IAM 到 ServiceAccount 资源上:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-	kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test2
+    kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test2
     ```
 
 6. 将 ServiceAccount 绑定到 tikv pod:
@@ -142,7 +142,7 @@ category: how-to
     kubectl edit tc demo2 -n test2
     ```
 
-	将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 tikv 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
+    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 tikv 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
 
 > **注意：**
 >
@@ -162,7 +162,7 @@ category: how-to
     `restore-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: Restore
     metadata:
@@ -204,13 +204,13 @@ category: how-to
     `restore-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: Restore
     metadata:
       name: demo2-restore-s3
       namespace: test2
-	  annotations:
+      annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
       br:
@@ -247,14 +247,14 @@ category: how-to
     `restore-aws-s3.yaml` 文件内容如下：
 
     ```yaml
-	---
+    ---
     apiVersion: pingcap.com/v1alpha1
     kind: Restore
     metadata:
       name: demo2-restore-s3
       namespace: test2
     spec:
-	  serviceAccount: tidb-backup-manager
+      serviceAccount: tidb-backup-manager
       br:
         cluster: demo2
         sendCredToTikv: false
