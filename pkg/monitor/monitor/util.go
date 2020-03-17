@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"sort"
 	"strconv"
 
@@ -773,37 +772,6 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
-}
-
-// during syncing Service, If there existed TidbMonitor Service, we should remain the NodePort configure.
-func (mm *MonitorManager) remainNodePort(desired *core.Service) error {
-	if desired.Spec.Type != core.ServiceTypeNodePort {
-		return nil
-	}
-	name := desired.Name
-	namespace := desired.Namespace
-	existed, err := mm.svcLister.Services(namespace).Get(name)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	if existed.Spec.Type != core.ServiceTypeNodePort {
-		return nil
-	}
-	for i, dport := range desired.Spec.Ports {
-		for _, eport := range existed.Spec.Ports {
-			// Because the portName could be edited,
-			// we use Port number to link the desired Service Port and the existed Service Port in the nested loop
-			if dport.Port == eport.Port {
-				dport.NodePort = eport.NodePort
-				desired.Spec.Ports[i] = dport
-				break
-			}
-		}
-	}
-	return nil
 }
 
 // sortEnvByName in order to avoid syncing same template into different results
