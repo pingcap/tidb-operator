@@ -8,13 +8,13 @@ spec:
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
-    resources:
-      limits: {}
-      #   cpu: 8000m
-      #   memory: 8Gi
-      requests: {}
-      #   cpu: 4000m
-      #   memory: 4Gi
+    resources: {}
+    #  limits:
+    #    cpu: 8000m
+    #    memory: 8Gi
+    #  requests:
+    #    cpu: 4000m
+    #    memory: 4Gi
     imagePullPolicy: IfNotPresent
     logLevel: info
     reserveDays: 12
@@ -26,13 +26,13 @@ spec:
     version: 6.0.1
     imagePullPolicy: IfNotPresent
     logLevel: info
-    resources:
-      limits: {}
-      #   cpu: 8000m
-      #   memory: 8Gi
-      requests: {}
-      #   cpu: 4000m
-      #   memory: 4Gi
+    resources: {}
+    #  limits:
+    #    cpu: 8000m
+    #    memory: 8Gi
+    #  requests:
+    #    cpu: 4000m
+    #    memory: 4Gi
     username: admin
     password: admin
     envs:
@@ -52,12 +52,12 @@ spec:
     version: v3.0.9
     imagePullPolicy: Always
     resources: {}
-    # limits:
-    #  cpu: 50m
-    #  memory: 64Mi
-    # requests:
-    #  cpu: 50m
-    #  memory: 64Mi
+    #  limits:
+    #    cpu: 50m
+    #    memory: 64Mi
+    #  requests:
+    #    cpu: 50m
+    #    memory: 64Mi
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
@@ -66,12 +66,12 @@ spec:
       type: NodePort
       portName: tcp-reloader
     resources: {}
-      # limits:
-      #  cpu: 50m
-      #  memory: 64Mi
-      # requests:
-      #  cpu: 50m
-      #  memory: 64Mi
+    #  limits:
+    #    cpu: 50m
+    #    memory: 64Mi
+    #  requests:
+    #    cpu: 50m
+    #    memory: 64Mi
   imagePullPolicy: IfNotPresent
   persistent: true
   storageClassName: local-storage
