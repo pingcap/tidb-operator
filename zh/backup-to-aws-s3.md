@@ -5,7 +5,7 @@ category: how-to
 
 # 使用 BR 工具备份 AWS 上的 TiDB 集群
 
-本文详细描述了如何将 运行在 AWS Kubernetes 环境中的 TiDB 集群数据备份到 AWS 的存储上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份）。底层通过使用 [`br`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 获取集群的逻辑备份，然后在将备份数据上传到 AWS 的存储上。
+本文详细描述了如何将运行在 AWS Kubernetes 环境中的 TiDB 集群数据备份到 AWS 的存储上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份）。底层通过使用 [`br`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 获取集群的逻辑备份，然后在将备份数据上传到 AWS 的存储上。
 
 本文使用的备份方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
 
@@ -86,7 +86,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
 3. 创建 IAM 角色:
 	
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[`文档`](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
 4. 绑定 IAM 到 tikv 节点:
 
@@ -111,7 +111,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl edit
+    kubectl apply -f backup-rbac.yaml -n test2
     ```
 
 2. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥:
@@ -175,7 +175,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       backupType: full
       br:
         cluster: demo1
-        clusterNamespace: <backup-namespace>
+        clusterNamespace: test1
         # enableTLSClient: false
         # logLevel: info
         # statusAddr: <status-addr>
@@ -221,7 +221,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       br:
         cluster: demo1
         sendCredToTikv: false
-        clusterNamespace: <backup-namespace>
+        clusterNamespace: test1
         # enableTLSClient: false
         # logLevel: info
         # statusAddr: <status-addr>
@@ -264,7 +264,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       br:
         cluster: demo1
         sendCredToTikv: false
-        clusterNamespace: <backup-namespace>
+        clusterNamespace: test1
         # enableTLSClient: false
         # logLevel: info
         # statusAddr: <status-addr>
@@ -373,7 +373,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         backupType: full
         br:
           cluster: demo1
-          clusterNamespace: <backup-namespace>
+          clusterNamespace: test1
           # enableTLSClient: false
           # logLevel: info
           # statusAddr: <status-addr>
@@ -424,7 +424,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         br:
           cluster: demo1
           sendCredToTikv: false
-          clusterNamespace: <backup-namespace>
+          clusterNamespace: test1
           # enableTLSClient: false
           # logLevel: info
           # statusAddr: <status-addr>
@@ -472,7 +472,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         br:
           cluster: demo1
           sendCredToTikv: false
-          clusterNamespace: <backup-namespace>
+          clusterNamespace: test1
           # enableTLSClient: false
           # logLevel: info
           # statusAddr: <status-addr>
