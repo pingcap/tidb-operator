@@ -168,7 +168,7 @@ You can set a backup policy to perform scheduled backups of the TiDB cluster, an
 
 ### Prerequisites for scheduled backup
 
-The prerequisites for the scheduled backup is the same with the [prerequisites for ad-hoc backup](#prerequisites-for-ad-hoc-backup).
+The prerequisites for the scheduled backup is the same as the [prerequisites for ad-hoc backup](#prerequisites-for-ad-hoc-backup).
 
 ### Scheduled backup process
 
