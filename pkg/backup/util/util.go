@@ -39,7 +39,7 @@ func CheckAllKeysExistInSecret(secret *corev1.Secret, keys ...string) (string, b
 }
 
 // GenerateS3CertEnvVar generate the env info in order to access S3 compliant storage
-func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, string, error) {
+func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1.EnvVar, string, error) {
 	var envVars []corev1.EnvVar
 
 	switch s3.Provider {
@@ -86,6 +86,14 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider) ([]corev1.EnvVar, stri
 			Name:  "AWS_STORAGE_CLASS",
 			Value: s3.StorageClass,
 		},
+	}
+	if useKMS {
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name:  "AWS_DEFAULT_REGION",
+				Value: s3.Region,
+			},
+		}...)
 	}
 	if s3.SecretName != "" {
 		envVars = append(envVars, []corev1.EnvVar{
@@ -152,7 +160,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	var err error
@@ -179,7 +187,7 @@ func GenerateStorageCertEnv(ns string, provider v1alpha1.StorageProvider, secret
 			}
 		}
 
-		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy())
+		certEnv, reason, err = GenerateS3CertEnvVar(provider.S3.DeepCopy(), useKMS)
 		if err != nil {
 			return certEnv, reason, err
 		}
