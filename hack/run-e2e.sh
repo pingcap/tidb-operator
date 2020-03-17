@@ -29,6 +29,7 @@ GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
 IMAGE_TAG=${IMAGE_TAG:-}
+SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
@@ -41,6 +42,7 @@ GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 # in parallel
 GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
 GINKGO_STREAM=${GINKGO_STREAM:-y}
+SKIP_GINKGO=${SKIP_GINKGO:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -284,9 +286,17 @@ if [ -z "$KUBECONTEXT" ]; then
     echo "info: current kubeconfig context is '$KUBECONTEXT'"
 fi
 
-e2e::image_load
+if [ -z "$SKIP_IMAGE_LOAD" ]; then
+    e2e::image_load
+fi
+
 e2e::setup_local_pvs
 e2e::setup_helm_server
+
+if [ -n "$SKIP_GINKGO" ]; then
+    echo "info: skipping ginkgo"
+    exit 0
+fi
 
 echo "info: start to run e2e process"
 

@@ -163,7 +163,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -172,7 +172,6 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
-
 	envVars = append(envVars, storageEnv...)
 	// TODO: make pvc request storage size configurable
 	reason, err = bm.ensureBackupPVCExist(backup)
@@ -193,14 +192,19 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	// TODO: need add ResourceRequirement for backup job
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
+			Labels:      backupLabel.Labels(),
+			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
@@ -251,7 +255,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, bm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.secretLister)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -285,12 +289,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: backupLabel.Labels(),
+			Labels:      backupLabel.Labels(),
+			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName: constants.DefaultServiceAccountName,
+			ServiceAccountName: serviceAccount,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
