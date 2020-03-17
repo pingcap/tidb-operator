@@ -53,6 +53,11 @@ spec:
               scheme: HTTPS
             initialDelaySeconds: 5
             timeoutSeconds: 5
+          env:
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
           {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
           volumeMounts:
             - mountPath: /var/serving-cert

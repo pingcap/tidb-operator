@@ -48,7 +48,10 @@ type PodAdmissionControl struct {
 
 const (
 	stsControllerServiceAccounts  = "system:serviceaccount:kube-system:statefulset-controller"
-	astsControllerServiceAccounts = "system:serviceaccount:pingcap:advanced-statefulset-controller"
+)
+
+var (
+	AstsControllerServiceAccounts string
 )
 
 func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
@@ -58,7 +61,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		serviceAccounts.Insert(sa)
 	}
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		serviceAccounts.Insert(astsControllerServiceAccounts)
+		serviceAccounts.Insert(AstsControllerServiceAccounts)
 	}
 	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{

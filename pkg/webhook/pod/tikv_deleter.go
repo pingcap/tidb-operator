@@ -100,9 +100,12 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 	case v1alpha1.TiKVStateTombstone:
 		return pc.admitDeleteUselessTiKVPod(payload)
 	case v1alpha1.TiKVStateOffline:
-		return pc.admitDeleteOfflineTiKVPod()
+		return pc.rejectDeleteTiKVPod()
 	case v1alpha1.TiKVStateDown:
-		return pc.admitDeleteUselessTiKVPod(payload)
+		// When the target tikv's store is DOWN, we would not pass the deleting request, otherwise it would cause
+		// the duplicated id problem for the newly tikv pod.
+		// Users should offline the target tikv into tombstone first, then scale-in it.
+		return pc.rejectDeleteTiKVPod()
 	case v1alpha1.TiKVStateUp:
 		return pc.admitDeleteUpTiKVPod(payload, storeInfo, storesInfo)
 	default:
@@ -147,7 +150,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod() *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) rejectDeleteTiKVPod() *admission.AdmissionResponse {
 	return &admission.AdmissionResponse{
 		Allowed: false,
 	}
