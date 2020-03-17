@@ -201,6 +201,28 @@ Kubernetes core/v1.Affinity
 <p>Affinity of backup Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of backup</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -549,6 +571,28 @@ Kubernetes core/v1.Affinity
 <td>
 <em>(Optional)</em>
 <p>Affinity of restore Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of restore</p>
 </td>
 </tr>
 </table>
@@ -2022,6 +2066,28 @@ Kubernetes core/v1.Affinity
 <td>
 <em>(Optional)</em>
 <p>Affinity of backup Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of backup</p>
 </td>
 </tr>
 </tbody>
@@ -5975,6 +6041,28 @@ Kubernetes core/v1.Affinity
 <p>Affinity of restore Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of restore</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.RestoreStatus">RestoreStatus
@@ -8492,8 +8580,8 @@ string
 </em>
 </td>
 <td>
-<p>When Region [a,e) size exceeds <code>region_max_size</code>, it will be split into several Regions [a,b),
-[b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be <code>region_split_size</code> (or a
+<p>When Region [a,e) size exceeds <code>region-max-size</code>, it will be split into several Regions [a,b),
+[b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be <code>region-split-size</code> (or a
 little larger). See also: region-split-size
 Optional: Defaults to 144MB
 optional</p>
@@ -8507,8 +8595,8 @@ string
 </em>
 </td>
 <td>
-<p>When Region [a,e) size exceeds <code>region_max_size</code>, it will be split into several Regions [a,b),
-[b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be <code>region_split_size</code> (or a
+<p>When Region [a,e) size exceeds <code>region-max-size</code>, it will be split into several Regions [a,b),
+[b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be <code>region-split-size</code> (or a
 little larger). See also: region-max-size
 Optional: Defaults to 96MB
 optional</p>
@@ -8522,9 +8610,9 @@ int64
 </em>
 </td>
 <td>
-<p>When the number of keys in Region [a,e) exceeds the <code>region_max_keys</code>, it will be split into
+<p>When the number of keys in Region [a,e) exceeds the <code>region-max-keys</code>, it will be split into
 several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
-<code>region_split_keys</code>. See also: region-split-keys
+<code>region-split-keys</code>. See also: region-split-keys
 Optional: Defaults to 1440000
 optional</p>
 </td>
@@ -8537,9 +8625,9 @@ int64
 </em>
 </td>
 <td>
-<p>When the number of keys in Region [a,e) exceeds the <code>region_max_keys</code>, it will be split into
+<p>When the number of keys in Region [a,e) exceeds the <code>region-max-keys</code>, it will be split into
 several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
-<code>region_split_keys</code>. See also: region-max-keys
+<code>region-split-keys</code>. See also: region-max-keys
 Optional: Defaults to 960000
 optional</p>
 </td>
@@ -8564,7 +8652,7 @@ optional</p>
 <tbody>
 <tr>
 <td>
-<code>high_concurrency</code></br>
+<code>high-concurrency</code></br>
 <em>
 int64
 </em>
@@ -8576,7 +8664,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>normal_concurrency</code></br>
+<code>normal-concurrency</code></br>
 <em>
 int64
 </em>
@@ -8588,7 +8676,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>low_concurrency</code></br>
+<code>low-concurrency</code></br>
 <em>
 int64
 </em>
@@ -8600,7 +8688,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_tasks_per_worker_high</code></br>
+<code>max-tasks-per-worker-high</code></br>
 <em>
 int64
 </em>
@@ -8612,7 +8700,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_tasks_per_worker_normal</code></br>
+<code>max-tasks-per-worker-normal</code></br>
 <em>
 int64
 </em>
@@ -8624,7 +8712,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_tasks_per_worker_low</code></br>
+<code>max-tasks-per-worker-low</code></br>
 <em>
 int64
 </em>
@@ -8636,7 +8724,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>stack_size</code></br>
+<code>stack-size</code></br>
 <em>
 string
 </em>
@@ -9075,7 +9163,7 @@ Kubernetes meta/v1.Time
 <tbody>
 <tr>
 <td>
-<code>	batch_keys</code></br>
+<code>	batch-keys</code></br>
 <em>
 int64
 </em>
@@ -9087,7 +9175,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>	max_write_bytes_per_sec</code></br>
+<code>	max-write-bytes-per-sec</code></br>
 <em>
 string
 </em>
@@ -9116,7 +9204,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>import_dir</code></br>
+<code>import-dir</code></br>
 <em>
 string
 </em>
@@ -9127,7 +9215,7 @@ string
 </tr>
 <tr>
 <td>
-<code>num_threads</code></br>
+<code>num-threads</code></br>
 <em>
 int64
 </em>
@@ -9138,7 +9226,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>num_import_jobs</code></br>
+<code>num-import-jobs</code></br>
 <em>
 int64
 </em>
@@ -9149,7 +9237,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>num_import_sst_jobs</code></br>
+<code>num-import-sst-jobs</code></br>
 <em>
 int64
 </em>
@@ -9160,7 +9248,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_prepare_duration</code></br>
+<code>max-prepare-duration</code></br>
 <em>
 string
 </em>
@@ -9171,7 +9259,7 @@ string
 </tr>
 <tr>
 <td>
-<code>region_split_size</code></br>
+<code>region-split-size</code></br>
 <em>
 string
 </em>
@@ -9182,7 +9270,7 @@ string
 </tr>
 <tr>
 <td>
-<code>stream_channel_window</code></br>
+<code>stream-channel-window</code></br>
 <em>
 int64
 </em>
@@ -9193,7 +9281,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_open_engines</code></br>
+<code>max-open-engines</code></br>
 <em>
 int64
 </em>
@@ -9204,7 +9292,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>upload_speed_limit</code></br>
+<code>upload-speed-limit</code></br>
 <em>
 string
 </em>
@@ -9246,7 +9334,7 @@ string
 </tr>
 <tr>
 <td>
-<code>retry_interval</code></br>
+<code>retry-interval</code></br>
 <em>
 string
 </em>
@@ -9260,7 +9348,7 @@ Optional: Defaults to 300ms</p>
 </tr>
 <tr>
 <td>
-<code>retry_max_count</code></br>
+<code>retry-max-count</code></br>
 <em>
 int64
 </em>
@@ -9274,7 +9362,7 @@ Optional: Defaults to -1</p>
 </tr>
 <tr>
 <td>
-<code>retry_log_every</code></br>
+<code>retry-log-every</code></br>
 <em>
 int64
 </em>
@@ -9307,7 +9395,7 @@ Optional: Defaults to 10</p>
 <tbody>
 <tr>
 <td>
-<code>wal_recovery_mode</code></br>
+<code>wal-recovery-mode</code></br>
 <em>
 string
 </em>
@@ -9318,7 +9406,7 @@ string
 </tr>
 <tr>
 <td>
-<code>wal_dir</code></br>
+<code>wal-dir</code></br>
 <em>
 string
 </em>
@@ -9329,7 +9417,7 @@ string
 </tr>
 <tr>
 <td>
-<code>wal_ttl_seconds</code></br>
+<code>wal-ttl-seconds</code></br>
 <em>
 int64
 </em>
@@ -9340,7 +9428,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>wal_size_limit</code></br>
+<code>wal-size-limit</code></br>
 <em>
 string
 </em>
@@ -9351,7 +9439,7 @@ string
 </tr>
 <tr>
 <td>
-<code>max_total_wal_size</code></br>
+<code>max-total-wal-size</code></br>
 <em>
 string
 </em>
@@ -9362,7 +9450,7 @@ string
 </tr>
 <tr>
 <td>
-<code>max_background_jobs</code></br>
+<code>max-background-jobs</code></br>
 <em>
 int64
 </em>
@@ -9373,7 +9461,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_manifest_file_size</code></br>
+<code>max-manifest-file-size</code></br>
 <em>
 string
 </em>
@@ -9384,7 +9472,7 @@ string
 </tr>
 <tr>
 <td>
-<code>create_if_missing</code></br>
+<code>create-if-missing</code></br>
 <em>
 bool
 </em>
@@ -9395,7 +9483,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>max_open_files</code></br>
+<code>max-open-files</code></br>
 <em>
 int64
 </em>
@@ -9406,7 +9494,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>enable_statistics</code></br>
+<code>enable-statistics</code></br>
 <em>
 bool
 </em>
@@ -9417,7 +9505,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>stats_dump_period</code></br>
+<code>stats-dump-period</code></br>
 <em>
 string
 </em>
@@ -9428,7 +9516,7 @@ string
 </tr>
 <tr>
 <td>
-<code>compaction_readahead_size</code></br>
+<code>compaction-readahead-size</code></br>
 <em>
 string
 </em>
@@ -9439,7 +9527,7 @@ string
 </tr>
 <tr>
 <td>
-<code>info_log_max_size</code></br>
+<code>info-log-max-size</code></br>
 <em>
 string
 </em>
@@ -9450,7 +9538,7 @@ string
 </tr>
 <tr>
 <td>
-<code>info_log_roll_time</code></br>
+<code>info-log-roll-time</code></br>
 <em>
 string
 </em>
@@ -9461,7 +9549,7 @@ string
 </tr>
 <tr>
 <td>
-<code>info_log_keep_log_file_num</code></br>
+<code>info-log-keep-log-file-num</code></br>
 <em>
 int64
 </em>
@@ -9472,7 +9560,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>info_log_dir</code></br>
+<code>info-log-dir</code></br>
 <em>
 string
 </em>
@@ -9483,7 +9571,7 @@ string
 </tr>
 <tr>
 <td>
-<code>max_sub_compactions</code></br>
+<code>max-sub-compactions</code></br>
 <em>
 int64
 </em>
@@ -9494,7 +9582,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>writable_file_max_buffer_size</code></br>
+<code>writable-file-max-buffer-size</code></br>
 <em>
 string
 </em>
@@ -9505,7 +9593,7 @@ string
 </tr>
 <tr>
 <td>
-<code>use_direct_io_for_flush_and_compaction</code></br>
+<code>use-direct-io-for-flush-and-compaction</code></br>
 <em>
 bool
 </em>
@@ -9516,7 +9604,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>enable_pipelined_write</code></br>
+<code>enable-pipelined-write</code></br>
 <em>
 bool
 </em>
@@ -9527,7 +9615,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>allow_concurrent_memtable_write</code></br>
+<code>allow-concurrent-memtable-write</code></br>
 <em>
 bool
 </em>
@@ -9538,7 +9626,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>bytes_per_sync</code></br>
+<code>bytes-per-sync</code></br>
 <em>
 string
 </em>
@@ -9549,7 +9637,7 @@ string
 </tr>
 <tr>
 <td>
-<code>wal_bytes_per_sync</code></br>
+<code>wal-bytes-per-sync</code></br>
 <em>
 string
 </em>
@@ -10258,7 +10346,7 @@ string
 </tr>
 <tr>
 <td>
-<code>override_ssl_target</code></br>
+<code>override-ssl-target</code></br>
 <em>
 string
 </em>
@@ -10269,7 +10357,7 @@ string
 </tr>
 <tr>
 <td>
-<code>cipher_file</code></br>
+<code>cipher-file</code></br>
 <em>
 string
 </em>
@@ -10347,7 +10435,7 @@ uint
 </tr>
 <tr>
 <td>
-<code>grpc_memory_pool_quota</code></br>
+<code>grpc-memory-pool-quota</code></br>
 <em>
 string
 </em>
@@ -10890,7 +10978,7 @@ TiKVBlockCacheConfig
 <tbody>
 <tr>
 <td>
-<code>high_concurrency</code></br>
+<code>high-concurrency</code></br>
 <em>
 int64
 </em>
@@ -10902,7 +10990,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>normal_concurrency</code></br>
+<code>normal-concurrency</code></br>
 <em>
 int64
 </em>
@@ -10914,7 +11002,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>low_concurrency</code></br>
+<code>low-concurrency</code></br>
 <em>
 int64
 </em>
@@ -10926,7 +11014,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_tasks_per_worker_high</code></br>
+<code>max-tasks-per-worker-high</code></br>
 <em>
 int64
 </em>
@@ -10938,7 +11026,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_tasks_per_worker_normal</code></br>
+<code>max-tasks-per-worker-normal</code></br>
 <em>
 int64
 </em>
@@ -10950,7 +11038,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>max_tasks_per_worker_low</code></br>
+<code>max-tasks-per-worker-low</code></br>
 <em>
 int64
 </em>
@@ -10962,7 +11050,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>stack_size</code></br>
+<code>stack-size</code></br>
 <em>
 string
 </em>
