@@ -17,6 +17,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sort"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -513,6 +515,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
+	c.Env = sortEnvByName(c.Env)
 	return c
 }
 
@@ -668,9 +671,10 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 	}
 
+	promethuesName := fmt.Sprintf("%s-prometheus", monitor.Name)
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
+			Name:            promethuesName,
 			Namespace:       monitor.Namespace,
 			Labels:          monitorLabel,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -692,7 +696,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-reloader", monitor.Name),
+			Name:            fmt.Sprintf("%s-monitor-reloader", monitor.Name),
 			Namespace:       monitor.Namespace,
 			Labels:          monitorLabel,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -769,4 +773,59 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
+}
+
+// during syncing Service, If there existed TidbMonitor Service, we should remain the NodePort configure.
+func (mm *MonitorManager) remainNodePort(desired *core.Service) error {
+	if desired.Spec.Type != core.ServiceTypeNodePort {
+		return nil
+	}
+	name := desired.Name
+	namespace := desired.Namespace
+	existed, err := mm.svcLister.Services(namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if existed.Spec.Type != core.ServiceTypeNodePort {
+		return nil
+	}
+	for i, dport := range desired.Spec.Ports {
+		for _, eport := range existed.Spec.Ports {
+			// Because the portName could be edited,
+			// we use Port number to link the desired Service Port and the existed Service Port in the nested loop
+			if dport.Port == eport.Port {
+				dport.NodePort = eport.NodePort
+				desired.Spec.Ports[i] = dport
+				break
+			}
+		}
+	}
+	return nil
+}
+
+// sortEnvByName in order to avoid syncing same template into different results
+func sortEnvByName(envlist []core.EnvVar) []core.EnvVar {
+	if envlist == nil || len(envlist) < 1 {
+		return envlist
+	}
+	var wrappers EnvListWrapper
+	wrappers = envlist
+	sort.Sort(wrappers)
+	return wrappers
+}
+
+type EnvListWrapper []core.EnvVar
+
+func (e EnvListWrapper) Len() int {
+	return len(e)
+}
+func (e EnvListWrapper) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
+func (e EnvListWrapper) Less(i, j int) bool {
+	return e[i].Name < e[j].Name
 }

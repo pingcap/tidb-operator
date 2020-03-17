@@ -32,6 +32,7 @@ import (
 type MonitorManager struct {
 	typedControl     controller.TypedControlInterface
 	deploymentLister appslisters.DeploymentLister
+	svcLister        corelisters.ServiceLister
 	tcLister         v1alpha1listers.TidbClusterLister
 	pvLister         corelisters.PersistentVolumeLister
 	pvControl        controller.PVControlInterface
@@ -54,6 +55,7 @@ func NewMonitorManager(
 	return &MonitorManager{
 		typedControl:     typedControl,
 		deploymentLister: kubeInformerFactory.Apps().V1().Deployments().Lister(),
+		svcLister:        kubeInformerFactory.Core().V1().Services().Lister(),
 		tcLister:         informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		pvControl:        controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:         pvLister,
@@ -105,8 +107,11 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 }
 
 func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
-	service := getMonitorService(monitor)
-	for _, svc := range service {
+	services := getMonitorService(monitor)
+	for _, svc := range services {
+		if err := mm.remainNodePort(svc); err != nil {
+			return err
+		}
 		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
