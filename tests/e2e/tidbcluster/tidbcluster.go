@@ -816,6 +816,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return true, nil
 		})
+		framework.ExpectNoError(err, "second update tidbmonitor service error")
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
