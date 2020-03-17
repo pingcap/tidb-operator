@@ -47,7 +47,7 @@ type PodAdmissionControl struct {
 }
 
 const (
-	stsControllerServiceAccounts  = "system:serviceaccount:kube-system:statefulset-controller"
+	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 )
 
 var (
