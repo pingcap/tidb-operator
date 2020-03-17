@@ -1,5 +1,5 @@
 {{- define "drainer.name" -}}
-{{- if .Values.drainerName }}
+{{- if .Values.drainerName -}}
 {{ .Values.drainerName }}
 {{- else -}}
 {{ .Values.clusterName }}-{{ .Release.Name }}-drainer
