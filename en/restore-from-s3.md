@@ -74,12 +74,12 @@ This document shows an example in which the backup data stored in the specified 
 
 In the above example, the backup data stored in the `spec.s3.path` path on the S3-compatible storage is restored to the `spec.to.host` TiDB cluster. For the configuration of the S3-compatible storage, refer to [backup-s3.yaml](backup-to-s3.md#ad-hoc-backup-process).
 
-More `Restore` CRs are as described follows:
+More `Restore` CRs are described as follows:
 
 * `.spec.metadata.namespace`: the namespace where the `Restore` CR is located.
 * `.spec.to.host`: the address of the TiDB cluster to be restored.
 * `.spec.to.port`: the port of the TiDB cluster to be restored.
 * `.spec.to.user`: the accessing user of the TiDB cluster to be restored.
-* `.spec.to.tidbSecretName`: the secrete of the credential needed by the TiDB cluster to be restored.
+* `.spec.to.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be restored.
 * `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration. If this item is not specified, the value of the `default-backup-storage-class-name` parameter (`standard` by default, specified when TiDB Operator is started) is used by default.
-* `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than size of the backed up TiDB cluster.
+* `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than the size of the backed up TiDB cluster.

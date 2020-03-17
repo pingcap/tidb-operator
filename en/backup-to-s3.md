@@ -141,15 +141,15 @@ After creating the `Backup` CR, use the following command to check the backup st
  kubectl get bk -n test1 -owide
  ```
 
-More `Backup` CRs are as described follows:
+More `Backup` CRs are described as follows:
 
 * `.spec.metadata.namespace`: the namespace where the `Backup` CR is located.
 * `.spec.from.host`: the address of the TiDB cluster to be backed up.
 * `.spec.from.port`: the port of the TiDB cluster to be backed up.
 * `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
-* `.spec.from.tidbSecretName`: the secrete of the credential needed by the TiDB cluster to be backed up.
+* `.spec.from.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be backed up.
 * `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation. If this item is not specified, the value of the `default-backup-storage-class-name` parameter (`standard` by default, specified when TiDB Operator is started) is used by default.
-* `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than size of the TiDB cluster to be backed up.
+* `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than the size of the TiDB cluster to be backed up.
 
 More S3-compatible `provider`s are described as follows:
 
@@ -211,7 +211,7 @@ The prerequisites for the scheduled backup is the same with the [prerequisites f
         storageSize: 10Gi
     ```
 
-+ Create the `BackupSchedule` CR to enable the scheduled full backup to Amazon S3:
++ Create the `BackupSchedule` CR to enable the scheduled full backup to Ceph:
 
     {{< copyable "shell-regular" >}}
 
@@ -255,7 +255,7 @@ After creating the scheduled full backup, use the following command to check the
 kubectl get bks -n test1 -owide
 ```
 
-Execute the following command to check all the backup items:
+Use the following command to check all the backup items:
 
 {{< copyable "shell-regular" >}}
 
@@ -263,9 +263,9 @@ Execute the following command to check all the backup items:
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 
-From the above two examples, you can see that the `backupSchedule` configuration consists of two part. One is the unique configurations of `backupSchedule` and the other is `backupTemplate`. `backupTemple` specifies the configuration related to the S3-compatible storage, which is the same with the configuration of the ad-hoc full backup to the S3-compatible storage (refer to [Ad-hoc backup process](#ad-hoc-backup-process) for details). The following are the unique configuration items of `backupSchedule`:
+From the above two examples, you can see that the `backupSchedule` configuration consists of two parts. One is the unique configuration of `backupSchedule`, and the other is `backupTemplate`. `backupTemple` specifies the configuration related to the S3-compatible storage, which is the same as the configuration of the ad-hoc full backup to the S3-compatible storage (refer to [Ad-hoc backup process](#ad-hoc-backup-process) for details). The following are the unique configuration items of `backupSchedule`:
 
 + `.spec.maxBackups`: A backup retention policy, which determines the maximum number of backup items to be retained. When this value is exceeded, the outdated backup items will be deleted. If you set this configuration item to `0`, all backup items are retained.
-+ `.spec.maxReservedTime`: A backup retention policy based on time. For example, if you set the value of this configuration to `24h`, backup items only of recent 24 hours are retained. All backup items out of this time are deleted. For the time format, refer to [`func ParseDuration`](https://golang.org/pkg/time/#ParseDuration). If you have set the maximum number of backup items and the longest retention time of backup items at the same time, the latter setting takes effect.
++ `.spec.maxReservedTime`: A backup retention policy based on time. For example, if you set the value of this configuration to `24h`, only backup items within the recent 24 hours are retained. All backup items out of this time are deleted. For the time format, refer to [`func ParseDuration`](https://golang.org/pkg/time/#ParseDuration). If you have set the maximum number of backup items and the longest retention time of backup items at the same time, the latter setting takes effect.
 + `.spec.schedule`: The time scheduling format of Cron. Refer to [Cron](https://en.wikipedia.org/wiki/Cron) for details.
 + `.spec.pause`: `false` by default. If this parameter is set to `true`, the scheduled scheduling is paused. In this situation, the backup operation will not be performed even if the scheduling time is reached. During this pause, the backup [Garbage Collection](https://pingcap.com/docs/stable/reference/garbage-collection/overview) (GC) runs normally. If you change `true` to `false`, the full backup process is restarted.
