@@ -277,8 +277,9 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 			existingSvc.Spec = desiredSvc.Spec
 			existingSvc.Spec.ClusterIP = clusterIp
 
-			// If the existed service and the desired service is both NodePort, we shall guaranteed the nodePort unchanged
-			if serviceType == corev1.ServiceTypeNodePort && desiredSvc.Spec.Type == corev1.ServiceTypeNodePort {
+			// If the existed service and the desired service is NodePort or LoadBalancerType, we should keep the nodePort unchanged.
+			if (serviceType == corev1.ServiceTypeNodePort || serviceType == corev1.ServiceTypeLoadBalancer) &&
+				(desiredSvc.Spec.Type == corev1.ServiceTypeNodePort || desiredSvc.Spec.Type == corev1.ServiceTypeLoadBalancer) {
 				for i, dport := range existingSvc.Spec.Ports {
 					for _, eport := range ports {
 						// Because the portName could be edited,

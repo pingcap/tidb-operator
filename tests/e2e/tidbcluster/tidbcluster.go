@@ -767,6 +767,30 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		value, existed = pv.Labels[label.ManagedByLabelKey]
 		framework.ExpectEqual(existed, true)
 		framework.ExpectEqual(value, label.TiDBOperator)
+
+		// update TidbMonitor and check whether portName is updated and the nodePort is unchanged
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
+		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		framework.ExpectNoError(err, "update tidbmonitor service type error")
+
+		prometheuSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
+		framework.ExpectNoError(err, "tidbmonitor get prometheus service err")
+		framework.ExpectEqual(len(prometheuSvc.Spec.Ports), 1)
+		framework.ExpectEqual(string(prometheuSvc.Spec.Type), string(corev1.ServiceTypeNodePort))
+		targetPort := prometheuSvc.Spec.Ports[0].NodePort
+
+		newPortName := "any-other-word"
+		tm.Spec.Prometheus.Service.PortName = &newPortName
+		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		framework.ExpectNoError(err, "update tidbmonitor service portName error")
+		prometheuSvc, err = c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
+		framework.ExpectNoError(err, "tidbmonitor get prometheus service again err")
+		framework.ExpectEqual(len(prometheuSvc.Spec.Ports), 1)
+		framework.ExpectEqual(string(prometheuSvc.Spec.Type), string(corev1.ServiceTypeNodePort))
+		framework.ExpectEqual(targetPort, prometheuSvc.Spec.Ports[0].NodePort)
+
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
