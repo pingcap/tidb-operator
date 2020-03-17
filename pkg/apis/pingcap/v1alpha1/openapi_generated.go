@@ -375,9 +375,23 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 				Description: "BRConfig contains config for BR",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"pd": {
+					"enableTLSClient": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PDAddress is the PD address of the tidb cluster",
+							Description: "Whether enable TLS in TiDBCluster",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterName of backup/restore cluster",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clusterNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace of backup/restore cluster",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -392,27 +406,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 					"table": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Table is the specific table which will be backed-up or restored",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"ca": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CA is the CA certificate path for TLS connection",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"cert": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Cert is the certificate path for TLS connection",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"key": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Key is the private key path for TLS connection",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -474,7 +467,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 						},
 					},
 				},
-				Required: []string{"pd"},
+				Required: []string{"cluster"},
 			},
 		},
 	}

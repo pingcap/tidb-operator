@@ -1502,13 +1502,35 @@ TidbMonitorStatus
 <tbody>
 <tr>
 <td>
-<code>pd</code></br>
+<code>enableTLSClient</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Whether enable TLS in TiDBCluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cluster</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>PDAddress is the PD address of the tidb cluster</p>
+<p>ClusterName of backup/restore cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterNamespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Namespace of backup/restore cluster</p>
 </td>
 </tr>
 <tr>
@@ -1531,39 +1553,6 @@ string
 </td>
 <td>
 <p>Table is the specific table which will be backed-up or restored</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>ca</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>CA is the CA certificate path for TLS connection</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cert</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Cert is the certificate path for TLS connection</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>key</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Key is the private key path for TLS connection</p>
 </td>
 </tr>
 <tr>
