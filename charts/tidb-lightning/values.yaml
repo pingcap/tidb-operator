@@ -25,7 +25,7 @@ dataSource:
     # pvcName: tidb-cluster-scheduled-backup
     # backupName: scheduled-backup-20190822-041004
   remote:
-    rcloneImage: tynor88/rclone
+    rcloneImage: pingcap/tidb-cloud-backup:20200229
     storageClassName: local-storage
     storage: 100Gi
     secretName: cloud-storage-secret
