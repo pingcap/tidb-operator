@@ -5,17 +5,39 @@ category: how-to
 
 # 升级 TiDB Operator
 
-本文介绍如何升级 TiDB Operator。升级 TiDB Operator 和自定义 TiDB Operator 类似，修改 `values.yaml` 中的镜像版本，然后执行 `helm upgrade`：
+本文介绍如何升级 TiDB Operator。
 
-{{< copyable "shell-regular" >}}
+## 升级步骤
 
-```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=<chart-version> -f /home/tidb/tidb-operator/values-tidb-operator.yaml
-```
+1. 更新 [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)：
 
-当新版本 tidb-operator 发布，只要更新 `values.yaml` 中的 `operatorImage` 然后执行上述命令就可以。但是安全起见，最好从新版本 `tidb-operator` chart 中获取新版本 `values.yaml` 并和旧版本 `values.yaml` 合并生成新的 `values.yaml`，然后升级。
+    {{< copyable "shell-regular" >}}
 
-TiDB Operator 是用来管理 TiDB 集群的，也就是说，如果 TiDB 集群已经启动并正常运行，你甚至可以停掉 TiDB Operator，而 TiDB 集群仍然能正常工作，直到你需要维护 TiDB 集群，比如伸缩、升级等等。
+    ```shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/<version>/manifests/crd.yaml && \
+    kubectl get crd tidbclusters.pingcap.com
+    ```
+
+    > **注意：**
+    >
+    > `<version>` 在后续文档中代表 TiDB Operator 版本，例如 `v1.1.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
+
+2. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    mkdir -p /home/tidb/tidb-operator/<version> && \
+    helm inspect values pingcap/tidb-operator --version=<version> > /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    ```
+    
+3. 修改 `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml` 中 `operatorImage` 镜像版本，并将旧版本 `values.yaml` 中的自定义配置合并到 `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml`，然后执行 `helm upgrade`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm upgrade tidb-operator pingcap/tidb-operator --version=<version> -f /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    ```
 
 ## 升级 Kubernetes
 
