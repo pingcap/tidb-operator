@@ -1,15 +1,15 @@
 ---
-title: 使用 BR 工具备份 AWS 上的备份数据
+title: 使用 BR 工具恢复 AWS 上的备份数据
 category: how-to
 ---
 
-# 使用 BR 工具备份 AWS 上的备份数据
+# 使用 BR 工具恢复 AWS 上的备份数据
 
-本文详细描述了如何存储在 AWS S3 存储的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群数底层通过使用 [`br`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 进行数据恢复。
+本文详细描述了如何将存储在 Amazon S3 存储的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群，底层通过使用 [`br`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 进行数据恢复。
 
 本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
 
-以下示例将兼容 S3 的存储（指定路径）上的备份数据恢复到 TiDB 集群。
+以下示例将 Amazon S3 的存储（指定路径）上的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群。
 
 ## AWS 账号的三种权限授予方式
 
@@ -193,7 +193,7 @@ category: how-to
         prefix: my-folder
     ```
 
-+ 创建 `Backup` CR，通过 IAM 绑定 Pod 授权的方式备份集群:
++ 创建 `Restore` CR，通过 IAM 绑定 Pod 授权的方式备份集群:
 
     {{< copyable "shell-regular" >}}
 
@@ -213,7 +213,6 @@ category: how-to
 	  annotations:
         iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
     spec:
-      backupType: full
       br:
         cluster: demo2
         sendCredToTikv: false
@@ -237,7 +236,7 @@ category: how-to
         prefix: my-folder
     ```
 
-+ 创建 `Backup` CR，通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群:
++ 创建 `Restore` CR，通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群:
 
     {{< copyable "shell-regular" >}}
 
@@ -255,7 +254,6 @@ category: how-to
       name: demo2-restore-s3
       namespace: test2
     spec:
-      backupType: full
 	  serviceAccount: tidb-backup-manager
       br:
         cluster: demo2
@@ -284,7 +282,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
      ```shell
-     kubectl get rt -n test2 -owide
+     kubectl get rt -n test2 -o wide
      ```
 
 更多 `Restore` CR 字段的详细解释：
