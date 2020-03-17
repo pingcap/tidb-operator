@@ -152,7 +152,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 >
 > - arn:aws:iam::123456789012:role/user 为步骤 4 中创建的 IAM 角色。
 
-### 使用 br 备份数据到 AWS S3 的存储
+### 使用 br 备份数据到 Amazon S3 的存储
 
 + 创建 `Backup` CR，通过 accessKey 和 secretKey 授权的方式备份集群:
 
@@ -284,7 +284,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         prefix: my-folder
     ```
 
-以上两个示例分别将 TiDB 集群的数据全量导出备份到 Amazon S3 和 Ceph 上。Amazon S3 的 `region`、`acl`、`endpoint`、`storageClass` 配置项均可以省略。其余非 Amazon S3 的但是兼容 S3 的存储均可使用和 Amazon S3 类似的配置。可参考上面例子中 Ceph 的配置，省略不需要配置的字段。
+以上三个个示例分别使用三种授权模式将数据到处到 Amazon S3 存储上。Amazon S3 的 `region`、`acl`、`endpoint`、`storageClass` 配置项均可以省略。其余非 Amazon S3 的但是兼容 S3 的存储均可使用和 Amazon S3 类似的配置。可参考上面例子中 Ceph 的配置，省略不需要配置的字段。
 
 Amazon S3 支持以下几种 access-control list (ACL) 策略：
 
@@ -313,7 +313,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 {{< copyable "shell-regular" >}}
 
  ```shell
- kubectl get bk -n test1 -owide
+ kubectl get bk -n test1 -o wide
  ```
 
 更多 `Backup` CR 字段的详细解释:
@@ -345,7 +345,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 
 同 [Ad-hoc 全量备份环境准备](#ad-hoc-全量备份环境准备)。
 
-### 使用 br 定时备份数据到 AWS S3 的存储
+### 使用 br 定时备份数据到 Amazon S3 的存储
 
 + 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份，通过 accessKey 和 secretKey 授权的方式备份集群:
 
@@ -439,9 +439,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
-          # region: us-west-1
-          # bucket: my-bucket
-          # prefix: my-folder
+          region: us-west-1
+          bucket: my-bucket
+          prefix: my-folder
     ```
 
 + 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份, 通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群:
@@ -487,9 +487,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
-          # region: us-west-1
-          # bucket: my-bucket
-          # prefix: my-folder
+          region: us-west-1
+          bucket: my-bucket
+          prefix: my-folder
     ```
 
 定时全量备份创建完成后，可以通过以下命令查看定时全量备份的状态：
@@ -497,7 +497,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get bks -n test1 -owide
+kubectl get bks -n test1 -o wide
 ```
 
 查看定时全量备份下面所有的备份条目：
@@ -508,7 +508,7 @@ kubectl get bks -n test1 -owide
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 
-从以上两个示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定 S3 兼容存储相关的配置，该配置与 Ad-hoc 全量备份到兼容 S3 的存储配置完全一样，可参考[使用 br 备份数据到 AWS S3 的存储](#使用 br 备份数据到 AWS S3 的存储)。下面介绍 `backupSchedule` 独有的配置项：
+从以上两个示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定 S3 兼容存储相关的配置，该配置与 Ad-hoc 全量备份到兼容 S3 的存储配置完全一样，可参考[使用 br 备份数据到 Amazon S3 的存储](#使用 br 备份数据到 Amazon S3 的存储)。下面介绍 `backupSchedule` 独有的配置项：
 
 + `.spec.maxBackups`：一种备份保留策略，决定定时备份最多可保留的备份个数。超过该数目，就会将过时的备份删除。如果将该项设置为 `0`，则表示保留所有备份。
 + `.spec.maxReservedTime`：一种备份保留策略，按时间保留备份。例如将该参数设置为 `24h`，表示只保留最近 24 小时内的备份条目。超过这个时间的备份都会被清除。时间设置格式参考 [`func ParseDuration`](https://golang.org/pkg/time/#ParseDuration)。如果同时设置最大备份保留个数和最长备份保留时间，则以最长备份保留时间为准。
