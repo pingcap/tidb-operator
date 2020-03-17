@@ -692,6 +692,11 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Selector: labels,
 		},
 	}
+	if monitor.BasePrometheusSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+		if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
+			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
+		}
+	}
 
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
@@ -716,6 +721,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				label.ComponentLabelKey: label.TiDBMonitorVal,
 			},
 		},
+	}
+
+	if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+		if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
+			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
+		}
 	}
 
 	services = append(services, prometheusService, reloaderService)
@@ -744,6 +755,13 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				},
 			},
 		}
+
+		if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+			if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
+				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+			}
+		}
+
 		services = append(services, grafanaService)
 	}
 	return services
