@@ -202,3 +202,7 @@ spec:
     version: v1.0.1
   imagePullPolicy: IfNotPresent
 ```
+
+## 参考
+
+了解 TidbMonitor 更为详细的 API 设置，可以参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)。
