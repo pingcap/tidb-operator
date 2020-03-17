@@ -73,6 +73,8 @@ spec:
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
+    service:
+      type: NodePort
   grafana:
     baseImage: grafana/grafana
     version: 6.0.1
@@ -142,6 +144,8 @@ spec:
   prometheus:
     baseImage: prom/prometheus
     version: v2.11.1
+    service:
+      type: NodePort
   grafana:
     baseImage: grafana/grafana
     version: 6.0.1
@@ -162,4 +166,39 @@ spec:
 $ kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor
 NAME            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         RWO            standard       51s
+```
+
+### 设置 kube-prometheus 与 AlertManager
+
+你可以通过设置 TidbMonitor 来使其获取 kube-prometheus metrics，了解 [kube-prometheus](https://github.com/coreos/kube-prometheus)
+
+同样的，你可以通过设置 TidbMonitor 来将监控推送警报至指定的 AlertManager，了解 [AlertManager](https://prometheus.io/docs/alerting/alertmanager/)
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+    - name: basic
+  kubePrometheusURL: "your-kube-prometheus-url"
+  alertmanagerURL: "your-alert-manager-url"
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.11.1
+    service:
+      type: NodePort
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.0.1
+    service:
+      type: NodePort
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v3.0.5
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
 ```
