@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"path"
 	"reflect"
 	"regexp"
@@ -27,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -416,7 +416,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		ImagePullPolicy: baseTiKVSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: tc.Spec.TiKV.Privileged,
+			Privileged: tc.TiKVContainerPrivilege(),
 		},
 		Ports: []corev1.ContainerPort{
 			{
@@ -445,6 +445,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
 	podSpec.Containers = []corev1.Container{tikvContainer}
+	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
