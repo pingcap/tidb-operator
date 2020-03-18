@@ -13,11 +13,11 @@ This tutorial is designed to be directly [run in Google Cloud Shell](https://con
 It takes you through the following steps:
 
 - Launch a new 3-node Kubernetes cluster (optional)
-- Install the Helm package manager for Kubernetes
-- Deploy the TiDB Operator
-- Deploy your first TiDB cluster
+- Deploy TiDB Operator and your first TiDB cluster
 - Connect to the TiDB cluster
 - Scale out the TiDB cluster
+- Access the Grafana dashboard
+- Destroy the TiDB cluster
 - Shut down the Kubernetes cluster (optional)
 
 > **Warning:**
@@ -86,121 +86,21 @@ kubectl get nodes
 
 If you see `Ready` for all nodes, congratulations! You've setup your first Kubernetes cluster.
 
-## Install Helm
+## Deploy TiDB Operator and TiDB cluster
 
-Helm is the package manager for Kubernetes, and is what allows us to install all of the distributed components of TiDB in a single step. Helm requires both a server-side and a client-side component to be installed.
+1. Install Helm and add the Helm chart repository maintained by PingCAP. For details, refer to [Use Helm](tidb-toolkit.md#use-helm)
 
-Install `helm`:
+2. Deploy TiDB Operator. For details, refer to [Install TiDB Operator](deploy-tidb-operator.md#install-tidb-operator).
 
-{{< copyable "shell-regular" >}}
+3. Create the `pd-ssd` StorageClass:
 
-```shell
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
-```
+    {{< copyable "shell-regular" >}}
 
-Copy `helm` to your `$HOME` directory so that it persists after the Cloud Shell reaches its idle timeout:
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/gke/persistent-disk.yaml
+    ```
 
-{{< copyable "shell-regular" >}}
-
-```shell
-mkdir -p ~/bin && \
-cp /usr/local/bin/helm ~/bin && \
-echo 'PATH="$PATH:$HOME/bin"' >> ~/.bashrc
-```
-
-Helm also needs a couple of permissions to work properly:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl apply -f ./manifests/tiller-rbac.yaml && \
-helm init --service-account tiller --upgrade
-```
-
-It takes a minute for helm to initialize `tiller`, its server component:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-watch "kubectl get pods --namespace kube-system | grep tiller"
-```
-
-When you see `Running`, it's time to hit <kbd>Ctrl</kbd>+<kbd>C</kbd> and proceed to the next step!
-
-## Add Helm repo
-
-Helm repo (`https://charts.pingcap.org/`) houses PingCAP managed charts, such as tidb-operator, tidb-cluster and tidb-backup, etc. Add and check the repo with following commands:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm repo add pingcap https://charts.pingcap.org/ && \
-helm repo list
-```
-
-Then you can check the available charts:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm repo update
-```
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm search tidb-cluster -l
-```
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm search tidb-operator -l
-```
-
-## Deploy TiDB Operator
-
-Note that `<chartVersion>` is used in the rest of the document to represent the chart version, e.g. `v1.0.0`.
-
-The first TiDB component we are going to install is the TiDB Operator, using a Helm Chart. TiDB Operator is the management system that works with Kubernetes to bootstrap your TiDB cluster and keep it running. This step assumes you are in the `tidb-operator` working directory:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl apply -f ./manifests/crd.yaml && \
-kubectl apply -f ./manifests/gke/persistent-disk.yaml && \
-helm install pingcap/tidb-operator -n tidb-admin --namespace=tidb-admin --version=<chartVersion>
-```
-
-We can watch the operator come up with:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-watch kubectl get pods --namespace tidb-admin -o wide
-```
-
-When you see both tidb-scheduler and tidb-controller-manager are `Running`, press <kbd>Ctrl</kbd>+<kbd>C</kbd> and proceed to launch a TiDB cluster!
-
-## Deploy your first TiDB cluster
-
-Now with a single command we can bring-up a full TiDB cluster:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm install pingcap/tidb-cluster -n demo --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd --version=<chartVersion>
-```
-
-It takes a few minutes to launch. You can monitor the progress with:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-watch kubectl get pods --namespace tidb -o wide
-```
-
-The TiDB cluster includes 2 TiDB pods, 3 TiKV pods, and 3 PD pods. When you see all pods `Running`, it's time to <kbd>Ctrl</kbd>+<kbd>C</kbd> and proceed forward!
+4. Deploy the TiDB cluster, as in [Deploy TiDB on General Kubernetes](deploy-on-general-kubernetes.md#deploy-tidb-cluster). Set the `storageClassName` of all components to `pd-ssd`.
 
 ## Connect to the TiDB cluster
 
@@ -239,7 +139,7 @@ Try out a MySQL command inside your MySQL terminal:
 select tidb_version();
 ```
 
-If you did not specify a password in helm, set one now:
+If you did not specify a password in the process of installation, set one now:
 
 {{< copyable "sql" >}}
 
@@ -255,21 +155,7 @@ Congratulations, you are now up and running with a distributed TiDB database com
 
 ## Scale out the TiDB cluster
 
-With a single command we can easily scale out the TiDB cluster. To scale out TiKV:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm upgrade demo pingcap/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5 --version=<chartVersion>
-```
-
-Now the number of TiKV pods is increased from the default 3 to 5. You can check it with:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl get po -n tidb
-```
+To scale out the TiDB cluster, refer to [Scale TiDB in Kubernetes](scale-a-tidb-cluster.md).
 
 ## Accessing the Grafana dashboard
 
@@ -288,13 +174,7 @@ If not using Cloud Shell, point a browser to `localhost:3000`.
 
 ## Destroy the TiDB cluster
 
-When the TiDB cluster is not needed, you can delete it with the following command:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm delete demo --purge
-```
+When the TiDB cluster is no longer needed, you can delete it as in [Destroy TiDB Clusters in Kubernetes](destroy-a-tidb-cluster.md).
 
 The above commands only delete the running pods, the data is persistent. If you do not need the data anymore, you should run the following commands to clean the data and the dynamically created persistent disks:
 
