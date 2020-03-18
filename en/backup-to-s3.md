@@ -44,69 +44,77 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
 
 ### Ad-hoc backup process
 
-+ Create the `Backup` CR and back up data to Amazon S3:
++ Back up data to Amazon S3
+
+    1. In the `backup-s3.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
+
+        {{< copyable "" >}}
+
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: Backup
+        metadata:
+        name: demo1-backup-s3
+        namespace: test1
+        spec:
+        from:
+            host: <tidb-host-ip>
+            port: <tidb-port>
+            user: <tidb-user>
+            secretName: backup-demo1-tidb-secret
+        s3:
+            provider: aws
+            secretName: s3-secret
+            # region: us-east-1
+            # storageClass: STANDARD_IA
+            # acl: private
+            # endpoint:
+        storageClassName: local-storage
+        storageSize: 10Gi
+        ```
+
+    2. Create the `Backup` CR and back up data to Amazon S3:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl apply -f backup-s3.yaml
+        ```
+
++ Back up data to Amazon S3
+
+    1. In the `backup-s3.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
+
+        {{< copyable "" >}}
+
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: Backup
+        metadata:
+        name: demo1-backup-s3
+        namespace: test1
+        spec:
+        from:
+            host: <tidb-host-ip>
+            port: <tidb-port>
+            user: <tidb-user>
+            secretName: backup-demo1-tidb-secret
+        s3:
+            provider: ceph
+            secretName: s3-secret
+            endpoint: http://10.0.0.1:30074
+        storageClassName: local-storage
+        storageSize: 10Gi
+        ```
+
+    2. Create the `Backup` CR and back up data to Ceph:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl apply -f backup-s3.yaml
-    ```
-
-    The `backup-s3.yaml` file has the following content:
-
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: Backup
-    metadata:
-      name: demo1-backup-s3
-      namespace: test1
-    spec:
-      from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
-        secretName: backup-demo1-tidb-secret
-      s3:
-        provider: aws
-        secretName: s3-secret
-        # region: us-east-1
-        # storageClass: STANDARD_IA
-        # acl: private
-        # endpoint:
-      storageClassName: local-storage
-      storageSize: 10Gi
-    ```
-
-+ Create the `Backup` CR and back up data to Ceph:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f backup-s3.yaml
-    ```
-
-    The `backup-s3.yaml` file has the following content:
-
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: Backup
-    metadata:
-      name: demo1-backup-s3
-      namespace: test1
-    spec:
-      from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
-        secretName: backup-demo1-tidb-secret
-      s3:
-        provider: ceph
-        secretName: s3-secret
-        endpoint: http://10.0.0.1:30074
-      storageClassName: local-storage
-      storageSize: 10Gi
     ```
 
 In the above two examples, all data of the TiDB cluster is exported and backed up to Amazon S3 and Ceph respectively. You can ignore the `region`, `acl`, `endpoint`, and `storageClass` configuration items in the Amazon S3 configuration. S3-compatible storage types other than Amazon S3 can also use configuration similar to that of Amazon S3. You can also leave the configuration item fields empty if you do not need to configure these items as shown in the above Ceph configuration.
@@ -133,7 +141,7 @@ Amazon S3 supports the following `storageClass` types:
 
 If `storageClass` is not configured, `STANDARD_IA` is used by default. For the detailed description of these storage types, refer to [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-class-intro.html).
 
-After creating the `Backup` CR, use the following command to check the backup status:
+After creating the `Backup` CR, you can use the following command to check the backup status:
 
 {{< copyable "shell-regular" >}}
 
@@ -172,82 +180,90 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
 ### Scheduled backup process
 
-+ Create the `BackupSchedule` CR to enable the scheduled full backup to Amazon S3:
++ Scheduled backup to Amazon S3.
 
-    {{< copyable "shell-regular" >}}
+    1. In the `backup-gcs.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
 
-    ```shell
-    kubectl apply -f backup-schedule-s3.yaml
-    ```
+        {{< copyable "" >}}
 
-    The `backup-gcs.yaml` file has the following content:
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: BackupSchedule
+        metadata:
+        name: demo1-backup-schedule-s3
+        namespace: test1
+        spec:
+        #maxBackups: 5
+        #pause: true
+        maxReservedTime: "3h"
+        schedule: "*/2 * * * *"
+        backupTemplate:
+            from:
+            host: <tidb-host-ip>
+            port: <tidb-port>
+            user: <tidb-user>
+            secretName: backup-demo1-tidb-secret
+            s3:
+            provider: aws
+            secretName: s3-secret
+            # region: us-east-1
+            # storageClass: STANDARD_IA
+            # acl: private
+            # endpoint:
+            storageClassName: local-storage
+            storageSize: 10Gi
+        ```
 
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: BackupSchedule
-    metadata:
-      name: demo1-backup-schedule-s3
-      namespace: test1
-    spec:
-      #maxBackups: 5
-      #pause: true
-      maxReservedTime: "3h"
-      schedule: "*/2 * * * *"
-      backupTemplate:
-        from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
-          secretName: backup-demo1-tidb-secret
-        s3:
-          provider: aws
-          secretName: s3-secret
-          # region: us-east-1
-          # storageClass: STANDARD_IA
-          # acl: private
-          # endpoint:
-        storageClassName: local-storage
-        storageSize: 10Gi
-    ```
+    2. Create the `BackupSchedule` CR to enable the scheduled full backup to Amazon S3:
 
-+ Create the `BackupSchedule` CR to enable the scheduled full backup to Ceph:
+        {{< copyable "shell-regular" >}}
 
-    {{< copyable "shell-regular" >}}
+        ```shell
+        kubectl apply -f backup-schedule-s3.yaml
+        ```
 
-    ```shell
-    kubectl apply -f backup-schedule-s3.yaml
-    ```
++ Scheduled backup to Ceph.
 
-    The `backup-gcs.yaml` file has the following content:
+    1. In the `backup-gcs.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
 
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: BackupSchedule
-    metadata:
-      name: demo1-backup-schedule-ceph
-      namespace: test1
-    spec:
-      #maxBackups: 5
-      #pause: true
-      maxReservedTime: "3h"
-      schedule: "*/2 * * * *"
-      backupTemplate:
-        from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
-          secretName: backup-demo1-tidb-secret
-        s3:
-          provider: ceph
-          secretName: s3-secret
-          endpoint: http://10.0.0.1:30074
-        storageClassName: local-storage
-        storageSize: 10Gi
-    ```
+        {{< copyable "shell-regular" >}}
 
-After creating the scheduled full backup, use the following command to check the backup status:
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: BackupSchedule
+        metadata:
+        name: demo1-backup-schedule-ceph
+        namespace: test1
+        spec:
+        #maxBackups: 5
+        #pause: true
+        maxReservedTime: "3h"
+        schedule: "*/2 * * * *"
+        backupTemplate:
+            from:
+            host: <tidb-host-ip>
+            port: <tidb-port>
+            user: <tidb-user>
+            secretName: backup-demo1-tidb-secret
+            s3:
+            provider: ceph
+            secretName: s3-secret
+            endpoint: http://10.0.0.1:30074
+            storageClassName: local-storage
+            storageSize: 10Gi
+        ```
+
+    2. Create the `BackupSchedule` CR to enable the scheduled full backup to Ceph:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl apply -f backup-schedule-s3.yaml
+        ```
+
+After creating the scheduled full backup, you can use the following command to check the backup status:
 
 {{< copyable "shell-regular" >}}
 
@@ -255,7 +271,7 @@ After creating the scheduled full backup, use the following command to check the
 kubectl get bks -n test1 -owide
 ```
 
-Use the following command to check all the backup items:
+You can use the following command to check all the backup items:
 
 {{< copyable "shell-regular" >}}
 

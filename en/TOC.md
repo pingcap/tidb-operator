@@ -30,8 +30,8 @@
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
   - [Maintain a Hosting Kubernetes Node](maintain-a-kubernetes-node.md)
   + Backup and Restore
-    - [Helm Charts-Based Backup and Restoration](backup-and-restore-using-helm-charts.md)
-    + CRD-Based Backup and Restoration
+    - [Use Helm Charts](backup-and-restore-using-helm-charts.md)
+    + Use CRDs
       - [Back up Data to GCS](backup-to-gcs.md)
       - [Restore Data from GCS](restore-from-gcs.md)
       - [Back up Data to S3-Compatible Storage](backup-to-s3.md)

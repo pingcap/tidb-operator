@@ -6,9 +6,9 @@ category: how-to
 
 # Back up TiDB Cluster Data to GCS
 
-This document describes how to back up the data of the TiDB cluster in Kubernetes to [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/). "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). For the underlying implementation, [`mydumper`](https://pingcap.com/docs/stable/reference/tools/mydumper) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the remote GCS.
+This document describes how to back up the data of the TiDB cluster in Kubernetes to [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/). "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). [`mydumper`](https://pingcap.com/docs/stable/reference/tools/mydumper) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the remote GCS.
 
-The backup method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the backup method implemented based on Helm Charts, refer to [Back up and Restore TiDB Cluster Data Based on Helm Charts](backup-and-restore-using-helm-charts.md).
+The backup method described in this document is implemented using CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the backup method implemented using Helm Charts, refer to [Back up and Restore TiDB Cluster Data Using Helm Charts](backup-and-restore-using-helm-charts.md).
 
 ## Ad-hoc full backup to GCS
 
@@ -44,39 +44,41 @@ To better explain how to perform the backup operation, this document shows an ex
 
 ### Ad-hoc backup process
 
-Create the `Backup` CR and back up data to GSC:
+1. In the `backup-gcs.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
-```shell
-kubectl apply -f backup-gcs.yaml
-```
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+    name: demo1-backup-gcs
+    namespace: test1
+    spec:
+    from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+    gcs:
+        secretName: gcs-secret
+        projectId: <your-project-id>
+        # location: us-east1
+        # storageClass: STANDARD_IA
+        # objectAcl: private
+        # bucketAcl: private
+    storageClassName: local-storage
+    storageSize: 10Gi
+    ```
 
-The `backup-gcs.yaml` file has the following content:
+2. Create the `Backup` CR and back up data to GSC:
 
-```yaml
----
-apiVersion: pingcap.com/v1alpha1
-kind: Backup
-metadata:
-  name: demo1-backup-gcs
-  namespace: test1
-spec:
-  from:
-    host: <tidb-host-ip>
-    port: <tidb-port>
-    user: <tidb-user>
-    secretName: backup-demo1-tidb-secret
-  gcs:
-    secretName: gcs-secret
-    projectId: <your-project-id>
-    # location: us-east1
-    # storageClass: STANDARD_IA
-    # objectAcl: private
-    # bucketAcl: private
-  storageClassName: local-storage
-  storageSize: 10Gi
-```
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-gcs.yaml
+    ```
 
 In the above example, all data of the TiDB cluster is exported and backed up to GCS. You can ignore the `location`, `objectAcl`, `bucketAcl`, and `storageClass` items in the GCS configuration.
 
@@ -113,13 +115,13 @@ GCS supports the following bucket ACL policies:
 
 If the bucket ACL policy is not configured, the `private` policy is used by default. For the detailed description of these access control policies, refer to [GCS documentation](https://cloud.google.com/storage/docs/access-control/lists).
 
-After creating the `Backup` CR, use the following command to check the backup status:
+After creating the `Backup` CR, you can use the following command to check the backup status:
 
 {{< copyable "shell-regular" >}}
 
- ```shell
- kubectl get bk -n test1 -owide
- ```
+```shell
+kubectl get bk -n test1 -owide
+```
 
 More `Backup` CRs are described as follows:
 
@@ -141,46 +143,48 @@ The prerequisites for the scheduled backup is the same with the [prerequisites f
 
 ### Scheduled backup process
 
-Create the `BackupSchedule` CR to enable the scheduled full backup to GCS:
+1. In the following `backup-schedule-gcs.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "" >}}
 
-```shell
-kubectl apply -f backup-schedule-gcs.yaml
-```
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+    name: demo1-backup-schedule-gcs
+    namespace: test1
+    spec:
+    #maxBackups: 5
+    #pause: true
+    maxReservedTime: "3h"
+    schedule: "*/2 * * * *"
+    backupTemplate:
+        from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+        gcs:
+        secretName: gcs-secret
+        projectId: <your-project-id>
+        # location: us-east1
+        # storageClass: STANDARD_IA
+        # objectAcl: private
+        # bucketAcl: private
+        storageClassName: local-storage
+        storageSize: 10Gi
+    ```
 
-The `backup-gcs.yaml` file has the following content:
+2. Create the `BackupSchedule` CR to enable the scheduled full backup to GCS:
 
-```yaml
----
-apiVersion: pingcap.com/v1alpha1
-kind: BackupSchedule
-metadata:
-  name: demo1-backup-schedule-gcs
-  namespace: test1
-spec:
-  #maxBackups: 5
-  #pause: true
-  maxReservedTime: "3h"
-  schedule: "*/2 * * * *"
-  backupTemplate:
-    from:
-      host: <tidb-host-ip>
-      port: <tidb-port>
-      user: <tidb-user>
-      secretName: backup-demo1-tidb-secret
-    gcs:
-      secretName: gcs-secret
-      projectId: <your-project-id>
-      # location: us-east1
-      # storageClass: STANDARD_IA
-      # objectAcl: private
-      # bucketAcl: private
-    storageClassName: local-storage
-    storageSize: 10Gi
-```
+    {{< copyable "shell-regular" >}}
 
-After creating the scheduled full backup, use the following command to check the backup status:
+    ```shell
+    kubectl apply -f backup-schedule-gcs.yaml
+    ```
+
+After creating the scheduled full backup, you can use the following command to check the backup status:
 
 {{< copyable "shell-regular" >}}
 
@@ -188,13 +192,13 @@ After creating the scheduled full backup, use the following command to check the
 kubectl get bks -n test1 -owide
 ```
 
-Use the following command to check all the backup items:
+You can use the following command to check all the backup items:
 
 {{< copyable "shell-regular" >}}
 
- ```shell
- kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-gcs -n test1
- ```
+```shell
+kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-gcs -n test1
+```
 
 From the above example, you can see that the `backupSchedule` configuration consists of two parts. One is the unique configuration of `backupSchedule`, and the other is `backupTemplate`. `backupTemple` specifies the configuration related to the GCS storage, which is the same as the configuration of the ad-hoc full backup to GCS (refer to [GCS backup process](#ad-hoc-backup-process) for details). The following are the unique configuration items of `backupSchedule`:
 
