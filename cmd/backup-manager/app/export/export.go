@@ -64,7 +64,7 @@ func (bo *Options) dumpTidbClusterData() (string, error) {
 		"--tidb-force-priority=LOW_PRIORITY",
 		"--verbose=3",
 		"--regex",
-		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA))",
+		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))",
 	}
 
 	output, err := exec.Command("/mydumper", args...).CombinedOutput()
