@@ -1,0 +1,13 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbClusterAutoScaler
+metadata:
+  name: basic-autosacler
+spec:
+  cluster:
+    name: basic
+  tidb:
+    maxReplicas: 5
+    minReplicas: 2
+  tikv:
+    maxReplicas: 5
+    minReplicas: 2
