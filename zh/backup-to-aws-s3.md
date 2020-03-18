@@ -34,7 +34,7 @@ category: how-to
 
 ## Ad-hoc 全量备份
 
-Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 对象来描述一次备份。TiDB Operator 根据这个 `Backup` 对象来完成具体的备份过程。如果备份过程中出现错误，程序不会自动重试，此时需要手动处理。
+Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 对象来描述一次备份。TiDB Operator 根据这个 `Backup` 对象来完成具体的备份过程。如果备份过程中出现错误，程序不会自动重试，此时需要手动处理。
 
 目前 Ad-hoc 全量备份已经兼容以上三种授权模式，本文档提供如下备份示例。示例假设对部署在 Kubernetes `test1` 这个 namespace 中的 TiDB 集群 `demo1` 进行数据备份，下面是具体操作过程。
 
@@ -138,8 +138,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
     ```
 
-6. 将 ServiceAccount 绑定到 tikv pod：
-
+6. 将 ServiceAccount 绑定到 TiKV 节点： 
     {{< copyable "shell-regular" >}}
 
     ```shell

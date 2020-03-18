@@ -63,7 +63,7 @@ category: how-to
 
 3. 创建 IAM 角色：
     
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Restore` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html)为 IAM 角色赋予需要的权限。由于 `Restore` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
 4. 绑定 IAM 到 tikv 节点:
 
@@ -79,7 +79,7 @@ category: how-to
 
 > **注意：**
 >
-> - arn:aws:iam::123456789012:role/user 为步骤 4 中创建的 IAM 角色。
+> `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
 
 ### 通过 IAM 绑定 ServiceAccount 授权
 
@@ -101,11 +101,11 @@ category: how-to
 
 3. 在群集上为服务帐户启用 IAM 角色：
     
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html) 开启所在的 eks 集群的 IAM 角色授权。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html)开启所在的 eks 集群的 IAM 角色授权。
 
 4. 创建 IAM 角色:
 
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限，并且编辑角色的 `Trust relationships`。
 
 5. 绑定 IAM 到 ServiceAccount 资源上：
 
@@ -115,7 +115,7 @@ category: how-to
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test2
     ```
 
-6. 将 ServiceAccount 绑定到 tikv pod：
+6. 将 ServiceAccount 绑定到 TiKV 节点：
 
     {{< copyable "shell-regular" >}}
 
@@ -127,7 +127,7 @@ category: how-to
 
 > **注意：**
 >
-> - arn:aws:iam::123456789012:role/user 为步骤 4 中创建的 IAM 角色。
+> `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
 
 
 ## 将指定备份数据恢复到 TiDB 集群
@@ -217,7 +217,7 @@ category: how-to
         prefix: my-folder
     ```
 
-+ 创建 `Restore` CR，通过 IAM 绑定 `ServiceAccount` 授权的方式备份集群：
++ 创建 `Restore` CR，通过 IAM 绑定 ServiceAccount 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
