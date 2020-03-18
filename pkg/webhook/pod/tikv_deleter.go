@@ -100,9 +100,9 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 	case v1alpha1.TiKVStateTombstone:
 		return pc.admitDeleteUselessTiKVPod(payload)
 	case v1alpha1.TiKVStateOffline:
-		return pc.admitDeleteOfflineTiKVPod()
+		return pc.rejectDeleteTiKVPod()
 	case v1alpha1.TiKVStateDown:
-		return pc.admitDeleteUselessTiKVPod(payload)
+		return pc.admitDeleteDownTikvPod(payload)
 	case v1alpha1.TiKVStateUp:
 		return pc.admitDeleteUpTiKVPod(payload, storeInfo, storesInfo)
 	default:
@@ -147,7 +147,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 	return util.ARSuccess()
 }
 
-func (pc *PodAdmissionControl) admitDeleteOfflineTiKVPod() *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) rejectDeleteTiKVPod() *admission.AdmissionResponse {
 	return &admission.AdmissionResponse{
 		Allowed: false,
 	}
@@ -215,5 +215,21 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
+	return util.ARSuccess()
+}
+
+// When the target tikv's store is DOWN, we would not pass the deleting request during scale-in, otherwise it would cause
+// the duplicated id problem for the newly tikv pod.
+// Users should offline the target tikv into tombstone first, then scale-in it.
+// In other cases, we would admit to delete the down tikv pod like upgrading.
+func (pc *PodAdmissionControl) admitDeleteDownTikvPod(payload *admitPayload) *admission.AdmissionResponse {
+
+	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
+	if err != nil {
+		return util.ARFail(err)
+	}
+	if !isInOrdinal {
+		return pc.rejectDeleteTiKVPod()
+	}
 	return util.ARSuccess()
 }
