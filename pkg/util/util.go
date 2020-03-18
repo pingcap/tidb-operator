@@ -30,6 +30,7 @@ import (
 
 var (
 	ClusterClientTLSPath = "/var/lib/cluster-client-tls"
+	TiDBClientTLSPath    = "/var/lib/tidb-client-tls"
 )
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
@@ -174,4 +175,8 @@ func ClusterClientTLSSecretName(tcName string) string {
 
 func ClusterTLSSecretName(tcName, component string) string {
 	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
+}
+
+func TiDBClientTLSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-tidb-client-secret", tcName)
 }
