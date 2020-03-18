@@ -17,18 +17,18 @@ category: how-to
 
     AWS 的客户端支持读取进程环境变量中的 `AWS_ACCESS_KEY_ID` 以及 `AWS_SECRET_ACCESS_KEY` 来获取与之相关联的用户或者角色的权限。
 
-2. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `Pod` 进行授权:
+2. 通过将 [IAM](https://aws.amazon.com/cn/iam/) 绑定 Pod 进行授权:
 
-    通过将用户的 `IAM` 角色与所运行的 `Pod` 资源进行绑定，使 `Pod` 中运行的进程获得角色所拥有的权限，这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
+    通过将用户的 IAM 角色与所运行的 Pod 资源进行绑定，使 Pod 中运行的进程获得角色所拥有的权限，这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
 
 > **注意：**
 >
 > - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境， 并且部署 TiDB Operator 以及 TiDB 集群。
 > - 该模式不适用于 [`hostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy) 网络模式，请确保参数 `spec.tikv.hostNetwork` 的值为 `false`。
 
-3. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `ServiceAccount` 进行授权:
+3. 通过将 [IAM](https://aws.amazon.com/cn/iam/) 绑定 ServiceAccount 进行授权:
 
-    通过将用户的 `IAM` 角色与 Kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定， 从而使得使用该 `ServiceAccount` 账号的 `Pod` 都拥有该角色所拥有的权限，这种授权方式由 [`EKS Pod Identity Webhook`](https://github.com/aws/amazon-eks-pod-identity-webhook) 服务提供。
+    通过将用户的 IAM 角色与 Kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定， 从而使得使用该 ServiceAccount 账号的 Pod 都拥有该角色所拥有的权限，这种授权方式由 [`EKS Pod Identity Webhook`](https://github.com/aws/amazon-eks-pod-identity-webhook) 服务提供。
 
 > - 使用该授权模式时，可以参考[`AWS 官方文档`](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 eks 集群， 并且部署 TiDB Operator 以及 TiDB 集群。
 

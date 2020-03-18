@@ -217,7 +217,7 @@ category: how-to
         prefix: my-folder
     ```
 
-+ 创建 `Restore` CR，通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群：
++ 创建 `Restore` CR，通过 IAM 绑定 `ServiceAccount` 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
