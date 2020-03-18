@@ -145,13 +145,13 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     kubectl edit tc demo1 -n test1
     ```
 
-    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager，等到 tikv 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
+    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager，等到 TiKV 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
 
 > **注意：**
 >
 > `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
 
-### 使用 br 备份数据到 Amazon S3 的存储
+### 使用 BR 备份数据到 Amazon S3 的存储
 
 + 创建 `Backup` CR，通过 accessKey 和 secretKey 授权的方式备份集群:
 
