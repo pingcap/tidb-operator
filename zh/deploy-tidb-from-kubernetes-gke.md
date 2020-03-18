@@ -14,6 +14,8 @@ category: how-to
 - 部署 TiDB Operator 和 TiDB 集群
 - 访问 TiDB 集群
 - 扩容 TiDB 集群
+- 访问 Grafana 面板
+- 销毁 TiDB 集群
 - 删除 Kubernetes 集群（可选）
 
 > **警告：**
@@ -83,7 +85,7 @@ kubectl get nodes
 
 2. 部署 TiDB Operator，参考 [安装 TiDB Operator](deploy-tidb-operator.md#安装-tidb-operator) 小节中的操作。
 
-3. 创建 `pd-ssd` StorageClass
+3. 创建 `pd-ssd` StorageClass：
 
     {{< copyable "shell-regular" >}}
 
@@ -146,7 +148,7 @@ SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
 
 ## 扩容 TiDB 集群
 
-参考[文档](scale-a-tidb-cluster.md)扩容 TiDB 集群。
+参考[Kubernetes 上的 TiDB 集群扩缩容](scale-a-tidb-cluster.md)扩容 TiDB 集群。
 
 ## 访问 Grafana 面板
 
