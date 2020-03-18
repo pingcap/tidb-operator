@@ -42,7 +42,7 @@ for t in $(find tests/examples/ -regextype sed -regex '.*/[0-9]\{3\}-.*\.sh'); d
         echo "info: test $t passed"
     else
         echo "error: test $t failed"
-        $((cnt++))
+        ((cnt++))
     fi
 done
 if [ $cnt -gt 0 ]; then
