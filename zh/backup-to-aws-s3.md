@@ -5,36 +5,36 @@ category: how-to
 
 # 使用 BR 工具备份 AWS 上的 TiDB 集群
 
-本文详细描述了如何将运行在 AWS Kubernetes 环境中的 TiDB 集群数据备份到 AWS 的存储上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份）。底层通过使用 [`br`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 获取集群的逻辑备份，然后在将备份数据上传到 AWS 的存储上。
+本文详细描述了如何将运行在 AWS Kubernetes 环境中的 TiDB 集群数据备份到 AWS 的存储上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份）。底层通过使用 [`BR`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 获取集群的逻辑备份，然后再将备份数据上传到 AWS 的存储上。
 
-本文使用的备份方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
+本文使用的备份方式基于 TiDB Operator v1.1 及以上版本的 Custom Resource Definition(CRD) 实现。
 
-## AWS 账号的三种权限授予方式
+## AWS 账号权限授予的三种方式
 
-在 AWS 云环境中， 不同的类型的 kubernetes 集群提供了不同的权限授予方式。本文测试了以下三种权限授予方式。
+在 AWS 云环境中，不同的类型的 kubernetes 集群提供了不同的权限授予方式。本文测试了以下三种权限授予方式:
 
 1. 通过传入 AWS 账号的 AccessKey 和 SecretKey 进行授权:
 
     AWS 的客户端支持读取进程环境变量中的 `AWS_ACCESS_KEY_ID` 以及 `AWS_SECRET_ACCESS_KEY` 来获取与之相关联的用户或者角色的权限。
 
-2. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `Pod` 进行授权:
+2. 通过将 [IAM](https://aws.amazon.com/cn/iam/) 绑定 Pod 进行授权:
 
-    通过将用户的 `IAM` 角色与所运行的 `Pod` 资源进行绑定，使 `Pod` 中运行的进程获得角色所拥有的权限, 这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
+    通过将用户的 IAM 角色与所运行的 Pod 资源进行绑定，使 Pod 中运行的进程获得角色所拥有的权限，这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
 
 > **注意：**
 >
-> - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境, 并且部署 TiDB Operator 以及 TiDB 集群。
-> - 该模式不适用与 [`hostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy) 网络模式，请确保参数 `spec.tikv.hostNetwork` 参数为 `false`。
+> - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境， 并且部署 TiDB Operator 以及 TiDB 集群。
+> - 该模式不适用于 [`hostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy) 网络模式，请确保参数 `spec.tikv.hostNetwork` 的值为 `false`。
 
-3. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `ServiceAccount` 进行授权:
+3. 通过将 [IAM](https://aws.amazon.com/cn/iam/) 绑定 ServiceAccount 进行授权:
 
-    通过将用户的 `IAM` 角色与 kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定, 从而使得使用该 `ServiceAccount` 账号的 `Pod` 都拥有该角色所拥有的权限，这种授权方式由 [`EKS`](https://aws.amazon.com/cn/eks/) 服务提供。
+    通过将用户的 IAM 角色与 Kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定， 从而使得使用该 ServiceAccount 账号的 Pod 都拥有该角色所拥有的权限，这种授权方式由 [`EKS Pod Identity Webhook`](https://github.com/aws/amazon-eks-pod-identity-webhook) 服务提供。
 
-> - 使用该授权模式时，可以参考[`AWS 官方文档`](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 eks 集群, 并且部署 TiDB Operator 以及 TiDB 集群。
+> - 使用该授权模式时，可以参考 [AWS 官方文档](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 eks 集群， 并且部署 TiDB Operator 以及 TiDB 集群。
 
 ## Ad-hoc 全量备份
 
-Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 对象来描述一次备份。TiDB Operator 根据这个 `Backup` 对象来完成具体的备份过程。如果备份过程中出现错误，程序不会自动重试，此时需要手动处理。
+Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 对象来描述一次备份。TiDB Operator 根据这个 `Backup` 对象来完成具体的备份过程。如果备份过程中出现错误，程序不会自动重试，此时需要手动处理。
 
 目前 Ad-hoc 全量备份已经兼容以上三种授权模式，本文档提供如下备份示例。示例假设对部署在 Kubernetes `test1` 这个 namespace 中的 TiDB 集群 `demo1` 进行数据备份，下面是具体操作过程。
 
@@ -58,7 +58,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-literal=secret_key=yyy --namespace=test1
     ```
 
-3. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥。
+3. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的用户所对应的密码。
 
     {{< copyable "shell-regular" >}}
 
@@ -76,7 +76,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl apply -f backup-rbac.yaml -n test1
     ```
 
-2. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥:
+2. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的用户所对应的密码：
 
     {{< copyable "shell-regular" >}}
 
@@ -84,13 +84,13 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
-3. 创建 IAM 角色:
+3. 创建 IAM 角色：
 
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html)来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
-4. 绑定 IAM 到 tikv 节点:
+4. 绑定 IAM 到 TiKV 节点：
 
-    在使用 BR 备份的过程中，tikv 节点和 br 节点一样需要对 S3 存储进行读写操作，所以这里需要给 tikv 节点打上 annotation 来绑定 IAM 角色。
+    在使用 BR 备份的过程中，TiKV 节点和 br 节点一样需要对 S3 存储进行读写操作，所以这里需要给 TiKV 节点打上 annotation 来绑定 IAM 角色。
 
     {{< copyable "shell-regular" >}}
 
@@ -98,11 +98,11 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl edit tc demo1 -n test1
     ```
 
-    找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 tikv 节点重启后，查看节点是否加上了这个 annotation。
+    找到 `spec.tikv.annotations`，增加 annotation `arn:aws:iam::123456789012:role/user`，然后退出编辑，等到 TiKV 节点重启后，查看节点是否加上了这个 annotation。
 
 > **注意：**
 >
-> - arn:aws:iam::123456789012:role/user 为步骤 4 中创建的 IAM 角色。
+> `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
 
 #### 通过 IAM 绑定 ServiceAccount 授权
 
@@ -114,7 +114,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
-2. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥:
+2. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥：
 
     {{< copyable "shell-regular" >}}
 
@@ -122,15 +122,15 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
-3. 在群集上为服务帐户启用 IAM 角色:
+3. 在群集上为服务帐户启用 IAM 角色：
     
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html) 开启所在的 eks 集群的 IAM 角色授权。
 
-4. 创建 IAM 角色:
+4. 创建 IAM 角色：
 
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html)创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限，并且编辑角色的 `Trust relationships`。
 
-5. 绑定 IAM 到 ServiceAccount 资源上:
+5. 绑定 IAM 到 ServiceAccount 资源上：
 
     {{< copyable "shell-regular" >}}
 
@@ -138,21 +138,20 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
     ```
 
-6. 将 ServiceAccount 绑定到 tikv pod:
-
+6. 将 ServiceAccount 绑定到 TiKV 节点： 
     {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl edit tc demo1 -n test1
     ```
 
-    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 tikv 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
+    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager，等到 TiKV 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
 
 > **注意：**
 >
-> - arn:aws:iam::123456789012:role/user 为步骤 4 中创建的 IAM 角色。
+> `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
 
-### 使用 br 备份数据到 Amazon S3 的存储
+### 使用 BR 备份数据到 Amazon S3 的存储
 
 + 创建 `Backup` CR，通过 accessKey 和 secretKey 授权的方式备份集群:
 
@@ -241,7 +240,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         prefix: my-folder
     ```
 
-+ 创建 `Backup` CR，通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群:
++ 创建 `Backup` CR，通过 IAM 绑定 ServiceAccount 授权的方式备份集群:
 
     {{< copyable "shell-regular" >}}
 
@@ -284,7 +283,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         prefix: my-folder
     ```
 
-以上三个示例分别使用三种授权模式将数据到处到 Amazon S3 存储上。Amazon S3 的 `region`、`acl`、`endpoint`、`storageClass` 配置项均可以省略。其余非 Amazon S3 的但是兼容 S3 的存储均可使用和 Amazon S3 类似的配置。可参考上面例子中 Ceph 的配置，省略不需要配置的字段。
+以上三个示例分别使用三种授权模式将数据导出到 Amazon S3 存储上。Amazon S3 的 `acl`、`endpoint`、`storageClass` 配置项均可以省略。
 
 Amazon S3 支持以下几种 access-control list (ACL) 策略：
 
@@ -322,9 +321,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 * `.spec.from.host`：待备份 TiDB 集群的访问地址。
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
-* `.spec.from.tidbSecretName`：待备份 TiDB 集群所需凭证的 secret。
-* `.spec.storageClassName`: 备份时所需的 persistent volume (PV) 类型。如果不指定该项，则默认使用 TiDB Operator 启动参数中 `default-backup-storage-class-name` 指定的值，该值默认为 `standard`。
-* `.spec.storageSize`: 备份时指定所需的 PV 大小。该值须大于备份 TiDB 集群的数据大小。
+* `.spec.from.tidbSecretName`：待备份 TiDB 集群 `.spec.from.user` 用户的密码所对应的 secret。
 
 更多支持的兼容 S3 的 `provider` 如下：
 
@@ -345,9 +342,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 
 同 [Ad-hoc 全量备份环境准备](#ad-hoc-全量备份环境准备)。
 
-### 使用 br 定时备份数据到 Amazon S3 的存储
+### 使用 BR 定时备份数据到 Amazon S3 的存储
 
-+ 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份，通过 accessKey 和 secretKey 授权的方式备份集群:
++ 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份，通过 accessKey 和 secretKey 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -395,7 +392,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           prefix: my-folder
     ```
 
-+ 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份，通过 IAM 绑定 Pod 授权的方式备份集群:
++ 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份，通过 IAM 绑定 Pod 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -444,7 +441,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           prefix: my-folder
     ```
 
-+ 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份, 通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群:
++ 创建 `BackupSchedule` CR，开启 TiDB 集群定时全量备份， 通过 IAM 绑定 ServiceAccount 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -508,7 +505,7 @@ kubectl get bks -n test1 -o wide
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 
-从以上两个示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定 S3 兼容存储相关的配置，该配置与 Ad-hoc 全量备份到兼容 S3 的存储配置完全一样，可参考[使用 br 备份数据到 Amazon S3 的存储](#使用 br 备份数据到 Amazon S3 的存储)。下面介绍 `backupSchedule` 独有的配置项：
+从以上两个示例可知，`backupSchedule` 的配置由两部分组成。一部分是 `backupSchedule` 独有的配置，另一部分是 `backupTemplate`。`backupTemplate` 指定 S3 兼容存储相关的配置，该配置与 Ad-hoc 全量备份到兼容 S3 的存储配置完全一样，可参考[使用 BR 备份数据到 Amazon S3 的存储](#使用-br-备份数据到-amazon-s3-的存储)。下面介绍 `backupSchedule` 独有的配置项：
 
 + `.spec.maxBackups`：一种备份保留策略，决定定时备份最多可保留的备份个数。超过该数目，就会将过时的备份删除。如果将该项设置为 `0`，则表示保留所有备份。
 + `.spec.maxReservedTime`：一种备份保留策略，按时间保留备份。例如将该参数设置为 `24h`，表示只保留最近 24 小时内的备份条目。超过这个时间的备份都会被清除。时间设置格式参考 [`func ParseDuration`](https://golang.org/pkg/time/#ParseDuration)。如果同时设置最大备份保留个数和最长备份保留时间，则以最长备份保留时间为准。
