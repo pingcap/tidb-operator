@@ -281,7 +281,11 @@ var tidbInitStartScriptTpl = template.Must(template.New("tidb-init-start-script"
 host = '{{ .ClusterName }}-tidb'
 permit_host = '{{ .PermitHost }}'
 port = 4000
+{{- if .TLS }}
+conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5, ssl={'ca': '{{ .CAPath }}', 'cert': '{{ .CertPath }}', 'key': '{{ .KeyPath }}'})
+{{- else }}
 conn = MySQLdb.connect(host=host, port=port, user='root', connect_timeout=5)
+{{- end }}
 {{- if .PasswordSet }}
 password_dir = '/etc/tidb/password'
 for file in os.listdir(password_dir):
@@ -313,6 +317,10 @@ type TiDBInitStartScriptModel struct {
 	PermitHost  string
 	PasswordSet bool
 	InitSQL     bool
+	TLS         bool
+	CAPath      string
+	CertPath    string
+	KeyPath     string
 }
 
 func RenderTiDBInitStartScript(model *TiDBInitStartScriptModel) (string, error) {
