@@ -1,4 +1,4 @@
-# The extra TiDB cluster Components
+# Creating TidbCluster with Initialization
 
 > **Note:**
 >
