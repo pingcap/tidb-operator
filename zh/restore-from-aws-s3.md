@@ -15,24 +15,7 @@ category: how-to
 
 在 AWS 云环境中， 不同的类型的 kubernetes 集群提供了不同的权限授予方式。本文测试了以下三种权限授予方式。
 
-1. 通过传入 AWS 账号的 AccessKey 和 SecretKey 进行授权:
-
-    AWS 的客户端支持读取进程环境变量中的 `AWS_ACCESS_KEY_ID` 以及 `AWS_SECRET_ACCESS_KEY` 来获取与之相关联的用户或者角色的权限。
-
-2. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `Pod` 进行授权:
-
-    通过将用户的 `IAM` 角色与所运行的 `Pod` 资源进行绑定，使 `Pod` 中运行的进程获得角色所拥有的权限, 这种授权方式是由 [`kube2iam`](https://github.com/jtblin/kube2iam) 提供。
-
-> **注意：**
->
-> - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境, 并且部署 TiDB Operator 以及 TiDB 集群。
-> - 该模式不适用与 [`hostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy) 网络模式，请确保参数 `spec.tikv.hostNetwork` 参数为 `false`。
-
-3. 通过将 [`IAM`](https://aws.amazon.com/cn/iam/) 绑定 `ServiceAccount` 进行授权:
-
-    通过将用户的 `IAM` 角色与 kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定, 从而使得使用该 `ServiceAccount` 账号的 `Pod` 都拥有该角色所拥有的权限，这种授权方式由 [`EKS`](https://aws.amazon.com/cn/eks/) 服务提供。
-
-> - 使用该授权模式时，可以参考[`AWS 官方文档`](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 eks 集群, 并且部署 TiDB Operator 以及 TiDB 集群。
+参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3.md#aws-账号权限授予的三种方式)
 
 ## 环境准备
 
@@ -72,7 +55,7 @@ category: how-to
     kubectl apply -f backup-rbac.yaml -n test2
     ```
 
-2. 创建 `restore-demo2-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥:
+2. 创建 `restore-demo2-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥：
 
     {{< copyable "shell-regular" >}}
 
@@ -80,7 +63,7 @@ category: how-to
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
     ```
 
-3. 创建 IAM 角色:
+3. 创建 IAM 角色：
     
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过[AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Restore` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
@@ -118,7 +101,7 @@ category: how-to
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
     ```
 
-3. 在群集上为服务帐户启用 IAM 角色:
+3. 在群集上为服务帐户启用 IAM 角色：
     
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html) 开启所在的 eks 集群的 IAM 角色授权。
 
@@ -126,7 +109,7 @@ category: how-to
 
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html) 创建一个 IAM 角色，为角色赋予 `AmazonS3FullAccess` 的权限。 并且编辑角色的 `Trust relationships`。
 
-5. 绑定 IAM 到 ServiceAccount 资源上:
+5. 绑定 IAM 到 ServiceAccount 资源上：
 
     {{< copyable "shell-regular" >}}
 
@@ -134,7 +117,7 @@ category: how-to
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test2
     ```
 
-6. 将 ServiceAccount 绑定到 tikv pod:
+6. 将 ServiceAccount 绑定到 tikv pod：
 
     {{< copyable "shell-regular" >}}
 
@@ -151,7 +134,7 @@ category: how-to
 
 ## 将指定备份数据恢复到 TiDB 集群
 
-+ 创建 `Restore` CR，通过 accessKey 和 secretKey 授权的方式恢复集群:
++ 创建 `Restore` CR，通过 accessKey 和 secretKey 授权的方式恢复集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -193,7 +176,7 @@ category: how-to
         prefix: my-folder
     ```
 
-+ 创建 `Restore` CR，通过 IAM 绑定 Pod 授权的方式备份集群:
++ 创建 `Restore` CR，通过 IAM 绑定 Pod 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -236,7 +219,7 @@ category: how-to
         prefix: my-folder
     ```
 
-+ 创建 `Restore` CR，通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群:
++ 创建 `Restore` CR，通过 `IAM` 绑定 `ServiceAccount` 授权的方式备份集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -292,5 +275,3 @@ category: how-to
 * `.spec.to.port`：待恢复 TiDB 集群的访问端口。
 * `.spec.to.user`：待恢复 TiDB 集群的访问用户。
 * `.spec.to.tidbSecretName`：待恢复 TiDB 集群所需凭证的 secret。
-* `.spec.storageClassName`：指定恢复时所需的 PV 类型。如果不指定该项，则默认使用 TiDB Operator 启动参数中 `default-backup-storage-class-name` 指定的值（默认为 `standard`）。
-* `.spec.storageSize`：指定恢复集群时所需的 PV 大小。该值应大于备份 TiDB 集群的数据大小。
