@@ -1,4 +1,4 @@
-# The extra TiDB cluster Components
+# Deploying TidbCluster with Auto-scaling
 
 > **Note:**
 >
