@@ -171,6 +171,33 @@ var (
 		Priority:    1,
 		JSONPath:    ".status.phase",
 	}
+	autoScalerPrinterColumns []extensionsobj.CustomResourceColumnDefinition
+	// TODO add The current replicas number of TiKV cluster
+	autoScalerTiKVMaxReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "TiKV-MaxReplicas",
+		Type:        "integer",
+		Description: "The max replicas number of TiKV cluster",
+		JSONPath:    ".spec.tikv.maxReplicas",
+	}
+	autoScalerTiKVMinReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "TiKV-MinReplicas",
+		Type:        "integer",
+		Description: "The Min replicas number of TiKV cluster",
+		JSONPath:    ".spec.tikv.minReplicas",
+	}
+	// TODO add The current replicas number of TiDB cluster
+	autoScalerTiDBMaxReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "TiDB-MaxReplicas",
+		Type:        "integer",
+		Description: "The max replicas number of TiDB cluster",
+		JSONPath:    ".spec.tidb.maxReplicas",
+	}
+	autoScalerTiDBMinReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "TiDB-MinReplicas",
+		Type:        "integer",
+		Description: "The Min replicas number of TiDB cluster",
+		JSONPath:    ".spec.tidb.minReplicas",
+	}
 )
 
 func init() {
@@ -182,6 +209,8 @@ func init() {
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime)
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase)
+	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
+		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
@@ -242,6 +271,8 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns
 		break
+	case v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler.Kind:
+		crd.Spec.AdditionalPrinterColumns = autoScalerPrinterColumns
 	default:
 		break
 	}

@@ -8932,6 +8932,23 @@ metadata:
   creationTimestamp: null
   name: tidbclusterautoscalers.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.tidb.maxReplicas
+    description: The max replicas number of TiDB cluster
+    name: TiDB-MaxReplicas
+    type: integer
+  - JSONPath: .spec.tidb.minReplicas
+    description: The Min replicas number of TiDB cluster
+    name: TiDB-MinReplicas
+    type: integer
+  - JSONPath: .spec.tikv.maxReplicas
+    description: The max replicas number of TiKV cluster
+    name: TiKV-MaxReplicas
+    type: integer
+  - JSONPath: .spec.tikv.minReplicas
+    description: The Min replicas number of TiKV cluster
+    name: TiKV-MinReplicas
+    type: integer
   group: pingcap.com
   names:
     kind: TidbClusterAutoScaler
