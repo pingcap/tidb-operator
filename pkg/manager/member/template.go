@@ -256,7 +256,7 @@ var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`
 /pump \
 -pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \
 -L={{ .LogLevel }} \
--addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump:8250 \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
 -log-file=
