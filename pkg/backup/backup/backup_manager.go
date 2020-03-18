@@ -168,7 +168,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -260,7 +260,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
