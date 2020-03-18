@@ -28,6 +28,9 @@ spec:
 {{ toYaml .Values.annotations | indent 8 }}
     {{- end }}
     spec:
+      {{- if .Values.serviceAccount }}
+      serviceAccountName: {{ .Values.serviceAccount }}
+      {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}
@@ -125,8 +128,10 @@ spec:
       {{ else }}
       - name: credentials
         secret:
+          {{- if .Values.dataSource.remote.secretName}}
           secretName: {{ .Values.dataSource.remote.secretName }}
-      {{ end -}}
+          {{- end }}
+      {{- end }}
       - name: data
         persistentVolumeClaim:
           claimName: {{ include "tidb-lightning.name" . }}
