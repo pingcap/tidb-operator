@@ -11,7 +11,7 @@ category: how-to
 
 ## AWS 账号权限授予的三种方式
 
-在 AWS 云环境中，不同的类型的 kubernetes 集群提供了不同的权限授予方式。本文测试了以下三种权限授予方式:
+在 AWS 云环境中，不同的类型的 Kubernetes 集群提供了不同的权限授予方式。本文测试了以下三种权限授予方式:
 
 1. 通过传入 AWS 账号的 AccessKey 和 SecretKey 进行授权:
 
@@ -23,14 +23,14 @@ category: how-to
 
 > **注意：**
 >
-> - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 kubernetes 集群中创建 kube2iam 环境， 并且部署 TiDB Operator 以及 TiDB 集群。
+> - 使用该授权模式时，可以参考[`kube2iam 文档`](https://github.com/jtblin/kube2iam#usage) 在 Kubernetes 集群中创建 kube2iam 环境， 并且部署 TiDB Operator 以及 TiDB 集群。
 > - 该模式不适用于 [`hostNetwork`](https://kubernetes.io/docs/concepts/policy/pod-security-policy) 网络模式，请确保参数 `spec.tikv.hostNetwork` 的值为 `false`。
 
 3. 通过将 [IAM](https://aws.amazon.com/cn/iam/) 绑定 ServiceAccount 进行授权:
 
     通过将用户的 IAM 角色与 Kubeneters 中的 [`serviceAccount`](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#serviceaccount) 资源进行绑定， 从而使得使用该 ServiceAccount 账号的 Pod 都拥有该角色所拥有的权限，这种授权方式由 [`EKS Pod Identity Webhook`](https://github.com/aws/amazon-eks-pod-identity-webhook) 服务提供。
 
-> - 使用该授权模式时，可以参考 [AWS 官方文档](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 eks 集群， 并且部署 TiDB Operator 以及 TiDB 集群。
+> - 使用该授权模式时，可以参考 [AWS 官方文档](https://docs.aws.amazon.com/zh_cn/eks/latest/userguide/create-cluster.html) 创建 EKS 集群， 并且部署 TiDB Operator 以及 TiDB 集群。
 
 ## Ad-hoc 全量备份
 
@@ -88,9 +88,9 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
 
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html)来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Backup` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
-4. 绑定 IAM 到 TiKV 节点：
+4. 绑定 IAM 到 TiKV Pod：
 
-    在使用 BR 备份的过程中，TiKV 节点和 br 节点一样需要对 S3 存储进行读写操作，所以这里需要给 TiKV 节点打上 annotation 来绑定 IAM 角色。
+    在使用 BR 备份的过程中，TiKV Pod 和 BR Pod 一样需要对 S3 存储进行读写操作，所以这里需要给 TiKV Pod 打上 annotation 来绑定 IAM 角色。
 
     {{< copyable "shell-regular" >}}
 
@@ -98,7 +98,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     kubectl edit tc demo1 -n test1
     ```
 
-    找到 `spec.tikv.annotations`，增加 annotation `arn:aws:iam::123456789012:role/user`，然后退出编辑，等到 TiKV 节点重启后，查看节点是否加上了这个 annotation。
+    找到 `spec.tikv.annotations`，增加 annotation `arn:aws:iam::123456789012:role/user`，然后退出编辑，等到 TiKV Pod 重启后，查看 Pod 是否加上了这个 annotation。
 
 > **注意：**
 >
@@ -124,7 +124,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
 
 3. 在群集上为服务帐户启用 IAM 角色：
     
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html) 开启所在的 eks 集群的 IAM 角色授权。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html) 开启所在的 EKS 集群的 IAM 角色授权。
 
 4. 创建 IAM 角色：
 
@@ -138,14 +138,14 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test1
     ```
 
-6. 将 ServiceAccount 绑定到 TiKV 节点： 
+6. 将 ServiceAccount 绑定到 TiKV Pod：
     {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl edit tc demo1 -n test1
     ```
 
-    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager，等到 TiKV 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
+    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager，等到 TiKV Pod 重启后，查看 Pod 的 `serviceAccountName` 是否有变化。
 
 > **注意：**
 >
