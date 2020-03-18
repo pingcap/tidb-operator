@@ -15,6 +15,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
+	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
 )
@@ -59,5 +61,11 @@ func main() {
 		ExtraServiceAccounts:     extraServiceAccounts,
 		EvictRegionLeaderTimeout: evictRegionLeaderTimeout,
 	}
+	ns := os.Getenv("NAMESPACE")
+	if len(ns) < 1 {
+		klog.Fatal("ENV NAMESPACE should be set.")
+	}
+	pod.AstsControllerServiceAccounts = fmt.Sprintf("system:serviceaccount:%s:advanced-statefulset-controller", ns)
+
 	cmd.RunAdmissionServer(ah)
 }
