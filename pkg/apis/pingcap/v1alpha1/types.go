@@ -616,7 +616,10 @@ type TiDBTLSClient struct {
 	//   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
 	//      The name of this Secret must be: <clusterName>-tidb-server-secret.
 	//        kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-	//   3. Set Enabled to `true`.
+	//   3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+	//      The name of this Secret must be: <clusterName>-tidb-client-secret.
+	//        kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 }
