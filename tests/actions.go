@@ -230,10 +230,6 @@ type OperatorActions interface {
 	LabelNodesOrDie()
 	CheckDisasterTolerance(info *TidbClusterConfig) error
 	CheckDisasterToleranceOrDie(info *TidbClusterConfig)
-	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
-	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
-	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
-	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
 	CheckUpgradeComplete(info *TidbClusterConfig) error
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
 	CheckInitSQL(info *TidbClusterConfig) error
@@ -410,10 +406,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                                oi.Image,
 		"controllerManager.autoFailover":               "true",
-		"scheduler.kubeSchedulerImageName":             oi.SchedulerImage,
-		"controllerManager.logLevel":                   oi.LogLevel,
 		"scheduler.logLevel":                           "4",
-		"imagePullPolicy":                              string(oi.ImagePullPolicy),
 		"testMode":                                     strconv.FormatBool(oi.TestMode),
 		"admissionWebhook.cabundle":                    oi.Cabundle,
 		"admissionWebhook.create":                      strconv.FormatBool(oi.WebhookEnabled),
@@ -421,6 +414,15 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 		"admissionWebhook.validation.statefulSets":     strconv.FormatBool(oi.StsWebhookEnabled),
 		"admissionWebhook.mutation.pingcapResources":   strconv.FormatBool(oi.DefaultingEnabled),
 		"admissionWebhook.validation.pingcapResources": strconv.FormatBool(oi.ValidatingEnabled),
+	}
+	if oi.LogLevel != "" {
+		set["controllerManager.logLevel"] = oi.LogLevel
+	}
+	if oi.SchedulerImage != "" {
+		set["scheduler.kubeSchedulerImageName"] = oi.SchedulerImage
+	}
+	if string(oi.ImagePullPolicy) != "" {
+		set["imagePullPolicy"] = string(oi.ImagePullPolicy)
 	}
 	if oi.ControllerManagerReplicas != nil {
 		set["controllerManager.replicas"] = strconv.Itoa(*oi.ControllerManagerReplicas)
@@ -889,54 +891,6 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 
 func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	if err := oa.CleanTidbCluster(info); err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error) {
-	assignedNodes := make(map[string]string)
-	ns := info.Namespace
-	tcName := info.ClusterName
-	listOptions := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(
-			label.New().Instance(tcName).Component(label.TiDBLabelVal).Labels()).String(),
-	}
-	podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
-	if err != nil {
-		klog.Errorf("failed to get tidb pods: %s/%s, %v", ns, tcName, err)
-		return nil, err
-	}
-	for _, pod := range podList.Items {
-		assignedNodes[pod.Name] = pod.Spec.NodeName
-	}
-	return assignedNodes, nil
-}
-
-func (oa *operatorActions) GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string {
-	result, err := oa.GetTidbMemberAssignedNodes(info)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-	return result
-}
-
-func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
-	klog.Infof("checking tidb member [%s/%s] assigned nodes", info.Namespace, info.ClusterName)
-	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
-	if err != nil {
-		return err
-	}
-	for member, node := range oldAssignedNodes {
-		newNode, ok := assignedNodes[member]
-		if !ok || newNode != node {
-			return fmt.Errorf("tidb member %s is not scheduled to %s, new node: %s", member, node, newNode)
-		}
-	}
-	return nil
-}
-
-func (oa *operatorActions) CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string) {
-	if err := oa.CheckTidbMemberAssignedNodes(info, oldAssignedNodes); err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
