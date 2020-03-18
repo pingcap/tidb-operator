@@ -163,7 +163,7 @@ spec:
 你可以通过以下命令来确认 PVC 情况:
 
 ```shell
-$ kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor
+$ kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n <namespace>
 NAME            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         RWO            standard       51s
 ```
