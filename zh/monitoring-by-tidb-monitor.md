@@ -80,7 +80,7 @@ spec:
     version: 6.0.1
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v3.0.5
+    version: v3.1.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
@@ -107,10 +107,10 @@ basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 ### 查看监控面板
 
 ```shell
-> kubectl -n <namespace> port-forward svc/basic-grafana 4000:4000 &>/tmp/pf-grafana.log &
+> kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
-然后访问 localhost:4000
+然后访问 localhost:3000
 
 ### 删除集群与监控
 
@@ -153,7 +153,7 @@ spec:
       type: NodePort
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v3.0.5
+    version: v3.1.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
@@ -196,7 +196,7 @@ spec:
       type: NodePort
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v3.0.5
+    version: v3.1.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
