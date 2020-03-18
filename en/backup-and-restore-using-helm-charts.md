@@ -1,5 +1,5 @@
 ---
-title: Helm Charts-Based Backup and Restoration
+title: Backup and Restore Using Helm Charts
 summary: Learn how to back up and restore data of the TiDB cluster in Kubernetes using Helm charts.
 category: how-to
 aliases: ['/docs/dev/tidb-in-kubernetes/maintain/backup-and-restore/','/docs/v3.0/tidb-in-kubernetes/maintain/backup-and-restore/','/docs/v3.1/tidb-in-kubernetes/maintain/backup-and-restore/']
