@@ -10,25 +10,18 @@ This document describes how to initialize a TiDB cluster in Kubernetes (K8s), sp
 
 > **Note:**
 >
-> The following steps only apply when you create a cluster for the first time. Further configuration or modification after the initial cluster creation is not valid.
+> - After creating the TiDB cluster, if you manually change the password of the `root` account, the initialization will fail.
+> - The following steps only apply when you create a cluster for the first time. Further configuration or modification after the initial cluster creation is not valid.
 
-## Set initial account and password
+## Configure TidbInitializer
+
+Refer to [TidbInitializer examples](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml), [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html), and the following steps to complete TidbInitializer Custom Resource (CR), and save it to the `<cluster-name>/tidb-initializer.yaml` file. Please switch the examples and API documentation to the currently used version of TiDB Operator.
+
+### Set initial account and password
 
 When a cluster is created, a default account `root` is created with no password. This might cause security issues. You can set a password for the `root` account in the following steps:
 
-1. Create the `Namespace`.
-
-    Before creating the cluster, create the [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/):
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create namespace <namespace>
-    ```
-
-2. Create a `secret` object.
-
-    Before creating a cluster, create a [`secret`](https://kubernetes.io/docs/concepts/configuration/secret/) to specify the password for `root`:
+- Create a [`secret`](https://kubernetes.io/docs/concepts/configuration/secret/) to specify the password for `root`:
 
     {{< copyable "shell-regular" >}}
 
@@ -36,7 +29,7 @@ When a cluster is created, a default account `root` is created with no password.
     kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
     ```
 
-    If you also want to create users automatically, append the desired user name and the password, for example:
+- If you also want to create users automatically, add the desired username and the password in the above command, for example:
 
     {{< copyable "shell-regular" >}}
 
@@ -44,56 +37,38 @@ When a cluster is created, a default account `root` is created with no password.
     kubectl create secret generic tidb-secret --from-literal=root=<root-password> --from-literal=developer=<developer-passowrd> --namespace=<namespace>
     ```
 
-    This command creates users `root` and `developer` with their passwords, which are saved in the `tidb-secret` object. By default, the regular user `developer` is only granted with `USAGE` privilege; other privileges are set in the configuration item `tidb.initSql`.
+    This command creates `root` and `developer` users with their passwords, which are saved in the `tidb-secret` object. By default, the regular `developer` user is only granted with `USAGE` privilege. You can set other privileges in the `initSql` configuration item.
 
-3. Set a host that has access to TiDB.
+## Set a host that has access to TiDB
 
-    Before deploying the cluster, you can set a host that has access to TiDB by using the `tidb.permitHost` configuration item. If it is not set, all hosts have access to TiDB. For details, refer to [Mysql GRANT host name](https://dev.mysql.com/doc/refman/5.7/en/grant.html).
-
-    ```
-    tidb:
-      passwordSecretName: tidb-secret
-      permitHost: <mysql-client-host-name>
-    ```
-
-4. Deploy the cluster.
-
-    After creating the `secret`, deploy the cluster using the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm install pingcap/tidb-cluster -f values.yaml --name=<release-name> --namespace=<namespace> --version=<chart-version>
-    ```
-
-    After specifying `tidb.passwordSecretName`, the above command sets up a cluster with an initialization job created automatically. Using the available `secret`, this job creates the password for the `root` account, and creates other user accounts and passwords if specified. The password specified here is required when you login to the MySQL client.
-
-    > **Note:**
-    >
-    > When the initialization job is created, the Pod for the TiDB cluster has not been created fully. There might be a few errors before initialization completes and Pod state becomes Completed.
+To set a host that has access to TiDB, modify the `permitHost: <mysql-client-host-name>` configuration item in `<cluster-name>/tidb-initializer.yaml`. If it is not set, all hosts have access to TiDB. For details, refer to [Mysql GRANT host name](https://dev.mysql.com/doc/refman/5.7/en/grant.html).
 
 ## Initialize SQL statements in batch
 
-You can also execute the SQL statements in batch in `tidb.initSql` for initialization. This function by default creates some databases or tables for the cluster and performs user privilege management operations. For example, the following configuration automatically creates a database named `app` after the cluster creation, and grants the `developer` account full management privileges on `app`.
+The cluster can also automatically execute the SQL statements in batch in `initSql` during the initialization. This function by default creates some databases or tables for the cluster and performs user privilege management operations. For example, the following configuration automatically creates a database named `app` after the cluster creation, and grants the `developer` account full management privileges on `app`.
 
 {{< copyable "yaml" >}}
 
 ```yaml
-tidb:
-  passwordSecretName: tidb-secret
-  initSql: |-
+spec:
+...
+initSql: |-
     CREATE DATABASE app;
     GRANT ALL PRIVILEGES ON app.* TO 'developer'@'%';
-```
-
-Save the above configuration to the `values.yaml` file and run the following command to deploy the cluster:
-
-{{< copyable "shell-regular" >}}
-
-```bash
-helm install pingcap/tidb-cluster -f values.yaml --name=<release-name> --namespace=<namespace> --version=<chart_version>
 ```
 
 > **Note:**
 >
 > Currently no verification has been implemented for `initSql`. You can create accounts and set passwords in `initSql`, but it is not recommended because passwords created this way are saved as plaintext in the initializer job object.
+
+## Initialize the cluster
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl apply -f <cluster-name>/tidb-initializer.yaml --namespace=<namespace>
+```
+
+The above command automatically creates a initialized Job. This Job tries to create the initial password for the `root` account using the `secret` object provided. It also tries to create other accounts and passwords, if they are specified.
+
+After the initialization, the state of Pod becomes `Completed`. If you log in via MySQL client later, you need to specify the password created by the Job.
