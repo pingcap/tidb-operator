@@ -189,7 +189,7 @@ var (
 	autoScalerTiDBMaxReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "TiDB-MaxReplicas",
 		Type:        "integer",
-		Description: "The max replicas number of TiDB cluster",
+		Description: "The maximal replicas of TiDB",
 		JSONPath:    ".spec.tidb.maxReplicas",
 	}
 	autoScalerTiDBMinReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
