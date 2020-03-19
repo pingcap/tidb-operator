@@ -74,6 +74,9 @@ affinity: {}
 
 backend: importer # importer | tidb
 
+# Specify a Service Account for lightning
+# serviceAccount:
+
 config: |
   [lightning]
   level = "info"
