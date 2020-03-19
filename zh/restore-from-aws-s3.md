@@ -99,7 +99,7 @@ category: how-to
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
     ```
 
-3. 在群集上为服务帐户启用 IAM 角色：
+3. 在集群上为服务帐户启用 IAM 角色：
     
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html)开启所在的 EKS 集群的 IAM 角色授权。
 
