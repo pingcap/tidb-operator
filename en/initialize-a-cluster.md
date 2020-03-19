@@ -13,7 +13,7 @@ This document describes how to initialize a TiDB cluster in Kubernetes (K8s), sp
 > - After creating the TiDB cluster, if you manually change the password of the `root` account, the initialization will fail.
 > - The following steps only apply when you create a cluster for the first time. Further configuration or modification after the initial cluster creation is not valid.
 
-## Configure TidbInitializer
+## Step 1: Configure TidbInitializer
 
 Refer to [TidbInitializer examples](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml), [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html), and the following steps to complete TidbInitializer Custom Resource (CR), and save it to the `<cluster-name>/tidb-initializer.yaml` file. Please switch the examples and API documentation to the currently used version of TiDB Operator.
 
@@ -39,11 +39,11 @@ When a cluster is created, a default account `root` is created with no password.
 
     This command creates `root` and `developer` users with their passwords, which are saved in the `tidb-secret` object. By default, the regular `developer` user is only granted with `USAGE` privilege. You can set other privileges in the `initSql` configuration item.
 
-## Set a host that has access to TiDB
+## Step 2: Set a host that has access to TiDB
 
 To set a host that has access to TiDB, modify the `permitHost: <mysql-client-host-name>` configuration item in `<cluster-name>/tidb-initializer.yaml`. If it is not set, all hosts have access to TiDB. For details, refer to [Mysql GRANT host name](https://dev.mysql.com/doc/refman/5.7/en/grant.html).
 
-## Initialize SQL statements in batch
+## Step 3: Initialize SQL statements in batch
 
 The cluster can also automatically execute the SQL statements in batch in `initSql` during the initialization. This function by default creates some databases or tables for the cluster and performs user privilege management operations.
 
@@ -63,7 +63,7 @@ initSql: |-
 >
 > Currently no verification has been implemented for `initSql`. You can create accounts and set passwords in `initSql`, but it is not recommended because passwords created this way are saved as plaintext in the initializer job object.
 
-## Initialize the cluster
+## Step 4: Initialize the cluster
 
 {{< copyable "shell-regular" >}}
 
