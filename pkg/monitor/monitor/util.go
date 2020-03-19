@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"sort"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -513,6 +514,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
+	c.Env = sortEnvByName(c.Env)
 	return c
 }
 
@@ -668,9 +670,10 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 	}
 
+	promethuesName := fmt.Sprintf("%s-prometheus", monitor.Name)
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-prometheus", monitor.Name),
+			Name:            promethuesName,
 			Namespace:       monitor.Namespace,
 			Labels:          monitorLabel,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -689,10 +692,15 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			Selector: labels,
 		},
 	}
+	if monitor.BasePrometheusSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+		if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
+			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
+		}
+	}
 
 	reloaderService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            fmt.Sprintf("%s-reloader", monitor.Name),
+			Name:            fmt.Sprintf("%s-monitor-reloader", monitor.Name),
 			Namespace:       monitor.Namespace,
 			Labels:          monitorLabel,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -713,6 +721,12 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				label.ComponentLabelKey: label.TiDBMonitorVal,
 			},
 		},
+	}
+
+	if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+		if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
+			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
+		}
 	}
 
 	services = append(services, prometheusService, reloaderService)
@@ -741,6 +755,13 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				},
 			},
 		}
+
+		if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
+			if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
+				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+			}
+		}
+
 		services = append(services, grafanaService)
 	}
 	return services
@@ -769,4 +790,28 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
+}
+
+// sortEnvByName in order to avoid syncing same template into different results
+func sortEnvByName(envlist []core.EnvVar) []core.EnvVar {
+	if envlist == nil || len(envlist) < 1 {
+		return envlist
+	}
+	var wrappers EnvListWrapper
+	wrappers = envlist
+	sort.Sort(wrappers)
+	return wrappers
+}
+
+type EnvListWrapper []core.EnvVar
+
+func (e EnvListWrapper) Len() int {
+	return len(e)
+}
+func (e EnvListWrapper) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
+func (e EnvListWrapper) Less(i, j int) bool {
+	return e[i].Name < e[j].Name
 }
