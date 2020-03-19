@@ -45,7 +45,9 @@ To set a host that has access to TiDB, modify the `permitHost: <mysql-client-hos
 
 ## Initialize SQL statements in batch
 
-The cluster can also automatically execute the SQL statements in batch in `initSql` during the initialization. This function by default creates some databases or tables for the cluster and performs user privilege management operations. For example, the following configuration automatically creates a database named `app` after the cluster creation, and grants the `developer` account full management privileges on `app`.
+The cluster can also automatically execute the SQL statements in batch in `initSql` during the initialization. This function by default creates some databases or tables for the cluster and performs user privilege management operations.
+
+For example, the following configuration automatically creates a database named `app` after the cluster creation, and grants the `developer` account full management privileges on `app`:
 
 {{< copyable "yaml" >}}
 
@@ -69,6 +71,6 @@ initSql: |-
 kubectl apply -f <cluster-name>/tidb-initializer.yaml --namespace=<namespace>
 ```
 
-The above command automatically creates a initialized Job. This Job tries to create the initial password for the `root` account using the `secret` object provided. It also tries to create other accounts and passwords, if they are specified.
+The above command automatically creates an initialized Job. This Job tries to create the initial password for the `root` account using the `secret` object provided. It also tries to create other accounts and passwords, if they are specified.
 
-After the initialization, the state of Pod becomes `Completed`. If you log in via MySQL client later, you need to specify the password created by the Job.
+After the initialization, the Pod state becomes `Completed`. If you log in via MySQL client later, you need to specify the password created by the Job.

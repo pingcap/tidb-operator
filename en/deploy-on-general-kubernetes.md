@@ -33,13 +33,15 @@ You can set the storage class by modifying `storageClassName` of each component 
 
 ### Cluster topology
 
-The deployed cluster topology by default has 3 PD Pods, 3 TiKV Pods, and 2 TiDB Pods. In this deployment topology, the scheduler extender of TiDB Operator requires at least 3 nodes in the Kubernetes cluster to provide high availability. If the number of Kubernetes cluster nodes is less than 3, 1 PD Pod goes to the Pending state, and neither TiKV Pods nor TiDB Pods are created.
+The deployed cluster topology by default has 3 PD Pods, 3 TiKV Pods, and 2 TiDB Pods. In this deployment topology, the scheduler extender of TiDB Operator requires at least 3 nodes in the Kubernetes cluster to provide high availability.
+
+If the number of Kubernetes cluster nodes is less than 3, 1 PD Pod goes to the Pending state, and neither TiKV Pods nor TiDB Pods are created.
 
 When the number of nodes in the Kubernetes cluster is less than 3, to start the TiDB cluster, you can reduce both the number of PD Pods and TiKV Pods in the default deployment to `1`.
 
 ## Deploy TiDB Cluster
 
-After you deploy and configure TiDB Operator, deploy the TiDB cluster using the following steps:
+After you deploy and configure TiDB Operator, deploy the TiDB cluster by the following steps:
 
 1. Create `Namespace`:
 
