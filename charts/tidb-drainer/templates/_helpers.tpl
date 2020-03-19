@@ -7,7 +7,7 @@
 {{- end -}}
 
 {{- define "drainer.tlsSecretName" -}}
-{{ .Values.clusterName }}-drainer
+{{ .Values.clusterName }}-drainer-cluster-secret
 {{- end -}}
 
 {{/*
@@ -18,9 +18,9 @@ config-file: |-
     {{- if .Values.config }}
 {{ .Values.config | indent 2 }}
     {{- end -}}
-    {{- if .Values.enableTLSCluster }}
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
   [security]
-  ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  ssl-ca = "/var/lib/drainer-tls/ca.crt"
   ssl-cert = "/var/lib/drainer-tls/tls.crt"
   ssl-key = "/var/lib/drainer-tls/tls.key"
     {{- end -}}
@@ -31,7 +31,7 @@ config-file: |-
 {{- end -}}
 
 {{- define "cluster.scheme" -}}
-{{ if .Values.enableTLSCluster }}https{{ else }}http{{ end }}
+{{ if and .Values.tlsCluster .Values.tlsCluster.enabled }}https{{ else }}http{{ end }}
 {{- end -}}
 
 {{- define "helm-toolkit.utils.template" -}}
