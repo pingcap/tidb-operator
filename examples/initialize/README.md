@@ -48,7 +48,7 @@ You can also create other users and set their password:
 > kubectl create secret generic tidb-secret --from-literal=root=<root-password> --from-literal=developer=<developer-passowrd> --namespace=<namespace>
 ```
 
-Initialize the cluster to create the users and create the database named `test`
+Initialize the cluster to create the users and create the database named `hello`:
 
 ```bash
 > kubectl -n <namespace> apply -f ./
