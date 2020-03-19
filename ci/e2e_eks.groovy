@@ -40,6 +40,27 @@ spec:
     emptyDir: {}
 '''
 
+// Able to override default values in Jenkins job via environment variables.
+if (!env.DEFAULT_GIT_REF) {
+    env.DEFAULT_GIT_REF = "master"
+}
+
+if (!env.DEFAULT_GINKGO_NODES) {
+    env.DEFAULT_GINKGO_NODES = "8"
+}
+
+if (!env.DEFAULT_E2E_ARGS) {
+    env.DEFAULT_E2E_ARGS = "--ginkgo.skip='\\[Serial\\]|\\[Stability\\]' --ginkgo.focus='\\[tidb-operator\\]'"
+}
+
+if (!env.DEFAULT_CLUSTER) {
+    env.DEFAULT_CLUSTER = "jenkins-tidb-operator-e2e"
+}
+
+if (!env.DEFAULT_AWS_REGION) {
+    env.DEFAULT_AWS_REGION = "us-west-2"
+}
+
 pipeline {
     agent {
         kubernetes {
@@ -50,16 +71,17 @@ pipeline {
     }
 
     options {
-        timeout(time: 3, unit: 'HOURS') 
+        timeout(time: 3, unit: 'HOURS')
     }
 
     parameters {
         string(name: 'GIT_URL', defaultValue: 'git@github.com:pingcap/tidb-operator.git', description: 'git repo url')
-        string(name: 'GIT_REF', defaultValue: 'master', description: 'git ref spec to checkout, e.g. master, release-1.1')
+        string(name: 'GIT_REF', defaultValue: env.DEFAULT_GIT_REF, description: 'git ref spec to checkout, e.g. master, release-1.1')
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889')
-        string(name: 'CLUSTER', defaultValue: 'jenkins-tidb-operator-e2e', description: 'the name of the cluster')
-        string(name: 'AWS_REGION', defaultValue: 'us-west-2', description: 'the AWS region')
-        string(name: 'GINKGO_NODES', defaultValue: '8', description: 'the number of ginkgo nodes')
+        string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes')
+        string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'")
+        string(name: 'CLUSTER', defaultValue: env.DEFAULT_CLUSTER, description: 'the name of the cluster')
+        string(name: 'AWS_REGION', defaultValue: env.DEFAULT_AWS_REGION, description: 'the AWS region')
     }
 
     environment {
@@ -117,7 +139,7 @@ pipeline {
                     echo "info: try to clean the cluster created previously"
                     ./ci/aws-clean-eks.sh \$CLUSTER
                     echo "info: begin to run e2e"
-                    ./hack/e2e.sh -- --ginkgo.skip='\\[Serial\\]' --ginkgo.focus='\\[tidb-operator\\]'
+                    ./hack/e2e.sh -- ${params.E2E_ARGS}
                     """
                 }
             }
