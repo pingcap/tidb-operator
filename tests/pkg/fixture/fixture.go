@@ -182,6 +182,12 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				Type:        corev1.ServiceTypeClusterIP,
 				Annotations: map[string]string{},
 			},
+			Envs: map[string]string{
+				"A":    "B",
+				"foo":  "hello",
+				"bar":  "query",
+				"some": "any",
+			},
 		}
 	}
 	if persist {

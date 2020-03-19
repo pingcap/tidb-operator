@@ -105,8 +105,8 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 }
 
 func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
-	service := getMonitorService(monitor)
-	for _, svc := range service {
+	services := getMonitorService(monitor)
+	for _, svc := range services {
 		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
