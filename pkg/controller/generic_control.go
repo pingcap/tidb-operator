@@ -284,7 +284,7 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 					for _, eport := range ports {
 						// Because the portName could be edited,
 						// we use Port number to link the desired Service Port and the existed Service Port in the nested loop
-						if dport.Port == eport.Port {
+						if dport.Port == eport.Port && dport.Protocol == eport.Protocol {
 							dport.NodePort = eport.NodePort
 							existingSvc.Spec.Ports[i] = dport
 							break
