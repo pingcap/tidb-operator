@@ -195,7 +195,7 @@ var (
 	autoScalerTiDBMinReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "TiDB-MinReplicas",
 		Type:        "integer",
-		Description: "The Min replicas number of TiDB cluster",
+		Description: "The minimal replicas of TiDB",
 		JSONPath:    ".spec.tidb.minReplicas",
 	}
 )
