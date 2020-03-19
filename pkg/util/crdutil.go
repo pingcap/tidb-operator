@@ -182,7 +182,7 @@ var (
 	autoScalerTiKVMinReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "TiKV-MinReplicas",
 		Type:        "integer",
-		Description: "The Min replicas number of TiKV cluster",
+		Description: "The minimal replicas of TiKV",
 		JSONPath:    ".spec.tikv.minReplicas",
 	}
 	// TODO add The current replicas number of TiDB cluster
