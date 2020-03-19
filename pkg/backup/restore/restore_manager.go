@@ -159,7 +159,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -245,7 +245,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
