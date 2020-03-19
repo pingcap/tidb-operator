@@ -1546,13 +1546,17 @@ TidbMonitorStatus
 <tbody>
 <tr>
 <td>
-<code>enableTLSClient</code></br>
+<code>tlsCluster</code></br>
 <em>
-bool
+<a href="#pingcap.com/v1alpha1.TLSCluster">
+TLSCluster
+</a>
 </em>
 </td>
 <td>
-<p>Whether enable TLS in TiDBCluster</p>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between TiDB server components
+Optional: Defaults to nil</p>
 </td>
 </tr>
 <tr>
@@ -6652,6 +6656,7 @@ GcsStorageProvider
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.BRConfig">BRConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
 </p>
 <p>
