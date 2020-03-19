@@ -32,7 +32,6 @@ import (
 type MonitorManager struct {
 	typedControl     controller.TypedControlInterface
 	deploymentLister appslisters.DeploymentLister
-	svcLister        corelisters.ServiceLister
 	tcLister         v1alpha1listers.TidbClusterLister
 	pvLister         corelisters.PersistentVolumeLister
 	pvControl        controller.PVControlInterface
@@ -55,7 +54,6 @@ func NewMonitorManager(
 	return &MonitorManager{
 		typedControl:     typedControl,
 		deploymentLister: kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		svcLister:        kubeInformerFactory.Core().V1().Services().Lister(),
 		tcLister:         informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		pvControl:        controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:         pvLister,
