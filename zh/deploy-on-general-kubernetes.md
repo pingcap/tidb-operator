@@ -69,4 +69,4 @@ TiDB Operator 部署并配置完成后，可以通过下面命令部署 TiDB 集
 
 ### 初始化 TiDB 集群
 
-如果要在部署完 TiDB 集群后做一些初始化工作，参考 [Kubernetes 上的集群初始化配置](initialize-cluster.md)进行配置。
+如果要在部署完 TiDB 集群后做一些初始化工作，参考 [Kubernetes 上的集群初始化配置](initialize-a-cluster.md)进行配置。
