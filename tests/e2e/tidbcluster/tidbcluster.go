@@ -244,12 +244,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
 		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
 		ctx, cancel := context.WithCancel(context.Background())
-		assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(&cluster)
 		cluster.UpgradeAll(upgradeVersions[0])
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckUpgradeOrDie(ctx, &cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
-		oa.CheckTidbMemberAssignedNodesOrDie(&cluster, assignedNodes)
 		cancel()
 
 		ginkgo.By("Check webhook is still running")

@@ -174,12 +174,10 @@ func run() {
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
-			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 			cluster.UpgradeAll(upgradeVersion)
 			oa.UpgradeTidbClusterOrDie(cluster)
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
 
 		// configuration change
