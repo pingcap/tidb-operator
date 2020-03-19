@@ -176,7 +176,7 @@ var (
 	autoScalerTiKVMaxReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "TiKV-MaxReplicas",
 		Type:        "integer",
-		Description: "The max replicas number of TiKV cluster",
+		Description: "The maximal replicas of TiKV",
 		JSONPath:    ".spec.tikv.maxReplicas",
 	}
 	autoScalerTiKVMinReplicasColumn = extensionsobj.CustomResourceColumnDefinition{
