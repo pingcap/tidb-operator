@@ -43,8 +43,10 @@ spec:
         - |
 {{ tuple "scripts/_start_data_retriever.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
         volumeMounts:
+        {{- if or .Values.dataSource.remote.rcloneConfig .Values.dataSource.remote.secretName}}
         - name: credentials
           mountPath: /etc/rclone
+        {{ end -}}
         - name: data
           mountPath: /data
       {{ if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
@@ -125,12 +127,10 @@ spec:
           items:
           - key: config-file
             path: rclone.conf
-      {{ else }}
+      {{- else if .Values.dataSource.remote.secretName }}
       - name: credentials
         secret:
-          {{- if .Values.dataSource.remote.secretName}}
           secretName: {{ .Values.dataSource.remote.secretName }}
-          {{- end }}
       {{- end }}
       - name: data
         persistentVolumeClaim:
