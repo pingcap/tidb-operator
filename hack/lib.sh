@@ -154,7 +154,7 @@ function hack::wait_for_success() {
 }
 
 #
-# Concatenates the elements with an separator between them.
+# Concatenates the elements with a separator between them.
 #
 # Usage: hack::join ',' a b c
 #

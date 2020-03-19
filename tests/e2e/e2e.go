@@ -274,6 +274,11 @@ func RunE2ETests(t *testing.T) {
 
 	gomega.RegisterFailHandler(e2elog.Fail)
 
+	// Disable serial and stability tests by default unless they are explicitly requested.
+	if config.GinkgoConfig.FocusString == "" && config.GinkgoConfig.SkipString == "" {
+		config.GinkgoConfig.SkipString = `\[Stability\]|\[Serial\]`
+	}
+
 	// Run tests through the Ginkgo runner with output to console + JUnit for Jenkins
 	var r []ginkgo.Reporter
 	if framework.TestContext.ReportDir != "" {
