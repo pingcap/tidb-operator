@@ -214,9 +214,10 @@ function e2e::image_load() {
         $E2E_IMAGE
     )
     if [ "$PROVIDER" == "kind" ]; then
+        local nodes=$($KIND_BIN get nodes --name $CLUSTER | grep -v 'control-plane$')
         echo "info: load images ${images[@]}"
         for n in ${images[@]}; do
-            $KIND_BIN load docker-image --name $CLUSTER $n
+            $KIND_BIN load docker-image --name $CLUSTER $n --nodes $(hack::join ',' ${nodes[@]})
         done
     elif [ "$PROVIDER" == "gke" ]; then
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
