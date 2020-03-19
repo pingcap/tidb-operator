@@ -19,14 +19,15 @@ import (
 	"path"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
 type Options struct {
-	util.GenericOptions
+	backupUtil.GenericOptions
 }
 
 func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
@@ -39,10 +40,10 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		return err
 	}
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
-	if restore.Spec.BR.EnableTLSClient {
-		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
-		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, corev1.TLSCertKey)))
-		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, corev1.TLSPrivateKeyKey)))
+	if restore.Spec.BR.TLSCluster != nil && restore.Spec.BR.TLSCluster.Enabled {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, constants.ServiceAccountCAPath)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 
 	var restoreType string
@@ -66,7 +67,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 }
 
 func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
-	args, err := util.ConstructBRGlobalOptionsForRestore(restore)
+	args, err := backupUtil.ConstructBRGlobalOptionsForRestore(restore)
 	if err != nil {
 		return nil, err
 	}

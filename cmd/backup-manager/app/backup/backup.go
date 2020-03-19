@@ -23,15 +23,16 @@ import (
 	"github.com/gogo/protobuf/proto"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	util.GenericOptions
+	backupUtil.GenericOptions
 }
 
 func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
@@ -44,10 +45,10 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		return "", err
 	}
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
-	if backup.Spec.BR.EnableTLSClient {
-		args = append(args, fmt.Sprintf("--ca=%s", constants.ServiceAccountCAPath))
-		args = append(args, fmt.Sprintf("--cert=%s", path.Join(constants.BRCertPath, corev1.TLSCertKey)))
-		args = append(args, fmt.Sprintf("--key=%s", path.Join(constants.BRCertPath, corev1.TLSPrivateKeyKey)))
+	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, constants.ServiceAccountCAPath)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
 	}
 
 	var btype string
@@ -73,7 +74,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 // getCommitTs get backup position from `EndVersion` in BR backup meta
 func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 	var commitTs uint64
-	s, err := util.NewRemoteStorage(backup)
+	s, err := backupUtil.NewRemoteStorage(backup)
 	if err != nil {
 		return commitTs, err
 	}
@@ -101,7 +102,7 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 
 // constructOptions constructs options for BR and also return the remote path
 func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	args, remotePath, err := util.ConstructBRGlobalOptionsForBackup(backup)
+	args, remotePath, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
 		return args, remotePath, err
 	}
@@ -124,7 +125,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
 // getBackupSize get the backup data size from remote
 func getBackupSize(backup *v1alpha1.Backup) (int64, error) {
 	var size int64
-	s, err := util.NewRemoteStorage(backup)
+	s, err := backupUtil.NewRemoteStorage(backup)
 	if err != nil {
 		return size, err
 	}
