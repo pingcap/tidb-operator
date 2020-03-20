@@ -51,7 +51,7 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 			return "", err
 		}
 		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-			return "", errors.New("Failed to append PEM.")
+			return "", errors.New("Failed to append PEM")
 		}
 		clientCert := make([]tls.Certificate, 0, 1)
 		certs, err := tls.LoadX509KeyPair(
@@ -67,9 +67,8 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 			ServerName:   bo.Host,
 		})
 		return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
-	} else {
-		return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 	}
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 }
 
 func (bo *GenericOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {

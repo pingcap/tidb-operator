@@ -93,6 +93,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			return false, err
 		}
 
+		db, err = util.OpenDB(dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
 			return false, nil
