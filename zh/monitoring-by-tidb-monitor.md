@@ -25,7 +25,6 @@ NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE  
 standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  14h
 ```
 
-
 ### 安装
 
 你可以在 Kubernetes 集群上通过 CR 文件快速建立起一个 TiDB 集群，以及与之相关联的 TidbMonitor 监控组件。
