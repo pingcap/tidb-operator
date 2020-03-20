@@ -28,7 +28,7 @@ standard (default)   rancher.io/local-path   Delete          WaitForFirstConsume
 
 ### 安装
 
-你可以通过在 Kubernetes 集群上，通过 CR 文件快速建立起一个 TiDB 集群，以及与之相关联的 TidbMonitor 监控组件。
+你可以在 Kubernetes 集群上通过 CR 文件快速建立起一个 TiDB 集群，以及与之相关联的 TidbMonitor 监控组件。
 
 首先我们通过 CR 文件快速部署一个简单的 Tidb 集群:
 
