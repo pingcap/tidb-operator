@@ -55,7 +55,7 @@ basic-tikv-1                       1/1     Running   0          21m
 basic-tikv-2                       1/1     Running   0          21m
 ```
 
-接下来我们可以将以下内容存为 yaml 文件，通过 kubectl apply -f 的方式部署部署一个 TidbMonitor 组件。
+接下来我们可以将以下内容存为 yaml 文件，通过 kubectl apply -f 的方式部署一个 TidbMonitor 组件。
 
 > **注意：**
 >
