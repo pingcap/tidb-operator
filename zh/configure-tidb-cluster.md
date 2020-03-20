@@ -17,7 +17,6 @@ TidbCluster 文件支持在其上面直接配置 TiDB/TiKV/PD 的配置选项，
 >
 > 为了兼容 `helm` 部署，如果你是通过 CR 文件部署 TiDB 集群，即使你不设置 Config 配置，也需要保证 `Config: {}` 的设置，从而避免 TiDB 组件无法正常启动。
 
-
 ```yaml
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
