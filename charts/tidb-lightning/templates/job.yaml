@@ -28,6 +28,9 @@ spec:
 {{ toYaml .Values.annotations | indent 8 }}
     {{- end }}
     spec:
+      {{- if .Values.serviceAccount }}
+      serviceAccountName: {{ .Values.serviceAccount }}
+      {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}
