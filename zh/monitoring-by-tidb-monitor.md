@@ -108,7 +108,7 @@ basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 > kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
-然后访问 localhost:3000
+然后访问 localhost:3000。
 
 ### 删除集群与监控
 
