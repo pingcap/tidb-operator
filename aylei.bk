@@ -1,0 +1,20 @@
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: br-test
+  namespace: tidb3
+spec:
+  br:
+    cluster: db
+    clusterNamespce: tidb3
+    concurrency: 16
+  from:
+    host: db-tidb.tidb3
+    secretName: db-secret
+    user: root
+  s3:
+    provider: aws
+    region: us-west-2
+    bucket: dbaas-hibernate
+    prefix: test2
+    secretName: aws-secret

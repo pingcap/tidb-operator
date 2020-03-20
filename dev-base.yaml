@@ -1,0 +1,27 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJd01ETXhNVEF6TWpNME9Wb1hEVE13TURNd09UQXpNak0wT1Zvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHJICmh2WnhsN0MwTDYrcXg4R1M3UEtPQjdCeUZUWGxySjJmZXlINy9FSG9CR1ZxRHN2eHl0TzBreU5GWEk4bFg2czcKQmNFbE84Ni9zLzFJQmx1MEd0UnUraHlnWHgzZ3c0ZldxNDNUdWdzdTBoem8zV3dpYUtwc3NxTkhMWWpoeHpBVwpEVFBrWWN4eVZKOGc0ZTdUYnB0SzZhdWs0RlltNFh4K3lQK3UxWjc4TlhYelBsVVV0bUNRUm9SSkRIZlVFR1l6CkRhZEE3cVBmYUZRMUJQd2YxZ2pGaVpUQlZiN0o4QnVaejZDUE5vY3dDYllQMkl0TENvcDNLU2RqWnpEUkpwcW4KVmxiYTJOUkRST0JsMmVhTFIvWEgyTmxod29tenZTUjExczFMWTlJZ1RqTGtzbm83VkJMMkY3Zk11NTh0eEhqKwpNa1V3ZFpwTHYxWVhqN3lHTmZjQ0F3RUFBYU1qTUNFd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFDZjZFYW9Mbm41d0VsUE9zMEsyYmM4M2FEZVAKUEI0Umh4d0JmZGJIc1JKQTZvWHlURmd2dFFvc29nUVdoeFlOMHRKRzlFdEZXcVRaRWFEcm5iamtES2VHKzNCRAo1aDcxNWNnQkpibG5WQ3ZYaTd2Mysva3pCbzBXeXU3YjlRVkVoY3N2SHZMZGF0ak5abC9WS2psSVcyL0Q3UmEyCnh1Mm9TT0NWM2ZVajE4M3dQdmVCYmQwS2dkdjRwY0kvTUNNUWx6SVJxVFhRaWUwbGlLSHJaS3kxOWZNNjlNVkEKQ2w5Ky9rcnF6Qzd3KzJrd2g3eXdLQ3J4RTRZMFBTampxUWN4Y1UvdTlNcklWK2FSaWhzbS9obGlId3BrV3pqbApDVXo5Szd6dk1jcS9ZaXdTVUlBZDUxU0E5K1RUaG44NG1WZXZ3ZGZrSmZWMlBZTXhkK2JWQ2FVYTBVST0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    server: https://3EC1E40428945479FDF2FC344F9165E6.gr7.us-west-2.eks.amazonaws.com
+  name: arn:aws:eks:us-west-2:385595570414:cluster/eks-gardener
+contexts:
+- context:
+    cluster: arn:aws:eks:us-west-2:385595570414:cluster/eks-gardener
+    user: arn:aws:eks:us-west-2:385595570414:cluster/eks-gardener
+  name: arn:aws:eks:us-west-2:385595570414:cluster/eks-gardener
+current-context: arn:aws:eks:us-west-2:385595570414:cluster/eks-gardener
+kind: Config
+preferences: {}
+users:
+- name: arn:aws:eks:us-west-2:385595570414:cluster/eks-gardener
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1alpha1
+      args:
+      - --region
+      - us-west-2
+      - eks
+      - get-token
+      - --cluster-name
+      - eks-gardener
+      command: aws

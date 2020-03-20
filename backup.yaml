@@ -1,0 +1,37 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: sa-backup-s3
+  namespace: cluster
+spec:
+  backupType: full
+  useKMS: false
+  br:
+    cluster: cluster
+    clusterNamespace: cluster
+    sendCredToTikv: true
+    tlsCluster:
+      enabled: true
+    # clusterNamespce: <backup-namespace>
+    # enableTLSClient: true
+    # logLevel: info
+    # statusAddr: <status-addr>
+    # concurrency: 4
+    # rateLimit: 0
+    # timeAgo: <time>
+    # checksum: true
+    # sendCredToTikv: true
+  from:
+    host: cluster-tidb.cluster
+    secretName: backup-demo1-tidb-secret
+    port: 4000
+    user: root
+    tlsClient:
+      enabled: true
+  s3:
+    provider: aws
+    region: us-west-2
+    secretName: s3-secret
+    bucket: backup.jony22.us-west-2.tidbcloud.com
+    prefix: backup-sa
