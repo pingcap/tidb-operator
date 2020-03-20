@@ -271,8 +271,27 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 			}
 			existingSvc.Annotations[LastAppliedConfigAnnotation] = string(b)
 			clusterIp := existingSvc.Spec.ClusterIP
+			ports := existingSvc.Spec.Ports
+			serviceType := existingSvc.Spec.Type
+
 			existingSvc.Spec = desiredSvc.Spec
 			existingSvc.Spec.ClusterIP = clusterIp
+
+			// If the existed service and the desired service is NodePort or LoadBalancerType, we should keep the nodePort unchanged.
+			if (serviceType == corev1.ServiceTypeNodePort || serviceType == corev1.ServiceTypeLoadBalancer) &&
+				(desiredSvc.Spec.Type == corev1.ServiceTypeNodePort || desiredSvc.Spec.Type == corev1.ServiceTypeLoadBalancer) {
+				for i, dport := range existingSvc.Spec.Ports {
+					for _, eport := range ports {
+						// Because the portName could be edited,
+						// we use Port number to link the desired Service Port and the existed Service Port in the nested loop
+						if dport.Port == eport.Port && dport.Protocol == eport.Protocol {
+							dport.NodePort = eport.NodePort
+							existingSvc.Spec.Ports[i] = dport
+							break
+						}
+					}
+				}
+			}
 		}
 		return nil
 	})

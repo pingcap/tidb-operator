@@ -5996,6 +5996,9 @@ spec:
                   description: 'SchedulerName of the component. Override the cluster-level
                     one if present Optional: Defaults to cluster-level setting'
                   type: string
+                serviceAccount:
+                  description: Specify a Service Account for tikv
+                  type: string
                 storageClassName:
                   description: The storageClassName of the persistent volume for TiKV
                     data storage. Defaults to Kubernetes default storage class.

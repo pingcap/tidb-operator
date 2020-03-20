@@ -153,6 +153,17 @@ function hack::wait_for_success() {
     return 1
 }
 
+#
+# Concatenates the elements with an separator between them.
+#
+# Usage: hack::join ',' a b c
+#
+function hack::join() {
+	local IFS="$1"
+	shift
+	echo "$*"
+}
+
 function hack::__verify_kubetest2() {
     local n="$1"
     local v="$2"
