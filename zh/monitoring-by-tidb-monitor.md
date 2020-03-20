@@ -39,6 +39,8 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 
 然后我们通过 kubectl get pod 命令来检查 TiDB 集群启动完毕:
 
+{{< copyable "shell-regular" >}}
+
 ```shell
 $ kubectl get pod -l app.kubernetes.io/instance=basic -n <namespace>
 NAME                               READY   STATUS    RESTARTS   AGE
