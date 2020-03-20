@@ -125,6 +125,12 @@ type TiDBConfig struct {
 	// see https://github.com/pingcap/tidb/pull/13660 for more details.
 	// +optional
 	EnableDynamicConfig *bool `toml:"enable-dynamic-config" json:"enable-dynamic-config,omitempty"`
+	// imported from v3.1.0
+	// optional
+	EnableTableLock *bool `toml:"enable-table-lock" json:"enable-table-lock,omitempty"`
+	// imported from v3.1.0
+	// optional
+	DelayCleanTableLock *uint64 `toml:"delay-clean-table-lock" json:"delay-clean-table-lock,omitempty"`
 }
 
 // Log is the log section of config.
@@ -485,6 +491,7 @@ type StmtSummary struct {
 // +k8s:openapi-gen=true
 type IsolationRead struct {
 	// Engines filters tidb-server access paths by engine type.
+	// imported from v3.1.0
 	// +optional
 	Engines []string `toml:"engines" json:"engines,omitempty"`
 }

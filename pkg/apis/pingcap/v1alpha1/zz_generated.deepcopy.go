@@ -2553,6 +2553,16 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableTableLock != nil {
+		in, out := &in.EnableTableLock, &out.EnableTableLock
+		*out = new(bool)
+		**out = **in
+	}
+	if in.DelayCleanTableLock != nil {
+		in, out := &in.DelayCleanTableLock, &out.DelayCleanTableLock
+		*out = new(uint64)
+		**out = **in
+	}
 	return
 }
 

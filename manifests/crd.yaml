@@ -3412,6 +3412,10 @@ spec:
                       type: boolean
                     cors:
                       type: string
+                    delay-clean-table-lock:
+                      description: imported from v3.1.0 optional
+                      format: int64
+                      type: integer
                     enable-batch-dml:
                       description: 'Optional: Defaults to false'
                       type: boolean
@@ -3422,6 +3426,9 @@ spec:
                       type: boolean
                     enable-streaming:
                       description: 'Optional: Defaults to false'
+                      type: boolean
+                    enable-table-lock:
+                      description: imported from v3.1.0 optional
                       type: boolean
                     experimental:
                       description: 'Experimental controls the features that are still
@@ -3439,7 +3446,7 @@ spec:
                       properties:
                         engines:
                           description: Engines filters tidb-server access paths by
-                            engine type.
+                            engine type. imported from v3.1.0
                           items:
                             type: string
                           type: array
