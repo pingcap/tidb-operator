@@ -1,5 +1,6 @@
 ---
 title: 通过 TidbCluster 配置 TiDB 集群
+summary: 
 category: how-to
 ---
 
