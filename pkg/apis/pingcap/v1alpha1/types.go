@@ -781,6 +781,10 @@ type TiDBAccessConfig struct {
 	User string `json:"user,omitempty"`
 	// SecretName is the name of secret which stores tidb cluster's password.
 	SecretName string `json:"secretName"`
+	// Whether enable the TLS connection between the SQL client and TiDB server
+	// Optional: Defaults to nil
+	// +optional
+	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 }
 
 // +k8s:openapi-gen=true

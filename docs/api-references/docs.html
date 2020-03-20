@@ -6762,6 +6762,21 @@ string
 <p>SecretName is the name of secret which stores tidb cluster&rsquo;s password.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClient</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiDBTLSClient">
+TiDBTLSClient
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between the SQL client and TiDB server
+Optional: Defaults to nil</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiDBConfig">TiDBConfig
@@ -7638,6 +7653,7 @@ int32
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">TiDBAccessConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
 </p>
 <p>

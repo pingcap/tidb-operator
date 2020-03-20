@@ -211,7 +211,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
 					},
@@ -293,6 +293,22 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		})
 	}
 
+	if backup.Spec.From.TLSClient != nil && backup.Spec.From.TLSClient.Enabled {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster),
+				},
+			},
+		})
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
@@ -309,7 +325,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},
