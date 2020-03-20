@@ -1,0 +1,109 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: db
+  namespace: db
+spec:
+  configUpdateStrategy: RollingUpdate
+  enableTLSCluster: false
+  helper:
+    image: busybox:1.31.1
+  hostNetwork: false
+  imagePullPolicy: IfNotPresent
+  pd:
+    affinity: {}
+    baseImage: pingcap/pd
+    config:
+      log:
+        level: info
+      replication:
+        location-labels:
+        - zone
+        max-replicas: 3
+    nodeSelector:
+      dedicated: db-pd
+    podSecurityContext: {}
+    replicas: 1
+    requests:
+      cpu: "1"
+      memory: 400Mi
+      storage: 1Gi
+    storageClassName: ebs-gp2
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: db-pd
+  pvReclaimPolicy: Retain
+  schedulerName: tidb-scheduler
+  tidb:
+    affinity: {}
+    baseImage: pingcap/tidb
+    config:
+      log:
+        level: info
+      performance:
+        max-procs: 0
+        tcp-keep-alive: true
+    enableTLSClient: false
+    maxFailoverCount: 3
+    nodeSelector:
+      dedicated: db-tidb
+    podSecurityContext:
+      sysctls:
+      - name: net.ipv4.tcp_keepalive_time
+        value: "300"
+      - name: net.ipv4.tcp_keepalive_intvl
+        value: "75"
+      - name: net.core.somaxconn
+        value: "32768"
+    replicas: 1
+    requests:
+      cpu: "1"
+      memory: 400Mi
+    separateSlowLog: true
+    service:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
+        service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      exposeStatus: true
+      externalTrafficPolicy: Local
+      type: LoadBalancer
+    slowLogTailer:
+      limits:
+        cpu: 100m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 5Mi
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: db-tidb
+  tikv:
+    affinity: {}
+    baseImage: pingcap/tikv
+    config:
+      log-level: info
+    hostNetwork: false
+    maxFailoverCount: 3
+    nodeSelector:
+      dedicated: db-tikv
+    podSecurityContext: {}
+    privileged: false
+    replicas: 1
+    requests:
+      cpu: "1"
+      memory: 2Gi
+      storage: 45Gi
+    storageClassName: local-storage
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: db-tikv
+  timezone: UTC
+  version: v3.0.11
+
