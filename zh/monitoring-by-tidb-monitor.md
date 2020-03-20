@@ -100,7 +100,7 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 {{< copyable "shell-regular" >}}
 
 ```shell
-$ kubectl get pod -l app.kubernetes.io/instance=basic | grep monitor 
+$ kubectl get pod -l app.kubernetes.io/instance=basic -n <namespace> | grep monitor 
 basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 ```
 
