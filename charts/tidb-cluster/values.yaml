@@ -48,6 +48,15 @@ discovery:
       cpu: 80m
       memory: 50Mi
 
+  ## affinity defines discovery scheduling rules,it's default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+
 # Whether enable ConfigMap Rollout management.
 # When enabling, change of ConfigMap will trigger a graceful rolling-update of the component.
 # This feature is only available in tidb-operator v1.0 or higher.
