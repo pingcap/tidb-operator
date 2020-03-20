@@ -62,6 +62,7 @@ func mustToString(set sets.Int32) string {
 	return string(b)
 }
 
+// Serial specs describe tests which cannot run in parallel.
 var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	f := framework.NewDefaultFramework("serial")
 
@@ -490,8 +491,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 		framework.ExpectNoError(err)
 
-		ginkgo.By("Make sure pods are not affected")
-		err = utilpod.WaitForPodsAreNotAffected(c, podListBeforeUpgrade.Items, time.Minute*3)
+		ginkgo.By("Make sure pods are not changed")
+		err = utilpod.WaitForPodsAreChanged(c, podListBeforeUpgrade.Items, time.Minute*3)
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods was not affeteced after the operator is upgraded")
 	})
 
