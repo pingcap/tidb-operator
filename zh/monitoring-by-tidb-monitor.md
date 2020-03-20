@@ -5,7 +5,7 @@ category: how-to
 
 # Kubernetes 上的 TiDB 集群监控
 
-在 Operator 1.1 版本及以上，我们可以通过简单的 CR 文件，即 TidbMonitor 来快速建立对 Kubernetes 集群上的 TiDB 集群的监控。
+在 v1.1 及更高版本的 TiDB Operator 中，我们可以通过简单的 CR 文件（即 TidbMonitor）来快速建立对 Kubernetes 集群上的 TiDB 集群的监控。
 
 
 ## 快速上手
