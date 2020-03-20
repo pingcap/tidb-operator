@@ -26,7 +26,7 @@
   - [配置 TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
 + 监控
   - [监控 TiDB 集群](monitor-a-tidb-cluster.md)
-  - [通过 TidbMonitor 监控 TiDB 集群](monitoring-by-tidb-monitor.md)
+  - [通过 TidbMonitor 监控 TiDB 集群](monitoring-using-tidb-monitor.md)
 + 运维
   - [销毁 TiDB 集群](destroy-a-tidb-cluster.md)
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
