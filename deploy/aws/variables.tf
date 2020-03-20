@@ -19,7 +19,7 @@ variable "eks_version" {
 
 variable "operator_version" {
   description = "TiDB operator version"
-  default     = "v1.0.6"
+  default     = "v1.1.0"
 }
 
 variable "operator_values" {
@@ -112,6 +112,10 @@ variable "default_cluster_monitor_instance_type" {
 }
 
 variable "default_cluster_name" {
-  default = "my-cluster"
+  default = "db"
 }
 
+variable "create_tidb_cluster_release" {
+  description = "whether creating tidb-cluster helm release"
+  default     = false
+}
