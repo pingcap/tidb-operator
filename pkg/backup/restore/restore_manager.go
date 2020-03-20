@@ -263,15 +263,15 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	volumes := []corev1.Volume{}
 	if restore.Spec.BR.TLSCluster != nil && restore.Spec.BR.TLSCluster.Enabled {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "tidb-client-tls",
+			Name:      "cluster-client-tls",
 			ReadOnly:  true,
-			MountPath: util.TiDBClientTLSPath,
+			MountPath: util.ClusterClientTLSPath,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: "tidb-client-tls",
+			Name: "cluster-client-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster),
+					SecretName: util.ClusterClientTLSSecretName(restore.Spec.BR.Cluster),
 				},
 			},
 		})

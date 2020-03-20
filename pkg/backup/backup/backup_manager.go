@@ -279,15 +279,15 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	volumes := []corev1.Volume{}
 	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "tidb-client-tls",
+			Name:      "cluster-client-tls",
 			ReadOnly:  true,
-			MountPath: util.TiDBClientTLSPath,
+			MountPath: util.ClusterClientTLSPath,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: "tidb-client-tls",
+			Name: "cluster-client-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster),
+					SecretName: util.ClusterClientTLSSecretName(backup.Spec.BR.Cluster),
 				},
 			},
 		})
