@@ -4,7 +4,7 @@ summary:
 category: how-to
 ---
 
-## TiDB 集群配置
+# 通过 TidbCluster 配置 TiDB 集群
 
 TidbCluster 文件支持在其上面直接配置 TiDB/TiKV/PD 的配置选项，本篇文章将介绍如何在 TiDBCluster 上配置参数。目前 Operator 1.1 版本支持了 TiDB 集群 v3.1 版本参数。针对各组件配置参数，请参考 PingCAP 官方文档。
 
