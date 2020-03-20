@@ -6072,6 +6072,9 @@ spec:
                   description: 'SchedulerName of the component. Override the cluster-level
                     one if present Optional: Defaults to cluster-level setting'
                   type: string
+                serviceAccount:
+                  description: Specify a Service Account for tikv
+                  type: string
                 storageClassName:
                   description: The storageClassName of the persistent volume for TiKV
                     data storage. Defaults to Kubernetes default storage class.
@@ -6839,9 +6842,6 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                enableTLSClient:
-                  description: Whether enable TLS in TiDBCluster
-                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
@@ -6869,6 +6869,7 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
+                tlsCluster: {}
               required:
               - cluster
               type: object
@@ -7683,9 +7684,6 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                enableTLSClient:
-                  description: Whether enable TLS in TiDBCluster
-                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
@@ -7713,6 +7711,7 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
+                tlsCluster: {}
               required:
               - cluster
               type: object
@@ -8570,9 +8569,6 @@ spec:
                       description: DB is the specific DB which will be backed-up or
                         restored
                       type: string
-                    enableTLSClient:
-                      description: Whether enable TLS in TiDBCluster
-                      type: boolean
                     logLevel:
                       description: LogLevel is the log level
                       type: string
@@ -8600,6 +8596,7 @@ spec:
                       description: TimeAgo is the history version of the backup task,
                         e.g. 1m, 1h
                       type: string
+                    tlsCluster: {}
                   required:
                   - cluster
                   type: object

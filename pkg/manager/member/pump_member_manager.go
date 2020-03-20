@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -97,13 +98,6 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	cm, err := pmm.syncConfigMap(tc, oldPumpSet)
 	if err != nil {
 		return err
-	}
-
-	if tc.IsTLSClusterEnabled() {
-		err := pmm.syncPumpStatefulsetCerts(tc)
-		if err != nil {
-			return err
-		}
 	}
 
 	newPumpSet, err := getNewPumpStatefulSet(tc, cm)
@@ -260,7 +254,7 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		confTextStr = strings.Join([]string{
 			confTextStr,
 			"[security]",
-			fmt.Sprintf("ssl-ca = \"%s\"", serviceAccountCAPath),
+			fmt.Sprintf("ssl-ca = \"%s\"", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)),
 			fmt.Sprintf("ssl-cert = \"%s\"", path.Join(pumpCertPath, corev1.TLSCertKey)),
 			fmt.Sprintf("ssl-key = \"%s\"", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))}, "\n")
 	}
@@ -379,7 +373,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		volumes = append(volumes, corev1.Volume{
 			Name: pumpCertVolumeMount, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: controller.PumpMemberName(tc.Name),
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.PumpLabelVal),
 				},
 			},
 		})
@@ -477,43 +471,6 @@ func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
 	}
 
 	return logLevel
-}
-
-// syncPumpStatefulsetCerts creates the cert pair for Pump if not exist, the cert
-// pair is used to communicate with other TiDB components, like TiDB and Drainer
-func (pmm *pumpMemberManager) syncPumpStatefulsetCerts(tc *v1alpha1.TidbCluster) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	svcName := controller.PumpMemberName(tcName)
-	peerName := controller.PumpPeerMemberName(tcName)
-
-	if pmm.certControl.CheckSecret(ns, svcName) {
-		return nil
-	}
-
-	hostList := []string{
-		svcName,
-		peerName,
-		fmt.Sprintf("%s.%s", svcName, ns),
-		fmt.Sprintf("%s.%s", peerName, ns),
-		fmt.Sprintf("*.%s.%s", peerName, ns),
-	}
-
-	ipList := []string{
-		"127.0.0.1", "::1", // able to access https endpoint via loopback network
-	}
-
-	certOpts := &controller.TiDBClusterCertOptions{
-		Namespace:  ns,
-		Instance:   tcName,
-		CommonName: svcName,
-		HostList:   hostList,
-		IPList:     ipList,
-		Component:  "pump",
-		Suffix:     "pump",
-	}
-
-	return pmm.certControl.Create(controller.GetOwnerRef(tc), certOpts)
 }
 
 func (pmm *pumpMemberManager) pumpStatefulSetIsUpgrading(set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {

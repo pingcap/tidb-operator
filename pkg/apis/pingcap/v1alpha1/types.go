@@ -238,6 +238,9 @@ type TiKVSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
+	// Specify a Service Account for tikv
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
@@ -613,7 +616,10 @@ type TiDBTLSClient struct {
 	//   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
 	//      The name of this Secret must be: <clusterName>-tidb-server-secret.
 	//        kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-	//   3. Set Enabled to `true`.
+	//   3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+	//      The name of this Secret must be: <clusterName>-tidb-client-secret.
+	//        kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 }
@@ -813,8 +819,10 @@ type BackupSpec struct {
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
-	// Whether enable TLS in TiDBCluster
-	EnableTLSClient bool `json:"enableTLSClient,omitempty"`
+	// Whether enable the TLS connection between TiDB server components
+	// Optional: Defaults to nil
+	// +optional
+	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 	// ClusterName of backup/restore cluster
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster

@@ -29,6 +29,14 @@ spec:
     {{- if .Values.rbac.create }}
       serviceAccount: {{ template "cluster.name" . }}-discovery
     {{- end }}
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+    {{- end }}
   {{- end }}
       containers:
       - name: discovery
