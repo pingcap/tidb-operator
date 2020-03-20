@@ -6766,9 +6766,6 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                enableTLSClient:
-                  description: Whether enable TLS in TiDBCluster
-                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
@@ -6796,6 +6793,7 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
+                tlsCluster: {}
               required:
               - cluster
               type: object
@@ -7610,9 +7608,6 @@ spec:
                 db:
                   description: DB is the specific DB which will be backed-up or restored
                   type: string
-                enableTLSClient:
-                  description: Whether enable TLS in TiDBCluster
-                  type: boolean
                 logLevel:
                   description: LogLevel is the log level
                   type: string
@@ -7640,6 +7635,7 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
+                tlsCluster: {}
               required:
               - cluster
               type: object
@@ -8497,9 +8493,6 @@ spec:
                       description: DB is the specific DB which will be backed-up or
                         restored
                       type: string
-                    enableTLSClient:
-                      description: Whether enable TLS in TiDBCluster
-                      type: boolean
                     logLevel:
                       description: LogLevel is the log level
                       type: string
@@ -8527,6 +8520,7 @@ spec:
                       description: TimeAgo is the history version of the backup task,
                         e.g. 1m, 1h
                       type: string
+                    tlsCluster: {}
                   required:
                   - cluster
                   type: object
