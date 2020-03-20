@@ -23,7 +23,7 @@ spec:
     nodeSelector:
       dedicated: db-pd
     podSecurityContext: {}
-    replicas: 1
+    replicas: 3
     requests:
       cpu: "1"
       memory: 400Mi
@@ -57,7 +57,7 @@ spec:
         value: "75"
       - name: net.core.somaxconn
         value: "32768"
-    replicas: 1
+    replicas: 2
     requests:
       cpu: "1"
       memory: 400Mi
@@ -93,7 +93,7 @@ spec:
       dedicated: db-tikv
     podSecurityContext: {}
     privileged: false
-    replicas: 1
+    replicas: 3
     requests:
       cpu: "1"
       memory: 2Gi
@@ -105,5 +105,5 @@ spec:
       operator: Equal
       value: db-tikv
   timezone: UTC
-  version: v3.0.11
+  version: v3.0.12
 
