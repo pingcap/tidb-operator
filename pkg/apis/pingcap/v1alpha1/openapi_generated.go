@@ -1208,7 +1208,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IsolationRead(ref common.ReferenceCallback
 				Properties: map[string]spec.Schema{
 					"engines": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Engines filters tidb-server access paths by engine type.",
+							Description: "Engines filters tidb-server access paths by engine type. imported from v3.1.0",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3555,6 +3555,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Description: "EnableDynamicConfig enables the TiDB to fetch configs from PD and update itself during runtime. see https://github.com/pingcap/tidb/pull/13660 for more details.",
 							Type:        []string{"boolean"},
 							Format:      "",
+						},
+					},
+					"enable-table-lock": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v3.1.0 optional",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"delay-clean-table-lock": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v3.1.0 optional",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 				},
