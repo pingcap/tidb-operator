@@ -71,7 +71,7 @@ After you deploy and configure TiDB Operator, deploy the TiDB cluster by the fol
     kubectl get po -n <namespace> -l app.kubernetes.io/instance=<cluster-name>
     ```
 
-You can use TiDB Operator to deploy and manage multiple sets of TiDB clusters in a single Kubernetes cluster by repeating the above command and replacing `cluster-name` with a different name.
+You can use TiDB Operator to deploy and manage multiple TiDB clusters in a single Kubernetes cluster by repeating the above procedure and replacing `cluster-name` with a different name.
 
 Different clusters can be in the same or different `namespace`. You can select different clusters according to your actual needs.
 
