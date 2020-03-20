@@ -17,9 +17,7 @@ category: how-to
 ### 前置条件
 
     1. 已经安装了 Operator `v1.1.0-beta.1` 及以上版本，并且已经更新了相关版本的 CRD 文件
-    2. 已经设置了默认的 storageClass， 并保证其有足够的 PV (默认情况下需要 6 个PV)
-
-    这可以通过以下指令来验证:
+    2. 已经设置了默认的 storageClass，并保证其有足够的 PV（默认情况下需要 6 个 PV）。这可以通过以下指令来验证：
 
 ```shell
 $ kubectl get storageClass
