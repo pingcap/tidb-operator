@@ -1,6 +1,6 @@
 ---
 title: 通过 TidbCluster 配置 TiDB 集群
-summary: 
+summary: 介绍如何使用 TidbCluster 配置 TiDB 集群。
 category: how-to
 ---
 
