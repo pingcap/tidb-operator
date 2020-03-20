@@ -170,9 +170,9 @@ basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         R
 
 ### 设置 kube-prometheus 与 AlertManager
 
-在部分情况下，你可能需要 TidbMonitor 同时获取 Kubernetes 上的监控指标。你可以通过设置 TidbMonitor.Spec.kubePrometheusURL 来使其获取 kube-prometheus metrics，了解 [kube-prometheus](https://github.com/coreos/kube-prometheus)
+在部分情况下，你可能需要 TidbMonitor 同时获取 Kubernetes 上的监控指标。你可以通过设置 TidbMonitor.Spec.kubePrometheusURL 来使其获取 kube-prometheus metrics，了解 [kube-prometheus](https://github.com/coreos/kube-prometheus)。
 
-同样的，你可以通过设置 TidbMonitor 来将监控推送警报至指定的 AlertManager，了解 [AlertManager](https://prometheus.io/docs/alerting/alertmanager/)
+同样的，你可以通过设置 TidbMonitor 来将监控推送警报至指定的 AlertManager，了解 [AlertManager](https://prometheus.io/docs/alerting/alertmanager/)。
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
