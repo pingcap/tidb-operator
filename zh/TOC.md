@@ -21,6 +21,7 @@
 + 配置
   - [初始化集群](initialize-a-cluster.md)
   - [配置集群](configure-a-tidb-cluster.md)
+  - [通过 TidbCluster 配置集群](configure-cluster-using-tidbcluster.md)
   - [配置备份](configure-backup.md)
   - [配置 Storage Class](configure-storage-class.md)
   - [配置 TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
