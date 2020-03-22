@@ -1,5 +1,6 @@
 ---
 title: 恢复 S3 兼容存储上的备份数据
+summary: 介绍如何将兼容 S3 存储的备份数据恢复到 TiDB 集群。
 category: how-to
 ---
 
