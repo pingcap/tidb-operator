@@ -74,14 +74,14 @@ module "tidb-cluster" {
   cluster_name = var.tidb_cluster_name
   ack          = module.tidb-operator
 
-  tidb_version               = var.tidb_version
-  tidb_cluster_chart_version = var.tidb_cluster_chart_version
-  pd_instance_type           = var.pd_instance_type
-  pd_count                   = var.pd_count
-  tikv_instance_type         = var.tikv_instance_type
-  tikv_count                 = var.tikv_count
-  tidb_instance_type         = var.tidb_instance_type
-  tidb_count                 = var.tidb_count
-  monitor_instance_type      = var.monitor_instance_type
-  create_tidb_cluster        = var.create_tidb_cluster
+  tidb_version                = var.tidb_version
+  tidb_cluster_chart_version  = var.tidb_cluster_chart_version
+  pd_instance_type            = var.pd_instance_type
+  pd_count                    = var.pd_count
+  tikv_instance_type          = var.tikv_instance_type
+  tikv_count                  = var.tikv_count
+  tidb_instance_type          = var.tidb_instance_type
+  tidb_count                  = var.tidb_count
+  monitor_instance_type       = var.monitor_instance_type
+  create_tidb_cluster_release = var.create_tidb_cluster_release
 }

@@ -113,7 +113,7 @@ variable "vpc_cidr" {
   default     = "192.168.0.0/16"
 }
 
-variable "create_tidb_cluster" {
+variable "create_tidb_cluster_release" {
   description = "whether creating tidb-cluster helm release"
   default     = false
 }
