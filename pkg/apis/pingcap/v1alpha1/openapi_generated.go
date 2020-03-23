@@ -37,9 +37,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerSpec":           schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider":            schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec":                    schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IsolationRead":                 schema_pkg_apis_pingcap_v1alpha1_IsolationRead(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Log":                           schema_pkg_apis_pingcap_v1alpha1_Log(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MonitorContainer":              schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing":                   schema_pkg_apis_pingcap_v1alpha1_OpenTracing(ref),
@@ -880,6 +882,13 @@ func schema_pkg_apis_pingcap_v1alpha1_Binlog(ref common.ReferenceCallback) commo
 				Description: "Binlog is the config for binlog.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"enable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "optional",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"write-timeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 15s",
@@ -1023,6 +1032,26 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_Experimental(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Experimental controls the features that are still experimental: their semantics, interfaces are subject to change. Using these features in the production environment is not recommended.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"allow-auto-random": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable the syntax like `auto_random(3)` on the primary key column. imported from TiDB v3.1.0",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1170,6 +1199,33 @@ func schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_IsolationRead(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "IsolationRead is the config for isolation read.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"engines": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Engines filters tidb-server access paths by engine type. imported from v3.1.0",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_Log(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1198,10 +1254,36 @@ func schema_pkg_apis_pingcap_v1alpha1_Log(ref common.ReferenceCallback) common.O
 							Format:      "",
 						},
 					},
+					"enable-timestamp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableTimestamp enables automatic timestamps in log output.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enable-error-stack": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableErrorStack enables annotating logs with the full stack error message.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"file": {
 						SchemaProps: spec.SchemaProps{
 							Description: "File log config.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig"),
+						},
+					},
+					"enable-slow-log": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"slow-query-file": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 					"slow-threshold": {
@@ -2295,31 +2377,10 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 							Format:      "int64",
 						},
 					},
-					"tcp-keep-alive": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to true",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"cross-join": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to true",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
 					"stats-lease": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 3s",
 							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"run-auto-analyze": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to true",
-							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
@@ -2365,16 +2426,37 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"txn-entry-count-limit": {
+					"txn-total-size-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 300000",
+							Description: "Optional: Defaults to 104857600",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"txn-total-size-limit": {
+					"tcp-keep-alive": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 104857600",
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"cross-join": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"run-auto-analyze": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"txn-entry-count-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 300000",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
@@ -3013,6 +3095,19 @@ func schema_pkg_apis_pingcap_v1alpha1_Security(ref common.ReferenceCallback) com
 							Format: "",
 						},
 					},
+					"cluster-verify-cn": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -3081,13 +3176,6 @@ func schema_pkg_apis_pingcap_v1alpha1_Status(ref common.ReferenceCallback) commo
 				Description: "Status is the status section of the config.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"report-status": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to true",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
 					"metrics-addr": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -3099,6 +3187,13 @@ func schema_pkg_apis_pingcap_v1alpha1_Status(ref common.ReferenceCallback) commo
 							Description: "Optional: Defaults to 15",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"report-status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"record-db-qps": {
@@ -3121,6 +3216,13 @@ func schema_pkg_apis_pingcap_v1alpha1_StmtSummary(ref common.ReferenceCallback) 
 				Description: "StmtSummary is the config for statement summary.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"enable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Enable statement summary or not.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"max-stmt-count": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The maximum number of statements kept in memory. Optional: Defaults to 100",
@@ -3131,6 +3233,20 @@ func schema_pkg_apis_pingcap_v1alpha1_StmtSummary(ref common.ReferenceCallback) 
 					"max-sql-length": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The maximum length of displayed normalized SQL and sample SQL. Optional: Defaults to 4096",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"refresh-interval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The refresh interval of statement summary.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"history-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The maximum history size of statement summary.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -3212,7 +3328,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TiDBConfig is the configuration of tidb-server",
+				Description: "TiDBConfig is the configuration of tidb-server For more detail, refer to https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"cors": {
@@ -3388,11 +3504,78 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary"),
 						},
 					},
+					"repair-mode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepairMode indicates that the TiDB is in the repair mode for table meta.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"repair-table-list": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"isolation-read": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IsolationRead indicates that the TiDB reads data from which isolation level(engine and label).",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IsolationRead"),
+						},
+					},
+					"max-server-connections": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxServerConnections is the maximum permitted number of simultaneous client connections.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"new_collations_enabled_on_first_bootstrap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NewCollationsEnabledOnFirstBootstrap indicates if the new collations are enabled, it effects only when a TiDB cluster bootstrapped on the first time.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"experimental": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Experimental contains parameters for experimental features.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental"),
+						},
+					},
+					"enable-dynamic-config": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableDynamicConfig enables the TiDB to fetch configs from PD and update itself during runtime. see https://github.com/pingcap/tidb/pull/13660 for more details.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enable-table-lock": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v3.1.0 optional",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"delay-clean-table-lock": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v3.1.0 optional",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Log", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Performance", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PessimisticTxn", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Plugin", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PreparedPlanCache", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyProtocol", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Security", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Status", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IsolationRead", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Log", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Performance", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PessimisticTxn", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Plugin", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PreparedPlanCache", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyProtocol", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Security", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Status", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVClient", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches"},
 	}
 }
 
@@ -4045,9 +4228,16 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVClient(ref common.ReferenceCallback) c
 							Format:      "int64",
 						},
 					},
+					"copr-cache": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CoprocessorCache"),
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CoprocessorCache"},
 	}
 }
 
