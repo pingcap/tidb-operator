@@ -18,7 +18,8 @@ spec:
     br:
       cluster: myCluster
       # clusterNamespce: backupNamespace
-      # enableTLSClient:  true
+      # tlsCluster:
+      #   enabled: false
       # logLevel: info
       # statusAddr: <status-addr>
       # concurrency: 4
@@ -31,6 +32,8 @@ spec:
       secretName:   mysecret
       # port:         4000
       # user:         root
+      # tlsClient:
+      #   enabled: false
     s3:
       provider: aws
       region: us-west-2
