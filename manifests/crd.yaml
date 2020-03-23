@@ -1463,7 +1463,7 @@ spec:
                       properties:
                         enable-placement-rules:
                           description: When PlacementRules feature is enabled. MaxReplicas
-                            and LocationLabels are not uesd any more.
+                            and LocationLabels are not uesd anymore.
                           type: string
                         max-replicas:
                           description: 'MaxReplicas is the number of replicas for
