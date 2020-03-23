@@ -26,7 +26,7 @@ standard (default)   rancher.io/local-path   Delete          WaitForFirstConsume
 
 ### 安装
 
-你可以在 Kubernetes 集群上通过 CR 文件快速建立起一个 TidbMonitor 监控 TiDB 集群。接下来我们可以将以下内容存为 yaml 文件，通过 `kubectl apply -f `的方式部署一个 TidbMonitor 组件。
+你可以在 Kubernetes 集群上通过 CR 文件快速建立起一个 TidbMonitor 监控 TiDB 集群。接下来我们可以将以下内容存为 yaml 文件，通过 `kubectl apply -f` 的方式部署一个 TidbMonitor 组件。
 
 > **注意：**
 >
@@ -70,11 +70,12 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 {{< copyable "shell-regular" >}}
 
 ```shell
-$ kubectl get pod -l app.kubernetes.io/instance=basic -n <namespace> | grep monitor 
+$ kubectl get pod -l app.kubernetes.io/instance=basic -n <namespace> | grep monitor
 basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 ```
 
 ### 查看监控面板
+
 运行以下命令查看监控面板：
 
 {{< copyable "shell-regular" >}}
