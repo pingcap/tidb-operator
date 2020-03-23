@@ -191,7 +191,7 @@ func (rpc *realPodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	podName := pod.GetName()
-	preconditions := metav1.Preconditions{UID: &pod.UID}
+	preconditions := metav1.Preconditions{UID: &pod.UID, ResourceVersion: &pod.ResourceVersion}
 	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
 	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, &deleteOptions)
 	if err != nil {
