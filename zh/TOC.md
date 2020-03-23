@@ -35,10 +35,12 @@
   + 备份与恢复
     - [基于 Helm Charts 的备份恢复](backup-and-restore-using-helm-charts.md)
     + 基于 CRD 的备份恢复
-      - [备份 TiDB 集群到 GCS](backup-to-gcs.md)
-      - [恢复 GCS 上的备份数据](restore-from-gcs.md)
-      - [备份 TiDB 集群到兼容 S3 的存储](backup-to-s3.md)
-      - [恢复 S3 兼容存储上的备份数据](restore-from-s3.md)
+      - [使用 Mydumper 备份 TiDB 集群到 GCS](backup-to-gcs.md)
+      - [使用 Loader 恢复 GCS 上的备份数据](restore-from-gcs.md)
+      - [使用 Mydumper 备份 TiDB 集群到兼容 S3 的存储](backup-to-s3.md)
+      - [使用 Loader 恢复 S3 兼容存储上的备份数据](restore-from-s3.md)
+      - [使用 BR 备份 TiDB 集群到兼容 S3 的存储](backup-to-aws-s3-using-br.md)
+      - [使用 BR 恢复 S3 兼容存储上的备份数据](restore-from-aws-s3-using-br.md)
     - [使用 TiDB Lightning 恢复集群数据](restore-data-using-tidb-lightning.md)
   - [收集日志](collect-tidb-binlogs.md)
   - [TiDB Binlog 运维](maintain-tidb-binlog.md)
@@ -47,6 +49,7 @@
 + 升级
   - [TiDB 集群](upgrade-a-tidb-cluster.md)
   - [TiDB Operator](upgrade-tidb-operator.md)
+  - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
 + 工具
   - [tkctl](use-tkctl.md)
   - [TiDB Toolkit](tidb-toolkit.md)
