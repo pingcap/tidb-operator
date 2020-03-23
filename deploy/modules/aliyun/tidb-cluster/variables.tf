@@ -66,7 +66,7 @@ variable "local_exec_interpreter" {
   default     = ["/bin/sh", "-c"]
 }
 
-variable "create" {
+variable "create_tidb_cluster" {
   description = "whether creating tidb-cluster helm release"
   default     = false
 }
