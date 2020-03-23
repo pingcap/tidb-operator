@@ -6,7 +6,7 @@ spec:
   alertmanagerURL: ""
   annotations: {}
   clusters:
-  - name: db
+  - name: CLUSTER_NAME
   grafana:
     baseImage: grafana/grafana
     envs:
