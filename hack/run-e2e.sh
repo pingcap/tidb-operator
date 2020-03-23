@@ -325,11 +325,11 @@ e2e_args=(
     --
     --clean-start=true
     --delete-namespace-on-failure=false
-    --repo-root=$ROOT
+    --repo-root="$ROOT"
     # tidb-operator e2e flags
     --operator-tag=e2e
-    --operator-image=${TIDB_OPERATOR_IMAGE}
-    --e2e-image=${E2E_IMAGE}
+    --operator-image="${TIDB_OPERATOR_IMAGE}"
+    --e2e-image="${E2E_IMAGE}"
     # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
     --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
@@ -354,7 +354,7 @@ docker_args=(
 if [ "$PROVIDER" == "eks" ]; then
     e2e_args+=(
         --provider=aws
-        --gce-zone ${AWS_REGION}
+        --gce-zone="${AWS_REGION}"
     )
     # aws credential is required to get token for EKS
     docker_args+=(
@@ -362,10 +362,10 @@ if [ "$PROVIDER" == "eks" ]; then
     )
 elif [ "$PROVIDER" == "gke" ]; then
     e2e_args+=(
-        --provider=${PROVIDER}
-        --gce-project ${GCP_PROJECT}
-        --gce-region ${GCP_REGION}
-        --gce-zone ${GCP_ZONE}
+        --provider="${PROVIDER}"
+        --gce-project="${GCP_PROJECT}"
+        --gce-region="${GCP_REGION}"
+        --gce-zone="${GCP_ZONE}"
     )
     docker_args+=(
         -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
@@ -382,7 +382,7 @@ elif [ "$PROVIDER" == "gke" ]; then
     )
 else
     e2e_args+=(
-        --provider=${PROVIDER}
+        --provider="${PROVIDER}"
     )
 fi
 
