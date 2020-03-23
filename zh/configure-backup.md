@@ -1,5 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB 集群备份配置
+summary: 介绍 Kubernetes 上 TiDB 集群备份 tidb-backup 的配置参数。
 category: reference
 ---
 

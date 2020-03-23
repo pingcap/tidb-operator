@@ -1,6 +1,6 @@
 ---
 title: 在 Minikube 集群上部署 TiDB 集群
-summary: 在 Minikube 集群上部署 TiDB 集群
+summary: 介绍如何在 Minikube 集群上部署 TiDB 集群。
 category: how-to
 ---
 
@@ -67,134 +67,11 @@ kubectl cluster-info
 
 ## 安装 TiDB Operator 并运行 TiDB 集群
 
-### 安装 Helm
+1. 安装 Helm 并配置 PingCAP 官方 chart 仓库，参考 [使用 Helm](tidb-toolkit.md#使用-helm) 小节中的操作。
 
-[Helm](https://helm.sh/) 是 Kubernetes 包管理工具，通过 Helm 可以一键安装 TiDB 的所有分布式组件。安装 Helm 需要同时安装服务端和客户端组件。
+2. 部署 TiDB Operator，参考 [安装 TiDB Operator](deploy-tidb-operator.md#安装-tidb-operator) 小节中的操作。
 
-{{< copyable "shell-regular" >}}
-
-``` shell
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
-```
-
-安装 helm tiller：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm init
-```
-
-如果无法访问 gcr.io，你可以尝试 mirror 仓库：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm init --upgrade --tiller-image registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:$(helm version --client --short | grep -Eo 'v[0-9]\.[0-9]+\.[0-9]+')
-```
-
-安装完成后，执行 `helm version` 会同时显示客户端和服务端组件版本：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm version
-```
-
-输出类似如下内容：
-
-```
-Client: &version.Version{SemVer:"v2.13.1",
-GitCommit:"618447cbf203d147601b4b9bd7f8c37a5d39fbb4", GitTreeState:"clean"}
-Server: &version.Version{SemVer:"v2.13.1",
-GitCommit:"618447cbf203d147601b4b9bd7f8c37a5d39fbb4", GitTreeState:"clean"}
-```
-
-如果只显示客户端版本，表示 `helm` 无法连接到服务端。通过 `kubectl` 查看 tiller pod 是否在运行：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl -n kube-system get pods -l app=helm
-```
-
-### 添加 Helm 仓库
-
-Helm 仓库 (`https://charts.pingcap.org/`) 存放着 PingCAP 发布的 charts，例如 tidb-operator、tidb-cluster 和 tidb-backup 等等。可使用以下命令添加仓库：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm repo add pingcap https://charts.pingcap.org/ && \
-helm repo list
-```
-
-然后可以查看可用的 chart：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm repo update && \
-helm search tidb-cluster -l && \
-helm search tidb-operator -l
-```
-
-### 在 Kubernetes 集群上安装 TiDB Operator
-
-> **注意：**
->
-> `<chartVersion>` 在后面文档中代表 chart 版本，例如 `v1.0.0`。
-
-克隆 tidb-operator 代码库并安装 TiDB Operator：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-git clone --depth=1 https://github.com/pingcap/tidb-operator && \
-cd tidb-operator && \
-kubectl apply -f ./manifests/crd.yaml && \
-helm install pingcap/tidb-operator --name tidb-operator --namespace tidb-admin --version=<chartVersion>
-```
-
-然后，可以通过如下命令查看 TiDB Operator 的启动情况：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl get pods --namespace tidb-admin -o wide --watch
-```
-
-如果无法访问 gcr.io（Pod 由于 ErrImagePull 无法启动），可以尝试从 mirror 仓库中拉取 kube-scheduler 镜像。可以通过以下命令升级 tidb-operator：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm upgrade tidb-operator pingcap/tidb-operator --namespace tidb-admin --set \
-  scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler --version=<chartVersion>
-```
-
-如果 tidb-scheduler 和 tidb-controller-manager 都进入 running 状态，你可以继续下一步启动一个 TiDB 集群。
-
-### 启动 TiDB 集群
-
-通过下面命令启动 TiDB 集群：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm install pingcap/tidb-cluster --name demo --set \
-  schedulerName=default-scheduler,pd.storageClassName=standard,tikv.storageClassName=standard,pd.replicas=1,tikv.replicas=1,tidb.replicas=1 --version=<chartVersion>
-```
-
-可以通过下面命令观察集群的状态：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide --watch
-```
-
-通过 <kbd>Ctrl</kbd>+<kbd>C</kbd> 停止观察。
+3. 部署 TiDB 集群，参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群)中的操作。
 
 ## 测试 TiDB 集群
 
@@ -260,13 +137,7 @@ kubectl get svc --watch
 
 ### 删除 TiDB 集群
 
-通过下面命令删除 demo 集群：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm delete --purge demo
-```
+删除本地 TiDB 集群可参考[销毁 TiDB 集群](destroy-a-tidb-cluster.md#销毁-kubernetes-上的-tidb-集群)。
 
 更新 demo 集群使用的 PV 的 reclaim 策略为 Delete：
 

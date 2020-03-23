@@ -1,5 +1,6 @@
 ---
 title: 基于 Helm Charts 实现的 TiDB 集群备份恢复
+summary: 介绍如何基于 Helm Charts 实现 TiDB 集群的备份与恢复。
 category: how-to
 aliases: ['/docs-cn/devmaintain/backup-and-store/']
 ---
