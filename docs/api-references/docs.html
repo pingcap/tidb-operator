@@ -3872,6 +3872,17 @@ namespaces.
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-dynamic-config</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDFailureMember">PDFailureMember
@@ -4072,6 +4083,21 @@ bool
 <em>(Optional)</em>
 <p>DisableErrorVerbose stops annotating logs with the full verbose error
 message.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sampling</code></br>
+<em>
+go.uber.org/zap.SamplingConfig
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SamplingConfig sets a sampling strategy for the logger. Sampling caps the
+global CPU and I/O load that logging puts on your process while attempting
+to preserve a representative subset of your logs.</p>
+<p>Values configured here are per-second. See zapcore.NewSampler for details.</p>
 </td>
 </tr>
 </tbody>
@@ -4351,7 +4377,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
-Immutable, change should be made through pd-ctl after cluster creation</p>
+Immutable, change should be made through pd-ctl after cluster creation
+imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-placement-rules,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not uesd any more.</p>
 </td>
 </tr>
 </tbody>
@@ -4483,7 +4522,8 @@ uint64
 <em>(Optional)</em>
 <p>LeaderScheduleLimit is the max coexist leader schedules.
 Immutable, change should be made through pd-ctl after cluster creation
-Optional: Defaults to 4</p>
+Optional: Defaults to 4
+imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -4567,7 +4607,8 @@ float64
 <td>
 <em>(Optional)</em>
 <p>TolerantSizeRatio is the ratio of buffer size for balance scheduler.
-Immutable, change should be made through pd-ctl after cluster creation</p>
+Immutable, change should be made through pd-ctl after cluster creation
+imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -4727,6 +4768,50 @@ map[string]string
 <p>Only used to display</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>store-limit-mode</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoreLimitMode can be auto or manual, when set to auto,
+PD tries to change the store limit values according to
+the load state of the cluster dynamically. User can
+overwrite the auto-tuned value by pd-ctl, when the value
+is overwritten, the value is fixed until it is deleted.
+Default: manual</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-one-way-merge,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
+imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-cross-table-merge,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
+This option only works when key type is &ldquo;table&rdquo;.
+imported from v3.1.0</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDSchedulerConfig">PDSchedulerConfig
@@ -4841,6 +4926,17 @@ string
 <p>KeyPath is the path of file that contains X509 key in PEM format.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>client-cert-auth</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDServerConfig">PDServerConfig
@@ -4870,6 +4966,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>UseRegionStorage enables the independent region storage.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>metric-storage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetricStorage is the cluster metric storage.
+Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
+imported from v3.1.0</p>
 </td>
 </tr>
 </tbody>
