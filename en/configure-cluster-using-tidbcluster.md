@@ -1,12 +1,12 @@
 ---
 title: Configure a TiDB Cluster using TidbCluster
 summary: This document introduces how to use TidbCluster to configure a TiDB cluster.
-category: how to
+category: how-to
 ---
 
 # Configure a TiDB Cluster using TidbCluster
 
-TidbCluster supports directly configuring TiDB/TiKV/PD parameters. This document introduces how to configure parameters using TidbCluster.
+This document introduces how to configure the parameters of TiDB/TiKV/PD using TidbCluster.
 
 The current TiDB Operator v1.1 supports all parameters of TiDB v3.1. For parameters of different components, refer to PingCAP documentation.
 
