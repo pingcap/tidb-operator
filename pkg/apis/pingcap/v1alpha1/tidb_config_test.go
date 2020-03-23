@@ -51,8 +51,8 @@ func TestTiDBConfig(t *testing.T) {
 	tStr := buff.String()
 	g.Expect(tStr).To((Equal(`[performance]
   max-procs = 8
-  cross-join = true
   feedback-probability = 0.8
+  cross-join = true
 `)))
 
 	var tUnmarshaled TiDBConfig
