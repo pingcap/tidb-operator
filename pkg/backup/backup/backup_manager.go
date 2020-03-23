@@ -22,6 +22,7 @@ import (
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -168,7 +169,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -260,7 +261,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.StorageProvider, bm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.secretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -276,14 +277,17 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if backup.Spec.BR.EnableTLSClient {
+	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
+			Name:      "cluster-client-tls",
+			ReadOnly:  true,
+			MountPath: util.ClusterClientTLSPath,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: "br-tls", VolumeSource: corev1.VolumeSource{
+			Name: "cluster-client-tls",
+			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(backup.Spec.BR.Cluster)),
+					SecretName: util.ClusterClientTLSSecretName(backup.Spec.BR.Cluster),
 				},
 			},
 		})

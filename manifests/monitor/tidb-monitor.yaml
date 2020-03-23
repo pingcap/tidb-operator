@@ -1,0 +1,83 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: demo
+spec:
+  clusters:
+  - name: demo
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.11.1
+    resources: {}
+    #  limits:
+    #    cpu: 8000m
+    #    memory: 8Gi
+    #  requests:
+    #    cpu: 4000m
+    #    memory: 4Gi
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    reserveDays: 12
+    service:
+      type: NodePort
+      portName: http-prometheus 
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.0.1
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    resources: {}
+    #  limits:
+    #    cpu: 8000m
+    #    memory: 8Gi
+    #  requests:
+    #    cpu: 4000m
+    #    memory: 4Gi
+    username: admin
+    password: admin
+    envs:
+      # Configure Grafana using environment variables except GF_PATHS_DATA, GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
+      # Ref https://grafana.com/docs/installation/configuration/#using-environment-variables
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
+      # GF_SERVER_DOMAIN: foo.bar
+      # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+    service:
+      type: NodePort
+      portName: http-grafana
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v3.0.9
+    imagePullPolicy: Always
+    resources: {}
+    #  limits:
+    #    cpu: 50m
+    #    memory: 64Mi
+    #  requests:
+    #    cpu: 50m
+    #    memory: 64Mi
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+    imagePullPolicy: IfNotPresent
+    service:
+      type: NodePort
+      portName: tcp-reloader
+    resources: {}
+    #  limits:
+    #    cpu: 50m
+    #    memory: 64Mi
+    #  requests:
+    #    cpu: 50m
+    #    memory: 64Mi
+  imagePullPolicy: IfNotPresent
+  persistent: true
+  storageClassName: local-storage
+  storage: 10Gi
+  nodeSelector: {}
+  annotations: {}
+  tolerations: []
+  kubePrometheusURL: http://prometheus-k8s.monitoring.svc:9090
+  alertmanagerURL: ""

@@ -28,6 +28,9 @@ spec:
 {{ toYaml .Values.annotations | indent 8 }}
     {{- end }}
     spec:
+      {{- if .Values.serviceAccount }}
+      serviceAccountName: {{ .Values.serviceAccount }}
+      {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}
@@ -134,6 +137,10 @@ spec:
     {{- if .Values.affinity }}
       affinity:
 {{ toYaml .Values.affinity | indent 6 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
     {{- end }}
     {{- if .Values.tolerations }}
       tolerations:
