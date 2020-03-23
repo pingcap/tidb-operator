@@ -192,6 +192,7 @@ type PDReplicationConfig struct {
 	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
 	// Immutable, change should be made through pd-ctl after cluster creation
+	// imported from v3.1.0
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
 
@@ -265,6 +266,7 @@ type PDScheduleConfig struct {
 	// LeaderScheduleLimit is the max coexist leader schedules.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// Optional: Defaults to 4
+	// imported from v3.1.0
 	// +optional
 	LeaderScheduleLimit *uint64 `toml:"leader-schedule-limit,omitempty" json:"leader-schedule-limit,omitempty"`
 	// RegionScheduleLimit is the max coexist region schedules.
@@ -295,6 +297,7 @@ type PDScheduleConfig struct {
 	HotRegionCacheHitsThreshold *uint64 `toml:"hot-region-cache-hits-threshold,omitempty" json:"hot-region-cache-hits-threshold,omitempty"`
 	// TolerantSizeRatio is the ratio of buffer size for balance scheduler.
 	// Immutable, change should be made through pd-ctl after cluster creation
+	// imported from v3.1.0
 	// +optional
 	TolerantSizeRatio *float64 `toml:"tolerant-size-ratio,omitempty" json:"tolerant-size-ratio,omitempty"`
 	//
@@ -366,6 +369,15 @@ type PDScheduleConfig struct {
 	// Default: manual
 	// +optional
 	StoreLimitMode *string `toml:"store-limit-mode" json:"store-limit-mode,omitempty"`
+	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
+	// imported from v3.1.0
+	// +optional
+	EnableOneWayMerge *bool `toml:"enable-one-way-merge" json:"enable-one-way-merge,string,omitempty"`
+	// EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
+	// This option only works when key type is "table".
+	// imported from v3.1.0
+	// +optional
+	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge" json:"enable-cross-table-merge,string,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig
@@ -419,6 +431,11 @@ type PDServerConfig struct {
 	// UseRegionStorage enables the independent region storage.
 	// +optional
 	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,string,omitempty"`
+	// MetricStorage is the cluster metric storage.
+	// Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
+	// imported from v3.1.0
+	// +optional
+	MetricStorage *string `toml:"metric-storage" json:"metric-storage,omitempty"`
 }
 
 // +k8s:openapi-gen=true

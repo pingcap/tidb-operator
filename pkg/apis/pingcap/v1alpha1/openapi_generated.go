@@ -1777,7 +1777,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDReplicationConfig(ref common.ReferenceCa
 					},
 					"strictly-match-label": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels. Immutable, change should be made through pd-ctl after cluster creation",
+							Description: "StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels. Immutable, change should be made through pd-ctl after cluster creation imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1853,7 +1853,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					},
 					"leader-schedule-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LeaderScheduleLimit is the max coexist leader schedules. Immutable, change should be made through pd-ctl after cluster creation Optional: Defaults to 4",
+							Description: "LeaderScheduleLimit is the max coexist leader schedules. Immutable, change should be made through pd-ctl after cluster creation Optional: Defaults to 4 imported from v3.1.0",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
@@ -1895,7 +1895,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					},
 					"tolerant-size-ratio": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TolerantSizeRatio is the ratio of buffer size for balance scheduler. Immutable, change should be made through pd-ctl after cluster creation",
+							Description: "TolerantSizeRatio is the ratio of buffer size for balance scheduler. Immutable, change should be made through pd-ctl after cluster creation imported from v3.1.0",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
@@ -1994,6 +1994,20 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					"store-limit-mode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StoreLimitMode can be auto or manual, when set to auto, PD tries to change the store limit values according to the load state of the cluster dynamically. User can overwrite the auto-tuned value by pd-ctl, when the value is overwritten, the value is fixed until it is deleted. Default: manual",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"enable-one-way-merge": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it. imported from v3.1.0",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"enable-cross-table-merge": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs. This option only works when key type is \"table\". imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2097,6 +2111,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDServerConfig(ref common.ReferenceCallbac
 					"use-region-storage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "UseRegionStorage enables the independent region storage.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metric-storage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetricStorage is the cluster metric storage. Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later. imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
