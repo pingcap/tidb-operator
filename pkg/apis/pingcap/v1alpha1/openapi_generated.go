@@ -1772,7 +1772,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDReplicationConfig(ref common.ReferenceCa
 					},
 					"enable-placement-rules": {
 						SchemaProps: spec.SchemaProps{
-							Description: "When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not uesd anymore.",
+							Description: "When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
