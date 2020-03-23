@@ -77,6 +77,7 @@ basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 
 ### 查看监控面板
 运行以下命令查看监控面板：
+
 {{< copyable "shell-regular" >}}
 
 ```shell
