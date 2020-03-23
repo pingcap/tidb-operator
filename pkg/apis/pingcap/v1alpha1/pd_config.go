@@ -16,8 +16,6 @@ package v1alpha1
 import (
 	"strconv"
 	"strings"
-
-	"go.uber.org/zap"
 )
 
 // Maintain a copy of PDConfig to make it more friendly with the kubernetes API:
@@ -125,9 +123,6 @@ type PDConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
-
-	// +optional
-	EnableDynamicConfig *bool `toml:"enable-dynamic-config" json:"enable-dynamic-config,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
@@ -163,14 +158,6 @@ type PDLogConfig struct {
 	// message.
 	// +optional
 	DisableErrorVerbose *bool `toml:"disable-error-verbose,omitempty" json:"disable-error-verbose,omitempty"`
-
-	// SamplingConfig sets a sampling strategy for the logger. Sampling caps the
-	// global CPU and I/O load that logging puts on your process while attempting
-	// to preserve a representative subset of your logs.
-	//
-	// Values configured here are per-second. See zapcore.NewSampler for details.
-	// +optional
-	Sampling *zap.SamplingConfig `toml:"sampling" json:"sampling,omitempty"`
 }
 
 // PDReplicationConfig is the replication configuration.
@@ -361,14 +348,6 @@ type PDScheduleConfig struct {
 	// +optional
 	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
 
-	// StoreLimitMode can be auto or manual, when set to auto,
-	// PD tries to change the store limit values according to
-	// the load state of the cluster dynamically. User can
-	// overwrite the auto-tuned value by pd-ctl, when the value
-	// is overwritten, the value is fixed until it is deleted.
-	// Default: manual
-	// +optional
-	StoreLimitMode *string `toml:"store-limit-mode" json:"store-limit-mode,omitempty"`
 	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
 	// imported from v3.1.0
 	// +optional
@@ -421,8 +400,6 @@ type PDSecurityConfig struct {
 	// KeyPath is the path of file that contains X509 key in PEM format.
 	// +optional
 	KeyPath string `toml:"key-path,omitempty" json:"key-path,omitempty"`
-	// +optional
-	ClientCertAuth bool `toml:"client-cert-auth" json:"client-cert-auth,omitempty"`
 }
 
 // PDServerConfig is the configuration for pd server.
