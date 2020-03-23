@@ -71,7 +71,7 @@ module "tidb-cluster" {
     helm = helm.default
   }
 
-  cluster_name = "my-cluster"
+  cluster_name = var.tidb_cluster_name
   ack          = module.tidb-operator
 
   tidb_version               = var.tidb_version
@@ -83,5 +83,5 @@ module "tidb-cluster" {
   tidb_instance_type         = var.tidb_instance_type
   tidb_count                 = var.tidb_count
   monitor_instance_type      = var.monitor_instance_type
-  override_values            = file("my-cluster.yaml")
+  create                     = var.create
 }
