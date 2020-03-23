@@ -7306,6 +7306,7 @@ spec:
                   description: SecretName is the name of secret which stores tidb
                     cluster's password.
                   type: string
+                tlsClient: {}
                 user:
                   description: User is the user for login tidb cluster
                   type: string
@@ -8242,6 +8243,7 @@ spec:
                   description: SecretName is the name of secret which stores tidb
                     cluster's password.
                   type: string
+                tlsClient: {}
                 user:
                   description: User is the user for login tidb cluster
                   type: string
@@ -9033,6 +9035,7 @@ spec:
                       description: SecretName is the name of secret which stores tidb
                         cluster's password.
                       type: string
+                    tlsClient: {}
                     user:
                       description: User is the user for login tidb cluster
                       type: string
