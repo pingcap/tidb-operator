@@ -28,6 +28,7 @@ GCP_PROJECT=${GCP_PROJECT:-}
 GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
+GCP_SDK=${GCP_SDK:-/google-cloud-sdk}
 IMAGE_TAG=${IMAGE_TAG:-}
 SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
@@ -214,9 +215,10 @@ function e2e::image_load() {
         $E2E_IMAGE
     )
     if [ "$PROVIDER" == "kind" ]; then
+        local nodes=$($KIND_BIN get nodes --name $CLUSTER | grep -v 'control-plane$')
         echo "info: load images ${images[@]}"
         for n in ${images[@]}; do
-            $KIND_BIN load docker-image --name $CLUSTER $n
+            $KIND_BIN load docker-image --name $CLUSTER $n --nodes $(hack::join ',' ${nodes[@]})
         done
     elif [ "$PROVIDER" == "gke" ]; then
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
@@ -368,6 +370,15 @@ elif [ "$PROVIDER" == "gke" ]; then
     docker_args+=(
         -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
         --env GOOGLE_APPLICATION_CREDENTIALS=${GCP_CREDENTIALS}
+    )
+    # google-cloud-sdk is very large, we didn't pack it into our e2e image.
+    # instead, we use the sdk installed in CI image.
+    if [ ! -e "${GCP_SDK}/bin/gcloud" ]; then
+        echo "error: ${GCP_SDK} is not google cloud sdk, please install it here or specify correct path via GCP_SDK env"
+        exit 1
+    fi
+    docker_args+=(
+        -v ${GCP_SDK}:/google-cloud-sdk
     )
 else
     e2e_args+=(

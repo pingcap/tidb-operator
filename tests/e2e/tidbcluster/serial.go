@@ -38,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -61,6 +62,7 @@ func mustToString(set sets.Int32) string {
 	return string(b)
 }
 
+// Serial specs describe tests which cannot run in parallel.
 var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	f := framework.NewDefaultFramework("serial")
 
@@ -104,6 +106,109 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		if fwCancel != nil {
 			fwCancel()
 		}
+	})
+
+	ginkgo.Context("tidb-operator with default values", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+		var genericCli client.Client
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
+				Namespace:   "pingcap",
+				ReleaseName: "operator",
+				Image:       cfg.OperatorImage,
+				Tag:         cfg.OperatorTag,
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+			var err error
+			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+			framework.ExpectNoError(err, "failed to create clientset")
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		})
+
+		// There is no guarantee but tidb pods should be assigned back to
+		// previous nodes if no other pods to occupy the positions.
+		// See docs/design-proposals/tidb-stable-scheduling.md
+		ginkgo.It("[Feature: StableScheduling] TiDB pods should be scheduled to preivous nodes", func() {
+			clusterName := "tidb-scheduling"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 3
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(clusterName).Component(label.TiDBLabelVal).Labels()).String(),
+			}
+			oldPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Update tidb configuration")
+			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Config.TokenLimit = func(i uint) *uint {
+					return &i
+				}(2000)
+				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
+				return nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Waiting for all tidb pods are recreated and assigned to the same node")
+			getOldPodByName := func(pod *v1.Pod) *v1.Pod {
+				for _, oldPod := range oldPodList.Items {
+					if oldPod.Name == pod.Name {
+						return &oldPod
+					}
+				}
+				return nil
+			}
+			err = wait.PollImmediate(time.Second*5, time.Minute*15, func() (bool, error) {
+				newPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, err
+				}
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				if len(newPodList.Items) != len(oldPodList.Items) {
+					return false, nil
+				}
+				for _, newPod := range newPodList.Items {
+					oldPod := getOldPodByName(&newPod)
+					if oldPod == nil {
+						return false, fmt.Errorf("found an unexpected pod: %q", newPod.Name)
+					}
+					if oldPod.UID == newPod.UID {
+						// not recreated yet
+						return false, nil
+					}
+					if oldPod.Spec.NodeName != newPod.Spec.NodeName {
+						// recreated but assigned to another node
+						return false, fmt.Errorf("pod %q recreated but not assigned to previous node %q, got %q", oldPod.Name, oldPod.Spec.NodeName, newPod.Spec.NodeName)
+					}
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err)
+		})
 	})
 
 	// tidb-operator with AdvancedStatefulSet feature enabled
@@ -386,8 +491,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 		framework.ExpectNoError(err)
 
-		ginkgo.By("Make sure pods are not affected")
-		err = utilpod.WaitForPodsAreNotAffected(c, podListBeforeUpgrade.Items, time.Minute*3)
+		ginkgo.By("Make sure pods are not changed")
+		err = utilpod.WaitForPodsAreChanged(c, podListBeforeUpgrade.Items, time.Minute*3)
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods was not affeteced after the operator is upgraded")
 	})
 

@@ -1546,13 +1546,17 @@ TidbMonitorStatus
 <tbody>
 <tr>
 <td>
-<code>enableTLSClient</code></br>
+<code>tlsCluster</code></br>
 <em>
-bool
+<a href="#pingcap.com/v1alpha1.TLSCluster">
+TLSCluster
+</a>
 </em>
 </td>
 <td>
-<p>Whether enable TLS in TiDBCluster</p>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between TiDB server components
+Optional: Defaults to nil</p>
 </td>
 </tr>
 <tr>
@@ -6641,6 +6645,7 @@ GcsStorageProvider
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.BRConfig">BRConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -7654,7 +7659,10 @@ There are multiple ways to generate certificates:
 2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
 The name of this Secret must be: <clusterName>-tidb-server-secret.
 kubectl create secret generic <clusterName>-tidb-server-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
-3. Set Enabled to <code>true</code>.</p>
+3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+The name of this Secret must be: <clusterName>-tidb-client-secret.
+kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+4. Set Enabled to <code>true</code>.</p>
 </td>
 </tr>
 </tbody>

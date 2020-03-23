@@ -1,5 +1,5 @@
 //
-// Jenkins pipeline for EKS e2e job.
+// Jenkins pipeline for Kind e2e job.
 //
 // This script is written in declarative syntax. Refer to
 // https://jenkins.io/doc/book/pipeline/syntax/ for more details.
@@ -13,14 +13,28 @@ import groovy.transform.Field
 def podYAML = '''
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: tidb-operator-e2e
 spec:
   containers:
   - name: main
     image: gcr.io/k8s-testimages/kubekins-e2e:v20200311-1e25827-master
     command:
     - runner.sh
-    - sleep
-    - 1d
+    # Clean containers on TERM signal in root process to avoid cgroup leaking.
+    # https://github.com/pingcap/tidb-operator/issues/1603#issuecomment-582402196
+    - exec
+    - bash
+    - -c
+    - |
+      function clean() {
+        echo "info: clean all containers to avoid cgroup leaking"
+        docker kill $(docker ps -q) || true
+        docker system prune -af || true
+      }
+      trap clean TERM
+      sleep 1d & wait
     # we need privileged mode in order to do docker in docker
     securityContext:
       privileged: true
@@ -29,15 +43,64 @@ spec:
       value: "true"
     resources:
       requests:
-        memory: "4000Mi"
-        cpu: 2000m
+        memory: "8000Mi"
+        cpu: 8000m
+        ephemeral-storage: "50Gi"
+      limits:
+        memory: "8000Mi"
+        cpu: 8000m
+        ephemeral-storage: "50Gi"
+    # kind needs /lib/modules and cgroups from the host
     volumeMounts:
+    - mountPath: /lib/modules
+      name: modules
+      readOnly: true
+    - mountPath: /sys/fs/cgroup
+      name: cgroup
     # dind expects /var/lib/docker to be volume
     - name: docker-root
       mountPath: /var/lib/docker
+    # legacy docker path for cr.io/k8s-testimages/kubekins-e2e
+    - name: docker-graph
+      mountPath: /docker-graph
   volumes:
+  - name: modules
+    hostPath:
+      path: /lib/modules
+      type: Directory
+  - name: cgroup
+    hostPath:
+      path: /sys/fs/cgroup
+      type: Directory
   - name: docker-root
     emptyDir: {}
+  - name: docker-graph
+    emptyDir: {}
+  tolerations:
+  - effect: NoSchedule
+    key: tidb-operator
+    operator: Exists
+  affinity:
+    # running on nodes for tidb-operator only
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: ci.pingcap.com
+            operator: In
+            values:
+            - tidb-operator
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - tidb-operator-e2e
+          topologyKey: kubernetes.io/hostname
 '''
 
 // Able to override default values in Jenkins job via environment variables.
@@ -50,15 +113,19 @@ if (!env.DEFAULT_GINKGO_NODES) {
 }
 
 if (!env.DEFAULT_E2E_ARGS) {
-    env.DEFAULT_E2E_ARGS = "--ginkgo.skip='\\[Serial\\]|\\[Stability\\]' --ginkgo.focus='\\[tidb-operator\\]'"
+    env.DEFAULT_E2E_ARGS = ""
 }
 
-if (!env.DEFAULT_CLUSTER) {
-    env.DEFAULT_CLUSTER = "jenkins-tidb-operator-e2e"
+if (!env.DEFAULT_DOCKER_IO_MIRROR) {
+    env.DEFAULT_DOCKER_IO_MIRROR = ""
 }
 
-if (!env.DEFAULT_AWS_REGION) {
-    env.DEFAULT_AWS_REGION = "us-west-2"
+if (!env.DEFAULT_QUAY_IO_MIRROR) {
+    env.DEFAULT_QUAY_IO_MIRROR = ""
+}
+
+if (!env.DEFAULT_GCR_IO_MIRROR) {
+    env.DEFAULT_GCR_IO_MIRROR = ""
 }
 
 pipeline {
@@ -71,7 +138,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 3, unit: 'HOURS') 
     }
 
     parameters {
@@ -80,8 +147,9 @@ pipeline {
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889')
         string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes')
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'")
-        string(name: 'CLUSTER', defaultValue: env.DEFAULT_CLUSTER, description: 'the name of the cluster')
-        string(name: 'AWS_REGION', defaultValue: env.DEFAULT_AWS_REGION, description: 'the AWS region')
+        string(name: 'DOCKER_IO_MIRROR', defaultValue: env.DEFAULT_DOCKER_IO_MIRROR, description: "docker mirror for docker.io")
+        string(name: 'QUAY_IO_MIRROR', defaultValue: env.DEFAULT_QUAY_IO_MIRROR, description: "mirror for quay.io")
+        string(name: 'GCR_IO_MIRROR', defaultValue: env.DEFAULT_GCR_IO_MIRROR, description: "mirror for gcr.io")
     }
 
     environment {
@@ -125,23 +193,16 @@ pipeline {
 
         stage("Run") {
             steps {
-                withCredentials([
-                    string(credentialsId: 'TIDB_OPERATOR_AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'TIDB_OPERATOR_AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
-                ]) {
-                    sh """
-                    #!/bin/bash
-                    export PROVIDER=eks
-                    export CLUSTER=${params.CLUSTER}
-                    export AWS_REGION=${params.AWS_REGION}
-                    export GINKGO_NODES=${params.GINKGO_NODES}
-                    export REPORT_DIR=${ARTIFACTS}
-                    echo "info: try to clean the cluster created previously"
-                    ./ci/aws-clean-eks.sh \$CLUSTER
-                    echo "info: begin to run e2e"
-                    ./hack/e2e.sh -- ${params.E2E_ARGS}
-                    """
-                }
+                sh """
+                #!/bin/bash
+                export GINKGO_NODES=${params.GINKGO_NODES}
+                export REPORT_DIR=${ARTIFACTS}
+                export DOCKER_IO_MIRROR=${params.DOCKER_IO_MIRROR}
+                export QUAY_IO_MIRROR=${params.QUAY_IO_MIRROR}
+                export GCR_IO_MIRROR=${params.GCR_IO_MIRROR}
+                echo "info: begin to run e2e"
+                ./hack/e2e.sh -- ${params.E2E_ARGS}
+                """
             }
         }
     }
