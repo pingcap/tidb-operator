@@ -785,6 +785,10 @@ type TiDBAccessConfig struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
+	// Specify a secret for client cert in backup/restore
+	// Optional: Defaults to <cluster>-tidb-client-secret
+	// +optional
+	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true

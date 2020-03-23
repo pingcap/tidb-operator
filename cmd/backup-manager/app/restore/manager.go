@@ -82,8 +82,7 @@ func (rm *Manager) ProcessRestore() error {
 		return fmt.Errorf("no br config in %s", rm)
 	}
 
-	var enableTLSClient bool
-	enableTLSClient = false
+	enableTLSClient := false
 	if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.Enabled {
 		enableTLSClient = true
 	}

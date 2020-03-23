@@ -44,31 +44,31 @@ func (bo *GenericOptions) String() string {
 }
 
 func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
-	if enabledTLSClient {
-		rootCertPool := x509.NewCertPool()
-		pem, err := ioutil.ReadFile(path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey))
-		if err != nil {
-			return "", err
-		}
-		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-			return "", errors.New("Failed to append PEM")
-		}
-		clientCert := make([]tls.Certificate, 0, 1)
-		certs, err := tls.LoadX509KeyPair(
-			path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey),
-			path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey))
-		if err != nil {
-			return "", err
-		}
-		clientCert = append(clientCert, certs)
-		mysql.RegisterTLSConfig("customer", &tls.Config{
-			RootCAs:      rootCertPool,
-			Certificates: clientCert,
-			ServerName:   bo.Host,
-		})
-		return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
+	if !enabledTLSClient {
+		return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 	}
-	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
+	rootCertPool := x509.NewCertPool()
+	pem, err := ioutil.ReadFile(path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey))
+	if err != nil {
+		return "", err
+	}
+	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+		return "", errors.New("Failed to append PEM")
+	}
+	clientCert := make([]tls.Certificate, 0, 1)
+	certs, err := tls.LoadX509KeyPair(
+		path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey),
+		path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey))
+	if err != nil {
+		return "", err
+	}
+	clientCert = append(clientCert, certs)
+	mysql.RegisterTLSConfig("customer", &tls.Config{
+		RootCAs:      rootCertPool,
+		Certificates: clientCert,
+		ServerName:   bo.Host,
+	})
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 }
 
 func (bo *GenericOptions) GetTikvGCLifeTime(db *sql.DB) (string, error) {

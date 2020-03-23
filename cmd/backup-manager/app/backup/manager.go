@@ -80,8 +80,7 @@ func (bm *Manager) ProcessBackup() error {
 		})
 	}
 
-	var enableTLSClient bool
-	enableTLSClient = false
+	enableTLSClient := false
 	if backup.Spec.From.TLSClient != nil && backup.Spec.From.TLSClient.Enabled {
 		enableTLSClient = true
 	}

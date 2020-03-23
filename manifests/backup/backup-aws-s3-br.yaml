@@ -29,6 +29,7 @@ spec:
     # user: root
     # tlsClient:
     #   enabled: false
+    # tlsSecret: <backup-tls-secretname>
   s3:
     provider: aws
     region: us-west-2
