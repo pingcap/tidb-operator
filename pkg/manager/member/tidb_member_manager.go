@@ -179,6 +179,19 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
+	if tmm.autoFailover {
+		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
+			tmm.tidbFailover.Recover(tc)
+		}
+		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
+			tmm.tidbFailover.Recover(tc)
+		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
+			if err := tmm.tidbFailover.Failover(tc); err != nil {
+				return err
+			}
+		}
+	}
+
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb statefulset", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -206,19 +219,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
-		}
-	}
-
-	if tmm.autoFailover && tc.Spec.TiDB.MaxFailoverCount != nil {
-		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
-			tmm.tidbFailover.Recover(tc)
-		}
-		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
-			tmm.tidbFailover.Recover(tc)
-		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
-			if err := tmm.tidbFailover.Failover(tc); err != nil {
-				return err
-			}
 		}
 	}
 
