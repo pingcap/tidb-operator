@@ -83,5 +83,5 @@ module "tidb-cluster" {
   tidb_instance_type         = var.tidb_instance_type
   tidb_count                 = var.tidb_count
   monitor_instance_type      = var.monitor_instance_type
-  create                     = var.create
+  create_tidb_cluster        = var.create_tidb_cluster
 }
