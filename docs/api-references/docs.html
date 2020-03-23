@@ -6777,19 +6777,6 @@ TiDBTLSClient
 Optional: Defaults to nil</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>tlsSecret</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Specify a secret for client cert in backup/restore
-Optional: Defaults to <cluster>-tidb-client-secret</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiDBConfig">TiDBConfig
@@ -7703,6 +7690,21 @@ kubectl create secret generic <clusterName>-tidb-server-secret &ndash;namespace=
 The name of this Secret must be: <clusterName>-tidb-client-secret.
 kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 4. Set Enabled to <code>true</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsSecret</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Specify a secret for client cert in backup/restore
+Optional: Defaults to <cluster>-tidb-client-secret
+If you want specify a secret for backup/restore, Generate a Secret Object according to the third step of the above reference, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
+this field only work in backup/restore process</p>
 </td>
 </tr>
 </tbody>

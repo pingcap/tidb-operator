@@ -6814,10 +6814,6 @@ spec:
                     cluster's password.
                   type: string
                 tlsClient: {}
-                tlsSecret:
-                  description: 'Specify a secret for client cert in backup/restore
-                    Optional: Defaults to <cluster>-tidb-client-secret'
-                  type: string
                 user:
                   description: User is the user for login tidb cluster
                   type: string
@@ -7755,10 +7751,6 @@ spec:
                     cluster's password.
                   type: string
                 tlsClient: {}
-                tlsSecret:
-                  description: 'Specify a secret for client cert in backup/restore
-                    Optional: Defaults to <cluster>-tidb-client-secret'
-                  type: string
                 user:
                   description: User is the user for login tidb cluster
                   type: string
@@ -8551,10 +8543,6 @@ spec:
                         cluster's password.
                       type: string
                     tlsClient: {}
-                    tlsSecret:
-                      description: 'Specify a secret for client cert in backup/restore
-                        Optional: Defaults to <cluster>-tidb-client-secret'
-                      type: string
                     user:
                       description: User is the user for login tidb cluster
                       type: string

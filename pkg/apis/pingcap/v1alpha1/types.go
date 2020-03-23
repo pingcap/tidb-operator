@@ -622,6 +622,12 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+	// Specify a secret for client cert in backup/restore
+	// Optional: Defaults to <cluster>-tidb-client-secret
+	// +optional
+	// If you want specify a secret for backup/restore, Generate a Secret Object according to the third step of the above reference, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
+	// this field only work in backup/restore process
+	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // TLSCluster can enable TLS connection between TiDB server components
@@ -785,10 +791,6 @@ type TiDBAccessConfig struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
-	// Specify a secret for client cert in backup/restore
-	// Optional: Defaults to <cluster>-tidb-client-secret
-	// +optional
-	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true

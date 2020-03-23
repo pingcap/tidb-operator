@@ -3207,13 +3207,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref common.ReferenceCallb
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"),
 						},
 					},
-					"tlsSecret": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Specify a secret for client cert in backup/restore Optional: Defaults to <cluster>-tidb-client-secret",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 				Required: []string{"host", "secretName"},
 			},

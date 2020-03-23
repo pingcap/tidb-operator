@@ -34,7 +34,7 @@ spec:
       # user:         root
       # tlsClient:
       #   enabled: false
-      # tlsSecret: <backup-tls-secretname>
+      #   tlsSecret: <backup-tls-secretname>
     s3:
       provider: ceph
       endpoint: http://10.233.57.220
