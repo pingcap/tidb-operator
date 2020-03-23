@@ -1765,7 +1765,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDReplicationConfig(ref common.ReferenceCa
 					},
 					"strictly-match-label": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels. Immutable, change should be made through pd-ctl after cluster creation imported from v3.1.0",
+							Description: "StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels. Immutable, change should be made through pd-ctl after cluster creation. Imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1841,7 +1841,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					},
 					"leader-schedule-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LeaderScheduleLimit is the max coexist leader schedules. Immutable, change should be made through pd-ctl after cluster creation Optional: Defaults to 4 imported from v3.1.0",
+							Description: "LeaderScheduleLimit is the max coexist leader schedules. Immutable, change should be made through pd-ctl after cluster creation. Optional: Defaults to 4. Imported from v3.1.0",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
@@ -1883,7 +1883,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					},
 					"tolerant-size-ratio": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TolerantSizeRatio is the ratio of buffer size for balance scheduler. Immutable, change should be made through pd-ctl after cluster creation imported from v3.1.0",
+							Description: "TolerantSizeRatio is the ratio of buffer size for balance scheduler. Immutable, change should be made through pd-ctl after cluster creation. Imported from v3.1.0",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
@@ -1981,14 +1981,14 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 					},
 					"enable-one-way-merge": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it. imported from v3.1.0",
+							Description: "EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it. Imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"enable-cross-table-merge": {
 						SchemaProps: spec.SchemaProps{
-							Description: "EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs. This option only works when key type is \"table\". imported from v3.1.0",
+							Description: "EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs. This option only works when key type is \"table\". Imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2092,7 +2092,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDServerConfig(ref common.ReferenceCallbac
 					},
 					"metric-storage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricStorage is the cluster metric storage. Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later. imported from v3.1.0",
+							Description: "MetricStorage is the cluster metric storage. Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later. Imported from v3.1.0",
 							Type:        []string{"string"},
 							Format:      "",
 						},
