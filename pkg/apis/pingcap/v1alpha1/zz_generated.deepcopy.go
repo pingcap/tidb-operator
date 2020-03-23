@@ -1290,6 +1290,11 @@ func (in *PDReplicationConfig) DeepCopyInto(out *PDReplicationConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnablePlacementRules != nil {
+		in, out := &in.EnablePlacementRules, &out.EnablePlacementRules
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -1424,6 +1429,16 @@ func (in *PDScheduleConfig) DeepCopyInto(out *PDScheduleConfig) {
 			(*out)[key] = val
 		}
 	}
+	if in.EnableOneWayMerge != nil {
+		in, out := &in.EnableOneWayMerge, &out.EnableOneWayMerge
+		*out = new(bool)
+		**out = **in
+	}
+	if in.EnableCrossTableMerge != nil {
+		in, out := &in.EnableCrossTableMerge, &out.EnableCrossTableMerge
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -1507,6 +1522,11 @@ func (in *PDServerConfig) DeepCopyInto(out *PDServerConfig) {
 	if in.UseRegionStorage != nil {
 		in, out := &in.UseRegionStorage, &out.UseRegionStorage
 		*out = new(bool)
+		**out = **in
+	}
+	if in.MetricStorage != nil {
+		in, out := &in.MetricStorage, &out.MetricStorage
+		*out = new(string)
 		**out = **in
 	}
 	return

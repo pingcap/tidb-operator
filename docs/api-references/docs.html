@@ -4546,7 +4546,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
-Immutable, change should be made through pd-ctl after cluster creation</p>
+Immutable, change should be made through pd-ctl after cluster creation.
+Imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-placement-rules,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.</p>
 </td>
 </tr>
 </tbody>
@@ -4677,8 +4690,9 @@ uint64
 <td>
 <em>(Optional)</em>
 <p>LeaderScheduleLimit is the max coexist leader schedules.
-Immutable, change should be made through pd-ctl after cluster creation
-Optional: Defaults to 4</p>
+Immutable, change should be made through pd-ctl after cluster creation.
+Optional: Defaults to 4.
+Imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -4762,7 +4776,8 @@ float64
 <td>
 <em>(Optional)</em>
 <p>TolerantSizeRatio is the ratio of buffer size for balance scheduler.
-Immutable, change should be made through pd-ctl after cluster creation</p>
+Immutable, change should be made through pd-ctl after cluster creation.
+Imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -4922,6 +4937,33 @@ map[string]string
 <p>Only used to display</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-one-way-merge,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
+Imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-cross-table-merge,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
+This option only works when key type is &ldquo;table&rdquo;.
+Imported from v3.1.0</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDSchedulerConfig">PDSchedulerConfig
@@ -5065,6 +5107,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>UseRegionStorage enables the independent region storage.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>metric-storage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetricStorage is the cluster metric storage.
+Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
+Imported from v3.1.0</p>
 </td>
 </tr>
 </tbody>

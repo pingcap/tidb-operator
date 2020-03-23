@@ -1443,6 +1443,11 @@ spec:
                     pd-server:
                       description: PDServerConfig is the configuration for pd server.
                       properties:
+                        metric-storage:
+                          description: MetricStorage is the cluster metric storage.
+                            Currently we use prometheus as metric storage, we may
+                            use PD/TiKV as metric storage later. Imported from v3.1.0
+                          type: string
                         use-region-storage:
                           description: UseRegionStorage enables the independent region
                             storage.
@@ -1456,6 +1461,10 @@ spec:
                     replication:
                       description: PDReplicationConfig is the replication configuration.
                       properties:
+                        enable-placement-rules:
+                          description: When PlacementRules feature is enabled. MaxReplicas
+                            and LocationLabels are not used anymore.
+                          type: string
                         max-replicas:
                           description: 'MaxReplicas is the number of replicas for
                             each region. Immutable, change should be made through
@@ -1465,7 +1474,8 @@ spec:
                         strictly-match-label:
                           description: StrictlyMatchLabel strictly checks if the label
                             of TiKV is matched with LocaltionLabels. Immutable, change
-                            should be made through pd-ctl after cluster creation
+                            should be made through pd-ctl after cluster creation.
+                            Imported from v3.1.0
                           type: string
                       type: object
                     schedule:
@@ -1511,6 +1521,17 @@ spec:
                             Immutable, change should be made through pd-ctl after
                             cluster creation
                           type: string
+                        enable-cross-table-merge:
+                          description: EnableCrossTableMerge is the option to enable
+                            cross table merge. This means two Regions can be merged
+                            with different table IDs. This option only works when
+                            key type is "table". Imported from v3.1.0
+                          type: string
+                        enable-one-way-merge:
+                          description: EnableOneWayMerge is the option to enable one
+                            way merge. This means a Region can only be merged into
+                            the next region of it. Imported from v3.1.0
+                          type: string
                         high-space-ratio:
                           description: HighSpaceRatio is the highest usage ratio of
                             store which regraded as high space. High space means there
@@ -1537,7 +1558,8 @@ spec:
                         leader-schedule-limit:
                           description: 'LeaderScheduleLimit is the max coexist leader
                             schedules. Immutable, change should be made through pd-ctl
-                            after cluster creation Optional: Defaults to 4'
+                            after cluster creation. Optional: Defaults to 4. Imported
+                            from v3.1.0'
                           format: int64
                           type: integer
                         low-space-ratio:
@@ -1643,7 +1665,7 @@ spec:
                         tolerant-size-ratio:
                           description: TolerantSizeRatio is the ratio of buffer size
                             for balance scheduler. Immutable, change should be made
-                            through pd-ctl after cluster creation
+                            through pd-ctl after cluster creation. Imported from v3.1.0
                           format: double
                           type: number
                       type: object
