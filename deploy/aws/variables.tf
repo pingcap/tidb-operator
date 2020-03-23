@@ -112,7 +112,7 @@ variable "default_cluster_monitor_instance_type" {
 }
 
 variable "default_cluster_name" {
-  default = "db"
+  default = "my-cluster"
 }
 
 variable "create_tidb_cluster_release" {
