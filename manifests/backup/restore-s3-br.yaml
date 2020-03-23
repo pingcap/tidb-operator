@@ -13,7 +13,8 @@ spec:
   br:
     cluster: myCluster
     # clusterNamespce: <restore-namespace>
-    # enableTLSClient: true
+    # tlsCluster:
+    #   enabled: false
     # db: <db-name>
     # table: <table-name>
     # logLevel: info
@@ -28,6 +29,8 @@ spec:
     secretName: mySecret
     # port: 4000
     # user: root
+    # tlsClient:
+    #   enabled: false
   s3:
     provider: ceph
     endpoint: http://10.233.57.220
