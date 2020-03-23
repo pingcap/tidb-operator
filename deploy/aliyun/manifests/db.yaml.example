@@ -18,7 +18,7 @@ spec:
     nodeSelector:
       dedicated: TIDB_CLUSTER_NAME-pd
     podSecurityContext: {}
-    replicas: 1
+    replicas: 3
     requests:
       cpu: "1"
       memory: 400Mi
@@ -54,7 +54,7 @@ spec:
         value: "75"
       - name: net.core.somaxconn
         value: "32768"
-    replicas: 1
+    replicas: 2
     requests:
       cpu: "1"
       memory: 400Mi
@@ -94,7 +94,7 @@ spec:
       - name: net.core.somaxconn
         value: "32768"
     privileged: false
-    replicas: 1
+    replicas: 3
     requests:
       cpu: "1"
       memory: 2Gi
