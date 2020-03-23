@@ -622,10 +622,10 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
-	// Specify a secret for client cert in backup/restore
+	// Specify a secret of client cert for backup/restore
 	// Optional: Defaults to <cluster>-tidb-client-secret
 	// +optional
-	// If you want specify a secret for backup/restore, Generate a Secret Object according to the third step of the above reference, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
+	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
 	// this field only work in backup/restore process
 	TLSSecret string `json:"tlsSecret,omitempty"`
 }
