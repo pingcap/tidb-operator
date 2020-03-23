@@ -22,7 +22,18 @@ category: how-to
 
 1. 修改集群的 TidbCluster CR 中各组件的镜像配置。
 
-    TidbCluster CR 中关于镜像配置有多个参数，`spec.version`、`spec.<pd/tidb/tikv/pump>.baseImage`、`spec.<pd/tidb/tikv/pump>.version`、`spec.<pd/tidb/tikv/pump>.image`，`spec.<pd/tidb/tikv/pump>.image` 格式为 `imageName:imageTag`，`spec.version` 和 `spec.<pd/tidb/tikv/pump>.version` 格式为 `imageTag`，`spec.<pd/tidb/tikv/pump>.baseImage` 格式为 `imageName`，镜像配置获取的优先级为：`spec.<pd/tidb/tikv/pump>.baseImage` + `spec.<pd/tidb/tikv/pump>.version` > `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` > `spec.<pd/tidb/tikv/pump>.image`，正常情况下，集群内的各组件应该使用相同版本，所以一般建议配置 `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` 即可，这样升级 TiDB 集群只需要修改 `spec.version`。
+   需要注意的是，TidbCluster CR 中关于镜像配置有多个参数：
+
+    - `spec.version`，格式为 `imageTag`，例如 `v3.1.0`
+    - `spec.<pd/tidb/tikv/pump>.baseImage`，格式为 `imageName`，例如 `pingcap/tidb`
+    - `spec.<pd/tidb/tikv/pump>.version`，格式为 `imageTag`，例如 `v3.1.0`
+    - `spec.<pd/tidb/tikv/pump>.image`，格式为 `imageName:imageTag`，例如 `pingcap/tidb:v3.1.0`
+
+    镜像配置获取的优先级为：
+
+    `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.<pd/tidb/tikv/pump>.version` > `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` > `spec.<pd/tidb/tikv/pump>.image`。
+
+    正常情况下，集群内的各组件应该使用相同版本，所以一般建议配置 `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` 即可，这样升级 TiDB 集群只需要修改 `spec.version`。
 
     {{< copyable "shell-regular" >}}
 
