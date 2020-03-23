@@ -21,6 +21,7 @@
 + Configure
   - [Initialize a Cluster](initialize-a-cluster.md)
   - [Configure a TiDB Cluster](configure-a-tidb-cluster.md)
+  - [TidbCluster](configure-cluster-using-tidbcluster.md)
   - [Configure Backup](configure-backup.md)
   - [Configure Storage Class](configure-storage-class.md)
   - [Configure TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
