@@ -10,6 +10,7 @@ category: how-to
 ## PingCAP 不再继续更新维护 tidb-cluster chart
 
 从 TiDB Operator v1.1.0 开始，PingCAP 不再继续更新维护 tidb-cluster chart，原来由 tidb-cluster chart 负责管理的组件或者功能在 v1.1 中的变更如下：
+
 | 组件、功能 | v1.1 |
 | :--- | :--- |
 | TiDB Cluster (PD, TiDB, TiKV) | [TidbCluster CR](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) |
@@ -35,7 +36,7 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 
 ### PD、TiDB、TiKV
 
-在 tidb-cluster chart 中，PD、TiDB、TiKV 配置由 Helm 渲染成 ConfigMap，从 TiDB Operator v1.1 开始，PD、TiDB、TiKV 配置也可以直接在 TiDBCluster CR 中配置，具体配置方法可以参考 [TiDB 集群配置](configure-tidb-cluster.md)。
+在 tidb-cluster chart 中，PD、TiDB、TiKV 配置由 Helm 渲染成 ConfigMap，从 TiDB Operator v1.1 开始，PD、TiDB、TiKV 配置也可以直接在 TiDBCluster CR 中配置，具体配置方法可以参考 [通过 TidbCluster 配置 TiDB 集群](configure-cluster-using-tidbcluster.md)。
 
 > **注意：**
 >
@@ -43,7 +44,7 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 
 ### Monitor
 
-可以参考 [Kubernetes 上的 TiDB 集群监控](monitoring-by-tidb-monitor.md) 创建 TidbMonitor CR，管理 Monitor 组件。
+可以参考 [Kubernetes 上的 TiDB 集群监控](monitor-using-tidbmonitor.md) 创建 TidbMonitor CR，管理 Monitor 组件。
 
 > **注意：**
 >
@@ -52,7 +53,7 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 ### Initializer
 
 - 如果在升级到 TiDB Operator v1.1 之前，初始化 job 已经执行，初始化 job 不需要从 tidb-cluster chart 中迁移到 TidbInitializer CR。
-- 如果在升级到 TiDB Operator v1.1 之前，没有执行过初始化 job，也没有修改过 TiDB 服务 root 用户的密码，升级到 TiDB Operator v1.1 之后，需要执行初始化，可以参考 [Kubernetes 上的集群初始化配置](initialize-cluster.md)进行配置。
+- 如果在升级到 TiDB Operator v1.1 之前，没有执行过初始化 job，也没有修改过 TiDB 服务 root 用户的密码，升级到 TiDB Operator v1.1 之后，需要执行初始化，可以参考 [Kubernetes 上的集群初始化配置](initialize-a-cluster.md)进行配置。
 
 ### Pump
 
@@ -86,7 +87,7 @@ spec
 升级到 TiDB Operator v1.1 之后，可以通过 BackupSchedule CR 配置定时全量备份：
 
 - 如果 TiDB 集群版本 < v3.1，可以参考 [mydumper 定时全量备份](backup-to-s3.md#定时全量备份)
-- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR 定时全量备份](backup-to-aws-s3-br.md#定时全量备份)
+- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR 定时全量备份](backup-to-aws-s3-using-br.md#定时全量备份)
 
 > **注意：**
 >
@@ -95,10 +96,10 @@ spec
 
 ### Drainer
 
-- 如果在升级到 TiDB Operator v1.1 之前，没有部署 Drainer，如果要新部署，可以参考 [Drainer 部署](maintain-tidb-binlog.md#部署多个-drainer)。
+- 如果在升级到 TiDB Operator v1.1 之前，没有部署 Drainer，现在需要新部署，可以参考 [Drainer 部署](maintain-tidb-binlog.md#部署多个-drainer)。
 - 如果在升级到 TiDB Operator v1.1 之前，已经部署 Drainer，建议直接用 kubectl 管理。
 
 ### TiKV Importer
 
-- 如果在升级到 TiDB Operator v1.1 之前，没有部署 TiKV Importer，如果要新部署，可以参考 [TiKV Importer 部署](restore-data-using-tidb-lightning.md#部署-tikv-importer)。
+- 如果在升级到 TiDB Operator v1.1 之前，没有部署 TiKV Importer，现在需要新部署，可以参考 [TiKV Importer 部署](restore-data-using-tidb-lightning.md#部署-tikv-importer)。
 - 如果在升级到 TiDB Operator v1.1 之前，已经部署 TiKV Importer，建议直接用 kubectl 管理。
