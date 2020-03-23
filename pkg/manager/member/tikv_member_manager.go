@@ -131,6 +131,11 @@ func (tkmm *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for tikv service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -180,6 +185,16 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	setNotExist := errors.IsNotFound(err)
 
 	oldSet := oldSetTmp.DeepCopy()
+
+	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
+		return err
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for tikv statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	cm, err := tkmm.syncTiKVConfigMap(tc, oldSet)
 	if err != nil {
 		return err
@@ -200,10 +215,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		}
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
-	}
-
-	if err := tkmm.syncTidbClusterStatus(tc, oldSet); err != nil {
-		return err
 	}
 
 	if _, err := tkmm.setStoreLabelsForTiKV(tc); err != nil {
@@ -551,6 +562,10 @@ func labelTiKV(tc *v1alpha1.TidbCluster) label.Label {
 }
 
 func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
 	tc.Status.TiKV.StatefulSet = &set.Status
 	upgrading, err := tkmm.tikvStatefulSetIsUpgradingFn(tkmm.podLister, tkmm.pdControl, set, tc)
 	if err != nil {
