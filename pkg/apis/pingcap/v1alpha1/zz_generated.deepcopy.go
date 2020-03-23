@@ -18,7 +18,6 @@
 package v1alpha1
 
 import (
-	zap "go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	v2beta2 "k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
@@ -965,11 +964,6 @@ func (in *PDConfig) DeepCopyInto(out *PDConfig) {
 			}
 		}
 	}
-	if in.EnableDynamicConfig != nil {
-		in, out := &in.EnableDynamicConfig, &out.EnableDynamicConfig
-		*out = new(bool)
-		**out = **in
-	}
 	return
 }
 
@@ -1061,11 +1055,6 @@ func (in *PDLogConfig) DeepCopyInto(out *PDLogConfig) {
 	if in.DisableErrorVerbose != nil {
 		in, out := &in.DisableErrorVerbose, &out.DisableErrorVerbose
 		*out = new(bool)
-		**out = **in
-	}
-	if in.Sampling != nil {
-		in, out := &in.Sampling, &out.Sampling
-		*out = new(zap.SamplingConfig)
 		**out = **in
 	}
 	return
@@ -1331,11 +1320,6 @@ func (in *PDScheduleConfig) DeepCopyInto(out *PDScheduleConfig) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
-	}
-	if in.StoreLimitMode != nil {
-		in, out := &in.StoreLimitMode, &out.StoreLimitMode
-		*out = new(string)
-		**out = **in
 	}
 	if in.EnableOneWayMerge != nil {
 		in, out := &in.EnableOneWayMerge, &out.EnableOneWayMerge
