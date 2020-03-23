@@ -45,7 +45,9 @@
   - [收集日志](collect-tidb-binlogs.md)
   - [TiDB Binlog 运维](maintain-tidb-binlog.md)
   - [集群故障自动转移](use-auto-failover.md)
-- [扩缩容](scale-a-tidb-cluster.md)
++ TiDB 集群伸缩
+  - [扩缩容](scale-a-tidb-cluster.md)
+  - [开启弹性伸缩](enable-tidb-cluster-auto-scaling.md)
 + 升级
   - [TiDB 集群](upgrade-a-tidb-cluster.md)
   - [TiDB Operator](upgrade-tidb-operator.md)
