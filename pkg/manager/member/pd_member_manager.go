@@ -208,16 +208,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", ns, tcName, err)
 	}
 
-	if pmm.autoFailover {
-		if tc.PDAllPodsStarted() && tc.PDAllMembersReady() && tc.Status.PD.FailureMembers != nil {
-			pmm.pdFailover.Recover(tc)
-		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
-			if err := pmm.pdFailover.Failover(tc); err != nil {
-				return err
-			}
-		}
-	}
-
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for pd statefulset", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -261,6 +251,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 
 	if err := pmm.pdScaler.Scale(tc, oldPDSet, newPDSet); err != nil {
 		return err
+	}
+
+	if pmm.autoFailover {
+		if tc.PDAllPodsStarted() && tc.PDAllMembersReady() && tc.Status.PD.FailureMembers != nil {
+			pmm.pdFailover.Recover(tc)
+		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
+			if err := pmm.pdFailover.Failover(tc); err != nil {
+				return err
+			}
+		}
 	}
 
 	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
