@@ -183,7 +183,7 @@ type PDReplicationConfig struct {
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
 
-	// When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not uesd anymore.
+	// When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.
 	// +optional
 	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,string,omitempty"`
 }
