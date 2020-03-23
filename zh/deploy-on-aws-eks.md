@@ -90,12 +90,13 @@ cd tidb-operator/deploy/aws
 * 2 台 c5.4xlarge 实例，部署 TiDB
 * 1 台 c5.2xlarge 实例，部署监控组件
 
-可以新建或者编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。例如，下面示例配置 EKS 集群名称及 PD、TiKV 和 TiDB 节点的数量：
+可以新建或者编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。例如，下面示例配置 EKS 集群名称，TiDB 集群名称及 PD、TiKV 和 TiDB 节点的数量：
 
 ```
 default_cluster_pd_count   = 3
 default_cluster_tikv_count = 3
 default_cluster_tidb_count = 2
+default_cluster_name = "tidb"
 eks_name = "my-cluster"
 ```
 
@@ -155,8 +156,8 @@ region = us-west-21
 
     > **注意：**
     >
-    > * 如果创建 EKS 过程中修改了 `default_cluster_name` 的默认值，请使用配置的值替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `DEFAULT_CLUSTER_NAME`。
-    > * 如果创建 EKS 过程中修改了 PD、TiKV 或者 TiDB 节点的数量的默认值，请使用配置的值替换 `db.yaml` 中对应组件的 `replicas` 字段。
+    > * 请使用 EKS 部署过程中配置的 `default_cluster_name` 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`。
+    > * 请确保 EKS 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
 
 2. 创建 `Namespace`：
