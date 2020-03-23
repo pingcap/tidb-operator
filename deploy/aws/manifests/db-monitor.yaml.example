@@ -1,7 +1,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
-  name: DEFAULT_CLUSTER_NAME
+  name: CLUSTER_NAME
 spec:
   alertmanagerURL: ""
   annotations: {}
