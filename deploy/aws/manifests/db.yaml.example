@@ -1,7 +1,7 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: DEFAULT_CLUSTER_NAME
+  name: CLUSTER_NAME
 spec:
   configUpdateStrategy: RollingUpdate
   enableTLSCluster: false
@@ -20,7 +20,7 @@ spec:
         - zone
         max-replicas: 3
     nodeSelector:
-      dedicated: DEFAULT_CLUSTER_NAME-pd
+      dedicated: CLUSTER_NAME-pd
     podSecurityContext: {}
     replicas: 3
     requests:
@@ -32,7 +32,7 @@ spec:
     - effect: NoSchedule
       key: dedicated
       operator: Equal
-      value: DEFAULT_CLUSTER_NAME-pd
+      value: CLUSTER_NAME-pd
   pvReclaimPolicy: Retain
   schedulerName: tidb-scheduler
   tidb:
@@ -47,7 +47,7 @@ spec:
     enableTLSClient: false
     maxFailoverCount: 3
     nodeSelector:
-      dedicated: DEFAULT_CLUSTER_NAME-tidb
+      dedicated: CLUSTER_NAME-tidb
     podSecurityContext:
       sysctls:
       - name: net.ipv4.tcp_keepalive_time
@@ -80,7 +80,7 @@ spec:
     - effect: NoSchedule
       key: dedicated
       operator: Equal
-      value: DEFAULT_CLUSTER_NAME-tidb
+      value: CLUSTER_NAME-tidb
   tikv:
     affinity: {}
     baseImage: pingcap/tikv
@@ -89,7 +89,7 @@ spec:
     hostNetwork: false
     maxFailoverCount: 3
     nodeSelector:
-      dedicated: db-tikv
+      dedicated: CLUSTER_NAME-tikv
     podSecurityContext: {}
     privileged: false
     replicas: 3
@@ -102,7 +102,7 @@ spec:
     - effect: NoSchedule
       key: dedicated
       operator: Equal
-      value: DEFAULT_CLUSTER_NAME-tikv
+      value: CLUSTER_NAME-tikv
   timezone: UTC
   version: v3.0.12
 
