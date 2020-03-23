@@ -190,14 +190,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if tkmm.autoFailover {
-		if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
-			if err := tkmm.tikvFailover.Failover(tc); err != nil {
-				return err
-			}
-		}
-	}
-
 	if tc.Spec.Paused {
 		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for tikv statefulset", tc.GetNamespace(), tc.GetName())
 		return nil
@@ -237,6 +229,14 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	if err := tkmm.tikvScaler.Scale(tc, oldSet, newSet); err != nil {
 		return err
+	}
+
+	if tkmm.autoFailover {
+		if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
+			if err := tkmm.tikvFailover.Failover(tc); err != nil {
+				return err
+			}
+		}
 	}
 
 	return updateStatefulSet(tkmm.setControl, tc, newSet, oldSet)
