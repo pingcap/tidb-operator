@@ -10,7 +10,7 @@ variable "bastion_cpu_core_count" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.0.6"
+  default = "v1.1.0"
 }
 
 variable "operator_helm_values" {
@@ -111,4 +111,14 @@ variable "k8s_service_cidr" {
 variable "vpc_cidr" {
   description = "VPC cidr_block, options: [192.168.0.0.0/16, 172.16.0.0/16, 10.0.0.0/8], cannot collidate with kubernetes service cidr and pod cidr. Cannot change once the vpc created."
   default     = "192.168.0.0/16"
+}
+
+variable "create_tidb_cluster_release" {
+  description = "whether creating tidb-cluster helm release"
+  default     = false
+}
+
+variable "tidb_cluster_name" {
+  description = "The TiDB cluster name"
+  default     = "my-cluster"
 }
