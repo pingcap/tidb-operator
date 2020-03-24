@@ -89,7 +89,7 @@ spec:
 
 `minReplicas` 与 `maxReplicas` 则代表了对于目标组件弹性的上下限。
 
-目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的 阈值。 当当前 CPU 利用率超过百分之 80 时 则会触发弹性伸。
+目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的阈值。如果当前 CPU 利用率超过 80%，则会触发弹性扩容。
 
 ```yaml
     metrics:
