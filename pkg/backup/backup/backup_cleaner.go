@@ -140,7 +140,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             storageEnv,
 				},
 			},

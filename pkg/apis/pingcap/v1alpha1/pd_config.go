@@ -33,7 +33,6 @@ import (
 // PDConfig is the configuration of pd-server
 // +k8s:openapi-gen=true
 type PDConfig struct {
-
 	// +optional
 	ForceNewCluster *bool `json:"force-new-cluster,omitempty"`
 	// Optional: Defaults to true
@@ -179,9 +178,14 @@ type PDReplicationConfig struct {
 	// +optional
 	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
-	// Immutable, change should be made through pd-ctl after cluster creation
+	// Immutable, change should be made through pd-ctl after cluster creation.
+	// Imported from v3.1.0
 	// +optional
 	StrictlyMatchLabel *bool `toml:"strictly-match-label,omitempty" json:"strictly-match-label,string,omitempty"`
+
+	// When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.
+	// +optional
+	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,string,omitempty"`
 }
 
 // PDNamespaceConfig is to overwrite the global setting for specific namespace
@@ -247,8 +251,9 @@ type PDScheduleConfig struct {
 	// +optional
 	MaxStoreDownTime string `toml:"max-store-down-time,omitempty" json:"max-store-down-time,omitempty"`
 	// LeaderScheduleLimit is the max coexist leader schedules.
-	// Immutable, change should be made through pd-ctl after cluster creation
-	// Optional: Defaults to 4
+	// Immutable, change should be made through pd-ctl after cluster creation.
+	// Optional: Defaults to 4.
+	// Imported from v3.1.0
 	// +optional
 	LeaderScheduleLimit *uint64 `toml:"leader-schedule-limit,omitempty" json:"leader-schedule-limit,omitempty"`
 	// RegionScheduleLimit is the max coexist region schedules.
@@ -278,7 +283,8 @@ type PDScheduleConfig struct {
 	// +optional
 	HotRegionCacheHitsThreshold *uint64 `toml:"hot-region-cache-hits-threshold,omitempty" json:"hot-region-cache-hits-threshold,omitempty"`
 	// TolerantSizeRatio is the ratio of buffer size for balance scheduler.
-	// Immutable, change should be made through pd-ctl after cluster creation
+	// Immutable, change should be made through pd-ctl after cluster creation.
+	// Imported from v3.1.0
 	// +optional
 	TolerantSizeRatio *float64 `toml:"tolerant-size-ratio,omitempty" json:"tolerant-size-ratio,omitempty"`
 	//
@@ -341,6 +347,16 @@ type PDScheduleConfig struct {
 	// Only used to display
 	// +optional
 	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
+
+	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
+	// Imported from v3.1.0
+	// +optional
+	EnableOneWayMerge *bool `toml:"enable-one-way-merge" json:"enable-one-way-merge,string,omitempty"`
+	// EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
+	// This option only works when key type is "table".
+	// Imported from v3.1.0
+	// +optional
+	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge" json:"enable-cross-table-merge,string,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig
@@ -392,6 +408,11 @@ type PDServerConfig struct {
 	// UseRegionStorage enables the independent region storage.
 	// +optional
 	UseRegionStorage *bool `toml:"use-region-storage,omitempty" json:"use-region-storage,string,omitempty"`
+	// MetricStorage is the cluster metric storage.
+	// Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
+	// Imported from v3.1.0
+	// +optional
+	MetricStorage *string `toml:"metric-storage" json:"metric-storage,omitempty"`
 }
 
 // +k8s:openapi-gen=true
