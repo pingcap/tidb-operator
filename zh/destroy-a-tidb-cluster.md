@@ -18,7 +18,7 @@ category: how-to
 kubectl delete tc <cluster-name> -n <namespace>
 ```
 
-如果集群中通过 `TidbMonitor` 部署了监控，要删除监控组件，，执行以下命令：
+如果集群中通过 `TidbMonitor` 部署了监控，要删除监控组件，可以执行以下命令：
 
 {{< copyable "shell-regular" >}}
 
