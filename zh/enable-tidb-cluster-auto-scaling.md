@@ -104,7 +104,7 @@ spec:
 
 ## 快速上手
 
-我们将通过以下指令快速部署一个 3 PD / 3 TiKV/ 2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
+我们将通过以下指令快速部署一个 3 PD、3 TiKV、2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
 
 ```shell
 $ kubectl apply -f examples/auto-scale/  -n <namespace>
