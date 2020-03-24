@@ -11,15 +11,15 @@ This document describes how to initialize a TiDB cluster in Kubernetes (K8s), sp
 > **Note:**
 >
 > - After creating the TiDB cluster, if you manually change the password of the `root` account, the initialization will fail.
-> - The following steps only apply when you create a cluster for the first time. Further configuration or modification after the initial cluster creation is not valid.
+> - The following steps apply only when you have created a cluster for the first time. Further configuration or modification after the initial cluster creation is not valid.
 
 ## Step 1: Configure TidbInitializer
 
-Refer to [TidbInitializer examples](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml), [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html), and the following steps to complete TidbInitializer Custom Resource (CR), and save it to the `<cluster-name>/tidb-initializer.yaml` file. Please switch the examples and API documentation to the currently used version of TiDB Operator.
+Refer to [TidbInitializer example](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml), [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html), and the following steps to complete TidbInitializer Custom Resource (CR), and save it to the `<cluster-name>/tidb-initializer.yaml` file. Please switch the TidbInitializer example and API documentation to the currently used version of TiDB Operator.
 
 ### Set initial account and password
 
-When a cluster is created, a default account `root` is created with no password. This might cause security issues. You can set a password for the `root` account in the following steps:
+When a cluster is created, a default account `root` is created with no password. This might cause security issues. You can set a password for the `root` account in the following methods:
 
 - Create a [`secret`](https://kubernetes.io/docs/concepts/configuration/secret/) to specify the password for `root`:
 
@@ -29,7 +29,7 @@ When a cluster is created, a default account `root` is created with no password.
     kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
     ```
 
-- If you also want to create users automatically, add the desired username and the password in the above command, for example:
+- If you also want to create more than one user automatically, add the desired username and the password in the above command. For example:
 
     {{< copyable "shell-regular" >}}
 
@@ -37,7 +37,7 @@ When a cluster is created, a default account `root` is created with no password.
     kubectl create secret generic tidb-secret --from-literal=root=<root-password> --from-literal=developer=<developer-passowrd> --namespace=<namespace>
     ```
 
-    This command creates `root` and `developer` users with their passwords, which are saved in the `tidb-secret` object. By default, the regular `developer` user is only granted with `USAGE` privilege. You can set other privileges in the `initSql` configuration item.
+    This command creates `root` and `developer` users with their passwords, which are saved in the `tidb-secret` object. By default, the regular `developer` user is only granted with the `USAGE` privilege. You can set other privileges in the `initSql` configuration item.
 
 ## Step 2: Set a host that has access to TiDB
 
@@ -61,7 +61,7 @@ initSql: |-
 
 > **Note:**
 >
-> Currently no verification has been implemented for `initSql`. You can create accounts and set passwords in `initSql`, but it is not recommended because passwords created this way are saved as plaintext in the initializer job object.
+> Currently no verification has been implemented for `initSql`. You can create accounts and set passwords in `initSql`, but it is not recommended to do so because passwords created this way are saved as plaintext in the initializer job object.
 
 ## Step 4: Initialize the cluster
 

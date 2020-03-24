@@ -10,13 +10,13 @@ This document describes how to deploy a TiDB cluster on general Kubernetes.
 
 ## Prerequisites
 
-- Complete [Deploy TiDB Operator](deploy-tidb-operator.md).
+- Complete [deploying TiDB Operator](deploy-tidb-operator.md).
 
 ## Configure TiDB cluster
 
-Refer to [TidbCluster examples](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml) and [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) to complete TidbCluster Custom Resource (CR), and save it to the `<cluster-name>/tidb-cluster.yaml` file. Please switch the examples and API documentation to the currently used version of TiDB Operator.
+Refer to the [TidbCluster example](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml) and [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) to complete TidbCluster Custom Resource (CR), and save it to the `<cluster-name>/tidb-cluster.yaml` file. Switch the TidbCluster example and API documentation to the currently used version of TiDB Operator.
 
-To deploy TiDB cluster monitor, refer to [TidbMonitor examples](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) to complete TidbMonitor CR, and save it to the `<cluster-name>/tidb-monitor.yaml` file. Please switch the examples and API documentation to the currently used version of TiDB Operator.
+To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) to complete TidbMonitor CR, and save it to the `<cluster-name>/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
 
 ### Storage class
 
@@ -37,7 +37,7 @@ The deployed cluster topology by default has 3 PD Pods, 3 TiKV Pods, and 2 TiDB 
 
 If the number of Kubernetes cluster nodes is less than 3, 1 PD Pod goes to the Pending state, and neither TiKV Pods nor TiDB Pods are created.
 
-When the number of nodes in the Kubernetes cluster is less than 3, to start the TiDB cluster, you can reduce both the number of PD Pods and TiKV Pods in the default deployment to `1`.
+When the number of nodes in the Kubernetes cluster is less than 3, to start the TiDB cluster, you can reduce both the number of PD Pods and the number of TiKV Pods in the default deployment to `1`.
 
 ## Deploy TiDB Cluster
 
@@ -73,7 +73,7 @@ After you deploy and configure TiDB Operator, deploy the TiDB cluster by the fol
 
 You can use TiDB Operator to deploy and manage multiple TiDB clusters in a single Kubernetes cluster by repeating the above procedure and replacing `cluster-name` with a different name.
 
-Different clusters can be in the same or different `namespace`. You can select different clusters according to your actual needs.
+Different clusters can be in the same or different `namespace`, which is based on your actual needs.
 
 ### Initialize TiDB cluster
 
