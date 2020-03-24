@@ -52,6 +52,8 @@
   - [TiDB 集群](upgrade-a-tidb-cluster.md)
   - [TiDB Operator](upgrade-tidb-operator.md)
   - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
++ 安全
+  - [为 MySQL 客户端开启 TLS](enable-tls-for-mysql-client.md)
 + 工具
   - [tkctl](use-tkctl.md)
   - [TiDB Toolkit](tidb-toolkit.md)
