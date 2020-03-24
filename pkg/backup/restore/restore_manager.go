@@ -197,7 +197,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					Name:            label.RestoreJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
 					},
@@ -277,6 +277,26 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		})
 	}
 
+	if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.Enabled {
+		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
+		if restore.Spec.To.TLSClient.TLSSecret != "" {
+			clientSecretName = restore.Spec.To.TLSClient.TLSSecret
+		}
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientSecretName,
+				},
+			},
+		})
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
 		serviceAccount = restore.Spec.ServiceAccount
@@ -294,7 +314,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Name:            label.RestoreJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},

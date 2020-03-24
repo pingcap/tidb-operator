@@ -3345,10 +3345,18 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"tlsClient": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to nil",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"),
+						},
+					},
 				},
 				Required: []string{"host", "secretName"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"},
 	}
 }
 
