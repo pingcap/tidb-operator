@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -114,6 +115,8 @@ func (tcc *defaultTidbClusterControl) validate(tc *v1alpha1.TidbCluster) bool {
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	// default the tidbcluster
+	defaulting.SetTidbClusterDefault(tc)
 	// syncing all PVs managed by operator's reclaim policy to Retain
 	if err := tcc.reclaimPolicyManager.Sync(tc); err != nil {
 		return err
