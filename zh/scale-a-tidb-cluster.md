@@ -25,7 +25,7 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
     helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
     ```
 
-### 水平扩缩容操作 (yaml)
+### 水平扩缩容操作 (CR)
 
 1. 使用 kubectl 修改集群所对应的 `TidbCluster` 对象中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 指期望值。
 
