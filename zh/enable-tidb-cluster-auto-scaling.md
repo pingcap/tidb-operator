@@ -21,19 +21,19 @@ category: how-to
 
 在 `features` 选项中开启 AutoScaling：
 
-```yaml
-features:
-  - AutoScaling=true
-```
+    ```yaml
+    features:
+      - AutoScaling=true
+    ```
 
 开启 Operator Webhook 特性:
 
-```yaml
-admissionWebhook:
-  create: true
-  mutation:
-    pods: true
-```
+    ```yaml
+    admissionWebhook:
+      create: true
+      mutation:
+        pods: true
+    ```
 
 2. 安装 / 更新 operator
 
@@ -43,29 +43,29 @@ admissionWebhook:
 
 我们通过 `TidbClusterAutoScaler` CR 对象来控制 TiDB 集群的弹性伸缩行为，如果你曾经使用过 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)， 那么你一定会对这个概念感到非常熟悉。以下是一个 TiKV 的弹性伸缩例子。
 
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbClusterAutoScaler
-metadata:
-  name: auto-scaling-demo
-spec:
-  cluster:
-    name: auto-scaling-demo
-    namespace: default
-  monitor:
-    name: auto-scaling-demo
-    namespace: default
-  tikv:
-    minReplicas: 3
-    maxReplicas: 4
-    metrics:
-      - type: "Resource"
-        resource:
-          name: "cpu"
-          target:
-            type: "Utilization"
-            averageUtilization: 80
-```
+    ```yaml
+    apiVersion: pingcap.com/v1alpha1
+    kind: TidbClusterAutoScaler
+    metadata:
+      name: auto-scaling-demo
+    spec:
+      cluster:
+        name: auto-scaling-demo
+        namespace: default
+      monitor:
+        name: auto-scaling-demo
+        namespace: default
+      tikv:
+        minReplicas: 3
+        maxReplicas: 4
+        metrics:
+          - type: "Resource"
+            resource:
+              name: "cpu"
+              target:
+                type: "Utilization"
+                averageUtilization: 80
+    ```
 
 对于 TiDB 组件，你可以通过 `spec.tidb` 来进行配置，目前 TiKV 与 TiDB 的弹性伸缩 API 相同。
 
@@ -73,32 +73,32 @@ spec:
 
 对于非 `TidbMonitor` 的外部 `Prometheus`, 你可以通过 `spec.metricsUrl` 来填写这个服务的 Host，从而指定该 TiDB 集群的监控指标采集服务。对于使用 `Helm` 部署 TiDB 集群监控的情况，可以通过以下方式来指定 `spec.metricsUrl`。
 
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbClusterAutoScaler
-metadata:
-  name: auto-scaling-demo
-spec:
-  cluster:
-    name: auto-scaling-demo
-    namespace: default
-  metricsUrl: "http://<release-name>-prometheus.<release-namespace>.svc:9090"
-  ......
-```
+    ```yaml
+    apiVersion: pingcap.com/v1alpha1
+    kind: TidbClusterAutoScaler
+    metadata:
+      name: auto-scaling-demo
+    spec:
+      cluster:
+        name: auto-scaling-demo
+        namespace: default
+      metricsUrl: "http://<release-name>-prometheus.<release-namespace>.svc:9090"
+      ......
+    ```
 
 `minReplicas` 与 `maxReplicas` 则代表了对于目标组件弹性的上下限。
 
 目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的阈值。如果当前 CPU 利用率超过 80%，则会触发弹性扩容。
 
-```yaml
-    metrics:
-      - type: "Resource"
-        resource:
-          name: "cpu"
-          target:
-            type: "Utilization"
-            averageUtilization: 80
-```
+    ```yaml
+        metrics:
+          - type: "Resource"
+            resource:
+              name: "cpu"
+              target:
+                type: "Utilization"
+                averageUtilization: 80
+    ```
 
 
 ## 快速上手
@@ -106,10 +106,14 @@ spec:
 我们将通过以下指令快速部署一个 3 PD、3 TiKV、2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
 
 ```shell
-$ kubectl apply -f examples/auto-scale/  -n <namespace>
-tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n <namespace>
 tidbcluster.pingcap.com/auto-scaling-demo created
+
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n <namespace>
 tidbmonitor.pingcap.com/auto-scaling-demo created
+
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n <namespace>
+tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
 ```
 
 当 TiDB 集群创建完毕以后，你可以通过 [sysbench](https://www.percona.com/blog/tag/sysbench/) 等数据库压测工具进行压测来体验弹性伸缩功能。
@@ -127,16 +131,16 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 相比无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
 你可以通过 `spec.tikv.scaleOutThreshold` 和 `spec.tikv.scaleInThreshold` 来配置每两次弹性伸缩之间的时间间隔，对于 TiDB 也同样如此。
 
-```yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbClusterAutoScaler
-metadata:
-  name: auto-sclaer
-spec:
-  tidb:
-    scaleOutIntervalSeconds: 60
-    scaleInIntervalSeconds: 60
-  tikv:
-    scaleOutIntervalSeconds: 10
-    scaleInIntervalSeconds: 10
-```
+    ```yaml
+    apiVersion: pingcap.com/v1alpha1
+    kind: TidbClusterAutoScaler
+    metadata:
+      name: auto-sclaer
+    spec:
+      tidb:
+        scaleOutIntervalSeconds: 60
+        scaleInIntervalSeconds: 60
+      tikv:
+        scaleOutIntervalSeconds: 10
+        scaleInIntervalSeconds: 10
+    ```
