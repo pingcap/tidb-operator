@@ -66,7 +66,7 @@ watch kubectl -n <namespace> get pod -o wide
 
 1. 通过 kubectl 修改集群所对应的 `TidbCluster` 对象的 `spec.pd.resources`、`spec.tikv.resources`、`spec.tidb.resources` 至期望值。
 
-### 查看升级进度：
+### 查看升级进度
 
 {{< copyable "shell-regular" >}}
 
