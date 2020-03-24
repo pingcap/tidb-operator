@@ -28,6 +28,7 @@ GCP_PROJECT=${GCP_PROJECT:-}
 GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
+GCP_SDK=${GCP_SDK:-/google-cloud-sdk}
 IMAGE_TAG=${IMAGE_TAG:-}
 SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
@@ -324,11 +325,11 @@ e2e_args=(
     --
     --clean-start=true
     --delete-namespace-on-failure=false
-    --repo-root=$ROOT
+    --repo-root="$ROOT"
     # tidb-operator e2e flags
     --operator-tag=e2e
-    --operator-image=${TIDB_OPERATOR_IMAGE}
-    --e2e-image=${E2E_IMAGE}
+    --operator-image="${TIDB_OPERATOR_IMAGE}"
+    --e2e-image="${E2E_IMAGE}"
     # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
     --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
@@ -353,7 +354,7 @@ docker_args=(
 if [ "$PROVIDER" == "eks" ]; then
     e2e_args+=(
         --provider=aws
-        --gce-zone ${AWS_REGION}
+        --gce-zone="${AWS_REGION}"
     )
     # aws credential is required to get token for EKS
     docker_args+=(
@@ -361,18 +362,27 @@ if [ "$PROVIDER" == "eks" ]; then
     )
 elif [ "$PROVIDER" == "gke" ]; then
     e2e_args+=(
-        --provider=${PROVIDER}
-        --gce-project ${GCP_PROJECT}
-        --gce-region ${GCP_REGION}
-        --gce-zone ${GCP_ZONE}
+        --provider="${PROVIDER}"
+        --gce-project="${GCP_PROJECT}"
+        --gce-region="${GCP_REGION}"
+        --gce-zone="${GCP_ZONE}"
     )
     docker_args+=(
         -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
         --env GOOGLE_APPLICATION_CREDENTIALS=${GCP_CREDENTIALS}
     )
+    # google-cloud-sdk is very large, we didn't pack it into our e2e image.
+    # instead, we use the sdk installed in CI image.
+    if [ ! -e "${GCP_SDK}/bin/gcloud" ]; then
+        echo "error: ${GCP_SDK} is not google cloud sdk, please install it here or specify correct path via GCP_SDK env"
+        exit 1
+    fi
+    docker_args+=(
+        -v ${GCP_SDK}:/google-cloud-sdk
+    )
 else
     e2e_args+=(
-        --provider=${PROVIDER}
+        --provider="${PROVIDER}"
     )
 fi
 

@@ -22,6 +22,7 @@ import (
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -210,7 +211,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
 					},
@@ -276,14 +277,36 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if backup.Spec.BR.EnableTLSClient {
+	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name: "br-tls", ReadOnly: true, MountPath: constants.BRCertPath,
+			Name:      "cluster-client-tls",
+			ReadOnly:  true,
+			MountPath: util.ClusterClientTLSPath,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: "br-tls", VolumeSource: corev1.VolumeSource{
+			Name: "cluster-client-tls",
+			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: fmt.Sprintf("%s-client", controller.PDMemberName(backup.Spec.BR.Cluster)),
+					SecretName: util.ClusterClientTLSSecretName(backup.Spec.BR.Cluster),
+				},
+			},
+		})
+	}
+	if backup.Spec.From.TLSClient != nil && backup.Spec.From.TLSClient.Enabled {
+		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
+		if backup.Spec.From.TLSClient.TLSSecret != "" {
+			clientSecretName = backup.Spec.From.TLSClient.TLSSecret
+		}
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientSecretName,
 				},
 			},
 		})
@@ -305,7 +328,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Name:            label.BackupJobLabelVal,
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
 					Env:             envVars,
 				},

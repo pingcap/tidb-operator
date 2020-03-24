@@ -448,12 +448,12 @@ tidb:
 
   initializer:
     resources: {}
-    # limits:
-    #  cpu: 100m
-    #  memory: 100Mi
-    # requests:
-    #  cpu: 100m
-    #  memory: 100Mi
+    #  limits:
+    #    cpu: 100m
+    #    memory: 100Mi
+    #  requests:
+    #    cpu: 100m
+    #    memory: 100Mi
 
   # tidb plugin configuration
   plugin:

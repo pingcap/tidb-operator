@@ -44,6 +44,8 @@ spec:
             fi
           done
           echo "info: successfully connected to $host:$port, able to initialize TiDB now"
+        resources:
+{{ toYaml .Values.tidb.initializer.resources | indent 10 }}
       containers:
       - name: mysql-client
         image: {{ .Values.mysqlClient.image }}

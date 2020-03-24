@@ -12,4 +12,5 @@ module "tidb-cluster" {
   base_values                = file("${path.module}/values/default.yaml")
   kubeconfig_filename        = var.ack.kubeconfig_filename
   service_ingress_key        = "ip"
+  create                     = var.create_tidb_cluster_release
 }
