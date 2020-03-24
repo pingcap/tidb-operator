@@ -125,7 +125,7 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 
 ## 配置 TidbClusterAutoScaler
 
-对比起无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
+相比无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
 你可以通过 `spec.tikv.scaleOutThreshold` 和 `spec.tikv.scaleInThreshold` 来配置每两次弹性伸缩之间的时间间隔，对于 TiDB 也同样如此。
 
 ```yaml
