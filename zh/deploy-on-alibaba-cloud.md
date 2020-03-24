@@ -162,6 +162,7 @@ category: how-to
     > * 请使用 ACK 部署过程中配置的 `tidb_cluster_name` 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `TIDB_CLUSTER_NAME`。
     > * 请确保 ACK 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
+
 2. 创建 `Namespace`：
 
     {{< copyable "shell-regular" >}}
@@ -173,6 +174,7 @@ category: how-to
     > **注意：**
     >
     > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `tidb_cluster_name` 相同的名称。
+
 3. 部署 TiDB 集群：
 
   {{< copyable "shell-regular" >}}
