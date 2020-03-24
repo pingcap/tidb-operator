@@ -19,7 +19,7 @@ category: how-to
 
 1. 修改 Operator 的 `values.yaml`
 
-在 `features` 选项中开启 AutoScaling
+在 `features` 选项中开启 AutoScaling：
 
 ```yaml
 features:
