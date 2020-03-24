@@ -65,3 +65,8 @@ variable "local_exec_interpreter" {
   type        = list(string)
   default     = ["/bin/sh", "-c"]
 }
+
+variable "create_tidb_cluster_release" {
+  description = "whether creating tidb-cluster helm release"
+  default     = false
+}
