@@ -83,6 +83,7 @@ type defaultTidbClusterControl struct {
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	tcc.defaulting(tc)
 	if !tcc.validate(tc) {
 		return nil // fatal error, no need to retry on invalid object
 	}
@@ -114,9 +115,11 @@ func (tcc *defaultTidbClusterControl) validate(tc *v1alpha1.TidbCluster) bool {
 	return true
 }
 
-func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
-	// default the tidbcluster
+func (tcc *defaultTidbClusterControl) defaulting(tc *v1alpha1.TidbCluster) {
 	defaulting.SetTidbClusterDefault(tc)
+}
+
+func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {
 	// syncing all PVs managed by operator's reclaim policy to Retain
 	if err := tcc.reclaimPolicyManager.Sync(tc); err != nil {
 		return err
