@@ -97,7 +97,7 @@ category: how-to
     cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
     ```
 
-5. 生成 Server 端证书：
+5. 生成 Server 端证书。
 
     首先生成默认的 `server.json` 文件：
     
@@ -135,7 +135,7 @@ category: how-to
     cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server server.json | cfssljson -bare server
     ```
 
-6. 生成 Client 端证书：
+6. 生成 Client 端证书。
 
     首先生成默认的 `client.json` 文件：
     
@@ -414,8 +414,7 @@ spec:
 
 ## 第三步：配置 MySQL 客户端使用加密连接
 
-可以根据
-[官网文档](https://github.com/pingcap/tidb-operator/blob/master/docs/CONTRIBUTING.md#start-tidb-operator-locally-and-do-manual-tests) 提示，使用上面创建的 Client 证书，通过下面的方法连接 TiDB 集群：
+可以根据 [官网文档](https://github.com/pingcap/tidb-operator/blob/master/docs/CONTRIBUTING.md#start-tidb-operator-locally-and-do-manual-tests) 提示，使用上面创建的 Client 证书，通过下面的方法连接 TiDB 集群：
 
 1. 通过 `cfssl` 颁发证书，连接 TiDB Server 的方法是：
 
