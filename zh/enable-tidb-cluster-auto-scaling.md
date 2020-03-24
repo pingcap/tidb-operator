@@ -115,7 +115,7 @@ tidbmonitor.pingcap.com/auto-scaling-demo created
 
 当 TiDB 集群创建完毕以后，你可以通过 [sysbench](https://www.percona.com/blog/tag/sysbench/) 等数据库压测工具进行压测来体验弹性伸缩功能。
 
-销毁环境
+使用如下命令销毁环境：
 
 ```shell
 kubectl delete tidbcluster auto-scaling-demo -n <namespace>
