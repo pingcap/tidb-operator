@@ -63,7 +63,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
