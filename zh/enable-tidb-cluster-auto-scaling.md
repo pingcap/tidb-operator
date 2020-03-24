@@ -72,7 +72,6 @@ spec:
 
 在 `TidbClusterAutoScaler` 对象中，`cluster` 属性代表了需要被弹性调度的 Tidb 集群，通过 name 与 namespace 来代表。 由于 `TidbClusterAutoScaler` 组件需要通过指标采集组件抓取相关资源使用情况，我们需要提供对应的指标采集与查询服务给 `TidbClusterAutoScaler`。`monitor` 属性则代表了与之相连的 TidbMonitor 对象。 如果你并不了解 TidbMonitor，可以参考 [通过 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)
 
-
 对于非 `TidbMonitor` 的外部 `Prometheus`, 你可以通过 `spec.metricsUrl` 来填写这个服务的 Host ,从而指定该 TiDB 集群的监控指标采集服务。对于使用 `helm` 部署 TiDB 集群监控的情况，可以通过以下方式来指定 `spec.metricsUrl`。
 
 ```yaml
