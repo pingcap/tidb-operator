@@ -39,7 +39,6 @@ admissionWebhook:
 
     修改完 `values.yaml` 文件中上述配置项以后进行 TiDB-Operator 部署或者更新。安装与更新 Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)
 
-
 ## 了解 TidbClusterAutoScaler
 
 我们通过 `TidbClusterAutoScaler` CR 对象来控制 TiDB 集群的弹性伸缩行为，如果你曾经使用过 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)， 那么你一定会对这个概念感到非常熟悉。以下是一个 TiKV 的弹性伸缩例子。
