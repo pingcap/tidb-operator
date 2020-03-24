@@ -29,7 +29,7 @@ When a cluster is created, a default account `root` is created with no password.
     kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
     ```
 
-- If you also want to create more than one user automatically, add the desired username and the password in the above command. For example:
+- If you want to create more than one user, add the desired username and the password in the above command. For example:
 
     {{< copyable "shell-regular" >}}
 
