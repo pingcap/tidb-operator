@@ -45,25 +45,25 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 
-	if tc.Spec.TiDB.MaxFailoverCount != nil {
+	if tc.Spec.TiDB.MaxFailoverCount != nil && *tc.Spec.TiDB.MaxFailoverCount > 0 {
 		maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
-		if maxFailoverCount > 0 && len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
+		if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
 			klog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
 			return nil
 		}
-	}
-	for _, tidbMember := range tc.Status.TiDB.Members {
-		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
-		deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
-		if !tidbMember.Health && time.Now().After(deadline) && !exist {
-			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{
-				PodName:   tidbMember.Name,
-				CreatedAt: metav1.Now(),
+		for _, tidbMember := range tc.Status.TiDB.Members {
+			_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
+			deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
+			if !tidbMember.Health && time.Now().After(deadline) && !exist {
+				tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{
+					PodName:   tidbMember.Name,
+					CreatedAt: metav1.Now(),
+				}
+				break
 			}
-			break
 		}
 	}
-
+	
 	return nil
 }
 
