@@ -90,7 +90,7 @@ category: reference
 | `tidb.maxFailoverCount` | TiDB 最大的故障转移数量，假设为 3 即最多支持同时 3 个 TiDB 实例故障转移 | `3` |
 | `tidb.service.type` | TiDB 服务对外暴露类型 | `NodePort` |
 | `tidb.service.externalTrafficPolicy` | 表示此服务是否希望将外部流量路由到节点本地或集群范围的端点。有两个可用选项：`Cluster`（默认）和 `Local`。`Cluster` 隐藏了客户端源 IP，可能导致流量需要二次跳转到另一个节点，但具有良好的整体负载分布。`Local` 保留客户端源 IP 并避免 LoadBalancer 和 NodePort 类型服务流量的第二次跳转，但存在潜在的不均衡流量传播风险。详细参考：[外部负载均衡器](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip) | `nil` |
-| `tidb.service.loadBalancerIP` | 指定 TIDB 负载均衡 IP，某些云提供程序允许您指定 loadBalancerIP。在这些情况下，将使用用户指定的 loadBalancerIP 创建负载平衡器。如果未指定 loadBalancerIP 字段，则将使用临时 IP 地址设置 loadBalancer。如果指定 loadBalancerIP 但云提供程序不支持该功能，则将忽略您设置的 loadbalancerIP 字段 | `nil` |
+| `tidb.service.loadBalancerIP` | 指定 TiDB 负载均衡 IP，某些云提供程序允许您指定 loadBalancerIP。在这些情况下，将使用用户指定的 loadBalancerIP 创建负载平衡器。如果未指定 loadBalancerIP 字段，则将使用临时 IP 地址设置 loadBalancer。如果指定 loadBalancerIP 但云提供程序不支持该功能，则将忽略您设置的 loadbalancerIP 字段 | `nil` |
 | `tidb.service.mysqlNodePort` | TiDB 服务暴露的 mysql NodePort 端口 |  |
 | `tidb.service.exposeStatus` | TiDB 服务是否暴露状态端口 | `true` |
 | `tidb.service.statusNodePort` | 指定 TiDB 服务的状态端口暴露的 `NodePort` |  |
