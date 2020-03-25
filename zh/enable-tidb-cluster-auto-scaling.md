@@ -116,7 +116,7 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 1. 设置弹性伸缩间隔
 
 相比无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
-你可以通过 `spec.tikv.scaleOutThreshold` 和 `spec.tikv.scaleInThreshold` 来配置每两次弹性伸缩之间的时间间隔(秒)，对于 TiDB 也同样如此。
+你可以通过 `spec.tikv.scaleInIntervalSeconds` 和 `spec.tikv.ScaleOutIntervalSeconds` 来配置每两次弹性伸缩之间的时间间隔(秒)，对于 TiDB 也同样如此。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
@@ -125,11 +125,11 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
       name: auto-sclaer
     spec:
       tidb:
-        scaleOutIntervalSeconds: 60
-        scaleInIntervalSeconds: 60
+        scaleInIntervalSeconds: 500
+        ScaleOutIntervalSeconds: 300
       tikv:
-        scaleOutIntervalSeconds: 10
-        scaleInIntervalSeconds: 10
+        scaleInIntervalSeconds: 500
+        ScaleOutIntervalSeconds: 300
     ```
 
 2. 设置最大最小值
