@@ -1,5 +1,6 @@
 ---
 title: 备份 TiDB 集群到 GCS
+summary: 介绍如何备份 TiDB 集群到 Google Cloud Storage (GCS)。
 category: how-to
 ---
 

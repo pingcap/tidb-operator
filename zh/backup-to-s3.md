@@ -1,5 +1,6 @@
 ---
 title: 备份 TiDB 集群到兼容 S3 的存储
+summary: 介绍如何备份 TiDB 集群到兼容 S3 的存储。
 category: how-to
 ---
 

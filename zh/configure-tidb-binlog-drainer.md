@@ -1,6 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB Binlog Drainer 配置
-summary: 了解 Kubernetes 上的 TiDB Binlog Drainer 配置
+summary: 了解 Kubernetes 上的 TiDB Binlog Drainer 配置参数。
 category: reference
 ---
 
@@ -14,6 +14,8 @@ category: reference
 
 | 参数 | 说明 | 默认值 |
 | :----- | :---- | :----- |
+| `timezone` | 时区配置 | `UTC` |
+| `drainerName` | Statefulset 名称 | `""` |
 | `clusterName` | 源 TiDB 集群的名称 | `demo` |
 | `clusterVersion` | 源 TiDB 集群的版本 | `v3.0.1` |
 | `baseImage` | TiDB Binlog 的基础镜像 | `pingcap/tidb-binlog` |
@@ -23,6 +25,7 @@ category: reference
 | `storage` | drainer Pod 的存储限制。请注意，如果 `db-type` 设为 `pd`，则应将本参数值设得大一些 | `10Gi` |
 | `disableDetect` |  决定是否禁用事故检测 | `false` |
 | `initialCommitTs` |  如果 drainer 没有断点，则用于初始化断点 | `0` |
+| `tlsCluster.enabled` |  是否开启集群间 TLS | `false` |
 | `config` | 传递到 drainer 的配置文件。详情可参阅 [drainer.toml](https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml) |（见下文）|
 | `resources` | drainer Pod 的资源限制和请求 | `{}` |
 | `nodeSelector` | 确保 drainer Pod 仅被调度到具有特定键值对作为标签的节点上。详情可参阅 [nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector) | `{}` |
