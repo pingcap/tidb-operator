@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
-				Namespace:   "pingcap",
+				Namespace:   ns,
 				ReleaseName: "operator",
 				Image:       cfg.OperatorImage,
 				Tag:         cfg.OperatorTag,
@@ -219,7 +219,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
-				Namespace:      "pingcap",
+				Namespace:      ns,
 				ReleaseName:    "operator",
 				Image:          cfg.OperatorImage,
 				Tag:            cfg.OperatorTag,
@@ -410,7 +410,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var genericCli client.Client
 
 		ocfg = &tests.OperatorConfig{
-			Namespace:      "pingcap",
+			Namespace:      ns,
 			ReleaseName:    "operator",
 			Image:          cfg.OperatorImage,
 			Tag:            cfg.OperatorTag,
@@ -504,7 +504,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
-				Namespace:         "pingcap",
+				Namespace:         ns,
 				ReleaseName:       "operator",
 				Image:             cfg.OperatorImage,
 				Tag:               cfg.OperatorTag,
@@ -558,7 +558,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
-				Namespace:                 "pingcap",
+				Namespace:                 ns,
 				ReleaseName:               "operator",
 				Image:                     cfg.OperatorImage,
 				Tag:                       cfg.OperatorTag,
