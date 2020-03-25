@@ -50,7 +50,7 @@ watch kubectl -n <namespace> get pod -o wide
 
 垂直扩缩容操作指的是通过增加或减少节点的资源限制，来达到集群扩缩容的目的。垂直扩缩容本质上是节点滚动升级的过程。目前 TiDB 集群有通过 helm 部署与使用 Yaml 文件直接部署两种方式，你可以根据 TiDB 集群的部署方式选择对应的方式进行伸缩。
 
-### 垂直扩缩容操作 (helm)
+### 垂直扩缩容操作 (Helm)
 
 1. 修改 `values.yaml` 文件中的 `tidb.resources`、`tikv.resources`、`pd.resources` 至期望值。
 
@@ -62,7 +62,7 @@ watch kubectl -n <namespace> get pod -o wide
     helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
     ```
 
-### 垂直扩缩容操作 (yaml)
+### 垂直扩缩容操作 (CR)
 
 1. 通过 kubectl 修改集群所对应的 `TidbCluster` 对象的 `spec.pd.resources`、`spec.tikv.resources`、`spec.tidb.resources` 至期望值。
 
