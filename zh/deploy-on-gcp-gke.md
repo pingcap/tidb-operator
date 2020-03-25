@@ -132,7 +132,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
         如上所述，生产环境的部署需要 91 个 CPU，超过了 GCP 项目的默认配额。可以参考[配额](https://cloud.google.com/compute/quotas)来增加项目配额。扩容同样需要更多 CPU。
 
-		- 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1` ，实际为 PD 创建的节点数为 3 个。可以通过配置 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
+		- 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
 
     > **注意：**
     >
@@ -175,7 +175,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     > **注意：**
     >
-    > * 请使用 GKE 部署过程中配置的 `default_tidb_cluster_name` (默认为 `tidb-cluster`) 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`。
+    > * 请使用 GKE 部署过程中配置的 `default_tidb_cluster_name`（默认为 `tidb-cluster`）替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`。
     > * 请确保 GKE 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。注意 Regional 集群下，实际创建的节点数为 pd_count/tikv_count/tidb_count 的 3 倍。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
 
@@ -190,6 +190,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     > **注意：**
     >
     > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `default_cluster_name` 相同的名称。
+
 3. 部署 TiDB 集群：
 
   {{< copyable "shell-regular" >}}
@@ -203,9 +204,9 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
 `terraform apply` 运行完成后，可执行以下步骤来访问 TiDB 数据库。注意用[部署 TiDB 集群](#部署-tidb-集群)小节的输出信息替换 `<>` 部分的内容。
 
-1. 获取 tidb Internal LoadBalancer IP 地址:
+1. 获取 TiDB Internal LoadBalancer IP 地址:
 
-	```shell
+    ```shell
   kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb
 	```
 
@@ -230,7 +231,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     > **注意：**
     >
     > 通过 MySQL 连接 TiDB 前，需要先安装 MySQL 客户端。CentOS 系统可通过 `sudo yum install -y mysql` 安装。
-    > `<tidb_ilb_ip` 为前面获取的 Internal LoadBalancer IP 地址。
+    > `<tidb_ilb_ip>` 为前面获取的 Internal LoadBalancer IP 地址。
 
 ## 与 GKE 集群交互
 
@@ -317,7 +318,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     > **注意：**
     >
     > - 每个集群的 `cluster_name` 必须是唯一的。
-    > - 为任一组件实际创建的总节点数等于配置文件中的节点数乘以配置的可用区的个数 (Regional 集群默认为 3)。
+    > - 为任一组件实际创建的总节点数等于配置文件中的节点数乘以配置的可用区的个数（Regional 集群默认为 3）。
 
 2. 修改完成后，执行以下命令来创建集群。
 
