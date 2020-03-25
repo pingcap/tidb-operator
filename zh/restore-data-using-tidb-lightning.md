@@ -81,7 +81,7 @@ tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 Ti
                   [s3]
                   type = s3
                   provider = AWS
-                  env_auth = true
+                  env_auth = false
                   access_key_id = <my-access-key>
                   secret_access_key = <my-secret-key>
                   region = us-east-1
