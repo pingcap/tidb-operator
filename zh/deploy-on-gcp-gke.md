@@ -132,7 +132,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
         如上所述，生产环境的部署需要 91 个 CPU，超过了 GCP 项目的默认配额。可以参考[配额](https://cloud.google.com/compute/quotas)来增加项目配额。扩容同样需要更多 CPU。
 
-		- 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
+    - 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
 
     > **注意：**
     >
@@ -168,7 +168,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```shell
-	  cp manifests/{db,db-monitor}.yaml .
+    cp manifests/{db,db-monitor}.yaml.example .
     ```
 
     参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
@@ -189,7 +189,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     > **注意：**
     >
-    > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `default_cluster_name` 相同的名称。
+    > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `default_tidb_cluster_name` 相同的名称。
 
 3. 部署 TiDB 集群：
 
@@ -206,11 +206,11 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
 1. 获取 TiDB Internal LoadBalancer IP 地址:
 
-    ```shell
-  kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb
-	```
+  ```shell
+  kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb -n <namespace>
+  ```
 
-	其中 `EXTERNAL-IP` 为 Internal LoadBalancer IP 地址。
+  其中 `EXTERNAL-IP` 为 Internal LoadBalancer IP 地址。
 
 2. 通过 `ssh` 远程连接到堡垒机。
 
@@ -291,27 +291,27 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     ```hcl
     module "example-tidb-cluster" {
-			providers = {
-					helm = "helm.gke"
-			}
-			source                     = "../modules/gcp/tidb-cluster"
-			cluster_id                 = module.tidb-operator.cluster_id
-			tidb_operator_id           = module.tidb-operator.tidb_operator_id
-			gcp_project                = var.GCP_PROJECT
-			gke_cluster_location       = local.location
-			gke_cluster_name           = <gke-cluster-name>
-			cluster_name               = <example-tidb-cluster>
-			cluster_version            = "v3.0.1"
-			kubeconfig_path            = local.kubeconfig
-			tidb_cluster_chart_version = "v1.0.0"
-			pd_instance_type           = "n1-standard-1"
-			tikv_instance_type         = "n1-standard-4"
-			tidb_instance_type         = "n1-standard-2"
-			monitor_instance_type      = "n1-standard-1"
-			pd_node_count              = 1
-			tikv_node_count            = 2
-			tidb_node_count            = 1
-			monitor_node_count         = 1
+      providers = {
+          helm = "helm.gke"
+      }
+      source                     = "../modules/gcp/tidb-cluster"
+      cluster_id                 = module.tidb-operator.cluster_id
+      tidb_operator_id           = module.tidb-operator.tidb_operator_id
+      gcp_project                = var.GCP_PROJECT
+      gke_cluster_location       = local.location
+      gke_cluster_name           = <gke-cluster-name>
+      cluster_name               = <example-tidb-cluster>
+      cluster_version            = "v3.0.1"
+      kubeconfig_path            = local.kubeconfig
+      tidb_cluster_chart_version = "v1.0.0"
+      pd_instance_type           = "n1-standard-1"
+      tikv_instance_type         = "n1-standard-4"
+      tidb_instance_type         = "n1-standard-2"
+      monitor_instance_type      = "n1-standard-1"
+      pd_node_count              = 1
+      tikv_node_count            = 2
+      tidb_node_count            = 1
+      monitor_node_count         = 1
     }
     ```
 
@@ -332,7 +332,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
 如果需要扩容 TiDB 集群，可执行以下步骤：
 
-1. 配置 `pd_count`、`tikv_count`、`tidb_count` 变量。
+1. 增大 `.tfvars` 文件中 `pd_count`、`tikv_count`、`tidb_count` 变量。
 2. 运行 `terraform apply`。
 
 > **警告：**
@@ -558,6 +558,7 @@ terraform destroy
 在 TiDB 的案例中，Terraform 模块通常结合了几个子模块：
 
 - `tidb-operator`：为 TiDB 集群提供 [Kubernetes Control Plane](https://kubernetes.io/docs/concepts/#kubernetes-control-plane) 并部署 TiDB Operator。
+- `tidb-cluster`：在目标 Kubernetes 集群中创建资源池。
 - 一个 `vpc` 模块，一个 `bastion` 模块和一个 `project-credentials` 模块：专门用于 GKE 上的 TiDB 集群。
 
 管理多个 Kubernetes 集群的最佳实践有以下两点：
