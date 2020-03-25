@@ -27,7 +27,7 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 
 ### 水平扩缩容操作 (CR)
 
-1. 使用 kubectl 修改集群所对应的 `TidbCluster` 对象中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 至期望值。
+使用 kubectl 修改集群所对应的 `TidbCluster` 对象中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 至期望值。
 
 ### 查看集群水平扩缩容状态
 
