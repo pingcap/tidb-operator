@@ -41,7 +41,7 @@ category: how-to
 
 ## 了解 TidbClusterAutoScaler
 
-我们通过 `TidbClusterAutoScaler` CR 对象来控制 TiDB 集群的弹性伸缩行为，如果你曾经使用过 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)， 那么你一定会对这个概念感到非常熟悉。以下是一个 TiKV 的弹性伸缩例子。
+我们通过 `TidbClusterAutoScaler` CR 对象来控制 TiDB 集群的弹性伸缩行为，如果你曾经使用过 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)，那么你一定会对这个概念感到非常熟悉。以下是一个 TiKV 的弹性伸缩例子。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
