@@ -18,12 +18,13 @@
   - [GCP 上的 TiDB 集群](deploy-on-gcp-gke.md)
   - [阿里云上的 TiDB 集群](deploy-on-alibaba-cloud.md)
   - [访问 Kubernetes 上的 TiDB 集群](access-tidb.md)
+  - [部署 TiDB Binlog](deploy-tidb-binlog.md)
 + 配置
   - [配置 Storage Class](configure-storage-class.md)
   - [资源及容灾配置](configure-a-tidb-cluster.md)
   - [初始化集群](initialize-a-cluster.md)
   - [通过 TidbCluster 配置集群](configure-cluster-using-tidbcluster.md)
-  - [配置 TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
+  - [tidb-drainer chart 配置](configure-tidb-binlog-drainer.md)
   - [tidb-cluster chart 配置](tidb-cluster-chart-config.md)
   - [tidb-backup chart 配置](configure-backup.md)
 + 监控
@@ -34,7 +35,6 @@
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
   - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
   - [收集日志](collect-tidb-binlogs.md)
-  - [TiDB Binlog 运维](maintain-tidb-binlog.md)
   - [集群故障自动转移](use-auto-failover.md)
 - [扩缩容](scale-a-tidb-cluster.md)
 + 备份与恢复
@@ -53,6 +53,7 @@
   - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
 + 安全
   - [为 MySQL 客户端开启 TLS](enable-tls-for-mysql-client.md)
+  - [为 TiDB 组件间开启 TLS](enable-tls-between-components.md)
 + 工具
   - [tkctl](use-tkctl.md)
   - [TiDB Toolkit](tidb-toolkit.md)
