@@ -72,3 +72,8 @@ variable "tikv_local_ssd_count" {
   description = "TiKV node pool local ssd count (cannot be changed after the node pool is created)"
   default     = 1
 }
+
+variable "create_tidb_cluster_release" {
+  description = "Whether create tidb-cluster release in the node pools automatically"
+  default     = true
+}
