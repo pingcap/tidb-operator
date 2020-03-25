@@ -18,7 +18,7 @@ category: how-to
 
 ## 环境准备
 
-参考[环境准备](restore-form-aws-s3.md#环境准备)
+参考[环境准备](restore-form-aws-s3-using-br.md#环境准备)
 
 ## 将指定备份数据恢复到 TiDB 集群
 
