@@ -1,12 +1,16 @@
 ---
-title: Kubernetes 上的 TiDB 集群备份配置
-summary: 介绍 Kubernetes 上 TiDB 集群备份 tidb-backup 的配置参数。
+title: tidb-backup chart 配置
+summary: 介绍 tidb-backup chart 配置。
 category: reference
 ---
 
-# Kubernetes 上的 TiDB 集群备份配置
+# tidb-backup chart 配置
 
 `tidb-backup` 是一个用于 Kubernetes 上 TiDB 集群备份和恢复的 Helm Chart。本文详细介绍了 `tidb-backup` 的可配置参数。
+
+> **注意：**
+>
+> 对于 TiDBOperator v1.1 及以上版本，不再建议使用 tidb-backup chart 部署、管理 TiDB 集群备份，详细信息请参考 [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)。
 
 ## `mode`
 
