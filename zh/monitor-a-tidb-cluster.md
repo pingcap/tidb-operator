@@ -30,7 +30,7 @@ kubectl port-forward -n <namespace> svc/<cluster-name>-grafana 3000:3000 &>/tmp/
 
 也可以参考[通过 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)，设置 `spec.grafana.service.type` 为 `NodePort` 或者 `LoadBalancer`，通过 `NodePort` 或者 `LoadBalancer` 查看监控面板。
 
-如果不需要使用 Grafana，可以在部署时将 `TidbMonitor` 中 `spec.grafana` 部分删除。这一情况下需要使用其他已有或新部署的数据可视化工具直接访问监控数据来完成可视化。
+如果不需要使用 Grafana，可以在部署时将 `TidbMonitor` 中的 `spec.grafana` 部分删除。这一情况下需要使用其他已有或新部署的数据可视化工具直接访问监控数据来完成可视化。
 
 ### 访问监控数据
 
@@ -87,8 +87,8 @@ kubectl port-forward -n <namespace> svc/<cluster-name>-prometheus 9090:9090 &>/t
 
 我们目前支持报警规则的自定义配置，可以参考下面步骤修改报警规则：
 
-- 参考[通过 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)，在为 TiDB 集群部署监控的过程中，设置 `spec.reloader.service.type` 为 `NodePort` 或者 `LoadBalancer`。
-- 通过 `NodePort` 或者 `LoadBalancer` 访问 reloader 服务，点击上方 `Files` 选择要修改的报警规则文件进行修改，修改完成后 `Save`。
+1. 参考[通过 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)，在为 TiDB 集群部署监控的过程中，设置 `spec.reloader.service.type` 为 `NodePort` 或者 `LoadBalancer`。
+2. 通过 `NodePort` 或者 `LoadBalancer` 访问 reloader 服务，点击上方 `Files` 选择要修改的报警规则文件进行修改，修改完成后 `Save`。
 
 默认的 Prometheus 和报警配置不能发送报警消息，如需发送报警消息，可以使用任意支持 Prometheus 报警的工具与其集成。推荐通过 [AlertManager](https://prometheus.io/docs/alerting/alertmanager/) 管理与发送报警消息。
 
