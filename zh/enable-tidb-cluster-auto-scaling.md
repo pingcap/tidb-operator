@@ -86,21 +86,6 @@ category: how-to
       ......
     ```
 
-`minReplicas` 与 `maxReplicas` 则代表了对于目标组件弹性的上下限。
-
-目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的阈值。如果当前 CPU 利用率超过 80%，则会触发弹性扩容。
-
-    ```yaml
-        metrics:
-          - type: "Resource"
-            resource:
-              name: "cpu"
-              target:
-                type: "Utilization"
-                averageUtilization: 80
-    ```
-
-
 ## 快速上手
 
 我们将通过以下指令快速部署一个 3 PD、3 TiKV、2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
@@ -128,8 +113,10 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 
 ## 配置 TidbClusterAutoScaler
 
+1. 设置弹性伸缩间隔
+
 相比无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
-你可以通过 `spec.tikv.scaleOutThreshold` 和 `spec.tikv.scaleInThreshold` 来配置每两次弹性伸缩之间的时间间隔，对于 TiDB 也同样如此。
+你可以通过 `spec.tikv.scaleOutThreshold` 和 `spec.tikv.scaleInThreshold` 来配置每两次弹性伸缩之间的时间间隔(秒)，对于 TiDB 也同样如此。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
@@ -143,4 +130,64 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
       tikv:
         scaleOutIntervalSeconds: 10
         scaleInIntervalSeconds: 10
+    ```
+
+2. 设置最大最小值
+
+就像 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)，在 `TidbClusterAutoScaler` 中你也可以设置给每个组件最大最小值来控制 `TiDB`、`TiKV` 的伸缩范围。
+
+    ```yaml
+    apiVersion: pingcap.com/v1alpha1
+    kind: TidbClusterAutoScaler
+    metadata:
+      name: auto-scaling-demo
+    spec:
+      tikv:
+        minReplicas: 3
+        maxReplicas: 4
+      tidb:
+        minReplicas: 2
+        maxReplicas: 3
+    ```
+
+3. 配置 CPU 弹性伸缩
+
+目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的阈值。如果当前 CPU 利用率超过 80%，则会触发弹性扩容。
+
+    ```yaml
+    apiVersion: pingcap.com/v1alpha1
+    kind: TidbClusterAutoScaler
+    metadata:
+      name: auto-scaling-demo
+    spec:
+      tikv:
+        minReplicas: 3
+        maxReplicas: 4
+        metrics:
+          - type: "Resource"
+            resource:
+              name: "cpu"
+              target:
+                type: "Utilization"
+                averageUtilization: 80
+    ```
+
+4. 配置指标时间窗口
+
+目前基于 CPU 负载的弹性调度，`TidbClusterAutoScaler` 会在所指定的监控系统中获取 `TiDB`、`TiKV` 的 CPU 指标，你可以指定采集指标的时间窗口。
+
+    ```yaml
+    apiVersion: pingcap.com/v1alpha1
+    kind: TidbClusterAutoScaler
+    metadata:
+      name: basic
+      tidb:
+        metricsTimeDuration: "1m"
+        metrics:
+          - type: "Resource"
+            resource:
+              name: "cpu"
+              target:
+                type: "Utilization"
+                averageUtilization: 60
     ```
