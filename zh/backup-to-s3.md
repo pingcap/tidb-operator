@@ -123,7 +123,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
-	  storageClassName: local-storage
+      storageClassName: local-storage
       storageSize: 10Gi
     ```
 
@@ -158,7 +158,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
-	  storageClassName: local-storage
+      storageClassName: local-storage
       storageSize: 10Gi
     ```
 

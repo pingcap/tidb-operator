@@ -88,7 +88,7 @@ category: how-to
         path: s3://<path-to-backup>
       storageClassName: local-storage
       storageSize: 1Gi
-	```
+    ```
 
 + 创建 restore custom resource (CR)，通过 IAM 绑定 Pod 授权的方式将指定的备份数据恢复至 TiDB 集群：
 
@@ -106,10 +106,10 @@ category: how-to
     kind: Restore
     metadata:
       name: demo2-restore
-	  namespace: test2
-	  annotations:
-	    iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
-	  spec:
+      namespace: test2
+      annotations:
+        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+      spec:
         backupType: full
         to:
           host: <tidb-host-ip>
@@ -122,7 +122,7 @@ category: how-to
           path: s3://<path-to-backup>
         storageClassName: local-storage
         storageSize: 1Gi
-	```
+    ```
 
  + 创建 restore custom resource (CR)，通过 IAM 绑定 ServiceAccount 授权的方式将指定的备份数据恢复至 TiDB 集群：
 
@@ -140,8 +140,8 @@ category: how-to
     kind: Restore
     metadata:
       name: demo2-restore
-	  namespace: test2
-	  spec:
+      namespace: test2
+      spec:
         backupType: full
         serviceAccount: tidb-backup-manager
         to:
@@ -155,7 +155,7 @@ category: how-to
           path: s3://<path-to-backup>
         storageClassName: local-storage
         storageSize: 1Gi
-	```
+    ```
 
 
 2. 创建好 `Restore` CR 后可通过以下命令查看恢复的状态：
