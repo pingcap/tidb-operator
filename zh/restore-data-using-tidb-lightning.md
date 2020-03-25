@@ -196,7 +196,7 @@ tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 Ti
 > **注意：**
 >
 > `arn:aws:iam::123456789012:role/user` 为步骤 1 中创建的 IAM 角色。
->  <service-account> 为 tidb-lightning 使用的 ServiceAccount，默认为 Default
+>  <service-account> 为 tidb-lightning 使用的 ServiceAccount，默认为 default
 
 当 TiDB Lightning 未能成功恢复数据时，不能简单地直接重启进程，必须进行**手动干预**，否则将很容易出现错误。因此，tidb-lightning 的 `Job` 重启策略被设置为 `Never`。
 
