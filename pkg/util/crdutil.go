@@ -28,7 +28,7 @@ var (
 		Name:        "PD",
 		Type:        "string",
 		Description: "The image for PD cluster",
-		JSONPath:    ".spec.pd.image",
+		JSONPath:    ".status.pd.image",
 	}
 	tidbClusterPDStorageColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Storage",
@@ -52,7 +52,7 @@ var (
 		Name:        "TiKV",
 		Type:        "string",
 		Description: "The image for TiKV cluster",
-		JSONPath:    ".spec.tikv.image",
+		JSONPath:    ".status.tikv.image",
 	}
 	tidbClusterTiKVStorageColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Storage",
@@ -76,7 +76,7 @@ var (
 		Name:        "TiDB",
 		Type:        "string",
 		Description: "The image for TiDB cluster",
-		JSONPath:    ".spec.tidb.image",
+		JSONPath:    ".status.tidb.image",
 	}
 	tidbClusterTiDBReadyColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Ready",

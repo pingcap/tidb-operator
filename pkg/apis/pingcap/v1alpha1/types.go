@@ -513,6 +513,7 @@ type PDStatus struct {
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
+	Image           string                     `json:"image,omitempty"`
 }
 
 // PDMember is PD member
@@ -550,6 +551,7 @@ type TiDBStatus struct {
 	Members                  map[string]TiDBMember        `json:"members,omitempty"`
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
+	Image                    string                       `json:"image,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -576,6 +578,7 @@ type TiKVStatus struct {
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	Image           string                      `json:"image,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
