@@ -94,6 +94,28 @@ spec
 > * BackupSchedule CR mydumper 方式目前只支持备份到 s3、gcs，BR 方式只支持备份到 s3，如果升级之前的定时全量备份是备份到本地 PVC，则升级后不能切换到 CR 方式管理。
 > * 如果切换到 CR 方式管理，请删除原有定时全量备份的 Cronjob，以防止重复备份。
 
+### Ad-hoc 全量备份
+
+升级到 TiDB Operator v1.1 之后，可以通过 Backup CR 进行全量备份：
+
+- 如果 TiDB 集群版本 < v3.1，可以参考 [mydumper Ad-hoc 全量备份](backup-to-s3.md#Ad-hoc-全量备份)
+- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR Ad-hoc 全量备份](backup-to-aws-s3-using-br.md#Ad-hoc-全量备份)
+
+> **注意：**
+>
+> * Backup CR mydumper 方式目前只支持备份到 s3、gcs，BR 方式只支持备份到 s3，如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
+
+### 备份恢复
+
+升级到 TiDB Operator v1.1 之后，可以通过 Restore CR 进行备份恢复：
+
+- 如果 TiDB 集群版本 < v3.1，可以参考 [loader 备份恢复](restore-from-s3.md)
+- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR 备份恢复](restore-from-aws-s3-using-br.md)
+
+> **注意：**
+>
+> * Restore CR loader 方式目前只支持从 s3、gcs 获取备份数据进行恢复，BR 方式只支持从 s3 获取备份数据进行恢复，如果需要从本地 PVC 获取备份数据进行恢复，则不能切换到 CR 方式管理。
+
 ### Drainer
 
 - 如果在升级到 TiDB Operator v1.1 之前，没有部署 Drainer，现在需要新部署，可以参考 [Drainer 部署](maintain-tidb-binlog.md#部署多个-drainer)。
