@@ -1,156 +1,141 @@
 ---
-title: TiDB Binlog 运维
-summary: 了解如何在 Kubernetes 上运维 TiDB 集群的 TiDB Binlog。
+title: 部署 TiDB Binlog
+summary: 了解如何在 Kubernetes 上部署 TiDB 集群的 TiDB Binlog。
 category: how-to
 ---
 
-# TiDB Binlog 运维
+# 部署 TiDB Binlog
 
-本文档介绍如何在 Kubernetes 上运维 TiDB 集群的 [TiDB Binlog](https://pingcap.com/docs-cn/dev/reference/tidb-binlog/overview)。
+本文档介绍如何在 Kubernetes 上部署 TiDB 集群的 [TiDB Binlog](https://pingcap.com/docs-cn/dev/reference/tidb-binlog/overview)。
 
-## 运维准备
+## 部署准备
 
 - [部署 TiDB Operator](deploy-tidb-operator.md)；
 - [安装 Helm](tidb-toolkit.md#使用-helm) 并配置 PingCAP 官方 chart 仓库。
 
-## 启用 TiDB 集群的 TiDB Binlog
+## 部署 TiDB 集群的 TiDB Binlog
 
-默认情况下，TiDB Binlog 在 TiDB 集群中处于禁用状态。若要创建一个启用 TiDB Binlog 的 TiDB 集群，或在现有 TiDB 集群中启用 TiDB Binlog，可根据以下步骤进行操作：
+默认情况下，TiDB Binlog 在 TiDB 集群中处于禁用状态。若要创建一个启用 TiDB Binlog 的 TiDB 集群，或在现有 TiDB 集群中启用 TiDB Binlog，可根据以下步骤进行操作。
 
-1. 按照以下说明修改 `values.yaml` 文件：
+### 部署 Pump
 
-    * 将 `binlog.pump.create` 的值设为 `true`。
-    * 将 `binlog.drainer.create` 的值设为 `true`。
-    * 将 `binlog.pump.storageClassName` 和 `binlog.drainer.storageClassName` 设为所在 Kubernetes 集群上可用的 `storageClass`。
-    * 将 `binlog.drainer.destDBType` 设为所需的下游存储类型。
+可以修改 TidbCluster CR，添加 Pump 相关配置，示例如下：
 
-        TiDB Binlog 支持三种下游存储类型：
+``` yaml
+spec
+  ...
+  pump:
+    baseImage: pingcap/tidb-binlog
+    version: v3.0.11
+    replicas: 1
+    storageClassName: local-storage
+    requests:
+      storage: 30Gi
+    schedulerName: default-scheduler
+    config:
+      addr: 0.0.0.0:8250
+      gc: 7
+      heartbeat-interval: 2
+```
 
-        * PersistenceVolume：默认的下游存储类型。可通过修改 `binlog.drainer.storage` 来为 `drainer` 配置大 PV。
+按照集群实际情况修改 `version`、`replicas`、`storageClassName`、`requests.storage` 等配置。
 
-        * 与 MySQL 兼容的数据库：通过将 `binlog.drainer.destDBType` 设置为 `mysql` 来启用。同时，必须在 `binlog.drainer.mysql` 中配置目标数据库的地址和凭据。
+如果在生产环境中开启 TiDB Binlog，建议为 TiDB 与 Pump 组件设置亲和性和反亲和性。如果在内网测试环境中尝试使用开启 TiDB Binlog，可以跳过此步。
 
-        * Apache Kafka：通过将 `binlog.drainer.destDBType` 设置为 `kafka` 来启用。同时，必须在 `binlog.drainer.kafka` 中配置目标集群的 zookeeper 地址和 Kafka 地址。
+默认情况下，TiDB 和 Pump 的 affinity 亲和性设置为 `{}`。由于目前 Pump 组件与 TiDB 组件默认并非一一对应，当启用 TiDB Binlog 时，如果 Pump 与 TiDB 组件分开部署并出现网络隔离，而且 TiDB 组件还开启了 `ignore-error`，则会导致 TiDB 丢失 Binlog。推荐通过亲和性特性将 TiDB 组件与 Pump 部署在同一台 Node 上，同时通过反亲和性特性将 Pump 分散在不同的 Node 上，每台 Node 上至多仅需一个 Pump 实例。
 
-2. 为 TiDB 与 Pump 组件设置亲和性和反亲和性：
+* 将 `spec.tidb.affinity` 按照如下设置：
 
-    > **注意：**
-    >
-    > 如果在生产环境中开启 TiDB Binlog，建议为 TiDB 与 Pump 组件设置亲和性和反亲和性。如果在内网测试环境中尝试使用开启 TiDB Binlog，可以跳过此步。
+    ```yaml
+    spec:
+      tidb:
+        affinity:
+          podAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: "app.kubernetes.io/component"
+                    operator: In
+                    values:
+                    - "pump"
+                  - key: "app.kubernetes.io/managed-by"
+                    operator: In
+                    values:
+                    - "tidb-operator"
+                  - key: "app.kubernetes.io/name"
+                    operator: In
+                    values:
+                    - "tidb-cluster"
+                  - key: "app.kubernetes.io/instance"
+                    operator: In
+                    values:
+                    - <cluster-name>
+                topologyKey: kubernetes.io/hostname
+    ```
 
-    默认情况下，TiDB 的 affinity 亲和性设置为 `{}`。由于目前 Pump 组件与 TiDB 组件默认并非一一对应，当启用 TiDB Binlog 时，如果 Pump 与 TiDB 组件分开部署并出现网络隔离，而且 TiDB 组件还开启了 `ignore-error`，则会导致 TiDB 丢失 Binlog。推荐通过亲和性特性将 TiDB 组件与 Pump 部署在同一台 Node 上，同时通过反亲和性特性将 Pump 分散在不同的 Node 上，每台 Node 上至多仅需一个 Pump 实例。
+* 将 `spec.pump.affinity` 按照如下设置：
 
-    > **注意：**
-    >
-    > `<release-name>` 需要替换为目标 `tidb-cluster` 的 Helm release name。
+    ```yaml
+    spec:
+      pump:
+        affinity:
+          podAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: "app.kubernetes.io/component"
+                    operator: In
+                    values:
+                    - "tidb"
+                  - key: "app.kubernetes.io/managed-by"
+                    operator: In
+                    values:
+                    - "tidb-operator"
+                  - key: "app.kubernetes.io/name"
+                    operator: In
+                    values:
+                    - "tidb-cluster"
+                  - key: "app.kubernetes.io/instance"
+                    operator: In
+                    values:
+                    - <cluster-name>
+                topologyKey: kubernetes.io/hostname
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: "app.kubernetes.io/component"
+                    operator: In
+                    values:
+                    - "pump"
+                  - key: "app.kubernetes.io/managed-by"
+                    operator: In
+                    values:
+                    - "tidb-operator"
+                  - key: "app.kubernetes.io/name"
+                    operator: In
+                    values:
+                    - "tidb-cluster"
+                  - key: "app.kubernetes.io/instance"
+                    operator: In
+                    values:
+                    - <cluster-name>
+                topologyKey: kubernetes.io/hostname
+    ```
 
-    * 将 `tidb.affinity` 按照如下设置：
+> **注意：**
+>
+> 如果更新了 TiDB 组件的亲和性配置，将引起 TiDB 组件滚动更新。
 
-        ```yaml
-        tidb:
-          affinity:
-            podAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                - labelSelector:
-                    matchExpressions:
-                      - key: "app.kubernetes.io/component"
-                        operator: In
-                        values:
-                          - "pump"
-                      - key: "app.kubernetes.io/managed-by"
-                        operator: In
-                        values:
-                          - "tidb-operator"
-                      - key: "app.kubernetes.io/name"
-                        operator: In
-                        values:
-                          - "tidb-cluster"
-                      - key: "app.kubernetes.io/instance"
-                        operator: In
-                        values:
-                          - <release-name>
-                  topologyKey: kubernetes.io/hostname
-        ```
+### 部署 drainer
 
-    * 将 `binlog.pump.affinity` 按照如下设置：
-
-        ```yaml
-        binlog:
-          pump:
-            affinity:
-              podAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 100
-                  podAffinityTerm:
-                    labelSelector:
-                      matchExpressions:
-                      - key: "app.kubernetes.io/component"
-                        operator: In
-                        values:
-                        - "tidb"
-                      - key: "app.kubernetes.io/managed-by"
-                        operator: In
-                        values:
-                        - "tidb-operator"
-                      - key: "app.kubernetes.io/name"
-                        operator: In
-                        values:
-                        - "tidb-cluster"
-                      - key: "app.kubernetes.io/instance"
-                        operator: In
-                        values:
-                        - <release-name>
-                    topologyKey: kubernetes.io/hostname
-              podAntiAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 100
-                  podAffinityTerm:
-                    labelSelector:
-                      matchExpressions:
-                      - key: "app.kubernetes.io/component"
-                        operator: In
-                        values:
-                        - "pump"
-                      - key: "app.kubernetes.io/managed-by"
-                        operator: In
-                        values:
-                        - "tidb-operator"
-                      - key: "app.kubernetes.io/name"
-                        operator: In
-                        values:
-                        - "tidb-cluster"
-                      - key: "app.kubernetes.io/instance"
-                        operator: In
-                        values:
-                        - <release-name>
-                    topologyKey: kubernetes.io/hostname
-        ```
-
-3. 创建一个新的 TiDB 集群或更新现有的集群：
-
-    * 创建一个启用 TiDB Binlog 的 TiDB 新集群：
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        helm install pingcap/tidb-cluster --name=<release-name> --namespace=<namespace> --version=<chart-version> -f <values-file>
-        ```
-
-    * 更新现有的 TiDB 集群以启用 TiDB Binlog：
-
-        > **注意：**
-        >
-        > 如果设置了 TiDB 组件的亲和性，那么更新现有的 TiDB 集群将引起 TiDB 集群中的 TiDB 组件滚动更新。
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        helm upgrade <release-name> pingcap/tidb-cluster --version=<chart-version> -f <values-file>
-        ```
-
-## 部署多个 drainer
-
-默认情况下，仅创建一个下游 drainer。可安装 `tidb-drainer` Helm chart 来为 TiDB 集群部署多个 drainer，示例如下：
+可以通过 `tidb-drainer` Helm chart 来为 TiDB 集群部署多个 drainer，示例如下：
 
 1. 确保 PingCAP Helm 库是最新的：
 
@@ -206,9 +191,9 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-drainer --name=<release-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    helm install pingcap/tidb-drainer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
     ```
 
     > **注意：**
     >
-    > 该 chart 必须与源 TiDB 集群安装在相同的命名空间中。
+    > 该 chart 必须与源 TiDB 集群安装在相同的命名空间中。   
