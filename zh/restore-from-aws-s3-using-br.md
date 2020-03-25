@@ -1,5 +1,6 @@
 ---
 title: 使用 BR 工具恢复 AWS 上的备份数据
+summary: 介绍如何使用 BR 工具恢复 AWS 上的备份数据。
 category: how-to
 ---
 
@@ -7,7 +8,7 @@ category: how-to
 
 本文详细描述了如何将存储在 Amazon S3 存储的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群，底层通过使用 [`BR`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 进行数据恢复。
 
-本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。
+本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 Custom Resource Definition (CRD) 实现。
 
 以下示例将 Amazon S3 的存储（指定路径）上的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群。
 
@@ -65,9 +66,9 @@ category: how-to
     
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html)为 IAM 角色赋予需要的权限。由于 `Restore` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
     
-4. 绑定 IAM 到 TiKV 节点:
+4. 绑定 IAM 到 TiKV Pod:
 
-    在使用 BR 备份的过程中，TiKV 节点和 BR 节点一样需要对 S3 存储进行读写操作，所以这里需要给 TiKV 节点打上 annotation 来绑定 IAM 角色。
+    在使用 BR 备份的过程中，TiKV Pod 和 BR Pod 一样需要对 S3 存储进行读写操作，所以这里需要给 TiKV Pod 打上 annotation 来绑定 IAM 角色。
 
     {{< copyable "shell-regular" >}}
 
@@ -75,7 +76,7 @@ category: how-to
     kubectl edit tc demo2 -n test2
     ```
 
-    找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 TiKV 节点重启后，查看节点是否加上了这个 annotation。
+    找到 `spec.tikv.annotations`, 增加 annotation `arn:aws:iam::123456789012:role/user`, 然后退出编辑, 等到 TiKV Pod 重启后，查看 Pod 是否加上了这个 annotation。
 
 > **注意：**
 >
@@ -99,9 +100,9 @@ category: how-to
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
     ```
 
-3. 在群集上为服务帐户启用 IAM 角色：
+3. 在集群上为服务帐户启用 IAM 角色：
     
-    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html)开启所在的 eks 集群的 IAM 角色授权。
+    可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html)开启所在的 EKS 集群的 IAM 角色授权。
 
 4. 创建 IAM 角色:
 
@@ -115,7 +116,7 @@ category: how-to
     kubectl annotate sa tidb-backup-manager -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user --namespace=test2
     ```
 
-6. 将 ServiceAccount 绑定到 TiKV 节点：
+6. 将 ServiceAccount 绑定到 TiKV Pod：
 
     {{< copyable "shell-regular" >}}
 
@@ -123,7 +124,7 @@ category: how-to
     kubectl edit tc demo2 -n test2
     ```
 
-    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 TiKV 节点重启后，查看节点的 `serviceAccountName` 是否有变化。
+    将 `spec.tikv.serviceAccount` 修改为 tidb-backup-manager , 等到 TiKV Pod 重启后，查看 Pod 的 `serviceAccountName` 是否有变化。
 
 > **注意：**
 >
@@ -272,4 +273,4 @@ category: how-to
 * `.spec.to.host`：待恢复 TiDB 集群的访问地址。
 * `.spec.to.port`：待恢复 TiDB 集群的访问端口。
 * `.spec.to.user`：待恢复 TiDB 集群的访问用户。
-* `.spec.to.tidbSecretName`：待恢复 TiDB 集群所需凭证的 secret。
+* `.spec.to.tidbSecretName`：待恢复 TiDB 集群 `.spec.to.user` 用户的密码所对应的 secret。
