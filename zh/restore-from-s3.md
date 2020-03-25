@@ -12,7 +12,7 @@ category: how-to
 
 ## AWS 账号的三种权限授予方式
 
-如果使用 Amazon S3 来备份恢复集群，可以使用三种权限授予方式授予权限，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3.md#aws-账号权限授予的三种方式)，使用 Ceph 作为后端存储测试备份恢复时，是通过 AccessKey 和 SecretKey 模式授权。
+如果使用 Amazon S3 来备份恢复集群，可以使用三种权限授予方式授予权限，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)，使用 Ceph 作为后端存储测试备份恢复时，是通过 AccessKey 和 SecretKey 模式授权。
 
 以下示例将兼容 S3 的存储（指定路径）上的备份数据恢复到 TiDB 集群。
 
@@ -22,9 +22,9 @@ category: how-to
 
 ## 将指定备份数据恢复到 TiDB 集群
 
-1. 创建 restore customer resource (CR)，将制定备份数据恢复至 TiDB 集群
+1. 创建 Restore customer resource (CR)，将制定备份数据恢复至 TiDB 集群
 
-+ 创建 restore custom resource (CR)，通过 accessKey 和 secretKey 授权的方式将指定的备份数据恢复至 TiDB 集群：
++ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据恢复至 TiDB 集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -57,7 +57,7 @@ category: how-to
       storageSize: 1Gi
     ```
 
-+ 创建 restore custom resource (CR)，通过 accessKey 和 secretKey 授权的方式将指定的备份数据恢复至 TiDB 集群：
++ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据恢复至 TiDB 集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -90,7 +90,7 @@ category: how-to
       storageSize: 1Gi
     ```
 
-+ 创建 restore custom resource (CR)，通过 IAM 绑定 Pod 授权的方式将指定的备份数据恢复至 TiDB 集群：
++ 创建 Restore custom resource (CR)，通过 IAM 绑定 Pod 授权的方式将指定的备份数据恢复至 TiDB 集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -124,7 +124,7 @@ category: how-to
         storageSize: 1Gi
     ```
 
- + 创建 restore custom resource (CR)，通过 IAM 绑定 ServiceAccount 授权的方式将指定的备份数据恢复至 TiDB 集群：
+ + 创建 Restore custom resource (CR)，通过 IAM 绑定 ServiceAccount 授权的方式将指定的备份数据恢复至 TiDB 集群：
 
     {{< copyable "shell-regular" >}}
 

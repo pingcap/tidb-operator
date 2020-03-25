@@ -18,15 +18,15 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
 ### AWS 账号的三种权限授予方式
 
-如果使用 Amazon S3 来备份恢复集群，可以使用三种权限授予方式授予权限，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3.md#aws-账号权限授予的三种方式)，使用 Ceph 作为后端存储测试备份恢复时，是通过 AccessKey 和 SecretKey 模式授权。
+如果使用 Amazon S3 来备份恢复集群，可以使用三种权限授予方式授予权限，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)，使用 Ceph 作为后端存储测试备份恢复时，是通过 AccessKey 和 SecretKey 模式授权。
 
 ### Ad-hoc 全量备份环境准备
 
-参考[Ad-hoc 全量备份环境准备](backup-to-aws-s3.md#ad-hoc-全量备份环境准备)
+参考 [Ad-hoc 全量备份环境准备](backup-to-aws-s3-using-br.md#ad-hoc-全量备份环境准备)
 
 ### 备份数据到兼容 S3 的存储
 
-+ 创建 `Backup` CR，通过 accessKey 和 secretKey 授权的方式将数据备份到 Amazon S3：
++ 创建 `Backup` CR，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Amazon S3：
 
     {{< copyable "shell-regular" >}}
 
@@ -60,7 +60,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       storageSize: 10Gi
     ```
 
-+ 创建 `Backup` CR，通过 accessKey 和 secretKey 授权的方式将数据备份到 Ceph：
++ 创建 `Backup` CR，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Ceph：
 
     {{< copyable "shell-regular" >}}
 
@@ -225,7 +225,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 
 ### 定时全量备份数据到 S3 兼容存储
 
-+ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 accessKey 和 secretKey 授权的方式将数据备份到 Amazon S3：
++ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Amazon S3：
 
     {{< copyable "shell-regular" >}}
 
@@ -264,7 +264,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         storageSize: 10Gi
     ```
 
-+ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 accessKey 和 secretKey 授权的方式将数据备份到 Ceph：
++ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Ceph：
 
     {{< copyable "shell-regular" >}}
 
