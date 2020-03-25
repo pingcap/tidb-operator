@@ -235,7 +235,7 @@ category: how-to
 
     - 一个 SelfSigned 类型的 ClusterIsser 对象（用于生成 CA 类型 ClusterIssuer 所需要的 CA 证书）;
     - 一个 Certificate 对象，`isCa` 属性设置为 `true`；
-    - 一个可以用于颁发 TiDB 组件间 TLS 证书的 ClusterIssuer。
+    - 一个可以用于颁发 TiDB Server TLS 证书的 ClusterIssuer。
 
     最后执行下面的命令进行创建：
 
