@@ -197,3 +197,7 @@ spec
     > **注意：**
     >
     > 该 chart 必须与源 TiDB 集群安装在相同的命名空间中。
+
+## 开启 TLS
+
+如果要为 TiDB 集群及 TiDB Binlog 开启 TLS，请参考[为 TiDB 组件间开启 TLS](enable-tls-between-components.md) 进行配置。
