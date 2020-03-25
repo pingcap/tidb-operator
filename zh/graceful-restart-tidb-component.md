@@ -1,9 +1,9 @@
 ---
-title: 优雅重启 TidbCluster 组件弹性伸缩
+title: 优雅重启 TidbCluster 组件
 category: how-to
 ---
 
-## 优雅重启 TidbCluster 组件弹性伸缩
+## 优雅重启 TidbCluster 组件
 
 在使用 TiDB 集群的过程中，如果你发现某个集群节点存在内存泄漏等问题需要进行重启。我们可以通过优雅重启指令来将某个 TiDB 集群节点优雅下线然后再进行重新启动。
 
