@@ -8,10 +8,11 @@ category: how-to
 
 本文主要描述了在 Kubernetes 上如何为 TiDB 集群组件间开启 TLS。TiDB Operator 从 v1.1 开始已经支持为 Kubernetes 上 TiDB 集群组件间开启 TLS。开启步骤为：
 
-1. 为即将被创建的 TiDB 集群的每个组件生成证书：为 PD/TiKV/TiDB/Pump/Drainer 组件分别创建一套 Server 端证书，保存为 Kubernetes Secret 对象：`<cluster-name>-<component-name>-cluster-secret`，为它们的各种客户端创建一套共用的 Client 端证书，保存为 Kubernetes Secret 对象：`<cluster-name>-cluster-client-secret`；
+1. 为即将被创建的 TiDB 集群的每个组件生成证书：
+    - 为 PD/TiKV/TiDB/Pump/Drainer 组件分别创建一套 Server 端证书，保存为 Kubernetes Secret 对象：`<cluster-name>-<component-name>-cluster-secret`
+    - 为它们的各种客户端创建一套共用的 Client 端证书，保存为 Kubernetes Secret 对象：`<cluster-name>-cluster-client-secret`
 2. 部署集群，设置 `.spec.tlsCluster.enabled` 属性为 `true`；
 3. 配置 `pd-ctl` 连接集群。
-
 
 其中，颁发证书的方式有多种，本文档提供两种方式，用户也可以根据需要为 TiDB 集群颁发证书，这两种方式分别为：
 
@@ -70,7 +71,9 @@ category: how-to
     }
     ```
 
-    注意：这里的 `profile server` 的 `usages` 必须添加上 `"client auth"`。因为这套 Server 端证书同时也会作为 Client 端证书使用。
+> **注意：**
+>
+> 这里的 `profile server` 的 `usages` 必须添加上 `"client auth"`。因为这套 Server 端证书同时也会作为 Client 端证书使用。
 
 3. 您还可以修改 `ca-csr.json` 证书签名请求 (CSR)：
 
@@ -366,7 +369,7 @@ category: how-to
 
 7. 创建 Kubernetes Secret 对象。
 
-    到这里假设你已经按照上述文档为每个组件创建了一套 Server 端证书和 他们的各种客户端创建了一套 Client 端证书。通过下面的命令为 TiDB 集群创建这些 Secret 对象。
+    假设你已经按照上述文档为每个组件创建了一套 Server 端证书，并为各个客户端创建了一套 Client 端证书。通过下面的命令为 TiDB 集群创建这些 Secret 对象：
 
     PD 集群证书 Secret：
 
@@ -849,12 +852,14 @@ category: how-to
 
 ## 第二步：部署 TiDB 集群
 
-1. 创建一套 TiDB 集群。
-    接下来将会通过两个 CR 对象来创建一个 TiDB 集群，并且执行以下步骤：
+在这一步中，需要完成以下操作：
 
-    - 为 TiDB 组件间开启 TLS；
-    - 部署一套监控系统；
-    - 部署 Pump 组件。
+    - 创建一套 TiDB 集群
+    - 为 TiDB 组件间开启 TLS
+    - 部署一套监控系统
+    - 部署 Pump 组件
+
+1. 创建一套 TiDB 集群：
 
     创建 `tidb-cluster.yaml` 文件：
 
@@ -1059,6 +1064,7 @@ category: how-to
     ```
 
 3. 使用 pd-ctl 连接 PD 集群。
+    
     由于我们刚才在配置 PD Server 端证书的时候，自定义填写了一些 `hosts`，所以需要通过这些 `hosts` 来连接 PD 集群。
 
     {{< copyable "shell-regular" >}}
