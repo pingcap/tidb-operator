@@ -859,7 +859,7 @@ category: how-to
     - 部署一套监控系统
     - 部署 Pump 组件
 
-1. 创建一套 TiDB 集群：
+1. 创建一套 TiDB 集群（监控系统和 Pump 组件已包含在内）：
 
     创建 `tidb-cluster.yaml` 文件：
 
