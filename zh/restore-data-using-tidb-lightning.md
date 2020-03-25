@@ -42,92 +42,96 @@ tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 Ti
 
 ## 部署 tidb-lightning
 
-1. 配置 TiDB Lightning
+### 配置 TiDB Lightning
 
-    使用如下命令获得 TiDB Lightning 的默认配置。
+使用如下命令获得 TiDB Lightning 的默认配置：
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-    ```shell
-    helm inspect values pingcap/tidb-lightning --version=<chart-version> > tidb-lightning-values.yaml
-    ```
+```shell
+helm inspect values pingcap/tidb-lightning --version=<chart-version> > tidb-lightning-values.yaml
+```
 
-    tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
+tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
-    * 本地模式
+* 本地模式：
 
-        本地模式要求 Mydumper 备份数据位于其中一个 Kubernetes 节点上。要启用该模式，你需要将 `dataSource.local.nodeName` 设置为该节点名称，将 `dataSource.local.hostPath` 设置为 Mydumper 备份数据目录路径，该路径中需要包含名为 `metadata` 的文件。
+    本地模式要求 Mydumper 备份数据位于其中一个 Kubernetes 节点上。要启用该模式，你需要将 `dataSource.local.nodeName` 设置为该节点名称，将 `dataSource.local.hostPath` 设置为 Mydumper 备份数据目录路径，该路径中需要包含名为 `metadata` 的文件。
 
-    * 远程模式
+* 远程模式：
 
-        与本地模式不同，远程模式需要使用 [rclone](https://rclone.org) 将 Mydumper 备份 tarball 文件从网络存储中下载到 PV 中。远程模式能在 rclone 支持的任何云存储下工作，目前已经有以下存储进行了相关测试：[Google Cloud Storage (GCS)](https://cloud.google.com/storage/)、[AWS S3](https://aws.amazon.com/s3/) 和 [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/)。
+    与本地模式不同，远程模式需要使用 [rclone](https://rclone.org) 将 Mydumper 备份 tarball 文件从网络存储中下载到 PV 中。远程模式能在 rclone 支持的任何云存储下工作，目前已经有以下存储进行了相关测试：[Google Cloud Storage (GCS)](https://cloud.google.com/storage/)、[AWS S3](https://aws.amazon.com/s3/) 和 [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/)。
 
-        1. 确保 `values.yaml` 中的 `dataSource.local.nodeName` 和 `dataSource.local.hostPath` 被注释掉。
+    使用远程模式恢复备份数据的步骤如下：
 
-        2. 新建一个包含 rclone 配置的 `Secret`。rclone 配置示例如下。一般只需要配置一种云存储。有关其他的云存储，请参考 [rclone 官方文档](https://rclone.org/)。和使用 BR 和 Mydumper 进行数据恢复时一样，使用 AWS S3 作为后端存储时，同样存在三种权限授予方式，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)。在使用不同的权限授予方式时，需要使用不用的配置。
+    1. 确保 `values.yaml` 中的 `dataSource.local.nodeName` 和 `dataSource.local.hostPath` 被注释掉。
 
-            + 使用 AWS S3 AccessKey 和 SecretKey 权限授予方式，或者使用 Ceph、GCS 作为存储后端时:
+    2. 新建一个包含 rclone 配置的 `Secret`。rclone 配置示例如下。一般只需要配置一种云存储。有关其他的云存储，请参考 [rclone 官方文档](https://rclone.org/)。和使用 BR 和 Mydumper 进行数据恢复时一样，使用 AWS S3 作为后端存储时，同样存在三种权限授予方式，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)。在使用不同的权限授予方式时，需要使用不用的配置。
+
+       + 使用 AWS S3 AccessKey 和 SecretKey 权限授予方式，或者使用 Ceph、GCS 作为存储后端时:
     
-                {{< copyable "" >}}
+            {{< copyable "" >}}
     
-                ```yaml
-                apiVersion: v1
-                kind: Secret
-                metadata:
-                  name: cloud-storage-secret
-                type: Opaque
-                stringData:
-                  rclone.conf: |
-                  [s3]
-                  type = s3
-                  provider = AWS
-                  env_auth = false
-                  access_key_id = <my-access-key>
-                  secret_access_key = <my-secret-key>
-                  region = us-east-1
-                  [ceph]
-                  type = s3
-                  provider = Ceph
-                  env_auth = true
-                  access_key_id = <my-access-key>
-                  secret_access_key = <my-secret-key>
-                  endpoint = <ceph-object-store-endpoint>
-                  region = :default-placement
-                  [gcs]
-                  type = google cloud storage
-                  # 该服务账号必须被授予 Storage Object Viewer 角色。
-                  # 该内容可以通过 `cat <service-account-file.json> | jq -c .` 命令获取。
-                  service_account_credentials = <service-account-json-file-content>
-                ```
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+                name: cloud-storage-secret
+            type: Opaque
+            stringData:
+                rclone.conf: |
+                [s3]
+                type = s3
+                provider = AWS
+                env_auth = false
+                access_key_id = <my-access-key>
+                secret_access_key = <my-secret-key>
+                region = us-east-1
+                [ceph]
+                type = s3
+                provider = Ceph
+                env_auth = true
+                access_key_id = <my-access-key>
+                secret_access_key = <my-secret-key>
+                endpoint = <ceph-object-store-endpoint>
+                region = :default-placement
+                [gcs]
+                type = google cloud storage
+                # 该服务账号必须被授予 Storage Object Viewer 角色。
+                # 该内容可以通过 `cat <service-account-file.json> | jq -c .` 命令获取。
+                service_account_credentials = <service-account-json-file-content>
+            ```
     
-            + 使用 AWS S3 IAM 绑定 Pod 的授权方式或者 AWS S3 IAM 绑定 ServiceAccount 授权方式时，可以省略 `s3.access_key_id` 以及 `s3.secret_access_key：
+        + 使用 AWS S3 IAM 绑定 Pod 的授权方式或者 AWS S3 IAM 绑定 ServiceAccount 授权方式时，可以省略 `s3.access_key_id` 以及 `s3.secret_access_key：
     
-                {{< copyable "" >}}
+            {{< copyable "" >}}
     
-                ```yaml
-                apiVersion: v1
-                kind: Secret
-                metadata:
-                  name: cloud-storage-secret
-                type: Opaque
-                stringData:
-                  rclone.conf: |
-                  [s3]
-                  type = s3
-                  provider = AWS
-                  env_auth = true
-                  access_key_id =
-                  secret_access_key =
-                  region = us-east-1
-                ```
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+                name: cloud-storage-secret
+            type: Opaque
+            stringData:
+                rclone.conf: |
+                [s3]
+                type = s3
+                provider = AWS
+                env_auth = true
+                access_key_id =
+                secret_access_key =
+                region = us-east-1
+            ```
 
             使用你的实际配置替换上述配置中的占位符，并将该文件存储为 `secret.yaml`。然后通过 `kubectl apply -f secret.yaml -n <namespace>` 命令创建该 `Secret`。
 
-        3. 将 `dataSource.remote.storageClassName` 设置为 Kubernetes 集群中现有的一个存储类型。
+    3. 将 `dataSource.remote.storageClassName` 设置为 Kubernetes 集群中现有的一个存储类型。
 
-2. 部署 TiDB Lightning
+### 部署 TiDB Lightning
 
-    + 使用 AWS S3 AccessKey 和 SecretKey 权限授予方式，或者使用 Ceph，GCS 作为存储后端时：
+部署 TiDB Lightning 的方式根据不同的权限授予方式及存储方式，有不同的情况。
+
++ 使用 AWS S3 AccessKey 和 SecretKey 权限授予方式，或者使用 Ceph，GCS 作为存储后端时，运行以下命令部署 TiDB Lightning：
 
     {{< copyable "shell-regular" >}}
 
@@ -135,27 +139,27 @@ tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 Ti
     helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
     ```
 
-    + 使用 AWS S3 IAM 绑定 Pod 的授权方式时，需要做以下步骤：
++ 使用 AWS S3 IAM 绑定 Pod 的授权方式时，需要做以下步骤：
 
     1. 创建 IAM 角色：
 
-        可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html)来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) 为 IAM 角色赋予需要的权限。由于 `Lightning` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
+        可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html)来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html)为 IAM 角色赋予需要的权限。由于 `Lightning` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
 
-    2. 修改 tidb-lightning-values.yaml, 找到字段 `annotations`，增加 annotataion `iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user`
+    2. 修改 tidb-lightning-values.yaml, 找到字段 `annotations`，增加 annotation `iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user`。
 
     3. 部署 Tidb-Lightning：
 
-    {{< copyable "shell-regular" >}}
+        {{< copyable "shell-regular" >}}
 
-    ```shell
-    helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
-    ```
+        ```shell
+        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
+        ```
 
-    > **注意：**
-    >
-    > `arn:aws:iam::123456789012:role/user` 为步骤 1 中创建的 IAM 角色。
+        > **注意：**
+        >
+        > `arn:aws:iam::123456789012:role/user` 为步骤 1 中创建的 IAM 角色。
 
-    + 使用 AWS S3 IAM 绑定 ServiceAccount 授权方式时：
++ 使用 AWS S3 IAM 绑定 ServiceAccount 授权方式时：
 
     1. 在集群上为服务帐户启用 IAM 角色：
 
@@ -172,6 +176,7 @@ tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 Ti
         ```shell
         kubectl annotate sa <servie-account> -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
         ```
+    
     4. 部署 Tidb-Lightning：
 
         {{< copyable "shell-regular" >}}
@@ -180,10 +185,10 @@ tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 Ti
         helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set-string failFast=true,serviceAccount=<servie-account> -f tidb-lightning-values.yaml --version=<chart-version>
         ```
 
-    > **注意：**
-    >
-    > `arn:aws:iam::123456789012:role/user` 为步骤 1 中创建的 IAM 角色。
-    >  <service-account> 为 tidb-lightning 使用的 ServiceAccount，默认为 default
+        > **注意：**
+        >
+        > `arn:aws:iam::123456789012:role/user` 为步骤 1 中创建的 IAM 角色。
+        >  <service-account> 为 tidb-lightning 使用的 ServiceAccount，默认为 default。
 
 当 TiDB Lightning 未能成功恢复数据时，不能简单地直接重启进程，必须进行**手动干预**，否则将很容易出现错误。因此，tidb-lightning 的 `Job` 重启策略被设置为 `Never`。
 
