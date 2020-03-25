@@ -34,7 +34,7 @@
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
   - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
   - [收集日志](collect-tidb-binlogs.md)
-  - [TiDB Binlog 运维](maintain-tidb-binlog.md)
+  - [部署 TiDB Binlog](maintain-tidb-binlog.md)
   - [集群故障自动转移](use-auto-failover.md)
 - [扩缩容](scale-a-tidb-cluster.md)
 + 备份与恢复
