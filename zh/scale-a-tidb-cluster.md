@@ -37,7 +37,7 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 watch kubectl -n <namespace> get pod -o wide
 ```
 
-当所有组件的 Pod 数量都达到了预设值，并且都进入  `Running` 状态后，水平扩缩容完成。
+当所有组件的 Pod 数量都达到了预设值，并且都进入 `Running` 状态后，水平扩缩容完成。
 
 > **注意：**
 >
