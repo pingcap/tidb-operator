@@ -257,8 +257,8 @@ type TiKVSpec struct {
 	// +optional
 	Privileged *bool `json:"privileged,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -304,8 +304,8 @@ type TiDBSpec struct {
 	// +optional
 	EnableAdvertiseAddress *bool `json:"enableAdvertiseAddress,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`

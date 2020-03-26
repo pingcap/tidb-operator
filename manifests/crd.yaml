@@ -3903,7 +3903,7 @@ spec:
                   type: object
                 maxFailoverCount:
                   description: 'MaxFailoverCount limit the max replicas could be added
-                    in failover, 0 means unlimited Optional: Defaults to 0'
+                    in failover, 0 means no failover Optional: Defaults to 3'
                   format: int32
                   type: integer
                 nodeSelector:
@@ -5954,7 +5954,7 @@ spec:
                   type: object
                 maxFailoverCount:
                   description: 'MaxFailoverCount limit the max replicas could be added
-                    in failover, 0 means unlimited Optional: Defaults to 0'
+                    in failover, 0 means no failover Optional: Defaults to 3'
                   format: int32
                   type: integer
                 nodeSelector:
