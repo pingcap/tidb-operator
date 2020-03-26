@@ -1,5 +1,6 @@
 ---
 title: 使用 BR 工具恢复 AWS 上的备份数据
+summary: 介绍如何使用 BR 工具恢复 AWS 上的备份数据。
 category: how-to
 ---
 
@@ -13,7 +14,7 @@ category: how-to
 
 ## AWS 账号的三种权限授予方式
 
-参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3.md#aws-账号权限授予的三种方式)
+参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)
 
 ## 环境准备
 

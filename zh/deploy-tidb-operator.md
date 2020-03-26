@@ -1,6 +1,6 @@
 ---
 title: 在 Kubernetes 上部署 TiDB Operator
-summary: 了解如何在 Kubernetes 上部署 TiDB Operator
+summary: 了解如何在 Kubernetes 上部署 TiDB Operator。
 category: how-to
 ---
 
@@ -18,11 +18,6 @@ TiDB Operator 部署前，请确认以下软件需求：
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) 启用（可选）
 * [Helm](https://helm.sh) 版本 >= v2.8.2 && < v3.0.0
 
-> **注意：**
->
-> - 尽管 TiDB Operator 可以使用网络卷持久化 TiDB 数据，TiDB 数据自身会存多副本，再走额外的网络卷性能会受到很大影响。强烈建议搭建[本地卷](https://kubernetes.io/docs/concepts/storage/volumes/#local)以提高性能。
-> - 跨多可用区的网络卷需要 Kubernetes v1.12 或者更高版本。在 `tidb-backup` chart 配置中，建议使用网络卷存储备份数据。
-
 ## 部署 Kubernetes 集群
 
 TiDB Operator 运行在 Kubernetes 集群，你可以使用 [Getting started 页面](https://kubernetes.io/docs/setup/)列出的任何一种方法搭建一套 Kubernetes 集群。只要保证 Kubernetes 版本大于等于 v1.12。如果你使用 AWS、GKE 或者本机，下面是快速上手教程：
@@ -31,37 +26,9 @@ TiDB Operator 运行在 Kubernetes 集群，你可以使用 [Getting started 页
 * [Google GKE 教程](deploy-tidb-from-kubernetes-gke.md)
 * [AWS EKS 教程](deploy-on-aws-eks.md)
 
-如果你要使用不同环境，必须在 Kubernetes 集群中安装 DNS 插件。可以根据[官方文档](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/)搭建 DNS 插件。
+TiDB Operator 使用[持久化卷](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)持久化存储 TiDB 集群数据（包括数据库，监控和备份数据），所以 Kubernetes 集群必须提供至少一种持久化卷。为提高性能，建议使用本地 SSD 盘作为持久化卷。可以根据[这一步](#配置本地持久化卷)配置本地持久化卷。
 
-TiDB Operator 使用[持久化卷](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)持久化存储 TiDB 集群数据（包括数据库，监控和备份数据），所以 Kubernetes 集群必须提供至少一种持久化卷。为提高性能，建议使用本地 SSD 盘作为持久化卷。可以根据[这一步](#配置本地持久化卷)自动配置本地持久化卷。
-
-Kubernetes 集群建议启用 [RBAC](https://kubernetes.io/docs/admin/authorization/rbac)。否则，需要在 `tidb-operator` 和 `tidb-cluster` chart 的 `values.yaml` 中设置 `rbac.create` 为 `false`。
-
-TiDB 默认会使用很多文件描述符，工作节点和上面的 Docker 进程的 `ulimit` 必须设置大于等于 `1048576`：
-
-* 设置工作节点的 `ulimit` 值，详情可以参考[如何设置 ulimit](https://access.redhat.com/solutions/61334)
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    sudo vim /etc/security/limits.conf
-    ```
-
-    设置 root 账号的 `soft` 和 `hard` 的 `nofile` 大于等于 `1048576`
-
-* 设置 Docker 服务的 `ulimit`
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    sudo vim /etc/systemd/system/docker.service
-    ```
-
-    设置 `LimitNOFILE` 大于等于 `1048576`。
-
-> **注意：**
->
-> `LimitNOFILE` 需要显式设置为 `1048576` 或者更大，而不是默认的 `infinity`，由于 `systemd` 的 [bug](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186)，`infinity` 在 `systemd` 某些版本中指的是 `65536`。
+Kubernetes 集群建议启用 [RBAC](https://kubernetes.io/docs/admin/authorization/rbac)。
 
 ## 安装 Helm
 

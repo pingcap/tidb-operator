@@ -1,5 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB 集群扩缩容
+summary: 介绍如何在 Kubernetes 中对 TiDB 集群扩缩容。
 category: how-to
 ---
 
@@ -9,9 +10,10 @@ category: how-to
 
 ## 水平扩缩容
 
-TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达到集群扩缩容的目的。扩缩容 TiDB 集群时，会按照填入的 replicas 值，对 PD、TiKV、TiDB 进行顺序扩缩容操作。扩容操作按照节点编号由小到大增加节点，缩容操作按照节点编号由大到小删除节点。
+TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达到集群扩缩容的目的。扩缩容 TiDB 集群时，会按照填入的 replicas 值，对 PD、TiKV、TiDB 进行顺序扩缩容操作。扩容操作按照节点编号由小到大增加节点，缩容操作按照节点编号由大到小删除节点。目前 TiDB 集群有通过 Helm 与使用 TidbCluster Custom Resource (CR) 两种管理方式，你可以根据 TiDB 集群的管理方式选择对应的方式进行伸缩。
 
-### 水平扩缩容操作
+### 水平扩缩容操作 (Helm)
+
 
 1. 修改集群的 `value.yaml` 文件中的 `pd.replicas`、`tidb.replicas`、`tikv.replicas` 至期望值。
 
@@ -23,15 +25,19 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
     helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
     ```
 
-3. 查看集群水平扩缩容状态：
+### 水平扩缩容操作 (CR)
 
-    {{< copyable "shell-regular" >}}
+使用 kubectl 修改集群所对应的 `TidbCluster` 对象中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 至期望值。
 
-    ```shell
-    watch kubectl -n <namespace> get pod -o wide
-    ```
+### 查看集群水平扩缩容状态
 
-    当所有组件的 Pod 数量都达到了预设值，并且都进入  `Running` 状态后，水平扩缩容完成。
+{{< copyable "shell-regular" >}}
+
+```shell
+watch kubectl -n <namespace> get pod -o wide
+```
+
+当所有组件的 Pod 数量都达到了预设值，并且都进入 `Running` 状态后，水平扩缩容完成。
 
 > **注意：**
 >
@@ -42,9 +48,9 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 
 ## 垂直扩缩容
 
-垂直扩缩容操作指的是通过增加或减少节点的资源限制，来达到集群扩缩容的目的。垂直扩缩容本质上是节点滚动升级的过程。
+垂直扩缩容操作指的是通过增加或减少节点的资源限制，来达到集群扩缩容的目的。垂直扩缩容本质上是节点滚动升级的过程。目前 TiDB 集群有通过 Helm 与使用 TidbCluster Custom Resource (CR) 两种管理方式，你可以根据 TiDB 集群的管理方式选择对应的方式进行伸缩。
 
-### 垂直扩缩容操作
+### 垂直扩缩容操作 (Helm)
 
 1. 修改 `values.yaml` 文件中的 `tidb.resources`、`tikv.resources`、`pd.resources` 至期望值。
 
@@ -56,15 +62,19 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
     helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
     ```
 
-3. 查看升级进度：
+### 垂直扩缩容操作 (CR)
 
-    {{< copyable "shell-regular" >}}
+通过 kubectl 修改集群所对应的 `TidbCluster` 对象的 `spec.pd.resources`、`spec.tikv.resources`、`spec.tidb.resources` 至期望值。
 
-    ```shell
-    watch kubectl -n <namespace> get pod -o wide
-    ```
+### 查看升级进度
 
-    当所有 Pod 都重建完毕进入 `Running` 状态后，垂直扩缩容完成。
+{{< copyable "shell-regular" >}}
+
+```shell
+watch kubectl -n <namespace> get pod -o wide
+```
+
+当所有 Pod 都重建完毕进入 `Running` 状态后，垂直扩缩容完成。
 
 > **注意：**
 >
