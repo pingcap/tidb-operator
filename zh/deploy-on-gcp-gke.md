@@ -21,8 +21,8 @@ category: how-to
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 * [Google Cloud SDK](https://cloud.google.com/sdk/install)
 * [Terraform](https://www.terraform.io/downloads.html) >= 0.12
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.14
-* [Helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.9.0 且 < 3.0.0
+* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
+* [Helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 且 < 3.0.0
 * [jq](https://stedolan.github.io/jq/download/)
 
 ## 配置
@@ -134,7 +134,8 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     > **注意：**
     >
-    > 工作节点的数量取决于指定 Region 中可用区的数量。大部分 Region 有 3 个可用区，但是 `us-central1` 有 4 个可用区。参考 [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) 查看更多信息。参考[自定义](#自定义)部分来自定义区域集群的节点池。
+    > 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `node_locations` 来限定可用区，或者 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
+    > 工作节点的数量取决于指定 Region 中可用区的数量。大部分 Region 有 3 个可用区，`us-central1` 有 4 个可用区。参考 [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) 查看更多信息。参考[自定义](#自定义)部分来自定义区域集群的节点池。
 
 2. 启动脚本来部署 TiDB 集群：
 
@@ -155,21 +156,68 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     Outputs:
 
-    how_to_connect_to_default_cluster_tidb_from_bastion = mysql -h 172.31.252.20 -P 4000 -u root
     how_to_ssh_to_bastion = gcloud compute ssh tidb-cluster-bastion --zone us-west1-b
-    how_to_set_reclaim_policy_of_pv_for_default_tidb_cluster_to_delete = kubectl --kubeconfig /.../credentials/kubeconfig_tidb-cluster get pvc -n tidb-cluster -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig /.../credentials/kubeconfig_tidb-cluster patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     kubeconfig_file = ./credentials/kubeconfig_tidb-cluster
-    monitor_lb_ip = 35.227.134.146
-    monitor_port = 3000
-    region = us-west1
-    tidb_version = v3.0.1
     ```
+
+## 部署 TiDB 集群和监控
+
+1. 准备 TidbCluster 和 TidbMonitor CR 文件：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cp manifests/{db,db-monitor}.yaml.example .
+    ```
+
+    使用 GKE 部署过程中配置的 `default_tidb_cluster_name`（默认为 `tidb-cluster`）替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`：
+
+    ```
+    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db.yaml.example > db.yaml
+    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db-monitor.yaml.example > db-monitor.yaml
+    ```
+
+    参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
+
+    > **注意：**
+    >
+    > * 请确保 GKE 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。注意 Regional 集群下，实际创建的节点数为 pd_count/tikv_count/tidb_count 的 3 倍。
+    > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
+
+2. 创建 `Namespace`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create namespace <namespace>
+    ```
+
+    > **注意：**
+    >
+    > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `default_tidb_cluster_name` 相同的名称。
+
+3. 部署 TiDB 集群：
+
+  {{< copyable "shell-regular" >}}
+
+  ```shell
+  kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db.yaml -n <namespace>
+  kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db-monitor.yaml -n <namespace>
+  ```
 
 ## 访问 TiDB 数据库
 
 `terraform apply` 运行完成后，可执行以下步骤来访问 TiDB 数据库。注意用[部署 TiDB 集群](#部署-tidb-集群)小节的输出信息替换 `<>` 部分的内容。
 
-1. 通过 `ssh` 远程连接到堡垒机。
+1. 获取 TiDB Internal LoadBalancer IP 地址:
+
+  ```shell
+  kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb -n <namespace>
+  ```
+
+  其中 `EXTERNAL-IP` 为 Internal LoadBalancer IP 地址。
+
+2. 通过 `ssh` 远程连接到堡垒机。
 
     {{< copyable "shell-regular" >}}
 
@@ -177,7 +225,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     gcloud compute ssh <gke-cluster-name>-bastion --zone <zone>
     ```
 
-2. 通过 MySQL 客户端来访问 TiDB 集群。
+3. 通过 MySQL 客户端来访问 TiDB 集群。
 
     {{< copyable "shell-regular" >}}
 
@@ -187,7 +235,8 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     > **注意：**
     >
-    > 通过 MySQL 连接 TiDB 前，需要先安装 MySQL 客户端。
+    > 通过 MySQL 连接 TiDB 前，需要先安装 MySQL 客户端。CentOS 系统可通过 `sudo yum install -y mysql` 安装。
+    > `<tidb_ilb_ip>` 为前面获取的 Internal LoadBalancer IP 地址。
 
 ## 与 GKE 集群交互
 
@@ -235,51 +284,6 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     helm ls
     ```
 
-## 升级 TiDB 集群
-
-要升级 TiDB 集群，可执行以下步骤：
-
-1. 编辑 `variables.tf` 文件，将 `tidb_version` 变量的值修改为更高版本。
-2. 运行 `terraform apply`。
-
-例如，要将 TiDB 集群升级到 3.0.0-rc.2，可修改 `tidb_version` 为 `v3.0.0-rc.2`：
-
-```
-variable "tidb_version" {
-  description = "TiDB version"
-  default     = "v3.0.0-rc.2"
-}
-```
-
-升级过程会持续一段时间。你可以通过以下命令来持续观察升级进度：
-
-{{< copyable "shell-regular" >}}
-
-```bash
-kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_cluster_name> --watch
-```
-
-然后，你可以[访问数据库](#访问-tidb-数据库)并通过 `tidb_version()` 确认 TiDB 集群是否升级成功：
-
-{{< copyable "sql" >}}
-
-```sql
-select tidb_version();
-```
-
-```
-*************************** 1. row ***************************
-tidb_version(): Release Version: v3.0.0-rc.2
-Git Commit Hash: 06f3f63d5a87e7f0436c0618cf524fea7172eb93
-Git Branch: HEAD
-UTC Build Time: 2019-05-28 12:48:52
-GoVersion: go version go1.12 linux/amd64
-Race Enabled: false
-TiKV Min Version: 2.1.0-alpha.1-ff3dd160846b7d1aed9079c389fc188f7f5ea13e
-Check Table Before Drop: false
-1 row in set (0.001 sec)
-```
-
 ## 管理多个 TiDB 集群
 
 一个 `tidb-cluster` 模块的实例对应一个 GKE 集群中的 TiDB 集群。要添加一个新的 TiDB 集群，可执行以下步骤：
@@ -292,46 +296,34 @@ Check Table Before Drop: false
 
     ```hcl
     module "example-tidb-cluster" {
-    providers = {
-        helm = "helm.gke"
-    }
-    source                     = "../modules/gcp/tidb-cluster"
-    cluster_id                 = module.tidb-operator.cluster_id
-    tidb_operator_id           = module.tidb-operator.tidb_operator_id
-    gcp_project                = var.GCP_PROJECT
-    gke_cluster_location       = local.location
-    gke_cluster_name           = <gke-cluster-name>
-    cluster_name               = <example-tidb-cluster>
-    cluster_version            = "v3.0.1"
-    kubeconfig_path            = local.kubeconfig
-    tidb_cluster_chart_version = "v1.0.0"
-    pd_instance_type           = "n1-standard-1"
-    tikv_instance_type         = "n1-standard-4"
-    tidb_instance_type         = "n1-standard-2"
-    monitor_instance_type      = "n1-standard-1"
-    pd_node_count              = 1
-    tikv_node_count            = 2
-    tidb_node_count            = 1
-    monitor_node_count         = 1
+      providers = {
+          helm = "helm.gke"
+      }
+      source                     = "../modules/gcp/tidb-cluster"
+      cluster_id                 = module.tidb-operator.cluster_id
+      tidb_operator_id           = module.tidb-operator.tidb_operator_id
+      gcp_project                = var.GCP_PROJECT
+      gke_cluster_location       = local.location
+      gke_cluster_name           = <gke-cluster-name>
+      cluster_name               = <example-tidb-cluster>
+      cluster_version            = "v3.0.1"
+      kubeconfig_path            = local.kubeconfig
+      tidb_cluster_chart_version = "v1.0.0"
+      pd_instance_type           = "n1-standard-1"
+      tikv_instance_type         = "n1-standard-4"
+      tidb_instance_type         = "n1-standard-2"
+      monitor_instance_type      = "n1-standard-1"
+      pd_node_count              = 1
+      tikv_node_count            = 2
+      tidb_node_count            = 1
+      monitor_node_count         = 1
     }
     ```
 
     > **注意：**
     >
     > - 每个集群的 `cluster_name` 必须是唯一的。
-    > - 为任一组件实际创建的总节点数等于配置文件中的节点数乘以该 Region 中可用区的个数。
-
-    你可以通过 `kubectl` 获取创建的 TiDB 集群和监控组件的地址。如果你希望 Terraform 脚本打印此信息，可在 `outputs.tf` 中添加一个 `output` 配置项，如下所示：
-
-    {{< copyable "" >}}
-
-    ```hcl
-    output "how_to_connect_to_example_tidb_cluster_from_bastion" {
-    value = module.example-tidb-cluster.how_to_connect_to_tidb_from_bastion
-    }
-    ```
-
-    上述配置可使该脚本打印出用于连接 TiDB 集群的命令。
+    > - 为任一组件实际创建的总节点数 = 配置文件中的节点数 * 配置的可用区的个数（Regional 集群默认为 3）。
 
 2. 修改完成后，执行以下命令来创建集群。
 
@@ -339,11 +331,6 @@ Check Table Before Drop: false
 
     ```bash
     terraform init
-    ```
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
     terraform apply
     ```
 
@@ -351,7 +338,7 @@ Check Table Before Drop: false
 
 如果需要扩容 TiDB 集群，可执行以下步骤：
 
-1. 按需修改 `variables.tf` 文件中的 `tikv_count`、`tidb_count` 变量。
+1. 增大 `.tfvars` 文件中 `pd_count`、`tikv_count`、`tidb_count` 变量。
 2. 运行 `terraform apply`。
 
 > **警告：**
@@ -369,10 +356,7 @@ kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_c
 例如，可以将 `tidb_count` 从 1 改为 2 来扩容 TiDB：
 
 ```hcl
-variable "tidb_count" {
-  description = "Number of TiDB nodes per availability zone"
-  default     = 2
-}
+tidb_count = 2
 ```
 
 > **注意：**
@@ -580,7 +564,7 @@ terraform destroy
 在 TiDB 的案例中，Terraform 模块通常结合了几个子模块：
 
 - `tidb-operator`：为 TiDB 集群提供 [Kubernetes Control Plane](https://kubernetes.io/docs/concepts/#kubernetes-control-plane) 并部署 TiDB Operator。
-- `tidb-cluster`：在目标 Kubernetes 集群中创建资源池并部署 TiDB 集群。
+- `tidb-cluster`：在目标 Kubernetes 集群中创建资源池。
 - 一个 `vpc` 模块，一个 `bastion` 模块和一个 `project-credentials` 模块：专门用于 GKE 上的 TiDB 集群。
 
 管理多个 Kubernetes 集群的最佳实践有以下两点：
@@ -713,15 +697,6 @@ module "tidb-cluster-b" {
 output "how_to_ssh_to_bastion" {
   value= module.bastion.how_to_ssh_to_bastion
 }
-
-output "connect_to_tidb_cluster_a_from_bastion" {
-  value = module.tidb-cluster-a.how_to_connect_to_default_cluster_tidb_from_bastion
-}
-
-output "connect_to_tidb_cluster_b_from_bastion" {
-  value = module.tidb-cluster-b.how_to_connect_to_default_cluster_tidb_from_bastion
-}
-
 ```
 
 如上述代码所示，你可以在每个模块调用中省略几个参数，因为有合理的默认值，并且可以轻松地自定义配置。例如，如果你不需要调用堡垒机模块，将其删除即可。
