@@ -357,7 +357,7 @@ func (tidb *TiDBSpec) IsAdvertiseAddressEnabled() bool {
 func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
 	separateSlowLog := tidb.SeparateSlowLog
 	if separateSlowLog == nil {
-		return defaultEnableTLSClient
+		return defaultSeparateSlowLog
 	}
 	return *separateSlowLog
 }
