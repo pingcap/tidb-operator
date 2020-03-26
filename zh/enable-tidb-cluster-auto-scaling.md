@@ -19,14 +19,14 @@ category: how-to
 
 1. 修改 Operator 的 `values.yaml`
 
-在 `features` 选项中开启 AutoScaling：
+    在 `features` 选项中开启 AutoScaling：
 
     ```yaml
     features:
       - AutoScaling=true
     ```
 
-开启 Operator Webhook 特性:
+    开启 Operator Webhook 特性:
 
     ```yaml
     admissionWebhook:
@@ -43,29 +43,29 @@ category: how-to
 
 我们通过 `TidbClusterAutoScaler` CR 对象来控制 TiDB 集群的弹性伸缩行为，如果你曾经使用过 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)，那么你一定会对这个概念感到非常熟悉。以下是一个 TiKV 的弹性伸缩例子。
 
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbClusterAutoScaler
-    metadata:
-      name: auto-scaling-demo
-    spec:
-      cluster:
-        name: auto-scaling-demo
-        namespace: default
-      monitor:
-        name: auto-scaling-demo
-        namespace: default
-      tikv:
-        minReplicas: 3
-        maxReplicas: 4
-        metrics:
-          - type: "Resource"
-            resource:
-              name: "cpu"
-              target:
-                type: "Utilization"
-                averageUtilization: 80
-    ```
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbClusterAutoScaler
+metadata:
+  name: auto-scaling-demo
+spec:
+  cluster:
+    name: auto-scaling-demo
+    namespace: default
+  monitor:
+    name: auto-scaling-demo
+    namespace: default
+  tikv:
+    minReplicas: 3
+    maxReplicas: 4
+    metrics:
+      - type: "Resource"
+        resource:
+          name: "cpu"
+          target:
+            type: "Utilization"
+            averageUtilization: 80
+```
 
 对于 TiDB 组件，你可以通过 `spec.tidb` 来进行配置，目前 TiKV 与 TiDB 的弹性伸缩 API 相同。
 
@@ -73,18 +73,18 @@ category: how-to
 
 对于非 `TidbMonitor` 的外部 `Prometheus`, 你可以通过 `spec.metricsUrl` 来填写这个服务的 Host，从而指定该 TiDB 集群的监控指标采集服务。对于使用 `Helm` 部署 TiDB 集群监控的情况，可以通过以下方式来指定 `spec.metricsUrl`。
 
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbClusterAutoScaler
-    metadata:
-      name: auto-scaling-demo
-    spec:
-      cluster:
-        name: auto-scaling-demo
-        namespace: default
-      metricsUrl: "http://<release-name>-prometheus.<release-namespace>.svc:9090"
-      ......
-    ```
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbClusterAutoScaler
+metadata:
+  name: auto-scaling-demo
+spec:
+  cluster:
+    name: auto-scaling-demo
+    namespace: default
+  metricsUrl: "http://<release-name>-prometheus.<release-namespace>.svc:9090"
+  ......
+```
 
 ## 快速上手
 
@@ -115,8 +115,8 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 
 1. 设置弹性伸缩间隔
 
-相比无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
-你可以通过 `spec.tikv.scaleInIntervalSeconds` 和 `spec.tikv.ScaleOutIntervalSeconds` 来配置每两次弹性伸缩之间的时间间隔(秒)，对于 TiDB 也同样如此。
+    相比无状态的 Web 服务，一个分布式数据库软件对于实例的伸缩往往是非常敏感的。我们需要保证每次弹性伸缩之间存在一定的间隔，从而避免引起频繁的弹性伸缩。
+    你可以通过 `spec.tikv.scaleInIntervalSeconds` 和 `spec.tikv.ScaleOutIntervalSeconds` 来配置每两次弹性伸缩之间的时间间隔(秒)，对于 TiDB 也同样如此。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
@@ -134,7 +134,7 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 
 2. 设置最大最小值
 
-就像 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)，在 `TidbClusterAutoScaler` 中你也可以设置给每个组件最大最小值来控制 `TiDB`、`TiKV` 的伸缩范围。
+    就像 [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)，在 `TidbClusterAutoScaler` 中你也可以设置给每个组件最大最小值来控制 `TiDB`、`TiKV` 的伸缩范围。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
@@ -152,7 +152,7 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 
 3. 配置 CPU 弹性伸缩
 
-目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的阈值。如果当前 CPU 利用率超过 80%，则会触发弹性扩容。
+    目前 `TidbClusterAutoScaler` 仅支持基于 CPU 负载的弹性伸缩，CPU 负载的描述性 API 如下所示。`averageUtilization` 则代表了 CPU 负载利用率的阈值。如果当前 CPU 利用率超过 80%，则会触发弹性扩容。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
@@ -174,7 +174,7 @@ kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
 
 4. 配置指标时间窗口
 
-目前基于 CPU 负载的弹性调度，`TidbClusterAutoScaler` 会在所指定的监控系统中获取 `TiDB`、`TiKV` 的 CPU 指标，你可以指定采集指标的时间窗口。
+    目前基于 CPU 负载的弹性调度，`TidbClusterAutoScaler` 会在所指定的监控系统中获取 `TiDB`、`TiKV` 的 CPU 指标，你可以指定采集指标的时间窗口。
 
     ```yaml
     apiVersion: pingcap.com/v1alpha1
