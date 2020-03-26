@@ -47,7 +47,6 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
     修改完 `values.yaml` 文件中的上述配置项以后，进行 TiDB Operator 部署或者更新。安装与更新 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)。 
 
-
 ## TiDB Operator 准入控制器功能
 
 TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在这里介绍各个资源的准入控制器与其相对应的功能。
