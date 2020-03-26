@@ -64,109 +64,11 @@ kubectl cluster-info
 
 ## Install TiDB Operator and run a TiDB cluster
 
-### Install helm
+1. Install Helm and add the Helm chart repository maintained by PingCAP. For details, refer to [Use Helm](tidb-toolkit.md#use-helm).
 
-Helm is the package manager for Kubernetes and is what allows us to install all of the distributed components of TiDB in a single step. Helm requires both a server-side and a client-side component to be installed.
+2. [Deploy TiDB Operator](deploy-tidb-operator.md#install-tidb-operator).
 
-```shell
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
-```
-
-Install helm tiller:
-
-```shell
-helm init
-```
-
-If you have limited access to gcr.io, you can try a mirror. For example:
-
-```shell
-helm init --upgrade --tiller-image registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:$(helm version --client --short | grep -Eo 'v[0-9]\.[0-9]+\.[0-9]+')
-```
-
-Once it is installed, running `helm version` returns both the client and server version. For example:
-
-```shell
-$ helm version
-Client: &version.Version{SemVer:"v2.13.1",
-GitCommit:"618447cbf203d147601b4b9bd7f8c37a5d39fbb4", GitTreeState:"clean"}
-Server: &version.Version{SemVer:"v2.13.1",
-GitCommit:"618447cbf203d147601b4b9bd7f8c37a5d39fbb4", GitTreeState:"clean"}
-```
-
-If it shows only the client version, `helm` cannot yet connect to the server. Use `kubectl` to see if any tiller pods are running.
-
-```shell
-kubectl -n kube-system get pods -l app=helm
-```
-
-### Add Helm repo
-
-Helm repo (`https://charts.pingcap.org/`) houses PingCAP managed charts, such as tidb-operator, tidb-cluster and tidb-backup, etc. Add and check the repo with following commands:
-
-```shell
-helm repo add pingcap https://charts.pingcap.org/
-helm repo list
-```
-
-Then you can check the available charts:
-
-```shell
-helm repo update
-helm search tidb-cluster -l
-helm search tidb-operator -l
-```
-
-### Install TiDB Operator in the Kubernetes cluster
-
-> **Note:**
->
-> `<chartVersion>` will be used in the rest of the document to represent the chart version, e.g. `v1.0.0`.
-
-Clone tidb-operator repository:
-
-```shell
-git clone --depth=1 https://github.com/pingcap/tidb-operator
-cd tidb-operator
-kubectl apply -f ./manifests/crd.yaml
-helm install pingcap/tidb-operator --name tidb-operator --namespace tidb-admin --version=<chartVersion>
-```
-
-Now, you can watch the operator come up using the following command:
-
-```shell
-kubectl get pods --namespace tidb-admin -o wide --watch
-```
-
-> **Note:**
->
-> For Mac OS, if you are prompted "watch: command not found", you need to install the `watch` command using `brew install watch`. The same applies to other `watch` commands in this document.
-
-If you have limited access to gcr.io (pods failed with ErrImagePull), you can try a mirror of kube-scheduler image. You can upgrade tidb-operator like this:
-
-```shell
-helm upgrade tidb-operator pingcap/tidb-operator --namespace tidb-admin --set \
-  scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler --version=<chartVersion>
-```
-
-When you see both tidb-scheduler and tidb-controller-manager are running, you can process to launch a TiDB cluster!
-
-### Launch a TiDB cluster
-
-To launch a TiDB cluster, use the following command:
-
-```shell
-helm install pingcap/tidb-cluster --name demo --set \
-  schedulerName=default-scheduler,pd.storageClassName=standard,tikv.storageClassName=standard,pd.replicas=1,tikv.replicas=1,tidb.replicas=1 --version=<chartVersion>
-```
-
-You can watch the cluster up and running using:
-
-```shell
-kubectl get pods --namespace default -l app.kubernetes.io/instance=demo -o wide --watch
-```
-
-Use Ctrl+C to quit the watch mode.
+3. Deploy the TiDB cluster, as in [Deploy TiDB on General Kubernetes](deploy-on-general-kubernetes.md#deploy-tidb-cluster).
 
 ### Test a TiDB cluster
 
@@ -220,17 +122,23 @@ To monitor the status of the TiDB cluster, take the following steps.
 
 ### Delete TiDB cluster
 
-Use the following commands to delete the demo cluster:
+1. To delete the local cluster, refer to [Destroy TiDB Clusters in Kubernetes](destroy-a-tidb-cluster.md).
 
-```shell
-helm delete --purge demo
+2. Update the reclaim policy of PVs used by the demo cluster to `Delete`:
 
-# update reclaim policy of PVs used by demo to Delete
-kubectl get pv -l app.kubernetes.io/instance=demo -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+    {{< copyable "shell-regular" >}}
 
-# delete PVCs
-kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator
-```
+    ```shell
+    kubectl get pv -l app.kubernetes.io/instance=demo -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+    ```
+
+3. Delete PVCs:
+
+   {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl delete pvc -l app.kubernetes.io/managed-by=tidb-operator
+    ```
 
 ## FAQs
 
