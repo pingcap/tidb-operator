@@ -3844,7 +3844,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					},
 					"maxFailoverCount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited Optional: Defaults to 0",
+							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover Optional: Defaults to 3",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -5698,7 +5698,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					},
 					"maxFailoverCount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited Optional: Defaults to 0",
+							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover Optional: Defaults to 3",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},

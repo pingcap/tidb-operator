@@ -198,7 +198,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
-	if tmm.autoFailover {
+	if tmm.autoFailover && tc.Spec.TiDB.MaxFailoverCount != nil {
 		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
 		}
