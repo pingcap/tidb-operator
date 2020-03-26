@@ -6,7 +6,7 @@ metadata:
   name: tidbclusters.pingcap.com
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.pd.image
+  - JSONPath: .status.pd.image
     description: The image for PD cluster
     name: PD
     type: string
@@ -22,7 +22,7 @@ spec:
     description: The desired replicas number of PD cluster
     name: Desire
     type: integer
-  - JSONPath: .spec.tikv.image
+  - JSONPath: .status.tikv.image
     description: The image for TiKV cluster
     name: TiKV
     type: string
@@ -38,7 +38,7 @@ spec:
     description: The desired replicas number of TiKV cluster
     name: Desire
     type: integer
-  - JSONPath: .spec.tidb.image
+  - JSONPath: .status.tidb.image
     description: The image for TiDB cluster
     name: TiDB
     type: string
