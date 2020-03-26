@@ -1,17 +1,25 @@
 ---
-title: Backup and Restore
-summary: Learn how to back up and restore the data of TiDB cluster in Kubernetes.
+title: Backup and Restore Using Helm Charts
+summary: Learn how to back up and restore data of the TiDB cluster in Kubernetes using Helm charts.
 category: how-to
+aliases: ['/docs/dev/tidb-in-kubernetes/maintain/backup-and-restore/','/docs/v3.0/tidb-in-kubernetes/maintain/backup-and-restore/','/docs/v3.1/tidb-in-kubernetes/maintain/backup-and-restore/']
 ---
 
-# Backup and Restore
+# Backup and Restore Using Helm Charts
 
-This document describes how to back up and restore the data of a TiDB cluster in Kubernetes.
+This document describes how to back up and restore the data of a TiDB cluster in Kubernetes using Helm charts.
 
-TiDB in Kubernetes supports two kinds of backup strategies:
+For TiDB Operator 1.1 or later versions, it is recommended that you use the backup and restoration methods based on CustomResourceDefinition (CRD). Refer to the following documents for details:
+
+* [Back up Data to GCS](backup-to-gcs.md)
+* [Restore Data from GCS](restore-from-gcs.md)
+* [Back up Data to S3-Compatible Storage](backup-to-s3.md)
+* [Restore Data from S3-Compatible Storage](restore-from-s3.md)
+
+TiDB in Kubernetes supports two backup strategies using Helm charts:
 
 * [Full backup](#full-backup) (scheduled or ad-hoc): use [`mydumper`](https://pingcap.com/docs/stable/reference/tools/mydumper) to take a logical backup of the TiDB cluster.
-* [Incremental backup](#incremental-backup): use [`TiDB Binlog`](https://pingcap.com/docs/stable/reference/tidb-binlog/overview) to replicate data in the TiDB cluster to another database or take a real-time backup of the data.
+* [Incremental backup](#incremental-backup): use [TiDB Binlog](https://pingcap.com/docs/stable/reference/tidb-binlog/overview) to replicate data from the TiDB cluster to another database or execute a real-time backup of the data.
 
 Currently, TiDB in Kubernetes only supports automatic [restoration](#restore) for full backup taken by `mydumper`. Restoring the incremental backup data by `TiDB Binlog` requires manual operations.
 
