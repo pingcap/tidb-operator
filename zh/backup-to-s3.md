@@ -16,35 +16,17 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 
 目前兼容 S3 的存储中，Ceph 和 Amazon S3 经测试可正常工作。下文对 Ceph 和 Amazon S3 这两种存储的使用进行描述。本文档提供如下备份示例。示例假设对部署在 Kubernetes `test1` 这个 namespace 中的 TiDB 集群 `demo1` 进行数据备份，下面是具体操作过程。
 
+### AWS 账号的三种权限授予方式
+
+如果使用 Amazon S3 来备份恢复集群，可以使用三种权限授予方式授予权限，参考[使用 BR 工具备份 AWS 上的 TiDB 集群](backup-to-aws-s3-using-br.md#aws-账号权限授予的三种方式)，使用 Ceph 作为后端存储测试备份恢复时，是通过 AccessKey 和 SecretKey 模式授权。
+
 ### Ad-hoc 全量备份环境准备
 
-1. 下载文件 [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml)，并执行以下命令在 `test1` 这个 namespace 中创建备份需要的 RBAC 相关资源：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f backup-rbac.yaml -n test1
-    ```
-
-2. 创建 `s3-secret` secret。该 secret 存放用于访问 S3 兼容存储的凭证。
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-literal=secret_key=yyy --namespace=test1
-    ```
-
-3. 创建 `backup-demo1-tidb-secret` secret。该 secret 存放用于访问 TiDB 集群的 root 账号和密钥。
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
-    ```
+参考 [Ad-hoc 全量备份环境准备](backup-to-aws-s3-using-br.md#ad-hoc-全量备份环境准备)
 
 ### 备份数据到兼容 S3 的存储
 
-+ 创建 `Backup` CR，并将数据备份到 Amazon S3：
++ 创建 `Backup` CR，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Amazon S3：
 
     {{< copyable "shell-regular" >}}
 
@@ -78,7 +60,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       storageSize: 10Gi
     ```
 
-+ 创建 `Backup` CR，并将数据备份到 Ceph：
++ 创建 `Backup` CR，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Ceph：
 
     {{< copyable "shell-regular" >}}
 
@@ -105,6 +87,77 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         provider: ceph
         secretName: s3-secret
         endpoint: http://10.0.0.1:30074
+      storageClassName: local-storage
+      storageSize: 10Gi
+    ```
+
++ 创建 `Backup` CR，通过 IAM 绑定 Pod 授权的方式备份集群:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-s3.yaml
+    ```
+
+    `backup-s3.yaml` 文件内容如下：
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+      name: demo1-backup-s3
+      namespace: test1
+      annotations:
+        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+    spec:
+      backupType: full
+      from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+      s3:
+        provider: aws
+        # region: us-east-1
+        # storageClass: STANDARD_IA
+        # acl: private
+        # endpoint:
+      storageClassName: local-storage
+      storageSize: 10Gi
+    ```
+
++ 创建 `Backup` CR，通过 IAM 绑定 ServiceAccount 授权的方式备份集群:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-s3.yaml
+    ```
+
+    `backup-s3.yaml` 文件内容如下：
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+      name: demo1-backup-s3
+      namespace: test1
+    spec:
+      backupType: full
+      serviceAccount: tidb-backup-manager
+      from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+      s3:
+        provider: aws
+        # region: us-east-1
+        # storageClass: STANDARD_IA
+        # acl: private
+        # endpoint:
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -172,7 +225,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 
 ### 定时全量备份数据到 S3 兼容存储
 
-+ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，将数据备份到 Amazon S3：
++ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Amazon S3：
 
     {{< copyable "shell-regular" >}}
 
@@ -211,7 +264,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         storageSize: 10Gi
     ```
 
-+ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，将数据备份到 Ceph：
++ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 AccessKey 和 SecretKey 授权的方式将数据备份到 Ceph：
 
     {{< copyable "shell-regular" >}}
 
@@ -246,6 +299,84 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         storageClassName: local-storage
         storageSize: 10Gi
     ```
+
++ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 IAM 绑定 Pod 授权的方式将数据备份到 Amazon S3：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-schedule-s3.yaml
+    ```
+
+    `backup-schedule-s3.yaml` 文件内容如下：
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+      name: demo1-backup-schedule-s3
+      namespace: test1
+      annotations:
+        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+    spec:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      backupTemplate:
+        from:
+          host: <tidb-host-ip>
+          port: <tidb-port>
+          user: <tidb-user>
+          secretName: backup-demo1-tidb-secret
+        s3:
+          provider: aws
+          # region: us-east-1
+          # storageClass: STANDARD_IA
+          # acl: private
+          # endpoint:
+        storageClassName: local-storage
+        storageSize: 10Gi
+    ```
+
++ 创建 `BackupSchedule` CR 开启 TiDB 集群的定时全量备份，通过 IAM 绑定 ServiceAccount 授权的方式将数据备份到 Amazon S3：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-schedule-s3.yaml
+    ```
+
+    `backup-schedule-s3.yaml` 文件内容如下：
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+      name: demo1-backup-schedule-s3
+      namespace: test1
+    spec:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      serviceAccount: tidb-backup-manager
+      backupTemplate:
+        from:
+          host: <tidb-host-ip>
+          port: <tidb-port>
+          user: <tidb-user>
+          secretName: backup-demo1-tidb-secret
+        s3:
+          provider: aws
+          # region: us-east-1
+          # storageClass: STANDARD_IA
+          # acl: private
+          # endpoint:
+        storageClassName: local-storage
+        storageSize: 10Gi
 
 定时全量备份创建完成后，可以通过以下命令查看定时全量备份的状态：
 
