@@ -58,19 +58,35 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
     ```yaml
     admissionWebhook:
-    validation:
+      validation:
         pods: true
     ```
 
 2. StatefulSet 验证准入控制器:
 
-    StatefulSet 验证准入控制器帮助实现 TiDB 集群中 TiDB/TiKV/PD 组件的灰度发布，该组件在准入控制器开启的情况下默认关闭。
+    StatefulSet 验证准入控制器帮助实现 TiDB 集群中 TiDB/TiKV 组件的灰度发布，该组件在准入控制器开启的情况下默认关闭。
 
     ```yaml
     admissionWebhook:
-    validation:
+      validation:
         statefulSets: false
     ```
+
+    通过 `tidb.pingcap.com/tikv-partition` 和 `tidb.pingcap.com/tidb-partition` 这两个 annotation, 你可以控制 TiDB 集群中 TiDB 与 TiKV 组件的灰度发布。你可以通过以下方式对 TiDB 集群的 TiKV 组件设置灰度发布，其中 partition=2 的效果等同于 [StatefulSet 分区](https://kubernetes.io/zh/docs/concepts/workloads/controllers/statefulset/#%E5%88%86%E5%8C%BA)
+
+    ```shell
+    $  kubectl annotate tidbcluster <name> -n <namespace> tidb.pingcap.com/tikv-partition=2 
+    tidbcluster.pingcap.com/<name> annotated
+    ```
+
+    取消灰度发布设置，可以参考：
+
+    ```shell
+    $  kubectl annotate tidbcluster <name> -n <namespace> tidb.pingcap.com/tikv-partition- 
+    tidbcluster.pingcap.com/<name> annotated
+    ```
+
+    以上设置同样适用于 TiDB 组件。
 
 3. TiDB Operator 资源验证准入控制器:
 
@@ -78,7 +94,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
     ```yaml
     admissionWebhook:
-    validation:
+      validation:
         pingcapResources: false
     ```
 
@@ -88,7 +104,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
     ```yaml
     admissionWebhook:
-    mutation:
+      mutation:
         pods: true
     ```
 
@@ -98,6 +114,6 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
     ```yaml
     admissionWebhook:
-    mutation:
+      mutation:
         pingcapResources: true
     ```
