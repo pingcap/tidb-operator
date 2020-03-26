@@ -79,7 +79,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
     tidbcluster.pingcap.com/<name> annotated
     ```
 
-    取消灰度发布设置，可以参考：
+    执行以下命令取消灰度发布设置：
 
     ```shell
     $  kubectl annotate tidbcluster <name> -n <namespace> tidb.pingcap.com/tikv-partition- 
