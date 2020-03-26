@@ -8,37 +8,67 @@ category: how-to
 
 本文介绍了如何使用 [TiDB Lightning](https://github.com/pingcap/tidb-lightning) 快速恢复 Kubernetes 上的 TiDB 集群数据。
 
-TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kubernetes 上，tikv-importer 位于 TiDB 集群的 Helm chart 内，被部署为一个副本数为 1 (`replicas=1`) 的 `StatefulSet`；tidb-lightning 位于单独的 Helm chart 内，被部署为一个 `Job`。
+TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kubernetes 上，tikv-importer 位于单独的 Helm chart 内，被部署为一个副本数为 1 (`replicas=1`) 的 `StatefulSet`；tidb-lightning 位于单独的 Helm chart 内，被部署为一个 `Job`。
 
 为了使用 TiDB Lightning 恢复数据，tikv-importer 和 tidb-lightning 都必须分别部署。
 
 ## 部署 tikv-importer
 
-tikv-importer 可以在一个现有的 TiDB 集群上启用，或者在新建 TiDB 集群时启用。
+可以通过 `tikv-importer` Helm chart 来部署 tikv-importer，示例如下：
 
-* 在新建一个 TiDB 集群时启用 tikv-importer：
+1. 确保 PingCAP Helm 库是最新的：
 
-    1. 在 `tidb-cluster` 的 `values.yaml` 文件中将 `importer.create` 设置为 `true`。
+    {{< copyable "shell-regular" >}}
 
-    2. 部署该集群。
+    ```shell
+    helm repo update
+    ```
 
-        {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-        ```shell
-        helm install pingcap/tidb-cluster --name=<tidb-cluster-release-name> --namespace=<namespace> -f values.yaml --version=<chart-version>
-        ```
+    ```shell
+    helm search tikv-importer -l
+    ```
 
-* 配置一个现有的 TiDB 集群以启用 tikv-importer：
+2. 获取默认的 `values.yaml` 文件以方便自定义：
 
-    1. 在该 TiDB 集群的 `values.yaml` 文件中将 `importer.create` 设置为 `true`。
+    {{< copyable "shell-regular" >}}
 
-    2. 升级该 TiDB 集群。
+    ```shell
+    helm inspect values pingcap/tikv-importer --version=<chart-version> > values.yaml
+    ```
 
-        {{< copyable "shell-regular" >}}
+3. 修改 `values.yaml` 文件以指定目标 TiDB 集群。示例如下：
 
-        ```shell
-        helm upgrade <tidb-cluster-release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
-        ```
+    ```yaml
+    clusterName: demo
+    image: pingcap/tidb-lightning:v3.0.8
+    imagePullPolicy: IfNotPresent
+    storageClassName: local-storage
+    storage: 20Gi
+    pushgatewayImage: prom/pushgateway:v0.3.1
+    pushgatewayImagePullPolicy: IfNotPresent
+    config: |
+      log-level = "info"
+      [metric]
+      job = "tikv-importer"
+      interval = "15s"
+      address = "localhost:9091"
+    ```
+
+    `clusterName` 必须匹配目标 TiDB 集群。
+
+4. 部署 tikv-importer：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install pingcap/tikv-importer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    ```
+
+    > **注意：**
+    >
+    > tikv-importer 必须与目标 TiDB 集群安装在相同的命名空间中。
 
 ## 部署 tidb-lightning
 
