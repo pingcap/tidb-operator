@@ -36,6 +36,7 @@
   - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
   - [收集日志](collect-tidb-binlogs.md)
   - [集群故障自动转移](use-auto-failover.md)
+  - [开启 TiDB-Operator 准入控制器](enable-admission-webhook.md)
 + TiDB 集群伸缩
   - [扩缩容](scale-a-tidb-cluster.md)
   - [开启弹性伸缩](enable-tidb-cluster-auto-scaling.md)

@@ -35,6 +35,8 @@ category: how-to
         pods: true
     ```
 
+    关于 Operator Webhook，请参考 [开启 TiDB-Operator 准入控制器](enable-admission-webhook.md)
+
 2. 安装/更新 TiDB Operator
 
     修改完 `values.yaml` 文件中上述配置项以后进行 TiDB Operator 部署或者更新。安装与更新 Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)。
