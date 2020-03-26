@@ -106,30 +106,30 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
             apiVersion: v1
             kind: Secret
             metadata:
-                name: cloud-storage-secret
+              name: cloud-storage-secret
             type: Opaque
             stringData:
-                rclone.conf: |
-                [s3]
-                type = s3
-                provider = AWS
-                env_auth = false
-                access_key_id = <my-access-key>
-                secret_access_key = <my-secret-key>
-                region = us-east-1
-                [ceph]
-                type = s3
-                provider = Ceph
-                env_auth = true
-                access_key_id = <my-access-key>
-                secret_access_key = <my-secret-key>
-                endpoint = <ceph-object-store-endpoint>
-                region = :default-placement
-                [gcs]
-                type = google cloud storage
-                # 该服务账号必须被授予 Storage Object Viewer 角色。
-                # 该内容可以通过 `cat <service-account-file.json> | jq -c .` 命令获取。
-                service_account_credentials = <service-account-json-file-content>
+              rclone.conf: |
+              [s3]
+              type = s3
+              provider = AWS
+              env_auth = false
+              access_key_id = <my-access-key>
+              secret_access_key = <my-secret-key>
+              region = us-east-1
+              [ceph]
+              type = s3
+              provider = Ceph
+              env_auth = false
+              access_key_id = <my-access-key>
+              secret_access_key = <my-secret-key>
+              endpoint = <ceph-object-store-endpoint>
+              region = :default-placement
+              [gcs]
+              type = google cloud storage
+              # 该服务账号必须被授予 Storage Object Viewer 角色。
+              # 该内容可以通过 `cat <service-account-file.json> | jq -c .` 命令获取。
+              service_account_credentials = <service-account-json-file-content>
             ```
     
         + 使用 AWS S3 IAM 绑定 Pod 的授权方式或者 AWS S3 IAM 绑定 ServiceAccount 授权方式时，可以省略 `s3.access_key_id` 以及 `s3.secret_access_key：
@@ -140,17 +140,17 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
             apiVersion: v1
             kind: Secret
             metadata:
-                name: cloud-storage-secret
+              name: cloud-storage-secret
             type: Opaque
             stringData:
-                rclone.conf: |
-                [s3]
-                type = s3
-                provider = AWS
-                env_auth = true
-                access_key_id =
-                secret_access_key =
-                region = us-east-1
+              rclone.conf: |
+              [s3]
+              type = s3
+              provider = AWS
+              env_auth = true
+              access_key_id =
+              secret_access_key =
+              region = us-east-1
             ```
 
             使用你的实际配置替换上述配置中的占位符，并将该文件存储为 `secret.yaml`。然后通过 `kubectl apply -f secret.yaml -n <namespace>` 命令创建该 `Secret`。
@@ -222,10 +222,6 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 当 TiDB Lightning 未能成功恢复数据时，不能简单地直接重启进程，必须进行**手动干预**，否则将很容易出现错误。因此，tidb-lightning 的 `Job` 重启策略被设置为 `Never`。
 
-> **注意：**
->
-> 目前，即使数据被成功恢复，TiDB Lightning 也会[报出非零错误码并退出](https://github.com/pingcap/tidb-lightning/pull/230)，这会导致 `Job` 失败。因此，数据恢复成功与否需要通过查看 tidb-lightning pod 的日志进行确认。
-
 如果 TiDB Lightning 未能成功恢复数据，需要采用以下步骤进行手动干预：
 
 1. 运行 `kubectl delete job -n <namespace> <tidb-lightning-release-name>-tidb-lightning`，删除 lightning `Job`。
@@ -244,9 +240,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 删除 tikv-importer 的步骤：
 
-1. 在 TiDB 集群 chart 的 `values.yaml` 文件中将 `importer.create` 设置为 `false`。
-
-2. 然后运行 `helm upgrade <tidb-cluster-release-name> pingcap/tidb-cluster -f values.yaml`。
+* 运行 `helm delete <tikv-importer-release-name> --purge`。
 
 删除 tidb-lightning 的方法：
 
