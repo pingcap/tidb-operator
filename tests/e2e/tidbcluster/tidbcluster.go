@@ -287,6 +287,31 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
+	ginkgo.It("Adhoc backup and restore with BR CRD", func() {
+		tcName := "br"
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", tc.ClusterName))
+		oa.BeginInsertDataToOrDie(&tc)
+
+		time.Sleep(30 * time.Second)
+
+		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", tc.ClusterName))
+		oa.StopInsertDataTo(&tc)
+
+		oa.PrepareBRBackupAndRestoreOrDie(tc)
+		/*		oa.DeployBRBackupCRDOrDie(tc)
+				oa.CheckBRBackupCRDOrDie(tc)
+				oa.DeployBRRestoreCRDOrDie(tc)
+				oa.CheckBRRestoreCRDOrDie(tc)*/
+	})
+
 	ginkgo.It("Test aggregated apiserver", func() {
 		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
 		framework.Logf("config: %v", config)
