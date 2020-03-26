@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -309,4 +310,14 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 
 func clusterSecretName(tc *v1alpha1.TidbCluster, component string) string {
 	return fmt.Sprintf("%s-%s-cluster-secret", tc.Name, component)
+}
+
+// filter targetContainer by  containerName, If not find, then return nil
+func filterContainer(sts *apps.StatefulSet, containerName string) *corev1.Container {
+	for _, c := range sts.Spec.Template.Spec.Containers {
+		if c.Name == containerName {
+			return &c
+		}
+	}
+	return nil
 }
