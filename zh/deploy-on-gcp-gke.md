@@ -132,11 +132,10 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
         如上所述，生产环境的部署需要 91 个 CPU，超过了 GCP 项目的默认配额。可以参考[配额](https://cloud.google.com/compute/quotas)来增加项目配额。扩容同样需要更多 CPU。
 
-    - 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
-
     > **注意：**
     >
-    > 工作节点的数量取决于指定 Region 中可用区的数量。大部分 Region 有 3 个可用区，但是 `us-central1` 有 4 个可用区。参考 [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) 查看更多信息。参考[自定义](#自定义)部分来自定义区域集群的节点池。
+    > 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `node_locations` 来限定可用区，或者 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
+    > 工作节点的数量取决于指定 Region 中可用区的数量。大部分 Region 有 3 个可用区，`us-central1` 有 4 个可用区。参考 [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) 查看更多信息。参考[自定义](#自定义)部分来自定义区域集群的节点池。
 
 2. 启动脚本来部署 TiDB 集群：
 
@@ -171,11 +170,17 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     cp manifests/{db,db-monitor}.yaml.example .
     ```
 
+    使用 GKE 部署过程中配置的 `default_tidb_cluster_name`（默认为 `tidb-cluster`）替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`：
+
+    ```
+    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db.yaml.example > db.yaml
+    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db-monitor.yaml.example > db-monitor.yaml
+    ```
+
     参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
 
     > **注意：**
     >
-    > * 请使用 GKE 部署过程中配置的 `default_tidb_cluster_name`（默认为 `tidb-cluster`）替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`。
     > * 请确保 GKE 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。注意 Regional 集群下，实际创建的节点数为 pd_count/tikv_count/tidb_count 的 3 倍。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
 
@@ -325,6 +330,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```bash
+    terraform init
     terraform apply
     ```
 
