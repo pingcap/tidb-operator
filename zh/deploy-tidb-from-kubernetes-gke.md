@@ -1,6 +1,6 @@
 ---
 title: 在 GCP 上通过 Kubernetes 部署 TiDB 集群
-summary: 在 GCP 上通过 Kubernetes 部署 TiDB 集群教程
+summary: 在 GCP 上通过 Kubernetes 部署 TiDB 集群教程。
 category: how-to
 ---
 
@@ -11,11 +11,11 @@ category: how-to
 所包含的步骤如下：
 
 - 启动一个包含 3 个节点的 Kubernetes 集群（可选）
-- 安装 Kubernetes 包管理工具 Helm
-- 部署 TiDB Operator
-- 部署 TiDB 集群
+- 部署 TiDB Operator 和 TiDB 集群
 - 访问 TiDB 集群
 - 扩容 TiDB 集群
+- 访问 Grafana 面板
+- 销毁 TiDB 集群
 - 删除 Kubernetes 集群（可选）
 
 > **警告：**
@@ -79,113 +79,21 @@ kubectl get nodes
 
 如果所有节点状态为 `Ready`，恭喜你，你已经成功搭建你的第一个 Kubernetes 集群。
 
-## 安装 Helm
+## 部署 TiDB Operator 和 TiDB 集群
 
-Helm 是 Kubernetes 包管理工具，通过 Helm 可以一键安装 TiDB 的所有分布式组件。安装 Helm 需要同时安装服务端和客户端组件。
+1. 安装 Helm 并配置 PingCAP 官方 chart 仓库，参考 [使用 Helm](tidb-toolkit.md#使用-helm) 小节中的操作。
 
-安装 `helm`：
+2. 部署 TiDB Operator，参考 [安装 TiDB Operator](deploy-tidb-operator.md#安装-tidb-operator) 小节中的操作。
 
-{{< copyable "shell-regular" >}}
+3. 创建 `pd-ssd` StorageClass：
 
-``` shell
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
-```
+    {{< copyable "shell-regular" >}}
 
-复制 `helm` 到你的 `$HOME` 目录下，这样即使 Google Cloud Shell 超时断开连接，再次登录后仍然可以访问 Helm：
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/gke/persistent-disk.yaml
+    ```
 
-{{< copyable "shell-regular" >}}
-
-``` shell
-mkdir -p ~/bin && \
-cp /usr/local/bin/helm ~/bin && \
-echo 'PATH="$PATH:$HOME/bin"' >> ~/.bashrc
-```
-
-Helm 正常工作需要一定的权限：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl apply -f ./manifests/tiller-rbac.yaml && \
-helm init --service-account tiller --upgrade
-```
-
-`tiller` 是 Helm 的服务端组件，初始化完成需要几分钟时间：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-watch "kubectl get pods --namespace kube-system | grep tiller"
-```
-
-当 Pod 状态为 `Running`，<kbd>Ctrl</kbd>+<kbd>C</kbd>  停止并继续下一步。
-
-## 添加 Helm 仓库
-
-PingCAP Helm 仓库中存放着 PingCAP 发布的 charts，例如 tidb-operator、tidb-cluster 和 tidb-backup 等等。使用下面命令添加仓库：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm repo add pingcap https://charts.pingcap.org/ && \
-helm repo list
-```
-
-然后你可以查看可用的 chart：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm repo update && \
-helm search tidb-cluster -l && \
-helm search tidb-operator -l
-```
-
-## 部署 TiDB 集群
-
-> **注意：**
->
-> `<chartVersion>` 在后面文档中代表 chart 版本，例如 `v1.0.0`。
-
-第一个要安装的 TiDB 组件是 TiDB Operator，TiDB Operator 是管理组件，结合 Kubernetes 启动 TiDB 集群并保证集群正常运行。执行下面命令之前请确保在 `tidb-operator` 目录下：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl apply -f ./manifests/crd.yaml && \
-kubectl apply -f ./manifests/gke/persistent-disk.yaml && \
-helm install pingcap/tidb-operator -n tidb-admin --namespace=tidb-admin --version=<chartVersion>
-```
-
-可以通过下面命令观察 Operator 启动情况：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl get pods --namespace tidb-admin -o wide --watch
-```
-
-如果 tidb-scheduler 和 tidb-controller-manager 状态都为 `Running`，<kbd>Ctrl</kbd>+<kbd>C</kbd> 停止并继续下一步部署一个 TiDB 集群！
-
-## 部署你的第一个 TiDB 集群
-
-我们可以一键部署一个 TiDB 集群：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm install pingcap/tidb-cluster -n demo --namespace=tidb --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd --version=<chartVersion>
-```
-
-集群启动需要几分钟时间，可以通过下面命令观察状态：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl get pods --namespace tidb -o wide --watch
-```
-
-TiDB 集群包含 2 个 TiDB pod，3 个 TiKV pod 和 3 个 PD pod。如果所有 pod 状态都为 `Running`，<kbd>Ctrl</kbd>+<kbd>C</kbd> 停止并继续！
+4. 部署 TiDB 集群，参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群)中的操作，并设置各组件 `storageClassName` 为 `pd-ssd`。
 
 ## 访问 TiDB 集群
 
@@ -224,7 +132,7 @@ mysql -h 127.0.0.1 -u root -P 4000
 select tidb_version();
 ```
 
-如果用 Helm 安装的过程中没有指定密码，现在可以设置：
+如果安装的过程中没有指定密码，现在可以设置：
 
 {{< copyable "sql" >}}
 
@@ -240,21 +148,7 @@ SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
 
 ## 扩容 TiDB 集群
 
-我们可以一键扩容 TiDB 集群。如下命令可以扩容 TiKV：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm upgrade demo pingcap/tidb-cluster --set pd.storageClassName=pd-ssd,tikv.storageClassName=pd-ssd,tikv.replicas=5 --version=<chartVersion>
-```
-
-TiKV 的 Pod 数量从 3 增加到了 5。可以通过下面命令查看：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-kubectl get po -n tidb
-```
+参考[Kubernetes 上的 TiDB 集群扩缩容](scale-a-tidb-cluster.md)扩容 TiDB 集群。
 
 ## 访问 Grafana 面板
 
@@ -272,13 +166,7 @@ kubectl -n tidb port-forward svc/demo-grafana 3000:3000 &>/dev/null &
 
 ## 销毁 TiDB 集群
 
-如果不再需要这个 TiDB 集群，可以使用下面命令删除集群：
-
-{{< copyable "shell-regular" >}}
-
-``` shell
-helm delete demo --purge
-```
+如果不再需要这个 TiDB 集群，可以参考[销毁 TiDB 集群](destroy-a-tidb-cluster.md#销毁-kubernetes-上的-tidb-集群)删除集群。
 
 上面的命令只会删除运行的 Pod，但是数据还会保留。如果你不再需要那些数据，可以执行下面的命令清除数据和动态创建的持久化磁盘：
 
