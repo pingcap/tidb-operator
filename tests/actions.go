@@ -86,8 +86,6 @@ const (
 	NodeUnreachablePodReason = "NodeLost"
 
 	WebhookServiceName = "webhook-service"
-
-	DefaultServiceAccount = "tidb-backup-manager"
 )
 
 func NewOperatorActions(cli versioned.Interface,
@@ -238,8 +236,7 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
-	PrepareBRBackupAndRestore(tc *v1alpha1.TidbCluster) error
-	PrepareBRBackupAndRestoreOrDie(tc *v1alpha1.TidbCluster)
+	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
 }
 
 type operatorActions struct {
@@ -3400,115 +3397,6 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 		return true, nil
 	})
-}
-
-func (oa *operatorActions) PrepareBRBackupAndRestore(tc *v1alpha1.TidbClusters) error {
-
-	err := oa.createServiceAccount(DefaultServiceAccount, tc.GetNamespace())
-	if err != nil {
-		return err
-	}
-
-	err = oa.createTiDBBackupRole(tc.GetNamespace())
-	if err != nil {
-		return err
-	}
-
-	err = oa.createTiDBBackupRoleBinding(tc.GetNamespace())
-	if err != nil {
-		return err
-	}
-
-	backupSecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-backup-secret", tc.GetName()),
-			Namespace: tc.GetNamespace(),
-		},
-		Data: map[string][]byte{
-			"password": []byte(""),
-		},
-		Type: corev1.SecretTypeOpaque,
-	}
-
-	_, err = oa.kubeCli.CoreV1().Secrets(tc.GetNamespace()).Create(&backupSecret)
-	if err != nil && !releaseIsExist(err) {
-		return err
-	}
-
-	return nil
-}
-
-func (oa *operatorActions) createServiceAccount(name, namespace string) error {
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-
-	_, err := oa.kubeCli.CoreV1().ServiceAccounts(namespace).Create(sa)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
-}
-
-func (oa *operatorActions) createTiDBBackupRole(namespace string) error {
-	role := &rbacv1beta1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   DefaultServiceAccount,
-			Labels: map[string]string{label.ComponentLabelKey: DefaultServiceAccount},
-		},
-		Rules: []rbacv1beta1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"events"},
-				Verbs:     []string{"*"},
-			},
-			{
-				APIGroups: []string{"pingcap.com"},
-				Resources: []string{"backups", "restores"},
-				Verbs:     []string{"get", "watch", "list", "update"},
-			},
-		},
-	}
-
-	_, err := oa.kubeCli.RbacV1beta1().Roles(namespace).Create(role)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
-}
-
-func (oa *operatorActions) createTiDBBackupRoleBinding(namespace string) error {
-	roleBinding := &rbacv1beta1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   DefaultServiceAccount,
-			Labels: map[string]string{label.ComponentLabelKey: DefaultServiceAccount},
-		},
-		Subjects: []rbacv1beta1.Subject{
-			{
-				Kind: rbacv1beta1.ServiceAccountKind,
-				Name: DefaultServiceAccount,
-			},
-		},
-		RoleRef: rbacv1beta1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     DefaultServiceAccount,
-		},
-	}
-
-	_, err := oa.kubeCli.RbacV1beta1().RoleBindings(namespace).Create(roleBinding)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
-}
-
-func (oa *operatorActions) PrepareBRBackupAndRestoreOrDie(tc *v1alpha1.TidbClusters) {
-	if err := PrepareBRBackupAndRestore(tc); err != nil {
-		slack.NotifyAndPanic(err)
-	}
 }
 
 var dummyCancel = func() {}
