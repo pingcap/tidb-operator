@@ -252,26 +252,24 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		builds.failFast = false
 		parallel builds
 
-		// we requires ~/bin/config.cfg, filemgr-linux64 utilities on k8s-kind node
-		// TODO make it possible to run on any node
 		if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
-			node('k8s-kind') {
-				dir("${PROJECT_DIR}") {
-					deleteDir()
-					unstash 'tidb-operator'
-					stage('upload tidb-operator, tidb-backup-manager binary and charts'){
-						//upload binary and charts
-						sh """
-						cp ~/bin/config.cfg ./
-						tar -zcvf tidb-operator.tar.gz images/tidb-operator images/tidb-backup-manager charts
-						filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz --file tidb-operator.tar.gz
-						"""
-						//update refs
-						writeFile file: 'sha1', text: "${GITHASH}"
-						sh """
-						filemgr-linux64 --action mput --bucket pingcap-dev --nobar --key refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1 --file sha1
-						rm -f sha1 tidb-operator.tar.gz config.cfg
-						"""
+			node('build_go1130_memvolume') {
+				container("golang") {
+					def WORKSPACE = pwd()
+					dir("${PROJECT_DIR}") {
+						unstash 'tidb-operator'
+						stage('upload tidb-operator binaries and charts'){
+							withCredentials([
+								string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
+								string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
+							]) {
+								sh """
+								export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
+								export UCLOUD_UFILE_BUCKET=pingcap-dev
+								./ci/upload-binaries-charts.sh
+								"""
+							}
+						}
 					}
 				}
 			}
