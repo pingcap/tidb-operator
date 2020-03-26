@@ -27,7 +27,7 @@ category: how-to
         pods: true
     ```
 
-2. 安装/更新 operator
+2. 安装/更新 TiDB Operator
 
     修改完 `values.yaml` 文件中的上述配置项以后，进行 TiDB Operator 部署或者更新。安装与更新 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)。 
 
