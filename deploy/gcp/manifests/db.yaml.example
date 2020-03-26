@@ -21,18 +21,19 @@ spec:
       key: dedicated
       operator: Equal
       value: CLUSTER_NAME-pd
+    storageClassName: pd-ssd
   tidb:
     config: {}
     annotations:
       tidb.pingcap.com/sysctl-init: "true"
-	podSecurityContext:
-	  sysctls:
-	  - name: net.core.somaxconn
-		value: "32768"
-	  - name: net.ipv4.tcp_keepalive_intvl
-		value: "75"
-	  - name: net.ipv4.tcp_keepalive_time
-		value: "300"
+    podSecurityContext:
+      sysctls:
+      - name: net.core.somaxconn
+        value: "32768"
+      - name: net.ipv4.tcp_keepalive_intvl
+        value: "75"
+      - name: net.ipv4.tcp_keepalive_time
+        value: "300"
     nodeSelector:
       dedicated: CLUSTER_NAME-tidb
     replicas: 2
@@ -44,7 +45,7 @@ spec:
       type: LoadBalancer
       externalTrafficPolicy: Local
       annotations:
-        tidb.pingcap.com/sysctl-init: "true"
+        cloud.google.com/load-balancer-type: Internal
     slowLogTailer:
       limits:
         cpu: 100m
