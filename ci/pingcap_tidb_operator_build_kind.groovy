@@ -254,11 +254,11 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
 		// we requires ~/bin/config.cfg, filemgr-linux64 utilities on k8s-kind node
 		// TODO make it possible to run on any node
-		node('k8s-kind') {
-			dir("${PROJECT_DIR}"){
-				deleteDir()
-				unstash 'tidb-operator'
-				if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
+		if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
+			node('k8s-kind') {
+				dir("${PROJECT_DIR}") {
+					deleteDir()
+					unstash 'tidb-operator'
 					stage('upload tidb-operator, tidb-backup-manager binary and charts'){
 						//upload binary and charts
 						sh """
