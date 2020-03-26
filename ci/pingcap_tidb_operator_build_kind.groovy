@@ -266,6 +266,8 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 								sh """
 								export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
 								export UCLOUD_UFILE_BUCKET=pingcap-dev
+								export BUILD_BRANCH=${BUILD_BRANCH}
+								export GITHASH=${GITHASH}
 								./ci/upload-binaries-charts.sh
 								"""
 							}
