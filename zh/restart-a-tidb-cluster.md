@@ -11,7 +11,6 @@ category: how-to
 > **警告：**
 >
 > 在生产环境中，未经过优雅重启而手动删除某个 TiDB 集群 Pod 节点是一件极其危险的事情，虽然 StatefulSet 控制器会将 Pod 节点再次拉起，但这依旧可能会引起部分访问 TiDB 集群的请求失败。
->
 
 ## 开启相关设置
 
@@ -37,8 +36,8 @@ category: how-to
 
 我们通过 `kubectl annotate` 的方式来标记目前 TiDB 集群 Pod 节点组件，当 `annotate` 标记完成以后，TiDB Operator 会自动进行 Pod 节点的优雅下线并重启。你可以通过以下方式来进行标记:
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-    ```sh
-    kubectl annotate <pod-name> -n <namespace> tidb.pingcap.com/pod-defer-deleting=true
-    ```
+```sh
+kubectl annotate <pod-name> -n <namespace> tidb.pingcap.com/pod-defer-deleting=true
+```
