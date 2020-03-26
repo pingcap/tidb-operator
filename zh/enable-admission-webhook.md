@@ -98,7 +98,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
         pingcapResources: false
     ```
 
-    举个例子，对于 `TidbCluster` 资源，TiDB Operator 资源验证准入控制器将会针对其 `spec` 字段中检查必要字段，当在 `TidbCluster` 创建或者更新时发现检查不通过，比如同时没有定义 `spec.pd.image` 或者 `spec.pd.baseImage` 字段，TiDB Operator 资源验证准入控制器将会拒绝这个请求。
+    举个例子，对于 `TidbCluster` 资源，TiDB Operator 资源验证准入控制器将会检查其 `spec` 字段中的必要字段。如果在 `TidbCluster` 创建或者更新时发现检查不通过，比如同时没有定义 `spec.pd.image` 或者 `spec.pd.baseImage` 字段，TiDB Operator 资源验证准入控制器将会拒绝这个请求。
 
 4. Pod 修改准入控制器:
 
