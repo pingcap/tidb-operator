@@ -34,7 +34,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
         mutation: Ignore
     ```
 
-    对于 Kubernetes 1.15 及以上的版本，我们推荐给 TiDB Operator 失败策略配置为 `Failure`，由于 Kubernetes 1.15 及以上的版本中，动态准入机制已经有了基于 Label 的筛选机制，所以不会出现 TiDB Operator 的 admission webhook 出现异常时影响整个集群。
+    对于 Kubernetes 1.15 及以上的版本，我们推荐给 TiDB Operator 失败策略配置为 `Failure`，由于 Kubernetes 1.15 及以上的版本中，动态准入机制已经有了基于 Label 的筛选机制，所以不会由于 TiDB Operator 的 admission webhook 出现异常而影响整个集群。
 
     ```yaml
     ......
