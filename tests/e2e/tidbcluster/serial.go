@@ -458,7 +458,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			e2elog.Failf("at least 3 statefulsets must be created, got %d", len(stsList.Items))
 		}
 
-		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(metav1.ListOptions{})
+		podListBeforeUpgrade, err := c.CoreV1().Pods(tc.Namespace).List(listOption)
 		framework.ExpectNoError(err)
 
 		ginkgo.By("Upgrading tidb-operator with AdvancedStatefulSet feature")
@@ -493,7 +493,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.By("Make sure pods are not changed")
 		err = utilpod.WaitForPodsAreChanged(c, podListBeforeUpgrade.Items, time.Minute*3)
-		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods was not affeteced after the operator is upgraded")
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed after the operator is upgraded")
 	})
 
 	// tidb-operator with pod admission webhook enabled
