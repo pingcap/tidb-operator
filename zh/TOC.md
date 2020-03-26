@@ -36,7 +36,9 @@
   - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
   - [收集日志](collect-tidb-binlogs.md)
   - [集群故障自动转移](use-auto-failover.md)
-- [扩缩容](scale-a-tidb-cluster.md)
++ TiDB 集群伸缩
+  - [扩缩容](scale-a-tidb-cluster.md)
+  - [开启弹性伸缩](enable-tidb-cluster-auto-scaling.md)
 + 备份与恢复
   - [基于 Helm Charts 的备份恢复](backup-and-restore-using-helm-charts.md)
   + 基于 CRD 的备份恢复
