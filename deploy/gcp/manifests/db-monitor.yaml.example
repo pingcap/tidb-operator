@@ -79,4 +79,5 @@ spec:
       type: NodePort
     version: v1.0.1
   storage: 100Gi
+  storageClassName: pd-ssd
   tolerations: []
