@@ -6,7 +6,7 @@ category: how-to
 
 # TiDB Operator 准入控制器
 
-Kubernetes 在 1.9 版本引入了 [动态准入机制](https://kubernetes.io/zh/docs/reference/access-authn-authz/extensible-admission-controllers/)， 从而使得拥有对 Kubernetes 中的各类资源进行修改与验证的功能。 在 TiDB Operator 中，我们也同样使用了动态准入机制来帮助我们进行相关资源的修改、验证与运维。
+Kubernetes 在 1.9 版本引入了 [动态准入机制](https://kubernetes.io/zh/docs/reference/access-authn-authz/extensible-admission-controllers/)，从而使得拥有对 Kubernetes 中的各类资源进行修改与验证的功能。 在 TiDB Operator 中，我们也同样使用了动态准入机制来帮助我们进行相关资源的修改、验证与运维。
 
 ## 开启 TiDB Operator 准入控制器
 
