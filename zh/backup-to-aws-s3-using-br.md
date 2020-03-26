@@ -1,5 +1,6 @@
 ---
 title: 使用 BR 工具备份 AWS 上的 TiDB 集群
+summary: 介绍如何使用 BR 工具备份 AWS 上的 TiDB 集群。
 category: how-to
 ---
 
@@ -98,7 +99,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     kubectl edit tc demo1 -n test1
     ```
 
-    找到 `spec.tikv.annotations`，增加 annotation `arn:aws:iam::123456789012:role/user`，然后退出编辑，等到 TiKV Pod 重启后，查看 Pod 是否加上了这个 annotation。
+    找到 `spec.tikv.annotations`，增加 annotation `iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user`，然后退出编辑，等到 TiKV Pod 重启后，查看 Pod 是否加上了这个 annotation。
 
 > **注意：**
 >
