@@ -52,8 +52,8 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 
 ### Initializer
 
-- 如果在升级到 TiDB Operator v1.1 之前，初始化 job 已经执行，初始化 job 不需要从 tidb-cluster chart 中迁移到 TidbInitializer CR。
-- 如果在升级到 TiDB Operator v1.1 之前，没有执行过初始化 job，也没有修改过 TiDB 服务 root 用户的密码，升级到 TiDB Operator v1.1 之后，需要执行初始化，可以参考 [Kubernetes 上的集群初始化配置](initialize-a-cluster.md)进行配置。
+- 如果在升级到 TiDB Operator v1.1 之前，初始化 Job 已经执行，初始化 Job 不需要从 tidb-cluster chart 中迁移到 TidbInitializer CR。
+- 如果在升级到 TiDB Operator v1.1 之前，没有执行过初始化 Job，也没有修改过 TiDB 服务 root 用户的密码，升级到 TiDB Operator v1.1 之后，需要执行初始化，可以参考 [Kubernetes 上的集群初始化配置](initialize-a-cluster.md)进行配置。
 
 ### Pump
 
@@ -96,8 +96,9 @@ spec
 
 ### Drainer
 
-- 如果在升级到 TiDB Operator v1.1 之前，没有部署 Drainer，现在需要新部署，可以参考 [Drainer 部署](maintain-tidb-binlog.md#部署多个-drainer)。
-- 如果在升级到 TiDB Operator v1.1 之前，已经部署 Drainer，建议直接用 kubectl 管理。
+- 如果在升级到 TiDB Operator v1.1 之前，没有部署 Drainer，现在需要新部署，可以参考 [Drainer 部署](deploy-tidb-binlog.md#部署-drainer)。
+- 如果在升级到 TiDB Operator v1.1 之前，已经通过 `tidb-drainer` chart 部署 Drainer，继续用 `tidb-drainer` chart 管理。
+- 如果在升级到 TiDB Operator v1.1 之前，已经通过 `tidb-cluster` chart 部署 Drainer，建议直接用 kubectl 管理。
 
 ### TiKV Importer
 
