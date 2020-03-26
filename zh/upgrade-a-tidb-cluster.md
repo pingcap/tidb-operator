@@ -56,7 +56,7 @@ category: how-to
 默认条件下，修改配置不会自动应用到 TiDB 集群中，只有在 Pod 重启时，才会重新加载新的配置文件，建议设置 `spec.configUpdateStrategy` 为 `RollingUpdate` 开启配置自动更新特性，在每次配置更新时，自动对组件执行滚动更新，将修改后的配置应用到集群中。
 
 1. 设置 `spec.configUpdateStrategy` 为 `RollingUpdate`；
-2. 参考 [TiDB 集群配置](configure-tidb-cluster.md)调整集群配置项；
+2. 参考 [TiDB 集群配置](configure-cluster-using-tidbcluster.md)调整集群配置项；
 3. 查看升级进度：
 
     {{< copyable "shell-regular" >}}
