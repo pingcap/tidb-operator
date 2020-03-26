@@ -66,7 +66,7 @@ kubectl cluster-info
 
 1. Install Helm and add the Helm chart repository maintained by PingCAP. For details, refer to [Use Helm](tidb-toolkit.md#use-helm).
 
-2. Deploy TiDB Operator. For details, refer to [Install TiDB Operator](deploy-tidb-operator.md#install-tidb-operator).
+2. [Deploy TiDB Operator](deploy-tidb-operator.md#install-tidb-operator).
 
 3. Deploy the TiDB cluster, as in [Deploy TiDB on General Kubernetes](deploy-on-general-kubernetes.md#deploy-tidb-cluster).
 
@@ -124,7 +124,7 @@ To monitor the status of the TiDB cluster, take the following steps.
 
 1. To delete the local cluster, refer to [Destroy TiDB Clusters in Kubernetes](destroy-a-tidb-cluster.md).
 
-2. Update the reclaim policy of PVs used by demo to `Delete`:
+2. Update the reclaim policy of PVs used by the demo cluster to `Delete`:
 
     {{< copyable "shell-regular" >}}
 

@@ -90,7 +90,7 @@ If you see `Ready` for all nodes, congratulations! You've setup your first Kuber
 
 1. Install Helm and add the Helm chart repository maintained by PingCAP. For details, refer to [Use Helm](tidb-toolkit.md#use-helm)
 
-2. Deploy TiDB Operator. For details, refer to [Install TiDB Operator](deploy-tidb-operator.md#install-tidb-operator).
+2. [Deploy TiDB Operator](deploy-tidb-operator.md#install-tidb-operator).
 
 3. Create the `pd-ssd` StorageClass:
 
@@ -139,7 +139,7 @@ Try out a MySQL command inside your MySQL terminal:
 select tidb_version();
 ```
 
-If you did not specify a password in the process of installation, set one now:
+If you did not specify a password during installation, set one now:
 
 {{< copyable "sql" >}}
 
