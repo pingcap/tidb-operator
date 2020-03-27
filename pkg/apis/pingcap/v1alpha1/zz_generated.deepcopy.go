@@ -888,6 +888,11 @@ func (in *Log) DeepCopyInto(out *Log) {
 		*out = new(uint64)
 		**out = **in
 	}
+	if in.RecordPlanInSlowLog != nil {
+		in, out := &in.RecordPlanInSlowLog, &out.RecordPlanInSlowLog
+		*out = new(uint32)
+		**out = **in
+	}
 	return
 }
 
