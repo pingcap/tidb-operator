@@ -191,11 +191,12 @@ func NewBackupSchedule() Label {
 	}
 }
 
-// NewMonitor initialize a new label for monitor of tidb-monitor
+// NewMonitor initialize a new label for monitor of tidbmonitor
+// Because there is no managed-by label in 1.0 tidbcluster release for monitor deployment label selector, which is a historical bug
+// we have to remove the managed-by label in NewMonitor to be compatible with.
 func NewMonitor() Label {
 	return Label{
-		NameLabelKey:      TiDBMonitorVal,
-		ManagedByLabelKey: TiDBOperator,
+		NameLabelKey:      "tidb-cluster",
 	}
 }
 
