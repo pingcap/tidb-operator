@@ -20,12 +20,13 @@
   - [Access TiDB in Kubernetes](access-tidb.md)
 + Configure
   - [Initialize a Cluster](initialize-a-cluster.md)
-  - [Configure a TiDB Cluster](configure-a-tidb-cluster.md)
+  - [Configure TiDB Using Helm](configure-a-tidb-cluster.md)
+  - [Configure TiDB Using TidbCluster](configure-cluster-using-tidbcluster.md)
   - [Configure Backup](configure-backup.md)
   - [Configure Storage Class](configure-storage-class.md)
   - [Configure TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
 - Monitor
-  - [Monitor a TiDB Cluster](monitor-a-tidb-cluster.md)
+  - [Monitor TiDB Using Helm](monitor-a-tidb-cluster.md)
   - [Monitor TiDB Using TidbMonitor](monitor-using-tidbmonitor.md)
 + Maintain
   - [Destroy a TiDB cluster](destroy-a-tidb-cluster.md)
