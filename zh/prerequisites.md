@@ -111,6 +111,34 @@ cat /proc/irq/<ir_num>/smp_affinity_list
 
 上文所描述的是处理多队列网卡和多核心的场景。单队列网卡和多核的场景则有不同的处理方式。在这种场景下，可以使用 [RPS/RFS](https://www.kernel.org/doc/Documentation/networking/scaling.txt) 在软件层面模拟实现硬件的网卡多队列功能 (RSS)。此时不能使用方法一所述的 irqbalance 服务，而是通过使用方法二提供的脚本来设置 RPS。RFS 的配置可以参考[这里](https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html/performance_tuning_guide/sect-red_hat_enterprise_linux-performance_tuning_guide-networking-configuration_tools#sect-Red_Hat_Enterprise_Linux-Performance_Tuning_Guide-Configuration_tools-Configuring_Receive_Flow_Steering_RFS)。
 
+## ulimit 设置
+
+TiDB 集群默认会使用很多文件描述符，工作节点和上面的 Docker 进程的 `ulimit` 必须设置大于等于 `1048576`：
+
+* 设置工作节点的 `ulimit` 值，详情可以参考[如何设置 ulimit](https://access.redhat.com/solutions/61334)
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sudo vim /etc/security/limits.conf
+    ```
+
+    设置 root 账号的 `soft` 和 `hard` 的 `nofile` 大于等于 `1048576`
+
+* 设置 Docker 服务的 `ulimit`
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sudo vim /etc/systemd/system/docker.service
+    ```
+
+    设置 `LimitNOFILE` 大于等于 `1048576`。
+
+> **注意：**
+>
+> `LimitNOFILE` 需要显式设置为 `1048576` 或者更大，而不是默认的 `infinity`，由于 `systemd` 的 [bug](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186)，`infinity` 在 `systemd` 某些版本中指的是 `65536`。
+
 ## 硬件和部署要求
 
 与使用 binary 方式部署 TiDB 集群一致，要求选用 Intel x86-64 架构的 64 位通用硬件服务器，使用万兆网卡。关于 TiDB 集群在物理机上的具体部署需求，参考 [TiDB 软件和硬件环境建议配置](https://pingcap.com/docs-cn/stable/how-to/deploy/hardware-recommendations)。

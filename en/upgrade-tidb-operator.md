@@ -10,17 +10,39 @@ This document describes how to upgrade TiDB Operator and Kubernetes.
 
 ## Upgrade TiDB Operator
 
-To upgrade TiDB Operator, modify the image version in the `values.yaml` file and then run `helm upgrade`:
+1. Update [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/):
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=<chart-version> -f /home/tidb/tidb-operator/values-tidb-operator.yaml
-```
+    ```shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/<version>/manifests/crd.yaml && \
+    kubectl get crd tidbclusters.pingcap.com
+    ```
 
-When a new version of `tidb-operator` is released, you only need to update `operatorImage` in `values.yaml` and run the above command. But to guarantee safety, you must get the new `values.yaml` file from the new `tidb-operator` chart and merge the old `values.yaml` file with the new one. And then upgrade as above.
+    > **Note:**
+    >
+    > The `<version>` in this document represents the version of TiDB Operator, such as `v1.1.0`. You can check the currently supported version using the `helm search -l tidb-operator` command.
 
-TiDB Operator is used for maintaining TiDB cluster. This means that when TiDB cluster is up and running, you can even stop TiDB Operator without affecting TiDB cluster that works well until you need to maintain the cluster for scaling, upgrading, etc.
+2. Get the `values.yaml` file of the `tidb-operator` chart that you want to install:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    mkdir -p /home/tidb/tidb-operator/<version> && \
+    helm inspect values pingcap/tidb-operator --version=<version> > /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    ```
+
+3. Modify the `operatorImage` image in the `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml` file. Merge the customized configuration in the old `values.yaml` file with the `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml` file, and execute `helm upgrade`:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm upgrade tidb-operator pingcap/tidb-operator --version=<version> -f /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    ```
+
+    > **Note:**
+    >
+    > After TiDB Operator is upgraded, the `discovery` deployment in all TiDB clusters will automatically upgrade to the specified version of TiDB Operator.
 
 ## Upgrade Kubernetes
 

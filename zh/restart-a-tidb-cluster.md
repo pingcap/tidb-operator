@@ -6,60 +6,38 @@ category: how-to
 
 # 重启 Kubernetes 上的 TiDB 集群
 
-本文描述了如何强制重启 Kubernetes 集群上的 TiDB 集群，包括重启某个 Pod，重启某个组件的所有 Pod 和重启 TiDB 集群的所有 Pod。
+在使用 TiDB 集群的过程中，如果你发现某个集群 Pod 节点存在内存泄漏等问题，需要对集群进行重启。本文描述了如何通过优雅重启指令来将某个 TiDB 集群 Pod 节点优雅下线然后再进行重新启动。
 
-> **注意：**
+> **警告：**
 >
-> TiDB Operator v1.0.x 版本只支持强制重启 Pod。
->
-> - 在强制重启 PD Pod 过程中，如果被重启的 PD Pod 是 Leader，重启过程不会自动迁移 Leader，这会导致 PD 服务短时间中断。
-> - 在强制重启 TiKV Pod 过程中，不会自动迁移 TiKV 的 Region Leader，会导致访问对应数据的请求异常。
-> - 在强制重启 TiDB Pod 过程中，会导致访问对应 TiDB 的请求失败。
+> 在生产环境中，未经过优雅重启而手动删除某个 TiDB 集群 Pod 节点是一件极其危险的事情，虽然 StatefulSet 控制器会将 Pod 节点再次拉起，但这依旧可能会引起部分访问 TiDB 集群的请求失败。
 
-## 强制重启某个 Pod
+## 开启相关设置
 
-要强制重启某个 Pod，执行以下命令：
+开启优雅下线功能，需要打开 Operator 相关设置。默认情况下相关配置是关闭的，你需要手动开启:
 
-{{< copyable "shell-regular" >}}
+1. 修改 Operator 的 `values.yaml`
 
-```shell
-kubectl delete pod -n <namespace> <pod-name>
-```
+    开启 Operator Webhook 特性:
 
-## 强制重启某个组件的所有 Pod
+    ```yaml
+    admissionWebhook:
+      create: true
+    ```
 
-通过以下命令可以列出组件目前有哪些 Pod：
+    关于 Operator Webhook 详情，请参考[开启 TiDB Operator 准入控制器](enable-admission-webhook.md)
 
-{{< copyable "shell-regular" >}}
+2. 安装/更新 TiDB Operator
 
-```shell
-kubectl get pod -n <namespace> -l app.kubernetes.io/component=<component-name>
-```
+    修改完 `values.yaml` 文件中的上述配置项以后，进行 TiDB Operator 部署或者更新。安装与更新 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)。 
 
-要强制重启某个组件的所有 Pod，执行以下命令：
+
+## 使用 annotate 标记目标 Pod 节点
+
+我们通过 `kubectl annotate` 的方式来标记目标 TiDB 集群 Pod 节点组件，当 `annotate` 标记完成以后，TiDB Operator 会自动进行 Pod 节点的优雅下线并重启。你可以通过以下方式来进行标记:
 
 {{< copyable "shell-regular" >}}
 
-```shell
-kubectl delete pod -n <namespace> -l app.kubernetes.io/component=<component-name>
-```
-
-把 `<component-name>` 分别替换为 `pd`、`tidb`、`tikv`，可以分别强制重启 `PD`、`TiDB`、`TiKV` 组件所有 Pod。
-
-## 强制重启 TiDB 集群的所有 Pod
-
-通过以下命令可以列出 TiDB 集群目前有哪些 Pod，包括 `monitor`、`discovery` 等：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl get pod -n <namespace> -l  app.kubernetes.io/instance=<tidb-cluster-name>
-```
-
-要强制重启 TiDB 集群的所有 Pod，包括 `monitor`、`discovery` 等，执行以下命令：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl delete pod -n <namespace> -l  app.kubernetes.io/instance=<tidb-cluster-name>
+```sh
+kubectl annotate <pod-name> -n <namespace> tidb.pingcap.com/pod-defer-deleting=true
 ```

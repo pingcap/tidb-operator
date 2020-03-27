@@ -16,6 +16,21 @@ category: how-to
 
 参考 TidbCluster [示例](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml)和 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 TidbCluster CR(Custom Resource)，并保存到文件 `<cluster-name>/tidb-cluster.yaml`。
 
+需要注意的是，TidbCluster CR 中关于镜像配置有多个参数：
+
+- `spec.version`，格式为 `imageTag`，例如 `v3.1.0`
+- `spec.<pd/tidb/tikv/pump>.baseImage`，格式为 `imageName`，例如 `pingcap/tidb`
+- `spec.<pd/tidb/tikv/pump>.version`，格式为 `imageTag`，例如 `v3.1.0`
+- `spec.<pd/tidb/tikv/pump>.image`，格式为 `imageName:imageTag`，例如 `pingcap/tidb:v3.1.0`
+
+镜像配置获取的优先级为：
+
+`spec.<pd/tidb/tikv/pump>.baseImage` + `spec.<pd/tidb/tikv/pump>.version` > `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` > `spec.<pd/tidb/tikv/pump>.image`。
+
+正常情况下，集群内的各组件应该使用相同版本，所以一般建议配置 `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` 即可。
+
+默认条件下，修改配置不会自动应用到 TiDB 集群中，只有在 Pod 重启时，才会重新加载新的配置文件，建议设置 `spec.configUpdateStrategy` 为 `RollingUpdate` 开启配置自动更新特性，在每次配置更新时，自动对组件执行滚动更新，将修改后的配置应用到集群中。
+
 如果要部署 TiDB 集群监控，请参考 TidbMonitor [示例](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml)和 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 TidbMonitor CR，并保存到文件 `<cluster-name>/tidb-monitor.yaml`。
 
 ### 存储类型
@@ -70,4 +85,4 @@ TiDB Operator 部署并配置完成后，可以通过下面命令部署 TiDB 集
 
 ### 初始化 TiDB 集群
 
-如果要在部署完 TiDB 集群后做一些初始化工作，参考 [Kubernetes 上的集群初始化配置](initialize-cluster.md)进行配置。
+如果要在部署完 TiDB 集群后做一些初始化工作，参考 [Kubernetes 上的集群初始化配置](initialize-a-cluster.md)进行配置。
