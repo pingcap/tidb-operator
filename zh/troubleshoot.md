@@ -1,5 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB 集群故障诊断
+summary: 介绍 Kubernetes 上 TiDB 集群的常见故障以及诊断解决方案。
 category: how-to
 ---
 
@@ -45,7 +46,7 @@ kubectl delete pod <pod-name> -n <namespace>
 
 Pod 重建后会自动回到正常运行模式。
 
-## 集群意外删除后恢复
+## Helm 管理的集群意外删除后恢复
 
 TiDB Operator 使用 PV (Persistent Volume)、PVC (Persistent Volume Claim) 来存储持久化的数据，如果不小心使用 `helm delete` 意外删除了集群，PV/PVC 对象以及数据都会保留下来，以最大程度保证数据安全。
 

@@ -1,40 +1,11 @@
 ---
-title: Overview of TiDB Operator
-summary: Learn the overview of TiDB Operator.
-category: reference
+title: TiDB in Kubernetes Documentation
+summary: Learn about TiDB in Kubernetes documentation.
 ---
 
-# TiDB Operator Overview
+# TiDB in Kubernetes Documentation
 
 [TiDB Operator](https://github.com/pingcap/tidb-operator) is an automatic operation system for TiDB clusters in Kubernetes. It provides a full management life-cycle for TiDB including deployment, upgrades, scaling, backup, fail-over, and configuration changes. With TiDB Operator, TiDB can run seamlessly in the Kubernetes clusters deployed on a public or private cloud.
-
-> **Note:**
->
-> You can only deploy one TiDB Operator in a Kubernetes cluster.
-
-## TiDB Operator architecture
-
-![TiDB Operator Overview](/media/tidb-operator-overview.png)
-
-`TidbCluster` is a custom resource defined by CRD (`CustomResourceDefinition`) and is used to describe the desired state of the TiDB cluster. The following components are responsible for the orchestration and scheduling logic in a TiDB cluster:
-
-* `tidb-controller-manager` is a set of custom controllers in Kubernetes. These controllers constantly compare the desired state recorded in the `TidbCluster` object with the actual state of the TiDB cluster. They adjust the resources in Kubernetes to drive the TiDB cluster to meet the desired state;
-* `tidb-scheduler` is a Kubernetes scheduler extension that injects the TiDB specific scheduling policies to the Kubernetes scheduler.
-
-In addition, TiDB Operator also provides `tkctl`, the command-line interface for TiDB clusters in Kubernetes. It is used for cluster operations and troubleshooting cluster issues.
-
-![TiDB Operator Control Flow](/media/tidb-operator-control-flow.png)
-
-The diagram above is the analysis of the control flow of TiDB Operator. Because TiDB clusters also need components such as monitoring, initialization, scheduled backup, Binlog and so on, TiDB Operator encapsulates the definition of these components in the Helm chart. The overall control process is as follows:
-
-1. The user creates a `TidbCluster` object and a corresponding series of Kubernetes-native objects through Helm, such as a `CronJob` that performs scheduled backups;
-2. TiDB Operator watches `TidbCluster` and other related objects, and constantly adjust the `StatefulSet` and `Service` objects of PD, TiKV, and TiDB based on the actual state of the cluster;
-3. Kubernetes' native controller creates, updates, and deletes the corresponding `Pod` based on objects such as `StatefulSet`, `Deployment`, and `CronJob`;
-4. In the `Pod` declaration of PD, TiKV, and TiDB, the `tidb-scheduler` scheduler is specified. `tidb-scheduler` applies the specific scheduling logic of TiDB when scheduling the corresponding `Pod`.
-
-Based on the above declarative control flow, TiDB Operator automatically performs health check and fault recovery for the cluster nodes. You can easily modify the `TidbCluster` object declaration to perform operations such as deployment, upgrade and scaling.
-
-## Manage TiDB clusters using TiDB Operator
 
 TiDB Operator provides several ways to deploy TiDB clusters in Kubernetes:
 
@@ -65,7 +36,7 @@ After the deployment is complete, see the following documents to use, operate, a
 + [Scale TiDB Cluster](scale-a-tidb-cluster.md)
 + [Upgrade TiDB Cluster](upgrade-a-tidb-cluster.md#upgrade-the-version-of-tidb-cluster)
 + [Change the Configuration of TiDB Cluster](upgrade-a-tidb-cluster.md#change-the-configuration-of-tidb-cluster)
-+ [Backup and Restoration Based on Helm Charts](backup-and-restore-using-helm-charts.md)
++ [Backup and Restore](backup-and-restore.md)
 + [Automatic Failover](use-auto-failover.md)
 + [Monitor a TiDB Cluster in Kubernetes](monitor.md)
 + [Collect TiDB Logs in Kubernetes](collect-tidb-logs.md)

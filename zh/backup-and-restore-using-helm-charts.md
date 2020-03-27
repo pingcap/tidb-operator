@@ -1,19 +1,24 @@
 ---
 title: 基于 Helm Charts 实现的 TiDB 集群备份恢复
+summary: 介绍如何基于 Helm Charts 实现 TiDB 集群的备份与恢复。
 category: how-to
-aliases: ['/docs-cn/devmaintain/backup-and-store/']
+aliases: ['/docs-cn/dev/tidb-in-kubernetes/maintain/backup-and-restore/','/docs-cn/v3.0/tidb-in-kubernetes/maintain/backup-and-restore/','/docs-cn/v3.1/tidb-in-kubernetes/maintain/backup-and-restore/']
 ---
 
 # 基于 Helm Charts 实现的 TiDB 集群备份与恢复
 
 本文详细描述了如何对 Kubernetes 上的 TiDB 集群进行数据备份和数据恢复。本文使用的备份恢复方式是基于 Helm Charts 实现的。
 
-TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CRD) 实现的备份恢复方式实现，详情可参阅以下文档：
+TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CRD) 实现的备份恢复方式实现：
 
-- [备份 TiDB 集群到 GCS](backup-to-gcs.md)
-- [恢复 GCS 上的备份数据](restore-from-gcs.md)
-- [备份 TiDB 集群到兼容 S3 的存储](backup-to-s3.md)
-- [恢复 S3 兼容存储上的备份数据](restore-from-s3.md)
++ 如果 TiDB 集群版本 < v3.1，可以参考以下文档：
+    - [使用 Mydumper 备份 TiDB 集群到 GCS](backup-to-gcs.md)
+    - [使用 Loader 恢复 GCS 上的备份数据](restore-from-gcs.md)
+    - [使用 Mydumper 备份 TiDB 集群到兼容 S3 的存储](backup-to-s3.md)
+    - [使用 Loader 恢复 S3 兼容存储上的备份数据](restore-from-s3.md)
++ 如果 TiDB 集群版本 >= v3.1，可以参考以下文档：
+    - [使用 BR 备份 TiDB 集群到兼容 S3 的存储](backup-to-aws-s3-using-br.md)
+    - [使用 BR 恢复 S3 兼容存储上的备份数据](restore-from-aws-s3-using-br.md)
 
 Kubernetes 上的 TiDB 集群支持两种备份策略：
 

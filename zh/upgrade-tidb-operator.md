@@ -1,5 +1,6 @@
 ---
 title: 升级 TiDB Operator
+summary: 介绍如何升级 TiDB Operator。
 category: how-to
 ---
 
