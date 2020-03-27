@@ -155,11 +155,6 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 		for k, v := range desiredDep.Annotations {
 			existingDep.Annotations[k] = v
 		}
-		for k, v := range desiredDep.Labels {
-			existingDep.Labels[k] = v
-		}
-		existingDep.Spec.Selector = desiredDep.Spec.Selector
-
 		// only override the default strategy if it is explicitly set in the desiredDep
 		if string(desiredDep.Spec.Strategy.Type) != "" {
 			existingDep.Spec.Strategy.Type = desiredDep.Spec.Strategy.Type
@@ -167,14 +162,10 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 				existingDep.Spec.Strategy.RollingUpdate = desiredDep.Spec.Strategy.RollingUpdate
 			}
 		}
-
+		// pod selector of deployment is immutable, so we don't mutate the labels of pod
 		for k, v := range desiredDep.Spec.Template.Annotations {
 			existingDep.Spec.Template.Annotations[k] = v
 		}
-		for k, v := range desiredDep.Spec.Template.Labels {
-			desiredDep.Spec.Template.Labels[k] = v
-		}
-
 		// podSpec of deployment is hard to merge, use an annotation to assist
 		if DeploymentPodSpecChanged(desiredDep, existingDep) {
 			// Record last applied spec in favor of future equality check
