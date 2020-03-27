@@ -19,7 +19,7 @@ jobs:
 
       - run:
           name: "Generate PDF"
-          command: cd ..; bash scripts/generate_pdf.sh;
+          command: bash scripts/generate_pdf.sh;
 
       # echo "222.222.95.49 uc.qbox.me": adds a new host
       - deploy:
