@@ -105,7 +105,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
 4. Pod 修改准入控制器:
 
-    Pod 修改准入控制器帮助我们在弹性伸缩场景下实现 TiKV 的热点调度功能，在 [启用 TidbCluster 弹性伸缩](enable-tidb-cluster-auto-scaling.md)中需要开启该控制器。该组件在准入控制器开启的情况下默认开启。
+    Pod 修改准入控制器帮助我们在弹性伸缩场景下实现 TiKV 的热点调度功能，在[启用 TidbCluster 弹性伸缩](enable-tidb-cluster-auto-scaling.md)中需要开启该控制器。该组件在准入控制器开启的情况下默认开启。
 
     ```yaml
     admissionWebhook:
