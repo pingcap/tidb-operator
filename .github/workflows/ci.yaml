@@ -1,0 +1,17 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+    - master
+    - release-*
+
+jobs:
+
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out 
+      uses: actions/checkout@v2
+    - name: Verify links
+      run: ./hack/verify-links.sh

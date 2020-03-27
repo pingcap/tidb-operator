@@ -67,7 +67,7 @@ After the deployment is complete, see the following documents to use, operate, a
 + [Change the Configuration of TiDB Cluster](upgrade-a-tidb-cluster.md#change-the-configuration-of-tidb-cluster)
 + [Backup and Restoration Based on Helm Charts](backup-and-restore-using-helm-charts.md)
 + [Automatic Failover](use-auto-failover.md)
-+ [Monitor a TiDB Cluster in Kubernetes](monitor.md)
++ [Monitor a TiDB Cluster in Kubernetes](monitor-a-tidb-cluster.md)
 + [Collect TiDB Logs in Kubernetes](collect-tidb-logs.md)
 + [Maintain Kubernetes Nodes that Hold the TiDB Cluster](maintain-a-kubernetes-node.md)
 
