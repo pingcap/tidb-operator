@@ -53,7 +53,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
 1. Pod 验证准入控制器:
 
-    Pod 准入控制器提供了对 PD/TiKV/TiDB 组件安全下线与安全上线的保证，通过 Pod 验证准入控制器，我们可以实现 [重启 Kubernetes 上的 TiDB 集群](restart-a-tidb-cluster.md)。该组件在准入控制器开启的情况下默认开启。
+    Pod 准入控制器提供了对 PD/TiKV/TiDB 组件安全下线与安全上线的保证，通过 Pod 验证准入控制器，我们可以实现[重启 Kubernetes 上的 TiDB 集群](restart-a-tidb-cluster.md)。该组件在准入控制器开启的情况下默认开启。
 
     ```yaml
     admissionWebhook:
