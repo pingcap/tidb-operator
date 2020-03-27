@@ -455,6 +455,24 @@ type ComponentSpec struct {
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	ConfigUpdateStrategy *ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
+	// List of environment variables to set in the container, like
+	// v1.Container.Env.
+	// Note that following env names cannot be used and may be overrided by
+	// tidb-operator built envs.
+	// - NAMESPACE
+	// - TZ
+	// - SERVICE_NAME
+	// - PEER_SERVICE_NAME
+	// - HEADLESS_SERVICE_NAME
+	// - SET_NAME
+	// - HOSTNAME
+	// - CLUSTER_NAME
+	// - POD_NAME
+	// - BINLOG_ENABLED
+	// - SLOW_LOG_FILE
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // +k8s:openapi-gen=true

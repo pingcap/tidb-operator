@@ -16,13 +16,13 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"sort"
 	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -514,7 +514,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
-	c.Env = sortEnvByName(c.Env)
+	sort.Sort(util.SortEnvByName(c.Env))
 	return c
 }
 
@@ -790,28 +790,4 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
-}
-
-// sortEnvByName in order to avoid syncing same template into different results
-func sortEnvByName(envlist []core.EnvVar) []core.EnvVar {
-	if envlist == nil || len(envlist) < 1 {
-		return envlist
-	}
-	var wrappers EnvListWrapper
-	wrappers = envlist
-	sort.Sort(wrappers)
-	return wrappers
-}
-
-type EnvListWrapper []core.EnvVar
-
-func (e EnvListWrapper) Len() int {
-	return len(e)
-}
-func (e EnvListWrapper) Swap(i, j int) {
-	e[i], e[j] = e[j], e[i]
-}
-
-func (e EnvListWrapper) Less(i, j int) bool {
-	return e[i].Name < e[j].Name
 }
