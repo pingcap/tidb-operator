@@ -29,7 +29,6 @@ func TestSetTidbSpecDefault(t *testing.T) {
 	tc = newTidbCluster()
 	tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxSize).Should(Equal(tidbLogMaxSize))
 	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
 
 	tc = newTidbCluster()
@@ -38,7 +37,6 @@ func TestSetTidbSpecDefault(t *testing.T) {
 		OOMAction: &oomAction,
 	}
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxSize).Should(Equal(tidbLogMaxSize))
 	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
 	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
 
@@ -51,7 +49,6 @@ func TestSetTidbSpecDefault(t *testing.T) {
 		},
 	}
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxSize).Should(Equal(tidbLogMaxSize))
 	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
 	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
 	g.Expect(*tc.Spec.TiDB.Config.Log.Level).Should(Equal(infoLevel))
@@ -68,7 +65,6 @@ func TestSetTidbSpecDefault(t *testing.T) {
 		},
 	}
 	setTidbSpecDefault(tc)
-	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxSize).Should(Equal(tidbLogMaxSize))
 	g.Expect(*tc.Spec.TiDB.Config.Log.File.MaxBackups).Should(Equal(tidbLogMaxBackups))
 	g.Expect(*tc.Spec.TiDB.Config.OOMAction).Should(Equal(oomAction))
 	g.Expect(*tc.Spec.TiDB.Config.Log.Level).Should(Equal(infoLevel))
