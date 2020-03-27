@@ -136,32 +136,26 @@ tidb-ctl schema in mysql
 
 ## 使用 Helm
 
-[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 2.9.0 ≤ Helm < 3.0.0。安装步骤如下：
+[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 2.11.0 ≤ Helm < 2.16.4。安装步骤如下：
 
-1. 安装 Helm 客户端
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
-    ```
-
-    如果使用 macOS，可以用以下命令通过 Homebrew 安装 Helm：
-
-    ```bash
-    brew install helm@2
-    brew link --force helm@2
-    ```
-
+1. 参考[官方文档](https://v2.helm.sh/docs/using_helm/#installing-helm)安装 Helm 客户端
 2. 安装 Helm 服务端
 
-    {{< copyable "shell-regular" >}}
+    在集群中应用 Helm 服务端组件 `tiller` 所需的 `RBAC` 规则，并安装 `tiller`：
 
-    在集群中应用 helm 服务端组件 `tiller` 所需的 `RBAC` 规则并安装 `tiller`：
+    {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/tiller-rbac.yaml && \
     helm init --service-account=tiller --upgrade
+    ```
+
+    如果无法访问 gcr.io，你可以尝试 mirror 仓库：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    helm init --service-account=tiller --upgrade --tiller-image registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:$(helm version --client --short | grep -Eo 'v[0-9]\.[0-9]+\.[0-9]+')
     ```
 
     通过下面命令确认 `tiller` Pod 进入 running 状态：
@@ -180,11 +174,14 @@ tidb-ctl schema in mysql
     helm init --upgrade
     ```
 
-Kubernetes 应用在 helm 中被打包为 chart。PingCAP 针对 Kubernetes 上的 TiDB 部署运维提供了三个 Helm chart：
+Kubernetes 应用在 Helm 中被打包为 chart。PingCAP 针对 Kubernetes 上的 TiDB 部署运维提供了多个 Helm chart：
 
 * `tidb-operator`：用于部署 TiDB Operator；
 * `tidb-cluster`：用于部署 TiDB 集群；
 * `tidb-backup`：用于 TiDB 集群备份恢复；
+* `tidb-lightning`：用于 TiDB 集群导入数据；
+* `tidb-drainer`：用于部署 TiDB Drainer；
+* `tikv-importer`：用于部署 TiKV Importer；
 
 这些 chart 都托管在 PingCAP 维护的 helm chart 仓库 `https://charts.pingcap.org/` 中，你可以通过下面的命令添加该仓库：
 
