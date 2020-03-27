@@ -115,7 +115,7 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
 
 5. TiDB Operator 资源修改准入控制器:
 
-    TiDB Operator 资源修改准入控制器帮助我们实现 TiDB Operator 相关自定义资源的默认值填充工作，如 `TidbCluster`，`TidbMonitor`等。该组件在准入控制器开启的情况下默认开启。
+    TiDB Operator 资源修改准入控制器帮助我们实现 TiDB Operator 相关自定义资源的默认值填充工作，如 `TidbCluster`，`TidbMonitor` 等。该组件在准入控制器开启的情况下默认开启。
 
     ```yaml
     admissionWebhook:
