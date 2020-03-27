@@ -26,6 +26,11 @@ const (
 	defaultBinlogImage = "pingcap/tidb-binlog"
 )
 
+var (
+	tidbLogMaxSize    = 300
+	tidbLogMaxBackups = 3
+)
+
 func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
 	setTidbClusterSpecDefault(tc)
 	setPdSpecDefault(tc)
@@ -58,6 +63,32 @@ func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.TiDB.MaxFailoverCount == nil {
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
+
+	// we only set default log
+	if tc.Spec.TiDB.Config != nil {
+		if tc.Spec.TiDB.Config.Log == nil {
+			tc.Spec.TiDB.Config.Log = &v1alpha1.Log{
+				File: &v1alpha1.FileLogConfig{
+					MaxSize:    &tidbLogMaxSize,
+					MaxBackups: &tidbLogMaxBackups,
+				},
+			}
+		} else {
+			if tc.Spec.TiDB.Config.Log.File == nil {
+				tc.Spec.TiDB.Config.Log.File = &v1alpha1.FileLogConfig{
+					MaxSize:    &tidbLogMaxSize,
+					MaxBackups: &tidbLogMaxBackups,
+				}
+			} else {
+				if tc.Spec.TiDB.Config.Log.File.MaxSize == nil {
+					tc.Spec.TiDB.Config.Log.File.MaxSize = &tidbLogMaxSize
+				}
+				if tc.Spec.TiDB.Config.Log.File.MaxBackups == nil {
+					tc.Spec.TiDB.Config.Log.File.MaxBackups = &tidbLogMaxBackups
+				}
+			}
+		}
 	}
 }
 
