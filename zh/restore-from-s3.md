@@ -24,8 +24,7 @@ category: how-to
 
 1. 创建 Restore customer resource (CR)，将制定备份数据恢复至 TiDB 集群
 
-+ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据恢复至 TiDB 集群：
-
++ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据由 Ceph 恢复至 TiDB 集群：
     {{< copyable "shell-regular" >}}
 
     ```shell
@@ -57,7 +56,7 @@ category: how-to
       storageSize: 1Gi
     ```
 
-+ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据恢复至 TiDB 集群：
++ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据由 Amazon S3 恢复至 TiDB 集群：
 
     {{< copyable "shell-regular" >}}
 
