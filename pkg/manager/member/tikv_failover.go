@@ -51,18 +51,17 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			if tc.Status.TiKV.FailureStores == nil {
 				tc.Status.TiKV.FailureStores = map[string]v1alpha1.TiKVFailureStore{}
 			}
-			if tc.Spec.TiKV.MaxFailoverCount != nil {
+			if tc.Spec.TiKV.MaxFailoverCount != nil && *tc.Spec.TiKV.MaxFailoverCount > 0 {
 				maxFailoverCount := *tc.Spec.TiKV.MaxFailoverCount
-				if maxFailoverCount > 0 && len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
+				if len(tc.Status.TiKV.FailureStores) >= int(maxFailoverCount) {
 					klog.Warningf("%s/%s failure stores count reached the limit: %d", ns, tcName, tc.Spec.TiKV.MaxFailoverCount)
 					return nil
 				}
-			}
-
-			tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
-				PodName:   podName,
-				StoreID:   store.ID,
-				CreatedAt: metav1.Now(),
+				tc.Status.TiKV.FailureStores[storeID] = v1alpha1.TiKVFailureStore{
+					PodName:   podName,
+					StoreID:   store.ID,
+					CreatedAt: metav1.Now(),
+				}
 			}
 		}
 	}

@@ -262,8 +262,8 @@ type TiKVSpec struct {
 	// +optional
 	Privileged *bool `json:"privileged,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -309,8 +309,8 @@ type TiDBSpec struct {
 	// +optional
 	EnableAdvertiseAddress *bool `json:"enableAdvertiseAddress,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -518,6 +518,7 @@ type PDStatus struct {
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
+	Image           string                     `json:"image,omitempty"`
 }
 
 // PDMember is PD member
@@ -555,6 +556,7 @@ type TiDBStatus struct {
 	Members                  map[string]TiDBMember        `json:"members,omitempty"`
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
+	Image                    string                       `json:"image,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -581,6 +583,7 @@ type TiKVStatus struct {
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	Image           string                      `json:"image,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
@@ -627,6 +630,12 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+	// Specify a secret of client cert for backup/restore
+	// Optional: Defaults to <cluster>-tidb-client-secret
+	// +optional
+	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
+	// this field only work in backup/restore process
+	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // TLSCluster can enable TLS connection between TiDB server components
@@ -786,6 +795,10 @@ type TiDBAccessConfig struct {
 	User string `json:"user,omitempty"`
 	// SecretName is the name of secret which stores tidb cluster's password.
 	SecretName string `json:"secretName"`
+	// Whether enable the TLS connection between the SQL client and TiDB server
+	// Optional: Defaults to nil
+	// +optional
+	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
 }
 
 // +k8s:openapi-gen=true

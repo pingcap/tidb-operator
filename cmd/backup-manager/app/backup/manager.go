@@ -80,6 +80,11 @@ func (bm *Manager) ProcessBackup() error {
 		})
 	}
 
+	enableTLSClient := false
+	if backup.Spec.From.TLSClient != nil && backup.Spec.From.TLSClient.Enabled {
+		enableTLSClient = true
+	}
+
 	if backup.Spec.BR == nil {
 		return fmt.Errorf("no br config in %s", bm)
 	}
@@ -87,8 +92,14 @@ func (bm *Manager) ProcessBackup() error {
 	bm.setOptions(backup)
 
 	var db *sql.DB
+	var dsn string
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		db, err = util.OpenDB(bm.GetDSN())
+		dsn, err = bm.GetDSN(enableTLSClient)
+		if err != nil {
+			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", bm, err)
+			return false, err
+		}
+		db, err = util.OpenDB(dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
 			return false, nil
