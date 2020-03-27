@@ -25,7 +25,7 @@ category: how-to
       create: true
     ```
 
-    关于 Operator Webhook 详情，请参考[开启 TiDB-Operator 准入控制器](enable-admission-webhook.md)
+    关于 Operator Webhook 详情，请参考[开启 TiDB Operator 准入控制器](enable-admission-webhook.md)
 
 2. 安装/更新 TiDB Operator
 
