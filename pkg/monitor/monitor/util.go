@@ -715,11 +715,8 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 					TargetPort: intstr.FromInt(9089),
 				},
 			},
-			Type: monitor.Spec.Reloader.Service.Type,
-			Selector: map[string]string{
-				label.InstanceLabelKey:  monitor.Name,
-				label.ComponentLabelKey: label.TiDBMonitorVal,
-			},
+			Type:     monitor.Spec.Reloader.Service.Type,
+			Selector: labels,
 		},
 	}
 
@@ -748,11 +745,8 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 						TargetPort: intstr.FromInt(3000),
 					},
 				},
-				Type: monitor.Spec.Grafana.Service.Type,
-				Selector: map[string]string{
-					label.InstanceLabelKey:  monitor.Name,
-					label.ComponentLabelKey: label.TiDBMonitorVal,
-				},
+				Type:     monitor.Spec.Grafana.Service.Type,
+				Selector: labels,
 			},
 		}
 
