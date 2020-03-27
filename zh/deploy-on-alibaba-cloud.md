@@ -17,7 +17,7 @@ category: how-to
     > Access Key 需要具有操作相应资源的权限。
 
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/#install-kubectl) >= 1.12
-- [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.9.1 且 <= 2.11.0
+- [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 且 < 3.0.0
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.12.*
 
@@ -44,16 +44,19 @@ category: how-to
 - 一个新的 VPC
 - 一台 ECS 实例作为堡垒机
 - 一个托管版 ACK（阿里云 Kubernetes）集群以及一系列 worker 节点：
-    - 属于一个伸缩组的 2 台 ECS 实例（2 核 2 GB）托管版 Kubernetes 的默认伸缩组中必须至少有两台实例，用于承载整个的系统服务，例如 CoreDNS
+    - 属于一个伸缩组的 2 台 ECS 实例（2 核 2 GB），托管版 Kubernetes 的默认伸缩组中必须至少有两台实例，用于承载整个的系统服务，例如 CoreDNS
     - 属于一个伸缩组的 3 台 `ecs.g5.large` 实例，用于部署 PD
     - 属于一个伸缩组的 3 台 `ecs.i2.2xlarge` 实例，用于部署 TiKV
     - 属于一个伸缩组的 2 台 `ecs.c5.4xlarge` 实例用于部署 TiDB
     - 属于一个伸缩组的 1 台 `ecs.c5.xlarge` 实例用于部署监控组件
-    - 一块 100 GB 的云盘用作监控数据存储
 
 除了默认伸缩组之外的其它所有实例都是跨可用区部署的。而伸缩组 (Auto-scaling Group) 能够保证集群的健康实例数等于期望数值。因此，当发生节点故障甚至可用区故障时，伸缩组能够自动为我们创建新实例来确保服务可用性。
 
 ## 安装部署
+
+### 部署 ACK，TiDB Operator 和 TiDB 集群节点池
+
+使用如下步骤部署 ACK，TiDB Operator 和 TiDB 集群节点池。
 
 1. 设置目标 Region 和阿里云密钥（也可以在运行 `terraform` 命令时根据命令提示输入）：
 
@@ -75,6 +78,18 @@ category: how-to
     git clone --depth=1 https://github.com/pingcap/tidb-operator && \
     cd tidb-operator/deploy/aliyun
     ```
+
+    可以新建或者编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。例如，下面示例配置 ACK 集群名称、TiDB 集群名称及 PD、TiKV 和 TiDB 节点的数量：
+
+    ```
+    cluster_name = "testack"
+    tidb_cluster_name = "testdb"
+    tikv_count = 3
+    tidb_count = 2
+    pd_count = 3
+    ```
+
+    配置完成后，使用 `terraform` 命令初始化并部署集群：
 
     {{< copyable "shell-regular" >}}
 
@@ -102,10 +117,10 @@ category: how-to
     bastion_ip = 47.96.174.214
     cluster_id = c2d9b20854a194f158ef2bc8ea946f20e
     kubeconfig_file = /tidb-operator/deploy/aliyun/credentials/kubeconfig
-    monitor_endpoint = 121.199.195.236:3000
+    monitor_endpoint = not_created
     region = cn-hangzhou
     ssh_key_file = /tidb-operator/deploy/aliyun/credentials/my-cluster-keyZ.pem
-    tidb_endpoint = 172.21.5.171:4000
+    tidb_endpoint = not_created
     tidb_version = v3.0.0
     vpc_id = vpc-bp1v8i5rwsc7yh8dwyep5
     ```
@@ -130,6 +145,44 @@ category: how-to
     helm ls
     ```
 
+### 部署 TiDB 集群和监控
+
+1. 准备 TidbCluster 和 TidbMonitor CR 文件：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
+    ```
+
+    参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
+
+    > **注意：**
+    >
+    > * 请使用 ACK 部署过程中配置的 `tidb_cluster_name` 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `TIDB_CLUSTER_NAME`。
+    > * 请确保 ACK 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。
+    > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
+
+2. 创建 `Namespace`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace <namespace>
+    ```
+
+    > **注意：**
+    >
+    > `namespace` 是[命名空间](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)，可以起一个方便记忆的名字，比如和 `tidb_cluster_name` 相同的名称。
+
+3. 部署 TiDB 集群：
+
+  {{< copyable "shell-regular" >}}
+
+  ```shell
+  kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n <namespace>
+  ```
+
 ## 连接数据库
 
 通过堡垒机可连接 TiDB 集群进行测试，相关信息在安装完成后的输出中均可找到：
@@ -143,37 +196,47 @@ ssh -i credentials/<cluster_name>-key.pem root@<bastion_ip>
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h <tidb_slb_ip> -P 4000 -u root
+mysql -h <tidb_lb_ip> -P 4000 -u root
 ```
+
+`tidb_lb_ip` 为 TiDB Service 的 LoadBalancer IP。
 
 ## 监控
 
-访问 `<monitor_endpoint>` 就可以查看相关的 Grafana 监控面板。相关信息可在安装完成后的输出中找到。默认帐号密码为：
+你可以通过浏览器访问 `<monitor-lb>:3000` 地址查看 Grafana 监控指标。
+
+`monitor-lb` 是集群 Monitor Service 的 LoadBalancer IP。
+
+默认帐号密码为：
 
 - 用户名：admin
 - 密码：admin
 
 > **警告：**
 >
-> 出于安全考虑，假如你已经或将要配置 VPN 用于访问 VPC，强烈建议将 `deploy/modules/aliyun/tidb-cluster/values/default.yaml` 文件里 `monitor.grafana.service.annotations` 中的 `service.beta.kubernetes.io/alicloud-loadbalancer-address-type` 设置为 `intranet` 以禁止监控服务的公网访问。
+> 出于安全考虑，假如你已经或将要配置 VPN 用于访问 VPC，强烈建议将 `db-monitor.yaml` 文件里 `spec.grafana.service.annotations` 中的 `service.beta.kubernetes.io/alicloud-loadbalancer-address-type` 设置为 `intranet` 以禁止监控服务的公网访问。
 
 ## 升级 TiDB 集群
 
-设置 `variables.tf` 中的 `tidb_version` 参数，并再次运行 `terraform apply` 即可完成升级。
+要升级 TiDB 集群，可以通过 `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>` 修改 `spec.version`。
 
 升级操作可能会执行较长时间，可以通过以下命令来持续观察进度：
 
 {{< copyable "shell-regular" >}}
 
 ```
-kubectl get pods --namespace <tidb_cluster_name> -o wide --watch
+kubectl get pods --namespace <namespace> -o wide --watch
 ```
 
 ## TiDB 集群水平伸缩
 
-按需修改 `variables.tf` 中的 `tikv_count` 和 `tidb_count` 数值，再次运行 `terraform apply` 即可完成 TiDB 集群的水平伸缩。
+若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `tikv_count` 或者 `tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>` 修改对应组件的 `replicas`。
 
 ## 销毁集群
+
+可以参考[销毁 TiDB 集群](destroy-a-tidb-cluster.md#销毁-kubernetes-上的-tidb-集群)删除集群。
+
+然后通过如下命令销毁 ACK 集群：
 
 {{< copyable "shell-regular" >}}
 
@@ -199,13 +262,13 @@ terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
 
 > **注意：**
 >
-> 监控组件挂载的云盘需要在阿里云管理控制台中手动删除。
+> 组件挂载的云盘需要在阿里云管理控制台中手动删除。
 
 ## 配置
 
 ### 配置 TiDB Operator
 
-通过调整 `variables.tf` 内的值来配置 TiDB Operator，大多数配置项均能按照 `variable` 的注释理解语义后进行修改。需要注意的是，`operator_helm_values` 配置项允许为 TiDB Operator 提供一个自定义的 `values.yaml` 配置文件，示例如下：
+通过在 `terraform.tfvars` 中设置变量的值来配置 TiDB Operator，大多数配置项均能按照 `variable` 的注释理解语义后进行修改。需要注意的是，`operator_helm_values` 配置项允许为 TiDB Operator 提供一个自定义的 `values.yaml` 配置文件，示例如下：
 
 - 在 `terraform.tfvars` 中设置 `operator_helm_values`：
 
@@ -223,7 +286,7 @@ terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
 
 ### 配置 TiDB 集群
 
-TiDB 集群会使用 `./my-cluster.yaml` 作为集群的 `values.yaml` 配置文件，修改该文件即可配置 TiDB 集群。支持的配置项可参考 [Kubernetes 上的 TiDB 集群配置](configure-a-tidb-cluster.md)。
+参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)和[集群配置文档](configure-cluster-using-tidbcluster.md)修改 TiDB 集群配置。
 
 ## 管理多个 TiDB 集群
 
@@ -242,7 +305,6 @@ module "tidb-cluster-dev" {
   pd_count                   = 1
   tikv_count                 = 1
   tidb_count                 = 1
-  override_values            = file("dev-cluster.yaml")
 }
 
 module "tidb-cluster-staging" {
@@ -257,7 +319,6 @@ module "tidb-cluster-staging" {
   pd_count                   = 3
   tikv_count                 = 3
   tidb_count                 = 2
-  override_values            = file("staging-cluster.yaml")
 }
 ```
 
@@ -278,6 +339,7 @@ module "tidb-cluster-staging" {
 | `monitor_instance_type` | 监控组件的实例类型 | `ecs.c5.xlarge` |
 | `override_values` | TiDB 集群的 `values.yaml` 配置文件，通常通过 `file()` 函数从文件中读取 | `nil` |
 | `local_exec_interpreter` | 执行命令行指令的解释器  | `["/bin/sh", "-c"]` |
+| `create_tidb_cluster_release` | 是否通过 Helm 创建 TiDB 集群 | `false` |
 
 ## 管理多个 Kubernetes 集群
 
