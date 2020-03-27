@@ -1,39 +1,39 @@
 ---
-title: Monitor a TiDB Cluster using TidbMonitor
+title: Monitor a TiDB Cluster Using TidbMonitor
 summary: This document introduces how to monitor a TiDB cluster using TidbMonitor.
 category: how-to
 ---
 
-# Monitor a TiDB Cluster using TidbMonitor
+# Monitor a TiDB Cluster Using TidbMonitor
 
-In TiDB Operator v1.1 or later versions, you can quickly start to monitor a TiDB cluster on a Kubernetes cluster through a simple Custom Resource (CR) file, which is TidbMonitor.
+In TiDB Operator v1.1 or later versions, you can monitor a TiDB cluster on a Kubernetes cluster by using a simple Custom Resource (CR) file called TidbMonitor.
 
 ## Quick start
 
-> **Note:**
+> **Warning:**
 >
-> This quick start guide is only used for demonstration or test purposes. Do not deploy the following configuration in your key production environment.
+> This quick start guide is only used for demonstration or testing purposes. Do not deploy the following configuration in your crucial production environment.
 
 ### Prerequisites
 
-1. TiDB Operator **v1.1.0-beta.1** (or later versions) is installed, and the related Custom Resource Definition (CRD) file is updated.
+- TiDB Operator **v1.1.0-beta.1** (or later versions) is installed, and the related Custom Resource Definition (CRD) file is updated.
 
-2. The default storageClass is set, which has enough Persistent Volumes (PV). 6 PVs are needed by default. You can check this setting by executing the following command:
+- The default storageClass is set, which has enough Persistent Volumes (PV). 6 PVs are needed by default. You can check this setting by executing the following command:
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-```shell
-kubectl get storageClass
-```
+    ```shell
+    kubectl get storageClass
+    ```
 
-```shell
-NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
-standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  14h
-```
+    ```shell
+    NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+    standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  14h
+    ```
 
 ### Install
 
-To deploy a TidbMonitor component, you can save the following content as a `.yaml` file and execute the `kubectl apply -f` command.
+To deploy a TidbMonitor component, save the following content as a `.yaml` file and execute the `kubectl apply -f` command.
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -62,9 +62,9 @@ spec:
 
 > **Note:**
 >
-> Currently, one TidbMonitor can only monitor one TidbCluster.
+> Currently, one TidbMonitor can monitor only one TidbCluster.
 
-You can also quickly deploy TidbMonitor by the following command:
+You can also quickly deploy TidbMonitor using the following command:
 
 {{< copyable "shell-regular" >}}
 
@@ -72,7 +72,7 @@ You can also quickly deploy TidbMonitor by the following command:
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n <namespace>
 ```
 
-After deployment, you can check whether TidbMonitor is started by executing the `kubectl get pod` command:
+After the deployment is finished, you can check whether TidbMonitor is started by executing the `kubectl get pod` command:
 
 {{< copyable "shell-regular" >}}
 
@@ -91,7 +91,7 @@ To view the monitoring dashboard, execute the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-> kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
+kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
 Visit `localhost:3000` to access the dashboard.
@@ -153,7 +153,7 @@ basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         R
 
 ### Set kube-prometheus and AlergManager
 
-In some situations, TidbMonitor needs to obtain the monitoring metrics on Kubernetes. To obtain the kube-prometheus metrics, configure `TidbMonitor.Spec.kubePrometheusURL`. For details, refer to [kube-prometheus](https://github.com/coreos/kube-prometheus).
+In some cases, TidbMonitor needs to obtain the monitoring metrics on Kubernetes. To obtain the kube-prometheus metrics, configure `TidbMonitor.Spec.kubePrometheusURL`. For details, refer to [kube-prometheus](https://github.com/coreos/kube-prometheus).
 
 Similarly, you can configure TidbMonitor to push the monitoring alert to AlertManager. For details, refer to [AlertManager](https://prometheus.io/docs/alerting/alertmanager/).
 

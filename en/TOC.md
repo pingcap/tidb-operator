@@ -26,7 +26,7 @@
   - [Configure TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
 - Monitor
   - [Monitor a TiDB Cluster](monitor-a-tidb-cluster.md)
-  - [Monitor TiDB using TidbMonitor](monitor-using-tidbmonitor.md)
+  - [Monitor TiDB Using TidbMonitor](monitor-using-tidbmonitor.md)
 + Maintain
   - [Destroy a TiDB cluster](destroy-a-tidb-cluster.md)
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
