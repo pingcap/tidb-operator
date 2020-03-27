@@ -24,146 +24,146 @@ category: how-to
 
 1. 创建 Restore customer resource (CR)，将制定备份数据恢复至 TiDB 集群
 
-+ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据由 Ceph 恢复至 TiDB 集群：
+    + 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据由 Ceph 恢复至 TiDB 集群：
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl apply -f restore.yaml
+        ```
+
+        `restore.yaml` 文件内容如下：
+
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: Restore
+        metadata:
+          name: demo2-restore
+          namespace: test2
+        spec:
+          backupType: full
+          to:
+            host: <tidb-host-ip>
+            port: <tidb-port>
+            user: <tidb-user>
+            secretName: restore-demo2-tidb-secret
+          s3:
+            provider: ceph
+            endpoint: http://10.233.2.161
+            secretName: s3-secret
+            path: s3://<path-to-backup>
+          storageClassName: local-storage
+          storageSize: 1Gi
+        ```
+
+    + 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据由 Amazon S3 恢复至 TiDB 集群：
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl apply -f restore.yaml
+        ```
+
+        `restore.yaml` 文件内容如下：
+
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: Restore
+        metadata:
+          name: demo2-restore
+          namespace: test2
+        spec:
+          backupType: full
+          to:
+            host: <tidb-host-ip>
+            port: <tidb-port>
+            user: <tidb-user>
+            secretName: restore-demo2-tidb-secret
+          s3:
+            provider: aws
+            region: us-west-1
+            secretName: s3-secret
+            path: s3://<path-to-backup>
+          storageClassName: local-storage
+          storageSize: 1Gi
+        ```
+
+    + 创建 Restore custom resource (CR)，通过 IAM 绑定 Pod 授权的方式将指定的备份数据恢复至 TiDB 集群：
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl apply -f restore.yaml
+        ```
+
+        `restore.yaml` 文件内容如下：
+
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: Restore
+        metadata:
+          name: demo2-restore
+          namespace: test2
+          annotations:
+            iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+          spec:
+            backupType: full
+            to:
+              host: <tidb-host-ip>
+              port: <tidb-port>
+              user: <tidb-user>
+              secretName: restore-demo2-tidb-secret
+            s3:
+              provider: aws
+              region: us-west-1
+              path: s3://<path-to-backup>
+            storageClassName: local-storage
+            storageSize: 1Gi
+        ```
+
+    + 创建 Restore custom resource (CR)，通过 IAM 绑定 ServiceAccount 授权的方式将指定的备份数据恢复至 TiDB 集群：
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl apply -f restore.yaml
+        ```
+
+        `restore.yaml` 文件内容如下：
+
+        ```yaml
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: Restore
+        metadata:
+          name: demo2-restore
+          namespace: test2
+          spec:
+            backupType: full
+            serviceAccount: tidb-backup-manager
+            to:
+              host: <tidb-host-ip>
+              port: <tidb-port>
+              user: <tidb-user>
+              secretName: restore-demo2-tidb-secret
+            s3:
+              provider: aws
+              region: us-west-1
+              path: s3://<path-to-backup>
+            storageClassName: local-storage
+            storageSize: 1Gi
+        ```
+
+2. 创建好 `Restore` CR 后，可通过以下命令查看恢复的状态：
+
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f restore.yaml
+    kubectl get rt -n test2 -owide
     ```
-
-    `restore.yaml` 文件内容如下：
-
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: Restore
-    metadata:
-      name: demo2-restore
-      namespace: test2
-    spec:
-      backupType: full
-      to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
-        secretName: restore-demo2-tidb-secret
-      s3:
-        provider: ceph
-        endpoint: http://10.233.2.161
-        secretName: s3-secret
-        path: s3://<path-to-backup>
-      storageClassName: local-storage
-      storageSize: 1Gi
-    ```
-
-+ 创建 Restore custom resource (CR)，通过 AccessKey 和 SecretKey 授权的方式将指定的备份数据由 Amazon S3 恢复至 TiDB 集群：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f restore.yaml
-    ```
-
-    `restore.yaml` 文件内容如下：
-
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: Restore
-    metadata:
-      name: demo2-restore
-      namespace: test2
-    spec:
-      backupType: full
-      to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
-        secretName: restore-demo2-tidb-secret
-      s3:
-        provider: aws
-        region: us-west-1
-        secretName: s3-secret
-        path: s3://<path-to-backup>
-      storageClassName: local-storage
-      storageSize: 1Gi
-    ```
-
-+ 创建 Restore custom resource (CR)，通过 IAM 绑定 Pod 授权的方式将指定的备份数据恢复至 TiDB 集群：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f restore.yaml
-    ```
-
-    `restore.yaml` 文件内容如下：
-
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: Restore
-    metadata:
-      name: demo2-restore
-      namespace: test2
-      annotations:
-        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
-      spec:
-        backupType: full
-        to:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
-          secretName: restore-demo2-tidb-secret
-        s3:
-          provider: aws
-          region: us-west-1
-          path: s3://<path-to-backup>
-        storageClassName: local-storage
-        storageSize: 1Gi
-    ```
-
- + 创建 Restore custom resource (CR)，通过 IAM 绑定 ServiceAccount 授权的方式将指定的备份数据恢复至 TiDB 集群：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f restore.yaml
-    ```
-
-    `restore.yaml` 文件内容如下：
-
-    ```yaml
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: Restore
-    metadata:
-      name: demo2-restore
-      namespace: test2
-      spec:
-        backupType: full
-        serviceAccount: tidb-backup-manager
-        to:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
-          secretName: restore-demo2-tidb-secret
-        s3:
-          provider: aws
-          region: us-west-1
-          path: s3://<path-to-backup>
-        storageClassName: local-storage
-        storageSize: 1Gi
-    ```
-
-
-2. 创建好 `Restore` CR 后可通过以下命令查看恢复的状态：
-
-    {{< copyable "shell-regular" >}}
-
-     ```shell
-     kubectl get rt -n test2 -owide
-     ```
 
 以上示例将兼容 S3 的存储（`spec.s3.path` 路径下）中的备份数据恢复到 TiDB 集群 (`spec.to.host`)。有关兼容 S3 的存储的配置项，可以参考 [backup-s3.yaml](backup-to-s3.md#备份数据到兼容-s3-的存储)。
 
