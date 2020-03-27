@@ -23,7 +23,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 
 2. 配置失败策略
 
-    在 Kubernetes 1.15 版本之前，动态准入机制的管理机制的粒度较粗并且并不方便去使用。所以为了防止 TiDB Operator 的动态准入机制影响全局集群，我们需要配置 [失败策略](https://kubernetes.io/zh/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy)。
+    在 Kubernetes 1.15 版本之前，动态准入机制的管理机制的粒度较粗并且并不方便去使用。所以为了防止 TiDB Operator 的动态准入机制影响全局集群，我们需要配置[失败策略](https://kubernetes.io/zh/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy)。
 
     对于 Kubernetes 1.15 以下的版本，我们推荐将 TiDB Operator 失败策略配置为 `Ignore`，从而防止 TiDB Operator 的 admission webhook 出现异常时影响整个集群。
 
