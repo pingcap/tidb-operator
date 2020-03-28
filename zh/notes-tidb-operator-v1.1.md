@@ -48,7 +48,8 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 
 > **注意：**
 >
-> 由于 TiDB Operator 渲染资源的方式和 Helm 渲染资源的方式不同，从 tidb-cluster chart values.yaml 中的配置迁移到 TidbMonitor CR，会引起 Monitor 组件滚动升级。
+> * TidbMonitor CR 中的 `metadata.name` 需要和集群中 TidbCluster CR 的名字保持一致。
+> * 由于 TiDB Operator 渲染资源的方式和 Helm 渲染资源的方式不同，从 tidb-cluster chart values.yaml 中的配置迁移到 TidbMonitor CR，会引起 Monitor 组件滚动升级。
 
 ### Initializer
 
