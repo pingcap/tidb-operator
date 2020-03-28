@@ -8,37 +8,67 @@ category: how-to
 
 This document describes how to restore data into a TiDB cluster in Kubernetes using [TiDB Lightning](https://github.com/pingcap/tidb-lightning).
 
-TiDB Lightning contains two components: tidb-lightning and tikv-importer. In Kubernetes, the tikv-importer is inside the Helm chart of the TiDB cluster. And tikv-importer is deployed as a `StatefulSet` with `replicas=1` while tidb-lightning is in a separate Helm chart and deployed as a `Job`.
+TiDB Lightning contains two components: tidb-lightning and tikv-importer. In Kubernetes, the tikv-importer is inside the separate Helm chart of the TiDB cluster. And tikv-importer is deployed as a `StatefulSet` with `replicas=1` while tidb-lightning is in a separate Helm chart and deployed as a `Job`.
 
 Therefore, both the tikv-importer and tidb-lightning need to be deployed to restore data with TiDB Lightning.
 
 ## Deploy tikv-importer
 
-The tikv-importer can be enabled for an existing TiDB cluster or for a newly created one.
+You can deploy tikv-importer using the Helm chart. See the following example:
 
-* Create a new TiDB cluster with tikv-importer enabled
+1. Make sure that the PingCAP Helm repository is up to date:
 
-    1. Set `importer.create` to `true` in tidb-cluster `values.yaml`
+    {{< copyable "shell-regular" >}}
 
-    2. Deploy the cluster
+    ```shell
+    helm repo update
+    ```
 
-        {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-        ```shell
-        helm install pingcap/tidb-cluster --name=<tidb-cluster-release-name> --namespace=<namespace> -f values.yaml --version=<chart-version>
-        ```
+    ```shell
+    helm search tikv-importer -l
+    ```
 
-* Configure an existing TiDB cluster to enable tikv-importer
+2. Get the default `values.yaml` file for easier customization:
 
-    1. Set `importer.create` to `true` in the `values.yaml` file of the TiDB cluster
+    {{< copyable "shell-regular" >}}
 
-    2. Upgrade the existing TiDB cluster
+    ```shell
+    helm inspect values pingcap/tikv-importer --version=<chart-version> > values.yaml
+    ```
 
-        {{< copyable "shell-regular" >}}
+3. Modify the `values.yaml` file to specify the target TiDB cluster. See the following example:
 
-        ```shell
-        helm upgrade <tidb-cluster-release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
-        ```
+    ```yaml
+    clusterName: demo
+    image: pingcap/tidb-lightning:v3.0.8
+    imagePullPolicy: IfNotPresent
+    storageClassName: local-storage
+    storage: 20Gi
+    pushgatewayImage: prom/pushgateway:v0.3.1
+    pushgatewayImagePullPolicy: IfNotPresent
+    config: |
+      log-level = "info"
+      [metric]
+      job = "tikv-importer"
+      interval = "15s"
+      address = "localhost:9091"
+    ```
+
+    `clusterName` must match the target TiDB cluster.
+
+4. Deploy tikv-importer:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install pingcap/tikv-importer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    ```
+
+    > **Note:**
+    >
+    > You must deploy tikv-importer in the same namespace where the target TiDB cluster is deployed.
 
 ## Deploy tidb-lightning
 
