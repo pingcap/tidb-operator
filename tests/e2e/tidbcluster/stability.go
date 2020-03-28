@@ -97,7 +97,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
-				Namespace:   "pingcap",
+				Namespace:   ns,
 				ReleaseName: "operator",
 				Image:       cfg.OperatorImage,
 				Tag:         cfg.OperatorTag,
