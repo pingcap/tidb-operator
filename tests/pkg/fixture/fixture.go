@@ -288,7 +288,7 @@ func GetBackupCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1
 	sendCredToTikv := true
 	return &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-bacup", tc.GetName()),
+			Name:      fmt.Sprintf("%s-backup", tc.GetName()),
 			Namespace: tc.GetNamespace(),
 		},
 		Spec: v1alpha1.BackupSpec{

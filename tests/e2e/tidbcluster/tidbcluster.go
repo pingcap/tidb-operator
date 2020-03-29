@@ -296,7 +296,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		backupFolder := time.Now().Format(time.RFC3339)
 
 		// create backup cluster
-		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV3Version)
+		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, "v4.0.0-beta.1")
 		tcFrom.Spec.PD.Replicas = 1
 		tcFrom.Spec.TiKV.Replicas = 1
 		tcFrom.Spec.TiDB.Replicas = 1
@@ -307,7 +307,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", "")
 
 		// create restore cluster
-		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV3Version)
+		tcTo := fixture.GetTidbCluster(ns, tcNameTo, "v4.0.0-beta.1")
 		tcTo.Spec.PD.Replicas = 1
 		tcTo.Spec.TiKV.Replicas = 1
 		tcTo.Spec.TiDB.Replicas = 1
@@ -318,10 +318,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", "")
 
 		// import some data to sql with blockwriter
-		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", tcFrom.ClusterName))
+		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.BeginInsertDataToOrDie(&clusterFrom)
 		time.Sleep(30 * time.Second)
-		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", tcFrom.ClusterName))
+		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterTo.ClusterName))
 		oa.StopInsertDataTo(&clusterFrom)
 
 		// prepare for create backup/restore CRD
@@ -337,6 +337,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		backupSecret := fixture.GetBackupSecret(tcFrom, "")
 		_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
 		framework.ExpectNoError(err)
+		restoreSecret := fixture.GetBackupSecret(tcTo, "")
+		_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
+		framework.ExpectNoError(err)
 		cred := credentials.NewSharedCredentials("", "default")
 		val, err := cred.Get()
 		framework.ExpectNoError(err)
@@ -344,6 +347,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		_, err = c.CoreV1().Secrets(ns).Create(backupS3Secret)
 		framework.ExpectNoError(err)
 
+		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
 		backup := fixture.GetBackupCRDWithBR(tcFrom, backupFolder)
 		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
@@ -368,6 +372,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err)
 
+		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
 		restore := fixture.GetRestoreCRDWithBR(tcTo, backupFolder)
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
@@ -392,6 +397,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err)
 
+		ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
 		isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
 		framework.ExpectNoError(err)
 		if !isSame {
