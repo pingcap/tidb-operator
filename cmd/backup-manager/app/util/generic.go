@@ -33,6 +33,8 @@ type GenericOptions struct {
 	Namespace string
 	// ResourceName can be the name of a backup or restore resource
 	ResourceName string
+	TLSClient    bool
+	TLSCluster   bool
 	Host         string
 	Port         int32
 	Password     string

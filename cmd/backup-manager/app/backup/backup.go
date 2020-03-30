@@ -45,7 +45,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		return "", err
 	}
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
-	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
+	if bo.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))

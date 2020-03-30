@@ -82,17 +82,12 @@ func (rm *Manager) ProcessRestore() error {
 		return fmt.Errorf("no br config in %s", rm)
 	}
 
-	enableTLSClient := false
-	if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.Enabled {
-		enableTLSClient = true
-	}
-
 	rm.setOptions(restore)
 
 	var db *sql.DB
 	var dsn string
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		dsn, err = rm.GetDSN(enableTLSClient)
+		dsn, err = rm.GetDSN(rm.TLSClient)
 		if err != nil {
 			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", rm, err)
 			return false, err
