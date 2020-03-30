@@ -19,6 +19,7 @@ import (
 	"io"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/gogo/protobuf/proto"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
@@ -63,11 +64,34 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	output, err := exec.Command("br", fullArgs...).CombinedOutput()
+	cmd := exec.Command("br", fullArgs...)
+	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
+		return remotePath, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
 	}
-	klog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
+	err = cmd.Start()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, err)
+	}
+	var tmpOutput, errMsg string
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdOut.Read(tmp)
+		tmpOutput = string(tmp)
+		if strings.Contains(tmpOutput, "[ERROR]") {
+			errMsg += tmpOutput
+		}
+		klog.Infof(tmpOutput)
+		if err != nil {
+			break
+		}
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	klog.Infof("Backup data for cluster %s successfully", bo)
 	return remotePath, nil
 }
 
