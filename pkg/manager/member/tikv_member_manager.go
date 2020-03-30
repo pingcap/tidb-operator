@@ -443,7 +443,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
-	tikvContainer.Env = env
+	tikvContainer.Env = util.MergeEnv(baseTiKVSpec.Env(), env)
 	podSpec.Volumes = vols
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
