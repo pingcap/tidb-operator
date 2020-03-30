@@ -19,14 +19,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
@@ -139,7 +139,7 @@ type PDClient interface {
 	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
-	GetConfig() (*v1alpha1.PDConfig, error)
+	GetConfig() (*PDConfigFromAPI, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
@@ -281,13 +281,13 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	}, nil
 }
 
-func (pc *pdClient) GetConfig() (*v1alpha1.PDConfig, error) {
+func (pc *pdClient) GetConfig() (*PDConfigFromAPI, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	config := &v1alpha1.PDConfig{}
+	config := &PDConfigFromAPI{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
 		return nil, err
@@ -725,13 +725,13 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*v1alpha1.PDConfig, error) {
+func (pc *FakePDClient) GetConfig() (*PDConfigFromAPI, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*v1alpha1.PDConfig), nil
+	return result.(*PDConfigFromAPI), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
