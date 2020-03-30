@@ -60,5 +60,7 @@
 + 工具
   - [tkctl](use-tkctl.md)
   - [TiDB Toolkit](tidb-toolkit.md)
++ 组件
+    - [TiDB Scheduler 扩展调度器](tidb-scheduler.md)
 - [故障诊断](troubleshoot.md)
 - [常见问题](faq.md)
