@@ -17,7 +17,7 @@ This document describes how to deploy a TiDB cluster on Alibaba Cloud Kubernetes
     > The access key must be granted permissions to control the corresponding resources.
 
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
-- [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.9.1 and <= 2.11.0
+- [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 and <= 3.0.0
 - [jq](https://stedolan.github.io/jq/download/) >= 1.6
 - [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) 0.12.*
 
@@ -45,7 +45,7 @@ In the default configuration, you will create:
 - An ECS instance as the bastion machine
 - A managed ACK (Alibaba Cloud Kubernetes) cluster with the following ECS instance worker nodes:
 
-    - An auto-scaling group of 2 * instances (2 cores, 2 GB RAM) as ACK mandatory workers for the system service like CoreDNS
+    - An auto-scaling group of 2 * instances (2 cores, 2 GB RAM). The default auto-scaling group of managed Kubernetes must have at least two instances to host the whole system service, like CoreDNS
     - An auto-scaling group of 3 * `ecs.g5.large` instances for deploying the PD cluster
     - An auto-scaling group of 3 * `ecs.i2.2xlarge` instances for deploying the TiKV cluster
     - An auto-scaling group of 2 * `ecs.c5.4xlarge` instances for deploying the TiDB cluster
@@ -55,6 +55,8 @@ In the default configuration, you will create:
 All the instances except ACK mandatory workers are deployed across availability zones (AZs) to provide cross-AZ high availability. The auto-scaling group ensures the desired number of healthy instances, so the cluster can auto-recover from node failure or even AZ failure.
 
 ## Deploy
+
+### Deploy ACK, TiDB Operator and the node pool for TiDB cluster
 
 1. Configure the target Region and Alibaba Cloud key (you can also set these variables in the `terraform` command prompt):
 
@@ -77,13 +79,25 @@ All the instances except ACK mandatory workers are deployed across availability 
     cd tidb-operator/deploy/aliyun
     ```
 
-    Note that you must answer "yes" to `terraform apply` to continue:
+    You can create or modify `terraform.tfvars` to set the values of the variables, and configure the cluster to fit your needs. You can view the configurable variables and their descriptions in `variables.tf`. The following is an example of how to configure the ACK cluster name, the TiDB cluster name and the number of PD, TiKV, and TiDB nodes.
+
+    ```
+    cluster_name = "testack"
+    tidb_cluster_name = "testdb"
+    tikv_count = 3
+    tidb_count = 2
+    pd_count = 3
+    ```
+
+    After the configuration, execute the following commands to initialize and deploy the cluster:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
     terraform init
     ```
+
+    Input "yes" to confirm execution when you run the following `apply` command:
 
     {{< copyable "shell-regular" >}}
 
@@ -104,10 +118,10 @@ All the instances except ACK mandatory workers are deployed across availability 
     cluster_id = c2d9b20854a194f158ef2bc8ea946f20e
 
     kubeconfig_file = /tidb-operator/deploy/aliyun/credentials/kubeconfig
-    monitor_endpoint = 121.199.195.236:3000
+    monitor_endpoint = not_created
     region = cn-hangzhou
     ssh_key_file = /tidb-operator/deploy/aliyun/credentials/my-cluster-keyZ.pem
-    tidb_endpoint = 172.21.5.171:4000
+    tidb_endpoint = not_created
     tidb_version = v3.0.0
     vpc_id = vpc-bp1v8i5rwsc7yh8dwyep5
     ```
@@ -116,7 +130,7 @@ All the instances except ACK mandatory workers are deployed across availability 
     >
     > You can use the `terraform output` command to get the output again.
 
-3. You can then interact with the ACK cluster using `kubectl` or `helm`
+3. You can then interact with the ACK cluster using `kubectl` or `helm`:
 
     {{< copyable "shell-regular" >}}
 
@@ -136,6 +150,44 @@ All the instances except ACK mandatory workers are deployed across availability 
     helm ls
     ```
 
+### Deploy the TiDB cluster and monitor
+
+1. Prepare the `TidbCluster` and `TidbMonitor` CR files:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
+    ```
+
+    To complete the CR file configuration, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
+
+    > **Note:**
+    >
+    > * Replace all the `TIDB_CLUSTER_NAME` in the `db.yaml` and `db-monitor.yaml` files with `tidb_cluster_name` configured in the deployment of ACK.
+    > * Make sure the number of PD, TiKV, and TiDB nodes is the same as the `replicas` value of the corresponding component in `db.yaml`.
+    > * Make sure `spec.initializer.version` in `db-monitor.yaml` is the same as `spec.version` in `db.yaml`. Otherwise, the monitor might not display correctly.
+
+2. Create `Namespace`:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace <namespace>
+    ```
+
+    > **Note:**
+    >
+    > You can give the [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) a name that is easy to memorize, such as the same name as `tidb_cluster_name`.
+
+3. Deploy the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n <namespace>
+    ```
+
 ## Access the database
 
 You can connect the TiDB cluster via the bastion instance. All necessary information is in the output printed after installation is finished (replace the `<>` parts with values from the output):
@@ -149,12 +201,14 @@ ssh -i credentials/<cluster_name>-key.pem root@<bastion_ip>
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h <tidb_slb_ip> -P 4000 -u root
+mysql -h <tidb_lb_ip> -P 4000 -u root
 ```
+
+`tidb_lb_ip` is the LoadBalancer IP of the TiDB service.
 
 ## Monitor
 
-Visit `<monitor_endpoint>` to view the Grafana dashboards. You can find this information in the output of installation.
+Visit `<monitor-lb>:3000` to view the Grafana dashboards. `monitor-lb` is the LoadBalancer IP of the Monitor service.
 
 The initial login user account and password:
 
@@ -163,29 +217,31 @@ The initial login user account and password:
 
 > **Warning:**
 >
-> It is strongly recommended to set `deploy/modules/aliyun/tidb-cluster/values/default.yaml` - `monitor.grafana.service.annotations` - `service.beta.kubernetes.io/alicloud-loadbalancer-address-type` to `intranet` for security if you already have a VPN connecting to your VPC or plan to set up one.
+> If you already have a VPN connecting to your VPC or plan to set up one, it is strongly recommended that you go to the `spec.grafana.service.annotations` section in the `db-monitor.yaml` file and set `service.beta.kubernetes.io/alicloud-loadbalancer-address-type` to `intranet` for security.
 
 ## Upgrade
 
-To upgrade the TiDB cluster, set the `tidb_version` variable to a higher version in `variables.tf` and run `terraform apply`.
+To upgrade the TiDB cluster, modify the `spec.version` variable by executing `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>`.
 
 This may take a while to complete. You can watch the process using the following command:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pods --namespace <tidb_cluster_name> -o wide --watch
+kubectl get pods --namespace <namespace> -o wide --watch
 ```
 
 ## Scale
 
-To scale the TiDB cluster, modify `tikv_count` or `tidb_count` to your desired numbers, and then run `terraform apply`.
+To scale the TiDB cluster, modify `tikv_count` or `tidb_count` in the `terraform.tfvars` file, and then run `terraform apply` to scale out the number of nodes for the corresponding components.
+
+After the nodes scale out, modify the `replicas` of the corresponding components by running `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>`.
 
 ## Configure
 
 ### Configure TiDB Operator
 
-You can adjust the `variables.tf` settings to configure TiDB Operator. Note that the `operator_helm_values` configuration item can provide a customized `values.yaml` configuration file for TiDB Operator. For example,
+You can set the variables in `terraform.tfvars` to configure TiDB Operator. Most configuration items can be modified after you understand the semantics based on the comments of the `variable`. Note that the `operator_helm_values` configuration item can provide a customized `values.yaml` configuration file for TiDB Operator. For example:
 
 - Set `operator_helm_values` in `terraform.tfvars`:
 
@@ -203,7 +259,7 @@ In the default configuration, the Terraform script creates a new VPC. To use the
 
 ### Configure the TiDB cluster
 
-`./my-cluster.yaml` is the `values.yaml` configuration file in the TiDB cluster. You can configure the TiDB cluster by modifying this file. For supported configuration items, see [Configure the TiDB cluster in Kubernetes](configure-a-tidb-cluster.md).
+See [TiDB Operator API Documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
 
 ## Manage multiple TiDB clusters
 
@@ -222,7 +278,6 @@ module "tidb-cluster-dev" {
   pd_count                   = 1
   tikv_count                 = 1
   tidb_count                 = 1
-  override_values            = file("dev-cluster.yaml")
 }
 
 module "tidb-cluster-staging" {
@@ -237,7 +292,6 @@ module "tidb-cluster-staging" {
   pd_count                   = 3
   tikv_count                 = 3
   tidb_count                 = 2
-  override_values            = file("staging-cluster.yaml")
 }
 ```
 
@@ -262,6 +316,7 @@ All the configurable parameters in `tidb-cluster` are as follows:
 | `monitor_instance_type` | The instance type of monitoring components | `ecs.c5.xlarge` |
 | `override_values` | The `values.yaml` configuration file of the TiDB cluster. You can read it using the `file()` function | `nil` |
 | `local_exec_interpreter` | The interpreter that executes the command line instruction | `["/bin/sh", "-c"]` |
+| `create_tidb_cluster_release` | Whether to create the TiDB cluster using Helm | `false` |
 
 ## Manage multiple Kubernetes clusters
 
@@ -336,15 +391,17 @@ You can customize this script. For example, you can remove the `module "bastion"
 
 ## Destroy
 
-It may take a long time to finish destroying the cluster.
+1. Refer to [Destroy a TiDB cluster](destroy-a-tidb-cluster.md) to delete the cluster.
 
-{{< copyable "shell-regular" >}}
+2. Destroy the ACK cluster by running the following command:
 
-```shell
-terraform destroy
-```
+    {{< copyable "shell-regular" >}}
 
-If you fail to create a Kubernetes cluster, an error is reported and you cannot clean the cluster normally when you try to destroy the cluster. In this case, you need to manually remove the Kubernetes resources from the local state and proceed to destroy the rest resources:
+    ```shell
+    terraform destroy
+    ```
+
+If the Kubernetes cluster is not successfully created, the `destroy` operation might return an error and fail. In such cases, manually remove the Kubernetes resources from the local state:
 
 {{< copyable "shell-regular" >}}
 
@@ -358,9 +415,11 @@ terraform state list
 terraform state rm module.ack.alicloud_cs_managed_kubernetes.k8s
 ```
 
+It may take a long time to finish destroying the cluster.
+
 > **Note:**
 >
-> You have to manually delete the cloud disk used by monitoring node in the Alibaba Cloud console after destroying if you do not need it anymore.
+> You have to manually delete the cloud disk used by the components in the Alibaba Cloud console.
 
 ## Limitation
 
