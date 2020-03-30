@@ -765,7 +765,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 
 			value, existed = pv.Labels[label.NameLabelKey]
-			if !existed || value != "tidb-clustr" {
+			if !existed || value != "tidb-cluster" {
 				return false, nil
 			}
 			value, existed = pv.Labels[label.ManagedByLabelKey]
