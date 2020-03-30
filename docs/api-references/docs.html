@@ -739,6 +739,19 @@ HelperSpec
 </tr>
 <tr>
 <td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the tidb cluster is paused and will not be processed by
+the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -2606,6 +2619,34 @@ ConfigUpdateStrategy
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like
+v1.Container.Env.
+Note that following env names cannot be used and may be overrided by
+tidb-operator built envs.
+- NAMESPACE
+- TZ
+- SERVICE_NAME
+- PEER_SERVICE_NAME
+- HEADLESS_SERVICE_NAME
+- SET_NAME
+- HOSTNAME
+- CLUSTER_NAME
+- POD_NAME
+- BINLOG_ENABLED
+- SLOW_LOG_FILE</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.ConfigUpdateStrategy">ConfigUpdateStrategy
@@ -2920,6 +2961,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Log filename, leave empty to disable file log.</p>
 </td>
 </tr>
@@ -2931,6 +2973,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Is log rotate enabled.</p>
 </td>
 </tr>
@@ -2942,6 +2985,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Max size for a single file, in MB.</p>
 </td>
 </tr>
@@ -2953,6 +2997,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Max log keep days, default is never deleting.</p>
 </td>
 </tr>
@@ -2964,6 +3009,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Maximum number of old log files to retain.</p>
 </td>
 </tr>
@@ -12133,6 +12179,19 @@ HelperSpec
 <td>
 <em>(Optional)</em>
 <p>Helper spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the tidb cluster is paused and will not be processed by
+the controller.</p>
 </td>
 </tr>
 <tr>

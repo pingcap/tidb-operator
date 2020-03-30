@@ -172,7 +172,7 @@ type Log struct {
 	QueryLogMaxLen *uint64 `toml:"query-log-max-len,omitempty" json:"query-log-max-len,omitempty"`
 	// Optional: Defaults to 1
 	// +optional
-	RecordPlanInSlowLog uint32 `toml:"record-plan-in-slow-log,omitempty" json:"record-plan-in-slow-log,omitempty"`
+	RecordPlanInSlowLog *uint32 `toml:"record-plan-in-slow-log,omitempty" json:"record-plan-in-slow-log,omitempty"`
 }
 
 // Security is the security section of the config.
