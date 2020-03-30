@@ -219,8 +219,8 @@ func TestTiKVMemberManagerSyncUpdate(t *testing.T) {
 
 		tkmm, fakeSetControl, fakeSvcControl, pdClient, _, _ := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &v1alpha1.PDConfig{
-				Replication: &v1alpha1.PDReplicationConfig{
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{
 					LocationLabels: []string{"region", "zone", "rack", "host"},
 				},
 			}, nil
@@ -481,8 +481,8 @@ func TestTiKVMemberManagerSetStoreLabelsForTiKV(t *testing.T) {
 		tc := newTidbClusterForPD()
 		pmm, _, _, pdClient, podIndexer, nodeIndexer := newFakeTiKVMemberManager(tc)
 		pdClient.AddReaction(pdapi.GetConfigActionType, func(action *pdapi.Action) (interface{}, error) {
-			return &v1alpha1.PDConfig{
-				Replication: &v1alpha1.PDReplicationConfig{
+			return &pdapi.PDConfigFromAPI{
+				Replication: &pdapi.PDReplicationConfig{
 					LocationLabels: []string{"region", "zone", "rack", "host"},
 				},
 			}, nil
