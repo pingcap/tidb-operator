@@ -700,6 +700,10 @@ spec:
               description: Base node selectors of TiDB cluster Pods, components may
                 add or override selectors upon this respectively
               type: object
+            paused:
+              description: Indicates that the tidb cluster is paused and will not
+                be processed by the controller.
+              type: boolean
             pd:
               description: PDSpec contains details of PD members
               properties:
