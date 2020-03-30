@@ -43,7 +43,7 @@ tlsCluster:
   #   3. Then create the Drainer cluster with `tlsCluster.enabled` set to `true`.
   enabled: false
 
-  # CertAllowedCN is the Common Name that allowed
+  # certAllowedCN is the Common Name that allowed
   certAllowedCN: []
   #  - TiDB
 

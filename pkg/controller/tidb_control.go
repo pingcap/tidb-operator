@@ -89,7 +89,7 @@ func (tdc *defaultTiDBControl) useTLSHTTPClient(tc *v1alpha1.TidbCluster) error 
 	rootCAs := x509.NewCertPool()
 	rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
 	config := &tls.Config{
-		RootCAs: rootCAs,
+		RootCAs:      rootCAs,
 		Certificates: []tls.Certificate{tlsCert},
 	}
 	tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
