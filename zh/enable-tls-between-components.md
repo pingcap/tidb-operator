@@ -966,9 +966,9 @@ category: how-to
         helm install charts/tidb-drainer --name=<release-name> --namespace=<namespace>
         ```
 
-3. 创建 Backup/Restore 资源对象并开启 TLS。
+3. 创建 Backup/Restore 资源对象。
 
-    - 创建 `backup.yaml` 文件，并将 TLS 功能打开：
+    - 创建 `backup.yaml` 文件：
 
         ``` yaml
         apiVersion: pingcap.com/v1alpha1
@@ -982,8 +982,6 @@ category: how-to
             cluster: <cluster-name>
             clusterNamespace: <namespace>
             sendCredToTikv: true
-            tlsCluster:
-              enabled: true
           from:
             host: <host>
             secretName: <tidb-secret>
@@ -1005,7 +1003,7 @@ category: how-to
         kubectl apply -f backup.yaml
         ```
 
-    - 创建 `restore.yaml` 文件，并将 TLS 功能打开：
+    - 创建 `restore.yaml` 文件：
 
         ``` yaml
         apiVersion: pingcap.com/v1alpha1
@@ -1019,8 +1017,6 @@ category: how-to
             cluster: <cluster-name>
             clusterNamespace: <namespace>
             sendCredToTikv: true
-            tlsCluster:
-              enabled: true
           to:
             host: <host>
             secretName: <tidb-secret>

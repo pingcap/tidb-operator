@@ -176,7 +176,6 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
       br:
         cluster: demo1
         clusterNamespace: test1
-        # enableTLSClient: false
         # logLevel: info
         # statusAddr: <status-addr>
         # concurrency: 4
@@ -222,7 +221,6 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
         cluster: demo1
         sendCredToTikv: false
         clusterNamespace: test1
-        # enableTLSClient: false
         # logLevel: info
         # statusAddr: <status-addr>
         # concurrency: 4
@@ -265,7 +263,6 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
         cluster: demo1
         sendCredToTikv: false
         clusterNamespace: test1
-        # enableTLSClient: false
         # logLevel: info
         # statusAddr: <status-addr>
         # concurrency: 4
@@ -323,6 +320,15 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
 * `.spec.from.tidbSecretName`：待备份 TiDB 集群 `.spec.from.user` 用户的密码所对应的 secret。
+* `.spec.from.tlsClient.tlsSecret`：指定备份使用的存储证书的 Secret。
+
+    如果 TiDB 集群开启了 [TLS](enable-tls-between-components.md)，但是不想使用[文档](enable-tls-between-components.md)中创建的 `<cluster-name>-cluster-client-secret` 进行备份，可以通过这个参数为备份指定一个 Secret，可以通过如下命令生成：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create secret generic <secretName> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    ```     
 
 更多支持的兼容 S3 的 `provider` 如下：
 
@@ -372,7 +378,6 @@ Amazon S3 支持以下几种 `storageClass` 类型：
         br:
           cluster: demo1
           clusterNamespace: test1
-          # enableTLSClient: false
           # logLevel: info
           # statusAddr: <status-addr>
           # concurrency: 4
@@ -423,7 +428,6 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           cluster: demo1
           sendCredToTikv: false
           clusterNamespace: test1
-          # enableTLSClient: false
           # logLevel: info
           # statusAddr: <status-addr>
           # concurrency: 4
@@ -471,7 +475,6 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           cluster: demo1
           sendCredToTikv: false
           clusterNamespace: test1
-          # enableTLSClient: false
           # logLevel: info
           # statusAddr: <status-addr>
           # concurrency: 4
