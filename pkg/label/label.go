@@ -191,10 +191,10 @@ func NewBackupSchedule() Label {
 	}
 }
 
-// NewMonitor initialize a new label for monitor of tidb-monitor
 func NewMonitor() Label {
 	return Label{
-		NameLabelKey:      TiDBMonitorVal,
+		// NameLabelKey is used to be compatible with helm monitor
+		NameLabelKey:      "tidb-cluster",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
