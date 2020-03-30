@@ -65,7 +65,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $ tikv-ctl --host 127.0.0.1:20160 <subcommands>
+    tikv-ctl --host 127.0.0.1:20160 <subcommands>
     ```
 
     {{< copyable "shell-regular" >}}
@@ -138,22 +138,9 @@ tidb-ctl schema in mysql
 
 ## Use Helm
 
-[Helm](https://helm.sh/) is a package management tool for Kubernetes. Make sure your Helm version >= 2.9.0 and < 3.0.0. The installation steps are as follows:
+[Helm](https://helm.sh/) is a package management tool for Kubernetes. Make sure your Helm version >= 2.11.0 and < 2.16.4. The installation steps are as follows:
 
-1. Install Helm client
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
-    ```
-
-    Or if on macOS, you can use Homebrew to install Helm via the following command:
-
-    ```bash
-    brew install helm@2
-    brew link --force helm@2
-    ```
+1. Refer to [Helm official documentation](https://v2.helm.sh/docs/using_helm/#installing-helm) to install Helm client.
 
 2. Install Helm server.
 
@@ -164,6 +151,14 @@ tidb-ctl schema in mysql
     ```shell
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/tiller-rbac.yaml && \
     helm init --service-account=tiller --upgrade
+    ```
+
+    If you cannot access `gcr.io`, try using the mirror repository:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    helm init --service-account=tiller --upgrade --tiller-image registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:$(helm version --client --short | grep -Eo 'v[0-9]\.[0-9]+\.[0-9]+')
     ```
 
     Confirm that the tiller pod is in the `running` state by the following command:
@@ -182,11 +177,14 @@ tidb-ctl schema in mysql
     helm init --upgrade
     ```
 
-Kubernetes applications are packed as chart in Helm. PingCAP provides three helm charts for TiDB in Kubernetes:
+Kubernetes applications are packed as chart in Helm. PingCAP provides the following Helm charts for TiDB in Kubernetes:
 
 * `tidb-operator`: used to deploy TiDB Operator;
 * `tidb-cluster`: used to deploy TiDB clusters;
 * `tidb-backup`: used to backup or restore TiDB clusters;
+* `tidb-lightning`: used to import data into a TiDB cluster;
+* `tidb-drainer`: used to deploy TiDB Drainer;
+* `tikv-importer`: used to deploy TiKV Importer.
 
 These charts are hosted in the Helm chart repository `https://charts.pingcap.org/` maintained by PingCAP. You can add this repository to your local using the following command:
 
@@ -215,7 +213,7 @@ When a new version of chart has been released, you can use `helm repo update` to
 
 {{< copyable "shell-regular" >}}
 
-```
+```shell
 helm repo update
 ```
 
