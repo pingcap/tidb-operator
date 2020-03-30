@@ -8,7 +8,8 @@
 
 <!--Tick the checkbox(es) below to choose the TiDB Operator version(s) that your changes apply to.-->
 
-- [ ] master (the latest development version, including v1.1 changes for now)
+- [ ] master (the latest development version)
+- [ ] v1.1 (TiDB Operator 1.1 versions)
 - [ ] v1.0 (TiDB Operator 1.0 versions)
 
 <!--**If you select two or more versions from above**, to trigger the bot to cherry-pick this PR to your desired release version branch(es), you **must** add corresponding labels such as **needs-cherry-pick-1.1** and **needs-cherry-pick-1.0**.-->
