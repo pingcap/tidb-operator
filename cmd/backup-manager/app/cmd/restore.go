@@ -44,6 +44,8 @@ func NewRestoreCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
 	cmd.Flags().StringVar(&ro.ResourceName, "restoreName", "", "Restore CRD object name")
+	cmd.Flags().BoolVar(&ro.TLSClient, "tls-client", false, "trigger of client tls")
+	cmd.Flags().BoolVar(&ro.TLSCluster, "tls-cluster", false, "trigger of cluster tls")
 	return cmd
 }
 

@@ -850,10 +850,6 @@ type BackupSpec struct {
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
-	// Whether enable the TLS connection between TiDB server components
-	// Optional: Defaults to nil
-	// +optional
-	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 	// ClusterName of backup/restore cluster
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster

@@ -7282,7 +7282,6 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
-                tlsCluster: {}
               required:
               - cluster
               type: object
@@ -8125,7 +8124,6 @@ spec:
                   description: TimeAgo is the history version of the backup task,
                     e.g. 1m, 1h
                   type: string
-                tlsCluster: {}
               required:
               - cluster
               type: object
@@ -9011,7 +9009,6 @@ spec:
                       description: TimeAgo is the history version of the backup task,
                         e.g. 1m, 1h
                       type: string
-                    tlsCluster: {}
                   required:
                   - cluster
                   type: object
