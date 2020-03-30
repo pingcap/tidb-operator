@@ -135,7 +135,9 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 	pv.Labels[label.NamespaceLabelKey] = ns
 	pv.Labels[label.ComponentLabelKey] = component
 	pv.Labels[label.NameLabelKey] = pvc.Labels[label.NameLabelKey]
-	pv.Labels[label.ManagedByLabelKey] = pvc.Labels[label.ManagedByLabelKey]
+	// TidbMonitor's pod label don't have managedBy label in order to be compatible with 1.0 release monitor
+	// so we add manager-key label with `tidb-operator` values manually.
+	pv.Labels[label.ManagedByLabelKey] = "tidb-operator"
 	pv.Labels[label.InstanceLabelKey] = pvc.Labels[label.InstanceLabelKey]
 
 	setIfNotEmpty(pv.Labels, label.ClusterIDLabelKey, clusterID)
