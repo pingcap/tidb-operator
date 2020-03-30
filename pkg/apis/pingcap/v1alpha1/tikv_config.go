@@ -199,6 +199,10 @@ type TiKVSecurityConfig struct {
 	CertPath string `json:"cert-path,omitempty" toml:"cert-path,omitempty"`
 	// +optional
 	KeyPath string `json:"key-path,omitempty" toml:"key-path,omitempty"`
+	// CertAllowedCN is the Common Name that allowed
+	// +optional
+	// +k8s:openapi-gen=false
+	CertAllowedCN []string `json:"cert-allowed-cn,omitempty" toml:"cert-allowed-cn,omitempty"`
 	// +optional
 	OverrideSslTarget string `json:"override-ssl-target,omitempty" toml:"override-ssl-target,omitempty"`
 	// +optional
