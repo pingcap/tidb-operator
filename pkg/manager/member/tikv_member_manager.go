@@ -41,6 +41,9 @@ import (
 const (
 	// tikvClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	tikvClusterCertPath = "/var/lib/tikv-tls"
+
+	//find a better way to manage store only managed by tikv in Operator
+	tikvStoreLimitPattern = `%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`
 )
 
 // tikvMemberManager implements manager.Manager.
@@ -220,7 +223,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
-	if tkmm.autoFailover {
+	if tkmm.autoFailover && tc.Spec.TiKV.MaxFailoverCount != nil {
 		if tc.TiKVAllPodsStarted() && !tc.TiKVAllStoresReady() {
 			if err := tkmm.tikvFailover.Failover(tc); err != nil {
 				return err
@@ -440,7 +443,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
-	tikvContainer.Env = env
+	tikvContainer.Env = util.MergeEnv(baseTiKVSpec.Env(), env)
 	podSpec.Volumes = vols
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
@@ -574,7 +577,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(`%s-tikv-\d+\.%s-tikv-peer\.%s\.svc\:\d+`, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
 	if err != nil {
 		return err
 	}
@@ -623,6 +626,11 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	tc.Status.TiKV.Synced = true
 	tc.Status.TiKV.Stores = stores
 	tc.Status.TiKV.TombstoneStores = tombstoneStores
+	tc.Status.TiKV.Image = ""
+	c := filterContainer(set, "tikv")
+	if c != nil {
+		tc.Status.TiKV.Image = c.Image
+	}
 	return nil
 }
 
@@ -665,7 +673,16 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		return setCount, nil
 	}
 
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	if err != nil {
+		return -1, err
+	}
 	for _, store := range storesInfo.Stores {
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
 		status := tkmm.getTiKVStore(store)
 		if status == nil {
 			continue

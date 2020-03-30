@@ -329,6 +329,11 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	tc.Status.PD.Synced = true
 	tc.Status.PD.Members = pdStatus
 	tc.Status.PD.Leader = tc.Status.PD.Members[leader.GetName()]
+	tc.Status.PD.Image = ""
+	c := filterContainer(set, "pd")
+	if c != nil {
+		tc.Status.PD.Image = c.Image
+	}
 
 	// k8s check
 	err = pmm.collectUnjoinedMembers(tc, set, pdStatus)
@@ -596,7 +601,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	pdContainer.Env = env
+	pdContainer.Env = util.MergeEnv(basePDSpec.Env(), env)
 	podSpec.Volumes = vols
 	podSpec.Containers = []corev1.Container{pdContainer}
 

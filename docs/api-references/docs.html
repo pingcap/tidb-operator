@@ -2355,6 +2355,17 @@ If not set, the default value is 5.</p>
 <tbody>
 <tr>
 <td>
+<code>enable</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>optional</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>write-timeout</code></br>
 <em>
 string
@@ -2595,6 +2606,34 @@ ConfigUpdateStrategy
 Optional: Defaults to cluster-level setting</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like
+v1.Container.Env.
+Note that following env names cannot be used and may be overrided by
+tidb-operator built envs.
+- NAMESPACE
+- TZ
+- SERVICE_NAME
+- PEER_SERVICE_NAME
+- HEADLESS_SERVICE_NAME
+- SET_NAME
+- HOSTNAME
+- CLUSTER_NAME
+- POD_NAME
+- BINLOG_ENABLED
+- SLOW_LOG_FILE</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.ConfigUpdateStrategy">ConfigUpdateStrategy
@@ -2607,6 +2646,74 @@ Optional: Defaults to cluster-level setting</p>
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
 </p>
+<h3 id="pingcap.com/v1alpha1.CoprocessorCache">CoprocessorCache
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVClient">TiKVClient</a>)
+</p>
+<p>
+<p>CoprocessorCache is the config for coprocessor cache.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether to enable the copr cache. The copr cache saves the result from TiKV Coprocessor in the memory and
+reuses the result when corresponding data in TiKV is unchanged, on a region basis.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capacity-mb</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The capacity in MB of the cache.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>admission-max-result-mb</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Only cache requests whose result set is small.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>admission-min-process-ms</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Only cache requests takes notable time to process.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.CrdKind">CrdKind
 </h3>
 <p>
@@ -2779,6 +2886,39 @@ CrdKind
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.Experimental">Experimental
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+</p>
+<p>
+<p>Experimental controls the features that are still experimental: their semantics, interfaces are subject to change.
+Using these features in the production environment is not recommended.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>allow-auto-random</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable the syntax like <code>auto_random(3)</code> on the primary key column.
+imported from TiDB v3.1.0</p>
 </td>
 </tr>
 </tbody>
@@ -3153,6 +3293,38 @@ map[string]string
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.IsolationRead">IsolationRead
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+</p>
+<p>
+<p>IsolationRead is the config for isolation read.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engines</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Engines filters tidb-server access paths by engine type.
+imported from v3.1.0</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.Log">Log
 </h3>
 <p>
@@ -3210,6 +3382,31 @@ bool
 </tr>
 <tr>
 <td>
+<code>enable-timestamp</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableTimestamp enables automatic timestamps in log output.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-error-stack</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableErrorStack enables annotating logs with the full stack error
+message.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>file</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.FileLogConfig">
@@ -3220,6 +3417,28 @@ FileLogConfig
 <td>
 <em>(Optional)</em>
 <p>File log config.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-slow-log</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>slow-query-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -4353,7 +4572,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
-Immutable, change should be made through pd-ctl after cluster creation</p>
+Immutable, change should be made through pd-ctl after cluster creation.
+Imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-placement-rules,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When PlacementRules feature is enabled. MaxReplicas and LocationLabels are not used anymore.</p>
 </td>
 </tr>
 </tbody>
@@ -4484,8 +4716,9 @@ uint64
 <td>
 <em>(Optional)</em>
 <p>LeaderScheduleLimit is the max coexist leader schedules.
-Immutable, change should be made through pd-ctl after cluster creation
-Optional: Defaults to 4</p>
+Immutable, change should be made through pd-ctl after cluster creation.
+Optional: Defaults to 4.
+Imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -4569,7 +4802,8 @@ float64
 <td>
 <em>(Optional)</em>
 <p>TolerantSizeRatio is the ratio of buffer size for balance scheduler.
-Immutable, change should be made through pd-ctl after cluster creation</p>
+Immutable, change should be made through pd-ctl after cluster creation.
+Imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -4729,6 +4963,33 @@ map[string]string
 <p>Only used to display</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-one-way-merge,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
+Imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-cross-table-merge,string</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
+This option only works when key type is &ldquo;table&rdquo;.
+Imported from v3.1.0</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDSchedulerConfig">PDSchedulerConfig
@@ -4872,6 +5133,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>UseRegionStorage enables the independent region storage.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>metric-storage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetricStorage is the cluster metric storage.
+Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
+Imported from v3.1.0</p>
 </td>
 </tr>
 </tbody>
@@ -5090,6 +5365,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.UnjoinedMe
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDStoreLabel">PDStoreLabel
@@ -5175,30 +5460,6 @@ uint64
 </tr>
 <tr>
 <td>
-<code>tcp-keep-alive</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to true</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cross-join</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to true</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>stats-lease</code></br>
 <em>
 string
@@ -5207,18 +5468,6 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 3s</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>run-auto-analyze</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to true</p>
 </td>
 </tr>
 <tr>
@@ -5295,18 +5544,6 @@ string
 </tr>
 <tr>
 <td>
-<code>txn-entry-count-limit</code></br>
-<em>
-uint64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 300000</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>txn-total-size-limit</code></br>
 <em>
 uint64
@@ -5315,6 +5552,54 @@ uint64
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 104857600</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tcp-keep-alive</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cross-join</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>run-auto-analyze</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>txn-entry-count-limit</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 300000</p>
 </td>
 </tr>
 </tbody>
@@ -6360,6 +6645,17 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>cluster-verify-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.Service">Service
@@ -6505,18 +6801,6 @@ string
 <tbody>
 <tr>
 <td>
-<code>report-status</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to true</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>metrics-addr</code></br>
 <em>
 string
@@ -6536,6 +6820,18 @@ uint
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>report-status</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
 </td>
 </tr>
 <tr>
@@ -6571,6 +6867,18 @@ bool
 <tbody>
 <tr>
 <td>
+<code>enable</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enable statement summary or not.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>max-stmt-count</code></br>
 <em>
 uint
@@ -6593,6 +6901,30 @@ uint
 <em>(Optional)</em>
 <p>The maximum length of displayed normalized SQL and sample SQL.
 Optional: Defaults to 4096</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>refresh-interval</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The refresh interval of statement summary.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>history-size</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The maximum history size of statement summary.</p>
 </td>
 </tr>
 </tbody>
@@ -6751,6 +7083,21 @@ string
 <p>SecretName is the name of secret which stores tidb cluster&rsquo;s password.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClient</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiDBTLSClient">
+TiDBTLSClient
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between the SQL client and TiDB server
+Optional: Defaults to nil</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiDBConfig">TiDBConfig
@@ -6760,7 +7107,8 @@ string
 <a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
 </p>
 <p>
-<p>TiDBConfig is the configuration of tidb-server</p>
+<p>TiDBConfig is the configuration of tidb-server
+For more detail, refer to <a href="https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/">https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/</a></p>
 </p>
 <table>
 <thead>
@@ -7127,6 +7475,118 @@ StmtSummary
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>repair-mode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RepairMode indicates that the TiDB is in the repair mode for table meta.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>repair-table-list</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>isolation-read</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.IsolationRead">
+IsolationRead
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IsolationRead indicates that the TiDB reads data from which isolation level(engine and label).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-server-connections</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxServerConnections is the maximum permitted number of simultaneous client connections.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>new_collations_enabled_on_first_bootstrap</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NewCollationsEnabledOnFirstBootstrap indicates if the new collations are enabled, it effects only when a TiDB cluster bootstrapped on the first time.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Experimental">
+Experimental
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Experimental contains parameters for experimental features.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-dynamic-config</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfig enables the TiDB to fetch configs from PD and update itself during runtime.
+see <a href="https://github.com/pingcap/tidb/pull/13660">https://github.com/pingcap/tidb/pull/13660</a> for more details.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-table-lock</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>imported from v3.1.0
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>delay-clean-table-lock</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<p>imported from v3.1.0
+optional</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiDBFailureMember">TiDBFailureMember
@@ -7472,8 +7932,8 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-Optional: Defaults to 0</p>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+Optional: Defaults to 3</p>
 </td>
 </tr>
 <tr>
@@ -7621,12 +8081,23 @@ int32
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiDBTLSClient">TiDBTLSClient
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">TiDBAccessConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
 </p>
 <p>
@@ -7663,6 +8134,21 @@ kubectl create secret generic <clusterName>-tidb-server-secret &ndash;namespace=
 The name of this Secret must be: <clusterName>-tidb-client-secret.
 kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 4. Set Enabled to <code>true</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsSecret</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Specify a secret of client cert for backup/restore
+Optional: Defaults to <cluster>-tidb-client-secret
+If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
+this field only work in backup/restore process</p>
 </td>
 </tr>
 </tbody>
@@ -8312,6 +8798,19 @@ int64
 <p>If a store has been up to the limit, it will return error for successive request to
 prevent the store occupying too much token in dispatching level.
 Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>copr-cache</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.CoprocessorCache">
+CoprocessorCache
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -10756,8 +11255,8 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-Optional: Defaults to 0</p>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+Optional: Defaults to 3</p>
 </td>
 </tr>
 <tr>
@@ -10871,6 +11370,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 <a href="#pingcap.com/v1alpha1.TiKVFailureStore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVFailureStore
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
 </em>
 </td>
 <td>

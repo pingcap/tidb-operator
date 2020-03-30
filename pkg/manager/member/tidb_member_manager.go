@@ -198,7 +198,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
-	if tmm.autoFailover {
+	if tmm.autoFailover && tc.Spec.TiDB.MaxFailoverCount != nil {
 		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
 		}
@@ -646,7 +646,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
-		Env:          envs,
+		Env:          util.MergeEnv(baseTiDBSpec.Env(), envs),
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -744,7 +744,11 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		tidbStatus[name] = newTidbMember
 	}
 	tc.Status.TiDB.Members = tidbStatus
-
+	tc.Status.TiDB.Image = ""
+	c := filterContainer(set, "tidb")
+	if c != nil {
+		tc.Status.TiDB.Image = c.Image
+	}
 	return nil
 }
 

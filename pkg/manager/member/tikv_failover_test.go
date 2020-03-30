@@ -294,7 +294,7 @@ func TestTiKVFailoverFailover(t *testing.T) {
 			err: false,
 			expectFn: func(tc *v1alpha1.TidbCluster) {
 				g.Expect(int(tc.Spec.TiKV.Replicas)).To(Equal(3))
-				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(6))
+				g.Expect(len(tc.Status.TiKV.FailureStores)).To(Equal(3))
 			},
 		},
 	}

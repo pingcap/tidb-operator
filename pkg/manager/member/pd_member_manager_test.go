@@ -918,6 +918,20 @@ func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps
 	}
 }
 
+func testPDContainerEnv(t *testing.T, env []corev1.EnvVar) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		got := []corev1.EnvVar{}
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.Name == v1alpha1.PDMemberType.String() {
+				got = c.Env
+			}
+		}
+		if diff := cmp.Diff(env, got); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+	}
+}
+
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
 	tests := []struct {
@@ -1034,6 +1048,74 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					},
 				}))
 			},
+		},
+		{
+			name: "set custom env",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Env: []corev1.EnvVar{
+								{
+									Name: "DASHBOARD_SESSION_SECRET",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "dashboard-session-secret",
+											},
+											Key: "encryption_key",
+										},
+									},
+								},
+								{
+									Name:  "TZ",
+									Value: "ignored",
+								},
+							},
+						},
+					},
+				},
+			},
+			testSts: testPDContainerEnv(t, []corev1.EnvVar{
+				{
+					Name: "DASHBOARD_SESSION_SECRET",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "dashboard-session-secret",
+							},
+							Key: "encryption_key",
+						},
+					},
+				},
+				{
+					Name: "NAMESPACE",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.namespace",
+						},
+					},
+				},
+				{
+					Name:  "PEER_SERVICE_NAME",
+					Value: "tc-pd-peer",
+				},
+				{
+					Name:  "SERVICE_NAME",
+					Value: "tc-pd",
+				},
+				{
+					Name:  "SET_NAME",
+					Value: "tc-pd",
+				},
+				{
+					Name: "TZ",
+				},
+			}),
 		},
 		// TODO add more tests
 	}
