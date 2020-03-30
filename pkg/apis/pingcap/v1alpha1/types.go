@@ -119,6 +119,11 @@ type TidbClusterSpec struct {
 	// +optional
 	Helper *HelperSpec `json:"helper,omitempty"`
 
+	// Indicates that the tidb cluster is paused and will not be processed by
+	// the controller.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
+
 	// TODO: remove optional after defaulting logic introduced
 	// TiDB cluster version
 	// +optional

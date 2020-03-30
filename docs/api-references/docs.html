@@ -739,6 +739,19 @@ HelperSpec
 </tr>
 <tr>
 <td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the tidb cluster is paused and will not be processed by
+the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -2933,6 +2946,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Log filename, leave empty to disable file log.</p>
 </td>
 </tr>
@@ -2944,6 +2958,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Is log rotate enabled.</p>
 </td>
 </tr>
@@ -2955,6 +2970,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Max size for a single file, in MB.</p>
 </td>
 </tr>
@@ -2966,6 +2982,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Max log keep days, default is never deleting.</p>
 </td>
 </tr>
@@ -2977,6 +2994,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Maximum number of old log files to retain.</p>
 </td>
 </tr>
@@ -12120,6 +12138,19 @@ HelperSpec
 <td>
 <em>(Optional)</em>
 <p>Helper spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the tidb cluster is paused and will not be processed by
+the controller.</p>
 </td>
 </tr>
 <tr>
