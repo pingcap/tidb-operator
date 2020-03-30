@@ -37,6 +37,9 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
+// currently monitor label haven't managedBy label due to 1.0 historical problem.
+// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
+// We would add managedBy label key during released 1.2 version
 func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
@@ -755,11 +758,13 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 }
 
 func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
+	l := buildTidbMonitorLabel(monitor.Name)
+	l[label.ManagedByLabelKey] = "tidb-operator"
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
 			Name:        GetMonitorObjectName(monitor),
 			Namespace:   monitor.Namespace,
-			Labels:      buildTidbMonitorLabel(monitor.Name),
+			Labels:      l,
 			Annotations: monitor.Spec.Annotations,
 		},
 
