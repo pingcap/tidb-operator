@@ -63,9 +63,9 @@ category: how-to
     ```
 
 3. 创建 IAM 角色：
-    
+
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) 来为账号创建一个 IAM 角色，并且通过 [AWS 官方文档](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html)为 IAM 角色赋予需要的权限。由于 `Restore` 需要访问 AWS 的 S3 存储，所以这里给 IAM 赋予了 `AmazonS3FullAccess` 的权限。
-    
+
 4. 绑定 IAM 到 TiKV Pod:
 
     在使用 BR 备份的过程中，TiKV Pod 和 BR Pod 一样需要对 S3 存储进行读写操作，所以这里需要给 TiKV Pod 打上 annotation 来绑定 IAM 角色。
@@ -101,7 +101,7 @@ category: how-to
     ```
 
 3. 在集群上为服务帐户启用 IAM 角色：
-    
+
     可以参考 [AWS 官方文档](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html)开启所在的 EKS 集群的 IAM 角色授权。
 
 4. 创建 IAM 角色:
@@ -129,7 +129,6 @@ category: how-to
 > **注意：**
 >
 > `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
-
 
 ## 将指定备份数据恢复到 TiDB 集群
 
@@ -258,6 +257,7 @@ category: how-to
         region: us-west-1
         bucket: my-bucket
         prefix: my-folder
+    ```
 
 创建好 `Restore` CR 后，可通过以下命令查看恢复的状态：
 
