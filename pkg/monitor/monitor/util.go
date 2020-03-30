@@ -37,9 +37,6 @@ func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-monitor", monitor.Name)
 }
 
-// currently monitor label haven't managedBy label due to 1.0 historical problem.
-// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
-// We would add managedBy label key during released 1.2 version
 func buildTidbMonitorLabel(name string) map[string]string {
 	return label.NewMonitor().Instance(name).Monitor().Labels()
 }
@@ -656,6 +653,15 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	prometheusPortName := "http-prometheus"
 	grafanaPortName := "http-grafana"
 
+	// currently monitor label haven't managedBy label due to 1.0 historical problem.
+	// In order to be compatible with 1.0 release monitor, we have removed managedBy label for now.
+	// We would add managedBy label key during released 1.2 version
+	l := map[string]string{
+		label.InstanceLabelKey:  monitor.Name,
+		label.NameLabelKey:      "tidb-cluster",
+		label.ComponentLabelKey: label.TiDBMonitorVal,
+	}
+
 	if monitor.BaseReloaderSpec().PortName() != nil {
 		reloaderPortName = *monitor.BaseReloaderSpec().PortName()
 	}
@@ -671,7 +677,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            promethuesName,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          l,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 		},
@@ -698,7 +704,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		ObjectMeta: meta.ObjectMeta{
 			Name:            fmt.Sprintf("%s-monitor-reloader", monitor.Name),
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          l,
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 		},
@@ -728,7 +734,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			ObjectMeta: meta.ObjectMeta{
 				Name:            fmt.Sprintf("%s-grafana", monitor.Name),
 				Namespace:       monitor.Namespace,
-				Labels:          buildTidbMonitorLabel(monitor.Name),
+				Labels:          l,
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 				Annotations:     monitor.Spec.Grafana.Service.Annotations,
 			},
@@ -759,7 +765,6 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 	l := buildTidbMonitorLabel(monitor.Name)
-	l[label.ManagedByLabelKey] = "tidb-operator"
 	return &core.PersistentVolumeClaim{
 		ObjectMeta: meta.ObjectMeta{
 			Name:        GetMonitorObjectName(monitor),

@@ -196,7 +196,8 @@ func NewBackupSchedule() Label {
 // we have to remove the managed-by label in NewMonitor to be compatible with.
 func NewMonitor() Label {
 	return Label{
-		NameLabelKey: "tidb-cluster",
+		NameLabelKey:      "tidb-cluster",
+		ManagedByLabelKey: "tidb-operator",
 	}
 }
 
