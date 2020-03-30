@@ -12,6 +12,14 @@ category: reference
 >
 > 每个 Kubernetes 集群中只能部署一个 TiDB Operator。
 
+TiDB Operator 与适用的 TiDB 版本的对应关系如下：
+
+| TiDB Operator 版本 | 适用的 TiDB 版本 |
+|:---|:---|
+| v1.0 | v2.1, v3.0 |
+| v1.1 | v3.0, v3.1, v4.0 |
+| dev | v3.0, v3.1, v4.0, dev |
+
 ## TiDB Operator 整体架构
 
 ![TiDB Operator Overview](/media/tidb-operator-overview-1.1.png)

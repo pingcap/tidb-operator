@@ -12,6 +12,14 @@ category: reference
 >
 > You can only deploy one TiDB Operator in a Kubernetes cluster.
 
+The corresponding relationship between TiDB Operator and TiDB versions is as follows:
+
+| TiDB Operator version | Compatible TiDB versions |
+|:---|:---|
+| v1.0 | v2.1, v3.0 |
+| v1.1 | v3.0, v3.1, v4.0 |
+| dev | v3.0, v3.1, v4.0, dev |
+
 ## TiDB Operator architecture
 
 ![TiDB Operator Overview](/media/tidb-operator-overview.png)
