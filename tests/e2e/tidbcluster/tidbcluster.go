@@ -753,18 +753,28 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvName := pvc.Spec.VolumeName
 		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
-		value, existed := pv.Labels[label.ComponentLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, label.TiDBMonitorVal)
-		value, existed = pv.Labels[label.InstanceLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, "e2e-monitor")
-		value, existed = pv.Labels[label.InstanceLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, "e2e-monitor")
-		value, existed = pv.Labels[label.ManagedByLabelKey]
-		framework.ExpectEqual(existed, true)
-		framework.ExpectEqual(value, label.TiDBOperator)
+
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			value, existed := pv.Labels[label.ComponentLabelKey]
+			if !existed || value != label.TiDBMonitorVal {
+				return false, nil
+			}
+			value, existed = pv.Labels[label.InstanceLabelKey]
+			if !existed || value != "e2e-monitor" {
+				return false, nil
+			}
+
+			value, existed = pv.Labels[label.NameLabelKey]
+			if !existed || value != "tidb-clustr" {
+				return false, nil
+			}
+			value, existed = pv.Labels[label.ManagedByLabelKey]
+			if !existed || value != label.TiDBOperator {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "monitor pv label error")
 
 		// update TidbMonitor and check whether portName is updated and the nodePort is unchanged
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
