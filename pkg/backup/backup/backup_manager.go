@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
+	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -39,6 +40,7 @@ type backupManager struct {
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
 	pvcLister     corelisters.PersistentVolumeClaimLister
+	tcLister      v1alpha1listers.TidbClusterLister
 	pvcControl    controller.GeneralPVCControlInterface
 }
 
@@ -50,6 +52,7 @@ func NewBackupManager(
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
+	tcLister v1alpha1listers.TidbClusterLister,
 	pvcControl controller.GeneralPVCControlInterface,
 ) backup.BackupManager {
 	return &backupManager{
@@ -59,6 +62,7 @@ func NewBackupManager(
 		jobLister,
 		jobControl,
 		pvcLister,
+		tcLister,
 		pvcControl,
 	}
 }
@@ -255,6 +259,14 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	backupNamespace := ns
+	if backup.Spec.BR.ClusterNamespace != "" {
+		backupNamespace = backup.Spec.BR.ClusterNamespace
+	}
+	tc, err := bm.tcLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backup.Spec.BR.Cluster, backupNamespace), err
+	}
 
 	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.secretLister)
 	if err != nil {
@@ -277,7 +289,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
+	if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
+		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "cluster-client-tls",
 			ReadOnly:  true,
@@ -292,9 +305,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			},
 		})
 	}
-	if backup.Spec.From.TLSClient != nil && backup.Spec.From.TLSClient.Enabled {
+	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled {
+		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster)
-		if backup.Spec.From.TLSClient.TLSSecret != "" {
+		if backup.Spec.From.TLSClient != nil && backup.Spec.From.TLSClient.TLSSecret != "" {
 			clientSecretName = backup.Spec.From.TLSClient.TLSSecret
 		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
