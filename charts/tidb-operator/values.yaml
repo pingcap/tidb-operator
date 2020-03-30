@@ -12,11 +12,11 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: hub.pingcap.net/yinliang/pingcap/tidb-operator:latest
+operatorImage: pingcap/tidb-operator:v1.1.0-beta.2
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: hub.pingcap.net/yinliang/pingcap/tidb-backup-manager:latest
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-beta.2
 
 #
 # Enable or disable tidb-operator features:
