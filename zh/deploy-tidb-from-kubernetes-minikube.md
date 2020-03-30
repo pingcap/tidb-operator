@@ -65,13 +65,114 @@ kubectl 安装完成后，测试 Minikube Kubernetes 集群：
 kubectl cluster-info
 ```
 
-## 安装 TiDB Operator 并运行 TiDB 集群
+## 安装 Helm
 
-1. 安装 Helm 并配置 PingCAP 官方 chart 仓库，参考 [使用 Helm](tidb-toolkit.md#使用-helm) 小节中的操作。
+[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 2.11.0 ≤ Helm < 2.16.4。安装步骤如下：
 
-2. 部署 TiDB Operator，参考 [安装 TiDB Operator](deploy-tidb-operator.md#安装-tidb-operator) 小节中的操作。
+1. 参考[官方文档](https://v2.helm.sh/docs/using_helm/#installing-helm)安装 Helm 客户端
+2. 安装 Helm 服务端
 
-3. 部署 TiDB 集群，参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群)中的操作。
+    在集群中应用 Helm 服务端组件 `tiller` 所需的 `RBAC` 规则，并安装 `tiller`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/tiller-rbac.yaml && \
+    helm init --service-account=tiller --upgrade
+    ```
+
+    通过下面命令确认 `tiller` Pod 进入 running 状态：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get po -n kube-system -l name=tiller
+    ```
+
+3. 通过下面的命令添加仓库：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm repo add pingcap https://charts.pingcap.org/
+    ```
+
+    添加完成后，可以使用 `helm search` 搜索 PingCAP 提供的 chart：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm search pingcap -l
+    ```
+
+## 部署 TiDB Operator
+
+TiDB Operator 使用 [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) 扩展 Kubernetes，所以要使用 TiDB Operator，必须先创建 `TidbCluster` 等各种自定义资源类型：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+kubectl get crd tidbclusters.pingcap.com
+```
+
+创建 `TidbCluster` 自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator。
+
+1. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    mkdir -p /home/tidb/tidb-operator && \
+    helm inspect values pingcap/tidb-operator --version=v1.1.0-rc.1 > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    ```
+
+    按需修改 `values.yaml` 文件中的配置。
+
+2. 安装 TiDB Operator
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0-rc.1 -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
+    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+    ```
+
+## 部署 TiDB 集群
+
+通过下面命令部署 TiDB 集群：
+
+1. 创建 `Namespace`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create namespace demo
+    ```
+
+2. 部署 TiDB 集群：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml -n demo
+    ```
+
+3. 部署 TiDB 集群监控：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n demo
+    ```
+
+4. 通过下面命令查看 Pod 状态：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl get po -n demo
+    ```
 
 ## 测试 TiDB 集群
 
@@ -80,10 +181,10 @@ kubectl cluster-info
 {{< copyable "shell-regular" >}}
 
 ``` shell
-kubectl get svc --watch
+kubectl get svc -n demo --watch
 ```
 
-如果看到 `demo-tidb` 出现，说明服务已经可以访问，可以 <kbd>Ctrl</kbd>+<kbd>C</kbd> 停止。
+如果看到 `basic-tidb` 出现，说明服务已经可以访问，可以 <kbd>Ctrl</kbd>+<kbd>C</kbd> 停止。
 
 按照以下步骤访问 TiDB 集群：
 
@@ -92,7 +193,7 @@ kubectl get svc --watch
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl port-forward svc/demo-tidb 4000:4000
+    kubectl -n demo port-forward svc/basic-tidb 4000:4000
     ```
 
 2. 在另一个终端窗口中，通过 MySQL 客户端访问 TiDB：
@@ -120,7 +221,7 @@ kubectl get svc --watch
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl port-forward svc/demo-grafana 3000:3000
+    kubectl -n demo port-forward svc/basic-grafana 3000:3000
     ```
 
 2. 打开浏览器，通过 `http://localhost:3000` 访问 Grafana。
@@ -130,21 +231,35 @@ kubectl get svc --watch
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    minikube service demo-grafana
+    minikube service basic-grafana -n demo
     ```
 
     上述命令会自动搭建代理并在浏览器中打开 Grafana。
 
 ### 删除 TiDB 集群
 
-删除本地 TiDB 集群可参考[销毁 TiDB 集群](destroy-a-tidb-cluster.md#销毁-kubernetes-上的-tidb-集群)。
+要删除 TiDB 集群，执行以下命令：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete tc basic -n demo
+```
+
+要删除监控组件，执行以下命令：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete tidbmonitor basic -n demo
+```
 
 更新 demo 集群使用的 PV 的 reclaim 策略为 Delete：
 
 {{< copyable "shell-regular" >}}
 
 ``` shell
-kubectl get pv -l app.kubernetes.io/instance=demo -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+kubectl get pv -l app.kubernetes.io/instance=basic -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 ```
 
 删除 PVC：

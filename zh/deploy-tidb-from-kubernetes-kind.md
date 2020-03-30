@@ -106,15 +106,90 @@ kind 通过使用 Docker 容器作为集群节点模拟出一个本地的 Kubern
     standard (default)   kubernetes.io/host-path        8m29s
     ```
 
-## 第 2 步：在 Kubernetes 集群上部署 TiDB Operator
+## 第 2 步：部署 TiDB Operator
 
-1. 安装 Helm 并配置 PingCAP 官方 chart 仓库，参考 [使用 Helm](tidb-toolkit.md#使用-helm) 小节中的操作。
+配置 PingCAP 官方 chart 仓库:
 
-2. 部署 TiDB Operator，参考 [安装 TiDB Operator](deploy-tidb-operator.md#安装-tidb-operator) 小节中的操作。
+{{< copyable "shell-regular" >}}
 
-## 第 3 步：在 Kubernetes 集群中部署 TiDB 集群
+```shell
+helm repo add pingcap https://charts.pingcap.org/
+```
 
-参考[在标准 Kubernetes 上部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群)中的操作。
+添加完成后，可以使用 `helm search` 搜索 PingCAP 提供的 chart：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+helm search pingcap -l
+```
+
+TiDB Operator 使用 [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) 扩展 Kubernetes，所以要使用 TiDB Operator，必须先创建 `TidbCluster` 等各种自定义资源类型：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+kubectl get crd tidbclusters.pingcap.com
+```
+
+创建 `TidbCluster` 自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator。
+
+1. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    mkdir -p /home/tidb/tidb-operator && \
+    helm inspect values pingcap/tidb-operator --version=v1.1.0-rc.1 > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    ```
+
+    按需修改 `values.yaml` 文件中的配置。
+
+2. 安装 TiDB Operator
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0-rc.1 -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
+    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+    ```
+
+## 第 3 步：部署 TiDB 集群
+
+通过下面命令部署 TiDB 集群：
+
+1. 创建 `Namespace`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create namespace demo
+    ```
+
+2. 部署 TiDB 集群：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml -n demo
+    ```
+
+3. 部署 TiDB 集群监控：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n demo
+    ```
+
+4. 通过下面命令查看 Pod 状态：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl get po -n demo
+    ```
 
 ## 访问数据库和监控面板
 
@@ -129,7 +204,7 @@ kind 通过使用 Docker 容器作为集群节点模拟出一个本地的 Kubern
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        kubectl port-forward svc/<release-name>-tidb 4000:4000 --namespace=<namespace>
+        kubectl port-forward svc/basic-tidb 4000:4000 --namespace=demo
         ```
 
         > **注意：**
@@ -151,7 +226,7 @@ kind 通过使用 Docker 容器作为集群节点模拟出一个本地的 Kubern
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        kubectl port-forward svc/<release-name>-grafana 3000:3000 --namespace=<namespace>
+        kubectl port-forward svc/basic-grafana 3000:3000 --namespace=demo
         ```
 
         > **注意：**
@@ -172,14 +247,28 @@ kind 通过使用 Docker 容器作为集群节点模拟出一个本地的 Kubern
     > {{< copyable "shell-regular" >}}
     >
     > ```
-    > kubectl port-forward --address 0.0.0.0 -n tidb svc/<release-name>-grafana 3000:3000
+    > kubectl port-forward --address 0.0.0.0 -n tidb svc/basic-grafana 3000:3000
     > ```
     >
     > 然后，在浏览器中打开 `http://<远程主机 IP>:3000` 访问 Grafana 监控面板。
 
 ## 删除 TiDB 集群 与 Kubernetes 集群
 
-删除本地 TiDB 集群可参考[销毁 TiDB 集群](destroy-a-tidb-cluster.md#销毁-kubernetes-上的-tidb-集群)。
+要删除 TiDB 集群，执行以下命令：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete tc basic -n demo
+```
+
+要删除监控组件，执行以下命令：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete tidbmonitor basic -n demo
+```
 
 通过下面命令删除该 Kubernetes 集群：
 
