@@ -357,7 +357,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				ContainerPort: 8250,
 			}},
 			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
-			Env:          envs,
+			Env:          util.MergeEnv(spec.Env(), envs),
 			VolumeMounts: volumeMounts,
 		},
 	}

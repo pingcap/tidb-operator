@@ -622,7 +622,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	pdContainer.Env = env
+	pdContainer.Env = util.MergeEnv(basePDSpec.Env(), env)
 	podSpec.Volumes = vols
 	podSpec.Containers = []corev1.Container{pdContainer}
 
