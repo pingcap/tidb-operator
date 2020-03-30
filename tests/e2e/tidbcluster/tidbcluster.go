@@ -38,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
@@ -46,8 +47,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -870,6 +873,67 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 		ginkgo.By("Checking for tidb cluster is ready")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+	})
+
+	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
+		tcName := "paused"
+		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		podListBeforePaused, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Pause the tidb cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Paused = true
+			return nil
+		})
+		framework.ExpectNoError(err)
+		ginkgo.By("Make a change")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			return nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Check pods are not changed when the tidb cluster is paused")
+		err = utilpod.WaitForPodsAreChanged(c, podListBeforePaused.Items, time.Minute*5)
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed when the tidb cluster is paused")
+
+		ginkgo.By("Unpause the tidb cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Paused = false
+			return nil
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Check the tidb cluster will be upgraded now")
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(label.New().Instance(tcName).Component(label.TiKVLabelVal).Labels()).String(),
+		}
+		err = wait.PollImmediate(5*time.Second, 15*time.Minute, func() (bool, error) {
+			podList, err := c.CoreV1().Pods(ns).List(listOptions)
+			if err != nil && !apierrors.IsNotFound(err) {
+				return false, err
+			}
+			for _, pod := range podList.Items {
+				for _, c := range pod.Spec.Containers {
+					if c.Name == v1alpha1.TiKVMemberType.String() {
+						if c.Image == tc.TiKVImage() {
+							return true, nil
+						}
+					}
+				}
+			}
+			return false, nil
+		})
 		framework.ExpectNoError(err)
 	})
 

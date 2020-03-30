@@ -428,15 +428,20 @@ type PDMetricConfig struct {
 // +k8s:openapi-gen=true
 type FileLogConfig struct {
 	// Log filename, leave empty to disable file log.
-	Filename string `toml:"filename,omitempty" json:"filename,omitempty"`
+	// +optional
+	Filename *string `toml:"filename,omitempty" json:"filename,omitempty"`
 	// Is log rotate enabled.
-	LogRotate bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
+	// +optional
+	LogRotate *bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
 	// Max size for a single file, in MB.
-	MaxSize int `toml:"max-size,omitempty" json:"max-size,omitempty"`
+	// +optional
+	MaxSize *int `toml:"max-size,omitempty" json:"max-size,omitempty"`
 	// Max log keep days, default is never deleting.
-	MaxDays int `toml:"max-days,omitempty" json:"max-days,omitempty"`
+	// +optional
+	MaxDays *int `toml:"max-days,omitempty" json:"max-days,omitempty"`
 	// Maximum number of old log files to retain.
-	MaxBackups int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
+	// +optional
+	MaxBackups *int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
 }
 
 //StringSlice is more friendly to json encode/decode
