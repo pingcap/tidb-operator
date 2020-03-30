@@ -377,12 +377,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 				Description: "BRConfig contains config for BR",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"tlsCluster": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Whether enable the TLS connection between TiDB server components Optional: Defaults to nil",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster"),
-						},
-					},
 					"cluster": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName of backup/restore cluster",
@@ -471,8 +465,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 				Required: []string{"cluster"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster"},
 	}
 }
 
