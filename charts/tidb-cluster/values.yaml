@@ -80,7 +80,7 @@ tlsCluster:
   #        For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
   #        Same for other components.
   #   3. Then create the TiDB cluster with `tlsCluster.enabled` set to `true`.
-  enabled: true
+  enabled: false
 
 pd:
   # Please refer to https://github.com/pingcap/pd/blob/master/conf/config.toml for the default
@@ -103,8 +103,8 @@ pd:
     # clusterIP: "<if you set service type as ClusterIP,you can specify ClusterIP>"
     # annotations: {} "<the default name will be used>"
     # portName: "client"
-  replicas: 1
-  image: pingcap/pd:3.0.8
+  replicas: 3
+  image: pingcap/pd:v3.0.8
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -250,7 +250,7 @@ tikv:
   # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter,
   # we can only set capacity in tikv.resources.limits.storage.
 
-  replicas: 1
+  replicas: 3
   image: pingcap/tikv:v3.0.8
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
@@ -333,7 +333,7 @@ tidb:
   #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
   #   max-procs = 0
 
-  replicas: 1
+  replicas: 2
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
@@ -480,7 +480,7 @@ tidb:
     #      The name of this Secret must be: <clusterName>-tidb-client-secret.
     #        kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
     #   4. Then create the TiDB cluster with `tlsClient.enabled` set to `true`.
-    enabled: true
+    enabled: false
 
 # mysqlClient is used to set password for TiDB
 # it must has Python MySQL client installed
@@ -496,7 +496,7 @@ busybox:
   imagePullPolicy: IfNotPresent
 
 monitor:
-  create: false
+  create: true
   # Also see rbac.create
   # If you set rbac.create to false, you need to provide a value here.
   # If you set rbac.create to true, you should leave this empty.
