@@ -400,6 +400,10 @@ type PDSecurityConfig struct {
 	// KeyPath is the path of file that contains X509 key in PEM format.
 	// +optional
 	KeyPath string `toml:"key-path,omitempty" json:"key-path,omitempty"`
+	// CertAllowedCN is the Common Name that allowed
+	// +optional
+	// +k8s:openapi-gen=false
+	CertAllowedCN []string `toml:"cert-allowed-cn,omitempty" json:"cert-allowed-cn,omitempty"`
 }
 
 // PDServerConfig is the configuration for pd server.

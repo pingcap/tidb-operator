@@ -126,6 +126,12 @@ func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) fiel
 	if old == nil || conf == nil {
 		return allErrs
 	}
+
+	if conf.Security != nil && len(conf.Security.CertAllowedCN) > 1 {
+		allErrs = append(allErrs, field.Invalid(path.Child("security.cert-allowed-cn"), conf.Security.CertAllowedCN,
+			"Only one CN is currently supported"))
+	}
+
 	if !reflect.DeepEqual(old.Schedule, conf.Schedule) {
 		allErrs = append(allErrs, field.Invalid(path.Child("schedule"), conf.Schedule,
 			"PD Schedule Config is immutable through CRD, please modify with pd-ctl instead."))

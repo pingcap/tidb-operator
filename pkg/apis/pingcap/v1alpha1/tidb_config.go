@@ -193,7 +193,8 @@ type Security struct {
 	// +optional
 	ClusterSSLKey *string `toml:"cluster-ssl-key,omitempty" json:"cluster-ssl-key,omitempty"`
 	// +optional
-	ClusterVerifyCN []string `toml:"cluster-verify-cn" json:"cluster-verify-cn,omitempty"`
+	// +k8s:openapi-gen=false
+	ClusterVerifyCN []string `toml:"cluster-verify-cn,omitempty" json:"cluster-verify-cn,omitempty"`
 }
 
 // Status is the status section of the config.

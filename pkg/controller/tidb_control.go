@@ -75,10 +75,22 @@ func (tdc *defaultTiDBControl) useTLSHTTPClient(tc *v1alpha1.TidbCluster) error 
 		return err
 	}
 
+	clientCert, certExists := secret.Data[v1.TLSCertKey]
+	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
+	if !certExists || !keyExists {
+		return fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
+	}
+
+	tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
+	}
+
 	rootCAs := x509.NewCertPool()
 	rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
 	config := &tls.Config{
 		RootCAs: rootCAs,
+		Certificates: []tls.Certificate{tlsCert},
 	}
 	tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
 	return nil

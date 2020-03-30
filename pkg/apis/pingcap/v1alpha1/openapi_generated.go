@@ -3123,19 +3123,6 @@ func schema_pkg_apis_pingcap_v1alpha1_Security(ref common.ReferenceCallback) com
 							Format: "",
 						},
 					},
-					"cluster-verify-cn": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		},
