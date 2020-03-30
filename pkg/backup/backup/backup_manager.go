@@ -265,7 +265,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 	tc, err := bm.tcLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backup.Spec.BR.Cluster, backupNamespace), err
+		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
 
 	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.secretLister)
