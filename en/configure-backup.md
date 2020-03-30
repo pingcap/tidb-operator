@@ -57,7 +57,7 @@ category: reference
 
 ### `restoreOptions`
 
-- The optional parameter specified to [`loader`](https://pingcap.com/docs/stable/reference/tools/loader) used when backing up data
+- The optional parameter specified to [`loader`](https://pingcap.com/docs/v3.0/reference/tools/loader) used when backing up data
 - Default: "-t 16"
 
 ### `gcp.bucket`

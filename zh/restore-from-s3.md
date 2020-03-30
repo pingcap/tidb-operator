@@ -6,7 +6,7 @@ category: how-to
 
 # 恢复 S3 兼容存储上的备份数据
 
-本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [`loader`](https://pingcap.com/docs-cn/dev/reference/tools/loader) 来恢复数据。
+本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [`loader`](https://pingcap.com/docs-cn/v3.0/reference/tools/loader) 来恢复数据。
 
 本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。基于 Helm Charts 实现的备份和恢复方式可参考[基于 Helm Charts 实现的 TiDB 集群备份恢复](backup-and-restore-using-helm-charts.md)。
 

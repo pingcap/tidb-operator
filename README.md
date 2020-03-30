@@ -9,4 +9,4 @@ This repository stores all the source files of TiDB in Kubernetes documentation.
 >
 > - Currently, this repository stores the TiDB Operator v1.1 documentation directly on the `master` branch, which is scheduled to be moved to the `release-1.1` branch by the end of March, 2020.
 >
-> - v1.0 documentation will also be moved here soon. Before that, you can see [v1.0 documentation](https://pingcap.com/docs/stable/tidb-operator-overview/) at the PingCAP website.
+> - v1.0 documentation will also be moved here soon. Before that, you can see [v1.0 documentation](https://pingcap.com/docs/v3.0/tidb-operator-overview/) at the PingCAP website.

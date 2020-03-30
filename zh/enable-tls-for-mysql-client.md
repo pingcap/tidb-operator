@@ -440,4 +440,4 @@ spec:
     mysql -uroot -p -P 4000 -h <tidb-host> --ssl-cert=~/cert-manager/client-tls.crt --ssl-key=~/cert-manager/client-tls.key --ssl-ca=~/cert-manager/client-ca.crt
     ```
 
-最后请参考 [官网文档](https://pingcap.com/docs-cn/stable/how-to/secure/enable-tls-clients/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。
+最后请参考 [官网文档](https://pingcap.com/docs-cn/v3.0/how-to/secure/enable-tls-clients/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。

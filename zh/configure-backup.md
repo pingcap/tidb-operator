@@ -63,7 +63,7 @@ category: reference
 
 + 恢复参数
 + 默认："-t 16"
-+ 为恢复数据时使用的 [Loader](https://pingcap.com/docs-cn/stable/reference/tools/loader) 指定额外的运行参数
++ 为恢复数据时使用的 [Loader](https://pingcap.com/docs-cn/v3.0/reference/tools/loader) 指定额外的运行参数
 
 ## `gcp.bucket`
 

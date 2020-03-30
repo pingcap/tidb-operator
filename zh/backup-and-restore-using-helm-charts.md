@@ -22,8 +22,8 @@ TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CR
 
 Kubernetes 上的 TiDB 集群支持两种备份策略：
 
-* [全量备份](#全量备份)（定时执行或 Ad-hoc）：使用 [`mydumper`](https://pingcap.com/docs-cn/stable/reference/tools/mydumper) 获取集群的逻辑备份；
-* [增量备份](#增量备份)：使用 [`TiDB Binlog`](https://pingcap.com/docs-cn/stable/reference/tidb-binlog/overview) 将 TiDB 集群的数据实时复制到其它数据库中或实时获得增量数据备份；
+* [全量备份](#全量备份)（定时执行或 Ad-hoc）：使用 [`mydumper`](https://pingcap.com/docs-cn/v3.0/reference/tools/mydumper) 获取集群的逻辑备份；
+* [增量备份](#增量备份)：使用 [`TiDB Binlog`](https://pingcap.com/docs-cn/v3.0/reference/tidb-binlog/overview) 将 TiDB 集群的数据实时复制到其它数据库中或实时获得增量数据备份；
 
 目前，Kubernetes 上的 TiDB 集群只对 `mydumper` 获取的全量备份数据提供自动化的数据恢复操作。恢复 `TiDB-Binlog` 获取的增量数据需要手动进行。
 
@@ -135,7 +135,7 @@ kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com
 
 ## 增量备份
 
-增量备份使用 [TiDB Binlog](https://pingcap.com/docs-cn/stable/reference/tidb-binlog/overview) 工具从 TiDB 集群收集 Binlog，并提供实时备份和向其它数据库的实时同步能力。
+增量备份使用 [TiDB Binlog](https://pingcap.com/docs-cn/v3.0/reference/tidb-binlog/overview) 工具从 TiDB 集群收集 Binlog，并提供实时备份和向其它数据库的实时同步能力。
 
 有关 Kubernetes 上运维 TiDB Binlog 的详细指南，可参阅 [TiDB Binlog](deploy-tidb-binlog.md)。
 

@@ -10,7 +10,7 @@ category: reference
 
 ## 资源配置说明
 
-部署前需要根据实际情况和需求，为 TiDB 集群各个组件配置资源，其中 PD、TiKV、TiDB 是 TiDB 集群的核心服务组件，在生产环境下它们的资源配置还需要按组件要求指定，具体参考：[资源配置推荐](https://pingcap.com/docs-cn/stable/how-to/deploy/hardware-recommendations)。
+部署前需要根据实际情况和需求，为 TiDB 集群各个组件配置资源，其中 PD、TiKV、TiDB 是 TiDB 集群的核心服务组件，在生产环境下它们的资源配置还需要按组件要求指定，具体参考：[资源配置推荐](https://pingcap.com/docs-cn/v3.0/how-to/deploy/hardware-recommendations)。
 
 为了保证 TiDB 集群的组件在 Kubernetes 中合理的调度和稳定的运行，建议为其设置 Guaranteed 级别的 QoS，通过在配置资源时让 limits 等于 requests 来实现, 具体参考：[配置 QoS](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/)。
 
@@ -78,7 +78,7 @@ affinity:
 
 ### 数据的容灾
 
-在开始数据容灾配置前，首先请阅读[集群拓扑信息配置](https://pingcap.com/docs-cn/stable/how-to/deploy/geographic-redundancy/location-awareness)。该文档描述了 TiDB 集群数据容灾的实现原理。
+在开始数据容灾配置前，首先请阅读[集群拓扑信息配置](https://pingcap.com/docs-cn/v3.0/how-to/deploy/geographic-redundancy/location-awareness)。该文档描述了 TiDB 集群数据容灾的实现原理。
 
 在 Kubernetes 上支持数据容灾的功能，需要如下操作：
 

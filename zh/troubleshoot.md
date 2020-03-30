@@ -189,7 +189,7 @@ kubectl -n <namespace> logs -f <pod-name>
 kubectl -n <namespace> logs -p <pod-name>
 ```
 
-确认日志中的错误信息后，可以根据 [tidb-server 启动报错](https://pingcap.com/docs-cn/stable/how-to/troubleshoot/cluster-setup/#tidb-server-启动报错)，[tikv-server 启动报错](https://pingcap.com/docs-cn/stable/how-to/troubleshoot/cluster-setup/#tikv-server-启动报错)，[pd-server 启动报错](https://pingcap.com/docs-cn/stable/how-to/troubleshoot/cluster-setup/#pd-server-启动报错)中的指引信息进行进一步排查解决。
+确认日志中的错误信息后，可以根据 [tidb-server 启动报错](https://pingcap.com/docs-cn/v3.0/how-to/troubleshoot/cluster-setup/#tidb-server-启动报错)，[tikv-server 启动报错](https://pingcap.com/docs-cn/v3.0/how-to/troubleshoot/cluster-setup/#tikv-server-启动报错)，[pd-server 启动报错](https://pingcap.com/docs-cn/v3.0/how-to/troubleshoot/cluster-setup/#pd-server-启动报错)中的指引信息进行进一步排查解决。
 
 若是 TiKV Pod 日志中出现 "cluster id mismatch" 信息，则 TiKV Pod 使用的数据可能是其他或之前的 TiKV Pod 的旧数据。在集群配置本地存储时未清除机器上本地磁盘上的数据，或者强制删除了 PV 导致数据并没有被 local volume provisioner 程序回收，可能导致 PV 遗留旧数据，导致错误。
 
