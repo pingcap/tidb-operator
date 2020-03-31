@@ -41,6 +41,20 @@ To turn this feature on, you need to enable some related configurations in TiDB 
 
     To install or update TiDB Operator, see [Deploy TiDB Operator in Kubernetes](deploy-tidb-operator.md).
 
+3. Confirm the resource configuration of the target TiDB cluster.
+
+    Before using the auto-scaling feature on the target TiDB cluster, first you need to configure the CPU setting of the corresponding components. For example, you need to configure `spec.tikv.requests.cpu` in TiKV:
+
+    ```yaml
+    spec:
+      tikv:
+        requests:
+          cpu: "1"
+      tidb:
+        requests:
+          cpu: "1"
+    ```
+
 ## TidbClusterAutoScaler
 
 The `TidbClusterAutoScaler` CR object is used to control the behavior of the auto-scaling in the TiDB cluster. If you have used [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), presumably you are familiar with the notion `TidbClusterAutoScaler`. The following is an auto-scaling example in TiKV.
