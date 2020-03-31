@@ -3879,13 +3879,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
-					"enableAdvertiseAddress": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Add --advertise-address to TiDB's startup parameters Optional: Defaults to false",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
 					"maxFailoverCount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover Optional: Defaults to 3",
