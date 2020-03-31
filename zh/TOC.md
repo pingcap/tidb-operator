@@ -6,6 +6,8 @@
 ## 文档目录
 
 - [TiDB Operator 简介](tidb-operator-overview.md)
++ Benchmark
+  - [Sysbench](benchmark-sysbench.md)
 + 快速上手
   - [kind](deploy-tidb-from-kubernetes-kind.md)
   - [GKE](deploy-tidb-from-kubernetes-gke.md)
