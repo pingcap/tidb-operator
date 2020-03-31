@@ -46,7 +46,6 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.ChartDir, "chart-dir", "", "chart dir")
 	flags.BoolVar(&TestConfig.PreloadImages, "preload-images", false, "if set, preload images in the bootstrap of e2e process")
 	flags.StringVar(&TestConfig.BackupImage, "backup-image", "", "backup image")
-	flags.StringVar(&TestConfig.BackupTag, "backup-tag", "", "backup tag")
 }
 
 func AfterReadingAllFlags() error {
@@ -107,7 +106,6 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		PodWebhookEnabled:         false,
 		Cabundle:                  "",
 		BackupImage:               cfg.BackupImage,
-		BackupTag:                 cfg.BackupTag,
 	}
 }
 

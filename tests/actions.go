@@ -294,7 +294,6 @@ type OperatorConfig struct {
 	ValidatingEnabled         bool
 	Cabundle                  string
 	BackupImage               string
-	BackupTag                 string
 }
 
 type TidbClusterConfig struct {

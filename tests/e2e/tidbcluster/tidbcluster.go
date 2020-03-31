@@ -22,7 +22,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -42,6 +45,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -323,7 +327,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// import some data to sql with blockwriter
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.BeginInsertDataToOrDie(&clusterFrom)
-		time.Sleep(30 * time.Second)
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer1"))
+		framework.ExpectNoError(err)
 		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterTo.ClusterName))
 		oa.StopInsertDataTo(&clusterFrom)
 
@@ -410,6 +415,18 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// delete backup data in S3
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
+
+		svc := s3.New(session.New())
+		input := &s3.ListObjectsV2Input{
+			Bucket: aws.String(backup.Spec.S3.Bucket),
+			Prefix: aws.String(backup.Spec.S3.Prefix),
+		}
+		result, err := svc.ListObjectsV2(input)
+		framework.ExpectNoError(err)
+
+		if *result.KeyCount != 0 {
+			framework.ExpectNoError(nerrors.New("failed to delete remote S3 objects"))
+		}
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
