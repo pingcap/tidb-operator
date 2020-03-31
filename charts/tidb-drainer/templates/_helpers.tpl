@@ -23,6 +23,9 @@ config-file: |-
   ssl-ca = "/var/lib/drainer-tls/ca.crt"
   ssl-cert = "/var/lib/drainer-tls/tls.crt"
   ssl-key = "/var/lib/drainer-tls/tls.key"
+  {{- if .Values.tlsCluster.certAllowedCN }}
+  cert-allowed-cn = {{ .Values.tlsCluster.certAllowedCN | toJson }}
+  {{- end -}}
     {{- end -}}
 {{- end -}}
 

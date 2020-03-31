@@ -3924,10 +3924,6 @@ spec:
                           type: string
                         cluster-ssl-key:
                           type: string
-                        cluster-verify-cn:
-                          items:
-                            type: string
-                          type: array
                         skip-grant-table:
                           type: boolean
                         ssl-ca:
