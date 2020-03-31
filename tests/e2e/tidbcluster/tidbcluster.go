@@ -290,6 +290,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Adhoc backup and restore with BR CRD", func() {
+		if framework.TestContext.Provider != "aws" {
+			framework.Skipf("provider is not aws, skipping")
+		}
 		tcNameFrom := "backup"
 		tcNameTo := "restore"
 		serviceAccountName := "tidb-backup-manager"
