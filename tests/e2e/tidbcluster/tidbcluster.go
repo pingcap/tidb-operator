@@ -327,7 +327,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// import some data to sql with blockwriter
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.BeginInsertDataToOrDie(&clusterFrom)
-		err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer1"))
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
 		framework.ExpectNoError(err)
 		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterTo.ClusterName))
 		oa.StopInsertDataTo(&clusterFrom)
@@ -416,17 +416,25 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
 
-		svc := s3.New(session.New())
-		input := &s3.ListObjectsV2Input{
-			Bucket: aws.String(backup.Spec.S3.Bucket),
-			Prefix: aws.String(backup.Spec.S3.Prefix),
-		}
-		result, err := svc.ListObjectsV2(input)
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			awsConfig := aws.NewConfig().
+				WithRegion(backup.Spec.S3.Region).
+				WithCredentials(cred)
+			svc := s3.New(session.Must(session.NewSession(awsConfig)))
+			input := &s3.ListObjectsV2Input{
+				Bucket: aws.String(backup.Spec.S3.Bucket),
+				Prefix: aws.String(backup.Spec.S3.Prefix),
+			}
+			result, err := svc.ListObjectsV2(input)
+			if err != nil {
+				return false, err
+			}
+			if *result.KeyCount != 0 {
+				return false, nil
+			}
+			return true, nil
+		})
 		framework.ExpectNoError(err)
-
-		if *result.KeyCount != 0 {
-			framework.ExpectNoError(nerrors.New("failed to delete remote S3 objects"))
-		}
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
