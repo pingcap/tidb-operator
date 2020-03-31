@@ -133,7 +133,8 @@ This section describes how to deploy a TiDB cluster.
 
     > **Note:**
     >
-    > The number of worker nodes created depends on the number of Availability Zones in the specified Region. Most Regions have 3 zones, but `us-central1` has 4 zones. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information and see the [Customize](#customize) section on how to customize node pools in a regional cluster.
+    > * The Regional cluster is created by default. In this scenario, the specified number of nodes are created in each one of the three Availability Zones (AZ). For example, if you configure `pd_count = 1`, three nodes are actually created for PD. You can specify the Availability Zones by configuring `node_locations`, or create the Zonal cluster by configuring `location`. See the example in `examples/` for details.
+    > * The number of worker nodes to create depends on the number of Availability Zones in the specified Region. Most Regions have three zones, but `us-central1` has four zones. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information. See the [Customize](#customize) section to learn how to customize node pools in a regional cluster.
 
 2. Execute the script to deploy the TiDB cluster.
 
@@ -154,21 +155,70 @@ This section describes how to deploy a TiDB cluster.
 
     Outputs:
 
-    how_to_connect_to_default_cluster_tidb_from_bastion = mysql -h 172.31.252.20 -P 4000 -u root
     how_to_ssh_to_bastion = gcloud compute ssh tidb-cluster-bastion --zone us-west1-b
-    how_to_set_reclaim_policy_of_pv_for_default_tidb_cluster_to_delete = kubectl --kubeconfig /.../credentials/kubeconfig_tidb-cluster get pvc -n tidb-cluster -o jsonpath='{.items[*].spec.volumeName}'|fmt -1 | xargs -I {} kubectl --kubeconfig /.../credentials/kubeconfig_tidb-cluster patch pv {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     kubeconfig_file = ./credentials/kubeconfig_tidb-cluster
-    monitor_lb_ip = 35.227.134.146
-    monitor_port = 3000
-    region = us-west1
-    tidb_version = v3.0.1
+    ```
+
+### Deploy the TiDB cluster and the monitor
+
+1. Prepare the TidbCluster and TidbMonitor CR files:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cp manifests/{db,db-monitor}.yaml.example .
+    ```
+
+    Replace all `CLUSTER_NAME` in the `db.yaml` and `db-monitor.yaml` files with `default_tidb_cluster_name` (`tidb-cluster` by default) configured in the deployment using GKE.
+
+    ```
+    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db.yaml.example > db.yaml
+    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db-monitor.yaml.example > db-monitor.yaml
+    ```
+
+    To complete the CR file configuration, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) and [Configure Cluster using TidbCluster](configure-cluster-using-tidbcluster.md).
+
+    > **Note:**
+    >
+    > * Make sure the number of PD nodes, TiKV nodes, or TiDB nodes is the same as the value of the `replicas` field in `db.yaml`. Note that in the Regional cluster, the number of nodes to actually create is `pd_count` * `3`, `tikv_count` * `3`, or `tidb_count` * `3`.
+    > * Make sure `spec.initializer.version` in `db-monitor.yaml` is the same as `spec.version` in `db.yaml`. Otherwise, the monitor might not display correctly.
+
+2. Create `Namespace`:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create namespace <namespace>
+    ```
+
+    > **Note:**
+    >
+    > You can give the [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) a name that is easy to memorize, such as the same name as `default_tidb_cluster_name`.
+
+3. Deploy the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db.yaml -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db-monitor.yaml -n <namespace>
     ```
 
 ## Access the TiDB database
 
 After `terraform apply` is successful executed, perform the following steps to access the TiDB cluster. Replace the `<>` section with the output of running `terraform apply` above.
 
-1. Connect to the bastion machine by using `ssh`.
+1. Get the IP address of the TiDB Internal LoadBalancer:
+
+{{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb -n <namespace>
+    ```
+
+    `EXTERNAL-IP` is the IP address of the Internal LoadBalancer.
+
+2. Connect to the bastion machine by using `ssh`.
 
     {{< copyable "shell-regular" >}}
 
@@ -176,7 +226,7 @@ After `terraform apply` is successful executed, perform the following steps to a
     gcloud compute ssh <gke-cluster-name>-bastion --zone <zone>
     ```
 
-2. Access the TiDB cluster via a MySQL client. (Replace the `<>` parts with values from the output):
+3. Access the TiDB cluster via a MySQL client.
 
     {{< copyable "shell-regular" >}}
 
@@ -186,7 +236,8 @@ After `terraform apply` is successful executed, perform the following steps to a
 
     > **Note:**
     >
-    > You need to install the MySQL client before you connect to TiDB via MySQL.
+    > You need to install the MySQL client before you connect to TiDB via MySQL. If you use CentOS, install the client by executing `sudo yum install -y mysql`.
+    > `<tidb_ilb_ip> is the IP address of the Internal LoadBalancer acquired in step 1.
 
 ## Interact with the GKE cluster
 
@@ -234,43 +285,6 @@ You can interact with the GKE cluster by using `kubectl` and `helm` with the `cr
     helm ls
     ```
 
-## Upgrade the TiDB cluster
-
-To upgrade the TiDB cluster, perform the following steps:
-
-1. Modify the `tidb_version` variable to a higher version in the `variables.tf` file.
-2. Run `terraform apply`.
-
-For example, to upgrade the cluster to the 3.0.0-rc.2 version, modify the `tidb_version` to `v3.0.0-rc.2`:
-
-```
-variable "tidb_version" {
-  description = "TiDB version"
-  default     = "v3.0.0-rc.2"
-}
-```
-
-The upgrading does not finish immediately. You can run `kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n tidb --watch` to verify that all pods are in `Running` state. Then you can [access the database](#access-the-tidb-database) and use `tidb_version()` to see whether the cluster has been upgraded successfully:
-
-{{< copyable "sql" >}}
-
-```sql
-select tidb_version();
-```
-
-```
-*************************** 1. row ***************************
-tidb_version(): Release Version: v3.0.0-rc.2
-Git Commit Hash: 06f3f63d5a87e7f0436c0618cf524fea7172eb93
-Git Branch: HEAD
-UTC Build Time: 2019-05-28 12:48:52
-GoVersion: go version go1.12 linux/amd64
-Race Enabled: false
-TiKV Min Version: 2.1.0-alpha.1-ff3dd160846b7d1aed9079c389fc188f7f5ea13e
-Check Table Before Drop: false
-1 row in set (0.001 sec)
-```
-
 ## Manage multiple TiDB clusters
 
 An instance of a `tidb-cluster` module corresponds to a TiDB cluster in the GKE cluster. To add a new TiDB cluster, perform the following steps:
@@ -283,46 +297,34 @@ An instance of a `tidb-cluster` module corresponds to a TiDB cluster in the GKE 
 
     ```hcl
     module "example-tidb-cluster" {
-    providers = {
-        helm = "helm.gke"
-    }
-    source                     = "../modules/gcp/tidb-cluster"
-    cluster_id                 = module.tidb-operator.cluster_id
-    tidb_operator_id           = module.tidb-operator.tidb_operator_id
-    gcp_project                = var.GCP_PROJECT
-    gke_cluster_location       = local.location
-    gke_cluster_name           = <gke-cluster-name>
-    cluster_name               = <example-tidb-cluster>
-    cluster_version            = "v3.0.1"
-    kubeconfig_path            = local.kubeconfig
-    tidb_cluster_chart_version = "v1.0.0"
-    pd_instance_type           = "n1-standard-1"
-    tikv_instance_type         = "n1-standard-4"
-    tidb_instance_type         = "n1-standard-2"
-    monitor_instance_type      = "n1-standard-1"
-    pd_node_count              = 1
-    tikv_node_count            = 2
-    tidb_node_count            = 1
-    monitor_node_count         = 1
+      providers = {
+          helm = "helm.gke"
+      }
+      source                     = "../modules/gcp/tidb-cluster"
+      cluster_id                 = module.tidb-operator.cluster_id
+      tidb_operator_id           = module.tidb-operator.tidb_operator_id
+      gcp_project                = var.GCP_PROJECT
+      gke_cluster_location       = local.location
+      gke_cluster_name           = <gke-cluster-name>
+      cluster_name               = <example-tidb-cluster>
+      cluster_version            = "v3.0.1"
+      kubeconfig_path            = local.kubeconfig
+      tidb_cluster_chart_version = "v1.0.0"
+      pd_instance_type           = "n1-standard-1"
+      tikv_instance_type         = "n1-standard-4"
+      tidb_instance_type         = "n1-standard-2"
+      monitor_instance_type      = "n1-standard-1"
+      pd_node_count              = 1
+      tikv_node_count            = 2
+      tidb_node_count            = 1
+      monitor_node_count         = 1
     }
     ```
 
     > **Note:**
     >
     > - `cluster_name` must be unique for each cluster.
-    > - The total number of nodes actually created for each component is equal to the number of nodes in the configuration file multiplied by the number of Availability Zones in the Region.
-
-    You can use `kubectl` to get the addresses for the TiDB cluster created and its monitoring service. If you want the Terraform script to print this information, add an `output` section in `outputs.tf` as follows:
-
-    {{< copyable "" >}}
-
-    ```hcl
-    output "how_to_connect_to_example_tidb_cluster_from_bastion" {
-    value = module.example-tidb-cluster.how_to_connect_to_tidb_from_bastion
-    }
-    ```
-
-    This above configuration enables this script to print out the exact command used to connect to the TiDB cluster.
+    > - The total number of nodes actually to create for each component = the number of nodes in the configuration file * the number of Availability Zones in the Region. The number of Regional clusters is `3` by default.
 
 2. After you finish modification, execute `terraform init` and `terraform apply` to create the cluster.
 
@@ -330,7 +332,7 @@ An instance of a `tidb-cluster` module corresponds to a TiDB cluster in the GKE 
 
 To scale the TiDB cluster, perform the following steps:
 
-1. Modify the `tikv_count` or `tidb_count` variable in the `variables.tf` file to your desired count.
+1. Increase the value of the `pd_count`, `tikv_count`, or `tidb_count` variable in the `.tfvars` file.
 2. Run `terraform apply`.
 
 > **Warning:**
@@ -346,10 +348,7 @@ kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_c
 For example, to scale out the cluster, you can modify the number of TiDB instances (`tidb_count`) from 1 to 2:
 
 ```hcl
-variable "tidb_count" {
-  description = "Number of TiDB nodes per availability zone"
-  default     = 2
-}
+tidb_count = 2
 ```
 
 > **Note:**
@@ -554,7 +553,7 @@ This section describes the best practices for managing multiple Kubernetes clust
 The Terraform module in TiDB typically combines the following sub-modules:
 
 - `tidb-operator`: provisions the [Kubernetes Control Plane](https://kubernetes.io/docs/concepts/#kubernetes-control-plane) and TiDB Operator for TiDB clusters
-- `tidb-cluster`: creates the resource pool in the target Kubernetes cluster and deploys the TiDB cluster
+- `tidb-cluster`: creates the resource pool in the target Kubernetes cluster
 - A `vpc` module, a `bastion` module, and a `project-credentials` module: dedicated to TiDB clusters on GKE
 
 The best practices for managing multiple Kubernetes clusters are as follows:
@@ -687,15 +686,6 @@ module "tidb-cluster-b" {
 output "how_to_ssh_to_bastion" {
   value= module.bastion.how_to_ssh_to_bastion
 }
-
-output "connect_to_tidb_cluster_a_from_bastion" {
-  value = module.tidb-cluster-a.how_to_connect_to_default_cluster_tidb_from_bastion
-}
-
-output "connect_to_tidb_cluster_b_from_bastion" {
-  value = module.tidb-cluster-b.how_to_connect_to_default_cluster_tidb_from_bastion
-}
-
 ```
 
 As shown in the code above, you can omit several parameters in each of the module calls because there are reasonable defaults, and it is easy to customize the configuration. For example, just delete the bastion module call if you do not need it.
