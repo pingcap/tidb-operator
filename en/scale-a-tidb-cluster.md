@@ -12,9 +12,11 @@ This document introduces how to horizontally and vertically scale a TiDB cluster
 
 Horizontally scaling TiDB means that you scale TiDB out or in by adding or remove nodes in your pool of resources. When you scale a TiDB cluster, PD, TiKV, and TiDB are scaled out or in sequentially according to the values of their replicas. Scaling out operations add nodes based on the node ID in ascending order, while scaling in operations remove nodes based on the node ID in descending order.
 
-### Horizontal scaling operations
+Currently, the TiDB cluster supports management by Helm or by TidbCluster Custom Resource (CR). You can choose the scaling method based on the management method of your TiDB cluster.
 
-To perform a horizontal scaling operation:
+### Horizontal scaling operations (Helm)
+
+To perform a horizontal scaling operation, take the following steps:
 
 1. Modify `pd.replicas`, `tidb.replicas`, `tikv.replicas` in the `value.yaml` file of the cluster to a desired value.
 
@@ -26,15 +28,21 @@ To perform a horizontal scaling operation:
     helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart_version>
     ```
 
-3. View the cluster's scaling status:
+### Horizontal scaling operations (CR)
 
-    {{< copyable "shell-regular" >}}
+Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the `TidbCluster` object that corresponds to the cluster to the desired values using kubectl.
 
-    ```shell
-    watch kubectl -n <namespace> get pod -o wide
-    ```
+### View the scaling status
 
-    When the number of Pods for all components reaches the preset value and all components go to the `Running` state, the horizontal scaling is completed.
+To view the scaling status of the cluster, run the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+watch kubectl -n <namespace> get pod -o wide
+```
+
+When the number of Pods for all components reaches the preset value and all components go to the `Running` state, the horizontal scaling is completed.
 
 > **Note:**
 >
@@ -47,7 +55,9 @@ To perform a horizontal scaling operation:
 
 Vertically scaling TiDB means that you scale TiDB up or down by increasing or decreasing the limit of resources on the node. Vertically scaling is essentially the rolling update of the nodes.
 
-### Vertical scaling operations
+Currently, the TiDB cluster supports management by Helm or by TidbCluster Custom Resource (CR). You can choose the scaling method based on the management method of your TiDB cluster.
+
+### Vertical scaling operations (Helm)
 
 To perform a vertical scaling operation:
 
@@ -61,15 +71,21 @@ To perform a vertical scaling operation:
     helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart_version>
     ```
 
-3. View the progress of the upgrade:
+### Vertical scaling operations (CR)
 
-    {{< copyable "shell-regular" >}}
+Modify `spec.pd.resources`, `spec.tikv.resources`, and `spec.tikv.resources` in the `TidbCluster` object that corresponds to the cluster to the desired values using kubectl.
 
-    ```shell
-    watch kubectl -n <namespace> get pod -o wide
-    ```
+### View the upgrade progress
 
-    When all Pods are rebuilt and in the `Running` state, the vertical scaling is completed.
+To view the upgrade progress of the cluster, run the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+watch kubectl -n <namespace> get pod -o wide
+```
+
+When all Pods are rebuilt and in the `Running` state, the vertical scaling is completed.
 
 > **Note:**
 >
