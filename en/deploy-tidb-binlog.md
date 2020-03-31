@@ -1,10 +1,10 @@
 ---
-title: Maintain TiDB Binlog
-summary: Learn how to maintain TiDB Binlog of a TiDB cluster in Kubernetes.
+title: Deploy TiDB Binlog
+summary: Learn how to deploy TiDB Binlog for a TiDB cluster in Kubernetes.
 category: how-to
 ---
 
-# Maintain TiDB Binlog
+# Deploy TiDB Binlog
 
 This document describes how to maintain [TiDB Binlog](https://pingcap.com/docs/v3.0/reference/tidb-binlog/overview) of a TiDB cluster in Kubernetes.
 
@@ -13,71 +13,78 @@ This document describes how to maintain [TiDB Binlog](https://pingcap.com/docs/v
 - [Deploy TiDB Operator](deploy-tidb-operator.md);
 - [Install Helm](tidb-toolkit.md#use-helm) and configure it with the official PingCAP chart.
 
-## Enable TiDB Binlog of a TiDB cluster
+## Deploy TiDB Binlog of a TiDB cluster
 
-TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster with TiDB Binlog enabled, or enable TiDB Binlog in an existing TiDB cluster:
+TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster with TiDB Binlog enabled, or enable TiDB Binlog in an existing TiDB cluster, take the following steps.
 
-1. Modify the `values.yaml` file as described below:
+### Deploy Pump
 
-    * Set `binlog.pump.create` to `true`.
-    * Set `binlog.drainer.create` to `true`.
-    * Set `binlog.pump.storageClassName` and `binlog.drainer.storageClassName` to an available `storageClass` in your Kubernetes cluster.
-    * Set `binlog.drainer.destDBType` to your desired downstream storage as needed, which is explained in details below.
+1. Modify the TidbCluster CR file to add the Pump configuration.
 
-        TiDB Binlog supports three types of downstream storage:
+    For example:
 
-        * PersistenceVolume: the default downstream storage. You can configure a large PV for `drainer` (by modifying `binlog.drainer.storage`) in this case.
-        * MySQL compatible databases: enabled by setting `binlog.drainer.destDBType` to `mysql`. Meanwhile, you must configure the address and credential of the target database in `binlog.drainer.mysql`.
-        * Apache Kafka: enabled by setting `binlog.drainer.destDBType` to `kafka`. Meanwhile, you must configure the zookeeper address and Kafka address of the target cluster in `binlog.drainer.kafka`.
+    ```yaml
+    spec:
+      ...
+      pump:
+        baseImage: pingcap/tidb-binlog
+        version: v3.0.11
+        replicas: 1
+        storageClassName: local-storage
+        requests:
+          storage: 30Gi
+        schedulerName: default-scheduler
+        config:
+          addr: 0.0.0.0:8250
+          gc: 7
+          heartbeat-interval: 2
+    ```
 
-2. Set affinity and anti-affinity for TiDB and the Pump component:
+    Edit `version`, `replicas`, `storageClassName`, and `requests.storage` according to your cluster.
 
-    > **Note:**
-    >
-    > If you enable TiDB Binlog in the production environment, it is recommended to set affinity and anti-affinity for TiDB and the Pump component; if you enable TiDB Binlog in a test environment on the internal network, you can skip this step.
+2. Set affinity and anti-affinity for TiDB and Pump.
+    
+    If you enable TiDB Binlog in the production environment, it is recommended to set affinity and anti-affinity for TiDB and the Pump component; if you enable TiDB Binlog in a test environment on the internal network, you can skip this step.
 
-    By default, TiDB's affinity is set to `{}`. Currently, each TiDB instance does not have a corresponding Pump instance by default. When TiDB Binlog is enabled, if Pump and TiDB are separately deployed and network isolation occurs, and `ignore-error` is enabled, TiDB loses binlogs. In this situation, it is recommended to deploy a TiDB instance and a Pump instance on the same node using the affinity feature, and to split Pump instances on different nodes using the anti-affinity feature. For each node, only one Pump instance is required.
+    By default, the affinity of TiDB and Pump is set to `{}`. Currently, each TiDB instance does not have a corresponding Pump instance by default. When TiDB Binlog is enabled, if Pump and TiDB are separately deployed and network isolation occurs, and `ignore-error` is enabled in TiDB components, TiDB loses binlogs.
 
-    > Note:
-    >
-    > `<release-name>` needs to be replaced with the `Helm-release-name` of the target `tidb-cluster` chart.
+    In this situation, it is recommended to deploy a TiDB instance and a Pump instance on the same node using the affinity feature, and to split Pump instances on different nodes using the anti-affinity feature. For each node, only one Pump instance is required. The steps are as follows:
 
-    * Configure `tidb.affinity` as follows:
-
-        {{< copyable "" >}}
+    * Configure `spec.tidb.affinity` as follows:
 
         ```yaml
-        tidb:
-          affinity:
-            podAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                - labelSelector:
-                    matchExpressions:
+        spec:
+          tidb:
+            affinity:
+              podAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
                       - key: "app.kubernetes.io/component"
                         operator: In
                         values:
-                          - "pump"
+                        - "pump"
                       - key: "app.kubernetes.io/managed-by"
                         operator: In
                         values:
-                          - "tidb-operator"
+                        - "tidb-operator"
                       - key: "app.kubernetes.io/name"
                         operator: In
                         values:
-                          - "tidb-cluster"
+                        - "tidb-cluster"
                       - key: "app.kubernetes.io/instance"
                         operator: In
                         values:
-                          - <release-name>
-                  topologyKey: kubernetes.io/hostname
+                        - <cluster-name>
+                    topologyKey: kubernetes.io/hostname
         ```
 
-    * Configure `binlog.pump.affinity` as follows:
-
-        {{< copyable "" >}}
+    * Configure `spec.pump.affinity` as follows:
 
         ```yaml
-        binlog:
+        spec:
           pump:
             affinity:
               podAffinity:
@@ -101,7 +108,7 @@ TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster
                       - key: "app.kubernetes.io/instance"
                         operator: In
                         values:
-                        - <release-name>
+                        - <cluster-name>
                     topologyKey: kubernetes.io/hostname
               podAntiAffinity:
                 preferredDuringSchedulingIgnoredDuringExecution:
@@ -124,35 +131,16 @@ TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster
                       - key: "app.kubernetes.io/instance"
                         operator: In
                         values:
-                        - <release-name>
+                        - <cluster-name>
                     topologyKey: kubernetes.io/hostname
         ```
+    > **Note:**
+    >
+    > If you update the affinity configuration of the TiDB components, it will cause rolling updates of the TiDB components in the cluster.
 
-3. Create a new TiDB cluster or update an existing cluster:
+## Deploy drainer
 
-    * Create a new TiDB cluster with TiDB Binlog enabled:
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        helm install pingcap/tidb-cluster --name=<release-name> --namespace=<namespace> --version=<chart-version> -f <values-file>
-        ```
-
-    * Update an existing TiDB cluster to enable TiDB Binlog:
-
-        > Note:
-        >
-        > If you set the affinity for TiDB and its components, updating the existing TiDB cluster causes rolling updates of the TiDB components in the cluster.
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        helm upgrade <release-name> pingcap/tidb-cluster --version=<chart-version> -f <values-file>
-        ```
-
-## Deploy multiple drainers
-
-By default, only one downstream drainer is created. You can install the `tidb-drainer` Helm chart to deploy more drainers for a TiDB cluster, as described below:
+To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB cluster, take the following steps:
 
 1. Make sure that the PingCAP Helm repository is up to date:
 
@@ -169,6 +157,8 @@ By default, only one downstream drainer is created. You can install the `tidb-dr
     ```
 
 2. Get the default `values.yaml` file to facilitate customization:
+
+    {{< copyable "shell-regular" >}}
 
     ```shell
     helm inspect values pingcap/tidb-drainer --version=<chart-version> > values.yaml
@@ -206,9 +196,13 @@ By default, only one downstream drainer is created. You can install the `tidb-dr
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-drainer --name=<release-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    helm install pingcap/tidb-drainer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
     ```
 
     > **Note:**
     >
     > This chart must be installed to the same namespace as the source TiDB cluster.
+
+## Enable TLS
+
+If you want to enable TLS for the TiDB cluster and TiDB Binlog, refer to [Enable TLS between Components](enable-tls-between-components.md).

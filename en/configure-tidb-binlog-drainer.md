@@ -14,6 +14,8 @@ The following table contains all configuration parameters available for the `tid
 
 | Parameter | Description | Default Value |
 | :----- | :---- | :----- |
+| `timezone` | Timezone configuration | `UTC` |
+| `drainerName` | The name of `Statefulset` | `""` |
 | `clusterName` | The name of the source TiDB cluster | `demo` |
 | `clusterVersion` | The version of the source TiDB cluster | `v3.0.1` |
 | `baseImage` | The base image of TiDB Binlog | `pingcap/tidb-binlog` |
@@ -23,6 +25,7 @@ The following table contains all configuration parameters available for the `tid
 | `storage` | The storage limit of the drainer Pod. Note that you should set a larger size if `db-type` is set to `pb` | `10Gi` |
 | `disableDetect` |  Determines whether to disable casualty detection | `false` |
 | `initialCommitTs` |  Used to initialize a checkpoint if the drainer does not have one | `0` |
+| `tlsCluster.enabled` | Whether or not to enable TLS between clusters | `false` |
 | `config` | The configuration file passed to the drainer. Detailed reference: [drainer.toml](https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml) | (see below) |
 | `resources` | The resource limits and requests of the drainer Pod | `{}` |
 | `nodeSelector` | Ensures that the drainer Pod is only scheduled to the node with the specific key-value pair as the label. Detailed reference: [nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector) | `{}` |

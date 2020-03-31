@@ -34,7 +34,7 @@
   - [销毁 TiDB 集群](destroy-a-tidb-cluster.md)
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
   - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
-  - [收集日志](collect-tidb-binlogs.md)
+  - [收集日志](collect-tidb-logs.md)
   - [集群故障自动转移](use-auto-failover.md)
   - [开启 TiDB Operator 准入控制器](enable-admission-webhook.md)
 + TiDB 集群伸缩
