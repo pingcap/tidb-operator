@@ -50,6 +50,7 @@
 + Upgrade
   - [TiDB Cluster](upgrade-a-tidb-cluster.md)
   - [TiDB Operator](upgrade-tidb-operator.md)
+  - [TiDB Operator v1.1 Notice](notes-tidb-operator-v1.1.md)
 + Security
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
   - [Enable TLS between TiDB Components](enable-tls-between-components.md)
