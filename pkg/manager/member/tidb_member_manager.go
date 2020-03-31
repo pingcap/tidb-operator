@@ -337,11 +337,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	plugins := tc.Spec.TiDB.Plugins
 	startScript, err := RenderTiDBStartScript(&TidbStartScriptModel{
-		ClusterName:            tc.Name,
-		EnableAdvertiseAddress: tc.Spec.TiDB.IsAdvertiseAddressEnabled(),
-		EnablePlugin:           len(plugins) > 0,
-		PluginDirectory:        "/plugins",
-		PluginList:             strings.Join(plugins, ","),
+		ClusterName:     tc.Name,
+		EnablePlugin:    len(plugins) > 0,
+		PluginDirectory: "/plugins",
+		PluginList:      strings.Join(plugins, ","),
 	})
 	if err != nil {
 		return nil, err
@@ -609,32 +608,26 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:  "SLOW_LOG_FILE",
 			Value: slowLogFileEnvVal,
 		},
-	}
-
-	if tc.Spec.TiDB.IsAdvertiseAddressEnabled() {
-		advertiseEnvs := []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.name",
-					},
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
 				},
 			},
-			{
-				Name: "NAMESPACE",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
-					},
+		},
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
 				},
 			},
-			{
-				Name:  "HEADLESS_SERVICE_NAME",
-				Value: headlessSvcName,
-			},
-		}
-		envs = append(envs, advertiseEnvs...)
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
 	}
 
 	scheme := corev1.URISchemeHTTP

@@ -304,11 +304,6 @@ type TiDBSpec struct {
 	// +optional
 	BinlogEnabled *bool `json:"binlogEnabled,omitempty"`
 
-	// Add --advertise-address to TiDB's startup parameters
-	// Optional: Defaults to false
-	// +optional
-	EnableAdvertiseAddress *bool `json:"enableAdvertiseAddress,omitempty"`
-
 	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
 	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
@@ -855,10 +850,6 @@ type BackupSpec struct {
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
-	// Whether enable the TLS connection between TiDB server components
-	// Optional: Defaults to nil
-	// +optional
-	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 	// ClusterName of backup/restore cluster
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster

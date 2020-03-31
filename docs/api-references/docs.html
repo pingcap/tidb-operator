@@ -1559,21 +1559,6 @@ TidbMonitorStatus
 <tbody>
 <tr>
 <td>
-<code>tlsCluster</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TLSCluster">
-TLSCluster
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable the TLS connection between TiDB server components
-Optional: Defaults to nil</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>cluster</code></br>
 <em>
 string
@@ -4568,9 +4553,7 @@ Optional: Defaults to 3</p>
 <td>
 <code>location-labels</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StringSlice">
-StringSlice
-</a>
+[]string
 </em>
 </td>
 <td>
@@ -5122,6 +5105,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>KeyPath is the path of file that contains X509 key in PEM format.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert-allowed-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
 </td>
 </tr>
 </tbody>
@@ -6674,6 +6669,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>ClusterVerifyCN is the Common Name that allowed</p>
 </td>
 </tr>
 </tbody>
@@ -6993,20 +6989,10 @@ GcsStorageProvider
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.StringSlice">StringSlice
-(<code>[]string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDReplicationConfig">PDReplicationConfig</a>)
-</p>
-<p>
-<p>StringSlice is more friendly to json encode/decode</p>
-</p>
 <h3 id="pingcap.com/v1alpha1.TLSCluster">TLSCluster
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BRConfig">BRConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -7937,19 +7923,6 @@ bool
 <em>(Optional)</em>
 <p>Whether enable TiDB Binlog, it is encouraged to not set this field and rely on the default behavior
 Optional: Defaults to true if PumpSpec is non-nil, otherwise false</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enableAdvertiseAddress</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Add &ndash;advertise-address to TiDB&rsquo;s startup parameters
-Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>
@@ -10867,6 +10840,18 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert-allowed-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
 </td>
 </tr>
 <tr>

@@ -39,7 +39,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		return err
 	}
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", restore.Spec.BR.Cluster, clusterNamespace))
-	if restore.Spec.BR.TLSCluster != nil && restore.Spec.BR.TLSCluster.Enabled {
+	if ro.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))

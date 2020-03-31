@@ -377,12 +377,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 				Description: "BRConfig contains config for BR",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"tlsCluster": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Whether enable the TLS connection between TiDB server components Optional: Defaults to nil",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster"),
-						},
-					},
 					"cluster": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName of backup/restore cluster",
@@ -471,8 +465,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 				Required: []string{"cluster"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster"},
 	}
 }
 
@@ -3162,19 +3154,6 @@ func schema_pkg_apis_pingcap_v1alpha1_Security(ref common.ReferenceCallback) com
 							Format: "",
 						},
 					},
-					"cluster-verify-cn": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		},
@@ -3891,13 +3870,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 					"binlogEnabled": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable TiDB Binlog, it is encouraged to not set this field and rely on the default behavior Optional: Defaults to true if PumpSpec is non-nil, otherwise false",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"enableAdvertiseAddress": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Add --advertise-address to TiDB's startup parameters Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

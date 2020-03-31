@@ -255,6 +255,19 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
+	if tc.IsTLSClusterEnabled() {
+		securityMap := spec.Config["security"]
+		security := map[string]interface{}{}
+		if securityMap != nil {
+			security = securityMap.(map[string]interface{})
+		}
+
+		security["ssl-ca"] = path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)
+		security["ssl-cert"] = path.Join(pumpCertPath, corev1.TLSCertKey)
+		security["ssl-key"] = path.Join(pumpCertPath, corev1.TLSPrivateKeyKey)
+		spec.Config["security"] = security
+	}
+
 	confText, err := MarshalTOML(spec.Config)
 	if err != nil {
 		return nil, err
@@ -263,14 +276,6 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	name := controller.PumpMemberName(tc.Name)
 	confTextStr := string(confText)
 
-	if tc.IsTLSClusterEnabled() {
-		confTextStr = strings.Join([]string{
-			confTextStr,
-			"[security]",
-			fmt.Sprintf("ssl-ca = \"%s\"", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)),
-			fmt.Sprintf("ssl-cert = \"%s\"", path.Join(pumpCertPath, corev1.TLSCertKey)),
-			fmt.Sprintf("ssl-key = \"%s\"", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))}, "\n")
-	}
 	data := map[string]string{
 		"pump-config": confTextStr,
 	}
