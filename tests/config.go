@@ -44,7 +44,6 @@ type Config struct {
 	InstallOperator      bool            `yaml:"install_opeartor" json:"install_opeartor"`
 	OperatorTag          string          `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string          `yaml:"operator_image" json:"operator_image"`
-	BackupTag            string          `yaml:"backup_tag" json:"backup_tag"`
 	BackupImage          string          `yaml:"backup_image" json:"backup_image"`
 	OperatorFeatures     map[string]bool `yaml:"operator_features" json:"operator_features"`
 	UpgradeOperatorTag   string          `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
