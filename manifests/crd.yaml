@@ -4075,10 +4075,6 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
-                enableAdvertiseAddress:
-                  description: 'Add --advertise-address to TiDB''s startup parameters
-                    Optional: Defaults to false'
-                  type: boolean
                 env:
                   description: List of environment variables to set in the container,
                     like v1.Container.Env. Note that following env names cannot be
