@@ -516,7 +516,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-client-tls", ReadOnly: true, MountPath: "/var/lib/tidb-client-tls",
+			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
 	}
 
