@@ -47,6 +47,8 @@ var (
 			corev1.ResourceMemory: resource.MustParse("4Gi"),
 		},
 	}
+	// hard-coded region and s3 bucket in our aws account for e2e testing
+	// TODO create s3 bucket in current region dynamically
 	AWSRegion = "us-west-2"
 	Bucket    = "backup.e2e.us-west-2.tidbcloud.com"
 	S3Secret  = "s3-secret"
