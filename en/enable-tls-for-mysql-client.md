@@ -241,7 +241,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
     - A ClusterIssuer object of SelfSigned class, used to generate the CA certificate needed by ClusterIssuer of CA class
     - A Certificate object, whose `isCa` is set to `true`
-    - A ClusterIssuer, used to issue TLS certificates between TiDB components
+    - A ClusterIssuer, used to issue TLS certificates for the TiDB server
 
     Finally, execute the following command to create a ClusterIssuer:
 
