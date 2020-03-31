@@ -66,7 +66,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, output: %s, err: %v", ro, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
 	}
 	var tmpOutput, errMsg string
 	for {
@@ -76,7 +76,7 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 		if strings.Contains(tmpOutput, "[ERROR]") {
 			errMsg += tmpOutput
 		}
-		klog.Infof(tmpOutput)
+		klog.Infof(strings.Replace(tmpOutput, "\n", "", -1))
 		if err != nil {
 			break
 		}
