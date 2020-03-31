@@ -18,11 +18,16 @@ lang=(en zh)
 
 for d in "${lang[@]}"
 do
+if [ $d = "en" ]; then
+    docs_title=" TiDB in Kubernetes Documentation"
+else
+    docs_title=" TiDB in Kubernetes 用户文档"
+fi
 pandoc -N --toc --smart --latex-engine=xelatex \
 --template=templates/template.tex \
 --columns=80 \
 --listings \
--V title="TiDB in Kubernetes Documentation" \
+-V title="$docs_title" \
 -V author="PingCAP Inc." \
 -V date="${_version_tag}" \
 -V CJKmainfont="${MAINFONT}" \
