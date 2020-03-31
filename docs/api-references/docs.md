@@ -2990,6 +2990,55 @@ CrdKind
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.DashboardConfig">DashboardConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+</p>
+<p>
+<p>DashboardConfig is the configuration for tidb-dashboard.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>tidb_cacert_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb_cert_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb_key_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.Experimental">Experimental
 </h3>
 <p>
@@ -4382,6 +4431,19 @@ OpenTracingReporter
 <code>rpc-metrics</code></br>
 <em>
 bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>dashboard</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.DashboardConfig">
+DashboardConfig
+</a>
 </em>
 </td>
 <td>
