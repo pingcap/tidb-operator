@@ -22,7 +22,7 @@ pandoc -N --toc --smart --latex-engine=xelatex \
 --template=templates/template.tex \
 --columns=80 \
 --listings \
--V title="TiDB Documentation" \
+-V title="TiDB in Kubernetes Documentation" \
 -V author="PingCAP Inc." \
 -V date="${_version_tag}" \
 -V CJKmainfont="${MAINFONT}" \
