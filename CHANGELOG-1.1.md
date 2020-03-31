@@ -5,7 +5,7 @@ This is a release candidate of `v1.1.0`, which focuses on the usability, extensi
 ## Action Required
 
 - `--advertise-address` will be configured for `tidb-server` which will trigger rolling-upgrade for `tidb-server` component, you can set `spec.paused` to `true` to avoid it before upgrading tidb-operator and set it back to `false` when it's ready to upgrade your tidb server. ([#2076](https://github.com/pingcap/tidb-operator/pull/2076), [@cofyc](https://github.com/cofyc))
-- Add field `tlsClient` in the backup and restore spec, which controls whether to enable TLS for connection with TiDB Server and support specifying a secret name that includes the cert. ([#2003](https://github.com/pingcap/tidb-operator/pull/2003), [@shuijing198799](https://github.com/shuijing198799))
+- Add field `tlsClient.tlsSecret` in the backup and restore spec, which supports specifying a secret name that includes the cert. ([#2003](https://github.com/pingcap/tidb-operator/pull/2003), [@shuijing198799](https://github.com/shuijing198799))
 
 
 ## Other Notable Changes
@@ -14,24 +14,24 @@ This is a release candidate of `v1.1.0`, which focuses on the usability, extensi
 - Add `cert-allowed-cn` support to TiDB components ([#2061](https://github.com/pingcap/tidb-operator/pull/2061), [@weekface](https://github.com/weekface))
 - Fix the PD `location-labels` configuration ([#1941](https://github.com/pingcap/tidb-operator/pull/1941), [@aylei](https://github.com/aylei))
 - Able to pause and unpause tidb cluster deployment via `spec.paused`. ([#2013](https://github.com/pingcap/tidb-operator/pull/2013), [@cofyc](https://github.com/cofyc))
-- Default the `max-backups` for tidb server configuration to `3` if the tidb cluster was deployed by CR. ([#2045](https://github.com/pingcap/tidb-operator/pull/2045), [@Yisaer](https://github.com/Yisaer))
+- Default the `max-backups` for tidb server configuration to `3` if the TiDB cluster is deployed by CR. ([#2045](https://github.com/pingcap/tidb-operator/pull/2045), [@Yisaer](https://github.com/Yisaer))
 - Able to configure custom environments for components. ([#2052](https://github.com/pingcap/tidb-operator/pull/2052), [@cofyc](https://github.com/cofyc))
 - Fix the error that `kubectl get tc` cannot show correct images ([#2031](https://github.com/pingcap/tidb-operator/pull/2031), [@Yisaer](https://github.com/Yisaer))
-- 1. Default the `spec.tikv.maxFailoverCount` and `spec.tidb.maxFailoverCount` to 3 when they are not defined
+- 1. Default the `spec.tikv.maxFailoverCount` and `spec.tidb.maxFailoverCount` to `3` when they are not defined
   2. Disable auto-failover when `maxFailoverCount` is set to `0` ([#2015](https://github.com/pingcap/tidb-operator/pull/2015), [@Yisaer](https://github.com/Yisaer))
 - Support deploying TiDB Cluster with TidbCluster and TidbMonitor CRs via Terraform on ACK. ([#2012](https://github.com/pingcap/tidb-operator/pull/2012), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Update PDConfig for TidbCluster to PD v3.1.0 ([#1928](https://github.com/pingcap/tidb-operator/pull/1928), [@Yisaer](https://github.com/Yisaer))
 - Support deploying TiDB Cluster with TidbCluster and TidbMonitor CRs via Terraform on AWS. ([#2004](https://github.com/pingcap/tidb-operator/pull/2004), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Update TidbConfig for TidbCluster to TiDB v3.1.0 ([#1906](https://github.com/pingcap/tidb-operator/pull/1906), [@Yisaer](https://github.com/Yisaer))
 - Allow users to define resources for initContainers in TiDB initializer job. ([#1938](https://github.com/pingcap/tidb-operator/pull/1938), [@tfulcrand](https://github.com/tfulcrand))
-- TLS support for Pump and Drainer ([#1979](https://github.com/pingcap/tidb-operator/pull/1979), [@weekface](https://github.com/weekface))
+- Add TLS support for Pump and Drainer ([#1979](https://github.com/pingcap/tidb-operator/pull/1979), [@weekface](https://github.com/weekface))
 - Add doc and examples for auto-scaler and intializer ([#1772](https://github.com/pingcap/tidb-operator/pull/1772), [@Yisaer](https://github.com/Yisaer))
 - 1. Add check to guarantee the NodePort won't be changed if the serviceType of TidbMonitor is NodePort
   2. Add EnvVar sort to avoid the monitor rendering different results from the same TidbMonitor spec.
   3. Fix the problem that Tidbmonitor LoadBalancer IP is not used. ([#1962](https://github.com/pingcap/tidb-operator/pull/1962), [@Yisaer](https://github.com/Yisaer))
 - Make tidb-initializer support TLS ([#1931](https://github.com/pingcap/tidb-operator/pull/1931), [@weekface](https://github.com/weekface))
 - 1. Fix the problem that Advanced StatefulSet could not work with Webhook
-  2. Change the Reaction for the Down State TiKV pod during deleting request in webhook from admit to rejecting. ([#1963](https://github.com/pingcap/tidb-operator/pull/1963), [@Yisaer](https://github.com/Yisaer))
+  2. Change the Reaction for the Down State TiKV pod during deleting request in webhook from admit to reject. ([#1963](https://github.com/pingcap/tidb-operator/pull/1963), [@Yisaer](https://github.com/Yisaer))
 - Fix the drainer installation error when `drainerName` is set ([#1961](https://github.com/pingcap/tidb-operator/pull/1961), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Fix some TiKV configuration keys in toml ([#1887](https://github.com/pingcap/tidb-operator/pull/1887), [@aylei](https://github.com/aylei))
 - Support using a remote directory as data source for tidb-lightning. ([#1629](https://github.com/pingcap/tidb-operator/pull/1629), [@aylei](https://github.com/aylei))
