@@ -65,13 +65,14 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	cmd := exec.Command("br", fullArgs...)
+	cmd.Stderr = cmd.Stdout
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
 		return remotePath, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, err)
+		return remotePath, fmt.Errorf("cluster %s, execute br command failed, output: %s, err: %v", bo, fullArgs, err)
 	}
 	var tmpOutput, errMsg string
 	for {
