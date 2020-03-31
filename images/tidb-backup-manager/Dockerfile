@@ -1,7 +1,7 @@
 FROM pingcap/tidb-enterprise-tools:latest
 ARG VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
-ARG TOOLKIT_VERSION=v3.0.9
+ARG TOOLKIT_VERSION=v3.0.12
 RUN apk update && apk add ca-certificates
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${VERSION}/rclone-${VERSION}-linux-amd64.zip \
