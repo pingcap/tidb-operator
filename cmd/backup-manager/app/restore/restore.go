@@ -59,13 +59,14 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	cmd := exec.Command("br", fullArgs...)
+	cmd.Stderr = cmd.Stdout
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, output: %s, err: %v", ro, fullArgs, err)
 	}
 	var tmpOutput, errMsg string
 	for {
