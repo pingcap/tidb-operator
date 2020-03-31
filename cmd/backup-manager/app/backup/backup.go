@@ -72,7 +72,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	}
 	err = cmd.Start()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, execute br command failed, output: %s, err: %v", bo, fullArgs, err)
+		return remotePath, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
 	var tmpOutput, errMsg string
 	for {
@@ -82,7 +82,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		if strings.Contains(tmpOutput, "[ERROR]") {
 			errMsg += tmpOutput
 		}
-		klog.Infof(tmpOutput)
+		klog.Infof(strings.Replace(tmpOutput, "\n", "", -1))
 		if err != nil {
 			break
 		}
