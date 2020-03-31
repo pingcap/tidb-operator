@@ -10,111 +10,159 @@ This document describes how to back up the data of the TiDB cluster in Kubernete
 
 The backup method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the backup method implemented based on Helm Charts, refer to [Back up and Restore TiDB Cluster Data Based on Helm Charts](backup-and-restore-using-helm-charts.md).
 
-## Ad-hoc full backup
+## Ad-hoc full backup to S3-compatible storage
 
 Ad-hoc full backup describes the backup by creating a `Backup` custom resource (CR) object. TiDB Operator performs the specific backup operation based on this `Backup` object. If an error occurs during the backup process, TiDB Operator does not retry and you need to handle this error manually.
 
 For the current S3-compatible storage types, Ceph and Amazon S3 work normally as tested. Therefore, this document shows examples in which the data of the `demo1` TiDB cluster in the `test1` Kubernetes namespace is backed up to Ceph and Amazon S3 respectively.
 
+### Three methods to grant permissions of AWS account
+
+- If you use Amazon S3 to back up and restore the cluster, you have three methods to grant permissions. For details, refer to [Back up TiDB Cluster Data to AWS Using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
+- If Ceph is used as backend storage in backup and restore test, the permission is granted by importing AccessKey and SecretKey.
+
 ### Prerequisites for ad-hoc backup
 
-1. Download [backup-rbac.yaml](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml) and execute the following command to create the role-based access control (RBAC) resources in the `test1` namespace:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f backup-rbac.yaml -n test1
-    ```
-
-2. Create the `s3-secret` secret which stores the credential used to access the S3-compatible storage:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic s3-secret --from-literal=access_key=xxx --from-literal=secret_key=yyy --namespace=test1
-    ```
-
-3. Create the `backup-demo1-tidb-secret` secret which stores the root account and password needed to access the TiDB cluster:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
-    ```
+Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequisites-for-ad-hoc-full-backup).
 
 ### Ad-hoc backup process
 
-+ Back up data to Amazon S3
-
-    1. In the `backup-s3.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
-
-        {{< copyable "" >}}
-
-        ```yaml
-        ---
-        apiVersion: pingcap.com/v1alpha1
-        kind: Backup
-        metadata:
-        name: demo1-backup-s3
-        namespace: test1
-        spec:
-        from:
-            host: <tidb-host-ip>
-            port: <tidb-port>
-            user: <tidb-user>
-            secretName: backup-demo1-tidb-secret
-        s3:
-            provider: aws
-            secretName: s3-secret
-            # region: us-east-1
-            # storageClass: STANDARD_IA
-            # acl: private
-            # endpoint:
-        storageClassName: local-storage
-        storageSize: 10Gi
-        ```
-
-    2. Create the `Backup` CR and back up data to Amazon S3:
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        kubectl apply -f backup-s3.yaml
-        ```
-
-+ Back up data to Amazon S3
-
-    1. In the `backup-s3.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
-
-        {{< copyable "" >}}
-
-        ```yaml
-        ---
-        apiVersion: pingcap.com/v1alpha1
-        kind: Backup
-        metadata:
-        name: demo1-backup-s3
-        namespace: test1
-        spec:
-        from:
-            host: <tidb-host-ip>
-            port: <tidb-port>
-            user: <tidb-user>
-            secretName: backup-demo1-tidb-secret
-        s3:
-            provider: ceph
-            secretName: s3-secret
-            endpoint: http://10.0.0.1:30074
-        storageClassName: local-storage
-        storageSize: 10Gi
-        ```
-
-    2. Create the `Backup` CR and back up data to Ceph:
++ Create the `Backup` CR, and back up cluster data to AWS S3 by importing AccessKey and SecretKey to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl apply -f backup-s3.yaml
+    ```
+
+    The content of `backup-s3.yaml` is as follows:
+
+    {{< copyable "" >}}
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+      name: demo1-backup-s3
+      namespace: test1
+    spec:
+      from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+      s3:
+        provider: aws
+        secretName: s3-secret
+        # region: us-east-1
+        # storageClass: STANDARD_IA
+        # acl: private
+        # endpoint:
+      storageClassName: local-storage
+      storageSize: 10Gi
+    ```
+
++ Create the `Backup` CR, and back up data to Ceph by importing AccessKay and SecretKey to grant permissions:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-s3.yaml
+    ```
+
+    The content of `backup-s3.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+      name: demo1-backup-s3
+      namespace: test1
+    spec:
+      from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+      s3:
+        provider: ceph
+        secretName: s3-secret
+        endpoint: http://10.0.0.1:30074
+      storageClassName: local-storage
+      storageSize: 10Gi
+    ```
+
++ Create the `Backup` CR, and back up data by binding IAM with Pod to grant permissions:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-s3.yaml
+    ```
+
+    The content of `backup-s3.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+    name: demo1-backup-s3
+    namespace: test1
+    annotations:
+        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+    spec:
+    backupType: full
+    from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+    s3:
+        provider: aws
+        # region: us-east-1
+        # storageClass: STANDARD_IA
+        # acl: private
+        # endpoint:
+    storageClassName: local-storage
+    storageSize: 10Gi
+    ```
+
++ Create the `Backup` CR, and back up data by binding IAM with ServiceAccount to grant permissions:
+
+    {{< copyable "shell-regular" >}}
+
+    ```yaml
+    kubectl apply -f backup-s3.yaml
+    ```
+
+    The content of `backup-s3.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Backup
+    metadata:
+    name: demo1-backup-s3
+    namespace: test1
+    spec:
+    backupType: full
+    serviceAccount: tidb-backup-manager
+    from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+    s3:
+        provider: aws
+        # region: us-east-1
+        # storageClass: STANDARD_IA
+        # acl: private
+        # endpoint:
+    storageClassName: local-storage
+    storageSize: 10Gi
     ```
 
 In the above two examples, all data of the TiDB cluster is exported and backed up to Amazon S3 and Ceph respectively. You can ignore the `region`, `acl`, `endpoint`, and `storageClass` configuration items in the Amazon S3 configuration. S3-compatible storage types other than Amazon S3 can also use configuration similar to that of Amazon S3. You can also leave the configuration item fields empty if you do not need to configure these items as shown in the above Ceph configuration.
@@ -180,88 +228,159 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
 
 ### Scheduled backup process
 
-+ Scheduled backup to Amazon S3.
++ Create the `BackupSchedule` CR to enable the scheduled full backup to Amazon S3 by importing AccessKey and SecretKey to grant permissions:
 
-    1. In the `backup-gcs.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
+    {{< copyable "shell-regular" >}}
 
-        {{< copyable "" >}}
+    ```shell
+    kubectl apply -f backup-schedule-s3.yaml
+    ```
 
-        ```yaml
-        ---
-        apiVersion: pingcap.com/v1alpha1
-        kind: BackupSchedule
-        metadata:
-        name: demo1-backup-schedule-s3
-        namespace: test1
-        spec:
-        #maxBackups: 5
-        #pause: true
-        maxReservedTime: "3h"
-        schedule: "*/2 * * * *"
-        backupTemplate:
-            from:
-            host: <tidb-host-ip>
-            port: <tidb-port>
-            user: <tidb-user>
-            secretName: backup-demo1-tidb-secret
-            s3:
-            provider: aws
-            secretName: s3-secret
-            # region: us-east-1
-            # storageClass: STANDARD_IA
-            # acl: private
-            # endpoint:
-            storageClassName: local-storage
-            storageSize: 10Gi
-        ```
+    The content of `backup-schedule-s3.yaml` is as follows:
 
-    2. Create the `BackupSchedule` CR to enable the scheduled full backup to Amazon S3:
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+    name: demo1-backup-schedule-s3
+    namespace: test1
+    spec:
+    #maxBackups: 5
+    #pause: true
+    maxReservedTime: "3h"
+    schedule: "*/2 * * * *"
+    backupTemplate:
+        from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+        s3:
+        provider: aws
+        secretName: s3-secret
+        # region: us-east-1
+        # storageClass: STANDARD_IA
+        # acl: private
+        # endpoint:
+        storageClassName: local-storage
+        storageSize: 10Gi
+    ```
 
-        {{< copyable "shell-regular" >}}
++ Create the `BackupSchedule` CR to enable the scheduled full backup to Ceph by importing AccessKey and SecretKey to grant permissions:
 
-        ```shell
-        kubectl apply -f backup-schedule-s3.yaml
-        ```
+    {{< copyable "shell-regular" >}}
 
-+ Scheduled backup to Ceph.
+    ```shell
+    kubectl apply -f backup-schedule-s3.yaml
+    ```
 
-    1. In the `backup-gcs.yaml` file, edit `host`, `port`, `user`, `projectId` and save your changes.
+    The content of `backup-schedule-s3.yaml` is as follows:
 
-        {{< copyable "shell-regular" >}}
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+    name: demo1-backup-schedule-ceph
+    namespace: test1
+    spec:
+    #maxBackups: 5
+    #pause: true
+    maxReservedTime: "3h"
+    schedule: "*/2 * * * *"
+    backupTemplate:
+        from:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: backup-demo1-tidb-secret
+        s3:
+        provider: ceph
+        secretName: s3-secret
+        endpoint: http://10.0.0.1:30074
+        storageClassName: local-storage
+        storageSize: 10Gi
+    ```
 
-        ```yaml
-        ---
-        apiVersion: pingcap.com/v1alpha1
-        kind: BackupSchedule
-        metadata:
-        name: demo1-backup-schedule-ceph
-        namespace: test1
-        spec:
-        #maxBackups: 5
-        #pause: true
-        maxReservedTime: "3h"
-        schedule: "*/2 * * * *"
-        backupTemplate:
-            from:
-            host: <tidb-host-ip>
-            port: <tidb-port>
-            user: <tidb-user>
-            secretName: backup-demo1-tidb-secret
-            s3:
-            provider: ceph
-            secretName: s3-secret
-            endpoint: http://10.0.0.1:30074
-            storageClassName: local-storage
-            storageSize: 10Gi
-        ```
++ Create the `BackupSchedule` CR to enable the scheduled full backup, and back up the cluster data to Amazon S3 by binding IAM with Pod to grant permissions:
 
-    2. Create the `BackupSchedule` CR to enable the scheduled full backup to Ceph:
+    {{< copyable "shell-regular" >}}
 
-        {{< copyable "shell-regular" >}}
+    ```shell
+    kubectl apply -f backup-schedule-s3.yaml
+    ```
 
-        ```shell
-        kubectl apply -f backup-schedule-s3.yaml
-        ```
+    The content of `backup-schedule-s3.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+      name: demo1-backup-schedule-s3
+      namespace: test1
+      annotations:
+        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+    spec:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      backupTemplate:
+        from:
+          host: <tidb-host-ip>
+          port: <tidb-port>
+          user: <tidb-user>
+          secretName: backup-demo1-tidb-secret
+        s3:
+          provider: aws
+          # region: us-east-1
+          # storageClass: STANDARD_IA
+          # acl: private
+          # endpoint:
+        storageClassName: local-storage
+        storageSize: 10Gi
+    ```
+
++ Create the `BackupSchedule` CR to enable the scheduled full backup, and back up the cluster data to Amazon S3 by binding IAM with ServiceAccount to grant permissions:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f backup-schedule-s3.yaml
+    ```
+
+    The content of `backup-schedule-s3.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: BackupSchedule
+    metadata:
+      name: demo1-backup-schedule-s3
+      namespace: test1
+    spec:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      serviceAccount: tidb-backup-manager
+      backupTemplate:
+        from:
+          host: <tidb-host-ip>
+          port: <tidb-port>
+          user: <tidb-user>
+          secretName: backup-demo1-tidb-secret
+        s3:
+          provider: aws
+          # region: us-east-1
+          # storageClass: STANDARD_IA
+          # acl: private
+          # endpoint:
+        storageClassName: local-storage
+        storageSize: 10Gi
+    ```
 
 After creating the scheduled full backup, you can use the following command to check the backup status:
 

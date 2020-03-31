@@ -12,27 +12,51 @@ The restoration method described in this document is implemented based on Custom
 
 This document shows an example in which the backup data stored in the specified path on the S3-compatible storage is restored to the TiDB cluster.
 
+## Three methods to grant AWS account permissions
+
+- If you use Amazon S3 to back up and restore the cluster, you have three methods to grant permissions. For details, refer to [Back up TiDB Cluster Data to AWS Using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
+- If Ceph is used as backend storage in backup and restore test, the permission is granted by importing AccessKey and SecretKey.
+
 ## Prerequisites
 
-1. Download [`backup-rbac.yaml`](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-rbac.yaml) and execute the following command to create the role-based access control (RBAC) resources in the `test2` namespace:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl apply -f backup-rbac.yaml -n test2
-    ```
-
-2. Create the `restore-demo2-tidb-secret` secret which stores the root account and password needed to access the TiDB cluster:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=<password> --namespace=test2
-    ```
+Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-hoc-full-backup).
 
 ## Restoration process
 
-1. Create the restore custom resource (CR) and restore the backup data to the TiDB cluster:
++ Create the `Restore` CR, and restore the cluster data from Ceph by importing AccessKey and SecretKey to grant permissions:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f restore.yaml
+    ```
+
+    The content of `restore.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Restore
+    metadata:
+      name: demo2-restore
+      namespace: test2
+    spec:
+      backupType: full
+      to:
+        host: <tidb-host-ip>
+        port: <tidb-port>
+        user: <tidb-user>
+        secretName: restore-demo2-tidb-secret
+      s3:
+        provider: ceph
+        endpoint: http://10.233.2.161
+        secretName: s3-secret
+        path: s3://<path-to-backup>
+      storageClassName: local-storage
+      storageSize: 1Gi
+    ```
+
++ Create the `Restore` CR, and restore the cluster data from Amazon S3 by importing AccessKey and SecretKey to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
@@ -50,27 +74,95 @@ This document shows an example in which the backup data stored in the specified 
       name: demo2-restore
       namespace: test2
     spec:
+      backupType: full
       to:
         host: <tidb-host-ip>
         port: <tidb-port>
         user: <tidb-user>
         secretName: restore-demo2-tidb-secret
       s3:
-        provider: ceph
-        endpoint: http://10.233.2.161
-        secretName: ceph-secret
+        provider: aws
+        region: us-west-1
+        secretName: s3-secret
         path: s3://<path-to-backup>
       storageClassName: local-storage
       storageSize: 1Gi
     ```
 
-2. After creating the `Restore` CR, execute the following command to check the restoration status:
++ Create the `Restore` CR, and restore the cluster data by binding IAM with Pod to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
-     ```shell
-     kubectl get rt -n test2 -owide
-     ```
+    ```shell
+    kubectl apply -f restore.yaml
+    ```
+
+    The content of `restore.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Restore
+    metadata:
+      name: demo2-restore
+      namespace: test2
+      annotations:
+        iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user
+      spec:
+        backupType: full
+        to:
+          host: <tidb-host-ip>
+          port: <tidb-port>
+          user: <tidb-user>
+          secretName: restore-demo2-tidb-secret
+        s3:
+          provider: aws
+          region: us-west-1
+          path: s3://<path-to-backup>
+        storageClassName: local-storage
+        storageSize: 1Gi
+    ```
+
++ Create the `Restore` CR, and restore the cluster data by binding IAM with ServiceAccount to grant permissions:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f restore.yaml
+    ```
+
+    The content of `restore.yaml` is as follows:
+
+    ```yaml
+    ---
+    apiVersion: pingcap.com/v1alpha1
+    kind: Restore
+    metadata:
+      name: demo2-restore
+      namespace: test2
+      spec:
+        backupType: full
+        serviceAccount: tidb-backup-manager
+        to:
+          host: <tidb-host-ip>
+          port: <tidb-port>
+          user: <tidb-user>
+          secretName: restore-demo2-tidb-secret
+        s3:
+          provider: aws
+          region: us-west-1
+          path: s3://<path-to-backup>
+        storageClassName: local-storage
+        storageSize: 1Gi
+    ```
+
+After creating the `Restore` CR, execute the following command to check the restoration status:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get rt -n test2 -owide
+```
 
 In the above example, the backup data stored in the `spec.s3.path` path on the S3-compatible storage is restored to the `spec.to.host` TiDB cluster. For the configuration of the S3-compatible storage, refer to [backup-s3.yaml](backup-to-s3.md#ad-hoc-backup-process).
 
