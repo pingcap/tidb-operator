@@ -18,12 +18,6 @@ Before deploying TiDB Operator, make sure the following items are installed on y
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) enabled (optional)
 * [Helm](https://helm.sh) version >= 2.11.0 and < 2.16.4
 
-> **Note:**
->
-> - Although TiDB Operator can use network volume to persist TiDB data, this can affect performance a lot because TiDB stores multiple replicas itself. So it is highly recommended to set up [local volume](https://kubernetes.io/docs/concepts/storage/volumes/#local) for better performance.
->
-> - Network volumes in a multi-availability zone setup require Kubernetes v1.12 or higher version. It is recommended to use networked volumes to store backup data in `tidb-bakup` chart.
-
 ## Deploy Kubernetes cluster
 
 TiDB Operator runs in Kubernetes cluster. You can refer to [the document of how to set up Kubernetes](https://kubernetes.io/docs/setup/) to set up a Kubernetes cluster. Make sure that the Kubernetes version is v1.12 or higher. If you are using AWS, GKE or local machines, here are quick-start tutorials:
@@ -32,37 +26,9 @@ TiDB Operator runs in Kubernetes cluster. You can refer to [the document of how 
 * [Google GKE tutorial](deploy-tidb-from-kubernetes-gke.md)
 * [AWS EKS tutorial](deploy-on-aws-eks.md)
 
-If you are deploying in a different environment, a proper DNS addon must be installed in the Kubernetes cluster. You can follow the [official documentation](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/) to set up a DNS addon.
+TiDB Operator uses [Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to persist the data of TiDB cluster (including the database, monitoring data, and backup data), so the Kubernetes cluster must provide at least one kind of persistent volume. For better performance, it is recommended to use local SSD disk as the volumes. Follow [this step](#configure-local-persistent-volume) to provision local persistent volumes.
 
-TiDB Operator uses [Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to persist the data of TiDB cluster (including the database, monitoring data, backup data), so the Kubernetes cluster must provide at least one kind of persistent volume. For better performance, it is recommended to use local SSD disk as the volumes. Follow [this step](#configure-local-persistent-volume) to auto-provision local persistent volumes.
-
-It is suggested to enable [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) in the Kubernetes cluster. Otherwise, you need to set `rbac.create` to `false` in the `values.yaml` of both `tidb-operator` and `tidb-cluster` charts.
-
-Because TiDB uses many file descriptors by default, the worker node and its Docker daemon's `ulimit` values must be greater than or equal to `1048576`.
-
-1. Configure the `ulimit` value of the work node. See [How to set `ulimit` values](https://access.redhat.com/solutions/61334).
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    sudo vim /etc/security/limits.conf
-    ```
-
-    Set the `nofile` values of `soft` and `hard` of the root account to be greater than or equal to `1048576`.
-
-2. Configure the `ulimit` value of the Docker service.
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    sudo vim /etc/systemd/system/docker.service
-    ```
-
-    Set `LimitNOFILE` to be greater than or equal to `1048576`.
-
-    > **Note:**
-    >
-    > You need to explicitly set `LimitNOFILE` to `1048576` or a larger value rather than the default `infinity`. Because of a [bug](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186) in `systemd`, the value of `infinity` is `65536` in some `systemd` versions.
+It is recommended to enable [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) in the Kubernetes cluster.
 
 ## Install Helm
 

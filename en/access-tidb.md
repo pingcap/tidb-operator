@@ -8,18 +8,20 @@ category: how-to
 
 This document describes how to access the TiDB cluster in Kubernetes.
 
-+ To access the TiDB cluster within a Kubernetes cluster, use the TiDB service domain name `<release-name>-tidb.<namespace>`.
-+ To access the TiDB cluster outside a Kubernetes cluster, expose the TiDB service port by editing the `tidb.service` field configuration in the `values.yaml` file of the `tidb-cluster` Helm chart.
++ To access the TiDB cluster within a Kubernetes cluster, use the TiDB service domain name `<cluster-name>-tidb.<namespace>`.
++ To access the TiDB cluster outside a Kubernetes cluster, expose the TiDB service port by editing the `spec.tidb.service` field configuration in the `TidbCluster` CR.
 
     {{< copyable "" >}}
 
     ```yaml
-    tidb:
-    service:
-        type: NodePort
-        # externalTrafficPolicy: Cluster
-        # annotations:
-        # cloud.google.com/load-balancer-type: Internal
+    spec:
+        ...
+        tidb:
+        service:
+            type: NodePort
+            # externalTrafficPolicy: Cluster
+            # annotations:
+            #   cloud.google.com/load-balancer-type: Internal
     ```
 
 ## NodePort
@@ -45,19 +47,7 @@ To view the Node Port assigned by Service, run the following commands to obtain 
 {{< copyable "shell-regular" >}}
 
 ```shell
-namespace=<your-tidb-namesapce>
-```
-
-{{< copyable "shell-regular" >}}
-
-```shell
-release=<your-tidb-release-name>
-```
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl -n <namespace> get svc <release-name>-tidb -ojsonpath="{.spec.ports[?(@.name=='mysql-client')].nodePort}{'\n'}"
+kubectl -n <namespace> get svc <cluster-name>-tidb -ojsonpath="{.spec.ports[?(@.name=='mysql-client')].nodePort}{'\n'}"
 ```
 
 To check you can access TiDB services by using the IP of what nodes, see the following two cases:
@@ -68,7 +58,7 @@ To check you can access TiDB services by using the IP of what nodes, see the fol
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl -n <namespace> get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=<release-name>" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
+    kubectl -n <namespace> get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=<cluster-name>" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
     ```
 
 ## LoadBalancer

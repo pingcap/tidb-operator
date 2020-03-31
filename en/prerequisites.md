@@ -125,6 +125,34 @@ If all interrupts are sent to the same CPU, configure SMP IRQ Affinity by the fo
 
     Do not use the irqbalance service as described in Method 1. Instead, use the [script](https://gist.githubusercontent.com/SaveTheRbtz/8875474/raw/0c6e500e81e161505d9111ac77115a2367180d12/set_irq_affinity.sh) provided in Method 2 to configure RPS. For the configuration of RFS, refer to [RFS configuration](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/performance_tuning_guide/sect-red_hat_enterprise_linux-performance_tuning_guide-networking-configuration_tools#sect-Red_Hat_Enterprise_Linux-Performance_Tuning_Guide-Configuration_tools-Configuring_Receive_Flow_Steering_RFS).
 
+## `ulimit` configuration
+
+The TiDB cluster uses many file descriptors by default. The `ulimit` of the worker node and the Docker process must be greater than or equal to `1048576`.
+
+* Set the `ulimit` value of the worker node. For details, refer to [How to set ulimit values](https://access.redhat.com/solutions/61334).
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sudo vim /etc/security/limits.conf
+    ```
+
+    Set the `nofile` of `soft` and `hard` for the root user to be greater than or equal to `1048576`.
+
+* Set the `ulimit` value of the Docker service.
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sudo vim /etc/systemd/system/docker.service
+    ```
+
+    Set `LimitNOFILE` to be greater than or equal to `1048576`.
+
+    > **Note:**
+    >
+    > `LimitNOFILE` must be explicitly set to `1048576` or a greater value, other than `infinity` by default. Due to [a bug of `systemd`](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186), the `infinity` value in some versions of `systemd` is `65536`.
+
 ## Hardware and deployment requirements
 
 + 64-bit generic hardware server platform in the Intel x86-64 architecture and 10 Gigabit NIC (network interface card), which are the same as the server requirements for deploying a TiDB cluster using binary. For details, refer to [Hardware recommendations](https://pingcap.com/docs/v3.0/how-to/deploy/hardware-recommendations/).

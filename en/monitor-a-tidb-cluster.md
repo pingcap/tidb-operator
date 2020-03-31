@@ -15,9 +15,9 @@ This document gives a brief introduction to the two monitoring tasks.
 
 ## Monitor the TiDB cluster
 
-You can monitor the TiDB cluster with Prometheus and Grafana. A separate monitoring system is created and configured for each TiDB cluster created by TiDB Operator. The monitoring system runs in the same Namespace as the TiDB cluster, and includes two components - Prometheus and Grafana.
+You can monitor the TiDB cluster with Prometheus and Grafana. When you create a new TiDB cluster using TiDB Operator, refer to [Monitor a TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md) to deploy a separate monitoring system for the TiDB cluster. The monitoring system must run in the same namespace as the TiDB cluster, and includes two components: Prometheus and Grafana.
 
-The monitoring data is not persisted by default. If the monitoring container restarts for some reason, the existing monitoring data gets lost. To persist the monitoring data, you can set `monitor.persistent` to `true` in the `values.yaml` file. When you enable this option, you need to set `storageClass` to an existing storage in the current cluster, and this storage is required to support persisting data, otherwise there is still a risk of data loss.
+The monitoring data is not persisted by default. To persist the monitoring data, you can set `spec.persistent` to `true` in `TidbMonitor`. When you enable this option, you need to set `spec.storageClassName` to an existing storage in the current cluster, and this storage is required to support persisting data; otherwise, there is a risk of data loss.
 
 For configuration details on the monitoring system, refer to [TiDB Cluster Monitoring](https://pingcap.com/docs/v3.0/how-to/monitor/monitor-a-cluster).
 
@@ -28,7 +28,7 @@ You can run the `kubectl port-forward` command to view the monitoring dashboard:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<release-name>-grafana 3000:3000 &>/tmp/portforward-grafana.log &
+kubectl port-forward -n <namespace> svc/<cluster-name>-grafana 3000:3000 &>/tmp/portforward-grafana.log &
 ```
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser and log on with the default username and password `admin`.
@@ -44,7 +44,7 @@ To access the monitoring data directly, run the `kubectl port-forward` command t
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<release-name>-prometheus 9090:9090 &>/tmp/portforward-prometheus.log &
+kubectl port-forward -n <namespace> svc/<cluster-name>-prometheus 9090:9090 &>/tmp/portforward-prometheus.log &
 ```
 
 Then open [http://localhost:9090](http://localhost:9090) in your browser or access this address via a client tool.
