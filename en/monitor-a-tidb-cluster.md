@@ -33,9 +33,9 @@ kubectl port-forward -n <namespace> svc/<release-name>-grafana 3000:3000 &>/tmp/
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser and log on with the default username and password `admin`.
 
-The Grafana service is exposed by `NodePort` by default. If the Kubernetes cluster supports load balancer, you can change `monitor.grafana.service.type` to `LoadBalancer` in `values.yaml`. Then, after executing `helm upgrade`, access the dashboard through the load balancer.
+You can also set `spec.grafana.service.type` to `NodePort` or `LoadBalancer`, and then view the monitoring dashboard through `NodePort` or `LoadBalancer`. For details, see [Monitor the TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
 
-If there is no need to use Grafana, you can save resources by setting `monitor.grafana.create` to `false` in `values.yaml` during deployment. In this case, you need to use other existing or newly deployed data visualization tools to directly access the monitoring data.
+If there is no need to use Grafana, you can delete the part of `spec.grafana` in `TidbMonitor` during deployment. In this case, you need to use other existing or newly deployed data visualization tools to directly access the monitoring data.
 
 ### Access the monitoring data
 
@@ -49,7 +49,7 @@ kubectl port-forward -n <namespace> svc/<release-name>-prometheus 9090:9090 &>/t
 
 Then open [http://localhost:9090](http://localhost:9090) in your browser or access this address via a client tool.
 
-The Prometheus service is exposed by `NodePort` by default. If the Kubernetes cluster supports load balancer, you can change `monitor.prometheus.service.type` to `LoadBalancer` in `values.yaml`. Then, after executing `helm upgrade`, access the monitoring data through the load balancer.
+You can also set `spec.prometheus.service.type` to `NodePort` or `LoadBalancer`, and then view the monitoring data through `NodePort` or `LoadBalancer`. For details, see [Monitor the TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
 
 ## Monitor the Kubernetes cluster
 
@@ -90,11 +90,16 @@ It is recommended to deploy a host monitoring system via [Prometheus Operator](h
 
 When Prometheus is deployed with a TiDB cluster, some default alert rules are automatically imported. You can view all alert rules and statuses in the current system by accessing the Alerts page of Prometheus through a browser.
 
-Currently, the custom configuration of alert rules is not supported. If you do need to modify the alert rules, you can manually download charts to modify them.
+The custom configuration of alert rules is supported. You can modify the alert rules by taking the following steps:
+
+1. When deploying the monitoring system for the TiDB cluster, set `spec.reloader.service.type` to `NodePort` or `LoadBalancer`. For details, see [Monitor the TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md).
+2. Access the `reloader` service through `NodePort` or `LoadBalancer`. Click the `Files` button above to select the alert rule file to be modified, and make the custom configuration. Click `Save` after the modification.
 
 The default Prometheus and alert configuration do not support sending alert messages. To send an alert message, you can integrate Prometheus with any tool that supports Prometheus alerts. It is recommended to manage and send alert messages via [AlertManager](https://prometheus.io/docs/alerting/alertmanager/).
 
-If you already have an available AlertManager service in your existing infrastructure, you can modify `monitor.prometheus.alertmanagerURL` in the `values.yaml` file and configure its address for use by Prometheus; if there is no AlertManager service available, or if you want to deploy a separate set of services, you can refer to [Prometheus official document](https://github.com/prometheus/alertmanager).
+- If you already have an available AlertManager service in your existing infrastructure, you can set the value of `spec.alertmanagerURL` to the address of `AlertManager`, which will be used by Prometheus. For details, refer to [Set kube-prometheus and AlertManager](monitor-using-tidbmonitor.md#set-kube-prometheus-and-alertmanager).
+
+- If no AlertManager service is available, or if you want to deploy a separate AlertManager service, refer to the [Prometheus official document](https://github.com/prometheus/alertmanager).
 
 ### Alerts in Kubernetes
 

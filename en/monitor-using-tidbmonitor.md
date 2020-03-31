@@ -151,7 +151,7 @@ NAME            STATUS   VOLUME                                     CAPACITY   A
 basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         RWO            standard       51s
 ```
 
-### Set kube-prometheus and AlergManager
+### Set kube-prometheus and AlertManager
 
 In some cases, TidbMonitor needs to obtain the monitoring metrics on Kubernetes. To obtain the kube-prometheus metrics, configure `TidbMonitor.Spec.kubePrometheusURL`. For details, refer to [kube-prometheus](https://github.com/coreos/kube-prometheus).
 
