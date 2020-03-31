@@ -983,9 +983,9 @@ In this step, you need to perform the following operations:
         helm install charts/tidb-drainer --name=<release-name> --namespace=<namespace>
         ```
 
-3. Create the Backup/Restore resource object and enable the TLS feature:
+3. Create the Backup/Restore resource object:
 
-    - Create the `backup.yaml` file and enable the TLS feature:
+    - Create the `backup.yaml` file:
 
         ``` yaml
         apiVersion: pingcap.com/v1alpha1
@@ -999,8 +999,6 @@ In this step, you need to perform the following operations:
             cluster: <cluster-name>
             clusterNamespace: <namespace>
             sendCredToTikv: true
-            tlsCluster:
-              enabled: true
           from:
             host: <host>
             secretName: <tidb-secret>
@@ -1022,7 +1020,7 @@ In this step, you need to perform the following operations:
         kubectl apply -f backup.yaml
         ```
 
-    - Create the `restore.yaml` file and enable TLS:
+    - Create the `restore.yaml` file:
 
          ``` yaml
         apiVersion: pingcap.com/v1alpha1
@@ -1036,8 +1034,6 @@ In this step, you need to perform the following operations:
             cluster: <cluster-name>
             clusterNamespace: <namespace>
             sendCredToTikv: true
-            tlsCluster:
-              enabled: true
           to:
             host: <host>
             secretName: <tidb-secret>
