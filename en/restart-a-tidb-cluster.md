@@ -25,6 +25,8 @@ To activate the graceful logoff feature, you need to enable some related configu
       create: true
     ```
 
+    For more information about `Operator Webhook`, see [Enable Admission Controller in TiDB Operator](enable-admission-webhook.md).
+
 2. Install or update TiDB Operator.
 
     To install or update TiDB Operator, see [Deploy TiDB Operator in Kubernetes](deploy-tidb-operator.md).
