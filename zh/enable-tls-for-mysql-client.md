@@ -356,6 +356,10 @@ category: how-to
 
 用户可以生成多套 Client 端证书，并且至少要生成一套 Client 证书供 TiDB Operator 内部组件访问 TiDB Server（目前有 TidbInitializer 会访问 TiDB Server 来设置密码或者一些初始化操作）。
 
+> **注意：**
+>
+> TiDB Server 的 TLS 兼容 MySQL 协议。当证书内容发生改变后，需要管理员手动执行 SQL 语句 `alter instance reload tls` 进行刷新。
+
 ## 第二步：部署 TiDB 集群
 
 接下来将会通过两个 CR 对象来创建一个 TiDB 集群，并且执行以下步骤：
