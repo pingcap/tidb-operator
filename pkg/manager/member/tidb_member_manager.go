@@ -654,7 +654,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
-		Env:          util.MergeEnv(baseTiDBSpec.Env(), envs),
+		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
