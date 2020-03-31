@@ -852,12 +852,18 @@ category: how-to
 
 ## 第二步：部署 TiDB 集群
 
+在部署 TiDB 集群时，可以开启集群间的 TLS，同时可以设置 `cert-allowed-cn` 配置项（TiDB 为 `cluster-verify-cn`），用来验证集群间各组件证书的 CN (Common Name)。
+
+> **注意：**
+>
+> 目前 PD 的 `cert-allowed-cn` 配置项只能设置一个值。
+
 在这一步中，需要完成以下操作：
 
     - 创建一套 TiDB 集群
-    - 为 TiDB 组件间开启 TLS
+    - 为 TiDB 组件间开启 TLS，并开启 CN 验证
     - 部署一套监控系统
-    - 部署 Pump 组件
+    - 部署 Pump 组件，并开启 CN 验证
 
 1. 创建一套 TiDB 集群（监控系统和 Pump 组件已包含在内）：
 
@@ -880,25 +886,37 @@ category: how-to
        replicas: 1
        requests:
          storage: "1Gi"
-       config: {}
+       config:
+         security:
+           cert-allowed-cn:
+             - TiDB
      tikv:
        baseImage: pingcap/tikv
        replicas: 1
        requests:
          storage: "1Gi"
-       config: {}
+       config:
+         security:
+           cert-allowed-cn:
+             - TiDB
      tidb:
        baseImage: pingcap/tidb
        replicas: 1
        service:
          type: ClusterIP
-       config: {}
+       config:
+         security:
+           cluster-verify-cn:
+             - TiDB
      pump:
        baseImage: pingcap/tidb-binlog
        replicas: 1
        requests:
          storage: "1Gi"
-       config: {}
+       config:
+         security:
+           cert-allowed-cn:
+             - TiDB
     ---
     apiVersion: pingcap.com/v1alpha1
     kind: TidbMonitor
@@ -925,7 +943,7 @@ category: how-to
 
     然后使用 `kubectl apply -f tidb-cluster.yaml` 来创建 TiDB 集群。
 
-2. 创建 Drainer 组件并开启 TLS。
+2. 创建 Drainer 组件并开启 TLS 以及 CN 验证。
 
     - 第一种方式：创建 Drainer 的时候设置 `drainerName`：
 
@@ -936,6 +954,8 @@ category: how-to
         drainerName: <drainer-name>
         tlsCluster:
           enabled: true
+          certAllowedCN:
+            - TiDB
         ...
         ```
 
@@ -955,6 +975,8 @@ category: how-to
         ...
         tlsCluster:
           enabled: true
+          certAllowedCN:
+            - TiDB
         ...
         ```
 
