@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
+	"strings"
 
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -57,11 +58,34 @@ func (ro *Options) restoreData(restore *v1alpha1.Restore) error {
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	output, err := exec.Command("br", fullArgs...).CombinedOutput()
+	cmd := exec.Command("br", fullArgs...)
+	cmd.Stderr = cmd.Stdout
+	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", ro, fullArgs, string(output), err)
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
 	}
-	klog.Infof("Restore data for cluster %s successfully, output: %s", ro, string(output))
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+	}
+	var tmpOutput, errMsg string
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdOut.Read(tmp)
+		tmpOutput = string(tmp)
+		if strings.Contains(tmpOutput, "[ERROR]") {
+			errMsg += tmpOutput
+		}
+		klog.Infof(strings.Replace(tmpOutput, "\n", "", -1))
+		if err != nil {
+			break
+		}
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+	}
+	klog.Infof("Restore data for cluster %s successfully", ro)
 	return nil
 }
 
