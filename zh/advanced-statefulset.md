@@ -6,7 +6,7 @@ category: reference
 
 # 增强型 StatefulSet 控制器
 
-> **特性状态**: Alpha
+**特性状态**: Alpha
 
 Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) 为 Pods 分配连续的序号。比如 3 个副本时，Pods 分别为 pod-0, pod-1, pod-2。扩缩容时，必须在尾部增加或删除 Pods。比如扩容到 4 个副本时，会新增 pod-3。缩容到 2 副本时，会删除 pod-2。
 
@@ -26,7 +26,7 @@ Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/co
         kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/advanced-statefulset-crd.v1beta1.yaml
         ```
 
-    * Kubernetes 1.16 之后:
+    * Kubernetes 1.16 及之后版本:
 
         {{< copyable "shell-regular" >}}
 
@@ -45,17 +45,17 @@ Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/co
       create: true
     ```
 
-    然后升级 TiDB Operator，具体可参考[升级 TiDB Operator 文档](upgrade-TiDB Operator.md)。
+    然后升级 TiDB Operator，具体可参考[升级 TiDB Operator 文档](upgrade-tidb-operator.md)。
 
 > **注意：**
 >
-> TiDB Operator 通过开启 `AdvancedStatefulSet` 特性，会将当前 `StatefulSet` 对象转换成 `AdvancedStatefulSet 对象。但是，TiDB Operator 不支持在关闭 `AdvancedStatefulSet` 特性后，自动从 `AdvancedStatefulSet` 转换为 Kubernetes 内置的 `StatefulSet` 对象。
+> TiDB Operator 通过开启 `AdvancedStatefulSet` 特性，会将当前 `StatefulSet` 对象转换成 `AdvancedStatefulSet` 对象。但是，TiDB Operator 不支持在关闭 `AdvancedStatefulSet` 特性后，自动从 `AdvancedStatefulSet` 转换为 Kubernetes 内置的 `StatefulSet` 对象。
 
 ## 使用
 
 ### 通过 kubectl 查看 AdvancedStatefulSet 对象
 
-`AdvancedStatefulSet` 数据格式与 `StatefulSet` 完全一致，但以 CRD 方式实现，别名为 `asts` ，可通过以下方法查看命令空间下的对象。
+`AdvancedStatefulSet` 数据格式与 `StatefulSet` 完全一致，但以 CRD 方式实现，别名为 `asts` ，可通过以下方法查看命名空间下的对象。
 
 {{< copyable "shell-regular" >}}
 
