@@ -106,7 +106,7 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
         kubectl edit tc demo1 -n test1
         ```
 
-    - Find `spec.tikv.annotations`, append the `arn:aws:iam::123456789012:role/user` annotation, and then exit. After the TiKV Pod is restarted, check whether the annotation is added to the TiKV Pod.
+    - Find `spec.tikv.annotations`, append the `iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user` annotation, and then exit. After the TiKV Pod is restarted, check whether the annotation is added to the TiKV Pod.
 
     > **Note:**
     >

@@ -70,31 +70,37 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     >
     > You must deploy tikv-importer in the same namespace where the target TiDB cluster is deployed.
 
-## Deploy tidb-lightning
+## Deploy TiDB Lightning
 
-1. Configure TiDB Lightning
+### Configure
 
-    Use the following command to get the default configuration of TiDB Lightning.
+Use the following command to get the default configuration of TiDB Lightning:
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-    ```shell
-    helm inspect values pingcap/tidb-lightning --version=<chart-version> > tidb-lightning-values.yaml
-    ```
+```shell
+helm inspect values pingcap/tidb-lightning --version=<chart-version> > tidb-lightning-values.yaml
+```
 
-    TiDB Lightning Helm chart supports both local and remote data source.
+TiDB Lightning Helm chart supports both local and remote data sources.
 
-    * Local
+* Local
 
-        Local mode requires the Mydumper backup data to be on one of the Kubernetes node. This mode can be enabled by setting `dataSource.local.nodeName` to the node name and `dataSource.local.hostPath` to the Mydumper backup data directory path which contains a file named `metadata`.
+    The local mode requires Mydumper backup data to be on one of the Kubernetes node. This mode can be enabled by setting `dataSource.local.nodeName` to the node name and `dataSource.local.hostPath` to Mydumper backup data directory path which contains a file named `metadata`.
 
-    * Remote
+* Remote
 
-        Unlike local mode, remote mode needs to use [rclone](https://rclone.org) to download Mydumper backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [AWS S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
+    Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download Mydumper backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [AWS S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
 
-        1. Make sure that `dataSource.local.nodeName` and `dataSource.local.hostPath` are commented out.
+    To restore backup data from the remote source, take the following steps:
 
-        2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, please refer to [rclone documentation](https://rclone.org/).
+    1. Make sure that `dataSource.local.nodeName` and `dataSource.local.hostPath` in `values.yaml` are commented out.
+
+    2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, refer to [rclone documentation](https://rclone.org/). Using AWS S3 as the storage is the same as restoring data using BR and Mydumper.
+
+        There are three methods to grant permissions. The configuration varies with different methods. For details, see [Backup the TiDB Cluster on AWS using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
+
+        * If you grant permissions by importing AWS S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, use the following configuration:
 
             {{< copyable "" >}}
 
@@ -130,11 +136,36 @@ You can deploy tikv-importer using the Helm chart. See the following example:
               service_account_credentials = <service-account-json-file-content>
             ```
 
-            Fill in the placeholders with your configurations and save it as `secret.yaml`, and then create the secret via `kubectl apply -f secret.yaml -n <namespace>`.
+        * If you grant permissions by associating AWS S3 IAM with Pod or with ServiceAccount, you can ignore `s3.access_key_id` and `s3.secret_access_key`:
 
-        3. Configure the `dataSource.remote.storageClassName` to an existing storage class in the Kubernetes cluster.
+            {{< copyable "" >}}
+    
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: cloud-storage-secret
+            type: Opaque
+            stringData:
+              rclone.conf: |
+              [s3]
+              type = s3
+              provider = AWS
+              env_auth = true
+              access_key_id =
+              secret_access_key =
+              region = us-east-1
+            ```
 
-2. Deploy TiDB Lightning
+            Fill in the placeholders with your configurations and save it as `secret.yaml`, and then create the `Secret` via `kubectl apply -f secret.yaml -n <namespace>`.
+
+    3. Configure the `dataSource.remote.storageClassName` to an existing storage class in the Kubernetes cluster.
+
+### Deploy
+
+The method of deploying TiDB Lightning varies with different methods of granting permissions and with different storages.
+
+* If you grant permissions by importing AWS S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, run the following command to deploy TiDB Lightning:
 
     {{< copyable "shell-regular" >}}
 
@@ -142,11 +173,58 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
     ```
 
-When TiDB Lightning fails to restore data, it cannot simply be restarted, but manual intervention is required. So the tidb-lightning's `Job` restart policy is set to `Never`.
+* If you grant permissions by associating AWS S3 IAM with Pod, take the following steps:
 
-> **Note:**
->
-> Currently, TiDB Lightning will [exit with non-zero error code even when data is successfully restored](https://github.com/pingcap/tidb-lightning/pull/230). This will trigger the job failure. Therefore, the success status needs to be determined by viewing tidb-lightning pod's log.
+    1. Create the IAM role:
+
+        [Create an IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) for the account, and [grant the required permission](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) to the role. The IAM role requires the `AmazonS3FullAccess` permission because TiDB Lightning needs to access AWS S3 storage.
+
+    2. Modify `tidb-lightning-values.yaml`, and add the `iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user` annotation in the `annotations` field.
+
+    3. Deploy TiDB Lightning:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
+        ```
+
+        > **Note:**
+        >
+        > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 1.
+
+* If you grant permissions by associating AWS S3 with ServiceAccount, take the following steps:
+
+    1. Enable the IAM role for the service account on the cluster:
+
+        To enable the IAM role permission on the EKS cluster, see [AWS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html).
+
+    2. Create the IAM role:
+
+        [Create an IAM role](https://docs.aws.amazon.com/eks/latest/userguide/create-service-account-iam-policy-and-role.html). Grant the `AmazonS3FullAccess` permission to the role, and edit `Trust relationships` of the role.
+
+    3. Associate IAM with the ServiceAccount resources:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl annotate sa <servie-account> -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
+        ```
+
+    4. Deploy TiDB Lightning:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set-string failFast=true,serviceAccount=<servie-account> -f tidb-lightning-values.yaml --version=<chart-version>
+        ```
+
+        > **Note:**
+        >
+        > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 1.
+        > `<service-account>` is the ServiceAccount used by TiDB Lightning. The default value is `default`.
+
+When TiDB Lightning fails to restore data, you cannot simply restart it. **Manual intervention** is required. So the TiDB Lightning's `Job` restart policy is set to `Never`.
 
 If the lightning fails to restore data, follow the steps below to do manual intervention:
 
@@ -164,8 +242,6 @@ If the lightning fails to restore data, follow the steps below to do manual inte
 
 Currently, TiDB Lightning can only restore data offline. When the restoration finishes and the TiDB cluster needs to provide service for applications, the TiDB Lightning should be deleted to save cost.
 
-* To delete tikv-importer:
-    1. In `values.yaml` of the TiDB cluster chart, set `importer.create` to `false`.
-    2. Run `helm upgrade <tidb-cluster-release-name> pingcap/tidb-cluster -f values.yaml`.
+* To delete tikv-importer, run `helm delete <tikv-importer-release-name> --purge`.
 
 * To delete tidb-lightning, run `helm delete <tidb-lightning-release-name> --purge`.
