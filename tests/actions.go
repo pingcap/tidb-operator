@@ -236,6 +236,7 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
+	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
 }
 
 type operatorActions struct {
@@ -292,6 +293,7 @@ type OperatorConfig struct {
 	DefaultingEnabled         bool
 	ValidatingEnabled         bool
 	Cabundle                  string
+	BackupImage               string
 }
 
 type TidbClusterConfig struct {
@@ -405,6 +407,7 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                                oi.Image,
+		"tidbBackupManagerImage":                       oi.BackupImage,
 		"controllerManager.autoFailover":               "true",
 		"scheduler.logLevel":                           "4",
 		"testMode":                                     strconv.FormatBool(oi.TestMode),

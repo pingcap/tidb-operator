@@ -509,6 +509,7 @@ export IMAGE_TAG
 export SKIP_GINKGO
 export SKIP_IMAGE_LOAD
 export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
+export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
 
