@@ -56,8 +56,8 @@ Read the [Quick Start Guide](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/ti
 
 ## Documentation
 
-- [English](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
-- [简体中文](https://pingcap.com/docs-cn/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
+- [English](https://pingcap.com/docs/tidb-in-kubernetes/stable/)
+- [简体中文](https://pingcap.com/docs-cn/tidb-in-kubernetes/stable/)
 
 ## Contributing
 
