@@ -55,3 +55,50 @@ func TiDBIsConnectable(fw portforward.PortForward, ns, tc, user, password string
 		return true, nil
 	}
 }
+
+// TiDBIsInserted checks whether the tidb cluster has insert some data.
+func TiDBIsInserted(fw portforward.PortForward, ns, tc, user, password, dbName, tableName string) wait.ConditionFunc {
+	return func() (bool, error) {
+		var db *sql.DB
+		dsn, cancel, err := GetTiDBDSN(fw, ns, tc, user, password, dbName)
+		if err != nil {
+			return false, err
+		}
+
+		defer cancel()
+		if db, err = sql.Open("mysql", dsn); err != nil {
+			return false, err
+		}
+
+		defer db.Close()
+		if err := db.Ping(); err != nil {
+			return false, err
+		}
+
+		getCntFn := func(db *sql.DB, tableName string) (int, error) {
+			var cnt int
+			rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+			if err != nil {
+				return cnt, fmt.Errorf("failed to select count(*) from %s, %v", tableName, err)
+			}
+			for rows.Next() {
+				err := rows.Scan(&cnt)
+				if err != nil {
+					return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
+				}
+				return cnt, nil
+			}
+			return cnt, fmt.Errorf("can not find count of table %s", tableName)
+		}
+
+		cnt, err := getCntFn(db, tableName)
+		if err != nil {
+			return false, err
+		}
+		if cnt == 0 {
+			return false, nil
+		}
+
+		return true, nil
+	}
+}

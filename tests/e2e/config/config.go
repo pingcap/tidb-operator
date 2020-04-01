@@ -45,6 +45,7 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.OperatorRepoUrl, "operator-repo-url", "https://github.com/pingcap/tidb-operator.git", "tidb-operator repo url used")
 	flags.StringVar(&TestConfig.ChartDir, "chart-dir", "", "chart dir")
 	flags.BoolVar(&TestConfig.PreloadImages, "preload-images", false, "if set, preload images in the bootstrap of e2e process")
+	flags.StringVar(&TestConfig.BackupImage, "backup-image", "", "backup image")
 }
 
 func AfterReadingAllFlags() error {
@@ -104,6 +105,7 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		StsWebhookEnabled:         true,
 		PodWebhookEnabled:         false,
 		Cabundle:                  "",
+		BackupImage:               cfg.BackupImage,
 	}
 }
 
