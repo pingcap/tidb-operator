@@ -32,6 +32,7 @@ GCP_SDK=${GCP_SDK:-/google-cloud-sdk}
 IMAGE_TAG=${IMAGE_TAG:-}
 SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
+TIDB_BACKUP_MANAGER_IMAGE=${TIDB_BACKUP_MANAGER_IMAGE:-localhost:5000/pingcap/tidb-backup-manager:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
 KUBECONTEXT=${KUBECONTEXT:-}
@@ -51,6 +52,7 @@ if [ -z "$KUBECONFIG" ]; then
 fi
 
 echo "TIDB_OPERATOR_IMAGE: $TIDB_OPERATOR_IMAGE"
+echo "TIDB_BACKUP_MANAGER_IMAGE: $TIDB_BACKUP_MANAGER_IMAGE"
 echo "E2E_IMAGE: $E2E_IMAGE"
 echo "KUBECONFIG: $KUBECONFIG"
 echo "KUBECONTEXT: $KUBECONTEXT"
@@ -212,6 +214,7 @@ function e2e::setup_helm_server() {
 function e2e::image_load() {
     local images=(
         $TIDB_OPERATOR_IMAGE
+        $TIDB_BACKUP_MANAGER_IMAGE
         $E2E_IMAGE
     )
     if [ "$PROVIDER" == "kind" ]; then
@@ -224,17 +227,22 @@ function e2e::image_load() {
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
         gcloud auth configure-docker
         GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$CLUSTER-$IMAGE_TAG
+        GCP_TIDB_BACKUP_MANAGER_IMAGE=gcr.io/$GCP_PROJECT/tidb-backup-image:$CLUSTER-$IMAGE_TAG
         GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
         docker tag $TIDB_OPERATOR_IMAGE $GCP_TIDB_OPERATOR_IMAGE
         docker tag $E2E_IMAGE $GCP_E2E_IMAGE
+        docker tag $TIDB_BACKUP_MANAGER_IMAGE $GCP_TIDB_BACKUP_MANAGER_IMAGE
         echo "info: pushing $GCP_TIDB_OPERATOR_IMAGE"
         docker push $GCP_TIDB_OPERATOR_IMAGE
         echo "info: pushing $GCP_E2E_IMAGE"
         docker push $GCP_E2E_IMAGE
+        echo "info: pushing $GCP_TIDB_BACKUP_MANAGER_IMAGE"
+        docker push $GCP_TIDB_BACKUP_MANAGER_IMAGE
         TIDB_OPERATOR_IMAGE=$GCP_TIDB_OPERATOR_IMAGE
         E2E_IMAGE=$GCP_E2E_IMAGE
+        TIDB_BACKUP_MANAGER_IMAGE=$GCP_TIDB_BACKUP_MANAGER_IMAGE
     elif [ "$PROVIDER" == "eks" ]; then
-        for repoName in e2e/tidb-operator e2e/tidb-operator-e2e; do
+        for repoName in e2e/tidb-operator e2e/tidb-operator-e2e e2e/tidb-backup-manager; do
             local ret=0
             aws ecr describe-repositories --repository-names $repoName || ret=$?
             if [ $ret -ne 0 ]; then
@@ -246,13 +254,18 @@ function e2e::image_load() {
         echo "info: logging in $ecrURL"
         aws ecr get-login-password | docker login --username AWS --password-stdin $ecrURL
         AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$CLUSTER-$IMAGE_TAG
+        AWS_TIDB_BACKUP_MANAGER_IMAGE=$ecrURL/e2e/tidb-backup-manager:$CLUSTER-$IMAGE_TAG
         AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
         docker tag $TIDB_OPERATOR_IMAGE $AWS_TIDB_OPERATOR_IMAGE
+        docker tag $TIDB_BACKUP_MANAGER_IMAGE $AWS_TIDB_BACKUP_MANAGER_IMAGE
         docker tag $E2E_IMAGE $AWS_E2E_IMAGE
         echo "info: pushing $AWS_TIDB_OPERATOR_IMAGE"
         docker push $AWS_TIDB_OPERATOR_IMAGE
+        echo "info: pushing $AWS_TIDB_BACKUP_MANAGER_IMAGE"
+        docker push $AWS_TIDB_BACKUP_MANAGER_IMAGE
         echo "info: pushing $AWS_E2E_IMAGE"
         docker push $AWS_E2E_IMAGE
+        TIDB_BACKUP_MANAGER_IMAGE=$AWS_TIDB_BACKUP_MANAGER_IMAGE
         TIDB_OPERATOR_IMAGE=$AWS_TIDB_OPERATOR_IMAGE
         E2E_IMAGE=$AWS_E2E_IMAGE
     else
@@ -329,6 +342,7 @@ e2e_args=(
     # tidb-operator e2e flags
     --operator-tag=e2e
     --operator-image="${TIDB_OPERATOR_IMAGE}"
+    --backup-image="${TIDB_BACKUP_MANAGER_IMAGE}"
     --e2e-image="${E2E_IMAGE}"
     # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
     --tidb-versions=v3.0.7,v3.0.8
