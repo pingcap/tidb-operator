@@ -16,7 +16,6 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -196,19 +195,18 @@ func (e SortEnvByName) Less(i, j int) bool {
 	return e[i].Name < e[j].Name
 }
 
-// MergeEnv merges env in `b` to `a` and overrides env that has the same name.
-func MergeEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
-	tmpEnv := make(map[string]corev1.EnvVar)
+// AppendEnv appends envs `b` into `a` ignoring envs whose names already exist
+// in `b`.
+// Note that this will not change relative order of envs.
+func AppendEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
+	aMap := make(map[string]corev1.EnvVar)
 	for _, e := range a {
-		tmpEnv[e.Name] = e
+		aMap[e.Name] = e
 	}
 	for _, e := range b {
-		tmpEnv[e.Name] = e
+		if _, ok := aMap[e.Name]; !ok {
+			a = append(a, e)
+		}
 	}
-	c := make([]corev1.EnvVar, 0)
-	for _, e := range tmpEnv {
-		c = append(c, e)
-	}
-	sort.Sort(SortEnvByName(c))
-	return c
+	return a
 }

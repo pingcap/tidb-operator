@@ -39,6 +39,7 @@ else
 docker: build
 endif
 	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-operator:${IMAGE_TAG}" images/tidb-operator
+	docker build --tag "${DOCKER_REGISTRY}/pingcap/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
 
 build: controller-manager scheduler discovery admission-webhook apiserver backup-manager
 

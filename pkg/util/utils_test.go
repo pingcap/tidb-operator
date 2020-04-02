@@ -128,7 +128,7 @@ func TestGetPodOrdinals(t *testing.T) {
 	}
 }
 
-func TestMergeEnv(t *testing.T) {
+func TestAppendEnv(t *testing.T) {
 	tests := []struct {
 		name string
 		a    []corev1.EnvVar
@@ -136,7 +136,7 @@ func TestMergeEnv(t *testing.T) {
 		want []corev1.EnvVar
 	}{
 		{
-			name: "b overrides a with the same name",
+			name: "envs whose names exist are ignored",
 			a: []corev1.EnvVar{
 				{
 					Name:  "foo",
@@ -156,19 +156,23 @@ func TestMergeEnv(t *testing.T) {
 					Name:  "new",
 					Value: "bar",
 				},
+				{
+					Name:  "xxx",
+					Value: "yyy",
+				},
 			},
 			want: []corev1.EnvVar{
 				{
 					Name:  "foo",
-					Value: "barbar",
-				},
-				{
-					Name:  "new",
 					Value: "bar",
 				},
 				{
 					Name:  "xxx",
 					Value: "xxx",
+				},
+				{
+					Name:  "new",
+					Value: "bar",
 				},
 			},
 		},
@@ -176,7 +180,7 @@ func TestMergeEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MergeEnv(tt.a, tt.b)
+			got := AppendEnv(tt.a, tt.b)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("unwant (-want, +got): %s", diff)
 			}

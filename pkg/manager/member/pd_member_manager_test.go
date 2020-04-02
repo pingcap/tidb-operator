@@ -1082,17 +1082,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: testPDContainerEnv(t, []corev1.EnvVar{
 				{
-					Name: "DASHBOARD_SESSION_SECRET",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "dashboard-session-secret",
-							},
-							Key: "encryption_key",
-						},
-					},
-				},
-				{
 					Name: "NAMESPACE",
 					ValueFrom: &corev1.EnvVarSource{
 						FieldRef: &corev1.ObjectFieldSelector{
@@ -1114,6 +1103,17 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				{
 					Name: "TZ",
+				},
+				{
+					Name: "DASHBOARD_SESSION_SECRET",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "dashboard-session-secret",
+							},
+							Key: "encryption_key",
+						},
+					},
 				},
 			}),
 		},

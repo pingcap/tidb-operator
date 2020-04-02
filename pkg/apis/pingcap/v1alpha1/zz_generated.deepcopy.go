@@ -2747,11 +2747,6 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.EnableAdvertiseAddress != nil {
-		in, out := &in.EnableAdvertiseAddress, &out.EnableAdvertiseAddress
-		*out = new(bool)
-		**out = **in
-	}
 	if in.MaxFailoverCount != nil {
 		in, out := &in.MaxFailoverCount, &out.MaxFailoverCount
 		*out = new(int32)

@@ -516,7 +516,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-client-tls", ReadOnly: true, MountPath: "/var/lib/tidb-client-tls",
+			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
 	}
 
@@ -637,7 +637,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	pdContainer.Env = util.MergeEnv(basePDSpec.Env(), env)
+	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
 	podSpec.Volumes = vols
 	podSpec.Containers = []corev1.Container{pdContainer}
 
