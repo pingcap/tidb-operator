@@ -362,6 +362,10 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
 You can generate multiple sets of client-side certificates. At least one set of client-side certificate is needed for the internal components of TiDB Operator to access the TiDB server. Currently, TidbInitializer access the TiDB server to set the password or perform initialization.
 
+> **Note:**
+>
+> TiDB server's TLS is compatible with the MySQL protocol. When the certificate content is changed, the administrator needs to manually execute the SQL statement `alter instance reload tls` to refresh the content.
+
 ## Step 2: Deploy the TiDB cluster
 
 In this step, you create a TiDB cluster using two CR object, enable TLS for the MySQL client and initialize the cluster. An `app` database is created for the purpose of demonstration.
