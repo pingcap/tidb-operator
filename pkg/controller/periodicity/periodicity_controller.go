@@ -23,7 +23,6 @@
 package periodicity
 
 import (
-	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -31,8 +30,10 @@ import (
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -97,20 +98,17 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 	for _, sts := range stsList {
 		// If there is any error during our sts annotation updating, we just collect the error
 		// and continue to next sts
-		if sts.Annotations == nil {
-			sts.Annotations = map[string]string{}
-		}
-		if sts.Labels == nil {
-			sts.Labels = map[string]string{}
-		}
-		tcName, ok := sts.Labels[label.InstanceLabelKey]
+		ok, tcRef := util.IsOwnedByTidbCluster(sts)
 		if !ok {
 			continue
 		}
-		tc, err := c.tcLister.TidbClusters(sts.Namespace).Get(tcName)
+		tc, err := c.tcLister.TidbClusters(sts.Namespace).Get(tcRef.Name)
 		if err != nil {
 			errs = append(errs, err)
 			continue
+		}
+		if sts.Annotations == nil {
+			sts.Annotations = map[string]string{}
 		}
 		sts.Annotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
 		newSts, err := c.statefulSetControl.UpdateStatefulSet(tc, sts)
