@@ -108,15 +108,90 @@ First, make sure that Docker is running. Then, you can create a local Kubernetes
     standard (default)   kubernetes.io/host-path        8m29s
     ```
 
-## Step 2: Deploy TiDB Operator in the Kubernetes cluster
+## Step 2: Deploy TiDB Operator
 
-1. Install Helm and add the official PingCAP chart repository to it. Refer to the steps in [Use Helm](tidb-toolkit.md#use-helm).
+Add the official chart repository provided by PingCAP:
 
-2. Deploy TiDB Operator. Refer to the steps in [Deploy TiDB Operator](deploy-tidb-operator.md#install-tidb-operator)
+{{< copyable "shell-regular" >}}
 
-## Step 3: Deploy a TiDB cluster in the Kubernetes cluster
+```shell
+helm repo add pingcap https://charts.pingcap.org/
+```
 
-Refer to the steps in [Deploy TiDB on General Kubernetes](deploy-on-general-kubernetes.md#deploy-tidb-cluster).
+Use `helm search` to search the chart provided by PingCAP:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+helm search pingcap -l
+```
+
+TiDB Operator uses [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` CRD.
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+kubectl get crd tidbclusters.pingcap.com
+```
+
+After `TidbCluster` CRD is created, install TiDB Operator in your Kubernetes cluster:
+
+1. Get the `values.yaml` file of the `tidb-operator` chart you want to install:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    mkdir -p /home/tidb/tidb-operator && \
+    helm inspect values pingcap/tidb-operator --version=v1.1.0-rc.1 > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    ```
+
+    Modify the configuration in `values.yaml` according to your needs.
+
+2. Install TiDB Operator:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0-rc.1 -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
+    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+    ```
+
+## Step 3: Deploy the TiDB cluster
+
+To deploy the TiDB cluster, perform the following steps:
+
+1. Create `Namespace`:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create namespace demo
+    ```
+
+2. Deploy the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml -n demo
+    ```
+
+3. Deploy the TiDB cluster monitor:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n demo
+    ```
+
+4. View the Pod status:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl get po -n demo
+    ```
 
 ## Access the database and monitoring dashboards
 
@@ -131,7 +206,7 @@ To access the TiDB cluster, use the `kubectl port-forward` command to expose ser
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        kubectl port-forward svc/<release-name>-tidb 4000:4000 --namespace=<namespace>
+        kubectl port-forward svc/basic-tidb 4000:4000 --namespace=demo
         ```
 
         If the output is similar to `Forwarding from 0.0.0.0:4000 -> 4000`, then the proxy is set up.
@@ -153,7 +228,7 @@ To access the TiDB cluster, use the `kubectl port-forward` command to expose ser
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        kubectl port-forward svc/<release-name>-grafana 3000:3000 --namespace=<namespace>
+        kubectl port-forward svc/basic-grafana 3000:3000 --namespace=demo
         ```
 
         If the output is similar to `Forwarding from 0.0.0.0:4000 -> 4000`, then the proxy is set up.
@@ -174,16 +249,30 @@ To access the TiDB cluster, use the `kubectl port-forward` command to expose ser
     > {{< copyable "shell-regular" >}}
     >
     > ```
-    > kubectl port-forward --address 0.0.0.0 -n tidb svc/<release-name>-grafana 3000:3000
+    > kubectl port-forward --address 0.0.0.0 -n tidb svc/basic-grafana 3000:3000
     > ```
     >
     > Then, open your browser at `http://<VM's IP address>:3000` to access the Grafana monitoring dashboard.
 
 ## Destroy the TiDB and Kubernetes cluster
 
-To destroy the local TiDB cluster, refer to the steps in [Destroy TiDB Clusters in Kubernetes](destroy-a-tidb-cluster.md).
+To destroy the local TiDB cluster, run the following command:
 
-To destroy the Kubernetes cluster, execute the following command:
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete tc basic -n demo
+```
+
+To destroy the monitor component, run the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete tidbmonitor basic -n demo
+```
+
+To destroy the Kubernetes cluster, run the following command:
 
 {{< copyable "shell-regular" >}}
 
