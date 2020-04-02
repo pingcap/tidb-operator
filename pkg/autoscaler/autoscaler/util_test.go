@@ -49,8 +49,8 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 
 	tac.Annotations = map[string]string{}
-	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(120*time.Second).Unix())
-	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(120*time.Second).Unix())
+	tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(200*time.Second).Unix())
+	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(200*time.Second).Unix())
 	r, err = checkStsAutoScalingInterval(tac, intervalSec, v1alpha1.TiDBMemberType)
 	g.Expect(r).Should(Equal(true))
 	g.Expect(err).Should(BeNil())
