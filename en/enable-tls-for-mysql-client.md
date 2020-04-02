@@ -192,9 +192,9 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
     Refer to [cert-manager installation in Kubernetes](https://docs.cert-manager.io/en/release-0.11/getting-started/install/kubernetes.html).
 
-2. Create a ClusterIssuer to issue certificates for the TiDB cluster.
+2. Create an Issuer to issue certificates for the TiDB cluster.
 
-    To configure `cert-manager`, create the Issuer or ClusterIssuer resources. This document describes how to use ClusterIssuer, which supports issuing certificates in multiple `namespace`.
+    To configure `cert-manager`, create the Issuer resources.
 
     First, create a directory which saves the files that `cert-manager` needs to create certificates:
 
@@ -209,41 +209,43 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
     ```yaml
     apiVersion: cert-manager.io/v1alpha2
-    kind: ClusterIssuer
+    kind: Issuer
     metadata:
-      name: tidb-selfsigned-ca-issuer
+      name: <cluster-name>-selfsigned-ca-issuer
+      namespace: <namespace>
     spec:
       selfSigned: {}
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: tidb-server-issuer-cert
-      namespace: cert-manager
+      name: <cluster-name>-ca
+      namespace: <namespace>
     spec:
-      secretName: tidb-server-issuer-cert
+      secretName: <cluster-name>-ca-secret
       commonName: "TiDB CA"
       isCA: true
       issuerRef:
-        name: tidb-selfsigned-ca-issuer
-        kind: ClusterIssuer
+        name: <cluster-name>-selfsigned-ca-issuer
+        kind: Issuer
     ---
     apiVersion: cert-manager.io/v1alpha2
-    kind: ClusterIssuer
+    kind: Issuer
     metadata:
-      name: tidb-server-issuer
+      name: <cluster-name>-tidb-issuer
+      namespace: <namespace>
     spec:
       ca:
-        secretName: tidb-server-issuer-cert
+        secretName: <cluster-name>-ca-secret
     ```
 
     This `.yaml` file creates three objects:
 
-    - A ClusterIssuer object of SelfSigned class, used to generate the CA certificate needed by ClusterIssuer of CA class
+    - An Issuer object of SelfSigned class, used to generate the CA certificate needed by Issuer of CA class
     - A Certificate object, whose `isCa` is set to `true`
-    - A ClusterIssuer, used to issue TLS certificates for the TiDB server
+    - An Issuer, used to issue TLS certificates for the TiDB server
 
-    Finally, execute the following command to create a ClusterIssuer:
+    Finally, execute the following command to create an Issuer:
 
     {{< copyable "shell-regular" >}}
 
@@ -253,7 +255,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
 3. Generate the server-side certificate.
 
-    In `cert-manager`, the Certificate resource represents the certificate interface. This certificate is issued and updated by the ClusterIssuer created in Step 2.
+    In `cert-manager`, the Certificate resource represents the certificate interface. This certificate is issued and updated by the Issuer created in Step 2.
 
     First, create a `tidb-server-cert.yaml` file with the following content:
 
@@ -283,8 +285,8 @@ You can generate multiple sets of client-side certificates. At least one set of 
         - 127.0.0.1
         - ::1
       issuerRef:
-        name: tidb-server-issuer
-        kind: ClusterIssuer
+        name: <cluster-name>-tidb-issuer
+        kind: Issuer
         group: cert-manager.io
     ```
 
@@ -302,7 +304,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
     - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
         - `127.0.0.1`
         - `::1`
-    - Add the ClusterIssuer created above in the `issuerRef`
+    - Add the Issuer created above in the `issuerRef`
     - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
     Execute the following command to generate the certificate:
@@ -337,8 +339,8 @@ You can generate multiple sets of client-side certificates. At least one set of 
       usages:
         - client auth
       issuerRef:
-        name: tidb-server-issuer
-        kind: ClusterIssuer
+        name: <cluster-name>-tidb-issuer
+        kind: Issuer
         group: cert-manager.io
     ```
 
@@ -347,7 +349,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
     - Set `spec.secretName` to `<cluster-name>-tidb-client-secret`
     - Add `client auth` in `usages`
     - `dnsNames` and `ipAddresses` are not required
-    - Add the ClusterIssuer created above in the `issuerRef`
+    - Add the Issuer created above in the `issuerRef`
     - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)
 
     Execute the following command to generate the certificate:

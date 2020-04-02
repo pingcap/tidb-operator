@@ -435,9 +435,9 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     Refer to [cert-manager installation in Kubernetes](https://docs.cert-manager.io/en/release-0.11/getting-started/install/kubernetes.html) for details.
 
-2. Create a ClusterIssuer to issue certificates to the TiDB cluster.
+2. Create an Issuer to issue certificates to the TiDB cluster.
 
-    To configure `cert-manager`, create the Issuer or ClusterIssuer resources. This document describes how to use ClusterIssuer, which supports issuing certificates in multiple `namespace`.
+    To configure `cert-manager`, create the Issuer resources.
 
     First, create a directory which saves the files that `cert-manager` needs to create certificates:
 
@@ -452,41 +452,43 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     ```yaml
     apiVersion: cert-manager.io/v1alpha2
-    kind: ClusterIssuer
+    kind: Issuer
     metadata:
-      name: tidb-selfsigned-ca-issuer
+      name: <cluster-name>-selfsigned-ca-issuer
+      namespace: <namespace>
     spec:
       selfSigned: {}
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: tidb-cluster-issuer-cert
-      namespace: cert-manager
+      name: <cluster-name>-ca
+      namespace: <namespace>
     spec:
-      secretName: tidb-cluster-issuer-cert
+      secretName: <cluster-name>-ca-secret
       commonName: "TiDB CA"
       isCA: true
       issuerRef:
-        name: tidb-selfsigned-ca-issuer
-        kind: ClusterIssuer
+        name: <cluster-name>-selfsigned-ca-issuer
+        kind: Issuer
     ---
     apiVersion: cert-manager.io/v1alpha2
-    kind: ClusterIssuer
+    kind: Issuer
     metadata:
-      name: tidb-cluster-issuer
+      name: <cluster-name>-tidb-issuer
+      namespace: <namespace>
     spec:
       ca:
-        secretName: tidb-cluster-issuer-cert
+        secretName: <cluster-name>-ca-secret
     ```
 
-    The above yaml file creates three objects:
+    `<cluster-name>` is the name of the cluster. The above yaml file creates three objects:
 
-    - A ClusterIssuer object of the SelfSigned type, used to generate the CA certificate needed by ClusterIssuer of the CA type;
+    - An Issuer object of the SelfSigned type, used to generate the CA certificate needed by Issuer of the CA type;
     - A Certificate object, whose `isCa` is set to `true`.
-    - A ClusterIssuer, used to issue TLS certificates between TiDB components.
+    - An Issuer, used to issue TLS certificates between TiDB components.
 
-    Finally, execute the following command to create a ClusterIssuer:
+    Finally, execute the following command to create an Issuer:
 
     {{< copyable "shell-regular" >}}
 
@@ -496,7 +498,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
 3. Generate the server-side certificate.
 
-    In `cert-manager`, the Certificate resource represents the certificate interface. This certificate is issued and updated by the ClusterIssuer created in Step 2.
+    In `cert-manager`, the Certificate resource represents the certificate interface. This certificate is issued and updated by the Issuer created in Step 2.
 
     According to [Enable TLS Authentication | TiDB Documentation](https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/), each component needs a server-side certificate, and all components need a shared client-side certificate for their clients.
 
@@ -532,8 +534,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -554,7 +556,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the following two IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
             - `::1`
-        - Add the ClusterIssuer created above in `issuerRef`.
+        - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
         After the object is created, `cert-manager` generates a `<cluster-name>-pd-cluster-secret` Secret object to be used by the PD component of the TiDB server.
@@ -591,8 +593,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -615,7 +617,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
             - `::1`
-        - Add the ClusterIssuer created above in `issuerRef`.
+        - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
         After the object is created, `cert-manager` generates a `<cluster-name>-tikv-cluster-secret` Secret object to be used by the TiKV component of the TiDB server.
@@ -652,8 +654,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -676,7 +678,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
             - `::1`
-        - Add the ClusterIssuer created above in `issuerRef`.
+        - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
         After the object is created, `cert-manager` generates a `<cluster-name>-tidb-cluster-secret` Secret object to be used by the TiDB component of the TiDB server.
@@ -707,8 +709,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -725,7 +727,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
             - `::1`
-        - Add the ClusterIssuer created above in the `issuerRef`
+        - Add the Issuer created above in the `issuerRef`
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
         After the object is created, `cert-manager` generates a `<cluster-name>-pump-cluster-secret` Secret object to be used by the Pump component of the TiDB server.
@@ -771,8 +773,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -802,8 +804,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -815,7 +817,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
             - `::1`
-        - Add the ClusterIssuer created above in `issuerRef`.
+        - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
         After the object is created, `cert-manager` generates a `<cluster-name>-drainer-cluster-secret` Secret object to be used by the Drainer component of the TiDB server.
@@ -838,8 +840,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         usages:
         - client auth
         issuerRef:
-        name: tidb-cluster-issuer
-        kind: ClusterIssuer
+        name: <cluster-name>-tidb-issuer
+        kind: Issuer
         group: cert-manager.io
     ```
 
@@ -848,7 +850,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     - Set `spec.secretName` to `<cluster-name>-cluster-client-secret`.
     - Add `client auth` in `usages`.
     - You can leave `dnsNames` and `ipAddresses` empty.
-    - Add the ClusterIssuer created above in `issuerRef`.
+    - Add the Issuer created above in `issuerRef`.
     - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
     After the object is created, `cert-manager` generates a `<cluster-name>-cluster-client-secret` Secret object to be used by the clients of the TiDB components.
