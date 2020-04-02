@@ -20,29 +20,59 @@ import (
 
 func TestCalculate(t *testing.T) {
 	g := NewGomegaWithT(t)
-	currentValue, targetValue := 20.0, 30.0
-	currentReplicas := int32(4)
-	r, err := calculate(currentValue, targetValue, currentReplicas)
-	g.Expect(err).Should(BeNil())
-	g.Expect(r).Should(Equal(int32(3)))
+	type testcase struct {
+		name             string
+		currentReplicas  int32
+		currentValue     float64
+		targetValue      float64
+		expectedReplicas int32
+		errMsg           string
+	}
 
-	currentValue, targetValue = 30.0, 30.0
-	currentReplicas = int32(4)
-	r, err = calculate(currentValue, targetValue, currentReplicas)
-	g.Expect(err).Should(BeNil())
-	g.Expect(r).Should(Equal(int32(4)))
+	testFn := func(tt *testcase) {
+		t.Log(tt.name)
+		r, err := calculate(tt.currentValue, tt.targetValue, tt.currentReplicas)
+		if len(tt.errMsg) < 1 {
+			g.Expect(err).Should(BeNil())
+		} else {
+			g.Expect(err).ShouldNot(BeNil())
+			g.Expect(err.Error()).Should(Equal(tt.errMsg))
+		}
+		g.Expect(r).Should(Equal(tt.expectedReplicas))
+	}
 
-	currentValue, targetValue = 35.0, 30.0
-	currentReplicas = int32(4)
-	r, err = calculate(currentValue, targetValue, currentReplicas)
-	g.Expect(err).Should(BeNil())
-	g.Expect(r).Should(Equal(int32(5)))
-
-	currentValue, targetValue = 0.0, 0.0
-	currentReplicas = int32(4)
-	r, err = calculate(currentValue, targetValue, currentReplicas)
-	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(err.Error()).Should(Equal("targetValue in calculate func can't be zero"))
-	g.Expect(r).Should(Equal(int32(-1)))
-
+	testcases := []testcase{
+		{
+			name:             "under target value",
+			currentReplicas:  4,
+			currentValue:     20.0,
+			targetValue:      30.0,
+			expectedReplicas: 3,
+		},
+		{
+			name:             "equal target value",
+			currentReplicas:  4,
+			currentValue:     30.0,
+			targetValue:      30.0,
+			expectedReplicas: 4,
+		},
+		{
+			name:             "greater than target value",
+			currentReplicas:  4,
+			currentValue:     35.0,
+			targetValue:      30.0,
+			expectedReplicas: 5,
+		},
+		{
+			name:             "target value is zero",
+			currentReplicas:  4,
+			currentValue:     35.0,
+			targetValue:      0,
+			expectedReplicas: -1,
+			errMsg:           "targetValue in calculate func can't be zero",
+		},
+	}
+	for _, tt := range testcases {
+		testFn(&tt)
+	}
 }
