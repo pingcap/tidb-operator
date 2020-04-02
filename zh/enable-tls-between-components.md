@@ -427,9 +427,9 @@ category: how-to
 
     请参考官网安装：[cert-manager installation in Kubernetes](https://docs.cert-manager.io/en/release-0.11/getting-started/install/kubernetes.html)。
 
-2. 创建一个 ClusterIssuer 用于给 TiDB 集群颁发证书。
+2. 创建一个 Issuer 用于给 TiDB 集群颁发证书。
 
-    为了配置 `cert-manager` 颁发证书，必须先创建 Issuer 或 ClusterIssuer 资源，这里使用 ClusterIssuer 资源可以颁发多个 `namespace` 下的证书。
+    为了配置 `cert-manager` 颁发证书，必须先创建 Issuer 资源。
 
     首先创建一个目录保存 `cert-manager` 创建证书所需文件：
 
@@ -444,39 +444,41 @@ category: how-to
 
     ``` yaml
     apiVersion: cert-manager.io/v1alpha2
-    kind: ClusterIssuer
+    kind: Issuer
     metadata:
-      name: tidb-selfsigned-ca-issuer
+      name: <cluster-name>-selfsigned-ca-issuer
+      namespace: <namespace>
     spec:
       selfSigned: {}
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: tidb-cluster-issuer-cert
-      namespace: cert-manager
+      name: <cluster-name>-ca
+      namespace: <namespace>
     spec:
-      secretName: tidb-cluster-issuer-cert
+      secretName: <cluster-name>-ca-secret
       commonName: "TiDB CA"
       isCA: true
       issuerRef:
-        name: tidb-selfsigned-ca-issuer
-        kind: ClusterIssuer
+        name: <cluster-name>-selfsigned-ca-issuer
+        kind: Issuer
     ---
     apiVersion: cert-manager.io/v1alpha2
-    kind: ClusterIssuer
+    kind: Issuer
     metadata:
-      name: tidb-cluster-issuer
+      name: <cluster-name>-tidb-issuer
+      namespace: <namespace>
     spec:
       ca:
-        secretName: tidb-cluster-issuer-cert
+        secretName: <cluster-name>-ca-secret
     ```
 
-    上面的文件创建三个对象：
+    其中 `<cluster-name>` 为集群的名字，上面的文件创建三个对象：
 
-    - 一个 SelfSigned 类型的 ClusterIsser 对象（用于生成 CA 类型 ClusterIssuer 所需要的 CA 证书）;
+    - 一个 SelfSigned 类型的 Isser 对象（用于生成 CA 类型 Issuer 所需要的 CA 证书）;
     - 一个 Certificate 对象，`isCa` 属性设置为 `true`；
-    - 一个可以用于颁发 TiDB 组件间 TLS 证书的 ClusterIssuer。
+    - 一个可以用于颁发 TiDB 组件间 TLS 证书的 Issuer。
 
     最后执行下面的命令进行创建：
 
@@ -488,7 +490,7 @@ category: how-to
 
 3. 创建 Server 端证书。
 
-    在 `cert-manager` 中，Certificate 资源表示证书接口，该证书将由上面创建的 ClusterIssuer 颁发并保持更新。
+    在 `cert-manager` 中，Certificate 资源表示证书接口，该证书将由上面创建的 Issuer 颁发并保持更新。
 
     根据官网文档：[Enable TLS Authentication | TiDB Documentation](https://pingcap.com/docs/v3.0/how-to/secure/enable-tls-between-components/)，我们需要为每个组件创建一个 Server 端证书，并且为他们的 Client 创建一套公用的 Client 端证书。
 
@@ -524,8 +526,8 @@ category: how-to
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -546,7 +548,7 @@ category: how-to
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
-        - `issuerRef` 请填写上面创建的 ClusterIssuer；
+        - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-pd-cluster-secret` 的 Secret 对象供 TiDB 集群的 PD 组件使用。
@@ -583,8 +585,8 @@ category: how-to
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -605,7 +607,7 @@ category: how-to
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
-        - `issuerRef` 请填写上面创建的 ClusterIssuer；
+        - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-tikv-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiKV 组件使用。
@@ -642,8 +644,8 @@ category: how-to
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -664,7 +666,7 @@ category: how-to
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
-        - `issuerRef` 请填写上面创建的 ClusterIssuer；
+        - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-tidb-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiDB 组件使用。
@@ -696,8 +698,8 @@ category: how-to
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -712,7 +714,7 @@ category: how-to
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
-        - `issuerRef` 请填写上面创建的 ClusterIssuer；
+        - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-pump-cluster-secret` 的 Secret 对象供 TiDB 集群的 Pump 组件使用。
@@ -758,8 +760,8 @@ category: how-to
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -789,8 +791,8 @@ category: how-to
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -802,7 +804,7 @@ category: how-to
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
-        - `issuerRef` 请填写上面创建的 ClusterIssuer；
+        - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-drainer-cluster-secret` 的 Secret 对象供 TiDB 集群的 Drainer 组件使用。
@@ -825,8 +827,8 @@ category: how-to
           usages:
             - client auth
           issuerRef:
-            name: tidb-cluster-issuer
-            kind: ClusterIssuer
+            name: <cluster-name>-tidb-issuer
+            kind: Issuer
             group: cert-manager.io
         ```
 
@@ -835,7 +837,7 @@ category: how-to
         - `spec.secretName` 请设置为 `<cluster-name>-cluster-client-secret`；
         - `usages` 请添加上  `client auth`；
         - `dnsNames` 和 `ipAddresses` 不需要填写；
-        - `issuerRef` 请填写上面创建的 ClusterIssuer；
+        - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-cluster-client-secret` 的 Secret 对象供 TiDB 组件的 Client 使用。获取 Client 证书的方式是：
