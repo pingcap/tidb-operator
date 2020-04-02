@@ -103,11 +103,6 @@ type MonitorConfigModel struct {
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	var c = config.Config{
-		AlertingConfig: config.AlertingConfig{
-			AlertRelabelConfigs: nil,
-			AlertmanagerConfigs: nil,
-			XXX:                 nil,
-		},
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
 			EvaluationInterval: model.Duration(15 * time.Second),
@@ -249,9 +244,7 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 					StaticConfigs: []*config.TargetGroup{
 						{
 							Targets: []model.LabelSet{
-								map[model.LabelName]model.LabelValue{
-									"targets": model.LabelValue(cmodel.AlertmanagerURL),
-								},
+								{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
 							},
 						},
 					},
