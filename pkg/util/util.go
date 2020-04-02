@@ -25,6 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -209,4 +211,18 @@ func AppendEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
 		}
 	}
 	return a
+}
+
+// IsOwnedByTidbCluster checks if the given object is owned by TidbCluster.
+// Schema Kind and Group are checked, Version is ignored.
+func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
+	ref := metav1.GetControllerOf(obj)
+	if ref == nil {
+		return false, nil
+	}
+	gv, err := schema.ParseGroupVersion(ref.APIVersion)
+	if err != nil {
+		return false, nil
+	}
+	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
 }
