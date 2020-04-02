@@ -867,12 +867,18 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
 ## Step 2: Deploy the TiDB cluster
 
+When you deploy a TiDB cluster, you can enable TLS between TiDB components, and set the `cert-allowed-cn` configuration item (for TiDB, the configuration item is `cluster-verify-cn`) to verify the CN (Common Name) of each component's certificate.
+
+> **Note:**
+>
+> Currently, you can set only one value for the `cert-allowed-cn` configuration item of PD.
+
 In this step, you need to perform the following operations:
 
     - Create a TiDB cluster
-    - Enable TLS between the TiDB components
+    - Enable TLS between the TiDB components, and enable CN verification
     - Deploy a monitoring system
-    - Deploy the Pump component
+    - Deploy the Pump component, and enable CN verification
 
 1. Create a TiDB cluster:
 
@@ -895,25 +901,37 @@ In this step, you need to perform the following operations:
        replicas: 1
        requests:
          storage: "1Gi"
-       config: {}
+       config:
+         security:
+           cert-allowed-cn:
+             - TiDB
      tikv:
        baseImage: pingcap/tikv
        replicas: 1
        requests:
          storage: "1Gi"
-       config: {}
+       config:
+         security:
+           cert-allowed-cn:
+             - TiDB
      tidb:
        baseImage: pingcap/tidb
        replicas: 1
        service:
          type: ClusterIP
-       config: {}
+       config:
+         security:
+           cluster-verify-cn:
+             - TiDB
      pump:
        baseImage: pingcap/tidb-binlog
        replicas: 1
        requests:
          storage: "1Gi"
-       config: {}
+       config:
+         security:
+           cert-allowed-cn:
+             - TiDB
     ---
     apiVersion: pingcap.com/v1alpha1
     kind: TidbMonitor
@@ -942,7 +960,7 @@ In this step, you need to perform the following operations:
 
     This operation also includes deploying a monitoring system and the Pump component.
 
-2. Create a Drainer component and enable TLS:
+2. Create a Drainer component and enable TLS and CN verification:
 
     - Method 1: Set `drainerName` when you create Drainer.
 
@@ -953,6 +971,8 @@ In this step, you need to perform the following operations:
         drainerName: <drainer-name>
         tlsCluster:
           enabled: true
+          certAllowedCN:
+            - TiDB
         ...
         ```
 
@@ -972,6 +992,8 @@ In this step, you need to perform the following operations:
         ...
         tlsCluster:
           enabled: true
+          certAllowedCN:
+            - TiDB
         ...
         ```
 
