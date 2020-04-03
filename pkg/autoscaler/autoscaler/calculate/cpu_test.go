@@ -24,35 +24,14 @@ import (
 
 func TestExtractCpuRequestsRatio(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name          string
 		defineRequest bool
 		cpuValue      string
 		expectedRadio float64
 		occurError    bool
 		errMsg        string
-	}
-
-	testFn := func(tt *testcase) {
-		t.Log(tt.name)
-		c := newContainer()
-		if tt.defineRequest {
-			c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceCPU: resource.MustParse(tt.cpuValue),
-			}
-		} else {
-			c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{}
-		}
-		r, err := extractCpuRequestsRatio(c)
-		if !tt.occurError {
-			g.Expect(err).Should(BeNil())
-		} else {
-			g.Expect(err).ShouldNot(BeNil())
-			g.Expect(err.Error()).Should(Equal(tt.errMsg))
-		}
-		g.Expect(almostEqual(r, tt.expectedRadio)).Should(Equal(true))
-	}
-	testcases := []testcase{
+	}{
 		{
 			name:          "cpu 1",
 			defineRequest: true,
@@ -86,8 +65,26 @@ func TestExtractCpuRequestsRatio(t *testing.T) {
 			errMsg:        fmt.Sprintf("container[%s] cpu requests is empty", "container"),
 		},
 	}
-	for _, tt := range testcases {
-		testFn(&tt)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newContainer()
+			if tt.defineRequest {
+				c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceCPU: resource.MustParse(tt.cpuValue),
+				}
+			} else {
+				c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{}
+			}
+			r, err := extractCpuRequestsRatio(c)
+			if !tt.occurError {
+				g.Expect(err).Should(BeNil())
+			} else {
+				g.Expect(err).ShouldNot(BeNil())
+				g.Expect(err.Error()).Should(Equal(tt.errMsg))
+			}
+			g.Expect(almostEqual(r, tt.expectedRadio)).Should(Equal(true))
+		})
 	}
 }
 

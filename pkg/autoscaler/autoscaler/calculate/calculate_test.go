@@ -20,28 +20,14 @@ import (
 
 func TestCalculate(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name             string
 		currentReplicas  int32
 		currentValue     float64
 		targetValue      float64
 		expectedReplicas int32
 		errMsg           string
-	}
-
-	testFn := func(tt *testcase) {
-		t.Log(tt.name)
-		r, err := calculate(tt.currentValue, tt.targetValue, tt.currentReplicas)
-		if len(tt.errMsg) < 1 {
-			g.Expect(err).Should(BeNil())
-		} else {
-			g.Expect(err).ShouldNot(BeNil())
-			g.Expect(err.Error()).Should(Equal(tt.errMsg))
-		}
-		g.Expect(r).Should(Equal(tt.expectedReplicas))
-	}
-
-	testcases := []testcase{
+	}{
 		{
 			name:             "under target value",
 			currentReplicas:  4,
@@ -72,7 +58,17 @@ func TestCalculate(t *testing.T) {
 			errMsg:           "targetValue in calculate func can't be zero",
 		},
 	}
-	for _, tt := range testcases {
-		testFn(&tt)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := calculate(tt.currentValue, tt.targetValue, tt.currentReplicas)
+			if len(tt.errMsg) < 1 {
+				g.Expect(err).Should(BeNil())
+			} else {
+				g.Expect(err).ShouldNot(BeNil())
+				g.Expect(err.Error()).Should(Equal(tt.errMsg))
+			}
+			g.Expect(r).Should(Equal(tt.expectedReplicas))
+		})
 	}
 }
