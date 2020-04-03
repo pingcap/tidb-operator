@@ -315,6 +315,7 @@ func TestCheckAndUpdateTacAnn(t *testing.T) {
 		tac.Spec.Cluster.Name = tt.targetName
 		tac.Spec.Cluster.Namespace = tt.targetNamespace
 		if tt.haveScaling {
+			tac.Annotations = map[string]string{}
 			tac.Annotations[label.AnnAutoScalingTargetNamespace] = tt.targetNamespace
 			tac.Annotations[label.AnnAutoScalingTargetName] = tt.targetName
 		}
