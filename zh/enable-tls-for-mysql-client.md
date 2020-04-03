@@ -420,7 +420,7 @@ spec:
 
 ## 第三步：配置 MySQL 客户端使用加密连接
 
-可以根据 [官网文档](https://github.com/pingcap/tidb-operator/blob/master/docs/CONTRIBUTING.md#start-tidb-operator-locally-and-do-manual-tests) 提示，使用上面创建的 Client 证书，通过下面的方法连接 TiDB 集群：
+可以根据[官网文档](https://pingcap.com/docs-cn/stable/how-to/secure/enable-tls-clients/#配置-mysql-客户端使用加密连接)提示，使用上面创建的 Client 证书，通过下面的方法连接 TiDB 集群：
 
 1. 通过 `cfssl` 颁发证书，连接 TiDB Server 的方法是：
 
