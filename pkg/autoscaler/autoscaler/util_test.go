@@ -76,13 +76,6 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 			expectedPermitScaling: false,
 		},
 		{
-			name:                  "tikv, scaling 1000 secs ago",
-			memberType:            v1alpha1.TiKVMemberType,
-			HaveScaled:            true,
-			LastScaleIntervalSec:  1000,
-			expectedPermitScaling: true,
-		},
-		{
 			name:                  "tidb, first scaling",
 			memberType:            v1alpha1.TiDBMemberType,
 			HaveScaled:            false,
@@ -95,13 +88,6 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 			HaveScaled:            true,
 			LastScaleIntervalSec:  60,
 			expectedPermitScaling: false,
-		},
-		{
-			name:                  "tidb, scaling 1000 secs ago",
-			memberType:            v1alpha1.TiDBMemberType,
-			HaveScaled:            true,
-			LastScaleIntervalSec:  1000,
-			expectedPermitScaling: true,
 		},
 	}
 
