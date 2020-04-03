@@ -111,6 +111,10 @@ type TidbClusterSpec struct {
 	// TiKV cluster spec
 	TiKV TiKVSpec `json:"tikv"`
 
+	// TiFlash cluster spec
+	// +optional
+	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -276,6 +280,60 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
+}
+
+// TiFlashSpec contains details of TiFlash members
+// +k8s:openapi-gen=true
+type TiFlashSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiFlash
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiflash
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Whether create the TiFlash container in privileged mode, it is highly discouraged to enable this in
+	// critical environment.
+	// Optional: defaults to false
+	// +optional
+	Privileged *bool `json:"privileged,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// The DiskRequests of the persistent volume for TiFlash data storage.
+	// TiFlash supports multiple disks
+	DiskRequests []DiskRequests `json:"diskRequests"`
+
+	// Config is the Configuration of TiFlash
+	// +optional
+	Config *TiFlashConfig `json:"config,omitempty"`
+
+	// Dedicated TiDB cluster spec for TiFlash
+	TiDB *TiDBSpec `json:"tidb,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// TiDBSpec contains details of TiDB members
+type DiskRequests struct {
+	// The storageClassName of the persistent volume for data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageSize is the request storage size for TiFlash
+	StorageSize string `json:"storageSize"`
 }
 
 // +k8s:openapi-gen=true
