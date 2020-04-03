@@ -20,6 +20,7 @@ source "${ROOT}/hack/lib.sh"
 source "${ROOT}/tests/examples/t.sh"
 
 NS=$(basename ${0%.*})
+CERT_MANAGER_VERSION=0.14.1
 
 PORT_FORWARD_PID=
 
@@ -29,7 +30,7 @@ function cleanup() {
         kill $PORT_FORWARD_PID
     fi
     kubectl delete -f examples/selfsigned-tls/ --ignore-not-found
-    kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v0.13.1/cert-manager.yaml --ignore-not-found
+    kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v${CERT_MANAGER_VERSION}/cert-manager.yaml --ignore-not-found
     kubectl delete ns $NS
 }
 
@@ -38,7 +39,7 @@ trap cleanup EXIT
 kubectl create ns $NS
 hack::wait_for_success 10 3 "t::ns_is_active $NS"
 
-kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.13.1/cert-manager.yaml
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v${CERT_MANAGER_VERSION}/cert-manager.yaml
 hack::wait_for_success 10 3 "t::crds_are_ready certificaterequests.cert-manager.io certificates.cert-manager.io challenges.acme.cert-manager.io clusterissuers.cert-manager.io issuers.cert-manager.io orders.acme.cert-manager.io"
 for d in cert-manager cert-manager-cainjector cert-manager-webhook; do
     hack::wait_for_success 300 3 "t::deploy_is_ready cert-manager $d"
