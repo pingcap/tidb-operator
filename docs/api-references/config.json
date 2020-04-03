@@ -1,6 +1,28 @@
 {
   "hideMemberFields": [
-    "TypeMeta"
+    "TypeMeta",
+    "TmpPath",
+    "DisplayName",
+    "DefaultProfile",
+    "Path",
+    "ListenHost",
+    "TCPPort",
+    "HTTPPort",
+    "InternalServerHTTPPort",
+    "Errorlog",
+    "ServerLog",
+    "TiDBStatusAddr",
+    "ServiceAddr",
+    "ProxyConfig",
+    "ClusterManagerPath",
+    "FlashStatus",
+    "FlashQuota",
+    "FlashUser",
+    "FlashProfile",
+    "FlashApplication",
+    "FlashProxy",
+    "FlashRaft",
+    "ClusterLog"
   ],
   "hideTypePatterns": [
     "ParseError$",
