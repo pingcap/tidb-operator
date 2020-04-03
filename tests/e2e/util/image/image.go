@@ -32,7 +32,7 @@ const (
 	TiDBV3UpgradeVersion = "v3.0.9"
 	TiDBTLSVersion       = TiDBV3Version // must >= 3.0.5
 	TiDBV2Version        = "v2.1.19"
-	TiDBBRVersion        = "v4.0.0-beta.1"
+	TiDBV4Version        = "v4.0.0-beta.2"
 )
 
 func ListImages() []string {
@@ -40,7 +40,7 @@ func ListImages() []string {
 	versions := strings.Split(e2econfig.TestConfig.TidbVersions, ",")
 	versions = append(versions, TiDBV3Version)
 	versions = append(versions, TiDBTLSVersion)
-	versions = append(versions, TiDBV2Version)
+	versions = append(versions, TiDBV4Version)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))

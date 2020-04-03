@@ -139,17 +139,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			Values  map[string]string
 		}{
 			{
-				Version: utilimage.TiDBV3Version,
-				Name:    "basic-v3",
+				Version: utilimage.TiDBV4Version,
+				Name:    "basic-v4",
 			},
 			{
-				Version: utilimage.TiDBV2Version,
-				Name:    "basic-v2",
-				Values: map[string]string{
-					// verify v2.1.x configuration compatibility
-					// https://github.com/pingcap/tidb-operator/pull/950
-					"tikv.resources.limits.storage": "1G",
-				},
+				Version: utilimage.TiDBV3Version,
+				Name:    "basic-v3",
 			},
 		}
 
@@ -303,7 +298,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		backupFolder := time.Now().Format(time.RFC3339)
 
 		// create backup cluster
-		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBBRVersion)
+		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
 		tcFrom.Spec.PD.Replicas = 1
 		tcFrom.Spec.TiKV.Replicas = 1
 		tcFrom.Spec.TiDB.Replicas = 1
@@ -314,7 +309,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", "")
 
 		// create restore cluster
-		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBBRVersion)
+		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
 		tcTo.Spec.PD.Replicas = 1
 		tcTo.Spec.TiKV.Replicas = 1
 		tcTo.Spec.TiDB.Replicas = 1
