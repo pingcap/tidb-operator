@@ -28,39 +28,13 @@ import (
 
 func TestCheckStsAutoScalingInterval(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name                  string
 		memberType            v1alpha1.MemberType
 		HaveScaled            bool
 		LastScaleIntervalSec  int
 		expectedPermitScaling bool
-	}
-
-	testFn := func(tt *testcase) {
-		t.Log(tt.name)
-		tac := newTidbClusterAutoScaler()
-		intervalSec := int32(100)
-		if tt.memberType == v1alpha1.TiKVMemberType {
-			if !tt.HaveScaled {
-				tac.Annotations = map[string]string{}
-			} else {
-				d := time.Duration(tt.LastScaleIntervalSec) * time.Second
-				tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(d).Unix())
-			}
-		} else if tt.memberType == v1alpha1.TiDBMemberType {
-			if !tt.HaveScaled {
-				tac.Annotations = map[string]string{}
-			} else {
-				d := time.Duration(tt.LastScaleIntervalSec) * time.Second
-				tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(d).Unix())
-			}
-		}
-		r, err := checkStsAutoScalingInterval(tac, intervalSec, tt.memberType)
-		g.Expect(err).Should(BeNil())
-		g.Expect(r).Should(Equal(tt.expectedPermitScaling))
-	}
-
-	testcases := []testcase{
+	}{
 		{
 			name:                  "tikv, first scaling",
 			memberType:            v1alpha1.TiKVMemberType,
@@ -91,42 +65,42 @@ func TestCheckStsAutoScalingInterval(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testcases {
-		testFn(&tt)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			tac := newTidbClusterAutoScaler()
+			intervalSec := int32(100)
+			if tt.memberType == v1alpha1.TiKVMemberType {
+				if !tt.HaveScaled {
+					tac.Annotations = map[string]string{}
+				} else {
+					d := time.Duration(tt.LastScaleIntervalSec) * time.Second
+					tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(d).Unix())
+				}
+			} else if tt.memberType == v1alpha1.TiDBMemberType {
+				if !tt.HaveScaled {
+					tac.Annotations = map[string]string{}
+				} else {
+					d := time.Duration(tt.LastScaleIntervalSec) * time.Second
+					tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Truncate(d).Unix())
+				}
+			}
+			r, err := checkStsAutoScalingInterval(tac, intervalSec, tt.memberType)
+			g.Expect(err).Should(BeNil())
+			g.Expect(r).Should(Equal(tt.expectedPermitScaling))
+		})
+
 	}
 }
 
 func TestCheckStsAutoScalingPrerequisites(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name                string
 		stsUpdating         bool
 		stsScaling          bool
 		expectedCheckResult bool
-	}
-	testFn := func(tt *testcase) {
-		t.Log(tt.name)
-		sts := newSts()
-		if tt.stsUpdating {
-			sts.Status.UpdateRevision = "1"
-			sts.Status.CurrentRevision = "2"
-		} else {
-			sts.Status.UpdateRevision = "1"
-			sts.Status.CurrentRevision = "1"
-		}
-
-		if tt.stsScaling {
-			sts.Spec.Replicas = pointer.Int32Ptr(1)
-			sts.Status.Replicas = 2
-		} else {
-			sts.Spec.Replicas = pointer.Int32Ptr(1)
-			sts.Status.Replicas = 1
-		}
-		r := checkStsAutoScalingPrerequisites(sts)
-		g.Expect(r).Should(Equal(tt.expectedCheckResult))
-	}
-
-	testcases := []testcase{
+	}{
 		{
 			name:                "upgrading",
 			stsUpdating:         true,
@@ -146,38 +120,41 @@ func TestCheckStsAutoScalingPrerequisites(t *testing.T) {
 			expectedCheckResult: true,
 		},
 	}
-	for _, tt := range testcases {
-		testFn(&tt)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sts := newSts()
+			if tt.stsUpdating {
+				sts.Status.UpdateRevision = "1"
+				sts.Status.CurrentRevision = "2"
+			} else {
+				sts.Status.UpdateRevision = "1"
+				sts.Status.CurrentRevision = "1"
+			}
+			if tt.stsScaling {
+				sts.Spec.Replicas = pointer.Int32Ptr(1)
+				sts.Status.Replicas = 2
+			} else {
+				sts.Spec.Replicas = pointer.Int32Ptr(1)
+				sts.Status.Replicas = 1
+			}
+			r := checkStsAutoScalingPrerequisites(sts)
+			g.Expect(r).Should(Equal(tt.expectedCheckResult))
+		})
 	}
 
 }
 
 func TestLimitTargetReplicas(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name             string
 		targetReplicas   int32
 		minReplicas      int32
 		maxReplicas      int32
 		memberType       v1alpha1.MemberType
 		expectedReplicas int32
-	}
-
-	testFn := func(tt *testcase) {
-		t.Log(tt.name)
-		tac := newTidbClusterAutoScaler()
-		if tt.memberType == v1alpha1.TiKVMemberType {
-			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(tt.minReplicas)
-			tac.Spec.TiKV.MaxReplicas = tt.maxReplicas
-		} else if tt.memberType == v1alpha1.TiDBMemberType {
-			tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(tt.minReplicas)
-			tac.Spec.TiDB.MaxReplicas = tt.maxReplicas
-		}
-		r := limitTargetReplicas(tt.targetReplicas, tac, tt.memberType)
-		g.Expect(tt.expectedReplicas).Should(Equal(r))
-	}
-
-	testcases := []testcase{
+	}{
 		{
 			name:             "tikv,smaller than min",
 			targetReplicas:   1,
@@ -260,10 +237,21 @@ func TestLimitTargetReplicas(t *testing.T) {
 			expectedReplicas: 4,
 		},
 	}
-	for _, tt := range testcases {
-		testFn(&tt)
-	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tac := newTidbClusterAutoScaler()
+			if tt.memberType == v1alpha1.TiKVMemberType {
+				tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(tt.minReplicas)
+				tac.Spec.TiKV.MaxReplicas = tt.maxReplicas
+			} else if tt.memberType == v1alpha1.TiDBMemberType {
+				tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(tt.minReplicas)
+				tac.Spec.TiDB.MaxReplicas = tt.maxReplicas
+			}
+			r := limitTargetReplicas(tt.targetReplicas, tac, tt.memberType)
+			g.Expect(tt.expectedReplicas).Should(Equal(r))
+		})
+	}
 }
 
 func TestDefaultTac(t *testing.T) {
@@ -300,34 +288,14 @@ func TestDefaultTac(t *testing.T) {
 
 func TestCheckAndUpdateTacAnn(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name            string
 		haveScaling     bool
 		targetNamespace string
 		targetName      string
 		markedNamespace string
 		markedName      string
-	}
-
-	testFn := func(tt *testcase) {
-		tac := newTidbClusterAutoScaler()
-		tac.Annotations = nil
-		tac.Spec.Cluster.Name = tt.targetName
-		tac.Spec.Cluster.Namespace = tt.targetNamespace
-		if tt.haveScaling {
-			tac.Annotations = map[string]string{}
-			tac.Annotations[label.AnnAutoScalingTargetNamespace] = tt.targetNamespace
-			tac.Annotations[label.AnnAutoScalingTargetName] = tt.targetName
-		}
-		checkAndUpdateTacAnn(tac)
-		v, ok := tac.Annotations[label.AnnAutoScalingTargetNamespace]
-		g.Expect(ok).Should(Equal(ok))
-		g.Expect(v).Should(Equal(tt.targetNamespace))
-		v, ok = tac.Annotations[label.AnnAutoScalingTargetName]
-		g.Expect(ok).Should(Equal(ok))
-		g.Expect(v).Should(Equal(tt.targetName))
-	}
-	testcases := []testcase{
+	}{
 		{
 			name:            "first syncing",
 			haveScaling:     false,
@@ -353,8 +321,26 @@ func TestCheckAndUpdateTacAnn(t *testing.T) {
 			targetNamespace: "bar2",
 		},
 	}
-	for _, tt := range testcases {
-		testFn(&tt)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tac := newTidbClusterAutoScaler()
+			tac.Annotations = nil
+			tac.Spec.Cluster.Name = tt.targetName
+			tac.Spec.Cluster.Namespace = tt.targetNamespace
+			if tt.haveScaling {
+				tac.Annotations = map[string]string{}
+				tac.Annotations[label.AnnAutoScalingTargetNamespace] = tt.targetNamespace
+				tac.Annotations[label.AnnAutoScalingTargetName] = tt.targetName
+			}
+			checkAndUpdateTacAnn(tac)
+			v, ok := tac.Annotations[label.AnnAutoScalingTargetNamespace]
+			g.Expect(ok).Should(Equal(ok))
+			g.Expect(v).Should(Equal(tt.targetNamespace))
+			v, ok = tac.Annotations[label.AnnAutoScalingTargetName]
+			g.Expect(ok).Should(Equal(ok))
+			g.Expect(v).Should(Equal(tt.targetName))
+		})
 	}
 }
 
