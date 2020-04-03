@@ -294,6 +294,7 @@ type OperatorConfig struct {
 	ValidatingEnabled         bool
 	Cabundle                  string
 	BackupImage               string
+	AutoFailover              bool
 }
 
 type TidbClusterConfig struct {
@@ -408,7 +409,7 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                                oi.Image,
 		"tidbBackupManagerImage":                       oi.BackupImage,
-		"controllerManager.autoFailover":               "true",
+		"controllerManager.autoFailover":               strconv.FormatBool(oi.AutoFailover),
 		"scheduler.logLevel":                           "4",
 		"testMode":                                     strconv.FormatBool(oi.TestMode),
 		"admissionWebhook.cabundle":                    oi.Cabundle,
