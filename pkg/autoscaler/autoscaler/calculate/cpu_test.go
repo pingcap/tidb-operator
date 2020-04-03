@@ -24,31 +24,71 @@ import (
 
 func TestExtractCpuRequestsRatio(t *testing.T) {
 	g := NewGomegaWithT(t)
-	c := newContainer()
-	r, err := extractCpuRequestsRatio(c)
-	g.Expect(err).Should(BeNil())
-	g.Expect(almostEqual(r, 1.0)).Should(Equal(true))
-
-	c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceCPU: resource.MustParse("1000m"),
+	type testcase struct {
+		name          string
+		defineRequest bool
+		cpuValue      string
+		expectedRadio float64
+		occurError    bool
+		errMsg        string
 	}
-	r, err = extractCpuRequestsRatio(c)
-	g.Expect(err).Should(BeNil())
-	g.Expect(almostEqual(r, 1.0)).Should(Equal(true))
 
-	c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceCPU: resource.MustParse("1500m"),
+	testFn := func(tt *testcase) {
+		t.Log(tt.name)
+		c := newContainer()
+		if tt.defineRequest {
+			c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceCPU: resource.MustParse(tt.cpuValue),
+			}
+		} else {
+			c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{}
+		}
+		r, err := extractCpuRequestsRatio(c)
+		if !tt.occurError {
+			g.Expect(err).Should(BeNil())
+		} else {
+			g.Expect(err).ShouldNot(BeNil())
+			g.Expect(err.Error()).Should(Equal(tt.errMsg))
+		}
+		g.Expect(almostEqual(r, tt.expectedRadio)).Should(Equal(true))
 	}
-	r, err = extractCpuRequestsRatio(c)
-	g.Expect(err).Should(BeNil())
-	g.Expect(almostEqual(r, 1.5)).Should(Equal(true))
-
-	c.Resources.Requests = map[corev1.ResourceName]resource.Quantity{}
-	r, err = extractCpuRequestsRatio(c)
-	g.Expect(err).ShouldNot(BeNil())
-	g.Expect(err.Error()).Should(Equal(fmt.Sprintf("container[%s] cpu requests is empty", c.Name)))
-	g.Expect(almostEqual(r, 0)).Should(Equal(true))
-
+	testcases := []testcase{
+		{
+			name:          "cpu 1",
+			defineRequest: true,
+			cpuValue:      "1",
+			occurError:    false,
+			expectedRadio: 1.0,
+			errMsg:        "",
+		},
+		{
+			name:          "cpu 1000m",
+			defineRequest: true,
+			cpuValue:      "1000m",
+			occurError:    false,
+			expectedRadio: 1.0,
+			errMsg:        "",
+		},
+		{
+			name:          "cpu 1500m",
+			defineRequest: true,
+			cpuValue:      "1500m",
+			occurError:    false,
+			expectedRadio: 1.5,
+			errMsg:        "",
+		},
+		{
+			name:          "no cpu request",
+			defineRequest: false,
+			cpuValue:      "",
+			occurError:    true,
+			expectedRadio: 0,
+			errMsg:        fmt.Sprintf("container[%s] cpu requests is empty", "container"),
+		},
+	}
+	for _, tt := range testcases {
+		testFn(&tt)
+	}
 }
 
 func newContainer() *corev1.Container {
