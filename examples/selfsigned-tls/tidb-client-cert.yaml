@@ -1,22 +1,21 @@
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
-  name: tidb-server-cert
+  name: tidb-client-cert
 spec:
-  secretName: tls-tidb-server-secret # <cluster>-tidb-server-secret
+  secretName: tls-tidb-client-secret # <cluster>-tidb-client-secret
   subject:
     organizationalUnits:
-    - "TiDB Operator"
+      - "TiDB Operator"
   organization:
-  - "PingCAP"
+    - "PingCAP"
   duration: "8760h" # 364 days
   # If you want verify server cert Common Name (e.g. --ssl-verify-server-cert
   # flag in MySQL CLI), you must configure the HostName you used to connect the
   # server here.
-  commonName: "tls-tidb-server"
+  commonName: "tls-tidb-client"
   usages:
-  - "client auth"
-  - "server auth"
+    - "client auth"
   issuerRef:
     name: selfsigned-cert-issuer
     kind: Issuer
