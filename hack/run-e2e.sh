@@ -29,6 +29,7 @@ GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
 GCP_SDK=${GCP_SDK:-/google-cloud-sdk}
+KUBE_SSH_USER=${KUBE_SSH_USER:-}
 IMAGE_TAG=${IMAGE_TAG:-}
 SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
@@ -51,6 +52,7 @@ if [ -z "$KUBECONFIG" ]; then
     exit 1
 fi
 
+echo "KUBE_SSH_USER: $KUBE_SSH_USER"
 echo "TIDB_OPERATOR_IMAGE: $TIDB_OPERATOR_IMAGE"
 echo "TIDB_BACKUP_MANAGER_IMAGE: $TIDB_BACKUP_MANAGER_IMAGE"
 echo "E2E_IMAGE: $E2E_IMAGE"
@@ -145,43 +147,11 @@ for ((i = 1; i <= 32; i++)) {
 '"'"
         done
     elif [ "$PROVIDER" == "eks" ]; then
-        while IFS=$'\n' read -r line; do
-            read -r id dns <<< $line
-            echo "info: prepare disks on $dns"
-            ssh -T -o "StrictHostKeyChecking no" -i ~/.ssh/kube_aws_rsa ec2-user@$dns <<'EOF'
-sudo bash -c '
-test -d /mnt/disks || mkdir -p /mnt/disks
-df -h /mnt/disks
-if mountpoint /mnt/disks &>/dev/null; then
-    echo "info: /mnt/disks is a mountpoint"
-else
-    echo "info: /mnt/disks is not a mountpoint, creating local volumes on the rootfs"
-fi
-cd /mnt/disks
-for ((i = 1; i <= 32; i++)) {
-    if [ ! -d vol$i ]; then
-        mkdir vol$i
-    fi
-    if ! mountpoint vol$i &>/dev/null; then
-        mount --bind vol$i vol$i
-    fi
-}
-echo "info: increase max open files for containers"
-if ! grep -qF "OPTIONS" /etc/sysconfig/docker; then
-    echo 'OPTIONS="--default-ulimit nofile=1024000:1024000"' >> /etc/sysconfig/docker
-fi
-systemctl restart docker
-'
-EOF
-        done <<< "$(e2e::__eks_instances)"
+		echo "info: provider is $PROVIDER, skipped"
     fi
     echo "info: installing local-volume-provisioner"
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
     e2e::__wait_for_ds kube-system local-volume-provisioner
-}
-
-function e2e::__eks_instances() {
-    aws ec2 describe-instances --filter Name=tag:eks:cluster-name,Values=$CLUSTER --query 'Reservations[*].Instances[*].{InstanceId:InstanceId,PublicDnsName:PublicDnsName}' --output text
 }
 
 function e2e::__ecr_url() {
@@ -211,6 +181,13 @@ function e2e::setup_helm_server() {
     $HELM_BIN version
 }
 
+# Used by non-kind providers to tag image with its id. This can force our e2e
+# process to pull correct image even if IfNotPresent is used in an existing
+# environment, e.g. testing in the same cluster.
+function e2e::image_id_tag() {
+    docker image inspect -f '{{.Id}}' "$1" | cut -d ':' -f 2 | head -c 10
+}
+
 function e2e::image_load() {
     local images=(
         $TIDB_OPERATOR_IMAGE
@@ -226,9 +203,9 @@ function e2e::image_load() {
     elif [ "$PROVIDER" == "gke" ]; then
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
         gcloud auth configure-docker
-        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$CLUSTER-$IMAGE_TAG
-        GCP_TIDB_BACKUP_MANAGER_IMAGE=gcr.io/$GCP_PROJECT/tidb-backup-image:$CLUSTER-$IMAGE_TAG
-        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
+        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$CLUSTER-$(e2e::image_id_tag $TIDB_OPERATOR_IMAGE)
+        GCP_TIDB_BACKUP_MANAGER_IMAGE=gcr.io/$GCP_PROJECT/tidb-backup-image:$CLUSTER-$(e2e::image_id_tag $TIDB_BACKUP_MANAGER_IMAGE)
+        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$CLUSTER-$(e2e::image_id_tag $E2E_IMAGE)
         docker tag $TIDB_OPERATOR_IMAGE $GCP_TIDB_OPERATOR_IMAGE
         docker tag $E2E_IMAGE $GCP_E2E_IMAGE
         docker tag $TIDB_BACKUP_MANAGER_IMAGE $GCP_TIDB_BACKUP_MANAGER_IMAGE
@@ -253,9 +230,9 @@ function e2e::image_load() {
         local ecrURL=$(e2e::__ecr_url)
         echo "info: logging in $ecrURL"
         aws ecr get-login-password | docker login --username AWS --password-stdin $ecrURL
-        AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$CLUSTER-$IMAGE_TAG
-        AWS_TIDB_BACKUP_MANAGER_IMAGE=$ecrURL/e2e/tidb-backup-manager:$CLUSTER-$IMAGE_TAG
-        AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$CLUSTER-$IMAGE_TAG
+        AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$CLUSTER-$(e2e::image_id_tag $TIDB_OPERATOR_IMAGE)
+        AWS_TIDB_BACKUP_MANAGER_IMAGE=$ecrURL/e2e/tidb-backup-manager:$CLUSTER-$(e2e::image_id_tag $TIDB_BACKUP_MANAGER_IMAGE)
+        AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$CLUSTER-$(e2e::image_id_tag $E2E_IMAGE)
         docker tag $TIDB_OPERATOR_IMAGE $AWS_TIDB_OPERATOR_IMAGE
         docker tag $TIDB_BACKUP_MANAGER_IMAGE $AWS_TIDB_BACKUP_MANAGER_IMAGE
         docker tag $E2E_IMAGE $AWS_E2E_IMAGE
@@ -363,16 +340,19 @@ docker_args=(
     -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
+	--env KUBE_SSH_USER=$KUBE_SSH_USER
 )
 
 if [ "$PROVIDER" == "eks" ]; then
     e2e_args+=(
         --provider=aws
-        --gce-zone="${AWS_REGION}"
+        --gce-zone="${AWS_ZONE}" # reuse gce-zone to configure aws zone
     )
-    # aws credential is required to get token for EKS
     docker_args+=(
+		# aws credential is required to get token for EKS
         -v $HOME/.aws:/root/.aws
+		# ~/.ssh/kube_aws_rsa must be mounted into e2e container to run ssh
+        -v $HOME/.ssh:/root/.ssh
     )
 elif [ "$PROVIDER" == "gke" ]; then
     e2e_args+=(
