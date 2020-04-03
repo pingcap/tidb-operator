@@ -468,14 +468,14 @@ EOF
         )
     fi
 elif [ "$PROVIDER" == "eks" ]; then
-	export KUBE_SSH_USER=ec2-user
+    export KUBE_SSH_USER=ec2-user
     hack::ensure_aws_k8s_tester
     if [ -n "$AWS_REGION" ]; then
         aws configure set default.region "$AWS_REGION"
     fi
-	if [ -z "$AWS_ZONE" ]; then
-		AWS_ZONE=${AWS_REGION}a
-	fi
+    if [ -z "$AWS_ZONE" ]; then
+        AWS_ZONE=${AWS_REGION}a
+    fi
     if [ -n "$AWS_ACCESS_KEY_ID" ]; then
         aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
     fi

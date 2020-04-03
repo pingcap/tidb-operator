@@ -48,6 +48,7 @@ import (
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -203,7 +204,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				Tag:          cfg.OperatorTag,
 				LogLevel:     "4",
 				TestMode:     true,
-				AutoFailover: false,
+				AutoFailover: pointer.BoolPtr(false),
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -243,10 +244,10 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		//   - in EKS, failed pods on deleted node will be recreated because
 		//   the node object is gone too (old pods is recycled by pod gc). But
 		//   the newly created pods will be stuck at Pending state because
-		//   assocaited PVCs reference nonexistent PVs. Pods will be recreated
-		//   by tidb-operator again when we delete associated PVCs. New PVCs
-		//   will be created by statefulset controller and pods will be
-		//   scheduled to feasible nodes.
+		//   associated PVs are invalid now. Pods will be recreated by
+		//   tidb-operator again when we delete associated PVCs. New PVCs will
+		//   be created by statefulset controller and pods will be scheduled to
+		//   feasible nodes.
 		//   - it's highly recommended to enable `setPVOwnerRef` in
 		//   local-volume-provisioner, then orphan PVs will be garbaged
 		//   collected and will not cause problem even if the name of deleted
@@ -257,9 +258,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		//   volumes are mounted at the same paths, PD/TiKV pods will be
 		//   running soon when underlying instance is recreated and running.
 		//   Otherwise, we need to delete failed pods and associated PVCs/PVs.
-		//   - PVs must be cleaned because they are reference nonexistent
-		//   storage now. (See
-		//   https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/issues/6#issuecomment-484062771)
+		//   PVs must be deleted because their paths does not exist now.
 		//
 		// Note that:
 		// - We assume local storage is used, otherwise PV can be re-attached
@@ -284,8 +283,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		// - https://github.com/pingcap/tidb-operator/issues/1546
 		// - https://github.com/pingcap/tidb-operator/issues/408
 		ginkgo.It("recover tidb cluster from node deletion", func() {
-			// TODO support GKE
-			supportedProviders := sets.NewString("aws")
+			supportedProviders := sets.NewString("aws", "gke")
 			if !supportedProviders.Has(framework.TestContext.Provider) {
 				framework.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
 			}
@@ -322,7 +320,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.ExpectNoError(err)
 			for _, pod := range podList.Items {
 				if v, ok := pod.Labels[label.ComponentLabelKey]; !ok {
-					framework.Failf("pod %s/%s does not have componet label key %q", pod.Namespace, pod.Name, label.ComponentLabelKey)
+					framework.Failf("pod %s/%s does not have component label key %q", pod.Namespace, pod.Name, label.ComponentLabelKey)
 				} else if v == label.PDLabelVal {
 					allPDNodes[pod.Name] = allNodes[pod.Spec.NodeName]
 				} else if v == label.TiKVLabelVal {
@@ -384,61 +382,96 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				framework.ExpectNoError(err)
 
 				ginkgo.By("[AWS/EKS] Initialize newly created node")
-				nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+				nodeList, err = c.CoreV1().Nodes().List(metav1.ListOptions{})
 				framework.ExpectNoError(err)
 				initialized := 0
 				for _, node := range nodeList.Items {
 					if _, ok := allNodes[node.Name]; !ok {
-						utilnode.InitNode(&node)
+						framework.ExpectNoError(utilnode.InitNode(&node))
 						initialized++
 					}
 				}
 				gomega.Expect(initialized).To(gomega.BeNumerically("==", 1), "must have a node initialized")
+			} else if framework.TestContext.Provider == "gke" {
+				instanceIDAnn := "container.googleapis.com/instance_id"
+				oldInstanceID, ok := nodeToDelete.Annotations[instanceIDAnn]
+				if !ok {
+					framework.Failf("instance label %q not found on node object %q", instanceIDAnn, nodeToDelete.Name)
+				}
 
-				ginkgo.By("[AWS/EKS] Mark stores of failed tikv pods as tombstone")
-				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
-				framework.ExpectNoError(err)
-				defer func() {
-					if cancel != nil {
-						cancel()
+				ginkgo.By("[GCP/GKE] Wait for instance ID to be updated")
+				err = wait.PollImmediate(time.Second*5, time.Minute*10, func() (bool, error) {
+					node, err := c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
+					if err != nil {
+						return false, nil
 					}
-				}()
-				for _, pod := range tikvPodsOnDeletedNode {
-					framework.Logf("Mark tikv store of pod %s/%s as Tombstone", ns, pod.Name)
-					err = wait.PollImmediate(time.Second*3, time.Minute, func() (bool, error) {
-						storeID, err := utiltikv.GetStoreIDByPodName(cli, ns, clusterName, pod.Name)
-						if err != nil {
-							return false, nil
-						}
-						err = pdClient.SetStoreState(storeID, pdapi.StoreStateTombstone)
-						if err != nil {
-							return false, nil
-						}
-						return true, nil
-					})
-					framework.ExpectNoError(err)
-				}
-				for _, pod := range pdPodsOnDeletedNode {
-					framework.Logf("Delete member of pod %s/%s", ns, pod.Name)
-					err = wait.PollImmediate(time.Second*3, time.Minute, func() (bool, error) {
-						err = pdClient.DeleteMember(pod.Name)
-						if err != nil {
-							return false, nil
-						}
-						return true, nil
-					})
-					framework.ExpectNoError(err)
-				}
-				cancel()
-				cancel = nil
+					instanceID, ok := node.Annotations[instanceIDAnn]
+					if !ok {
+						return false, nil
+					}
+					if instanceID == oldInstanceID {
+						return false, nil
+					}
+					framework.Logf("instance ID of node %q changed from %q to %q", nodeToDelete.Name, oldInstanceID, instanceID)
+					return true, nil
+				})
+				framework.ExpectNoError(err)
 
+				ginkgo.By("[GCP/GKE] Wait for the node to be ready")
+				e2enode.WaitForNodeToBeReady(c, nodeToDelete.Name, time.Minute*5)
+
+				ginkgo.By(fmt.Sprintf("[GCP/GKE] Initialize underlying machine of node %s", nodeToDelete.Name))
+				node, err := c.CoreV1().Nodes().Get(nodeToDelete.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
+				framework.ExpectNoError(utilnode.InitNode(node))
+			}
+
+			ginkgo.By("Mark stores of failed tikv pods as tombstone")
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
+			framework.ExpectNoError(err)
+			defer func() {
+				if cancel != nil {
+					cancel()
+				}
+			}()
+			for _, pod := range tikvPodsOnDeletedNode {
+				framework.Logf("Mark tikv store of pod %s/%s as Tombstone", ns, pod.Name)
+				err = wait.PollImmediate(time.Second*3, time.Minute, func() (bool, error) {
+					storeID, err := utiltikv.GetStoreIDByPodName(cli, ns, clusterName, pod.Name)
+					if err != nil {
+						return false, nil
+					}
+					err = pdClient.SetStoreState(storeID, pdapi.StoreStateTombstone)
+					if err != nil {
+						return false, nil
+					}
+					return true, nil
+				})
+				framework.ExpectNoError(err)
+			}
+			ginkgo.By("Delete pd members")
+			for _, pod := range pdPodsOnDeletedNode {
+				framework.Logf("Delete pd member of pod %s/%s", ns, pod.Name)
+				err = wait.PollImmediate(time.Second*3, time.Minute, func() (bool, error) {
+					err = pdClient.DeleteMember(pod.Name)
+					if err != nil {
+						return false, nil
+					}
+					return true, nil
+				})
+				framework.ExpectNoError(err)
+			}
+			cancel()
+			cancel = nil
+
+			if framework.TestContext.Provider == "aws" {
 				// Local storage is gone with the node and local PVs on deleted
 				// node will be unusable.
 				// If `setPVOwnerRef` is enabled in local-volume-provisioner,
 				// local PVs will be deleted when the node object is deleted
 				// and permanently gone in apiserver when associated PVCs are
 				// delete here.
-				ginkgo.By("[AWS/EKS] Delete associated PVCs if they reference local storage PVs")
+				ginkgo.By("[AWS/EKS] Delete associated PVCs if they are bound with local PVs")
 				localPVs := make([]string, 0)
 				for _, pvcName := range pvcNamesOnDeletedNode {
 					pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
@@ -455,11 +488,18 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					}
 				}
 			} else if framework.TestContext.Provider == "gke" {
-				ginkgo.By("TODO support GKE")
+				framework.Logf("We are using fixed paths in local PVs in our e2e. PVs of the deleted node are usable though the underlying storage is empty now")
+				// Because of pod exponential crash loop back off, we can
+				// delete the failed pods to make it start soon.
+				// Note that this is optional.
+				ginkgo.By("Deleting the failed pods")
+				for _, pod := range append(tikvPodsOnDeletedNode, pdPodsOnDeletedNode...) {
+					framework.ExpectNoError(c.CoreV1().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{}))
+				}
 			}
 
 			ginkgo.By("Waiting for tidb cluster to be fully ready")
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForTidbClusterReady(tc, 5*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
 		})
 
