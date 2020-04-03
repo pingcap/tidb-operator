@@ -24,7 +24,7 @@ target="manifests/crd.yaml"
 verify_tmp=$(mktemp)
 trap "rm -f $verify_tmp" EXIT
 
-targetDocs="$ROOT/docs/api-references/docs.html"
+targetDocs="$ROOT/docs/api-references/docs.md"
 verifyDocs_tmp=$(mktemp)
 trap "rm -f $verifyDocs_tmp" EXIT
 

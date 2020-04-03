@@ -25,6 +25,11 @@ func TestRenderPrometheusConfig(t *testing.T) {
 	expectedContent := `global:
   scrape_interval: 15s
   evaluation_interval: 15s
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alert-url
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 scrape_configs:
@@ -180,6 +185,7 @@ scrape_configs:
 			"ns2",
 		},
 		EnableTLSCluster: false,
+		AlertmanagerURL:  "alert-url",
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
