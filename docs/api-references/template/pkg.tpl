@@ -1,7 +1,14 @@
 {{ define "packages" }}
 
 {{ with .packages}}
-<p>Packages:</p>
+---
+title: TiDB Operator API Document
+summary: Reference of TiDB Operator API
+category: how-to
+---
+
+<h1>API Document</h1>
+<h2>Packages:</h2>
 <ul>
     {{ range . }}
     <li>
