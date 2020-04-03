@@ -29,7 +29,7 @@ GCP_REGION=${GCP_REGION:-}
 GCP_ZONE=${GCP_ZONE:-}
 GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
 GCP_SDK=${GCP_SDK:-/google-cloud-sdk}
-KUBE_SSH_USER=${KUBE_SSH_USER:-}
+KUBE_SSH_USER=${KUBE_SSH_USER:-vagrant}
 IMAGE_TAG=${IMAGE_TAG:-}
 SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
@@ -125,29 +125,9 @@ for ((i = 1; i <= 32; i++)) {
 EOF
         done
     elif [ "$PROVIDER" == "gke" ]; then
-        # disks are created under /mnt/stateful_partition directory
-        # https://cloud.google.com/container-optimized-os/docs/concepts/disks-and-filesystem
-        for n in $($KUBECTL_BIN --context "$KUBECONTEXT" get nodes -ojsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
-            gcloud compute ssh e2e@$n --command 'sudo bash -c '"'"'
-test -d /mnt/stateful_partition/disks || mkdir -p /mnt/stateful_partition/disks
-df -h /mnt/stateful_partition/disks
-test -d /mnt/disks || mkdir -p /mnt/disks
-cd /mnt/disks
-for ((i = 1; i <= 32; i++)) {
-    if [ ! -d vol$i ]; then
-        mkdir vol$i
-    fi
-    if ! mountpoint vol$i &>/dev/null; then
-        if [ ! -d /mnt/stateful_partition/disks/vol$i ]; then
-            mkdir /mnt/stateful_partition/disks/vol$i
-        fi
-        mount --bind /mnt/stateful_partition/disks/vol$i vol$i
-    fi
-}
-'"'"
-        done
+        echo "info: provider is $PROVIDER, skipped"
     elif [ "$PROVIDER" == "eks" ]; then
-		echo "info: provider is $PROVIDER, skipped"
+        echo "info: provider is $PROVIDER, skipped"
     fi
     echo "info: installing local-volume-provisioner"
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
@@ -340,7 +320,7 @@ docker_args=(
     -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
-	--env KUBE_SSH_USER=$KUBE_SSH_USER
+    --env KUBE_SSH_USER=$KUBE_SSH_USER
 )
 
 if [ "$PROVIDER" == "eks" ]; then
@@ -349,10 +329,10 @@ if [ "$PROVIDER" == "eks" ]; then
         --gce-zone="${AWS_ZONE}" # reuse gce-zone to configure aws zone
     )
     docker_args+=(
-		# aws credential is required to get token for EKS
+        # aws credential is required to get token for EKS
         -v $HOME/.aws:/root/.aws
-		# ~/.ssh/kube_aws_rsa must be mounted into e2e container to run ssh
-        -v $HOME/.ssh:/root/.ssh
+        # ~/.ssh/kube_aws_rsa must be mounted into e2e container to run ssh
+        -v $HOME/.ssh/kube_aws_rsa:/root/.ssh/kube_aws_rsa
     )
 elif [ "$PROVIDER" == "gke" ]; then
     e2e_args+=(
@@ -373,6 +353,8 @@ elif [ "$PROVIDER" == "gke" ]; then
     fi
     docker_args+=(
         -v ${GCP_SDK}:/google-cloud-sdk
+        # ~/.ssh/google_compute_engine must be mounted into e2e container to run ssh
+        -v $HOME/.ssh/google_compute_engine:/root/.ssh/google_compute_engine
     )
 else
     e2e_args+=(

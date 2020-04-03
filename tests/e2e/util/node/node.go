@@ -45,13 +45,37 @@ fi
 systemctl restart docker
 '
 `
+	// disks are created under /mnt/stateful_partition directory
+	// https://cloud.google.com/container-optimized-os/docs/concepts/disks-and-filesystem
+	gkeNodeInitCmd = `
+sudo bash -c '
+test -d /mnt/stateful_partition/disks || mkdir -p /mnt/stateful_partition/disks
+df -h /mnt/stateful_partition/disks
+test -d /mnt/disks || mkdir -p /mnt/disks
+cd /mnt/disks
+for ((i = 1; i <= 32; i++)) {
+    if [ ! -d vol$i ]; then
+        mkdir vol$i
+    fi
+    if ! mountpoint vol$i &>/dev/null; then
+        if [ ! -d /mnt/stateful_partition/disks/vol$i ]; then
+            mkdir /mnt/stateful_partition/disks/vol$i
+        fi
+        mount --bind /mnt/stateful_partition/disks/vol$i vol$i
+    fi
+}
+'
+`
 )
 
 func InitNode(node *v1.Node) error {
 	var initNodeCmd string
 	if framework.TestContext.Provider == "aws" {
 		initNodeCmd = awsNodeInitCmd
+	} else if framework.TestContext.Provider == "gke" {
+		initNodeCmd = gkeNodeInitCmd
 	} else {
+		framework.Logf("Unknown provider %q, skipped", framework.TestContext.Provider)
 		return nil
 	}
 	return ssh.IssueSSHCommand(initNodeCmd, framework.TestContext.Provider, node)
