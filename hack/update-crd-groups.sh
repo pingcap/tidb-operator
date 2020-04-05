@@ -50,4 +50,4 @@ ${DOCS_BIN} \
 -config "$DOCS_PATH/config.json" \
 -template-dir "$DOCS_PATH/template" \
 -api-dir "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1" \
--out-file "$DOCS_PATH/docs.html"
+-out-file "$DOCS_PATH/docs.md"
