@@ -351,3 +351,24 @@ func GetRestoreCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha
 		},
 	}
 }
+
+func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) *v1alpha1.TidbClusterAutoScaler {
+	return &v1alpha1.TidbClusterAutoScaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterAutoScalerSpec{
+			Cluster: v1alpha1.TidbClusterRef{
+				Name:      tc.Name,
+				Namespace: tc.Namespace,
+			},
+			Monitor: &v1alpha1.TidbMonitorRef{
+				Name:      tm.Name,
+				Namespace: tm.Namespace,
+			},
+			TiKV: nil,
+			TiDB: nil,
+		},
+	}
+}
