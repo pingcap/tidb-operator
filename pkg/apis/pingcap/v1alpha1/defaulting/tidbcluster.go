@@ -116,3 +116,11 @@ func setPumpSpecDefault(tc *v1alpha1.TidbCluster) {
 		}
 	}
 }
+
+func setTiFlashSpecDefault(tc *v1alpha1.TidbCluster) {
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiFlash.Version != nil {
+		if tc.Spec.TiFlash.BaseImage == "" {
+			tc.Spec.TiFlash.BaseImage = defaultTiFlashImage
+		}
+	}
+}
