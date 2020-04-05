@@ -771,6 +771,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = tests.CheckTidbMonitor(monitor, c, fw)
 			framework.ExpectNoError(err, "Check TidbMonitor error")
 			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
+
+			// Scale Tikv To 4 replicas and Check
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
 					MaxReplicas: 4,
@@ -782,18 +784,32 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			pdapi, cancel, err := oa.GetPDClient(tc)
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
-
+			var firstScaleTimestamp int64
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
+				// check replicas
 				if tc.Spec.TiKV.Replicas != int32(4) {
 					return false, nil
 				}
 				if len(tc.Status.TiKV.Stores) != 4 {
 					return false, nil
 				}
+				// check annotations
+				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+					return false, nil
+				}
+				v, ok := tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+				if !ok {
+					return false, nil
+				}
+				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					return false, nil
+				}
+				// check store label
 				storeId := ""
 				for k, v := range tc.Status.TiKV.Stores {
 					if v.PodName == util.GetPodName(tc, v1alpha1.TiKVMemberType, int32(3)) {
@@ -821,12 +837,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
 
+			// Scale Tikv To 3 replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas: 3,
-					MinReplicas: pointer.Int32Ptr(3),
+					MaxReplicas:            3,
+					MinReplicas:            pointer.Int32Ptr(3),
+					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
@@ -839,10 +857,25 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if tc.Spec.TiKV.Replicas != 3 {
 					return false, nil
 				}
+				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+					return false, nil
+				}
+				v, ok := tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+				if !ok {
+					return false, nil
+				}
+				secondTs, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					return false, nil
+				}
+				if secondTs-firstScaleTimestamp < 100 {
+					return false, nil
+				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 3 error")
 
+			// Scale Tidb to 3 replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
 			tac.Spec.TiKV = nil
@@ -863,17 +896,30 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if tc.Spec.TiDB.Replicas != 3 {
 					return false, nil
 				}
+				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+					return false, nil
+				}
+				v, ok := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+				if !ok {
+					return false, nil
+				}
+				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					return false, nil
+				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 3 error")
 
+			// Scale Tidb to 2 Replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
 			tac.Spec.TiKV = nil
 			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas: 2,
-					MinReplicas: pointer.Int32Ptr(2),
+					MaxReplicas:            2,
+					MinReplicas:            pointer.Int32Ptr(2),
+					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
@@ -885,6 +931,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 2 {
+					return false, nil
+				}
+				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+					return false, nil
+				}
+				v, ok := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+				if !ok {
+					return false, nil
+				}
+				ts, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					return false, nil
+				}
+				if ts-firstScaleTimestamp < 100 {
 					return false, nil
 				}
 				return true, nil
