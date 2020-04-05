@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
+	"strconv"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -29,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
@@ -713,4 +715,181 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 	})
 
+	ginkgo.Context("[Feature: AutoScaling]", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+		//var genericCli client.Client
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
+				Namespace:         ns,
+				ReleaseName:       "operator",
+				Image:             cfg.OperatorImage,
+				Tag:               cfg.OperatorTag,
+				SchedulerImage:    "k8s.gcr.io/kube-scheduler",
+				LogLevel:          "4",
+				ImagePullPolicy:   v1.PullIfNotPresent,
+				TestMode:          true,
+				WebhookEnabled:    true,
+				PodWebhookEnabled: true,
+				Features: []string{
+					"AutoScaling=true",
+				},
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+			//var err error
+			//genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+			//framework.ExpectNoError(err, "failed to create clientset")
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		})
+
+		ginkgo.It("auto-scaling TidbCluster", func() {
+			clusterName := "auto-scaling"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			_, err := cli.PingcapV1alpha1().TidbClusters(ns).Create(tc)
+			framework.ExpectNoError(err, "Create TidbCluster error")
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Check TidbCluster error")
+			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
+			framework.ExpectNoError(err, "Create TidbMonitor error")
+			err = tests.CheckTidbMonitor(monitor, c, fw)
+			framework.ExpectNoError(err, "Check TidbMonitor error")
+			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
+			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
+				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
+					MaxReplicas: 4,
+					MinReplicas: pointer.Int32Ptr(4),
+				},
+			}
+			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
+			framework.ExpectNoError(err, "Create TidbMonitorClusterAutoScaler error")
+			pdapi, cancel, err := oa.GetPDClient(tc)
+			framework.ExpectNoError(err, "create pdapi error")
+			defer cancel()
+
+			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Spec.TiKV.Replicas != int32(4) {
+					return false, nil
+				}
+				if len(tc.Status.TiKV.Stores) != 4 {
+					return false, nil
+				}
+				storeId := ""
+				for k, v := range tc.Status.TiKV.Stores {
+					if v.PodName == util.GetPodName(tc, v1alpha1.TiKVMemberType, int32(3)) {
+						storeId = k
+						break
+					}
+				}
+				if storeId == "" {
+					return false, nil
+				}
+				sid, err := strconv.ParseUint(storeId, 10, 64)
+				if err != nil {
+					return false, nil
+				}
+				info, err := pdapi.GetStore(sid)
+				if err != nil {
+					return false, nil
+				}
+				for _, label := range info.Store.Labels {
+					if label.Key == "specialUse" && label.Value == "hotRegion" {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
+
+			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
+			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
+				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
+					MaxReplicas: 3,
+					MinReplicas: pointer.Int32Ptr(3),
+				},
+			}
+			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
+			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Spec.TiKV.Replicas != 3 {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "check tikv auto-scale to 3 error")
+
+			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
+			tac.Spec.TiKV = nil
+			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
+				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
+					MaxReplicas: 3,
+					MinReplicas: pointer.Int32Ptr(3),
+				},
+			}
+			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
+			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
+
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Spec.TiDB.Replicas != 3 {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "check tidb auto-scale to 3 error")
+
+			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
+			tac.Spec.TiKV = nil
+			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
+				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
+					MaxReplicas: 2,
+					MinReplicas: pointer.Int32Ptr(2),
+				},
+			}
+			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
+			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
+
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Spec.TiDB.Replicas != 2 {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "check tidb auto-scale to 2 error")
+		})
+	})
 })
