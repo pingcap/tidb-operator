@@ -35,10 +35,12 @@ import (
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -256,6 +258,20 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		ginkgo.By("Installing tidb-operator")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
+		if e2econfig.TestConfig.OperatorKiller.Enabled {
+			operatorKiller := utiloperator.NewOperatorKiller(e2econfig.TestConfig.OperatorKiller, kubeCli, func() ([]v1.Pod, error) {
+				podList, err := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(map[string]string{
+						"app.kubernetes.io/name": "tidb-operator",
+					}).String(),
+				})
+				if err != nil {
+					return nil, err
+				}
+				return podList.Items, nil
+			})
+			go operatorKiller.Run(e2econfig.TestConfig.OperatorKiller.StopCh)
+		}
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
 	}
@@ -269,6 +285,9 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.CleanupSuite()
 }, func() {
 	framework.AfterSuiteActions()
+	if e2econfig.TestConfig.OperatorKiller.Enabled {
+		close(e2econfig.TestConfig.OperatorKiller.StopCh)
+	}
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs
