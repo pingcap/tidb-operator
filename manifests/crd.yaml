@@ -1344,6 +1344,7 @@ spec:
                       type: string
                     cluster-version:
                       type: string
+                    dashboard: {}
                     election-interval:
                       description: ElectionInterval is the interval for etcd Raft
                         election.

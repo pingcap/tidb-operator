@@ -73,6 +73,7 @@ Environments:
     AWS_ACCESS_KEY_ID     (eks only) the aws access key id
     AWS_SECRET_ACCESS_KEY (eks only) the aws secret access key
     AWS_REGION            (eks only) the aws region
+    AWS_ZONE              (eks only) the aws zone
     GINKGO_NODES          ginkgo nodes to run specs, defaults: 1
     GINKGO_PARALLEL       if set to `y`, will run specs in parallel, the number of nodes will be the number of cpus
     GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
@@ -193,6 +194,7 @@ GCP_MACHINE_TYPE=${GCP_MACHINE_TYPE:-n1-standard-4}
 AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
 AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
 AWS_REGION=${AWS_REGION:-}
+AWS_ZONE=${AWS_ZONE:-}
 KUBE_VERSION=${KUBE_VERSION:-v1.12.10}
 KUBE_WORKERS=${KUBE_WORKERS:-3}
 DOCKER_IO_MIRROR=${DOCKER_IO_MIRROR:-}
@@ -219,6 +221,7 @@ echo "GCP_ZONE: $GCP_ZONE"
 # echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
 # echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
 echo "AWS_REGION: $AWS_REGION"
+echo "AWS_ZONE: $AWS_ZONE"
 echo "KUBE_VERSION: $KUBE_VERSION"
 echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
@@ -469,9 +472,13 @@ EOF
         )
     fi
 elif [ "$PROVIDER" == "eks" ]; then
+    export KUBE_SSH_USER=ec2-user
     hack::ensure_aws_k8s_tester
     if [ -n "$AWS_REGION" ]; then
         aws configure set default.region "$AWS_REGION"
+    fi
+    if [ -z "$AWS_ZONE" ]; then
+        AWS_ZONE=${AWS_REGION}a
     fi
     if [ -n "$AWS_ACCESS_KEY_ID" ]; then
         aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
@@ -509,6 +516,10 @@ export GCP_PROJECT
 export GCP_REGION
 export GCP_ZONE
 export GCP_CREDENTIALS
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export AWS_REGION
+export AWS_ZONE
 export IMAGE_TAG
 export SKIP_GINKGO
 export SKIP_IMAGE_LOAD
