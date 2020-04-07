@@ -718,7 +718,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	ginkgo.Context("[Feature: AutoScaling]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
-		//var genericCli client.Client
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -743,9 +742,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
 			oa.DeployOperatorOrDie(ocfg)
-			//var err error
-			//genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			//framework.ExpectNoError(err, "failed to create clientset")
 		})
 
 		ginkgo.AfterEach(func() {
