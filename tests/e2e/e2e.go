@@ -60,6 +60,10 @@ import (
 	_ "k8s.io/kubernetes/test/e2e/framework/providers/gce"
 )
 
+var (
+	operatorKillerStopCh chan struct{}
+)
+
 // This is modified from framework.SetupSuite().
 // setupSuite is the boilerplate that can be used to setup ginkgo test suites, on the SynchronizedBeforeSuite step.
 // There are certain operations we only want to run once per overall test invocation
@@ -270,7 +274,8 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 				}
 				return podList.Items, nil
 			})
-			go operatorKiller.Run(e2econfig.TestConfig.OperatorKiller.StopCh)
+			operatorKillerStopCh := make(chan struct{})
+			go operatorKiller.Run(operatorKillerStopCh)
 		}
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
@@ -285,8 +290,8 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.CleanupSuite()
 }, func() {
 	framework.AfterSuiteActions()
-	if e2econfig.TestConfig.OperatorKiller.Enabled {
-		close(e2econfig.TestConfig.OperatorKiller.StopCh)
+	if operatorKillerStopCh != nil {
+		close(operatorKillerStopCh)
 	}
 })
 

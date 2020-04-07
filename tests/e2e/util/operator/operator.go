@@ -30,8 +30,6 @@ type OperatorKillerConfig struct {
 	Interval time.Duration
 	// Operator pods will be deleted between [Interval, Interval * (1.0 + JitterFactor)].
 	JitterFactor float64
-	// StopCh is a channel that is used to notify OperatorKiller to stop killing operator pods.
-	StopCh chan struct{}
 }
 
 // OperatorKiller deletes pods of tidb-operator to simulate operator failures.
@@ -43,7 +41,6 @@ type OperatorKiller struct {
 
 // NewOperatorKiller creates a new operator killer.
 func NewOperatorKiller(config OperatorKillerConfig, client kubernetes.Interface, podLister func() ([]v1.Pod, error)) *OperatorKiller {
-	config.StopCh = make(chan struct{})
 	return &OperatorKiller{
 		config:    config,
 		client:    client,
