@@ -171,10 +171,6 @@ if [ "${1:-}" == "--" ]; then
     shift
 fi
 
-hack::ensure_kind
-hack::ensure_kubectl
-hack::ensure_helm
-
 PROVIDER=${PROVIDER:-kind}
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
 IMAGE_TAG=${IMAGE_TAG:-latest}
@@ -240,7 +236,8 @@ kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:5e8ae1a4e39f3d151d420
 kind_node_images["v1.14.10"]="kindest/node:v1.14.10@sha256:81ae5a3237c779efc4dda43cc81c696f88a194abcc4f8fa34f86cf674aa14977"
 kind_node_images["v1.15.7"]="kindest/node:v1.15.7@sha256:e2df133f80ef633c53c0200114fce2ed5e1f6947477dbc83261a6a921169488d"
 kind_node_images["v1.16.4"]="kindest/node:v1.16.4@sha256:b91a2c2317a000f3a783489dfb755064177dbc3a0b2f4147d50f04825d016f55"
-kind_node_images["v1.17.0"]="kindest/node:v1.17.0@sha256:9512edae126da271b66b990b6fff768fbb7cd786c7d39e86bdf55906352fdf62"
+kind_node_images["v1.17.2"]="kindest/node:v1.17.2@sha256:59df31fc61d1da5f46e8a61ef612fa53d3f9140f82419d1ef1a6b9656c6b737c"
+kind_node_images["v1.18.0"]="kindest/node:v1.18.0@sha256:0e20578828edd939d25eb98496a685c76c98d54084932f76069f886ec315d694"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
@@ -363,6 +360,10 @@ EOF
     }
 }
 
+hack::ensure_kind
+hack::ensure_kubectl
+hack::ensure_helm
+
 e2e::image_build
 
 if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
@@ -399,7 +400,10 @@ if [ "$PROVIDER" == "kind" ]; then
     cat $tmpfile
     image=""
     for v in ${!kind_node_images[*]}; do
-        if [[ "$KUBE_VERSION" == "$v" ]]; then
+        if [[ "$KUBE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ && "$KUBE_VERSION" == "$v" ]]; then
+            image=${kind_node_images[$v]}
+            echo "info: image for $KUBE_VERSION: $image"
+        elif [[ "$KUBE_VERSION" =~ ^v[0-9]+\.[0-9]+$ && "$KUBE_VERSION" == "${v%.*}" ]]; then
             image=${kind_node_images[$v]}
             echo "info: image for $KUBE_VERSION: $image"
         fi
