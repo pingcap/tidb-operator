@@ -38,7 +38,8 @@ import (
 
 const (
 	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
-	pdClusterCertPath = "/var/lib/pd-tls"
+	pdClusterCertPath  = "/var/lib/pd-tls"
+	tidbClientCertPath = "/var/lib/tidb-client-tls"
 )
 
 type pdMemberManager struct {
@@ -513,6 +514,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
 	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
+		})
+	}
 
 	vols := []corev1.Volume{
 		annVolume,
@@ -542,6 +548,15 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
+				},
+			},
+		})
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBClientTLSSecretName(tc.Name),
 				},
 			},
 		})
@@ -687,6 +702,14 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Security.CAPath = path.Join(pdClusterCertPath, tlsSecretRootCAKey)
 		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
+	}
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		if config.Dashboard == nil {
+			config.Dashboard = &v1alpha1.DashboardConfig{}
+		}
+		config.Dashboard.TiDBCAPath = path.Join(tidbClientCertPath, tlsSecretRootCAKey)
+		config.Dashboard.TiDBCertPath = path.Join(tidbClientCertPath, corev1.TLSCertKey)
+		config.Dashboard.TiDBKeyPath = path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey)
 	}
 
 	confText, err := MarshalTOML(config)
