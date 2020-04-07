@@ -237,7 +237,6 @@ type OperatorActions interface {
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
-	GetPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error)
 }
 
 type operatorActions struct {
@@ -3403,10 +3402,6 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 }
 
 var dummyCancel = func() {}
-
-func (oa *operatorActions) GetPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
-	return oa.getPDClient(tc)
-}
 
 func (oa *operatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
