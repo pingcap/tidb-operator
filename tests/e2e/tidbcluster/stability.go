@@ -22,9 +22,9 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -441,7 +441,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					if err != nil {
 						return false, nil
 					}
-					err = pdClient.SetStoreState(storeID, pdapi.StoreStateTombstone)
+					err = pdClient.SetStoreState(storeID, v1alpha1.TiKVStateTombstone)
 					if err != nil {
 						return false, nil
 					}
