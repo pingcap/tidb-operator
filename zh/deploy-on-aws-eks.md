@@ -90,7 +90,7 @@ cd tidb-operator/deploy/aws
 * 2 台 c5.4xlarge 实例，部署 TiDB
 * 1 台 c5.2xlarge 实例，部署监控组件
 
-可以新建或者编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。例如，下面示例配置 EKS 集群名称，TiDB 集群名称及 PD、TiKV 和 TiDB 节点的数量：
+可以新建或者编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。例如，下面示例配置 EKS 集群名称，TiDB 集群名称，TiDB Operator 版本及 PD、TiKV 和 TiDB 节点的数量：
 
 ```
 default_cluster_pd_count   = 3
@@ -98,7 +98,12 @@ default_cluster_tikv_count = 3
 default_cluster_tidb_count = 2
 default_cluster_name = "tidb"
 eks_name = "my-cluster"
+operator_version = "v1.1.0-rc.1"
 ```
+
+> **注意：**
+>
+> 请通过 `variables.tf` 文件中的 `operator_version` 确认当前版本脚本中默认的 TiDB Operator 版本，如果默认版本不是想要使用的版本，请在 `terraform.tfvars` 中配置 `operator_version`。
 
 配置完成后，使用 `terraform` 命令初始化并部署集群：
 

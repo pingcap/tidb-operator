@@ -134,8 +134,9 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 
     > **注意：**
     >
-    > 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `node_locations` 来限定可用区，或者 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
-    > 工作节点的数量取决于指定 Region 中可用区的数量。大部分 Region 有 3 个可用区，`us-central1` 有 4 个可用区。参考 [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) 查看更多信息。参考[自定义](#自定义)部分来自定义区域集群的节点池。
+    > * 请通过 `variables.tf` 文件中的 `tidb_operator_version` 确认当前版本脚本中默认的 TiDB Operator 版本，如果默认版本不是想要使用的版本，请在 `terraform.tfvars` 中配置 `tidb_operator_version`。
+    > * 默认创建的是 Regional 集群，会在 3 个可用区里都创建节点数量。比如配置 `pd_count = 1`，实际为 PD 创建的节点数为 3 个。可以通过配置 `node_locations` 来限定可用区，或者 `location` 来创建 Zonal 集群，具体可参见 `examples/` 下例子。
+    > * 工作节点的数量取决于指定 Region 中可用区的数量。大部分 Region 有 3 个可用区，`us-central1` 有 4 个可用区。参考 [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) 查看更多信息。参考[自定义](#自定义)部分来自定义区域集群的节点池。
 
 2. 启动脚本来部署 TiDB 集群：
 
