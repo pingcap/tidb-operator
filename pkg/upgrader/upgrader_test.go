@@ -25,6 +25,7 @@ import (
 	versionedfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -86,7 +87,7 @@ func TestIsOwnedByTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ok, _ := isOwnedByTidbCluster(&tt.sts)
+			ok, _ := util.IsOwnedByTidbCluster(&tt.sts)
 			if tt.wantOK != ok {
 				t.Errorf("got %v, want %v", ok, tt.wantOK)
 			}
