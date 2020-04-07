@@ -312,21 +312,18 @@ type TiFlashSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
-	// The DiskRequests of the persistent volume for TiFlash data storage.
+	// The StorageRequests of the persistent volume for TiFlash data storage.
 	// TiFlash supports multiple disks
-	DiskRequests []DiskRequests `json:"diskRequests"`
+	StorageRequests []StorageRequests `json:"storageRequests"`
 
 	// Config is the Configuration of TiFlash
 	// +optional
 	Config *TiFlashConfig `json:"config,omitempty"`
-
-	// Dedicated TiDB cluster spec for TiFlash
-	TiDB *TiDBSpec `json:"tidb,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // TiDBSpec contains details of TiDB members
-type DiskRequests struct {
+type StorageRequests struct {
 	// The storageClassName of the persistent volume for data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
