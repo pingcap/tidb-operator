@@ -23,11 +23,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
@@ -56,20 +56,6 @@ type upgrader struct {
 
 var _ Interface = &upgrader{}
 
-// isOwnedByTidbCluster checks if the given object is owned by TidbCluster.
-// Schema Kind and Group are checked, Version is ignored.
-func isOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
-	ref := metav1.GetControllerOf(obj)
-	if ref == nil {
-		return false, nil
-	}
-	gv, err := schema.ParseGroupVersion(ref.APIVersion)
-	if err != nil {
-		return false, nil
-	}
-	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
-}
-
 func (u *upgrader) Upgrade() error {
 	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
 		klog.Infof("Upgrader: migrating Kubernetes StatefulSets to Advanced StatefulSets")
@@ -80,7 +66,7 @@ func (u *upgrader) Upgrade() error {
 		stsToMigrate := make([]appsv1.StatefulSet, 0)
 		tidbClusters := make([]*v1alpha1.TidbCluster, 0)
 		for _, sts := range stsList.Items {
-			if ok, tcRef := isOwnedByTidbCluster(&sts); ok {
+			if ok, tcRef := util.IsOwnedByTidbCluster(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
 				tc, err := u.cli.PingcapV1alpha1().TidbClusters(sts.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
@@ -130,7 +116,7 @@ func (u *upgrader) Upgrade() error {
 		}
 		stsToMigrate := make([]asappsv1.StatefulSet, 0)
 		for _, sts := range stsList.Items {
-			if ok, _ := isOwnedByTidbCluster(&sts); ok {
+			if ok, _ := util.IsOwnedByTidbCluster(&sts); ok {
 				stsToMigrate = append(stsToMigrate, sts)
 			}
 		}

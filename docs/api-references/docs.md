@@ -1,4 +1,10 @@
-<p>Packages:</p>
+---
+title: TiDB Operator API Document
+summary: Reference of TiDB Operator API
+category: how-to
+---
+<h1>API Document</h1>
+<h2>Packages:</h2>
 <ul>
 <li>
 <a href="#pingcap.com%2fv1alpha1">pingcap.com/v1alpha1</a>
