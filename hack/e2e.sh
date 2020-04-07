@@ -170,10 +170,6 @@ if [ "${1:-}" == "--" ]; then
     shift
 fi
 
-hack::ensure_kind
-hack::ensure_kubectl
-hack::ensure_helm
-
 PROVIDER=${PROVIDER:-kind}
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
 IMAGE_TAG=${IMAGE_TAG:-latest}
@@ -360,6 +356,10 @@ EOF
         fi
     }
 }
+
+hack::ensure_kind
+hack::ensure_kubectl
+hack::ensure_helm
 
 e2e::image_build
 
