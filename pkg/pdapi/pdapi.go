@@ -40,10 +40,6 @@ import (
 
 const (
 	DefaultTimeout = 5 * time.Second
-
-	StoreStateUp        = "Up"
-	StoreStateOffline   = "Offline"
-	StoreStateTombstone = "Tombstone"
 )
 
 // Namespace is a newtype of a string
