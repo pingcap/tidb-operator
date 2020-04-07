@@ -772,6 +772,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Check TidbMonitor error")
 			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
 
+			//TODO we should mock the tidbmonitor metrics data to check the metrics calculating
+			// Currently these steps are checked by unit test
+			// For now, we make minReplicas and maxReplicas equal to run the auto-scaling
+
 			// Scale Tikv To 4 replicas and Check
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
@@ -792,22 +796,34 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				// check replicas
 				if tc.Spec.TiKV.Replicas != int32(4) {
+					klog.Infof("tikv haven't auto-scale to 4 replicas")
 					return false, nil
 				}
 				if len(tc.Status.TiKV.Stores) != 4 {
+					klog.Infof("tikv's stores haven't auto-scale to 4")
 					return false, nil
 				}
 				// check annotations
 				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+					klog.Infof("tc haven't marked any annotation")
 					return false, nil
 				}
-				v, ok := tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tac.Annotations == nil || len(tac.Annotations) < 1 {
+					klog.Infof("tac haven't marked any annotation")
+					return false, nil
+				}
+				v, ok := tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 				if !ok {
+					klog.Infof("tac haven't marked any annotation")
 					return false, nil
 				}
 				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
 				if err != nil {
-					return false, nil
+					return false, err
 				}
 				// check store label
 				storeId := ""
@@ -822,7 +838,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				sid, err := strconv.ParseUint(storeId, 10, 64)
 				if err != nil {
-					return false, nil
+					return false, err
 				}
 				info, err := pdapi.GetStore(sid)
 				if err != nil {
@@ -833,9 +849,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						return true, nil
 					}
 				}
+				klog.Infof("tikv auto-scale out haven't find the special label")
 				return false, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
+			klog.Info("success to check tikv auto scale-out to 4 replicas")
 
 			// Scale Tikv To 3 replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -855,25 +873,45 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiKV.Replicas != 3 {
+					klog.Info("tikv haven't auto-scale to 3 replicas")
 					return false, nil
 				}
-				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+				if len(tc.Status.TiKV.Stores) != 3 {
+					klog.Info("tikv's store haven't auto-scale to 3")
 					return false, nil
 				}
-				v, ok := tc.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
+				if tc.Annotations != nil && len(tc.Annotations) > 0 {
+					_, ok := tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals]
+					if ok {
+						klog.Infof("tikv auto-scale out annotation is stil existed")
+						return false, nil
+					}
+				}
+				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tac.Annotations == nil || len(tac.Annotations) < 1 {
+					klog.Infof("tc haven't marked any annotation")
+					return false, nil
+				}
+				v, ok := tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 				if !ok {
+					klog.Infof("tac haven't marked any annotation")
 					return false, nil
 				}
 				secondTs, err := strconv.ParseInt(v, 10, 64)
 				if err != nil {
-					return false, nil
+					return false, err
 				}
 				if secondTs-firstScaleTimestamp < 100 {
+					klog.Infof("tikv second scale's interval isn't meeting the interval requirement")
 					return false, nil
 				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 3 error")
+			klog.Info("success to check tikv auto scale-in to 3 replicas")
 
 			// Scale Tidb to 3 replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -894,22 +932,30 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 3 {
+					klog.Info("tidb haven't auto-scaler to 3 replicas")
 					return false, nil
 				}
-				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
 					return false, nil
 				}
-				v, ok := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+				if tac.Annotations == nil || len(tac.Annotations) < 1 {
+					klog.Info("tac haven't marked any annotations")
+					return false, nil
+				}
+				v, ok := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 				if !ok {
+					klog.Info("tac haven't marked tidb auto-scaler timstamp annotation")
 					return false, nil
 				}
 				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
 				if err != nil {
-					return false, nil
+					return false, err
 				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 3 error")
+			klog.Infof("success to check tidb auto scale-out to 3 replicas")
 
 			// Scale Tidb to 2 Replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -931,25 +977,34 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Spec.TiDB.Replicas != 2 {
+					klog.Info("tidb haven't auto-scaler to 2 replicas")
 					return false, nil
 				}
-				if tc.Annotations == nil || len(tc.Annotations) < 1 {
+				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
 					return false, nil
 				}
-				v, ok := tc.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
+				if tac.Annotations == nil || len(tac.Annotations) < 1 {
+					klog.Info("tac haven't marked any annotations")
+					return false, nil
+				}
+				v, ok := tac.Annotations[label.AnnTiDBLastAutoScalingTimestamp]
 				if !ok {
+					klog.Info("tac haven't marked tidb auto-scale timestamp")
 					return false, nil
 				}
 				ts, err := strconv.ParseInt(v, 10, 64)
 				if err != nil {
-					return false, nil
+					return false, err
 				}
 				if ts-firstScaleTimestamp < 100 {
+					klog.Infof("tidb second scale's interval isn't meeting the interval requirement")
 					return false, nil
 				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 2 error")
+			klog.Info("success to check auto scale-in tidb to 2 replicas")
 		})
 	})
 })
