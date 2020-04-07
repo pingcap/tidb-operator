@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -120,6 +121,14 @@ func setupSuite() {
 
 	if err := framework.WaitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
 		e2elog.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
+	}
+
+	ginkgo.By("Initializing all nodes")
+	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	framework.ExpectNoError(err)
+	for _, node := range nodeList.Items {
+		framework.Logf("Initializing node %q", node.Name)
+		framework.ExpectNoError(utilnode.InitNode(&node))
 	}
 
 	// By using default storage class in GKE/EKS (aws), network attached storage
