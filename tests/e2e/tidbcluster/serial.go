@@ -36,6 +36,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	v1 "k8s.io/api/core/v1"
@@ -779,7 +780,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			}
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
 			framework.ExpectNoError(err, "Create TidbMonitorClusterAutoScaler error")
-			pdapi, cancel, err := oa.GetPDClient(tc)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
 			var firstScaleTimestamp int64
@@ -834,7 +835,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if err != nil {
 					return false, err
 				}
-				info, err := pdapi.GetStore(sid)
+				info, err := pdClient.GetStore(sid)
 				if err != nil {
 					return false, nil
 				}
