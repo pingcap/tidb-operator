@@ -252,13 +252,21 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		//   local-volume-provisioner, then orphan PVs will be garbaged
 		//   collected and will not cause problem even if the name of deleted
 		//   node is used again in the future.
-		// - (GKE only) delete failed pods and associated PVCs/PVs if local PVs
-		// are using unique paths
-		//   - Since GKE 1.11, the node object will not be recreated. If local
-		//   volumes are mounted at the same paths, PD/TiKV pods will be
-		//   running soon when underlying instance is recreated and running.
-		//   Otherwise, we need to delete failed pods and associated PVCs/PVs.
-		//   PVs must be deleted because their paths does not exist now.
+		// - (GKE only, fixed path) nothing need to do
+		//   - Because the node name does not change, old PVs can be used. Note
+		//   that `setPVOwnerRef` cannot be enabled because the node object
+		//   could get deleted if it takes too long for the instance to
+		//   recreate.
+		//   - Optionally, you can deleted failed pods to make them to start
+		//   soon. This is due to exponential crash loop back off.
+		// - (GKE only, unique paths) delete failed pods and associated PVCs/PVs
+		//   - This is because even if the node name does not change, old PVs
+		//   are invalid because unique volume paths are used. We must delete
+		//   them all and wait for Kubernetes to rcreate and run again.
+		//   - PVs must be deleted because the PVs are invalid and should not
+		//   exist anymore. We can configure `setPVOwnerRef` to clean unused
+		//   PVs when the node object is deleted, but the node object will not
+		//   get deleted if the instance is recreated soon.
 		//
 		// Note that:
 		// - We assume local storage is used, otherwise PV can be re-attached
@@ -277,7 +285,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		// the new machine.
 		// - In GKE (1.11+), the node object are no longer recreated on
 		// upgrade/repair even though the underlying instance is recreated and
-		// local disks are wiped.
+		// local disks are wiped. However, the node object could get deleted by
+		// cloud-controller-manager if it takes too long for the instance to
+		// recreate.
 		//
 		// Related issues:
 		// - https://github.com/pingcap/tidb-operator/issues/1546
