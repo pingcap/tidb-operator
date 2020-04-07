@@ -62,6 +62,8 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 			err = k.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 			if err != nil {
 				framework.Logf("failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
+			} else {
+				framework.Logf("successfully deleted tidb-operator pod %s/%s", pod.Namespace, pod.Name)
 			}
 		}
 	}, k.config.Interval, k.config.JitterFactor, true, stopCh)
