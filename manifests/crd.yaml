@@ -5366,22 +5366,32 @@ spec:
                 serviceAccount:
                   description: Specify a Service Account for TiFlash
                   type: string
-                storageRequests:
-                  description: The StorageRequests of the persistent volume for TiFlash
-                    data storage. TiFlash supports multiple disks
+                storageClaims:
+                  description: The persistent volume claims of the TiFlash data storages.
+                    TiFlash supports multiple disks.
                   items:
-                    description: TiDBSpec contains details of TiDB members
+                    description: StorageClaim contains details of TiFlash storages
                     properties:
+                      resources:
+                        description: ResourceRequirements describes the compute resource
+                          requirements.
+                        properties:
+                          limits:
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
                       storageClassName:
-                        description: The storageClassName of the persistent volume
-                          for data storage. Defaults to Kubernetes default storage
-                          class.
+                        description: 'Name of the StorageClass required by the claim.
+                          More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
                         type: string
-                      storageSize:
-                        description: StorageSize is the request storage size for TiFlash
-                        type: string
-                    required:
-                    - storageSize
                     type: object
                   type: array
                 tolerations:
@@ -5431,7 +5441,7 @@ spec:
                   type: string
               required:
               - replicas
-              - storageRequests
+              - storageClaims
               type: object
             tikv:
               description: TiKVSpec contains details of TiKV members
