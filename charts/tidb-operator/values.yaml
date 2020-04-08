@@ -217,7 +217,7 @@ admissionWebhook:
     ## apiservice config
     ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
     insecureSkipTLSVerify: true
-    ## The tls ca, cert and key for `tidb-admission-webook.<Release Namespace>.svc` Service in Secret.
+    ## The Secret includes the TLS ca, cert and key for the `tidb-admission-webook.<Release Namespace>.svc` Service.
     ## If insecureSkipTLSVerify is true, this would be ignored.
     ## You can create the tls secret by:
     ## kubectl create secret generic <secret-name> --namespace=<release-namespace> --from-file=tls.crt=<path-to-cert> --from-file=tls.key=<path-to-key> --from-file=ca.crt=<path-to-ca>
