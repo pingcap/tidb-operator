@@ -161,7 +161,7 @@ func GenerateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
-func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StorageProvider, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StorageProvider, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	var err error
@@ -222,10 +222,10 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useKMS bool, secretLister corelisters.SecretLister) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ns, name, tidbSecretName string, useKMS bool, kubeCli kubernetes.Interface) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var passwordKey string
-	secret, err := secretLister.Secrets(ns).Get(tidbSecretName)
+	secret, err := kubeCli.CoreV1().Secrets(ns).Get(tidbSecretName, metav1.GetOptions{})
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, name, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err

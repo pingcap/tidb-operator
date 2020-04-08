@@ -16,7 +16,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -36,7 +35,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
 	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/upgrader"
 	"github.com/pingcap/tidb-operator/pkg/version"
@@ -150,13 +148,8 @@ func main() {
 
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
-	labelSelector := fmt.Sprintf("%s=%s", label.ManagedByLabelKey, label.TiDBOperator)
 	var options []informers.SharedInformerOption
-	kubeoptions := []kubeinformers.SharedInformerOption{
-		kubeinformers.WithTweakListOptions(func(listOpts *metav1.ListOptions) {
-			listOpts.LabelSelector = labelSelector
-		}),
-	}
+	var kubeoptions []kubeinformers.SharedInformerOption
 	if !controller.ClusterScoped {
 		options = append(options, informers.WithNamespace(ns))
 		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
