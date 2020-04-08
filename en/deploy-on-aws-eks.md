@@ -159,7 +159,7 @@ You can use the `terraform output` command to get the output again.
     cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
     ```
 
-    To complete the CR file configuration, refer to [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html).
+    To complete the CR file configuration, refer to [API documentation](api-references.md).
 
     > **Note:**
     >

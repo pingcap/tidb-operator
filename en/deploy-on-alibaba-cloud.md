@@ -165,7 +165,7 @@ All the instances except ACK mandatory workers are deployed across availability 
     cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
     ```
 
-    To complete the CR file configuration, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
+    To complete the CR file configuration, refer to [TiDB Operator API documentation](api-references.md) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
 
     > **Note:**
     >
@@ -264,7 +264,7 @@ In the default configuration, the Terraform script creates a new VPC. To use the
 
 ### Configure the TiDB cluster
 
-See [TiDB Operator API Documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
+See [TiDB Operator API Documentation](api-references.md) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
 
 ## Manage multiple TiDB clusters
 

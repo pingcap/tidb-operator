@@ -157,7 +157,7 @@ region = us-west-21
     cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
     ```
 
-    参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
+    参考 [API 文档](api-references.md)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
 
     > **注意：**
     >

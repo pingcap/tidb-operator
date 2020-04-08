@@ -14,7 +14,7 @@ This document describes how to deploy a TiDB cluster on general Kubernetes.
 
 ## Configure TiDB cluster
 
-Refer to the [TidbCluster example](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml) and [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) to complete TidbCluster Custom Resource (CR), and save it to the `<cluster-name>/tidb-cluster.yaml` file. Switch the TidbCluster example and API documentation to the currently used version of TiDB Operator.
+Refer to the [TidbCluster example](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml) and [API documentation](api-references.md) to complete TidbCluster Custom Resource (CR), and save it to the `<cluster-name>/tidb-cluster.yaml` file. Switch the TidbCluster example and API documentation to the currently used version of TiDB Operator.
 
 Note that TidbCluster CR has multiple parameters for the image configuration:
 
@@ -36,7 +36,7 @@ The modified configuration is not automatically applied to the TiDB cluster by d
 
 It is recommended that you set `spec.configUpdateStrategy` to `RollingUpdate` to enable automatic update of configurations. This way, every time the configuration is updated, all components are rolling updated automatically, and the modified configuration is applied to the cluster.
 
-To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html) to complete TidbMonitor CR, and save it to the `<cluster-name>/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
+To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](api-references.md) to complete TidbMonitor CR, and save it to the `<cluster-name>/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
 
 ### Storage class
 

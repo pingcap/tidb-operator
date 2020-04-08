@@ -188,4 +188,4 @@ spec:
 
 ## References
 
-For more detailed API information of TidbMonitor, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.html).
+For more detailed API information of TidbMonitor, refer to [TiDB Operator API documentation](api-references.md).
