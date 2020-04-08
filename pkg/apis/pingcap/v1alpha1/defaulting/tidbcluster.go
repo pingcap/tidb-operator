@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	defaultTiDBImage   = "pingcap/tidb"
-	defaultTiKVImage   = "pingcap/tikv"
-	defaultPDImage     = "pingcap/pd"
-	defaultBinlogImage = "pingcap/tidb-binlog"
+	defaultTiDBImage    = "pingcap/tidb"
+	defaultTiKVImage    = "pingcap/tikv"
+	defaultPDImage      = "pingcap/pd"
+	defaultBinlogImage  = "pingcap/tidb-binlog"
+	defaultTiFlashImage = "pingcap/tiflash"
 )
 
 var (
@@ -37,6 +38,9 @@ func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
 	setTidbSpecDefault(tc)
 	if tc.Spec.Pump != nil {
 		setPumpSpecDefault(tc)
+	}
+	if tc.Spec.TiFlash != nil {
+		setTiFlashSpecDefault(tc)
 	}
 }
 
@@ -109,6 +113,14 @@ func setPumpSpecDefault(tc *v1alpha1.TidbCluster) {
 	if len(tc.Spec.Version) > 0 || tc.Spec.Pump.Version != nil {
 		if tc.Spec.Pump.BaseImage == "" {
 			tc.Spec.Pump.BaseImage = defaultBinlogImage
+		}
+	}
+}
+
+func setTiFlashSpecDefault(tc *v1alpha1.TidbCluster) {
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiFlash.Version != nil {
+		if tc.Spec.TiFlash.BaseImage == "" {
+			tc.Spec.TiFlash.BaseImage = defaultTiFlashImage
 		}
 	}
 }
