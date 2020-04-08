@@ -900,6 +900,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, err
 				}
 				if secondTs == firstScaleTimestamp {
+					klog.Info("tikv haven't scale yet")
 					return false, nil
 				}
 				if secondTs-firstScaleTimestamp < 100 {
@@ -995,6 +996,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, err
 				}
 				if secondTs == firstScaleTimestamp {
+					klog.Info("tidb haven't scale yet")
 					return false, nil
 				}
 				if secondTs-firstScaleTimestamp < 100 {
