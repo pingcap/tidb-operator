@@ -17,6 +17,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/pingcap/tidb-operator/tests"
 	v1 "k8s.io/api/core/v1"
@@ -46,6 +47,9 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.ChartDir, "chart-dir", "", "chart dir")
 	flags.BoolVar(&TestConfig.PreloadImages, "preload-images", false, "if set, preload images in the bootstrap of e2e process")
 	flags.StringVar(&TestConfig.BackupImage, "backup-image", "", "backup image")
+	flags.BoolVar(&TestConfig.OperatorKiller.Enabled, "operator-killer", false, "whether to enable operator kill")
+	flags.DurationVar(&TestConfig.OperatorKiller.Interval, "operator-killer-interval", 5*time.Minute, "interval between operator kills")
+	flags.Float64Var(&TestConfig.OperatorKiller.JitterFactor, "operator-killer-jitter-factor", 1, "factor used to jitter operator kills")
 }
 
 func AfterReadingAllFlags() error {
