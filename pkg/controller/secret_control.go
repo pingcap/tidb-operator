@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -38,18 +37,15 @@ type SecretControlInterface interface {
 }
 
 type realSecretControl struct {
-	kubeCli      kubernetes.Interface
-	secretLister corelisters.SecretLister
+	kubeCli kubernetes.Interface
 }
 
 // NewRealSecretControl creates a new SecretControlInterface
 func NewRealSecretControl(
 	kubeCli kubernetes.Interface,
-	secretLister corelisters.SecretLister,
 ) SecretControlInterface {
 	return &realSecretControl{
-		kubeCli:      kubeCli,
-		secretLister: secretLister,
+		kubeCli: kubeCli,
 	}
 }
 
@@ -81,7 +77,7 @@ func (rsc *realSecretControl) Create(or metav1.OwnerReference, certOpts *TiDBClu
 
 // Load loads cert and key from Secret matching the name
 func (rsc *realSecretControl) Load(ns string, secretName string) ([]byte, []byte, error) {
-	secret, err := rsc.secretLister.Secrets(ns).Get(secretName)
+	secret, err := rsc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,10 +141,8 @@ type FakeSecretControl struct {
 
 func NewFakeSecretControl(
 	kubeCli kubernetes.Interface,
-	secretLister corelisters.SecretLister,
 ) SecretControlInterface {
 	return &realSecretControl{
-		kubeCli:      kubeCli,
-		secretLister: secretLister,
+		kubeCli: kubeCli,
 	}
 }
