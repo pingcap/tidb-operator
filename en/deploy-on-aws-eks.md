@@ -94,7 +94,7 @@ The default setup creates a new VPC and a `t2.micro` instance as the bastion mac
 
 You can create or modify `terraform.tfvars` to set the value of variables and configure the cluster as needed. See the variables that can be set and their descriptions in `variables.tf`.
 
-The following is an example of how to configure the EKS cluster name, the TiDB cluster name, and the number of PD, TiKV and TiDB nodes:
+The following is an example of how to configure the EKS cluster name, the TiDB cluster name, the TiDB Operator version, and the number of PD, TiKV and TiDB nodes:
 
 ```
 default_cluster_pd_count   = 3
@@ -102,7 +102,12 @@ default_cluster_tikv_count = 3
 default_cluster_tidb_count = 2
 default_cluster_name = "tidb"
 eks_name = "my-cluster"
+operator_version = "v1.1.0-rc.1"
 ```
+
+> **Note:**
+>
+> Check the `operator_version` in the `variables.tf` file for the default TiDB Operator version of the current scripts. If the default version is not your desired one, configure `operator_version` in `terraform.tfvars`.
 
 After configuration, execute the `terraform` command to initialize and deploy the cluster:
 

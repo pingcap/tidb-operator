@@ -133,6 +133,7 @@ This section describes how to deploy a TiDB cluster.
 
     > **Note:**
     >
+    > * Check the `tidb_operator_version` in the `variables.tf` file for the default TiDB Operator version of the current scripts. If the default version is not your desired one, configure `tidb_operator_version` in `terraform.tfvars`.
     > * The Regional cluster is created by default. In this scenario, the specified number of nodes are created in each one of the three Availability Zones (AZ). For example, if you configure `pd_count = 1`, three nodes are actually created for PD. You can specify the Availability Zones by configuring `node_locations`, or create the Zonal cluster by configuring `location`. See the example in `examples/` for details.
     > * The number of worker nodes to create depends on the number of Availability Zones in the specified Region. Most Regions have three zones, but `us-central1` has four zones. See [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones/) for more information. See the [Customize](#customize) section to learn how to customize node pools in a regional cluster.
 

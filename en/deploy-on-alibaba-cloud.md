@@ -79,7 +79,7 @@ All the instances except ACK mandatory workers are deployed across availability 
     cd tidb-operator/deploy/aliyun
     ```
 
-    You can create or modify `terraform.tfvars` to set the values of the variables, and configure the cluster to fit your needs. You can view the configurable variables and their descriptions in `variables.tf`. The following is an example of how to configure the ACK cluster name, the TiDB cluster name and the number of PD, TiKV, and TiDB nodes.
+    You can create or modify `terraform.tfvars` to set the values of the variables, and configure the cluster to fit your needs. You can view the configurable variables and their descriptions in `variables.tf`. The following is an example of how to configure the ACK cluster name, the TiDB cluster name, the TiDB Operator version, and the number of PD, TiKV, and TiDB nodes.
 
     ```
     cluster_name = "testack"
@@ -87,7 +87,12 @@ All the instances except ACK mandatory workers are deployed across availability 
     tikv_count = 3
     tidb_count = 2
     pd_count = 3
+    operator_version = "v1.1.0-rc.1"
     ```
+
+    > **Note:**
+    >
+    > Check the `operator_version` in the `variables.tf` file for the default TiDB Operator version of the current scripts. If the default version is not your desired one, configure `operator_version` in `terraform.tfvars`.
 
     After the configuration, execute the following commands to initialize and deploy the cluster:
 
