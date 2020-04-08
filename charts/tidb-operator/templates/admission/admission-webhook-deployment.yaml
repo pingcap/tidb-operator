@@ -31,8 +31,8 @@ spec:
           command:
             - /usr/local/bin/tidb-admission-webhook
             {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false }}
-            - --tls-cert-file=/var/serving-cert/cert.pem
-            - --tls-private-key-file=/var/serving-cert/key.pem
+            - --tls-cert-file=/var/serving-cert/tls.crt
+            - --tls-private-key-file=/var/serving-cert/tls.key
             {{- end }}
             {{- if .Values.features }}
             - --features={{ join "," .Values.features }}
@@ -68,6 +68,6 @@ spec:
         - name: serving-cert
           secret:
             defaultMode: 420
-            secretName: tidb-admission-webhook-certs
+            secretName: {{ .Values.admissionWebhook.apiservice.tlsSecret }}
       {{- end }}
 {{- end }}
