@@ -56,6 +56,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.Pump != nil {
 		allErrs = append(allErrs, validatePumpSpec(spec.Pump, fldPath.Child("pump"))...)
 	}
+	if spec.TiFlash != nil {
+		allErrs = append(allErrs, validateTiFlashSpec(spec.TiFlash, fldPath.Child("tiflash"))...)
+	}
 	return allErrs
 }
 
@@ -68,6 +71,28 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateTiFlashConfig(spec.Config, fldPath)...)
+	return allErrs
+}
+
+func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if config == nil {
+		return allErrs
+	}
+	if config.CommonConfig.Flash.OverlapThreshold != nil {
+		if *config.CommonConfig.Flash.OverlapThreshold < 0 || *config.CommonConfig.Flash.OverlapThreshold > 1 {
+			allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
+				config.CommonConfig.Flash.OverlapThreshold,
+				"overlap_threshold must be in the range of [0,1]."))
+		}
+	}
 	return allErrs
 }
 
