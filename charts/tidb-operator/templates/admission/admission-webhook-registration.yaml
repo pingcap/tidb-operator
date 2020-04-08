@@ -13,7 +13,7 @@ spec:
   {{- if .Values.admissionWebhook.apiservice.insecureSkipTLSVerify }}
   insecureSkipTLSVerify: true
   {{- else }}
-  caBundle: {{ .Values.admissionWebhook.apiservice.cert }}
+  caBundle: {{ .Values.admissionWebhook.apiservice.caBundle }}
   {{- end }}
   group: admission.tidb.pingcap.com
   groupPriorityMinimum: 1000
