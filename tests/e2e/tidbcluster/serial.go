@@ -899,9 +899,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if err != nil {
 					return false, err
 				}
-				if secondTs-firstScaleTimestamp < 100 {
-					klog.Infof("tikv second scale's interval isn't meeting the interval requirement")
+				if secondTs == firstScaleTimestamp {
 					return false, nil
+				}
+				if secondTs-firstScaleTimestamp < 100 {
+					return false, fmt.Errorf("tikv second scale's interval isn't meeting the interval requirement")
 				}
 				return true, nil
 			})
@@ -988,13 +990,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					klog.Info("tac haven't marked tidb auto-scale timestamp")
 					return false, nil
 				}
-				ts, err := strconv.ParseInt(v, 10, 64)
+				secondTs, err := strconv.ParseInt(v, 10, 64)
 				if err != nil {
 					return false, err
 				}
-				if ts-firstScaleTimestamp < 100 {
-					klog.Infof("tidb second scale's interval isn't meeting the interval requirement")
+				if secondTs == firstScaleTimestamp {
 					return false, nil
+				}
+				if secondTs-firstScaleTimestamp < 100 {
+					return false, fmt.Errorf("tikv second scale's interval isn't meeting the interval requirement")
 				}
 				return true, nil
 			})
