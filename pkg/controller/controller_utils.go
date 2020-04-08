@@ -247,6 +247,16 @@ func TiKVPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tikv-peer", clusterName)
 }
 
+// TiFlashMemberName returns tiflash member name
+func TiFlashMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiflash", clusterName)
+}
+
+// TiFlashPeerMemberName returns tiflash peer service name
+func TiFlashPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tiflash-peer", clusterName)
+}
+
 // TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)
