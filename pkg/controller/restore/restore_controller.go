@@ -72,7 +72,6 @@ func NewController(
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, recorder)
 	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
@@ -84,7 +83,7 @@ func NewController(
 			restore.NewRestoreManager(
 				backupInformer.Lister(),
 				statusUpdater,
-				secretInformer.Lister(),
+				kubeCli,
 				jobInformer.Lister(),
 				jobControl,
 				pvcInformer.Lister(),

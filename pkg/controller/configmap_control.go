@@ -23,7 +23,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -44,19 +43,16 @@ type ConfigMapControlInterface interface {
 type realConfigMapControl struct {
 	client   client.Client
 	kubeCli  kubernetes.Interface
-	cmLister corelisters.ConfigMapLister
 	recorder record.EventRecorder
 }
 
 // NewRealSecretControl creates a new SecretControlInterface
 func NewRealConfigMapControl(
 	kubeCli kubernetes.Interface,
-	cmLister corelisters.ConfigMapLister,
 	recorder record.EventRecorder,
 ) ConfigMapControlInterface {
 	return &realConfigMapControl{
 		kubeCli:  kubeCli,
-		cmLister: cmLister,
 		recorder: recorder,
 	}
 }
@@ -81,7 +77,7 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 			return nil
 		}
 
-		if updated, err := cc.cmLister.ConfigMaps(cm.Namespace).Get(cmName); err != nil {
+		if updated, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cmName, metav1.GetOptions{}); err != nil {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
 		} else {
 			cm = updated.DeepCopy()
@@ -124,7 +120,6 @@ var _ ConfigMapControlInterface = &realConfigMapControl{}
 // NewFakeConfigMapControl returns a FakeConfigMapControl
 func NewFakeConfigMapControl(cmInformer coreinformers.ConfigMapInformer) *FakeConfigMapControl {
 	return &FakeConfigMapControl{
-		cmInformer.Lister(),
 		cmInformer.Informer().GetIndexer(),
 		RequestTracker{},
 		RequestTracker{},
@@ -134,7 +129,6 @@ func NewFakeConfigMapControl(cmInformer coreinformers.ConfigMapInformer) *FakeCo
 
 // FakeConfigMapControl is a fake ConfigMapControlInterface
 type FakeConfigMapControl struct {
-	CmLister               corelisters.ConfigMapLister
 	CmIndexer              cache.Indexer
 	createConfigMapTracker RequestTracker
 	updateConfigMapTracker RequestTracker
