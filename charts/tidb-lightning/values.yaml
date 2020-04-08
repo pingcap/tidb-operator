@@ -25,11 +25,13 @@ dataSource:
     # pvcName: tidb-cluster-scheduled-backup
     # backupName: scheduled-backup-20190822-041004
   remote:
-    rcloneImage: tynor88/rclone
+    rcloneImage: pingcap/tidb-cloud-backup:20200229
     storageClassName: local-storage
     storage: 100Gi
     secretName: cloud-storage-secret
     path: s3:bench-data-us/sysbench/sbtest_16_1e7.tar.gz
+    # Directory support downloading all files in a remote directory, shadow dataSoure.remote.path if present
+    # directory: s3:bench-data-us
     # If rcloneConfig is configured, then `secretName` will be ignored,
     # `rcloneConfig` should only be used for the cases where no sensitive
     # information need to be configured, e.g. the configuration as below,
@@ -71,6 +73,9 @@ tolerations: []
 affinity: {}
 
 backend: importer # importer | tidb
+
+# Specify a Service Account for lightning
+# serviceAccount:
 
 config: |
   [lightning]

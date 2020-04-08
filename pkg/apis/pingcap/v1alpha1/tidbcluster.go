@@ -66,6 +66,14 @@ func (tc *TidbCluster) TiKVImage() string {
 	return image
 }
 
+func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
+	if tc.Spec.TiKV.Privileged == nil {
+		pri := false
+		return &pri
+	}
+	return tc.Spec.TiKV.Privileged
+}
+
 func (tc *TidbCluster) TiDBImage() string {
 	image := tc.Spec.TiDB.Image
 	baseImage := tc.Spec.TiDB.BaseImage
@@ -299,11 +307,7 @@ func (tc *TidbCluster) GetClusterID() string {
 }
 
 func (tc *TidbCluster) IsTLSClusterEnabled() bool {
-	enableTLCluster := tc.Spec.EnableTLSCluster
-	if enableTLCluster == nil {
-		return defaultEnableTLSCluster
-	}
-	return *enableTLCluster
+	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
 func (tc *TidbCluster) Scheme() string {
@@ -342,14 +346,10 @@ func (tidb *TiDBSpec) IsTLSClientEnabled() bool {
 	return tidb.TLSClient != nil && tidb.TLSClient.Enabled
 }
 
-func (tidb *TiDBSpec) IsUserGeneratedCertificate() bool {
-	return tidb.IsTLSClientEnabled() && tidb.TLSClient.SecretName != ""
-}
-
 func (tidb *TiDBSpec) ShouldSeparateSlowLog() bool {
 	separateSlowLog := tidb.SeparateSlowLog
 	if separateSlowLog == nil {
-		return defaultEnableTLSClient
+		return defaultSeparateSlowLog
 	}
 	return *separateSlowLog
 }

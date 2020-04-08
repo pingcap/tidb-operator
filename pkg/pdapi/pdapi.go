@@ -25,14 +25,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	glog "k8s.io/klog"
+	"github.com/pingcap/tidb-operator/pkg/util"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
-	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -65,27 +66,23 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
 // It loads in-cluster root ca if caCert is empty.
 func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, caCert []byte) (*tls.Config, error) {
-	secretName := fmt.Sprintf("%s-pd-client", tcName)
+	secretName := util.ClusterClientTLSSecretName(tcName)
 	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}
 
-	var rootCAs *x509.CertPool
+	rootCAs := x509.NewCertPool()
 	var tlsCert tls.Certificate
 
 	if len(caCert) > 0 {
-		rootCAs = x509.NewCertPool()
 		rootCAs.AppendCertsFromPEM(caCert)
 	} else {
-		rootCAs, err = certutil.ReadCACerts()
-		if err != nil {
-			return nil, err
-		}
+		rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
 	}
 
-	clientCert, certExists := secret.Data["cert"]
-	clientKey, keyExists := secret.Data["key"]
+	clientCert, certExists := secret.Data[v1.TLSCertKey]
+	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
 	if !certExists || !keyExists {
 		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", namespace, secretName)
 	}
@@ -118,7 +115,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		if tlsEnabled {
 			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
 			if err != nil {
-				glog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+				klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 			}
 		}
@@ -142,7 +139,7 @@ type PDClient interface {
 	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
-	GetConfig() (*v1alpha1.PDConfig, error)
+	GetConfig() (*PDConfigFromAPI, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
@@ -158,6 +155,8 @@ type PDClient interface {
 	SetStoreLabels(storeID uint64, labels map[string]string) (bool, error)
 	// DeleteStore deletes a TiKV store from cluster
 	DeleteStore(storeID uint64) error
+	// SetStoreState sets store to specified state.
+	SetStoreState(storeID uint64, state string) error
 	// DeleteMember deletes a PD member from cluster
 	DeleteMember(name string) error
 	// DeleteMemberByID deletes a PD member from cluster
@@ -284,13 +283,13 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	}, nil
 }
 
-func (pc *pdClient) GetConfig() (*v1alpha1.PDConfig, error) {
+func (pc *pdClient) GetConfig() (*PDConfigFromAPI, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	config := &v1alpha1.PDConfig{}
+	config := &PDConfigFromAPI{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
 		return nil, err
@@ -395,6 +394,30 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	defer httputil.DeferClose(res.Body)
 
 	// Remove an offline store should returns http.StatusOK
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("failed to delete store %d: %v", storeID, string(body))
+}
+
+// SetStoreState sets store to specified state.
+func (pc *pdClient) SetStoreState(storeID uint64, state string) error {
+	apiURL := fmt.Sprintf("%s/%s/%d/state?state=%s", pc.url, storePrefix, storeID, state)
+	req, err := http.NewRequest("POST", apiURL, nil)
+	if err != nil {
+		return err
+	}
+	res, err := pc.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
@@ -541,10 +564,10 @@ func (pc *pdClient) EndEvictLeader(storeID uint64) error {
 		return nil
 	}
 	if res.StatusCode == http.StatusOK {
-		glog.Infof("call DELETE method: %s success", apiURL)
+		klog.Infof("call DELETE method: %s success", apiURL)
 	} else {
 		err2 := httputil.ReadErrorBody(res.Body)
-		glog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
+		klog.Errorf("call DELETE method: %s failed,statusCode: %v,error: %v", apiURL, res.StatusCode, err2)
 	}
 
 	// pd will return an error with the body contains "scheduler not found" if the scheduler is not found
@@ -669,6 +692,7 @@ const (
 	GetTombStoneStoresActionType       ActionType = "GetTombStoneStores"
 	GetStoreActionType                 ActionType = "GetStore"
 	DeleteStoreActionType              ActionType = "DeleteStore"
+	SetStoreStateActionType            ActionType = "SetStoreState"
 	DeleteMemberByIDActionType         ActionType = "DeleteMemberByID"
 	DeleteMemberActionType             ActionType = "DeleteMember "
 	SetStoreLabelsActionType           ActionType = "SetStoreLabels"
@@ -728,13 +752,13 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*v1alpha1.PDConfig, error) {
+func (pc *FakePDClient) GetConfig() (*PDConfigFromAPI, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*v1alpha1.PDConfig), nil
+	return result.(*PDConfigFromAPI), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
@@ -786,6 +810,15 @@ func (pc *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
 
 func (pc *FakePDClient) DeleteStore(id uint64) error {
 	if reaction, ok := pc.reactions[DeleteStoreActionType]; ok {
+		action := &Action{ID: id}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+func (pc *FakePDClient) SetStoreState(id uint64, state string) error {
+	if reaction, ok := pc.reactions[SetStoreStateActionType]; ok {
 		action := &Action{ID: id}
 		_, err := reaction(action)
 		return err

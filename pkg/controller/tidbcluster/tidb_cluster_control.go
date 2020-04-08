@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -82,6 +83,7 @@ type defaultTidbClusterControl struct {
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
 func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster) error {
+	tcc.defaulting(tc)
 	if !tcc.validate(tc) {
 		return nil // fatal error, no need to retry on invalid object
 	}
@@ -111,6 +113,10 @@ func (tcc *defaultTidbClusterControl) validate(tc *v1alpha1.TidbCluster) bool {
 		return false
 	}
 	return true
+}
+
+func (tcc *defaultTidbClusterControl) defaulting(tc *v1alpha1.TidbCluster) {
+	defaulting.SetTidbClusterDefault(tc)
 }
 
 func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster) error {

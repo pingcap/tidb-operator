@@ -15,16 +15,19 @@ package controller
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"time"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
-	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb/config"
+	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"net/http"
+	"time"
 )
 
 const (
@@ -51,24 +54,45 @@ type TiDBControlInterface interface {
 // defaultTiDBControl is default implementation of TiDBControlInterface.
 type defaultTiDBControl struct {
 	httpClient *http.Client
+	kubeCli    kubernetes.Interface
 }
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance
-func NewDefaultTiDBControl() TiDBControlInterface {
-	return &defaultTiDBControl{httpClient: &http.Client{Timeout: timeout}}
+func NewDefaultTiDBControl(kubeCli kubernetes.Interface) TiDBControlInterface {
+	return &defaultTiDBControl{httpClient: &http.Client{Timeout: timeout}, kubeCli: kubeCli}
 }
 
-func (tdc *defaultTiDBControl) useTLSHTTPClient(enableTLS bool) error {
-	if enableTLS {
-		rootCAs, err := certutil.ReadCACerts()
-		if err != nil {
-			return err
-		}
-		config := &tls.Config{
-			RootCAs: rootCAs,
-		}
-		tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
+func (tdc *defaultTiDBControl) useTLSHTTPClient(tc *v1alpha1.TidbCluster) error {
+	if !tc.IsTLSClusterEnabled() {
+		return nil
 	}
+
+	tcName := tc.Name
+	ns := tc.Namespace
+	secretName := util.ClusterClientTLSSecretName(tcName)
+	secret, err := tdc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	clientCert, certExists := secret.Data[v1.TLSCertKey]
+	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
+	if !certExists || !keyExists {
+		return fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
+	}
+
+	tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
+	}
+
+	rootCAs := x509.NewCertPool()
+	rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
+	config := &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{tlsCert},
+	}
+	tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
 	return nil
 }
 
@@ -77,7 +101,7 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
 
-	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
+	if err := tdc.useTLSHTTPClient(tc); err != nil {
 		return false, err
 	}
 
@@ -91,7 +115,7 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
+	if err := tdc.useTLSHTTPClient(tc); err != nil {
 		return nil, err
 	}
 
@@ -126,7 +150,7 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc.IsTLSClusterEnabled()); err != nil {
+	if err := tdc.useTLSHTTPClient(tc); err != nil {
 		return nil, err
 	}
 

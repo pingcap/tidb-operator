@@ -24,28 +24,19 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 )
 
-// RestoreOpts contains the input arguments to the restore command
-type RestoreOpts struct {
-	Namespace   string
-	RestoreName string
-	Password    string
-	Host        string
-	Port        int32
-	User        string
-	BackupPath  string
+// Options contains the input arguments to the restore command
+type Options struct {
+	util.GenericOptions
+	BackupPath string
 }
 
-func (ro *RestoreOpts) String() string {
-	return fmt.Sprintf("%s/%s", ro.Namespace, ro.RestoreName)
-}
-
-func (ro *RestoreOpts) getRestoreDataPath() string {
+func (ro *Options) getRestoreDataPath() string {
 	backupName := filepath.Base(ro.BackupPath)
 	bucketName := filepath.Base(filepath.Dir(ro.BackupPath))
 	return filepath.Join(constants.BackupRootPath, bucketName, backupName)
 }
 
-func (ro *RestoreOpts) downloadBackupData(localPath string) error {
+func (ro *Options) downloadBackupData(localPath string) error {
 	if err := util.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
 		return err
 	}
@@ -62,27 +53,26 @@ func (ro *RestoreOpts) downloadBackupData(localPath string) error {
 	return nil
 }
 
-func (ro *RestoreOpts) loadTidbClusterData(restorePath string) error {
+func (ro *Options) loadTidbClusterData(restorePath string) error {
 	if exist := util.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
 	args := []string{
-		fmt.Sprintf("-d=%s", restorePath),
-		fmt.Sprintf("-h=%s", ro.Host),
-		fmt.Sprintf("-P=%d", ro.Port),
-		fmt.Sprintf("-u=%s", ro.User),
-		fmt.Sprintf("-p=%s", ro.Password),
+		"--status-addr=0.0.0.0:8289",
+		"--backend=tidb",
+		"--server-mode=false",
+		"–-log-file=",
+		fmt.Sprintf("--tidb-user=%s", ro.User),
+		fmt.Sprintf("--tidb-password=%s", ro.Password),
+		fmt.Sprintf("--tidb-host=%s", ro.Host),
+		fmt.Sprintf("--d=%s", restorePath),
 	}
 
-	output, err := exec.Command("/loader", args...).CombinedOutput()
+	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
 	}
 	return nil
-}
-
-func (ro *RestoreOpts) getDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", ro.User, ro.Password, ro.Host, ro.Port, db)
 }
 
 // unarchiveBackupData unarchive backup data to dest dir

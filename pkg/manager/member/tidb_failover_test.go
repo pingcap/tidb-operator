@@ -200,7 +200,7 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 				t.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(4))
+				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(3))
 				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},

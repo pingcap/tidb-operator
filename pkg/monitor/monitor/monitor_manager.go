@@ -105,8 +105,8 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 }
 
 func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) error {
-	service := getMonitorService(monitor)
-	for _, svc := range service {
+	services := getMonitorService(monitor)
+	for _, svc := range services {
 		_, err := mm.typedControl.CreateOrUpdateService(monitor, svc)
 		if err != nil {
 			klog.Errorf("tm[%s/%s]'s service[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, svc.Name, err)
@@ -147,6 +147,10 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 	}
 
 	targetTcRef := monitor.Spec.Clusters[0]
+	if len(targetTcRef.Namespace) < 1 {
+		targetTcRef.Namespace = monitor.Namespace
+	}
+
 	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
 	if err != nil {
 		return err
@@ -169,7 +173,11 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonito
 		return err
 	}
 
-	deployment := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
 	_, err = mm.typedControl.CreateOrUpdateDeployment(monitor, deployment)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)

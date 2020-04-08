@@ -18,7 +18,7 @@ import (
 	"os"
 	"strconv"
 
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 func (tc *TidbClusterConfig) set(name string, value string) (string, bool) {
@@ -161,6 +161,6 @@ func (tc *TidbClusterConfig) BuildSubValues(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	glog.V(4).Infof("subValues:\n %s", subValues)
+	klog.V(4).Infof("subValues:\n %s", subValues)
 	return subVaulesPath, nil
 }

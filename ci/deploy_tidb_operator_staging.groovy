@@ -23,12 +23,16 @@ scheduler:
   replicas: 2
 admissionWebhook:
   create: true
-  hooksEnabled:
+  replicas: 2
+  validation:
     statefulSets: true
     pods: true
-    # TODO: enable validating and defaulting after we ease the constrain
-    validating: false
-    defaulting: false
+    pingcapResources: false
+  mutation:
+    pingcapResources: true
+  failurePolicy:
+    validation: Fail
+    mutation: Fail
 features:
   - AutoScaling=true
 '''

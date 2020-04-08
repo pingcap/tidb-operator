@@ -84,6 +84,8 @@ const (
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
 	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
 	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
+	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
@@ -114,6 +116,10 @@ const (
 	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
 	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
 	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
+	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
+	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
+	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
+	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
@@ -185,10 +191,10 @@ func NewBackupSchedule() Label {
 	}
 }
 
-// NewMonitor initialize a new label for monitor of tidb-monitor
 func NewMonitor() Label {
 	return Label{
-		NameLabelKey:      TiDBMonitorVal,
+		// NameLabelKey is used to be compatible with helm monitor
+		NameLabelKey:      "tidb-cluster",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }

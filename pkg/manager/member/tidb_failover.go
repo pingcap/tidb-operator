@@ -18,7 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 type tidbFailover struct {
@@ -41,26 +41,26 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
 		if exist && tidbMember.Health {
 			delete(tc.Status.TiDB.FailureMembers, tidbMember.Name)
-			glog.Infof("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
+			klog.Infof("tidb failover: delete %s from tidb failoverMembers", tidbMember.Name)
 		}
 	}
 
-	if tc.Spec.TiDB.MaxFailoverCount != nil {
+	if tc.Spec.TiDB.MaxFailoverCount != nil && *tc.Spec.TiDB.MaxFailoverCount > 0 {
 		maxFailoverCount := *tc.Spec.TiDB.MaxFailoverCount
-		if maxFailoverCount > 0 && len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
-			glog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
+		if len(tc.Status.TiDB.FailureMembers) >= int(maxFailoverCount) {
+			klog.Warningf("the failure members count reached the limit:%d", tc.Spec.TiDB.MaxFailoverCount)
 			return nil
 		}
-	}
-	for _, tidbMember := range tc.Status.TiDB.Members {
-		_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
-		deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
-		if !tidbMember.Health && time.Now().After(deadline) && !exist {
-			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{
-				PodName:   tidbMember.Name,
-				CreatedAt: metav1.Now(),
+		for _, tidbMember := range tc.Status.TiDB.Members {
+			_, exist := tc.Status.TiDB.FailureMembers[tidbMember.Name]
+			deadline := tidbMember.LastTransitionTime.Add(tf.tidbFailoverPeriod)
+			if !tidbMember.Health && time.Now().After(deadline) && !exist {
+				tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{
+					PodName:   tidbMember.Name,
+					CreatedAt: metav1.Now(),
+				}
+				break
 			}
-			break
 		}
 	}
 

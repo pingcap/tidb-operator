@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // PodControlInterface manages Pods used in TidbCluster
@@ -77,10 +77,10 @@ func (rpc *realPodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 		var updateErr error
 		updatePod, updateErr = rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
 		if updateErr == nil {
-			glog.Infof("Pod: [%s/%s] updated successfully, TidbCluster: [%s/%s]", ns, podName, ns, tcName)
+			klog.Infof("Pod: [%s/%s] updated successfully, TidbCluster: [%s/%s]", ns, podName, ns, tcName)
 			return nil
 		}
-		glog.Errorf("failed to update Pod: [%s/%s], error: %v", ns, podName, updateErr)
+		klog.Errorf("failed to update Pod: [%s/%s], error: %v", ns, podName, updateErr)
 
 		if updated, err := rpc.podLister.Pods(ns).Get(podName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -156,7 +156,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	if labels[label.ClusterIDLabelKey] == clusterID &&
 		labels[label.MemberIDLabelKey] == memberID &&
 		labels[label.StoreIDLabelKey] == storeID {
-		glog.V(4).Infof("pod %s/%s already has cluster labels set, skipping. TidbCluster: %s", ns, podName, tcName)
+		klog.V(4).Infof("pod %s/%s already has cluster labels set, skipping. TidbCluster: %s", ns, podName, tcName)
 		return pod, nil
 	}
 	// labels is a pointer, modify labels will modify pod.Labels
@@ -169,10 +169,10 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 		var updateErr error
 		updatePod, updateErr = rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
 		if updateErr == nil {
-			glog.V(4).Infof("update pod %s/%s with cluster labels %v successfully, TidbCluster: %s", ns, podName, labels, tcName)
+			klog.V(4).Infof("update pod %s/%s with cluster labels %v successfully, TidbCluster: %s", ns, podName, labels, tcName)
 			return nil
 		}
-		glog.Errorf("failed to update pod %s/%s with cluster labels %v, TidbCluster: %s, err: %v", ns, podName, labels, tcName, updateErr)
+		klog.Errorf("failed to update pod %s/%s with cluster labels %v, TidbCluster: %s, err: %v", ns, podName, labels, tcName, updateErr)
 
 		if updated, err := rpc.podLister.Pods(ns).Get(podName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -191,13 +191,13 @@ func (rpc *realPodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	podName := pod.GetName()
-	preconditions := metav1.Preconditions{UID: &pod.UID}
+	preconditions := metav1.Preconditions{UID: &pod.UID, ResourceVersion: &pod.ResourceVersion}
 	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
 	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, &deleteOptions)
 	if err != nil {
-		glog.Errorf("failed to delete Pod: [%s/%s], TidbCluster: %s, %v", ns, podName, tcName, err)
+		klog.Errorf("failed to delete Pod: [%s/%s], TidbCluster: %s, %v", ns, podName, tcName, err)
 	} else {
-		glog.V(4).Infof("delete Pod: [%s/%s] successfully, TidbCluster: %s", ns, podName, tcName)
+		klog.V(4).Infof("delete Pod: [%s/%s] successfully, TidbCluster: %s", ns, podName, tcName)
 	}
 	rpc.recordPodEvent("delete", tc, podName, err)
 	return err

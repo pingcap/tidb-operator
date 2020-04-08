@@ -31,7 +31,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 var cfg *tests.Config
@@ -46,7 +46,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 	go func() {
-		glog.Info(http.ListenAndServe(":6060", nil))
+		klog.Info(http.ListenAndServe(":6060", nil))
 	}()
 	metrics.StartServer()
 	cfg = tests.ParseConfigOrDie()
@@ -174,12 +174,10 @@ func run() {
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
-			assignedNodes := oa.GetTidbMemberAssignedNodesOrDie(cluster)
 			cluster.UpgradeAll(upgradeVersion)
 			oa.UpgradeTidbClusterOrDie(cluster)
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckTidbMemberAssignedNodesOrDie(cluster, assignedNodes)
 		}
 
 		// configuration change
@@ -381,7 +379,7 @@ func run() {
 	}
 
 	slack.SuccessCount++
-	glog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
+	klog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
 
 func newOperatorConfig() *tests.OperatorConfig {

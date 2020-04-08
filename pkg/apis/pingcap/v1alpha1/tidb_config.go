@@ -31,6 +31,7 @@ import (
 // initially copied from TiDB v3.0.6
 
 // TiDBConfig is the configuration of tidb-server
+// For more detail, refer to https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/
 // +k8s:openapi-gen=true
 type TiDBConfig struct {
 	// +optional
@@ -103,6 +104,33 @@ type TiDBConfig struct {
 	SplitRegionMaxNum *uint64 `toml:"split-region-max-num,omitempty" json:"split-region-max-num,omitempty"`
 	// +optional
 	StmtSummary *StmtSummary `toml:"stmt-summary,omitempty" json:"stmt-summary,omitempty"`
+	// RepairMode indicates that the TiDB is in the repair mode for table meta.
+	// +optional
+	RepairMode *bool `toml:"repair-mode" json:"repair-mode,omitempty"`
+	// +optional
+	RepairTableList []string `toml:"repair-table-list" json:"repair-table-list,omitempty"`
+	// IsolationRead indicates that the TiDB reads data from which isolation level(engine and label).
+	// +optional
+	IsolationRead *IsolationRead `toml:"isolation-read" json:"isolation-read,omitempty"`
+	// MaxServerConnections is the maximum permitted number of simultaneous client connections.
+	// +optional
+	MaxServerConnections *uint32 `toml:"max-server-connections" json:"max-server-connections,omitempty"`
+	// NewCollationsEnabledOnFirstBootstrap indicates if the new collations are enabled, it effects only when a TiDB cluster bootstrapped on the first time.
+	// +optional
+	NewCollationsEnabledOnFirstBootstrap *bool `toml:"new_collations_enabled_on_first_bootstrap" json:"new_collations_enabled_on_first_bootstrap,omitempty"`
+	// Experimental contains parameters for experimental features.
+	// +optional
+	Experimental *Experimental `toml:"experimental" json:"experimental,omitempty"`
+	// EnableDynamicConfig enables the TiDB to fetch configs from PD and update itself during runtime.
+	// see https://github.com/pingcap/tidb/pull/13660 for more details.
+	// +optional
+	EnableDynamicConfig *bool `toml:"enable-dynamic-config" json:"enable-dynamic-config,omitempty"`
+	// imported from v3.1.0
+	// optional
+	EnableTableLock *bool `toml:"enable-table-lock" json:"enable-table-lock,omitempty"`
+	// imported from v3.1.0
+	// optional
+	DelayCleanTableLock *uint64 `toml:"delay-clean-table-lock" json:"delay-clean-table-lock,omitempty"`
 }
 
 // Log is the log section of config.
@@ -119,9 +147,20 @@ type Log struct {
 	// Disable automatic timestamps in output.
 	// +optional
 	DisableTimestamp *bool `toml:"disable-timestamp,omitempty" json:"disable-timestamp,omitempty"`
+	// EnableTimestamp enables automatic timestamps in log output.
+	// +optional
+	EnableTimestamp *bool `toml:"enable-timestamp" json:"enable-timestamp,omitempty"`
+	// EnableErrorStack enables annotating logs with the full stack error
+	// message.
+	// +optional
+	EnableErrorStack *bool `toml:"enable-error-stack" json:"enable-error-stack,omitempty"`
 	// File log config.
 	// +optional
 	File *FileLogConfig `toml:"file,omitempty" json:"file,omitempty"`
+	// +optional
+	EnableSlowLog *bool `toml:"enable-slow-log" json:"enable-slow-log,omitempty"`
+	// +optional
+	SlowQueryFile *string `toml:"slow-query-file" json:"slow-query-file,omitempty"`
 	// Optional: Defaults to 300
 	// +optional
 	SlowThreshold *uint64 `toml:"slow-threshold,omitempty" json:"slow-threshold,omitempty"`
@@ -133,7 +172,7 @@ type Log struct {
 	QueryLogMaxLen *uint64 `toml:"query-log-max-len,omitempty" json:"query-log-max-len,omitempty"`
 	// Optional: Defaults to 1
 	// +optional
-	RecordPlanInSlowLog uint32 `toml:"record-plan-in-slow-log,omitempty" json:"record-plan-in-slow-log,omitempty"`
+	RecordPlanInSlowLog *uint32 `toml:"record-plan-in-slow-log,omitempty" json:"record-plan-in-slow-log,omitempty"`
 }
 
 // Security is the security section of the config.
@@ -153,19 +192,23 @@ type Security struct {
 	ClusterSSLCert *string `toml:"cluster-ssl-cert,omitempty" json:"cluster-ssl-cert,omitempty"`
 	// +optional
 	ClusterSSLKey *string `toml:"cluster-ssl-key,omitempty" json:"cluster-ssl-key,omitempty"`
+	// ClusterVerifyCN is the Common Name that allowed
+	// +optional
+	// +k8s:openapi-gen=false
+	ClusterVerifyCN []string `toml:"cluster-verify-cn,omitempty" json:"cluster-verify-cn,omitempty"`
 }
 
 // Status is the status section of the config.
 // +k8s:openapi-gen=true
 type Status struct {
-	// Optional: Defaults to true
-	// +optional
-	ReportStatus *bool `toml:"report-status,omitempty" json:"report-status,omitempty"`
 	// +optional
 	MetricsAddr *string `toml:"metrics-addr,omitempty" json:"metrics-addr,omitempty"`
 	// Optional: Defaults to 15
 	// +optional
 	MetricsInterval *uint `toml:"metrics-interval,omitempty" json:"metrics-interval,omitempty"`
+	// Optional: Defaults to true
+	// +optional
+	ReportStatus *bool `toml:"report-status,omitempty" json:"report-status,omitempty"`
 	// Optional: Defaults to false
 	// +optional
 	RecordQPSbyDB *bool `toml:"record-db-qps,omitempty" json:"record-db-qps,omitempty"`
@@ -179,18 +222,9 @@ type Performance struct {
 	// Optional: Defaults to 0
 	// +optional
 	MaxMemory *uint64 `toml:"max-memory,omitempty" json:"max-memory,omitempty"`
-	// Optional: Defaults to true
-	// +optional
-	TCPKeepAlive *bool `toml:"tcp-keep-alive,omitempty" json:"tcp-keep-alive,omitempty"`
-	// Optional: Defaults to true
-	// +optional
-	CrossJoin *bool `toml:"cross-join,omitempty" json:"cross-join,omitempty"`
 	// Optional: Defaults to 3s
 	// +optional
 	StatsLease *string `toml:"stats-lease,omitempty" json:"stats-lease,omitempty"`
-	// Optional: Defaults to true
-	// +optional
-	RunAutoAnalyze *bool `toml:"run-auto-analyze,omitempty" json:"run-auto-analyze,omitempty"`
 	// Optional: Defaults to 5000
 	// +optional
 	StmtCountLimit *uint `toml:"stmt-count-limit,omitempty" json:"stmt-count-limit,omitempty"`
@@ -209,12 +243,21 @@ type Performance struct {
 	// Optional: Defaults to 3s
 	// +optional
 	BindInfoLease *string `toml:"bind-info-lease,omitempty" json:"bind-info-lease,omitempty"`
-	// Optional: Defaults to 300000
-	// +optional
-	TxnEntryCountLimit *uint64 `toml:"txn-entry-count-limit,omitempty" json:"txn-entry-count-limit,omitempty"`
 	// Optional: Defaults to 104857600
 	// +optional
 	TxnTotalSizeLimit *uint64 `toml:"txn-total-size-limit,omitempty" json:"txn-total-size-limit,omitempty"`
+	// Optional: Defaults to true
+	// +optional
+	TCPKeepAlive *bool `toml:"tcp-keep-alive,omitempty" json:"tcp-keep-alive,omitempty"`
+	// Optional: Defaults to true
+	// +optional
+	CrossJoin *bool `toml:"cross-join,omitempty" json:"cross-join,omitempty"`
+	// Optional: Defaults to true
+	// +optional
+	RunAutoAnalyze *bool `toml:"run-auto-analyze,omitempty" json:"run-auto-analyze,omitempty"`
+	// Optional: Defaults to 300000
+	// +optional
+	TxnEntryCountLimit *uint64 `toml:"txn-entry-count-limit,omitempty" json:"txn-entry-count-limit,omitempty"`
 }
 
 // PlanCache is the PlanCache section of the config.
@@ -360,11 +403,32 @@ type TiKVClient struct {
 	// Optional: Defaults to 0
 	// +optional
 	StoreLimit int64 `toml:"store-limit,omitempty" json:"store-limit,omitempty"`
+	// +optional
+	CoprCache *CoprocessorCache `toml:"copr-cache" json:"copr-cache,omitempty"`
+}
+
+// CoprocessorCache is the config for coprocessor cache.
+type CoprocessorCache struct {
+	// Whether to enable the copr cache. The copr cache saves the result from TiKV Coprocessor in the memory and
+	// reuses the result when corresponding data in TiKV is unchanged, on a region basis.
+	// +optional
+	Enabled *bool `toml:"enabled" json:"enabled,omitempty"`
+	// The capacity in MB of the cache.
+	// +optional
+	CapacityMB *float64 `toml:"capacity-mb" json:"capacity-mb,omitempty"`
+	// Only cache requests whose result set is small.
+	// +optional
+	AdmissionMaxResultMB *float64 `toml:"admission-max-result-mb" json:"admission-max-result-mb,omitempty"`
+	// Only cache requests takes notable time to process.
+	// +optional
+	AdmissionMinProcessMs *uint64 `toml:"admission-min-process-ms" json:"admission-min-process-ms,omitempty"`
 }
 
 // Binlog is the config for binlog.
 // +k8s:openapi-gen=true
 type Binlog struct {
+	// optional
+	Enable *bool `toml:"enable" json:"enable,omitempty"`
 	// Optional: Defaults to 15s
 	// +optional
 	WriteTimeout *string `toml:"write-timeout,omitempty" json:"write-timeout,omitempty"`
@@ -406,6 +470,9 @@ type PessimisticTxn struct {
 // StmtSummary is the config for statement summary.
 // +k8s:openapi-gen=true
 type StmtSummary struct {
+	// Enable statement summary or not.
+	// +optional
+	Enable *bool `toml:"enable" json:"enable,omitempty"`
 	// The maximum number of statements kept in memory.
 	// Optional: Defaults to 100
 	// +optional
@@ -414,4 +481,29 @@ type StmtSummary struct {
 	// Optional: Defaults to 4096
 	// +optional
 	MaxSQLLength *uint `toml:"max-sql-length,omitempty" json:"max-sql-length,omitempty"`
+	// The refresh interval of statement summary.
+	// +optional
+	RefreshInterval *int `toml:"refresh-interval" json:"refresh-interval,omitempty"`
+	// The maximum history size of statement summary.
+	// +optional
+	HistorySize *int `toml:"history-size" json:"history-size,omitempty"`
+}
+
+// IsolationRead is the config for isolation read.
+// +k8s:openapi-gen=true
+type IsolationRead struct {
+	// Engines filters tidb-server access paths by engine type.
+	// imported from v3.1.0
+	// +optional
+	Engines []string `toml:"engines" json:"engines,omitempty"`
+}
+
+// Experimental controls the features that are still experimental: their semantics, interfaces are subject to change.
+// Using these features in the production environment is not recommended.
+// +k8s:openapi-gen=true
+type Experimental struct {
+	// Whether enable the syntax like `auto_random(3)` on the primary key column.
+	// imported from TiDB v3.1.0
+	// +optional
+	AllowAutoRandom *bool `toml:"allow-auto-random" json:"allow-auto-random,omitempty"`
 }

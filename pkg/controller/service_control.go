@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 // ExternalTrafficPolicy denotes if this Service desires to route external traffic to node-local or cluster-wide endpoints.
@@ -74,7 +74,7 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 		var updateErr error
 		updateSvc, updateErr = sc.kubeCli.CoreV1().Services(ns).Update(svc)
 		if updateErr == nil {
-			glog.Infof("update Service: [%s/%s] successfully, TidbCluster: %s", ns, svcName, tcName)
+			klog.Infof("update Service: [%s/%s] successfully, TidbCluster: %s", ns, svcName, tcName)
 			return nil
 		}
 

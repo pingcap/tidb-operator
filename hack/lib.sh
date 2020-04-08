@@ -27,17 +27,19 @@ TERRAFORM_VERSION=${TERRAFORM_VERSION:-0.12.12}
 KUBECTL_VERSION=${KUBECTL_VERSION:-1.12.10}
 KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
+DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 #
 # Don't ugprade to 2.15.x/2.16.x until this issue
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
 HELM_VERSION=${HELM_VERSION:-2.9.1}
 KIND_VERSION=${KIND_VERSION:-0.7.0}
+DOCS_VERSION=${DOCS_VERSION:-0.1.5}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.0.1+a810685993a3e100f4c51bc346cdc05eaf753922
-KUBETEST2_GKE_VERSION=v0.0.1+a3755779de7f745733de10f9bf63e01cf0864f9d
-KUBETEST2_KIND_VERSION=v0.0.1+d8d70a33d2cc5df85786b7724ac61c221bad3e18
+KUBETEST2_VERSION=v0.0.8
 KUBETSTS2_BIN=$OUTPUT_BIN/kubetest2
+AWS_K8S_TESTER_VERSION=v0.7.4
+AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
 
 test -d "$OUTPUT_BIN" || mkdir -p "$OUTPUT_BIN"
 
@@ -151,12 +153,23 @@ function hack::wait_for_success() {
     return 1
 }
 
+#
+# Concatenates the elements with a separator between them.
+#
+# Usage: hack::join ',' a b c
+#
+function hack::join() {
+	local IFS="$1"
+	shift
+	echo "$*"
+}
+
 function hack::__verify_kubetest2() {
     local n="$1"
-    local h="$2"
+    local v="$2"
     if test -x "$OUTPUT_BIN/$n"; then
-        local tmph=$(sha1sum $OUTPUT_BIN/$n | awk '{print $1}')
-        [[ "$tmph" == "$h" ]]
+        local tmpv=$($OUTPUT_BIN/$n --version 2>&1 | awk '{print $2}')
+        [[ "$tmpv" == "$v" ]]
         return
     fi
     return 1
@@ -164,19 +177,61 @@ function hack::__verify_kubetest2() {
 
 function hack::__ensure_kubetest2() {
     local n="$1"
-    IFS=+ read -r v h <<<"$2"
-    if hack::__verify_kubetest2 $n $h; then
+    if hack::__verify_kubetest2 $n $KUBETEST2_VERSION; then
         return 0
     fi
-    tmpfile=$(mktemp)
+    local tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
-    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$v/$n.gz | gunzip > $tmpfile
+    echo "info: downloading $n $KUBETEST2_VERSION"
+    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2/releases/download/$KUBETEST2_VERSION/$n-$OS-$ARCH.gz | gunzip > $tmpfile
     mv $tmpfile $OUTPUT_BIN/$n
     chmod +x $OUTPUT_BIN/$n
 }
 
 function hack::ensure_kubetest2() {
-    hack::__ensure_kubetest2 kubetest2 $KUBETEST2_VERSION
-    hack::__ensure_kubetest2 kubetest2-gke $KUBETEST2_GKE_VERSION
-    hack::__ensure_kubetest2 kubetest2-kind $KUBETEST2_KIND_VERSION
+    hack::__ensure_kubetest2 kubetest2
+    hack::__ensure_kubetest2 kubetest2-gke
+    hack::__ensure_kubetest2 kubetest2-kind
+    hack::__ensure_kubetest2 kubetest2-eks
+}
+
+function hack::verify_aws_k8s_tester() {
+    if test -x $AWS_K8S_TESTER_BIN; then
+        [[ "$($AWS_K8S_TESTER_BIN version | jq '."release-version"' -r)" == "$AWS_K8S_TESTER_VERSION" ]]
+        return
+    fi
+    return 1
+}
+
+function hack::ensure_aws_k8s_tester() {
+    if hack::verify_aws_k8s_tester; then
+        return
+    fi
+	local DOWNLOAD_URL=https://github.com/aws/aws-k8s-tester/releases/download
+    local tmpfile=$(mktemp)
+    trap "test -f $tmpfile && rm $tmpfile" RETURN
+    curl --retry 10 -L -o $tmpfile https://github.com/aws/aws-k8s-tester/releases/download/$AWS_K8S_TESTER_VERSION/aws-k8s-tester-$AWS_K8S_TESTER_VERSION-$OS-$ARCH
+	mv $tmpfile $AWS_K8S_TESTER_BIN
+	chmod +x $AWS_K8S_TESTER_BIN
+}
+
+function hack::verify_gen_crd_api_references_docs() {
+    if test -x "$DOCS_BIN"; then
+        # TODO check version when the binary version is available.
+        return
+    fi
+    return 1
+}
+
+function hack::ensure_gen_crd_api_references_docs() {
+    if hack::verify_gen_crd_api_references_docs; then
+        return 0
+    fi
+    echo "Installing gen_crd_api_references_docs v$DOCS_VERSION..."
+    tmpdir=$(mktemp -d)
+    trap "test -d $tmpdir && rm -r $tmpdir" RETURN
+    curl --retry 10 -L -o ${tmpdir}/docs-bin.tar.gz https://github.com/ahmetb/gen-crd-api-reference-docs/releases/download/v${DOCS_VERSION}/gen-crd-api-reference-docs_${OS}_${ARCH}.tar.gz
+    tar -zvxf ${tmpdir}/docs-bin.tar.gz -C ${tmpdir}
+    mv ${tmpdir}/gen-crd-api-reference-docs ${DOCS_BIN}
+    chmod +x ${DOCS_BIN}
 }

@@ -25,8 +25,15 @@ source $ROOT/hack/lib.sh
 PROVIDER=${PROVIDER:-}
 CLUSTER=${CLUSTER:-}
 GCP_PROJECT=${GCP_PROJECT:-}
+GCP_REGION=${GCP_REGION:-}
+GCP_ZONE=${GCP_ZONE:-}
+GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
+GCP_SDK=${GCP_SDK:-/google-cloud-sdk}
+KUBE_SSH_USER=${KUBE_SSH_USER:-vagrant}
 IMAGE_TAG=${IMAGE_TAG:-}
+SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 TIDB_OPERATOR_IMAGE=${TIDB_OPERATOR_IMAGE:-localhost:5000/pingcap/tidb-operator:latest}
+TIDB_BACKUP_MANAGER_IMAGE=${TIDB_BACKUP_MANAGER_IMAGE:-localhost:5000/pingcap/tidb-backup-manager:latest}
 E2E_IMAGE=${E2E_IMAGE:-localhost:5000/pingcap/tidb-operator-e2e:latest}
 KUBECONFIG=${KUBECONFIG:-$HOME/.kube/config}
 KUBECONTEXT=${KUBECONTEXT:-}
@@ -38,13 +45,16 @@ GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 # in parallel
 GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
 GINKGO_STREAM=${GINKGO_STREAM:-y}
+SKIP_GINKGO=${SKIP_GINKGO:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
     exit 1
 fi
 
+echo "KUBE_SSH_USER: $KUBE_SSH_USER"
 echo "TIDB_OPERATOR_IMAGE: $TIDB_OPERATOR_IMAGE"
+echo "TIDB_BACKUP_MANAGER_IMAGE: $TIDB_BACKUP_MANAGER_IMAGE"
 echo "E2E_IMAGE: $E2E_IMAGE"
 echo "KUBECONFIG: $KUBECONFIG"
 echo "KUBECONTEXT: $KUBECONTEXT"
@@ -114,32 +124,20 @@ for ((i = 1; i <= 32; i++)) {
 }
 EOF
         done
-    else
-        # disks are created under /mnt/stateful_partition directory
-        # https://cloud.google.com/container-optimized-os/docs/concepts/disks-and-filesystem
-        for n in $($KUBECTL_BIN --context $KUBECONTEXT get nodes -ojsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'); do
-            gcloud compute ssh $n --command 'sudo bash -c '"'"'
-test -d /mnt/stateful_partition/disks || mkdir -p /mnt/stateful_partition/disks
-df -h /mnt/stateful_partition/disks
-test -d /mnt/disks || mkdir -p /mnt/disks
-cd /mnt/disks
-for ((i = 1; i <= 32; i++)) {
-    if [ ! -d vol$i ]; then
-        mkdir vol$i
-    fi
-    if ! mountpoint vol$i &>/dev/null; then
-        if [ ! -d /mnt/stateful_partition/disks/vol$i ]; then
-            mkdir /mnt/stateful_partition/disks/vol$i
-        fi
-        mount --bind /mnt/stateful_partition/disks/vol$i vol$i
-    fi
-}
-'"'"
-        done
+    elif [ "$PROVIDER" == "gke" ]; then
+        echo "info: provider is $PROVIDER, skipped"
+    elif [ "$PROVIDER" == "eks" ]; then
+        echo "info: provider is $PROVIDER, skipped"
     fi
     echo "info: installing local-volume-provisioner"
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
     e2e::__wait_for_ds kube-system local-volume-provisioner
+}
+
+function e2e::__ecr_url() {
+    local account_id=$(aws sts get-caller-identity --output text | awk '{print $1}')
+    local region=$(aws configure get region)
+    echo "${account_id}.dkr.ecr.${region}.amazonaws.com"
 }
 
 function e2e::get_kube_version() {
@@ -163,29 +161,70 @@ function e2e::setup_helm_server() {
     $HELM_BIN version
 }
 
+# Used by non-kind providers to tag image with its id. This can force our e2e
+# process to pull correct image even if IfNotPresent is used in an existing
+# environment, e.g. testing in the same cluster.
+function e2e::image_id_tag() {
+    docker image inspect -f '{{.Id}}' "$1" | cut -d ':' -f 2 | head -c 10
+}
+
 function e2e::image_load() {
     local images=(
         $TIDB_OPERATOR_IMAGE
+        $TIDB_BACKUP_MANAGER_IMAGE
         $E2E_IMAGE
     )
     if [ "$PROVIDER" == "kind" ]; then
+        local nodes=$($KIND_BIN get nodes --name $CLUSTER | grep -v 'control-plane$')
         echo "info: load images ${images[@]}"
         for n in ${images[@]}; do
-            $KIND_BIN load docker-image --name $CLUSTER $n
+            $KIND_BIN load docker-image --name $CLUSTER $n --nodes $(hack::join ',' ${nodes[@]})
         done
     elif [ "$PROVIDER" == "gke" ]; then
         unset DOCKER_CONFIG # We don't need this and it may be read-only and fail the command to fail
         gcloud auth configure-docker
-        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$IMAGE_TAG
-        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$IMAGE_TAG
+        GCP_TIDB_OPERATOR_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator:$CLUSTER-$(e2e::image_id_tag $TIDB_OPERATOR_IMAGE)
+        GCP_TIDB_BACKUP_MANAGER_IMAGE=gcr.io/$GCP_PROJECT/tidb-backup-image:$CLUSTER-$(e2e::image_id_tag $TIDB_BACKUP_MANAGER_IMAGE)
+        GCP_E2E_IMAGE=gcr.io/$GCP_PROJECT/tidb-operator-e2e:$CLUSTER-$(e2e::image_id_tag $E2E_IMAGE)
         docker tag $TIDB_OPERATOR_IMAGE $GCP_TIDB_OPERATOR_IMAGE
         docker tag $E2E_IMAGE $GCP_E2E_IMAGE
+        docker tag $TIDB_BACKUP_MANAGER_IMAGE $GCP_TIDB_BACKUP_MANAGER_IMAGE
         echo "info: pushing $GCP_TIDB_OPERATOR_IMAGE"
         docker push $GCP_TIDB_OPERATOR_IMAGE
         echo "info: pushing $GCP_E2E_IMAGE"
         docker push $GCP_E2E_IMAGE
+        echo "info: pushing $GCP_TIDB_BACKUP_MANAGER_IMAGE"
+        docker push $GCP_TIDB_BACKUP_MANAGER_IMAGE
         TIDB_OPERATOR_IMAGE=$GCP_TIDB_OPERATOR_IMAGE
         E2E_IMAGE=$GCP_E2E_IMAGE
+        TIDB_BACKUP_MANAGER_IMAGE=$GCP_TIDB_BACKUP_MANAGER_IMAGE
+    elif [ "$PROVIDER" == "eks" ]; then
+        for repoName in e2e/tidb-operator e2e/tidb-operator-e2e e2e/tidb-backup-manager; do
+            local ret=0
+            aws ecr describe-repositories --repository-names $repoName || ret=$?
+            if [ $ret -ne 0 ]; then
+                echo "info: creating repository $repoName"
+                aws ecr create-repository --repository-name $repoName
+            fi
+        done
+        local ecrURL=$(e2e::__ecr_url)
+        echo "info: logging in $ecrURL"
+        aws ecr get-login-password | docker login --username AWS --password-stdin $ecrURL
+        AWS_TIDB_OPERATOR_IMAGE=$ecrURL/e2e/tidb-operator:$CLUSTER-$(e2e::image_id_tag $TIDB_OPERATOR_IMAGE)
+        AWS_TIDB_BACKUP_MANAGER_IMAGE=$ecrURL/e2e/tidb-backup-manager:$CLUSTER-$(e2e::image_id_tag $TIDB_BACKUP_MANAGER_IMAGE)
+        AWS_E2E_IMAGE=$ecrURL/e2e/tidb-operator-e2e:$CLUSTER-$(e2e::image_id_tag $E2E_IMAGE)
+        docker tag $TIDB_OPERATOR_IMAGE $AWS_TIDB_OPERATOR_IMAGE
+        docker tag $TIDB_BACKUP_MANAGER_IMAGE $AWS_TIDB_BACKUP_MANAGER_IMAGE
+        docker tag $E2E_IMAGE $AWS_E2E_IMAGE
+        echo "info: pushing $AWS_TIDB_OPERATOR_IMAGE"
+        docker push $AWS_TIDB_OPERATOR_IMAGE
+        echo "info: pushing $AWS_TIDB_BACKUP_MANAGER_IMAGE"
+        docker push $AWS_TIDB_BACKUP_MANAGER_IMAGE
+        echo "info: pushing $AWS_E2E_IMAGE"
+        docker push $AWS_E2E_IMAGE
+        TIDB_BACKUP_MANAGER_IMAGE=$AWS_TIDB_BACKUP_MANAGER_IMAGE
+        TIDB_OPERATOR_IMAGE=$AWS_TIDB_OPERATOR_IMAGE
+        E2E_IMAGE=$AWS_E2E_IMAGE
     else
         echo "info: unsupported provider '$PROVIDER', skip loading images"
     fi
@@ -194,14 +233,42 @@ function e2e::image_load() {
 hack::ensure_kubectl
 hack::ensure_helm
 
-if [ -z "$KUBECONTEXT" ]; then
-    KUBECONTEXT=$(kubectl config current-context)
-    echo "info: KUBECONTEXT is not set, current context $KUBECONTEXT is used"
+if [ "$PROVIDER" == "gke" ]; then
+    if [ -n "$GCP_CREDENTIALS" ]; then
+        gcloud auth activate-service-account --key-file "$GCP_CREDENTIALS"
+    fi
+    if [ -n "$GCP_REGION" ]; then
+        gcloud config set compute/region "$GCP_REGION"
+    fi
+    if [ -n "$GCP_ZONE" ]; then
+        gcloud config set compute/zone "$GCP_ZONE"
+    fi
+    gcloud container clusters get-credentials "$CLUSTER"
+elif [ "$PROVIDER" == "eks" ]; then
+    aws eks update-kubeconfig --name "$CLUSTER"
 fi
 
-e2e::image_load
+if [ -z "$KUBECONTEXT" ]; then
+    echo "info: KUBECONTEXT is not set, current context is used"
+    KUBECONTEXT=$($KUBECTL_BIN config current-context 2>/dev/null) || true
+    if [ -z "$KUBECONTEXT" ]; then
+        echo "error: current context cannot be detected"
+        exit 1
+    fi
+    echo "info: current kubeconfig context is '$KUBECONTEXT'"
+fi
+
+if [ -z "$SKIP_IMAGE_LOAD" ]; then
+    e2e::image_load
+fi
+
 e2e::setup_local_pvs
 e2e::setup_helm_server
+
+if [ -n "$SKIP_GINKGO" ]; then
+    echo "info: skipping ginkgo"
+    exit 0
+fi
 
 echo "info: start to run e2e process"
 
@@ -226,26 +293,19 @@ e2e_args=(
     ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
     --
-    --provider=skeleton
     --clean-start=true
     --delete-namespace-on-failure=false
-    --repo-root=$ROOT
+    --repo-root="$ROOT"
     # tidb-operator e2e flags
     --operator-tag=e2e
-    --operator-image=${TIDB_OPERATOR_IMAGE}
-    --e2e-image=${E2E_IMAGE}
+    --operator-image="${TIDB_OPERATOR_IMAGE}"
+    --backup-image="${TIDB_BACKUP_MANAGER_IMAGE}"
+    --e2e-image="${E2E_IMAGE}"
     # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
     --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
     -v=4
 )
-
-if [ -n "$REPORT_DIR" ]; then
-    e2e_args+=(
-        --report-dir="${REPORT_DIR}"
-        --report-prefix="${REPORT_PREFIX}"
-    )
-fi
 
 e2e_args+=(${@:-})
 
@@ -260,9 +320,53 @@ docker_args=(
     -v $KUBECONFIG:/etc/kubernetes/admin.conf:ro
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
+    --env KUBE_SSH_USER=$KUBE_SSH_USER
 )
 
+if [ "$PROVIDER" == "eks" ]; then
+    e2e_args+=(
+        --provider=aws
+        --gce-zone="${AWS_ZONE}" # reuse gce-zone to configure aws zone
+    )
+    docker_args+=(
+        # aws credential is required to get token for EKS
+        -v $HOME/.aws:/root/.aws
+        # ~/.ssh/kube_aws_rsa must be mounted into e2e container to run ssh
+        -v $HOME/.ssh/kube_aws_rsa:/root/.ssh/kube_aws_rsa
+    )
+elif [ "$PROVIDER" == "gke" ]; then
+    e2e_args+=(
+        --provider="${PROVIDER}"
+        --gce-project="${GCP_PROJECT}"
+        --gce-region="${GCP_REGION}"
+        --gce-zone="${GCP_ZONE}"
+    )
+    docker_args+=(
+        -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
+        --env GOOGLE_APPLICATION_CREDENTIALS=${GCP_CREDENTIALS}
+    )
+    # google-cloud-sdk is very large, we didn't pack it into our e2e image.
+    # instead, we use the sdk installed in CI image.
+    if [ ! -e "${GCP_SDK}/bin/gcloud" ]; then
+        echo "error: ${GCP_SDK} is not google cloud sdk, please install it here or specify correct path via GCP_SDK env"
+        exit 1
+    fi
+    docker_args+=(
+        -v ${GCP_SDK}:/google-cloud-sdk
+        # ~/.ssh/google_compute_engine must be mounted into e2e container to run ssh
+        -v $HOME/.ssh/google_compute_engine:/root/.ssh/google_compute_engine
+    )
+else
+    e2e_args+=(
+        --provider="${PROVIDER}"
+    )
+fi
+
 if [ -n "$REPORT_DIR" ]; then
+    e2e_args+=(
+        --report-dir="${REPORT_DIR}"
+        --report-prefix="${REPORT_PREFIX}"
+    )
     docker_args+=(
         -v $REPORT_DIR:$REPORT_DIR
     )

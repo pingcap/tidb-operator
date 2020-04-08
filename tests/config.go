@@ -21,12 +21,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/tests/slack"
-
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-
+	"github.com/pingcap/tidb-operator/tests/slack"
 	"gopkg.in/yaml.v2"
-	glog "k8s.io/klog"
+	"k8s.io/klog"
 )
 
 const (
@@ -44,6 +43,7 @@ type Config struct {
 	InstallOperator      bool            `yaml:"install_opeartor" json:"install_opeartor"`
 	OperatorTag          string          `yaml:"operator_tag" json:"operator_tag"`
 	OperatorImage        string          `yaml:"operator_image" json:"operator_image"`
+	BackupImage          string          `yaml:"backup_image" json:"backup_image"`
 	OperatorFeatures     map[string]bool `yaml:"operator_features" json:"operator_features"`
 	UpgradeOperatorTag   string          `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
 	UpgradeOperatorImage string          `yaml:"upgrade_operator_image" json:"upgrade_operator_image"`
@@ -76,6 +76,8 @@ type Config struct {
 	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
 
 	PreloadImages bool `yaml:"preload_images" json:"preload_images"`
+
+	OperatorKiller utiloperator.OperatorKillerConfig
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
@@ -158,7 +160,7 @@ func ParseConfigOrDie() *Config {
 		slack.NotifyAndPanic(err)
 	}
 
-	glog.Infof("using config: %+v", cfg)
+	klog.Infof("using config: %+v", cfg)
 	return cfg
 }
 

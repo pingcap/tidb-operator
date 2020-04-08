@@ -14,7 +14,6 @@
 package export
 
 import (
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
@@ -24,62 +23,32 @@ import (
 	"time"
 
 	"github.com/mholt/archiver"
-	glog "k8s.io/klog"
-
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"k8s.io/klog"
 )
 
-// BackupOpts contains the input arguments to the backup command
-type BackupOpts struct {
-	Namespace   string
-	BackupName  string
+// Options contains the input arguments to the backup command
+type Options struct {
+	util.GenericOptions
 	Bucket      string
-	Host        string
-	Port        int32
-	Password    string
-	User        string
 	StorageType string
 }
 
-func (bo *BackupOpts) String() string {
-	return fmt.Sprintf("%s/%s", bo.Namespace, bo.BackupName)
-}
-
-func (bo *BackupOpts) getBackupFullPath() string {
+func (bo *Options) getBackupFullPath() string {
 	return filepath.Join(constants.BackupRootPath, bo.getBackupRelativePath())
 }
 
-func (bo *BackupOpts) getBackupRelativePath() string {
+func (bo *Options) getBackupRelativePath() string {
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
 	return fmt.Sprintf("%s/%s", bo.Bucket, backupName)
 }
 
-func (bo *BackupOpts) getDestBucketURI(remotePath string) string {
+func (bo *Options) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
-func (bo *BackupOpts) getTikvGCLifeTime(db *sql.DB) (string, error) {
-	var tikvGCTime string
-	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable)
-	row := db.QueryRow(sql, constants.TikvGCVariable)
-	err := row.Scan(&tikvGCTime)
-	if err != nil {
-		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
-	}
-	return tikvGCTime, nil
-}
-
-func (bo *BackupOpts) setTikvGCLifeTime(db *sql.DB, gcTime string) error {
-	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
-	_, err := db.Exec(sql, gcTime, constants.TikvGCVariable)
-	if err != nil {
-		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
-	}
-	return nil
-}
-
-func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
+func (bo *Options) dumpTidbClusterData() (string, error) {
 	bfPath := bo.getBackupFullPath()
 	err := util.EnsureDirectoryExist(bfPath)
 	if err != nil {
@@ -95,7 +64,7 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 		"--tidb-force-priority=LOW_PRIORITY",
 		"--verbose=3",
 		"--regex",
-		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA))",
+		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))",
 	}
 
 	output, err := exec.Command("/mydumper", args...).CombinedOutput()
@@ -105,7 +74,7 @@ func (bo *BackupOpts) dumpTidbClusterData() (string, error) {
 	return bfPath, nil
 }
 
-func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
+func (bo *Options) backupDataToRemote(source, bucketURI string) error {
 	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
@@ -114,7 +83,7 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, output: %s, err: %v", bo, bucketURI, string(output), err)
 	}
 
-	glog.Infof("upload cluster %s backup data to %s successfully, now move it to permanent URL %s", bo, tmpDestBucket, destBucket)
+	klog.Infof("upload cluster %s backup data to %s successfully, now move it to permanent URL %s", bo, tmpDestBucket, destBucket)
 
 	// the backup was a success
 	// remove .tmp extension
@@ -123,10 +92,6 @@ func (bo *BackupOpts) backupDataToRemote(source, bucketURI string) error {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
 	return nil
-}
-
-func (bo *BackupOpts) getDSN(db string) string {
-	return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, db)
 }
 
 /*

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -25,7 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client) error {
+func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	if tac.Spec.TiKV == nil {
 		return nil
 	}
@@ -38,7 +39,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	}
 	instances := filterTiKVInstances(tc)
 	currentReplicas := int32(len(instances))
-	targetReplicas, err := calculateTikvMetrics(tac, sts, client, instances)
+	targetReplicas, err := calculateTikvMetrics(tac, sts, instances)
 	if err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if targetReplicas == tc.Spec.TiKV.Replicas {
 		return nil
 	}
-	return syncTiKVAfterCalculated(tc, tac, currentReplicas, targetReplicas)
+	return syncTiKVAfterCalculated(tc, tac, currentReplicas, targetReplicas, sts)
 }
 
 // syncTiKVAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
@@ -54,7 +55,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 // If the auto-scaling is permitted, the timestamp would be recorded and the Consecutive count would be zeroed.
 // The currentReplicas of TiKV calculated in auto-scaling is the count of the StateUp TiKV instance, so we need to
 // add the number of other state tikv instance replicas when we update the TidbCluster.Spec.TiKV.Replicas
-func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
+func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
 
 	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
 	if recommendedReplicas > tc.Spec.TiKV.Replicas {
@@ -67,9 +68,7 @@ func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 	if !ableToScale {
 		return nil
 	}
-	updateTcTiKVAnnIfScale(tac)
-	tc.Spec.TiKV.Replicas = recommendedReplicas
-	return nil
+	return updateTcTiKVIfScale(tc, tac, currentReplicas, recommendedReplicas, sts)
 }
 
 //TODO: fetch tikv instances info from pdapi in future
@@ -83,11 +82,37 @@ func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 	return instances
 }
 
-func updateTcTiKVAnnIfScale(tac *v1alpha1.TidbClusterAutoScaler) {
+// we record the auto-scaling out slot for tikv, in order to add special hot labels when they are created
+func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32, sts *appsv1.StatefulSet) error {
 	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
+	if recommendedReplicas > currentReplicas {
+		newlyScaleOutOrdinalSets := helper.GetPodOrdinals(recommendedReplicas, sts).Difference(helper.GetPodOrdinals(currentReplicas, sts))
+		if newlyScaleOutOrdinalSets.Len() > 0 {
+			if tc.Annotations == nil {
+				tc.Annotations = map[string]string{}
+			}
+			existed := operatorUtils.GetAutoScalingOutSlots(tc, v1alpha1.TiKVMemberType)
+			v, err := operatorUtils.Encode(newlyScaleOutOrdinalSets.Union(existed).List())
+			if err != nil {
+				return err
+			}
+			tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals] = v
+		}
+	}
+	tc.Spec.TiKV.Replicas = recommendedReplicas
+	return nil
 }
 
-func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, client promClient.Client, instances []string) (int32, error) {
+func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, instances []string) (int32, error) {
+	ep, err := genMetricsEndpoint(tac)
+	if err != nil {
+		return -1, err
+	}
+	client, err := promClient.NewClient(promClient.Config{Address: ep})
+	if err != nil {
+		return -1, err
+	}
+
 	metric := calculate.FilterMetrics(tac.Spec.TiKV.Metrics)
 	mType, err := calculate.GenMetricType(tac, metric)
 	if err != nil {
@@ -99,6 +124,7 @@ func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 		return -1, err
 	}
 	sq := &calculate.SingleQuery{
+		Endpoint:  ep,
 		Timestamp: time.Now().Unix(),
 		Instances: instances,
 		Metric:    metric,

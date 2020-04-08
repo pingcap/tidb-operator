@@ -5,6 +5,11 @@
 # timezone is the default system timzone
 timezone: UTC
 
+# Change the name of the statefulset and pod
+# The default is clusterName-ReleaseName-drainer
+# Do not change the name of an existing running drainer: this is unsupported.
+# drainerName:
+
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 clusterVersion: v3.0.8
@@ -24,7 +29,26 @@ disableDetect: false
 # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
 initialCommitTs: 0
 
+# Whether enable the TLS connection between TiDB server components
+tlsCluster:
+  # The steps to enable this feature:
+  #   1. Generate Drainer certificate.
+  #      There are multiple ways to generate these certificates:
+  #        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
+  #        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+  #        - or use cert-manager signed certificates: https://cert-manager.io/
+  #   2. Create one secret object for Drainer which contains the certificates created above.
+  #      The name of this Secret must be: <clusterName>-drainer-cluster-secret.
+  #        For Drainer: kubectl create secret generic <clusterName>-drainer-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #   3. Then create the Drainer cluster with `tlsCluster.enabled` set to `true`.
+  enabled: false
+
+  # certAllowedCN is the Common Name that allowed
+  certAllowedCN: []
+  #  - TiDB
+
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
+# [security] section will be generated automatically if tlsCluster.enabled is set to true so users do not need to configure it.
 config: |
   detect-interval = 10
   compressor = ""
