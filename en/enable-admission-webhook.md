@@ -39,8 +39,8 @@ With a default installation, TiDB Operator disables the admission controller. Ta
         ```yaml
         ......
         failurePolicy:
-            validation: Failure
-            mutation: Failure
+            validation: Fail
+            mutation: Fail
         ```
 
 3. Install or update TiDB Operator.

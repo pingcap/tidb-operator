@@ -39,8 +39,8 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     ```yaml
     ......
     failurePolicy:
-        validation: Failure
-        mutation: Failure
+        validation: Fail
+        mutation: Fail
     ```
 
 3. 安装/更新 TiDB Operator
