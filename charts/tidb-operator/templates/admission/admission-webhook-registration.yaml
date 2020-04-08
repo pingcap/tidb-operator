@@ -13,7 +13,7 @@ spec:
   {{- if .Values.admissionWebhook.apiservice.insecureSkipTLSVerify }}
   insecureSkipTLSVerify: true
   {{- else }}
-  caBundle: {{ .Values.admissionWebhook.apiservice.cert | b64enc }}
+  caBundle: {{ .Values.admissionWebhook.apiservice.cert }}
   {{- end }}
   group: admission.tidb.pingcap.com
   groupPriorityMinimum: 1000
@@ -49,7 +49,7 @@ webhooks:
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
       {{- if .Values.admissionWebhook.cabundle }}
-      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
       caBundle: null
       {{- end }}
@@ -86,7 +86,7 @@ webhooks:
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
       {{- if .Values.admissionWebhook.cabundle }}
-      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
       caBundle: null
       {{- end }}
@@ -121,7 +121,7 @@ webhooks:
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
       {{- if .Values.admissionWebhook.cabundle }}
-      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
       caBundle: null
       {{- end }}
@@ -152,7 +152,7 @@ webhooks:
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/mutatingreviews"
       {{- if .Values.admissionWebhook.cabundle }}
-      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
       caBundle: null
       {{- end }}
@@ -189,7 +189,7 @@ webhooks:
         namespace: default
         path: "/apis/admission.tidb.pingcap.com/v1alpha1/mutatingreviews"
       {{- if .Values.admissionWebhook.cabundle }}
-      caBundle: {{ .Values.admissionWebhook.cabundle | b64enc }}
+      caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
       caBundle: null
       {{- end }}
