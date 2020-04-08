@@ -878,7 +878,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if tc.Annotations != nil && len(tc.Annotations) > 0 {
 					_, ok := tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals]
 					if ok {
-						klog.Infof("tikv auto-scale out annotation is stil existed")
+						klog.Infof("tikv auto-scale out annotation still exists")
 						return false, nil
 					}
 				}
