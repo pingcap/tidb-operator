@@ -651,7 +651,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port:   intstr.FromInt(4000),
+					Port: intstr.FromInt(4000),
 				},
 			},
 			InitialDelaySeconds: int32(10),
