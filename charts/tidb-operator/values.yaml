@@ -230,5 +230,5 @@ admissionWebhook:
   ## would trust the roots on the apiserver.
   ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
   ## or you can get the cabundle by:
-  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
   cabundle: ""
