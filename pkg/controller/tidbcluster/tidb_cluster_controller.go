@@ -91,19 +91,17 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	csrInformer := kubeInformerFactory.Certificates().V1beta1().CertificateSigningRequests()
-	secretInformer := kubeInformerFactory.Core().V1().Secrets()
-	cmInformer := kubeInformerFactory.Core().V1().ConfigMaps()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
 	tidbControl := controller.NewDefaultTiDBControl(kubeCli)
-	cmControl := controller.NewRealConfigMapControl(kubeCli, cmInformer.Lister(), recorder)
+	cmControl := controller.NewRealConfigMapControl(kubeCli, recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
-	secControl := controller.NewRealSecretControl(kubeCli, secretInformer.Lister())
+	secControl := controller.NewRealSecretControl(kubeCli)
 	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
@@ -162,7 +160,6 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
-				cmInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,
@@ -202,7 +199,6 @@ func NewController(
 				cmControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
-				cmInformer.Lister(),
 				podInformer.Lister(),
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
