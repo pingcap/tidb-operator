@@ -68,6 +68,6 @@ spec:
         - name: serving-cert
           secret:
             defaultMode: 420
-            secretName: {{ .Values.admissionWebhook.apiservice.tls-secret }}
+            secretName: {{ .Values.admissionWebhook.apiservice.tlsSecret }}
       {{- end }}
 {{- end }}

@@ -220,7 +220,7 @@ admissionWebhook:
     ## The key and cert for `tidb-admission-webook.<Release Namespace>` Service.
     ## If insecureSkipTLSVerify is true, this would be ignored.
     caBundle: ""
-    tls-secret: ""
+    tlsSecret: ""
   ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
   ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
   ## would trust the roots on the apiserver.
