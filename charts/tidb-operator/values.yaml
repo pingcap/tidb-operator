@@ -220,10 +220,10 @@ admissionWebhook:
     ## The tls key and cert for `tidb-admission-webook.<Release Namespace>.svc` Service in Secret.
     ## If insecureSkipTLSVerify is true, this would be ignored.
     ## You can create the tls secret by:
-    ## kubectl create secret tls tidb-admission-webhook-certs  --cert=<path-to-cert> --key=<path-to-key> --namespace <release-namespace>
+    ## kubectl create secret generic <secret-name> --namespace=<release-namespace> --from-file=tls.crt=<path-to-cert> --from-file=tls.key=<path-to-key> --from-file=ca.crt=<path-to-ca>
     tlsSecret: ""
     ## The caBundle for the webhook apiservice, you could get it by the secret you created previously:
-    ## kubectl get secret tidb-admission-webhook-certs -o=jsonpath='{.data.tls\.crt}'
+    ## kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
     caBundle: ""
   ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
   ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
