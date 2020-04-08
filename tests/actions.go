@@ -294,6 +294,7 @@ type OperatorConfig struct {
 	ValidatingEnabled         bool
 	Cabundle                  string
 	BackupImage               string
+	AutoFailover              *bool
 }
 
 type TidbClusterConfig struct {
@@ -408,7 +409,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
 		"operatorImage":                                oi.Image,
 		"tidbBackupManagerImage":                       oi.BackupImage,
-		"controllerManager.autoFailover":               "true",
 		"scheduler.logLevel":                           "4",
 		"testMode":                                     strconv.FormatBool(oi.TestMode),
 		"admissionWebhook.cabundle":                    oi.Cabundle,
@@ -441,6 +441,9 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.Enabled(features.AdvancedStatefulSet) {
 		set["advancedStatefulset.create"] = "true"
+	}
+	if oi.AutoFailover != nil {
+		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
 	}
 
 	arr := make([]string, 0, len(set))

@@ -21,10 +21,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/tests/slack"
-
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-
+	"github.com/pingcap/tidb-operator/tests/slack"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
 )
@@ -77,6 +76,8 @@ type Config struct {
 	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
 
 	PreloadImages bool `yaml:"preload_images" json:"preload_images"`
+
+	OperatorKiller utiloperator.OperatorKillerConfig
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.

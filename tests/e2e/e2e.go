@@ -34,10 +34,13 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
+	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -55,6 +58,10 @@ import (
 	// ensure that cloud providers are loaded
 	_ "k8s.io/kubernetes/test/e2e/framework/providers/aws"
 	_ "k8s.io/kubernetes/test/e2e/framework/providers/gce"
+)
+
+var (
+	operatorKillerStopCh chan struct{}
 )
 
 // This is modified from framework.SetupSuite().
@@ -120,6 +127,14 @@ func setupSuite() {
 
 	if err := framework.WaitForDaemonSets(c, metav1.NamespaceSystem, int32(framework.TestContext.AllowedNotReadyNodes), framework.TestContext.SystemDaemonsetStartupTimeout); err != nil {
 		e2elog.Logf("WARNING: Waiting for all daemonsets to be ready failed: %v", err)
+	}
+
+	ginkgo.By("Initializing all nodes")
+	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	framework.ExpectNoError(err)
+	for _, node := range nodeList.Items {
+		framework.Logf("Initializing node %q", node.Name)
+		framework.ExpectNoError(utilnode.InitNode(&node))
 	}
 
 	// By using default storage class in GKE/EKS (aws), network attached storage
@@ -247,6 +262,21 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		ginkgo.By("Installing tidb-operator")
 		oa.CleanOperatorOrDie(ocfg)
 		oa.DeployOperatorOrDie(ocfg)
+		if e2econfig.TestConfig.OperatorKiller.Enabled {
+			operatorKiller := utiloperator.NewOperatorKiller(e2econfig.TestConfig.OperatorKiller, kubeCli, func() ([]v1.Pod, error) {
+				podList, err := kubeCli.CoreV1().Pods(ocfg.Namespace).List(metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(map[string]string{
+						"app.kubernetes.io/name": "tidb-operator",
+					}).String(),
+				})
+				if err != nil {
+					return nil, err
+				}
+				return podList.Items, nil
+			})
+			operatorKillerStopCh := make(chan struct{})
+			go operatorKiller.Run(operatorKillerStopCh)
+		}
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
 	}
@@ -260,6 +290,9 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.CleanupSuite()
 }, func() {
 	framework.AfterSuiteActions()
+	if operatorKillerStopCh != nil {
+		close(operatorKillerStopCh)
+	}
 })
 
 // RunE2ETests checks configuration parameters (specified through flags) and then runs

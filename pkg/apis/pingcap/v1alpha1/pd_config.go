@@ -118,6 +118,16 @@ type PDConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
+
+	// +optional
+	Dashboard *DashboardConfig `toml:"dashboard,omitempty" json:"dashboard,omitempty"`
+}
+
+// DashboardConfig is the configuration for tidb-dashboard.
+type DashboardConfig struct {
+	TiDBCAPath   string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
+	TiDBCertPath string `toml:"tidb-cert-path,omitempty" json:"tidb_cert_path,omitempty"`
+	TiDBKeyPath  string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.

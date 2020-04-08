@@ -630,11 +630,6 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
-	scheme := corev1.URISchemeHTTP
-	if tc.IsTLSClusterEnabled() {
-		scheme = corev1.URISchemeHTTPS
-	}
-
 	containers = append(containers, corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.TiDBImage(),
@@ -657,10 +652,8 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/status",
-					Port:   intstr.FromInt(10080),
-					Scheme: scheme,
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(4000),
 				},
 			},
 			InitialDelaySeconds: int32(10),
