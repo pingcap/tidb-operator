@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
-	"os"
 	"strconv"
 	"time"
 
@@ -1016,7 +1015,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = os.Getenv("RELEASED_VERSION")
 			version = "v1.0.6"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
@@ -1087,39 +1085,50 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				// wait tidb to be updated
 				if tc.Status.TiDB.StatefulSet.CurrentRevision == newTc.Status.TiDB.StatefulSet.CurrentRevision {
+					klog.Info("wait tidb to be updated")
 					return false, nil
 				}
 				// wait tidb finish updating
 				if newTc.Status.TiDB.StatefulSet.CurrentRevision != newTc.Status.TiDB.StatefulSet.UpdateRevision {
+					klog.Info("wait tidb finish updating")
 					return false, nil
 				}
 
 				// confirm the tidb pod have been changed
 				changed, err := utilpod.PodsAreChanged(c, tidbPods)()
-				if err != nil {
-					return false, nil
-				}
-				if !changed {
-					return false, fmt.Errorf("tidb should be updated after operator upgrading")
+				if changed {
+					klog.Infof("confirm tidb pods have been changed")
+				} else {
+					if err != nil {
+						klog.Errorf("meet error during verify tidb pods, err:%v", err)
+						return false, nil
+					}
+					if !changed {
+						return false, fmt.Errorf("tidb should be updated after operator upgrading")
+					}
 				}
 
 				// confirm the pd Pod haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
+					klog.Errorf("meet error during verify pd pods, err:%v", err)
 					return false, nil
 				}
 				if changed {
 					return false, fmt.Errorf("pd pods have been changed after upgrading operator")
 				}
+				klog.Infof("confirm pd pods haven't been changed")
 
 				// confirm the pd tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
+					klog.Errorf("meet error during verify tikv pods, err:%v", err)
 					return false, nil
 				}
 				if changed {
 					return false, fmt.Errorf("tikv pods have been changed after upgrading operator")
 				}
+				klog.Infof("confirm tikv pods haven't been changed")
 
 				return true, nil
 			})
