@@ -1017,9 +1017,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.BeforeEach(func() {
 			version = os.Getenv("RELEASED_VERSION")
-			if len(version) < 1 {
-				version = "v1.0.6"
-			}
+			version = "v1.0.6"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",
@@ -1068,17 +1066,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "failed to get tc")
 
 			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
-			if err != nil {
-				framework.ExpectNoError(err, "failed to get pd pods uids")
-			}
+			framework.ExpectNoError(err, "failed to get pd pods")
+
 			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
-			if err != nil {
-				framework.ExpectNoError(err, "failed to get tikv pods uids")
-			}
+			framework.ExpectNoError(err, "failed to get tikv pods")
+
 			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
-			if err != nil {
-				framework.ExpectNoError(err, "failed to get tidb pods uids")
-			}
+			framework.ExpectNoError(err, "failed to get tidb pods")
 
 			// Upgrade CRD / Operator to current version
 			ocfg.Tag = cfg.OperatorTag
@@ -1118,6 +1112,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, fmt.Errorf("pd replicas has changed after upgrading operator")
 				}
 
+				// confirm the pd tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
 					return false, nil
@@ -1125,7 +1120,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if changed {
 					return false, fmt.Errorf("tikv pods have been changed after upgrading operator")
 				}
-				
+
 				return true, nil
 			})
 			framework.ExpectNoError(err, "Failed to check TidbCluster Status After Upgrading Operator")
