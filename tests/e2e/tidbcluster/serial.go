@@ -1077,8 +1077,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.Image = cfg.OperatorImage
 			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
-			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 
+			// confirm the tidb has been changed
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				newTc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -1107,32 +1108,35 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						return false, fmt.Errorf("tidb should be updated after operator upgrading")
 					}
 				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Failed to check Tidb Status After Upgrading Operator")
 
+			err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				// confirm the pd Pod haven't been changed
-				changed, err = utilpod.PodsAreChanged(c, pdPods)()
+				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
 					klog.Errorf("meet error during verify pd pods, err:%v", err)
-					return false, nil
+					return true, nil
 				}
 				if changed {
-					return false, fmt.Errorf("pd pods have been changed after upgrading operator")
+					return true, nil
 				}
-				klog.Infof("confirm pd pods haven't been changed")
+				klog.Infof("confirm pd pods haven't been changed this time")
 
-				// confirm the pd tikv haven't been changed
+				// confirm the tikv haven't been changed
 				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
 					klog.Errorf("meet error during verify tikv pods, err:%v", err)
-					return false, nil
+					return true, nil
 				}
 				if changed {
-					return false, fmt.Errorf("tikv pods have been changed after upgrading operator")
+					return true, nil
 				}
-				klog.Infof("confirm tikv pods haven't been changed")
-
-				return true, nil
+				klog.Infof("confirm tikv pods haven't been changed this time")
+				return false, nil
 			})
-			framework.ExpectNoError(err, "Failed to check TidbCluster Status After Upgrading Operator")
+			framework.ExpectError(err, "expect tikv and pd haven't been changed for 5 minutes")
 		})
 	})
 })
