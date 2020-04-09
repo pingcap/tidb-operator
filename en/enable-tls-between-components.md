@@ -873,7 +873,7 @@ When you deploy a TiDB cluster, you can enable TLS between TiDB components, and 
 
 > **Note:**
 >
-> Currently, you can set only one value for the `cert-allowed-cn` configuration item of PD. Therefore, the `commonName` of all `Certificate` object must be the same.
+> Currently, you can set only one value for the `cert-allowed-cn` configuration item of PD. Therefore, the `commonName` of all `Certificate` objects must be the same.
 
 In this step, you need to perform the following operations:
 
