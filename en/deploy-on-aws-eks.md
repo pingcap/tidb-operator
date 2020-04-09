@@ -338,11 +338,27 @@ Finally, [deploy TiDB cluster and monitor](#deploy-tidb-cluster-and-monitor).
 
 2. Destroy the EKS cluster by the following command:
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-``` shell
-terraform destroy
-```
+    ``` shell
+    terraform destroy
+    ```
+
+    If the following error occurs during `terraform destroy`:
+
+    ```
+    Error: Get http://localhost/apis/apps/v1/namespaces/kube-system/deployments/tiller-deploy: dial tcp [::1]:80: connect: connection refused
+    ```
+
+    Run the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    terraform state rm module.tidb-operator.helm_release.tidb-operator
+    ```
+
+    And then run `terraform destroy` again.
 
 > **Note:**
 >
