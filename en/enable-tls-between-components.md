@@ -466,7 +466,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
       namespace: <namespace>
     spec:
       secretName: <cluster-name>-ca-secret
-      commonName: "TiDB CA"
+      commonName: "TiDB"
       isCA: true
       issuerRef:
         name: <cluster-name>-selfsigned-ca-issuer
@@ -516,7 +516,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "PD"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -575,7 +575,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "TiKV"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -697,7 +697,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "Pump"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -761,7 +761,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "Drainer"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -792,7 +792,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "Drainer"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -836,7 +836,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         renewBefore: 360h # 15d
         organization:
         - PingCAP
-        commonName: "TiDB Components TLS Client"
+        commonName: "TiDB"
         usages:
         - client auth
         issuerRef:
@@ -873,7 +873,7 @@ When you deploy a TiDB cluster, you can enable TLS between TiDB components, and 
 
 > **Note:**
 >
-> Currently, you can set only one value for the `cert-allowed-cn` configuration item of PD.
+> Currently, you can set only one value for the `cert-allowed-cn` configuration item of PD. Therefore, the `commonName` of all `Certificate` object must be the same.
 
 In this step, you need to perform the following operations:
 
