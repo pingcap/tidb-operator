@@ -78,14 +78,19 @@ fi
 
 args=(bash)
 if [ $# -gt 0 ]; then
-    args=($@)
+    args=("$@")
 fi
 
 docker_args=(
-    -it --rm
+    --rm
     -h $NAME
     --name $NAME
 )
+
+if [ -t 1 ]; then
+    # Allocate a pseudo-TTY when the STDIN is a terminal
+    docker_args+=(-it)
+fi
 
 # required by dind
 docker_args+=(
