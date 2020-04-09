@@ -19,7 +19,6 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"sort"
 	"strconv"
 	"time"
 
@@ -1054,7 +1053,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 
-			getPodUids := func(ls string) ([]string, error) {
+			getPods := func(ls string) ([]v1.Pod, error) {
 				listOptions := metav1.ListOptions{
 					LabelSelector: ls,
 				}
@@ -1062,26 +1061,21 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if err != nil {
 					return nil, err
 				}
-				var uids []string
-				for _, pod := range podList.Items {
-					uids = append(uids, string(pod.GetUID()))
-				}
-				sort.Strings(uids)
-				return uids, nil
+				return podList.Items, nil
 			}
 
 			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 			framework.ExpectNoError(err, "failed to get tc")
 
-			pdUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
 			if err != nil {
 				framework.ExpectNoError(err, "failed to get pd pods uids")
 			}
-			tikvUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
 			if err != nil {
 				framework.ExpectNoError(err, "failed to get tikv pods uids")
 			}
-			tidbUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
 			if err != nil {
 				framework.ExpectNoError(err, "failed to get tidb pods uids")
 			}
@@ -1106,48 +1100,32 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 
-				tidbNewUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+				// confirm the tidb pod have been changed
+				changed, err := utilpod.PodsAreChanged(c, tidbPods)()
 				if err != nil {
 					return false, nil
 				}
-
-				if len(tidbNewUids) != len(tidbUids) {
-					return false, fmt.Errorf("tidb replicas has changed")
-				}
-				// Confirm the tidb has Upgraded
-				for i := 0; i < len(tidbNewUids); i++ {
-					if tidbNewUids[i] == tidbUids[i] {
-						return false, nil
-					}
+				if !changed {
+					return false, fmt.Errorf("tidb should be updated after operator upgrading")
 				}
 
-				pdNewUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+				// confirm the pd Pod haven't been changed
+				changed, err = utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
 					return false, nil
 				}
-				if len(pdNewUids) != len(pdUids) {
-					return false, fmt.Errorf("pd replicas has changed")
-				}
-				// Confirm the pd hasn't changed
-				for i := 0; i < len(pdNewUids); i++ {
-					if pdNewUids[i] != pdUids[i] {
-						return false, fmt.Errorf("pd pods have been changed after upgrading operator")
-					}
+				if changed {
+					return false, fmt.Errorf("pd replicas has changed after upgrading operator")
 				}
 
-				tikvNewUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
 				if err != nil {
 					return false, nil
 				}
-				if len(tikvNewUids) != len(tikvUids) {
-					return false, fmt.Errorf("tikv replicas has changed")
+				if changed {
+					return false, fmt.Errorf("tikv pods have been changed after upgrading operator")
 				}
-				// Confirm the tikv hasn't changed
-				for i := 0; i < len(tikvNewUids); i++ {
-					if tikvNewUids[i] != tikvUids[i] {
-						return false, fmt.Errorf("tikv pods have been changed after upgrading operator")
-					}
-				}
+				
 				return true, nil
 			})
 			framework.ExpectNoError(err, "Failed to check TidbCluster Status After Upgrading Operator")
