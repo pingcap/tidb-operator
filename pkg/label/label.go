@@ -121,6 +121,9 @@ const (
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
 	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
+	// AnnSkipPDDashboardTLS describes whether skip pd dashboard tls configuration
+	AnnSkipPDDashboardTLS = "tidb.tidb.pingcap.com/skip-pd-dashboard-tls"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value

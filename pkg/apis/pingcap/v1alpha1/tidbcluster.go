@@ -431,3 +431,8 @@ func (tc *TidbCluster) GetInstanceName() string {
 	}
 	return tc.Name
 }
+
+func (tc *TidbCluster) SkipPDDashboardTLS() bool {
+	_, ok := tc.Annotations[label.AnnSkipPDDashboardTLS]
+	return ok
+}
