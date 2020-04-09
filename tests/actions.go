@@ -505,7 +505,7 @@ func (oa *operatorActions) InstallCRDOrDie(info *OperatorConfig) {
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	klog.Infof("deploying tidb-operator %s", info.ReleaseName)
 
-	if info.Tag != "e2e" && !strings.HasPrefix(info.Tag, "v1.0.") {
+	if info.Tag != "e2e" {
 		if err := oa.cloneOperatorRepo(); err != nil {
 			return err
 		}

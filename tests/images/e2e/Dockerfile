@@ -30,21 +30,5 @@ ADD bin/webhook /usr/local/bin/
 ADD bin/blockwriter /usr/local/bin/
 ADD bin/apiserver /usr/local/bin/
 
-RUN mkdir /charts/${RELEASED_VERSION}
-
-RUN curl -L https://github.com/pingcap/tidb-operator/releases/download/${RELEASED_VERSION}/tidb-operator-chart-${RELEASED_VERSION}.tgz \
-    -o tidb-operator-chart-${RELEASED_VERSION}.tgz && \
-    tar -zxvf tidb-operator-chart-${RELEASED_VERSION}.tgz && \
-    mv tidb-operator /charts/${RELEASED_VERSION}/tidb-operator && \
-    rm -rf tidb-operator && \
-    rm tidb-operator-chart-${RELEASED_VERSION}.tgz
-
-RUN curl -L https://github.com/pingcap/tidb-operator/releases/download/${RELEASED_VERSION}/tidb-cluster-chart-${RELEASED_VERSION}.tgz \
-    -o tidb-cluster-chart-${RELEASED_VERSION}.tgz && \
-    tar -zxvf tidb-cluster-chart-${RELEASED_VERSION}.tgz && \
-    mv tidb-cluster /charts/${RELEASED_VERSION}/tidb-cluster && \
-    rm -rf tidb-cluster && \
-    rm tidb-cluster-chart-${RELEASED_VERSION}.tgz
-
 ADD entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
