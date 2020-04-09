@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
+	"sort"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -710,6 +711,127 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			}
 			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
 			framework.ExpectError(err, "PD replication config is immutable through CR")
+		})
+	})
+
+	ginkgo.Context("[Verify: Upgrading Operator from 1.0.6", func() {
+		var oa tests.OperatorActions
+		var ocfg *tests.OperatorConfig
+		var version string
+
+		ginkgo.BeforeEach(func() {
+			version = "v1.0.6"
+			ocfg = &tests.OperatorConfig{
+				Namespace:   ns,
+				ReleaseName: "operator",
+				Tag:         version,
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			tests.DeployReleasedCRDOrDie(version)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			tests.DownloadReleasedOperatorChartOrDie(version)
+			tests.DownloadReleasedTidbClusterChartOrDie(version)
+			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			tests.CleanReleasedCRDOrDie(version)
+		})
+
+		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
+			tcName := "tidbcluster"
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "2"
+			cluster.Monitor = false
+			cluster.OperatorTag = version
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			f := func(ls string) ([]string, error) {
+				listOptions := metav1.ListOptions{
+					LabelSelector: ls,
+				}
+				podList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil {
+					return nil, err
+				}
+				var uids []string
+				for _, pod := range podList.Items {
+					uids = append(uids, string(pod.GetUID()))
+				}
+				sort.Strings(uids)
+				return uids, nil
+			}
+
+			pdUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+			if err != nil {
+				framework.ExpectNoError(err, "failed to get pd pods uids")
+			}
+			tikvUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+			if err != nil {
+				framework.ExpectNoError(err, "failed to get tikv pods uids")
+			}
+			tidbUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+			if err != nil {
+				framework.ExpectNoError(err, "failed to get tidb pods uids")
+			}
+
+			// Upgrade Operator to current version
+			ocfg.Tag = "e2e"
+			oa.UpgradeOperatorOrDie(ocfg)
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+				tidbNewUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+				if err != nil {
+					return false, nil
+				}
+				if len(tidbNewUids) != len(tidbUids) {
+					return false, fmt.Errorf("tidb replicas has changed")
+				}
+				// Confirm the tidb has Upgraded
+				for i := 0; i < len(tidbNewUids); i++ {
+					if tidbNewUids[i] == tidbUids[i] {
+						return false, nil
+					}
+				}
+
+				pdNewUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+				if err != nil {
+					return false, nil
+				}
+				if len(pdNewUids) != len(pdUids) {
+					return false, fmt.Errorf("pd replicas has changed")
+				}
+				// Confirm the pd hasn't changed
+				for i := 0; i < len(pdNewUids); i++ {
+					if pdNewUids[i] != pdUids[i] {
+						return false, fmt.Errorf("pd pods have been changed after upgrading operator")
+					}
+				}
+
+				tikvNewUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+				if err != nil {
+					return false, nil
+				}
+				if len(tikvNewUids) != len(tikvUids) {
+					return false, fmt.Errorf("tikv replicas has changed")
+				}
+				// Confirm the tikv hasn't changed
+				for i := 0; i < len(tikvNewUids); i++ {
+					if tikvNewUids[i] != tikvUids[i] {
+						return false, fmt.Errorf("tikv pods have been changed after upgrading operator")
+					}
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Failed to check TidbCluster Status After Upgrading Operator")
 		})
 	})
 

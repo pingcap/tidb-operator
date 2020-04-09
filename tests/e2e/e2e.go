@@ -280,6 +280,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	} else {
 		ginkgo.By("Skip installing tidb-operator")
 	}
+	setupHelmChart()
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
@@ -326,4 +327,15 @@ func RunE2ETests(t *testing.T) {
 	klog.Infof("Starting e2e run %q on Ginkgo node %d", framework.RunID, config.GinkgoConfig.ParallelNode)
 
 	ginkgo.RunSpecsWithDefaultAndCustomReporters(t, "tidb-operator e2e suite", r)
+}
+
+func setupHelmChart() {
+	c := "helm repo add pingcap https://charts.pingcap.org/"
+	if err := exec.Command("sh", "-c", c).Run(); err != nil {
+		framework.Failf("failed to add helm pingcap repo (cmd: %q, error: %v", c, err)
+	}
+	c = "helm repo update"
+	if err := exec.Command("sh", "-c", c).Run(); err != nil {
+		framework.Failf("failed to execute helm repo update (cmd: %q, error: %v", c, err)
+	}
 }
