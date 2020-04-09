@@ -772,7 +772,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
+	secControl := controller.NewFakeSecretControl(kubeCli)
 	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
