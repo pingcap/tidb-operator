@@ -458,7 +458,7 @@ category: how-to
       namespace: <namespace>
     spec:
       secretName: <cluster-name>-ca-secret
-      commonName: "TiDB CA"
+      commonName: "TiDB"
       isCA: true
       issuerRef:
         name: <cluster-name>-selfsigned-ca-issuer
@@ -508,7 +508,7 @@ category: how-to
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "PD"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -567,7 +567,7 @@ category: how-to
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "TiKV"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -686,7 +686,7 @@ category: how-to
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "Pump"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -748,7 +748,7 @@ category: how-to
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "Drainer"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -779,7 +779,7 @@ category: how-to
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "Drainer"
+          commonName: "TiDB"
           usages:
             - server auth
             - client auth
@@ -823,7 +823,7 @@ category: how-to
           renewBefore: 360h # 15d
           organization:
           - PingCAP
-          commonName: "TiDB Components TLS Client"
+          commonName: "TiDB"
           usages:
             - client auth
           issuerRef:
@@ -858,7 +858,7 @@ category: how-to
 
 > **注意：**
 >
-> 目前 PD 的 `cert-allowed-cn` 配置项只能设置一个值。
+> 目前 PD 的 `cert-allowed-cn` 配置项只能设置一个值。因此所有 `Certificate` 对象的 `commonName` 都要设置成同样一个值。
 
 在这一步中，需要完成以下操作：
 
