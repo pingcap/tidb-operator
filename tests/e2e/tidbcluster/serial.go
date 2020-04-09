@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
+	"os"
 	"sort"
 	"time"
 
@@ -720,11 +721,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = "v1.0.6"
+			version = os.Getenv("RELEASED_VERSION")
+			if len(version) < 1 {
+				version = "v1.0.6"
+			}
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",
 				Tag:         version,
+				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", version),
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")
@@ -732,8 +737,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tests.DeployReleasedCRDOrDie(version)
 			ginkgo.By("Installing tidb-operator")
 			oa.CleanOperatorOrDie(ocfg)
-			tests.DownloadReleasedOperatorChartOrDie(version)
-			tests.DownloadReleasedTidbClusterChartOrDie(version)
 			oa.DeployOperatorOrDie(ocfg)
 		})
 
@@ -755,7 +758,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
 
-			f := func(ls string) ([]string, error) {
+			getPodUids := func(ls string) ([]string, error) {
 				listOptions := metav1.ListOptions{
 					LabelSelector: ls,
 				}
@@ -771,27 +774,47 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return uids, nil
 			}
 
-			pdUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get tc")
+
+			pdUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
 			if err != nil {
 				framework.ExpectNoError(err, "failed to get pd pods uids")
 			}
-			tikvUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+			tikvUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
 			if err != nil {
 				framework.ExpectNoError(err, "failed to get tikv pods uids")
 			}
-			tidbUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+			tidbUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
 			if err != nil {
 				framework.ExpectNoError(err, "failed to get tidb pods uids")
 			}
 
-			// Upgrade Operator to current version
-			ocfg.Tag = "e2e"
+			// Upgrade CRD / Operator to current version
+			ocfg.Tag = cfg.OperatorTag
+			ocfg.Image = cfg.OperatorImage
+			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
-				tidbNewUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+
+				newTc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
+				// wait tidb to be updated
+				if tc.Status.TiDB.StatefulSet.CurrentRevision == newTc.Status.TiDB.StatefulSet.CurrentRevision {
+					return false, nil
+				}
+				// wait tidb finish updating
+				if newTc.Status.TiDB.StatefulSet.CurrentRevision != newTc.Status.TiDB.StatefulSet.UpdateRevision {
+					return false, nil
+				}
+
+				tidbNewUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+				if err != nil {
+					return false, nil
+				}
+
 				if len(tidbNewUids) != len(tidbUids) {
 					return false, fmt.Errorf("tidb replicas has changed")
 				}
@@ -802,7 +825,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					}
 				}
 
-				pdNewUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+				pdNewUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
 				if err != nil {
 					return false, nil
 				}
@@ -816,7 +839,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					}
 				}
 
-				tikvNewUids, err := f(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+				tikvNewUids, err := getPodUids(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
 				if err != nil {
 					return false, nil
 				}
