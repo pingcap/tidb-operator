@@ -1109,7 +1109,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if changed {
-					return false, fmt.Errorf("pd replicas has changed after upgrading operator")
+					return false, fmt.Errorf("pd pods have been changed after upgrading operator")
 				}
 
 				// confirm the pd tikv haven't been changed
