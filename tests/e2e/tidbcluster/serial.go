@@ -1112,7 +1112,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "Failed to check Tidb Status After Upgrading Operator")
 
-			err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
 				if err != nil {
