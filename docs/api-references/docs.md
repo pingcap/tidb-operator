@@ -4437,19 +4437,6 @@ bool
 <em>(Optional)</em>
 </td>
 </tr>
-<tr>
-<td>
-<code>dashboard</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.DashboardConfig">
-DashboardConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.OpenTracingReporter">OpenTracingReporter
@@ -4895,6 +4882,19 @@ string
 <p>NamespaceClassifier is for classifying stores/regions into different
 namespaces.
 Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dashboard</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.DashboardConfig">
+DashboardConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
