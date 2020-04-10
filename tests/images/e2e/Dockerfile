@@ -2,7 +2,6 @@ FROM debian:buster-slim
 
 ENV KUBECTL_VERSION=v1.12.2
 ENV HELM_VERSION=v2.9.1
-ENV RELEASED_VERSION=v1.0.6
 
 RUN apt-get update && \
     apt-get install -y ca-certificates curl git openssl default-mysql-client unzip
