@@ -20,6 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	v1 "k8s.io/api/core/v1"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -88,11 +89,11 @@ func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path
 	if spec.PD.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
 	}
-	if spec.PD.ResourceRequirements.Requests.StorageEphemeral() == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("pd.request.storage"), spec.PD.ResourceRequirements.Requests.StorageEphemeral(), "request storage of PD must not be empty"))
+	if _, ok := spec.PD.ResourceRequirements.Requests[v1.ResourceStorage]; !ok {
+		allErrs = append(allErrs, field.Required(path.Child("tikv.resources.requests").Key((string(v1.ResourceStorage))), "request storage of PD must not be empty"))
 	}
-	if spec.TiKV.ResourceRequirements.Requests.StorageEphemeral() == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("tikv.request.storage"), spec.TiKV.ResourceRequirements.Requests.StorageEphemeral(), "request storage of TiKV must not be empty"))
+	if _, ok := spec.TiKV.ResourceRequirements.Requests[v1.ResourceStorage]; !ok {
+		allErrs = append(allErrs, field.Required(path.Child("tikv.resources.requests").Key((string(v1.ResourceStorage))), "request storage of TiKV must not be empty"))
 	}
 	return allErrs
 }
@@ -122,12 +123,6 @@ func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.Err
 	}
 	if old.Spec.PD.Config != nil && tc.Spec.PD.Config == nil {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.config"), tc.Spec.PD.Config, "PD.config must not be nil"))
-	}
-	if old.Spec.PD.ResourceRequirements.Requests.StorageEphemeral() != nil && tc.Spec.PD.ResourceRequirements.Requests.StorageEphemeral() == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("pd.request.storage"), tc.Spec.PD.ResourceRequirements.Requests.StorageEphemeral(), "request storage of PD must not be empty"))
-	}
-	if old.Spec.TiKV.ResourceRequirements.Requests.StorageEphemeral() != nil && tc.Spec.TiKV.ResourceRequirements.Requests.StorageEphemeral() == nil {
-		allErrs = append(allErrs, field.Invalid(path.Child("tikv.request.storage"), tc.Spec.TiKV.ResourceRequirements.Requests.StorageEphemeral(), "request storage of TiKV must not be empty"))
 	}
 	return allErrs
 }
