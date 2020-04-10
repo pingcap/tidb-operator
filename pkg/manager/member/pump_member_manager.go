@@ -48,7 +48,6 @@ type pumpMemberManager struct {
 	cmControl    controller.ConfigMapControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
-	cmLister     corelisters.ConfigMapLister
 	podLister    corelisters.PodLister
 }
 
@@ -61,7 +60,6 @@ func NewPumpMemberManager(
 	cmControl controller.ConfigMapControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	cmLister corelisters.ConfigMapLister,
 	podLister corelisters.PodLister) manager.Manager {
 	return &pumpMemberManager{
 		certControl,
@@ -71,7 +69,6 @@ func NewPumpMemberManager(
 		cmControl,
 		setLister,
 		svcLister,
-		cmLister,
 		podLister,
 	}
 }
@@ -95,6 +92,16 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	notFound := errors.IsNotFound(err)
 	oldPumpSet := oldPumpSetTemp.DeepCopy()
 
+	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
+		return err
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for pump statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	cm, err := pmm.syncConfigMap(tc, oldPumpSet)
 	if err != nil {
 		return err
@@ -112,15 +119,14 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return pmm.setControl.CreateStatefulSet(tc, newPumpSet)
 	}
 
-	if err := pmm.syncTiDBClusterStatus(tc, oldPumpSet); err != nil {
-		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s status, error: %v", tc.Namespace, tc.Name, err)
-		return err
-	}
-
 	return updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
 }
 
 func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
 
 	tc.Status.Pump.StatefulSet = &set.Status
 
@@ -142,6 +148,10 @@ func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, se
 }
 
 func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tikv cluster %s/%s is paused, skip syncing for pump headless service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
 
 	newSvc := getNewPumpHeadlessService(tc)
 	oldSvc, err := pmm.svcLister.Services(newSvc.Namespace).Get(newSvc.Name)
@@ -242,6 +252,19 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	spec := tc.Spec.Pump
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
+	if tc.IsTLSClusterEnabled() {
+		securityMap := spec.Config["security"]
+		security := map[string]interface{}{}
+		if securityMap != nil {
+			security = securityMap.(map[string]interface{})
+		}
+
+		security["ssl-ca"] = path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)
+		security["ssl-cert"] = path.Join(pumpCertPath, corev1.TLSCertKey)
+		security["ssl-key"] = path.Join(pumpCertPath, corev1.TLSPrivateKeyKey)
+		spec.Config["security"] = security
+	}
+
 	confText, err := MarshalTOML(spec.Config)
 	if err != nil {
 		return nil, err
@@ -250,14 +273,6 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	name := controller.PumpMemberName(tc.Name)
 	confTextStr := string(confText)
 
-	if tc.IsTLSClusterEnabled() {
-		confTextStr = strings.Join([]string{
-			confTextStr,
-			"[security]",
-			fmt.Sprintf("ssl-ca = \"%s\"", path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)),
-			fmt.Sprintf("ssl-cert = \"%s\"", path.Join(pumpCertPath, corev1.TLSCertKey)),
-			fmt.Sprintf("ssl-key = \"%s\"", path.Join(pumpCertPath, corev1.TLSPrivateKeyKey))}, "\n")
-	}
 	data := map[string]string{
 		"pump-config": confTextStr,
 	}
@@ -344,7 +359,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				ContainerPort: 8250,
 			}},
 			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
-			Env:          envs,
+			Env:          util.AppendEnv(envs, spec.Env()),
 			VolumeMounts: volumeMounts,
 		},
 	}

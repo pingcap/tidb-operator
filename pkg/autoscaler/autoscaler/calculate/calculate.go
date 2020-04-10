@@ -14,11 +14,13 @@
 package calculate
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
@@ -33,6 +35,7 @@ const (
 	queryPath                    = "/api/v1/query"
 
 	float64EqualityThreshold = 1e-9
+	httpRequestTimeout       = 5
 )
 
 type SingleQuery struct {
@@ -46,7 +49,10 @@ type SingleQuery struct {
 func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, sq *SingleQuery, resp *Response) error {
 	query := sq.Quary
 	timestamp := sq.Timestamp
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s", sq.Endpoint, queryPath), nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*httpRequestTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s%s", sq.Endpoint, queryPath), nil)
 	if err != nil {
 		return err
 	}

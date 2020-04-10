@@ -1,4 +1,10 @@
-<p>Packages:</p>
+---
+title: TiDB Operator API Document
+summary: Reference of TiDB Operator API
+category: how-to
+---
+<h1>API Document</h1>
+<h2>Packages:</h2>
 <ul>
 <li>
 <a href="#pingcap.com%2fv1alpha1">pingcap.com/v1alpha1</a>
@@ -711,6 +717,20 @@ TiKVSpec
 </tr>
 <tr>
 <td>
+<code>tiflash</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiFlashSpec">
+TiFlashSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiFlash cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pump</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.PumpSpec">
@@ -735,6 +755,19 @@ HelperSpec
 <td>
 <em>(Optional)</em>
 <p>Helper spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the tidb cluster is paused and will not be processed by
+the controller.</p>
 </td>
 </tr>
 <tr>
@@ -1544,21 +1577,6 @@ TidbMonitorStatus
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>tlsCluster</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TLSCluster">
-TLSCluster
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable the TLS connection between TiDB server components
-Optional: Defaults to nil</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>cluster</code></br>
@@ -2416,6 +2434,87 @@ Optional: Defaults to range</p>
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.CommonConfig">CommonConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiFlashConfig">TiFlashConfig</a>)
+</p>
+<p>
+<p>CommonConfig is the configuration of TiFlash process.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>path_realtime_mode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mark_cache_size</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 5368709120</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minmax_index_cache_size</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 5368709120</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>flash</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Flash">
+Flash
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>loger</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.FlashLogger">
+FlashLogger
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.ComponentAccessor">ComponentAccessor
 </h3>
 <p>
@@ -2429,6 +2528,7 @@ and component-level overrides</p>
 <a href="#pingcap.com/v1alpha1.PDSpec">PDSpec</a>, 
 <a href="#pingcap.com/v1alpha1.PumpSpec">PumpSpec</a>, 
 <a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>, 
+<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVSpec">TiKVSpec</a>)
 </p>
 <p>
@@ -2604,6 +2704,34 @@ ConfigUpdateStrategy
 <em>(Optional)</em>
 <p>ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present
 Optional: Defaults to cluster-level setting</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like
+v1.Container.Env.
+Note that following env names cannot be used and may be overrided by
+tidb-operator built envs.
+- NAMESPACE
+- TZ
+- SERVICE_NAME
+- PEER_SERVICE_NAME
+- HEADLESS_SERVICE_NAME
+- SET_NAME
+- HOSTNAME
+- CLUSTER_NAME
+- POD_NAME
+- BINLOG_ENABLED
+- SLOW_LOG_FILE</p>
 </td>
 </tr>
 </tbody>
@@ -2862,6 +2990,55 @@ CrdKind
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.DashboardConfig">DashboardConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+</p>
+<p>
+<p>DashboardConfig is the configuration for tidb-dashboard.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>tidb_cacert_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb_cert_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb_key_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.Experimental">Experimental
 </h3>
 <p>
@@ -2920,6 +3097,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Log filename, leave empty to disable file log.</p>
 </td>
 </tr>
@@ -2931,6 +3109,7 @@ bool
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Is log rotate enabled.</p>
 </td>
 </tr>
@@ -2942,6 +3121,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Max size for a single file, in MB.</p>
 </td>
 </tr>
@@ -2953,6 +3133,7 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Max log keep days, default is never deleting.</p>
 </td>
 </tr>
@@ -2964,7 +3145,534 @@ int
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Maximum number of old log files to retain.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.Flash">Flash
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>Flash is the configuration of [flash] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>overlap_threshold</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0.6</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>compact_log_min_period</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 200</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>flash_cluster</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.FlashCluster">
+FlashCluster
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashApplication">FlashApplication
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashApplication is the configuration of [application] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>runAsDaemon</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashCluster">FlashCluster
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.Flash">Flash</a>)
+</p>
+<p>
+<p>FlashCluster is the configuration of [flash.flash_cluster] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>refresh_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 20</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>update_rule_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master_ttl</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 60</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashLogger">FlashLogger
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashLogger is the configuration of [logger] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>size</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 100M</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to information</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>count</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashProfile">FlashProfile
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashProfile is the configuration of [profiles] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>readonly</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Profile">
+Profile
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>default</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Profile">
+Profile
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashProxy">FlashProxy
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.Flash">Flash</a>)
+</p>
+<p>
+<p>FlashProxy is the configuration of [flash.proxy] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0.0.0.0:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-dir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data/proxy</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data/proxy.toml</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data/logs/proxy.log</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashQuota">FlashQuota
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashQuota is the configuration of [quotas] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>default</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Quota">
+Quota
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashRaft">FlashRaft
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashRaft is the configuration of [raft] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pd_addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>kvstore_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data/kvstore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage_engine</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to dt</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashServerConfig">FlashServerConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>)
+</p>
+<p>
+<p>FlashServerConfig is the configuration of Proxy server.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engine-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>TiKVServerConfig</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVServerConfig">
+TiKVServerConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVServerConfig</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashStatus">FlashStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashStatus is the configuration of [status] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metrics_port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 8234</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.FlashUser">FlashUser
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+</p>
+<p>
+<p>FlashUser is the configuration of [users] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>readonly</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.User">
+User
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>default</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.User">
+User
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -3006,18 +3714,6 @@ string
 </td>
 <td>
 <p>Location in which the gcs bucket is located.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>path</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Path is the full path where the backup is saved.
-The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -3261,6 +3957,97 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.Interval">Interval
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.Quota">Quota</a>)
+</p>
+<p>
+<p>Interval is the configuration of [quotas.default.interval] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>duration</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3600</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>queries</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>errors</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>result_rows</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>read_rows</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>execution_time</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
 </td>
 </tr>
 </tbody>
@@ -3546,6 +4333,36 @@ string
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.Networks">Networks
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.User">User</a>)
+</p>
+<p>
+<p>Networks is the configuration of [users.readonly.networks] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ip</code></br>
+<em>
+string
 </em>
 </td>
 <td>
@@ -4067,6 +4884,19 @@ namespaces.
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>dashboard</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.DashboardConfig">
+DashboardConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDFailureMember">PDFailureMember
@@ -4522,9 +5352,7 @@ Optional: Defaults to 3</p>
 <td>
 <code>location-labels</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StringSlice">
-StringSlice
-</a>
+[]string
 </em>
 </td>
 <td>
@@ -5078,6 +5906,18 @@ string
 <p>KeyPath is the path of file that contains X509 key in PEM format.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>cert-allowed-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.PDServerConfig">PDServerConfig
@@ -5334,6 +6174,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureM
 <a href="#pingcap.com/v1alpha1.UnjoinedMember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.UnjoinedMember
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
 </em>
 </td>
 <td>
@@ -5757,6 +6607,69 @@ float64
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.Profile">Profile
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.FlashProfile">FlashProfile</a>)
+</p>
+<p>
+<p>Profile is the configuration profiles.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>readonly</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>max_memory_usage</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>use_uncompressed_cache</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>load_balancing</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.PrometheusSpec">PrometheusSpec
 </h3>
 <p>
@@ -5824,6 +6737,215 @@ int
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.ProxyConfig">ProxyConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiFlashConfig">TiFlashConfig</a>)
+</p>
+<p>
+<p>ProxyConfig is the configuration of TiFlash proxy process.
+All the configurations are same with those of TiKV except adding <code>engine-addr</code> in the TiKVServerConfig</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-rotation-timespan</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 24h</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>panic-when-unexpected-key-or-data</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>server</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.FlashServerConfig">
+FlashServerConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVStorageConfig">
+TiKVStorageConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftstore</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVRaftstoreConfig">
+TiKVRaftstoreConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>rocksdb</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVDbConfig">
+TiKVDbConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>coprocessor</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVCoprocessorConfig">
+TiKVCoprocessorConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>readpool</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVReadPoolConfig">
+TiKVReadPoolConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftdb</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVRaftDBConfig">
+TiKVRaftDBConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>import</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVImportConfig">
+TiKVImportConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>gc</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVGCConfig">
+TiKVGCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pd</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVPDConfig">
+TiKVPDConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVSecurityConfig">
+TiKVSecurityConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.ProxyProtocol">ProxyProtocol
 </h3>
 <p>
@@ -5865,6 +6987,32 @@ uint
 <td>
 <em>(Optional)</em>
 <p>PROXY protocol header read timeout, Unit is second.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.ProxyServer">ProxyServer
+</h3>
+<p>
+<p>ProxyServer is the configuration of TiFlash proxy server.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engine-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -6021,6 +7169,38 @@ Kubernetes apps/v1.StatefulSetStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.Quota">Quota
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.FlashQuota">FlashQuota</a>)
+</p>
+<p>
+<p>Quota is the configuration of [quotas.default] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>interval</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Interval">
+Interval
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -6416,18 +7596,6 @@ string
 </tr>
 <tr>
 <td>
-<code>path</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Path is the full path where the backup is saved.
-The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>bucket</code></br>
 <em>
 string
@@ -6618,6 +7786,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>ClusterVerifyCN is the Common Name that allowed</p>
 </td>
 </tr>
 </tbody>
@@ -6893,6 +8062,53 @@ int
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.StorageClaim">StorageClaim
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>)
+</p>
+<p>
+<p>StorageClaim contains details of TiFlash storages</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represents the minimum resources the volume should have.
+More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources">https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Name of the StorageClass required by the claim.
+More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1">https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1</a></p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.StorageProvider">StorageProvider
 </h3>
 <p>
@@ -6937,20 +8153,10 @@ GcsStorageProvider
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.StringSlice">StringSlice
-(<code>[]string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDReplicationConfig">PDReplicationConfig</a>)
-</p>
-<p>
-<p>StringSlice is more friendly to json encode/decode</p>
-</p>
 <h3 id="pingcap.com/v1alpha1.TLSCluster">TLSCluster
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BRConfig">BRConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -7885,19 +9091,6 @@ Optional: Defaults to true if PumpSpec is non-nil, otherwise false</p>
 </tr>
 <tr>
 <td>
-<code>enableAdvertiseAddress</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Add &ndash;advertise-address to TiDB&rsquo;s startup parameters
-Optional: Defaults to false</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>maxFailoverCount</code></br>
 <em>
 int32
@@ -7905,8 +9098,8 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-Optional: Defaults to 0</p>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+Optional: Defaults to 3</p>
 </td>
 </tr>
 <tr>
@@ -8054,6 +9247,16 @@ int32
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiDBTLSClient">TiDBTLSClient
@@ -8112,6 +9315,177 @@ string
 Optional: Defaults to <cluster>-tidb-client-secret
 If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
 this field only work in backup/restore process</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.TiFlashConfig">TiFlashConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>)
+</p>
+<p>
+<p>TiFlashConfig is the configuration of TiFlash.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.CommonConfig">
+CommonConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>commonConfig is the Configuration of TiFlash process</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TiFlashSpec contains details of TiFlash members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.ComponentSpec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>privileged</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether create the TiFlash container in privileged mode, it is highly discouraged to enable this in
+critical environment.
+Optional: defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxFailoverCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+Optional: Defaults to 3</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClaims</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.StorageClaim">
+[]StorageClaim
+</a>
+</em>
+</td>
+<td>
+<p>The persistent volume claims of the TiFlash data storages.
+TiFlash supports multiple disks.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiFlashConfig">
+TiFlashConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of TiFlash</p>
 </td>
 </tr>
 </tbody>
@@ -8990,6 +10364,7 @@ TiKVSecurityConfig
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -9199,6 +10574,7 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -9608,6 +10984,7 @@ Kubernetes meta/v1.Time
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -9649,6 +11026,7 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -9766,6 +11144,7 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -9840,6 +11219,7 @@ Optional: Defaults to 10</p>
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -10124,6 +11504,7 @@ TiKVCfConfig
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -10714,6 +12095,7 @@ bool
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -10758,6 +12140,7 @@ TiKVStorageReadPoolConfig
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -10805,6 +12188,18 @@ string
 </tr>
 <tr>
 <td>
+<code>cert-allowed-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>override-ssl-target</code></br>
 <em>
 string
@@ -10831,6 +12226,7 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.FlashServerConfig">FlashServerConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -11218,8 +12614,8 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-Optional: Defaults to 0</p>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+Optional: Defaults to 3</p>
 </td>
 </tr>
 <tr>
@@ -11338,12 +12734,23 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVFailur
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiKVStorageConfig">TiKVStorageConfig
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12054,6 +13461,20 @@ TiKVSpec
 </tr>
 <tr>
 <td>
+<code>tiflash</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiFlashSpec">
+TiFlashSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiFlash cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pump</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.PumpSpec">
@@ -12078,6 +13499,19 @@ HelperSpec
 <td>
 <em>(Optional)</em>
 <p>Helper spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the tidb cluster is paused and will not be processed by
+the controller.</p>
 </td>
 </tr>
 <tr>
@@ -12891,6 +14325,71 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.User">User
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.FlashUser">FlashUser</a>)
+</p>
+<p>
+<p>User is the configuration of users.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>password</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>profile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>quota</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>networks</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.Networks">
+Networks
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

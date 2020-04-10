@@ -53,11 +53,12 @@ Read the [Roadmap](./ROADMAP.md).
 
 Read the [Quick Start Guide](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/), which includes all the guides for managing TiDB clusters in Kubernetes.
 
-
 ## Documentation
 
-- [English](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
-- [简体中文](https://pingcap.com/docs-cn/v3.0/tidb-in-kubernetes/tidb-operator-overview/)
+All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator). You can also see the documentation at PingCAP website:
+
+- [English](https://pingcap.com/docs/tidb-in-kubernetes/stable/tidb-operator-overview/)
+- [简体中文](https://pingcap.com/docs-cn/tidb-in-kubernetes/stable/tidb-operator-overview/)
 
 ## Contributing
 

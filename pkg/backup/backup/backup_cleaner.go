@@ -24,8 +24,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
 
@@ -36,7 +36,7 @@ type BackupCleaner interface {
 
 type backupCleaner struct {
 	statusUpdater controller.BackupConditionUpdaterInterface
-	secretLister  corelisters.SecretLister
+	kubeCli       kubernetes.Interface
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
 }
@@ -44,12 +44,12 @@ type backupCleaner struct {
 // NewBackupCleaner returns a BackupCleaner
 func NewBackupCleaner(
 	statusUpdater controller.BackupConditionUpdaterInterface,
-	secretLister corelisters.SecretLister,
+	kubeCli kubernetes.Interface,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface) BackupCleaner {
 	return &backupCleaner{
 		statusUpdater,
-		secretLister,
+		kubeCli,
 		jobLister,
 		jobControl,
 	}
@@ -112,7 +112,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.kubeCli)
 	if err != nil {
 		return nil, reason, err
 	}

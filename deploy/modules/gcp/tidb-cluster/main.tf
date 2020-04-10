@@ -135,6 +135,7 @@ locals {
 
 module "tidb-cluster" {
   source                     = "../../share/tidb-cluster-release"
+  create                     = var.create_tidb_cluster_release
   cluster_name               = var.cluster_name
   pd_count                   = var.pd_node_count * local.num_availability_zones
   tikv_count                 = var.tikv_node_count * local.num_availability_zones
@@ -149,6 +150,7 @@ module "tidb-cluster" {
 }
 
 resource "null_resource" "wait-lb-ip" {
+  count = var.create_tidb_cluster_release == true ? 1 : 0
   depends_on = [
     module.tidb-cluster
   ]

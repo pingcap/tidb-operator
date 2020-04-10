@@ -148,20 +148,14 @@ func main() {
 
 	var informerFactory informers.SharedInformerFactory
 	var kubeInformerFactory kubeinformers.SharedInformerFactory
-	if controller.ClusterScoped {
-		informerFactory = informers.NewSharedInformerFactory(cli, controller.ResyncDuration)
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactory(kubeCli, controller.ResyncDuration)
-	} else {
-		options := []informers.SharedInformerOption{
-			informers.WithNamespace(ns),
-		}
-		informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
-
-		kubeoptions := []kubeinformers.SharedInformerOption{
-			kubeinformers.WithNamespace(ns),
-		}
-		kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
+	var options []informers.SharedInformerOption
+	var kubeoptions []kubeinformers.SharedInformerOption
+	if !controller.ClusterScoped {
+		options = append(options, informers.WithNamespace(ns))
+		kubeoptions = append(kubeoptions, kubeinformers.WithNamespace(ns))
 	}
+	informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, controller.ResyncDuration, options...)
+	kubeInformerFactory = kubeinformers.NewSharedInformerFactoryWithOptions(kubeCli, controller.ResyncDuration, kubeoptions...)
 
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{

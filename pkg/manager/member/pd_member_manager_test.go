@@ -747,12 +747,11 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
-	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	podControl := controller.NewFakePodControl(podInformer)
 	pdControl := pdapi.NewFakePDControl(kubeCli)
-	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
+	secControl := controller.NewFakeSecretControl(kubeCli)
 	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	pdScaler := NewFakePDScaler()
 	autoFailover := true
@@ -918,6 +917,20 @@ func testAnnotations(t *testing.T, annotations map[string]string) func(sts *apps
 	}
 }
 
+func testPDContainerEnv(t *testing.T, env []corev1.EnvVar) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		got := []corev1.EnvVar{}
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.Name == v1alpha1.PDMemberType.String() {
+				got = c.Env
+			}
+		}
+		if diff := cmp.Diff(env, got); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+	}
+}
+
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
 	tests := []struct {
@@ -1035,6 +1048,74 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				}))
 			},
 		},
+		{
+			name: "set custom env",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Env: []corev1.EnvVar{
+								{
+									Name: "DASHBOARD_SESSION_SECRET",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "dashboard-session-secret",
+											},
+											Key: "encryption_key",
+										},
+									},
+								},
+								{
+									Name:  "TZ",
+									Value: "ignored",
+								},
+							},
+						},
+					},
+				},
+			},
+			testSts: testPDContainerEnv(t, []corev1.EnvVar{
+				{
+					Name: "NAMESPACE",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.namespace",
+						},
+					},
+				},
+				{
+					Name:  "PEER_SERVICE_NAME",
+					Value: "tc-pd-peer",
+				},
+				{
+					Name:  "SERVICE_NAME",
+					Value: "tc-pd",
+				},
+				{
+					Name:  "SET_NAME",
+					Value: "tc-pd",
+				},
+				{
+					Name: "TZ",
+				},
+				{
+					Name: "DASHBOARD_SESSION_SECRET",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "dashboard-session-secret",
+							},
+							Key: "encryption_key",
+						},
+					},
+				},
+			}),
+		},
 		// TODO add more tests
 	}
 
@@ -1086,7 +1167,7 @@ func TestGetPDConfigMap(t *testing.T) {
 							},
 							Replication: &v1alpha1.PDReplicationConfig{
 								MaxReplicas:    func() *uint64 { i := uint64(5); return &i }(),
-								LocationLabels: v1alpha1.StringSlice{"node", "rack"},
+								LocationLabels: []string{"node", "rack"},
 							},
 						},
 					},

@@ -103,11 +103,6 @@ type MonitorConfigModel struct {
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	var c = config.Config{
-		AlertingConfig: config.AlertingConfig{
-			AlertRelabelConfigs: nil,
-			AlertmanagerConfigs: nil,
-			XXX:                 nil,
-		},
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
 			EvaluationInterval: model.Duration(15 * time.Second),
@@ -249,9 +244,7 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 					StaticConfigs: []*config.TargetGroup{
 						{
 							Targets: []model.LabelSet{
-								map[model.LabelName]model.LabelValue{
-									"targets": model.LabelValue(cmodel.AlertmanagerURL),
-								},
+								{model.AddressLabel: model.LabelValue(cmodel.AlertmanagerURL)},
 							},
 						},
 					},
@@ -264,9 +257,7 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 func addTlsConfig(pc *config.Config) {
 
 	for id, sconfig := range pc.ScrapeConfigs {
-		// TiKV doesn't support scheme https for now.
-		// And we should fix it after TiKV fix this issue: https://github.com/tikv/tikv/issues/5340
-		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" {
+		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
 				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),

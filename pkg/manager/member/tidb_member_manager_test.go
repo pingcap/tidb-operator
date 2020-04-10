@@ -772,7 +772,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	secControl := controller.NewFakeSecretControl(kubeCli, secretInformer.Lister())
+	secControl := controller.NewFakeSecretControl(kubeCli)
 	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
@@ -1719,6 +1719,8 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		t.Log(test.name)
 
 		tc := newTidbClusterForTiDB()
+		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
+		tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(3)
 		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
 			"tikv-0": {PodName: "tikv-0", State: v1alpha1.TiKVStateUp},
 		}

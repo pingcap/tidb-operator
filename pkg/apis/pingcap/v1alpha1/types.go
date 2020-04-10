@@ -111,6 +111,10 @@ type TidbClusterSpec struct {
 	// TiKV cluster spec
 	TiKV TiKVSpec `json:"tikv"`
 
+	// TiFlash cluster spec
+	// +optional
+	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -118,6 +122,11 @@ type TidbClusterSpec struct {
 	// Helper spec
 	// +optional
 	Helper *HelperSpec `json:"helper,omitempty"`
+
+	// Indicates that the tidb cluster is paused and will not be processed by
+	// the controller.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 
 	// TODO: remove optional after defaulting logic introduced
 	// TiDB cluster version
@@ -257,8 +266,8 @@ type TiKVSpec struct {
 	// +optional
 	Privileged *bool `json:"privileged,omitempty"`
 
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -271,6 +280,58 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
+}
+
+// TiFlashSpec contains details of TiFlash members
+// +k8s:openapi-gen=true
+type TiFlashSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiFlash
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/tiflash
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Whether create the TiFlash container in privileged mode, it is highly discouraged to enable this in
+	// critical environment.
+	// Optional: defaults to false
+	// +optional
+	Privileged *bool `json:"privileged,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// The persistent volume claims of the TiFlash data storages.
+	// TiFlash supports multiple disks.
+	StorageClaims []StorageClaim `json:"storageClaims"`
+
+	// Config is the Configuration of TiFlash
+	// +optional
+	Config *TiFlashConfig `json:"config,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// StorageClaim contains details of TiFlash storages
+type StorageClaim struct {
+	// Resources represents the minimum resources the volume should have.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Name of the StorageClass required by the claim.
+	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -299,13 +360,8 @@ type TiDBSpec struct {
 	// +optional
 	BinlogEnabled *bool `json:"binlogEnabled,omitempty"`
 
-	// Add --advertise-address to TiDB's startup parameters
-	// Optional: Defaults to false
-	// +optional
-	EnableAdvertiseAddress *bool `json:"enableAdvertiseAddress,omitempty"`
-
-	// MaxFailoverCount limit the max replicas could be added in failover, 0 means unlimited
-	// Optional: Defaults to 0
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover
+	// Optional: Defaults to 3
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
@@ -455,6 +511,24 @@ type ComponentSpec struct {
 	// Optional: Defaults to cluster-level setting
 	// +optional
 	ConfigUpdateStrategy *ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
+
+	// List of environment variables to set in the container, like
+	// v1.Container.Env.
+	// Note that following env names cannot be used and may be overrided by
+	// tidb-operator built envs.
+	// - NAMESPACE
+	// - TZ
+	// - SERVICE_NAME
+	// - PEER_SERVICE_NAME
+	// - HEADLESS_SERVICE_NAME
+	// - SET_NAME
+	// - HOSTNAME
+	// - CLUSTER_NAME
+	// - POD_NAME
+	// - BINLOG_ENABLED
+	// - SLOW_LOG_FILE
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -513,6 +587,7 @@ type PDStatus struct {
 	Leader          PDMember                   `json:"leader,omitempty"`
 	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
 	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
+	Image           string                     `json:"image,omitempty"`
 }
 
 // PDMember is PD member
@@ -550,6 +625,7 @@ type TiDBStatus struct {
 	Members                  map[string]TiDBMember        `json:"members,omitempty"`
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
 	ResignDDLOwnerRetryCount int32                        `json:"resignDDLOwnerRetryCount,omitempty"`
+	Image                    string                       `json:"image,omitempty"`
 }
 
 // TiDBMember is TiDB member
@@ -576,6 +652,7 @@ type TiKVStatus struct {
 	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	Image           string                      `json:"image,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
@@ -829,10 +906,6 @@ type BackupSpec struct {
 // +k8s:openapi-gen=true
 // BRConfig contains config for BR
 type BRConfig struct {
-	// Whether enable the TLS connection between TiDB server components
-	// Optional: Defaults to nil
-	// +optional
-	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 	// ClusterName of backup/restore cluster
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster

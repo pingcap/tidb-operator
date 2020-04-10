@@ -25,6 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -179,4 +181,48 @@ func ClusterTLSSecretName(tcName, component string) string {
 
 func TiDBClientTLSSecretName(tcName string) string {
 	return fmt.Sprintf("%s-tidb-client-secret", tcName)
+}
+
+// SortEnvByName implements sort.Interface to sort env list by name.
+type SortEnvByName []corev1.EnvVar
+
+func (e SortEnvByName) Len() int {
+	return len(e)
+}
+func (e SortEnvByName) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
+func (e SortEnvByName) Less(i, j int) bool {
+	return e[i].Name < e[j].Name
+}
+
+// AppendEnv appends envs `b` into `a` ignoring envs whose names already exist
+// in `b`.
+// Note that this will not change relative order of envs.
+func AppendEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
+	aMap := make(map[string]corev1.EnvVar)
+	for _, e := range a {
+		aMap[e.Name] = e
+	}
+	for _, e := range b {
+		if _, ok := aMap[e.Name]; !ok {
+			a = append(a, e)
+		}
+	}
+	return a
+}
+
+// IsOwnedByTidbCluster checks if the given object is owned by TidbCluster.
+// Schema Kind and Group are checked, Version is ignored.
+func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
+	ref := metav1.GetControllerOf(obj)
+	if ref == nil {
+		return false, nil
+	}
+	gv, err := schema.ParseGroupVersion(ref.APIVersion)
+	if err != nil {
+		return false, nil
+	}
+	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
 }

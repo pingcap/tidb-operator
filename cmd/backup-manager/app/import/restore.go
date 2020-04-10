@@ -58,14 +58,17 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
 	args := []string{
-		fmt.Sprintf("-d=%s", restorePath),
-		fmt.Sprintf("-h=%s", ro.Host),
-		fmt.Sprintf("-P=%d", ro.Port),
-		fmt.Sprintf("-u=%s", ro.User),
-		fmt.Sprintf("-p=%s", ro.Password),
+		"--status-addr=0.0.0.0:8289",
+		"--backend=tidb",
+		"--server-mode=false",
+		"–-log-file=",
+		fmt.Sprintf("--tidb-user=%s", ro.User),
+		fmt.Sprintf("--tidb-password=%s", ro.Password),
+		fmt.Sprintf("--tidb-host=%s", ro.Host),
+		fmt.Sprintf("--d=%s", restorePath),
 	}
 
-	output, err := exec.Command("/loader", args...).CombinedOutput()
+	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
 	}

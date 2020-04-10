@@ -12,6 +12,7 @@ metadata:
   name: local-provisioner-config
   namespace: kube-system
 data:
+  setPVOwnerRef: "true"
   nodeLabelsForPV: |
     - kubernetes.io/hostname
   storageClassMap: |

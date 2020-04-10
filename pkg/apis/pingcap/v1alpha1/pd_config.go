@@ -13,11 +13,6 @@
 
 package v1alpha1
 
-import (
-	"strconv"
-	"strings"
-)
-
 // Maintain a copy of PDConfig to make it more friendly with the kubernetes API:
 //
 //  - add 'omitempty' json and toml tag to avoid passing the empty value of primitive types to tidb-server, e.g. 0 of int
@@ -123,6 +118,16 @@ type PDConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
+
+	// +optional
+	Dashboard *DashboardConfig `toml:"dashboard,omitempty" json:"dashboard,omitempty"`
+}
+
+// DashboardConfig is the configuration for tidb-dashboard.
+type DashboardConfig struct {
+	TiDBCAPath   string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
+	TiDBCertPath string `toml:"tidb-cert-path,omitempty" json:"tidb_cert_path,omitempty"`
+	TiDBKeyPath  string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
@@ -176,7 +181,7 @@ type PDReplicationConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +k8s:openapi-gen=false
 	// +optional
-	LocationLabels StringSlice `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
+	LocationLabels []string `toml:"location-labels,omitempty" json:"location-labels,omitempty"`
 	// StrictlyMatchLabel strictly checks if the label of TiKV is matched with LocaltionLabels.
 	// Immutable, change should be made through pd-ctl after cluster creation.
 	// Imported from v3.1.0
@@ -400,6 +405,10 @@ type PDSecurityConfig struct {
 	// KeyPath is the path of file that contains X509 key in PEM format.
 	// +optional
 	KeyPath string `toml:"key-path,omitempty" json:"key-path,omitempty"`
+	// CertAllowedCN is the Common Name that allowed
+	// +optional
+	// +k8s:openapi-gen=false
+	CertAllowedCN []string `toml:"cert-allowed-cn,omitempty" json:"cert-allowed-cn,omitempty"`
 }
 
 // PDServerConfig is the configuration for pd server.
@@ -428,35 +437,18 @@ type PDMetricConfig struct {
 // +k8s:openapi-gen=true
 type FileLogConfig struct {
 	// Log filename, leave empty to disable file log.
-	Filename string `toml:"filename,omitempty" json:"filename,omitempty"`
+	// +optional
+	Filename *string `toml:"filename,omitempty" json:"filename,omitempty"`
 	// Is log rotate enabled.
-	LogRotate bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
+	// +optional
+	LogRotate *bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
 	// Max size for a single file, in MB.
-	MaxSize int `toml:"max-size,omitempty" json:"max-size,omitempty"`
+	// +optional
+	MaxSize *int `toml:"max-size,omitempty" json:"max-size,omitempty"`
 	// Max log keep days, default is never deleting.
-	MaxDays int `toml:"max-days,omitempty" json:"max-days,omitempty"`
+	// +optional
+	MaxDays *int `toml:"max-days,omitempty" json:"max-days,omitempty"`
 	// Maximum number of old log files to retain.
-	MaxBackups int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
-}
-
-//StringSlice is more friendly to json encode/decode
-type StringSlice []string
-
-// MarshalJSON returns the size as a JSON string.
-func (s StringSlice) MarshalJSON() ([]byte, error) {
-	return []byte(strconv.Quote(strings.Join(s, ","))), nil
-}
-
-// UnmarshalJSON parses a JSON string into the bytesize.
-func (s *StringSlice) UnmarshalJSON(text []byte) error {
-	data, err := strconv.Unquote(string(text))
-	if err != nil {
-		return err
-	}
-	if len(data) == 0 {
-		*s = nil
-		return nil
-	}
-	*s = strings.Split(data, ",")
-	return nil
+	// +optional
+	MaxBackups *int `toml:"max-backups,omitempty" json:"max-backups,omitempty"`
 }
