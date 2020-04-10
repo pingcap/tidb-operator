@@ -15,6 +15,11 @@ package member
 
 import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
+const (
+	failoverEventReason     = "Failover"
+	failoverEventMsgPattern = "%s is during failover due to %s makred as failureMember, msg:%v"
+)
+
 // Failover implements the logic for pd/tikv/tidb's failover and recovery.
 type Failover interface {
 	Failover(*v1alpha1.TidbCluster) error

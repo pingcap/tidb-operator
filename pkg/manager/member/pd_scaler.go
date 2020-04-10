@@ -23,7 +23,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -36,12 +38,16 @@ type pdScaler struct {
 // NewPDScaler returns a Scaler
 func NewPDScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface) Scaler {
-	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl}}
+	pvcControl controller.PVCControlInterface,
+	recorder record.EventRecorder) Scaler {
+	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl, recorder}}
 }
 
 func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
+	oldReplicas := *oldSet.Spec.Replicas
+	targetReplicas := *newSet.Spec.Replicas
+	psd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "pd", oldReplicas, targetReplicas))
 	if scaling > 0 {
 		return psd.ScaleOut(tc, oldSet, newSet)
 	} else if scaling < 0 {

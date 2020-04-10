@@ -18,6 +18,11 @@ import (
 	apps "k8s.io/api/apps/v1"
 )
 
+const (
+	upgradingEventReason         = "Upgrading"
+	upgradingEventMessagePattern = "%s is during upgrading"
+)
+
 // Upgrader implements the logic for upgrading the tidb cluster.
 type Upgrader interface {
 	// Upgrade upgrade the cluster

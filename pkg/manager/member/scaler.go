@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -33,6 +34,8 @@ const (
 	skipReasonScalerPVCNotFound             = "scaler: pvc is not found"
 	skipReasonScalerAnnIsNil                = "scaler: pvc annotations is nil"
 	skipReasonScalerAnnDeferDeletingIsEmpty = "scaler: pvc annotations defer deleting is empty"
+	scalingEventReason                      = "Scaling"
+	scalingEventMsgPattern                  = "%s is scaling from %d to %d"
 )
 
 // Scaler implements the logic for scaling out or scaling in the cluster.
@@ -51,6 +54,7 @@ type generalScaler struct {
 	pdControl  pdapi.PDControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
 	pvcControl controller.PVCControlInterface
+	recorder   record.EventRecorder
 }
 
 func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,

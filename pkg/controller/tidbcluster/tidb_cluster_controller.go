@@ -104,11 +104,11 @@ func NewController(
 	secControl := controller.NewRealSecretControl(kubeCli)
 	certControl := controller.NewRealCertControl(kubeCli, csrInformer.Lister(), secControl)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
+	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl, recorder)
+	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister(), recorder)
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
-	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod)
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
+	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod, recorder)
+	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, recorder)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
@@ -135,6 +135,7 @@ func NewController(
 				pdUpgrader,
 				autoFailover,
 				pdFailover,
+				recorder,
 			),
 			mm.NewTiKVMemberManager(
 				pdControl,
@@ -150,6 +151,7 @@ func NewController(
 				tikvFailover,
 				tikvScaler,
 				tikvUpgrader,
+				recorder,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
@@ -163,6 +165,7 @@ func NewController(
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,
+				recorder,
 			),
 			meta.NewReclaimPolicyManager(
 				pvcInformer.Lister(),

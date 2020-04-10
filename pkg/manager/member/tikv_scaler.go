@@ -25,7 +25,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -39,12 +41,16 @@ type tikvScaler struct {
 func NewTiKVScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
-	podLister corelisters.PodLister) Scaler {
-	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
+	podLister corelisters.PodLister,
+	recorder record.EventRecorder) Scaler {
+	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl, recorder}, podLister}
 }
 
 func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
+	oldReplicas := *oldSet.Spec.Replicas
+	targetReplicas := *newSet.Spec.Replicas
+	tsd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "tikv", oldReplicas, targetReplicas))
 	if scaling > 0 {
 		return tsd.ScaleOut(tc, oldSet, newSet)
 	} else if scaling < 0 {
