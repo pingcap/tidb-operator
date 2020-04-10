@@ -6117,6 +6117,7 @@ spec:
                             to false optional'
                           type: boolean
                       type: object
+                    encryption: {}
                     gc:
                       properties:
                         "\tbatch-keys":
