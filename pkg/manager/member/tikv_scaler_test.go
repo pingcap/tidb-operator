@@ -29,6 +29,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 )
 
 func TestTiKVScalerScaleOut(t *testing.T) {
@@ -435,8 +436,8 @@ func newFakeTiKVScaler() (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cach
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
-
-	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}, podInformer.Lister()},
+	recorder := record.NewFakeRecorder(100)
+	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl, recorder}, podInformer.Lister()},
 		pdControl, pvcInformer.Informer().GetIndexer(), podInformer.Informer().GetIndexer(), pvcControl
 }
 

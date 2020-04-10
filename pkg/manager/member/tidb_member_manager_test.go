@@ -38,6 +38,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -778,6 +779,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
 	tidbControl := controller.NewFakeTiDBControl()
+	recorder := record.NewFakeRecorder(100)
 
 	tmm := &tidbMemberManager{
 		setControl,
@@ -793,6 +795,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		true,
 		tidbFailover,
 		tidbStatefulSetIsUpgrading,
+		recorder,
 	}
 	indexers := &fakeIndexers{
 		pod:    podInformer.Informer().GetIndexer(),

@@ -78,7 +78,8 @@ func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
 }
 
-type fakeTiDBFailover struct{}
+type fakeTiDBFailover struct {
+}
 
 // NewFakeTiDBFailover returns a fake Failover
 func NewFakeTiDBFailover() Failover {

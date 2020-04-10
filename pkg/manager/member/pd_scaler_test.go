@@ -15,11 +15,11 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/pdpb"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -31,6 +31,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 )
 
 func TestPDScalerScaleOut(t *testing.T) {
@@ -389,8 +390,9 @@ func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *control
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
+	recorder := record.NewFakeRecorder(100)
 
-	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},
+	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl, recorder}},
 		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
 }
 
