@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -36,10 +38,11 @@ import (
 type restoreManager struct {
 	backupLister  listers.BackupLister
 	statusUpdater controller.RestoreConditionUpdaterInterface
-	secretLister  corelisters.SecretLister
+	kubeCli       kubernetes.Interface
 	jobLister     batchlisters.JobLister
 	jobControl    controller.JobControlInterface
 	pvcLister     corelisters.PersistentVolumeClaimLister
+	tcLister      v1alpha1listers.TidbClusterLister
 	pvcControl    controller.GeneralPVCControlInterface
 }
 
@@ -47,19 +50,21 @@ type restoreManager struct {
 func NewRestoreManager(
 	backupLister listers.BackupLister,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
-	secretLister corelisters.SecretLister,
+	kubeCli kubernetes.Interface,
 	jobLister batchlisters.JobLister,
 	jobControl controller.JobControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
+	tcLister v1alpha1listers.TidbClusterLister,
 	pvcControl controller.GeneralPVCControlInterface,
 ) backup.RestoreManager {
 	return &restoreManager{
 		backupLister,
 		statusUpdater,
-		secretLister,
+		kubeCli,
 		jobLister,
 		jobControl,
 		pvcLister,
+		tcLister,
 		pvcControl,
 	}
 }
@@ -155,12 +160,12 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.kubeCli)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.kubeCli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -240,13 +245,21 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
+	restoreNamespace := ns
+	if restore.Spec.BR.ClusterNamespace != "" {
+		restoreNamespace = restore.Spec.BR.ClusterNamespace
+	}
+	tc, err := rm.tcLister.TidbClusters(restoreNamespace).Get(restore.Spec.BR.Cluster)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster), err
+	}
 
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.secretLister)
+	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.kubeCli)
 	if err != nil {
 		return nil, reason, err
 	}
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.secretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.kubeCli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
 	}
@@ -261,7 +274,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if restore.Spec.BR.TLSCluster != nil && restore.Spec.BR.TLSCluster.Enabled {
+	if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
+		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "cluster-client-tls",
 			ReadOnly:  true,
@@ -276,10 +290,10 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		})
 	}
-
-	if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.Enabled {
+	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled {
+		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
-		if restore.Spec.To.TLSClient.TLSSecret != "" {
+		if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.TLSSecret != "" {
 			clientSecretName = restore.Spec.To.TLSClient.TLSSecret
 		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{

@@ -25,6 +25,11 @@ func TestRenderPrometheusConfig(t *testing.T) {
 	expectedContent := `global:
   scrape_interval: 15s
   evaluation_interval: 15s
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alert-url
 rule_files:
 - /prometheus-rules/rules/*.rules.yml
 scrape_configs:
@@ -180,6 +185,7 @@ scrape_configs:
 			"ns2",
 		},
 		EnableTLSCluster: false,
+		AlertmanagerURL:  "alert-url",
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -300,7 +306,7 @@ scrape_configs:
 - job_name: tikv
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -309,7 +315,10 @@ scrape_configs:
       - ns1
       - ns2
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target

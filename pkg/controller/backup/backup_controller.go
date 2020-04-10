@@ -68,13 +68,13 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "backup"})
 
 	backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	jobInformer := kubeInformerFactory.Batch().V1().Jobs()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
-	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	statusUpdater := controller.NewRealBackupConditionUpdater(cli, backupInformer.Lister(), recorder)
 	jobControl := controller.NewRealJobControl(kubeCli, recorder)
 	pvcControl := controller.NewRealGeneralPVCControl(kubeCli, recorder)
-	backupCleaner := backup.NewBackupCleaner(statusUpdater, secretInformer.Lister(), jobInformer.Lister(), jobControl)
+	backupCleaner := backup.NewBackupCleaner(statusUpdater, kubeCli, jobInformer.Lister(), jobControl)
 
 	bkc := &Controller{
 		kubeClient: kubeCli,
@@ -84,10 +84,11 @@ func NewController(
 			backup.NewBackupManager(
 				backupCleaner,
 				statusUpdater,
-				secretInformer.Lister(),
+				kubeCli,
 				jobInformer.Lister(),
 				jobControl,
 				pvcInformer.Lister(),
+				tcInformer.Lister(),
 				pvcControl,
 			),
 		),

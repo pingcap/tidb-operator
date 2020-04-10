@@ -172,7 +172,7 @@ type Log struct {
 	QueryLogMaxLen *uint64 `toml:"query-log-max-len,omitempty" json:"query-log-max-len,omitempty"`
 	// Optional: Defaults to 1
 	// +optional
-	RecordPlanInSlowLog uint32 `toml:"record-plan-in-slow-log,omitempty" json:"record-plan-in-slow-log,omitempty"`
+	RecordPlanInSlowLog *uint32 `toml:"record-plan-in-slow-log,omitempty" json:"record-plan-in-slow-log,omitempty"`
 }
 
 // Security is the security section of the config.
@@ -192,8 +192,10 @@ type Security struct {
 	ClusterSSLCert *string `toml:"cluster-ssl-cert,omitempty" json:"cluster-ssl-cert,omitempty"`
 	// +optional
 	ClusterSSLKey *string `toml:"cluster-ssl-key,omitempty" json:"cluster-ssl-key,omitempty"`
+	// ClusterVerifyCN is the Common Name that allowed
 	// +optional
-	ClusterVerifyCN []string `toml:"cluster-verify-cn" json:"cluster-verify-cn,omitempty"`
+	// +k8s:openapi-gen=false
+	ClusterVerifyCN []string `toml:"cluster-verify-cn,omitempty" json:"cluster-verify-cn,omitempty"`
 }
 
 // Status is the status section of the config.

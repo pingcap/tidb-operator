@@ -36,6 +36,7 @@ type ComponentAccessor interface {
 	DnsPolicy() corev1.DNSPolicy
 	ConfigUpdateStrategy() ConfigUpdateStrategy
 	BuildPodSpec() corev1.PodSpec
+	Env() []corev1.EnvVar
 }
 
 type componentAccessorImpl struct {
@@ -158,6 +159,10 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 		spec.PriorityClassName = *a.PriorityClassName()
 	}
 	return spec
+}
+
+func (a *componentAccessorImpl) Env() []corev1.EnvVar {
+	return a.ComponentSpec.Env
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers

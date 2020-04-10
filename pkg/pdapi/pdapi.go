@@ -19,14 +19,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
@@ -139,7 +139,7 @@ type PDClient interface {
 	// GetHealth returns the PD's health info
 	GetHealth() (*HealthInfo, error)
 	// GetConfig returns PD's config
-	GetConfig() (*v1alpha1.PDConfig, error)
+	GetConfig() (*PDConfigFromAPI, error)
 	// GetCluster returns used when syncing pod labels.
 	GetCluster() (*metapb.Cluster, error)
 	// GetMembers returns all PD members from cluster
@@ -155,6 +155,8 @@ type PDClient interface {
 	SetStoreLabels(storeID uint64, labels map[string]string) (bool, error)
 	// DeleteStore deletes a TiKV store from cluster
 	DeleteStore(storeID uint64) error
+	// SetStoreState sets store to specified state.
+	SetStoreState(storeID uint64, state string) error
 	// DeleteMember deletes a PD member from cluster
 	DeleteMember(name string) error
 	// DeleteMemberByID deletes a PD member from cluster
@@ -281,13 +283,13 @@ func (pc *pdClient) GetHealth() (*HealthInfo, error) {
 	}, nil
 }
 
-func (pc *pdClient) GetConfig() (*v1alpha1.PDConfig, error) {
+func (pc *pdClient) GetConfig() (*PDConfigFromAPI, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, configPrefix)
 	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	config := &v1alpha1.PDConfig{}
+	config := &PDConfigFromAPI{}
 	err = json.Unmarshal(body, config)
 	if err != nil {
 		return nil, err
@@ -392,6 +394,30 @@ func (pc *pdClient) DeleteStore(storeID uint64) error {
 	defer httputil.DeferClose(res.Body)
 
 	// Remove an offline store should returns http.StatusOK
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("failed to delete store %d: %v", storeID, string(body))
+}
+
+// SetStoreState sets store to specified state.
+func (pc *pdClient) SetStoreState(storeID uint64, state string) error {
+	apiURL := fmt.Sprintf("%s/%s/%d/state?state=%s", pc.url, storePrefix, storeID, state)
+	req, err := http.NewRequest("POST", apiURL, nil)
+	if err != nil {
+		return err
+	}
+	res, err := pc.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
 		return nil
 	}
@@ -666,6 +692,7 @@ const (
 	GetTombStoneStoresActionType       ActionType = "GetTombStoneStores"
 	GetStoreActionType                 ActionType = "GetStore"
 	DeleteStoreActionType              ActionType = "DeleteStore"
+	SetStoreStateActionType            ActionType = "SetStoreState"
 	DeleteMemberByIDActionType         ActionType = "DeleteMemberByID"
 	DeleteMemberActionType             ActionType = "DeleteMember "
 	SetStoreLabelsActionType           ActionType = "SetStoreLabels"
@@ -725,13 +752,13 @@ func (pc *FakePDClient) GetHealth() (*HealthInfo, error) {
 	return result.(*HealthInfo), nil
 }
 
-func (pc *FakePDClient) GetConfig() (*v1alpha1.PDConfig, error) {
+func (pc *FakePDClient) GetConfig() (*PDConfigFromAPI, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetConfigActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*v1alpha1.PDConfig), nil
+	return result.(*PDConfigFromAPI), nil
 }
 
 func (pc *FakePDClient) GetCluster() (*metapb.Cluster, error) {
@@ -783,6 +810,15 @@ func (pc *FakePDClient) GetStore(id uint64) (*StoreInfo, error) {
 
 func (pc *FakePDClient) DeleteStore(id uint64) error {
 	if reaction, ok := pc.reactions[DeleteStoreActionType]; ok {
+		action := &Action{ID: id}
+		_, err := reaction(action)
+		return err
+	}
+	return nil
+}
+
+func (pc *FakePDClient) SetStoreState(id uint64, state string) error {
+	if reaction, ok := pc.reactions[SetStoreStateActionType]; ok {
 		action := &Action{ID: id}
 		_, err := reaction(action)
 		return err

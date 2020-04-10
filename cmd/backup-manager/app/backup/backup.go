@@ -19,6 +19,7 @@ import (
 	"io"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/gogo/protobuf/proto"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
@@ -45,7 +46,7 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 		return "", err
 	}
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
-	if backup.Spec.BR.TLSCluster != nil && backup.Spec.BR.TLSCluster.Enabled {
+	if bo.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
 		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
@@ -63,11 +64,35 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	output, err := exec.Command("br", fullArgs...).CombinedOutput()
+	cmd := exec.Command("br", fullArgs...)
+	cmd.Stderr = cmd.Stdout
+	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, execute br command %v failed, output: %s, err: %v", bo, fullArgs, string(output), err)
+		return remotePath, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
 	}
-	klog.Infof("Backup data for cluster %s successfully, output: %s", bo, string(output))
+	err = cmd.Start()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+	}
+	var tmpOutput, errMsg string
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdOut.Read(tmp)
+		tmpOutput = string(tmp)
+		if strings.Contains(tmpOutput, "[ERROR]") {
+			errMsg += tmpOutput
+		}
+		klog.Infof(strings.Replace(tmpOutput, "\n", "", -1))
+		if err != nil {
+			break
+		}
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+	}
+
+	klog.Infof("Backup data for cluster %s successfully", bo)
 	return remotePath, nil
 }
 

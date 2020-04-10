@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -78,7 +79,6 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
-	cmLister corelisters.ConfigMapLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
@@ -91,7 +91,6 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,
-		cmLister:                     cmLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
 		tidbFailover:                 tidbFailover,
@@ -122,6 +121,11 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb headless service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -169,6 +173,15 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	setNotExist := errors.IsNotFound(err)
 
 	oldTiDBSet := oldTiDBSetTemp.DeepCopy()
+	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
+		return err
+	}
+
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb statefulset", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
+
 	cm, err := tmm.syncTiDBConfigMap(tc, oldTiDBSet)
 	if err != nil {
 		return err
@@ -188,17 +201,13 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	if err = tmm.syncTidbClusterStatus(tc, oldTiDBSet); err != nil {
-		return err
-	}
-
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}
 	}
 
-	if tmm.autoFailover {
+	if tmm.autoFailover && tc.Spec.TiDB.MaxFailoverCount != nil {
 		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
 			tmm.tidbFailover.Recover(tc)
 		}
@@ -215,6 +224,10 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 }
 
 func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
+	if tc.Spec.Paused {
+		klog.V(4).Infof("tidb cluster %s/%s is paused, skip syncing for tidb service", tc.GetNamespace(), tc.GetName())
+		return nil
+	}
 
 	newSvc := getNewTiDBServiceOrNil(tc)
 	// TODO: delete tidb service if user remove the service spec deliberately
@@ -322,11 +335,10 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	plugins := tc.Spec.TiDB.Plugins
 	startScript, err := RenderTiDBStartScript(&TidbStartScriptModel{
-		ClusterName:            tc.Name,
-		EnableAdvertiseAddress: tc.Spec.TiDB.IsAdvertiseAddressEnabled(),
-		EnablePlugin:           len(plugins) > 0,
-		PluginDirectory:        "/plugins",
-		PluginList:             strings.Join(plugins, ","),
+		ClusterName:     tc.Name,
+		EnablePlugin:    len(plugins) > 0,
+		PluginDirectory: "/plugins",
+		PluginList:      strings.Join(plugins, ","),
 	})
 	if err != nil {
 		return nil, err
@@ -594,37 +606,26 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:  "SLOW_LOG_FILE",
 			Value: slowLogFileEnvVal,
 		},
-	}
-
-	if tc.Spec.TiDB.IsAdvertiseAddressEnabled() {
-		advertiseEnvs := []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.name",
-					},
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
 				},
 			},
-			{
-				Name: "NAMESPACE",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
-					},
+		},
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
 				},
 			},
-			{
-				Name:  "HEADLESS_SERVICE_NAME",
-				Value: headlessSvcName,
-			},
-		}
-		envs = append(envs, advertiseEnvs...)
-	}
-
-	scheme := corev1.URISchemeHTTP
-	if tc.IsTLSClusterEnabled() {
-		scheme = corev1.URISchemeHTTPS
+		},
+		{
+			Name:  "HEADLESS_SERVICE_NAME",
+			Value: headlessSvcName,
+		},
 	}
 
 	containers = append(containers, corev1.Container{
@@ -646,13 +647,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
-		Env:          envs,
+		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/status",
-					Port:   intstr.FromInt(10080),
-					Scheme: scheme,
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(4000),
 				},
 			},
 			InitialDelaySeconds: int32(10),
@@ -701,6 +700,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 }
 
 func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
+
 	tc.Status.TiDB.StatefulSet = &set.Status
 
 	upgrading, err := tmm.tidbStatefulSetIsUpgradingFn(tmm.podLister, set, tc)
@@ -744,7 +748,11 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		tidbStatus[name] = newTidbMember
 	}
 	tc.Status.TiDB.Members = tidbStatus
-
+	tc.Status.TiDB.Image = ""
+	c := filterContainer(set, "tidb")
+	if c != nil {
+		tc.Status.TiDB.Image = c.Image
+	}
 	return nil
 }
 

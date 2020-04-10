@@ -12,11 +12,11 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.0-beta.2
+operatorImage: pingcap/tidb-operator:v1.1.0-rc.1
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-beta.2
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-rc.1
 
 #
 # Enable or disable tidb-operator features:
@@ -217,14 +217,18 @@ admissionWebhook:
     ## apiservice config
     ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
     insecureSkipTLSVerify: true
-    ## The key and cert for `tidb-admission-webook.<Release Namespace>` Service.
+    ## The Secret includes the TLS ca, cert and key for the `tidb-admission-webook.<Release Namespace>.svc` Service.
     ## If insecureSkipTLSVerify is true, this would be ignored.
-    cert: ""
-    key: ""
+    ## You can create the tls secret by:
+    ## kubectl create secret generic <secret-name> --namespace=<release-namespace> --from-file=tls.crt=<path-to-cert> --from-file=tls.key=<path-to-key> --from-file=ca.crt=<path-to-ca>
+    tlsSecret: ""
+    ## The caBundle for the webhook apiservice, you could get it by the secret you created previously:
+    ## kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
+    caBundle: ""
   ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
   ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
   ## would trust the roots on the apiserver.
   ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
   ## or you can get the cabundle by:
-  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}'
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
   cabundle: ""
