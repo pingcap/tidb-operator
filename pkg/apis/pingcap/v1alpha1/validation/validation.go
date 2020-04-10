@@ -90,7 +90,7 @@ func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
 	}
 	if _, ok := spec.PD.ResourceRequirements.Requests[v1.ResourceStorage]; !ok {
-		allErrs = append(allErrs, field.Required(path.Child("tikv.resources.requests").Key((string(v1.ResourceStorage))), "request storage of PD must not be empty"))
+		allErrs = append(allErrs, field.Required(path.Child("pd.resources.requests").Key((string(v1.ResourceStorage))), "request storage of PD must not be empty"))
 	}
 	if _, ok := spec.TiKV.ResourceRequirements.Requests[v1.ResourceStorage]; !ok {
 		allErrs = append(allErrs, field.Required(path.Child("tikv.resources.requests").Key((string(v1.ResourceStorage))), "request storage of TiKV must not be empty"))
