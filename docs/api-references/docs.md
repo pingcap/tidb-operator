@@ -3320,150 +3320,7 @@ int32
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.MasterKeyFileConfig">MasterKeyFileConfig
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>method</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Encrypyion method, use master key encryption data key
-Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
-Optional: Default to plaintext
-optional</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>path</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Text file containing the key in hex form, end with &lsquo;\n&rsquo;</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.MasterKeyKMSConfig">MasterKeyKMSConfig
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>key-id</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>AWS CMK key-id it can be find in AWS Console or use aws cli
-This field is required</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>access-key</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>AccessKey of AWS user, leave empty if using other authrization method
-optional</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>secret-access-key</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>SecretKey of AWS user, leave empty if using other authrization method
-optional</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>region</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Region of this KMS key
-Optional: Default to us-east-1
-optional</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>endpoint</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
-optional</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.MemberPhase">MemberPhase
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDStatus">PDStatus</a>, 
-<a href="#pingcap.com/v1alpha1.PumpStatus">PumpStatus</a>, 
-<a href="#pingcap.com/v1alpha1.TiDBStatus">TiDBStatus</a>, 
-<a href="#pingcap.com/v1alpha1.TiKVStatus">TiKVStatus</a>)
-</p>
-<p>
-<p>MemberPhase is the current state of member</p>
-</p>
-<h3 id="pingcap.com/v1alpha1.MemberType">MemberType
-(<code>string</code> alias)</p></h3>
-<p>
-<p>MemberType represents member type</p>
-</p>
-<h3 id="pingcap.com/v1alpha1.MonitorComponentAccessor">MonitorComponentAccessor
-</h3>
-<p>
-</p>
-<h3 id="pingcap.com/v1alpha1.MonitorContainer">MonitorContainer
+<h3 id="pingcap.com/v1alpha1.GcsStorageProvider">GcsStorageProvider
 </h3>
 <p>
 (<em>Appears on:</em>
@@ -4066,6 +3923,117 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.MasterKeyFileConfig">MasterKeyFileConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Encrypyion method, use master key encryption data key
+Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+Optional: Default to plaintext
+optional</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.MasterKeyKMSConfig">MasterKeyKMSConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>key-id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AWS CMK key-id it can be find in AWS Console or use aws cli
+This field is required</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AccessKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secret-access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>region</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Region of this KMS key
+Optional: Default to us-east-1
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
+optional</p>
 </td>
 </tr>
 </tbody>
