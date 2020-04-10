@@ -75,6 +75,7 @@ func NewController(
 	pdFailoverPeriod time.Duration,
 	tikvFailoverPeriod time.Duration,
 	tidbFailoverPeriod time.Duration,
+	tiflashFailoverPeriod time.Duration,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
 	eventBroadcaster.StartLogging(klog.V(2).Infof)
@@ -106,11 +107,14 @@ func NewController(
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
 	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
+	tiflashScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
 	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod)
+	tiflashFailover := mm.NewTiKVFailover(tiflashFailoverPeriod)
 	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
+	tiflashUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
 	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
@@ -200,6 +204,21 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+			),
+			mm.NewTiFlashMemberManager(
+				pdControl,
+				setControl,
+				svcControl,
+				certControl,
+				typedControl,
+				setInformer.Lister(),
+				svcInformer.Lister(),
+				podInformer.Lister(),
+				nodeInformer.Lister(),
+				autoFailover,
+				tiflashFailover,
+				tiflashScaler,
+				tiflashUpgrader,
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
 			podRestarter,
