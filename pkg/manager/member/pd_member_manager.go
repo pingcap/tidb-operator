@@ -458,6 +458,12 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 					TargetPort: intstr.FromInt(2380),
 					Protocol:   corev1.ProtocolTCP,
 				},
+				{
+					Name:       "peer-client",
+					Port:       2379,
+					TargetPort: intstr.FromInt(2379),
+					Protocol:   corev1.ProtocolTCP,
+				},
 			},
 			Selector:                 pdLabel,
 			PublishNotReadyAddresses: true,
