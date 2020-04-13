@@ -13,7 +13,7 @@ spec:
   ports:
     - name: https-webhook # optional
       port: 443
-      targetPort: 443
+      targetPort: 6443
   selector:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
