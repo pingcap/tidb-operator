@@ -34,8 +34,6 @@ const (
 	skipReasonScalerPVCNotFound             = "scaler: pvc is not found"
 	skipReasonScalerAnnIsNil                = "scaler: pvc annotations is nil"
 	skipReasonScalerAnnDeferDeletingIsEmpty = "scaler: pvc annotations defer deleting is empty"
-	scalingEventReason                      = "Scaling"
-	scalingEventMsgPattern                  = "%s is scaling from %d to %d"
 )
 
 // Scaler implements the logic for scaling out or scaling in the cluster.

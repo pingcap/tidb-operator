@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -45,22 +44,10 @@ func NewPDScaler(pdControl pdapi.PDControlInterface,
 
 func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
-	oldReplicas := *oldSet.Spec.Replicas
-	targetReplicas := *newSet.Spec.Replicas
-	if scaling != 0 {
-		if scaling > 0 {
-			err := psd.ScaleOut(tc, oldSet, newSet)
-			if err != nil {
-				return err
-			}
-		} else if scaling < 0 {
-			err := psd.ScaleIn(tc, oldSet, newSet)
-			if err != nil {
-				return err
-			}
-		}
-		psd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "pd", oldReplicas, targetReplicas))
-		return nil
+	if scaling > 0 {
+		return psd.ScaleOut(tc, oldSet, newSet)
+	} else if scaling < 0 {
+		return psd.ScaleIn(tc, oldSet, newSet)
 	}
 	return psd.SyncAutoScalerAnn(tc, oldSet)
 }

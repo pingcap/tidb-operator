@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -48,22 +47,10 @@ func NewTiKVScaler(pdControl pdapi.PDControlInterface,
 
 func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
-	oldReplicas := *oldSet.Spec.Replicas
-	targetReplicas := *newSet.Spec.Replicas
-	if scaling != 0 {
-		if scaling > 0 {
-			err := tsd.ScaleOut(tc, oldSet, newSet)
-			if err != nil {
-				return err
-			}
-		} else if scaling < 0 {
-			err := tsd.ScaleIn(tc, oldSet, newSet)
-			if err != nil {
-				return err
-			}
-		}
-		tsd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "tikv", oldReplicas, targetReplicas))
-		return nil
+	if scaling > 0 {
+		return tsd.ScaleOut(tc, oldSet, newSet)
+	} else if scaling < 0 {
+		return tsd.ScaleIn(tc, oldSet, newSet)
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
 	return tsd.SyncAutoScalerAnn(tc, oldSet)
