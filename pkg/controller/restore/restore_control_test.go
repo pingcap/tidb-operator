@@ -28,11 +28,11 @@ import (
 func TestRestoreControlUpdateRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	tests :=  []struct {
+	tests := []struct {
 		name                  string
 		syncRestoreManagerErr bool
 		errExpectFn           func(*GomegaWithT, error)
-	} {
+	}{
 		{
 			name:                  "restore manager sync failed",
 			syncRestoreManagerErr: true,
@@ -50,7 +50,7 @@ func TestRestoreControlUpdateRestore(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T){
+		t.Run(tt.name, func(t *testing.T) {
 			restore := newRestore()
 			control, restoreIndexer, restoreManager := newFakeRestoreControl()
 
