@@ -275,7 +275,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				events := collectEvents(recorder.Events)
 				g.Expect(events).To(HaveLen(2))
 				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
-				g.Expect(events[1]).To(ContainSubstring("Failover pd is during failover due to test-pd-1 makred as failureMember, msg:pd member[12891273174085095651] is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("Unhealthy pd pod[test-pd-1] is unhealthy, msg:pd member[12891273174085095651] is unhealthy"))
 			},
 		},
 		{

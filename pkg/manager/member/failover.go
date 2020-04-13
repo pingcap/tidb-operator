@@ -16,8 +16,8 @@ package member
 import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 const (
-	failoverEventReason     = "Failover"
-	failoverEventMsgPattern = "%s is during failover due to %s makred as failureMember, msg:%v"
+	unHealthEventReason     = "Unhealthy"
+	unHealthEventMsgPattern = "%s pod[%s] is unhealthy, msg:%s"
 )
 
 // Failover implements the logic for pd/tikv/tidb's failover and recovery.

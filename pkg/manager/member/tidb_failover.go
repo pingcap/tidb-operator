@@ -65,7 +65,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("tidb[%s] is unhealthy", tidbMember.Name)
-				tf.recorder.Event(tc, corev1.EventTypeWarning, failoverEventReason, fmt.Sprintf(failoverEventMsgPattern, "tidb", tidbMember.Name, msg))
+				tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
 				break
 			}
 		}

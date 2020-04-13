@@ -67,7 +67,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					CreatedAt: metav1.Now(),
 				}
 				msg := fmt.Sprintf("store[%s] is Down", store.ID)
-				tf.recorder.Event(tc, corev1.EventTypeWarning, failoverEventReason, fmt.Sprintf(failoverEventMsgPattern, "tikv", podName, msg))
+				tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tikv", podName, msg))
 			}
 		}
 	}
