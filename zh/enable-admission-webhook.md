@@ -8,6 +8,10 @@ category: how-to
 
 Kubernetes 在 1.9 版本引入了 [动态准入机制](https://kubernetes.io/zh/docs/reference/access-authn-authz/extensible-admission-controllers/)，从而使得拥有对 Kubernetes 中的各类资源进行修改与验证的功能。 在 TiDB Operator 中，我们也同样使用了动态准入机制来帮助我们进行相关资源的修改、验证与运维。
 
+## 先置条件
+
+TiDB Operator 准入控制器与大部分 Kubernetes 平台上产品的准入控制器较为不同，TiDB Operator 通过[扩展 API-Server](https://kubernetes.io/docs/tasks/access-kubernetes-api/setup-extension-api-server/) 与 [WebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#configure-admission-webhooks-on-the-fly) 的两个机制组合而成。所以需要 Kubernetes 集群启用聚合层功能，通常情况下这个功能已经默认开启。如需查看是否开启聚合层功能，请参考[启用 Kubernetes Apiserver 标志](https://kubernetes.io/zh/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#%E5%90%AF%E7%94%A8-kubernetes-apiserver-%E6%A0%87%E5%BF%97)。
+
 ## 开启 TiDB Operator 准入控制器
 
 TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手动开启:
@@ -19,6 +23,22 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     ```yaml
     admissionWebhook:
       create: true
+    ```
+
+    默认情况下，如果你的 Kubernetes 集群版本大于等于 v1.13.0，你可以通过上述配置直接开启 Webhook 功能。
+
+    如果你的 Kubernetes 集群版本小于 v1.13.0，你需要执行以下命令，将得到的返回值配置在 `values.yaml` 中的 `admissionWebhook.cabundle`：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
+    ```
+
+    ```yaml
+    admissionWebhook:
+      # 将上述命令的返回值填写到 admissionWebhook.cabundle 中
+      cabundle: <cabundle>
     ```
 
 2. 配置失败策略
@@ -46,6 +66,127 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
 3. 安装/更新 TiDB Operator
 
     修改完 `values.yaml` 文件中的上述配置项以后，进行 TiDB Operator 部署或者更新。安装与更新 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)。
+
+## 为 TiDB Operator 准入控制器设置 TLS 证书
+
+在默认情况下，TiDB Operator 准入控制器与 Kubernetes api-server 之间跳过了 [TLS 验证环节](https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver)，你可以通过以下步骤手动开启并配置 TiDB Operator 准入控制器与 Kubernetes api-server 之间的 TLS 验证。
+
+1. 生成自定义证书
+
+    参考[使用 `cfssl` 系统颁发证书](enable-tls-between-components.md#使用-cfssl-系统颁发证书)的第一步至第四步，生成自定义 CA 文件。
+    对于 `ca-config.json`，我们使用如下配置:
+
+    ```json
+    {
+        "signing": {
+            "default": {
+                "expiry": "8760h"
+            },
+            "profiles": {
+                "server": {
+                    "expiry": "8760h",
+                    "usages": [
+                        "signing",
+                        "key encipherment",
+                        "server auth"
+                    ]
+                }
+            }
+        }
+    }
+    ```
+
+    当执行至第四步以后，通过 `ls` 命令执行，`cfssl` 文件夹下应该有以下文件:
+
+    ```bash
+    ca-config.json    ca-csr.json    ca-key.pem    ca.csr    ca.pem
+    ```
+
+2. 生成 TiDB Operator 准入控制器证书
+
+    首先生成默认的 webhook-server.json 文件:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cfssl print-defaults csr > webhook-server.json
+    ```
+
+    然后将 `webhook-server.json` 文件的内容修改如下:
+
+    ```json
+    {
+        "CN": "TiDB Operator Webhook",
+        "hosts": [
+            "tidb-admission-webhook.<namespace>",
+            "tidb-admission-webhook.<namespace>.svc",
+            "tidb-admission-webhook.<namespace>.svc.cluster",
+            "tidb-admission-webhook.<namespace>.svc.cluster.local"
+        ],
+        "key": {
+            "algo": "rsa",
+            "size": 2048
+        },
+        "names": [
+            {
+                "C": "US",
+                "L": "CA",
+                "O": "PingCAP",
+                "ST": "Beijing",
+                "OU": "TiDB"
+            }
+        ]
+    }
+    ```
+
+    其中 `<namespace>` 为 TiDB Operator 部署的命名空间。
+
+    然后生成 TiDB Operator Webhook Server 端证书:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server webhook-server.json | cfssljson -bare webhook-server
+    ```
+
+    执行完上述命令后，通过 `ls | grep webhook-server` 命令应该能查询到以下文件:
+
+    ```bash
+    webhook-server-key.pem
+    webhook-server.csr
+    webhook-server.json
+    webhook-server.pem
+    ```
+
+3. 在 Kubernetes 集群中创建 Secret
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=~/cfssl/webhook-server.pem --from-file=tls.key=~/cfssl/webhook-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    ```
+
+4. 修改 values.yaml 并安装或升级 TiDB Operator
+
+    获取 `ca.crt` 的值：
+    
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
+    ```
+
+    将 `values.yaml` 中下述配置按说明来进行配置:
+
+    ```yaml
+    admissionWebhook:
+      apiservice:
+        insecureSkipTLSVerify: false # 开启 TLS 验证
+        tlsSecret: "<secret-name>" # 将上文中所创建的 secret 的 name 填写在这里
+        caBundle: "<caBundle>" # 将上文中 ca.crt 的值填入此处
+    ```
+
+    修改完 `values.yaml` 文件中上述配置项以后进行 TiDB Operator 部署或者更新。安装 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)，升级 TiDB Operator 请参考[升级 TiDB Operator](upgrade-tidb-operator.md)
 
 ## TiDB Operator 准入控制器功能
 
