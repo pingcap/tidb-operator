@@ -128,6 +128,28 @@ EOF
         echo "info: provider is $PROVIDER, skipped"
     elif [ "$PROVIDER" == "eks" ]; then
         echo "info: provider is $PROVIDER, skipped"
+    elif [ "$PROVIDER" == "openshift" ]; then
+        CRC_IP=$(crc ip)
+        ssh -i ~/.crc/machines/crc/id_rsa -o StrictHostKeyChecking=no core@$CRC_IP <<'EOF'
+sudo bash -c '
+test -d /mnt/disks || mkdir -p /mnt/disks
+df -h /mnt/disks
+if mountpoint /mnt/disks &>/dev/null; then
+    echo "info: /mnt/disks is a mountpoint"
+else
+    echo "info: /mnt/disks is not a mountpoint, creating local volumes on the rootfs"
+fi
+cd /mnt/disks
+for ((i = 1; i <= 32; i++)) {
+    if [ ! -d vol$i ]; then
+        mkdir vol$i
+    fi
+    if ! mountpoint vol$i &>/dev/null; then
+        mount --bind vol$i vol$i
+    fi
+}
+'
+EOF
     fi
     echo "info: installing local-volume-provisioner"
     $KUBECTL_BIN --context $KUBECONTEXT apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
