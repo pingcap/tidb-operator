@@ -81,16 +81,20 @@ func setupSuite() {
 	// Delete any namespaces except those created by the system. This ensures no
 	// lingering resources are left over from a previous test run.
 	if framework.TestContext.CleanStart {
-		deleted, err := framework.DeleteNamespaces(c, nil, /* deleteFilter */
-			[]string{
-				metav1.NamespaceSystem,
-				metav1.NamespaceDefault,
-				metav1.NamespacePublic,
-				v1.NamespaceNodeLease,
-				// kind local path provisioner namespace since 0.7.0
-				// https://github.com/kubernetes-sigs/kind/blob/v0.7.0/pkg/build/node/storage.go#L35
-				"local-path-storage",
-			})
+		reservedNamespaces := []string{
+			metav1.NamespaceSystem,
+			metav1.NamespaceDefault,
+			metav1.NamespacePublic,
+			v1.NamespaceNodeLease,
+		}
+		if framework.TestContext.Provider == "kind" {
+			// kind local path provisioner namespace since 0.7.0
+			// https://github.com/kubernetes-sigs/kind/blob/v0.7.0/pkg/build/node/storage.go#L35
+			reservedNamespaces = append(reservedNamespaces, "local-path-storage")
+		} else if framework.TestContext.Provider == "openshift" {
+			reservedNamespaces = append(reservedNamespaces, "openshift")
+		}
+		deleted, err := framework.DeleteNamespaces(c, nil, reservedNamespaces)
 		if err != nil {
 			e2elog.Failf("Error deleting orphaned namespaces: %v", err)
 		}
@@ -190,13 +194,13 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	if err := exec.Command("sh", "-c", helmClearCmd).Run(); err != nil {
 		framework.Failf("failed to clear helm releases (cmd: %q, error: %v", helmClearCmd, err)
 	}
-	ginkgo.By("Clear non-kubernetes apiservices")
-	clearNonK8SAPIServicesCmd := "kubectl delete apiservices -l kube-aggregator.kubernetes.io/automanaged!=onstart"
-	if err := exec.Command("sh", "-c", clearNonK8SAPIServicesCmd).Run(); err != nil {
-		framework.Failf("failed to clear non-kubernetes apiservices (cmd: %q, error: %v", clearNonK8SAPIServicesCmd, err)
+	ginkgo.By("Clear tidb-operator apiservices")
+	clearAPIServicesCmd := "kubectl delete apiservices -l app.kubernetes.io/name=tidb-operator"
+	if err := exec.Command("sh", "-c", clearAPIServicesCmd).Run(); err != nil {
+		framework.Failf("failed to clear non-kubernetes apiservices (cmd: %q, error: %v", clearAPIServicesCmd, err)
 	}
-	ginkgo.By("Clear validatingwebhookconfigurations")
-	clearValidatingWebhookConfigurationsCmd := "kubectl delete validatingwebhookconfiguration --all"
+	ginkgo.By("Clear tidb-operator validatingwebhookconfigurations")
+	clearValidatingWebhookConfigurationsCmd := "kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"
 	if err := exec.Command("sh", "-c", clearValidatingWebhookConfigurationsCmd).Run(); err != nil {
 		framework.Failf("failed to clear validatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
 	}
@@ -229,6 +233,9 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "failed to list pvList")
 	for _, pv := range pvList.Items {
+		if pv.Spec.StorageClassName != "local-storage" {
+			continue
+		}
 		if pv.Spec.PersistentVolumeReclaimPolicy == v1.PersistentVolumeReclaimDelete {
 			continue
 		}
@@ -237,13 +244,16 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
 		framework.ExpectNoError(err, fmt.Sprintf("failed to update pv %s", pv.Name))
 	}
-	ginkgo.By("Wait for all PVs to be available")
+	ginkgo.By("Wait for all local PVs to be available")
 	err = wait.Poll(time.Second, time.Minute, func() (bool, error) {
 		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 		if err != nil {
 			return false, err
 		}
 		for _, pv := range pvList.Items {
+			if pv.Spec.StorageClassName != "local-storage" {
+				continue
+			}
 			if pv.Status.Phase != v1.VolumeAvailable {
 				return false, nil
 			}
