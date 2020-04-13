@@ -15,6 +15,9 @@ package autoscaler
 
 import (
 	"fmt"
+	"go.uber.org/zap"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -30,6 +33,29 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
+
+const aiURL = "http://172.16.4.4:8000/"
+
+// TODO preTableInfo
+type preTableInfo struct {
+	Predict        []float64 `json:"predict"`
+	StartKey       string    `json:"start_key"`
+	EndKey         string    `json:"end_key"`
+	MaxValue       float64   `json:"max_value"`
+	MinValue       float64   `json:"min_value"`
+	HistoryR2Score float64   `json:"history_r2_score"`
+}
+
+// TODO predictInfo
+type predictInfo struct {
+	Time                int64          `json:"time"`
+	TableNum            int            `json:"table_num"`
+	PredictStep         int            `json:"predict_step"`
+	HistoryR2ScoreTotal float64        `json:"history_r2_score_tot"`
+	TableInfo           []preTableInfo `json:"table_info"`
+	TiKVReplicas        int32          `json:"tikv_replicas"`
+	TiDBReplicas        int32          `json:"tidb_replicas"`
+}
 
 type autoScalerManager struct {
 	cli       versioned.Interface
@@ -88,13 +114,36 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	defaultTAC(tac)
+
+	var p predictInfo
+	resp, err := http.Get(aiURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	klog.Info("read json file", zap.String("json data", string(body)))
+	//fmt.Println("json:", string(body))
+
+	err2 := json.Unmarshal(body, &p)
+	if err2 != nil {
+		return err2
+	}
+	klog.Info("parse json data", zap.Int("TableNum", p.TableNum), zap.Any("TableInfo", p.TableInfo))
+
 	oldTikvReplicas := tc.Spec.TiKV.Replicas
-	if err := am.syncTiKV(tc, tac); err != nil {
+	TikvReplicas := p.TiKVReplicas
+	if err := am.syncTiKV(tc, tac, TikvReplicas); err != nil {
 		tc.Spec.TiKV.Replicas = oldTikvReplicas
 		klog.Errorf("tac[%s/%s] tikv sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
+
 	oldTidbReplicas := tc.Spec.TiDB.Replicas
-	if err := am.syncTiDB(tc, tac); err != nil {
+	TidbReplicas := p.TiDBReplicas
+	if err := am.syncTiDB(tc, tac, TidbReplicas); err != nil {
 		tc.Spec.TiDB.Replicas = oldTidbReplicas
 		klog.Errorf("tac[%s/%s] tidb sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}

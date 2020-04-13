@@ -26,7 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, targetReplicas int32) error {
 	if tac.Spec.TiKV == nil {
 		return nil
 	}
@@ -39,10 +39,10 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	}
 	instances := filterTiKVInstances(tc)
 	currentReplicas := int32(len(instances))
-	targetReplicas, err := calculateTikvMetrics(tac, sts, instances)
-	if err != nil {
-		return err
-	}
+	//targetReplicas, err := calculateTikvMetrics(tac, sts, instances)
+	//if err != nil {
+	//	return err
+	//}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
 	if targetReplicas == tc.Spec.TiKV.Replicas {
 		return nil
