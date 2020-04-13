@@ -1008,4 +1008,135 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			klog.Info("success to check auto scale-in tidb to 2 replicas")
 		})
 	})
+
+	ginkgo.Context("[Verify: Upgrading Operator from 1.0.6", func() {
+		var oa tests.OperatorActions
+		var ocfg *tests.OperatorConfig
+		var version string
+
+		ginkgo.BeforeEach(func() {
+			version = "v1.0.6"
+			ocfg = &tests.OperatorConfig{
+				Namespace:   ns,
+				ReleaseName: "operator",
+				Tag:         version,
+				Image:       fmt.Sprintf("pingcap/tidb-operator:%s", version),
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			tests.DeployReleasedCRDOrDie(version)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			tests.CleanReleasedCRDOrDie(version)
+		})
+
+		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
+			tcName := "tidbcluster"
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", "")
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
+			cluster.Resources["tidb.replicas"] = "2"
+			cluster.Monitor = false
+			cluster.OperatorTag = version
+			oa.DeployTidbClusterOrDie(&cluster)
+			oa.CheckTidbClusterStatusOrDie(&cluster)
+
+			getPods := func(ls string) ([]v1.Pod, error) {
+				listOptions := metav1.ListOptions{
+					LabelSelector: ls,
+				}
+				podList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil {
+					return nil, err
+				}
+				return podList.Items, nil
+			}
+
+			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get tc")
+
+			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
+			framework.ExpectNoError(err, "failed to get pd pods")
+
+			tikvPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiKV().Labels()).String())
+			framework.ExpectNoError(err, "failed to get tikv pods")
+
+			tidbPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).TiDB().Labels()).String())
+			framework.ExpectNoError(err, "failed to get tidb pods")
+
+			// Upgrade CRD / Operator to current version
+			ocfg.Tag = cfg.OperatorTag
+			ocfg.Image = cfg.OperatorImage
+			oa.InstallCRDOrDie(ocfg)
+			oa.UpgradeOperatorOrDie(ocfg)
+
+			// confirm the tidb has been changed
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				newTc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				// wait tidb to be updated
+				if tc.Status.TiDB.StatefulSet.CurrentRevision == newTc.Status.TiDB.StatefulSet.CurrentRevision {
+					klog.Info("wait tidb to be updated")
+					return false, nil
+				}
+				// wait tidb finish updating
+				if newTc.Status.TiDB.StatefulSet.CurrentRevision != newTc.Status.TiDB.StatefulSet.UpdateRevision {
+					klog.Info("wait tidb finish updating")
+					return false, nil
+				}
+
+				// confirm the tidb pod have been changed
+				changed, err := utilpod.PodsAreChanged(c, tidbPods)()
+				if changed {
+					klog.Infof("confirm tidb pods have been changed")
+				} else {
+					if err != nil {
+						klog.Errorf("meet error during verify tidb pods, err:%v", err)
+						return false, nil
+					}
+					if !changed {
+						return false, fmt.Errorf("tidb should be updated after operator upgrading")
+					}
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Failed to check Tidb Status After Upgrading Operator")
+
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				// confirm the pd Pod haven't been changed
+				changed, err := utilpod.PodsAreChanged(c, pdPods)()
+				if err != nil {
+					klog.Errorf("meet error during verify pd pods, err:%v", err)
+					return true, nil
+				}
+				if changed {
+					return true, nil
+				}
+				klog.Infof("confirm pd pods haven't been changed this time")
+
+				// confirm the tikv haven't been changed
+				changed, err = utilpod.PodsAreChanged(c, tikvPods)()
+				if err != nil {
+					klog.Errorf("meet error during verify tikv pods, err:%v", err)
+					return true, nil
+				}
+				if changed {
+					return true, nil
+				}
+				klog.Infof("confirm tikv pods haven't been changed this time")
+				return false, nil
+			})
+			framework.ExpectError(err, "expect tikv and pd haven't been changed for 5 minutes")
+		})
+	})
 })

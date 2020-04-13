@@ -118,7 +118,7 @@ func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccoun
 	return sa
 }
 
-func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor) *rbac.ClusterRole {
+func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
 	return &rbac.ClusterRole{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
@@ -126,21 +126,11 @@ func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor) *rbac.ClusterRole {
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
-		Rules: []rbac.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "list", "watch"},
-			},
-			{
-				NonResourceURLs: []string{"/metrics"},
-				Verbs:           []string{"get"},
-			},
-		},
+		Rules: policyRules,
 	}
 }
 
-func getMonitorRole(monitor *v1alpha1.TidbMonitor) *rbac.Role {
+func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.Role {
 	return &rbac.Role{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            GetMonitorObjectName(monitor),
@@ -148,13 +138,7 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor) *rbac.Role {
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
-		Rules: []rbac.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "list", "watch"},
-			},
-		},
+		Rules: policyRules,
 	}
 }
 
