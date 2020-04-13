@@ -435,6 +435,7 @@ func newFakeTiKVScaler() (*tikvScaler, *pdapi.FakePDControl, cache.Indexer, cach
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
+
 	return &tikvScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}, podInformer.Lister()},
 		pdControl, pvcInformer.Informer().GetIndexer(), podInformer.Informer().GetIndexer(), pvcControl
 }

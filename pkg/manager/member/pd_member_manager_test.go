@@ -758,6 +758,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	pdFailover := NewFakePDFailover()
 	pdUpgrader := NewFakePDUpgrader()
 	genericControll := controller.NewFakeGenericControl()
+
 	return &pdMemberManager{
 		pdControl,
 		setControl,
