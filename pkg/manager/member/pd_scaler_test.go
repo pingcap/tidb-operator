@@ -31,7 +31,6 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 )
 
 func TestPDScalerScaleOut(t *testing.T) {
@@ -390,9 +389,8 @@ func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *control
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
-	recorder := record.NewFakeRecorder(100)
 
-	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl, recorder}},
+	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},
 		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
 }
 

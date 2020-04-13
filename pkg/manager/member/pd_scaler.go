@@ -24,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -37,9 +36,8 @@ type pdScaler struct {
 // NewPDScaler returns a Scaler
 func NewPDScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
-	pvcControl controller.PVCControlInterface,
-	recorder record.EventRecorder) Scaler {
-	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl, recorder}}
+	pvcControl controller.PVCControlInterface) Scaler {
+	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl}}
 }
 
 func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {

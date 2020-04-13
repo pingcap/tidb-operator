@@ -26,7 +26,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -40,9 +39,8 @@ type tikvScaler struct {
 func NewTiKVScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
-	podLister corelisters.PodLister,
-	recorder record.EventRecorder) Scaler {
-	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl, recorder}, podLister}
+	podLister corelisters.PodLister) Scaler {
+	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
 }
 
 func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {

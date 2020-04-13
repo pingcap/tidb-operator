@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -52,7 +51,6 @@ type generalScaler struct {
 	pdControl  pdapi.PDControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
 	pvcControl controller.PVCControlInterface
-	recorder   record.EventRecorder
 }
 
 func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
