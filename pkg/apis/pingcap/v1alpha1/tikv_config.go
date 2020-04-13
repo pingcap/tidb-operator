@@ -794,7 +794,7 @@ type MasterKeyFileConfig struct {
 type MasterKeyKMSConfig struct {
 	// AWS CMK key-id it can be find in AWS Console or use aws cli
 	// This field is required
-	KeyID string `json:"key-id" toml:"key-id`
+	KeyID string `json:"key-id" toml:"key-id"`
 
 	// AccessKey of AWS user, leave empty if using other authrization method
 	// optional
