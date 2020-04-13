@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -59,7 +58,6 @@ type pdMemberManager struct {
 	pdUpgrader   Upgrader
 	autoFailover bool
 	pdFailover   Failover
-	recorder     record.EventRecorder
 }
 
 // NewPDMemberManager returns a *pdMemberManager
@@ -77,8 +75,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
-	pdFailover Failover,
-	recorder record.EventRecorder) manager.Manager {
+	pdFailover Failover) manager.Manager {
 	return &pdMemberManager{
 		pdControl,
 		setControl,
@@ -94,8 +91,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,
-		pdFailover,
-		recorder}
+		pdFailover}
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {

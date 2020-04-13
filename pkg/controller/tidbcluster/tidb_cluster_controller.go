@@ -135,7 +135,6 @@ func NewController(
 				pdUpgrader,
 				autoFailover,
 				pdFailover,
-				recorder,
 			),
 			mm.NewTiKVMemberManager(
 				pdControl,
@@ -151,7 +150,6 @@ func NewController(
 				tikvFailover,
 				tikvScaler,
 				tikvUpgrader,
-				recorder,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
@@ -165,7 +163,6 @@ func NewController(
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,
-				recorder,
 			),
 			meta.NewReclaimPolicyManager(
 				pvcInformer.Lister(),

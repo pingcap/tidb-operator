@@ -38,7 +38,6 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -759,7 +758,6 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	pdFailover := NewFakePDFailover()
 	pdUpgrader := NewFakePDUpgrader()
 	genericControll := controller.NewFakeGenericControl()
-	recorder := record.NewFakeRecorder(100)
 	return &pdMemberManager{
 		pdControl,
 		setControl,
@@ -776,7 +774,6 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		pdUpgrader,
 		autoFailover,
 		pdFailover,
-		recorder,
 	}, setControl, svcControl, pdControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer(), podControl
 }
 

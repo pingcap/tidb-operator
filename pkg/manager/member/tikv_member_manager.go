@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -63,7 +62,6 @@ type tikvMemberManager struct {
 	tikvScaler                   Scaler
 	tikvUpgrader                 Upgrader
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
-	recorder                     record.EventRecorder
 }
 
 // NewTiKVMemberManager returns a *tikvMemberManager
@@ -80,8 +78,7 @@ func NewTiKVMemberManager(
 	autoFailover bool,
 	tikvFailover Failover,
 	tikvScaler Scaler,
-	tikvUpgrader Upgrader,
-	recorder record.EventRecorder) manager.Manager {
+	tikvUpgrader Upgrader) manager.Manager {
 	kvmm := tikvMemberManager{
 		pdControl:    pdControl,
 		podLister:    podLister,
@@ -96,7 +93,6 @@ func NewTiKVMemberManager(
 		tikvFailover: tikvFailover,
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
-		recorder:     recorder,
 	}
 	kvmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return &kvmm

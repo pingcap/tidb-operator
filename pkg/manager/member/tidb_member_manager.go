@@ -34,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -69,7 +68,6 @@ type tidbMemberManager struct {
 	autoFailover                 bool
 	tidbFailover                 Failover
 	tidbStatefulSetIsUpgradingFn func(corelisters.PodLister, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
-	recorder                     record.EventRecorder
 }
 
 // NewTiDBMemberManager returns a *tidbMemberManager
@@ -83,8 +81,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	podLister corelisters.PodLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
-	tidbFailover Failover,
-	recorder record.EventRecorder) manager.Manager {
+	tidbFailover Failover) manager.Manager {
 	return &tidbMemberManager{
 		setControl:                   setControl,
 		svcControl:                   svcControl,
@@ -98,7 +95,6 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		autoFailover:                 autoFailover,
 		tidbFailover:                 tidbFailover,
 		tidbStatefulSetIsUpgradingFn: tidbStatefulSetIsUpgrading,
-		recorder:                     recorder,
 	}
 }
 
