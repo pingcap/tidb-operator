@@ -108,6 +108,11 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tac *v1alpha1.TidbClusterAu
 	if tc.Spec.TiDB.Replicas == oldTc.Spec.TiDB.Replicas && tc.Spec.TiKV.Replicas == oldTc.Spec.TiKV.Replicas {
 		return nil
 	}
+	newTc := tc.DeepCopy()
+	_, err := am.tcControl.UpdateTidbCluster(newTc, &newTc.Status, &oldTc.Status)
+	if err != nil {
+		return err
+	}
 	reason := fmt.Sprintf("Successful %s", strings.Title("auto-scaling"))
 	msg := ""
 	if tc.Spec.TiDB.Replicas != oldTc.Spec.TiDB.Replicas {
@@ -117,11 +122,6 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tac *v1alpha1.TidbClusterAu
 		msg = fmt.Sprintf("%s auto-scaling tikv from %d to %d", msg, oldTc.Spec.TiKV.Replicas, tc.Spec.TiKV.Replicas)
 	}
 	am.recorder.Event(tac, corev1.EventTypeNormal, reason, msg)
-	newTc := tc.DeepCopy()
-	_, err := am.tcControl.UpdateTidbCluster(newTc, &newTc.Status, &oldTc.Status)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
