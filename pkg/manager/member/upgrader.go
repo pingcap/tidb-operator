@@ -20,7 +20,7 @@ import (
 
 const (
 	upgradingEventReason         = "Upgrading"
-	upgradingEventMessagePattern = "%s is during upgrading"
+	upgradingEventMessagePattern = "%s is upgrading"
 )
 
 // Upgrader implements the logic for upgrading the tidb cluster.
