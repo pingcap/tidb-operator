@@ -515,20 +515,22 @@ func TestBuildTiFlashSidecarContainers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		tc := newTidbCluster()
-		tc.Spec.TiFlash.Config = test.flashConfig
-		if test.resource {
-			tc.Spec.TiFlash.LogTailer = &v1alpha1.LogTailerSpec{}
-			tc.Spec.TiFlash.LogTailer.ResourceRequirements = corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:     resource.MustParse("1"),
-					corev1.ResourceMemory:  resource.MustParse("2Gi"),
-					corev1.ResourceStorage: resource.MustParse("100Gi"),
-				},
+		t.Run(test.name, func(t *testing.T) {
+			tc := newTidbCluster()
+			tc.Spec.TiFlash.Config = test.flashConfig
+			if test.resource {
+				tc.Spec.TiFlash.LogTailer = &v1alpha1.LogTailerSpec{}
+				tc.Spec.TiFlash.LogTailer.ResourceRequirements = corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				}
 			}
-		}
-		cs := buildTiFlashSidecarContainers(tc)
-		g.Expect(cs).To(Equal(test.expect))
+			cs := buildTiFlashSidecarContainers(tc)
+			g.Expect(cs).To(Equal(test.expect))
+		})
 	}
 }
 func TestSetTiFlashConfigDefault(t *testing.T) {
@@ -554,8 +556,10 @@ func TestSetTiFlashConfigDefault(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		setTiFlashConfigDefault(&test.config, "test", "test")
-		g.Expect(test.config).To(Equal(test.expect))
+		t.Run(test.name, func(t *testing.T) {
+			setTiFlashConfigDefault(&test.config, "test", "test")
+			g.Expect(test.config).To(Equal(test.expect))
+		})
 	}
 }
 
@@ -582,7 +586,9 @@ func TestSetTiFlashLogConfigDefault(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		setTiFlashLogConfigDefault(&test.config)
-		g.Expect(test.config).To(Equal(test.expect))
+		t.Run(test.name, func(t *testing.T) {
+			setTiFlashLogConfigDefault(&test.config)
+			g.Expect(test.config).To(Equal(test.expect))
+		})
 	}
 }
