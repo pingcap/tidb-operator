@@ -229,7 +229,6 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	}
 
 	if !templateEqual(newSet, oldSet) || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-		tkmm.recorder.Event(tc, corev1.EventTypeNormal, upgradingEventReason, fmt.Sprintf(upgradingEventMessagePattern, v1alpha1.PDMemberType.String()))
 		if err := tkmm.tikvUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}

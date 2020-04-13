@@ -206,7 +206,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-		tmm.recorder.Event(tc, corev1.EventTypeNormal, upgradingEventReason, fmt.Sprintf(upgradingEventMessagePattern, "tidb"))
 		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
 			return err
 		}

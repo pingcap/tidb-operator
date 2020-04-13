@@ -249,7 +249,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		pmm.recorder.Event(tc, corev1.EventTypeNormal, upgradingEventReason, fmt.Sprintf(upgradingEventMessagePattern, v1alpha1.PDMemberType.String()))
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
 		}
