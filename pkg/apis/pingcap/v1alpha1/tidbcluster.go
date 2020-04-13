@@ -379,3 +379,8 @@ func (tc *TidbCluster) GetInstanceName() string {
 	}
 	return tc.Name
 }
+
+func (tc *TidbCluster) SkipTLSWhenConnectTiDB() bool {
+	_, ok := tc.Annotations[label.AnnSkipTLSWhenConnectTiDB]
+	return ok
+}
