@@ -23,9 +23,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	defaultClusterLog = "/data0/logs/flash_cluster_manager.log"
+	defaultProxyLog   = "/data0/logs/proxy.log"
+	defaultErrorLog   = "/data0/logs/error.log"
+	defaultServerLog  = "/data0/logs/server.log"
+)
+
 func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) []corev1.Container {
 	spec := tc.Spec.TiFlash
-	config := spec.Config.CommonConfig
+	config := spec.Config.DeepCopy()
 	image := tc.HelperImage()
 	pullPolicy := tc.HelperImagePullPolicy()
 	var containers []corev1.Container
@@ -33,12 +40,17 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) []corev1.Container 
 	if spec.LogTailer != nil {
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
 	}
-	containers = append(containers, buildSidecarContainer("serverlog", config.FlashLogger.ServerLog, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("errorlog", config.FlashLogger.ErrorLog, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("proxylog", config.Flash.FlashProxy.LogFile, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("clusterlog", config.Flash.FlashCluster.ClusterLog, image, pullPolicy, resource))
+	if config == nil {
+		config = &v1alpha1.TiFlashConfig{}
+	}
+	setTiFlashLogConfigDefault(config)
+	containers = append(containers, buildSidecarContainer("serverlog", config.CommonConfig.FlashLogger.ServerLog, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("errorlog", config.CommonConfig.FlashLogger.ErrorLog, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("proxylog", config.CommonConfig.Flash.FlashProxy.LogFile, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("clusterlog", config.CommonConfig.Flash.FlashCluster.ClusterLog, image, pullPolicy, resource))
 	return containers
 }
+
 func buildSidecarContainer(name, path, image string,
 	pullPolicy corev1.PullPolicy,
 	resource corev1.ResourceRequirements) corev1.Container {
@@ -72,6 +84,37 @@ func buildSidecarContainer(name, path, image string,
 			"-c",
 			fmt.Sprintf("touch %s; tail -n0 -F %s;", path, path),
 		},
+	}
+}
+
+func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {
+	if config.CommonConfig == nil {
+		config.CommonConfig = &v1alpha1.CommonConfig{}
+	}
+	if config.CommonConfig.Flash == nil {
+		config.CommonConfig.Flash = &v1alpha1.Flash{}
+	}
+	if config.CommonConfig.Flash.FlashCluster == nil {
+		config.CommonConfig.Flash.FlashCluster = &v1alpha1.FlashCluster{}
+	}
+	if config.CommonConfig.Flash.FlashCluster.ClusterLog == "" {
+		config.CommonConfig.Flash.FlashCluster.ClusterLog = defaultClusterLog
+	}
+	if config.CommonConfig.Flash.FlashProxy == nil {
+		config.CommonConfig.Flash.FlashProxy = &v1alpha1.FlashProxy{}
+	}
+	if config.CommonConfig.Flash.FlashProxy.LogFile == "" {
+		config.CommonConfig.Flash.FlashProxy.LogFile = defaultProxyLog
+	}
+
+	if config.CommonConfig.FlashLogger == nil {
+		config.CommonConfig.FlashLogger = &v1alpha1.FlashLogger{}
+	}
+	if config.CommonConfig.FlashLogger.ErrorLog == "" {
+		config.CommonConfig.FlashLogger.ErrorLog = defaultErrorLog
+	}
+	if config.CommonConfig.FlashLogger.ServerLog == "" {
+		config.CommonConfig.FlashLogger.ServerLog = defaultServerLog
 	}
 }
 
@@ -211,7 +254,7 @@ func setTiFlashFlashProxyConfigDefault(config *v1alpha1.FlashProxy, clusterName,
 		config.Config = "/data0/proxy.toml"
 	}
 	if config.LogFile == "" {
-		config.LogFile = "/data0/logs/proxy.log"
+		config.LogFile = defaultProxyLog
 	}
 }
 
@@ -220,7 +263,7 @@ func setTiFlashFlashClusterConfigDefault(config *v1alpha1.FlashCluster) {
 		config.ClusterManagerPath = "/tiflash/flash_cluster_manager"
 	}
 	if config.ClusterLog == "" {
-		config.ClusterLog = "/data0/logs/flash_cluster_manager.log"
+		config.ClusterLog = defaultClusterLog
 	}
 	if config.RefreshInterval == nil {
 		var r int32 = 20
@@ -238,13 +281,13 @@ func setTiFlashFlashClusterConfigDefault(config *v1alpha1.FlashCluster) {
 
 func setTiFlashLoggerConfigDefault(config *v1alpha1.FlashLogger) {
 	if config.ErrorLog == "" {
-		config.ErrorLog = "/data0/logs/error.log"
+		config.ErrorLog = defaultErrorLog
 	}
 	if config.Size == "" {
 		config.Size = "100M"
 	}
 	if config.ServerLog == "" {
-		config.ServerLog = "/data0/logs/server.log"
+		config.ServerLog = defaultServerLog
 	}
 	if config.Level == "" {
 		config.Level = "information"
