@@ -50,11 +50,20 @@ func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	oldReplicas := *oldSet.Spec.Replicas
 	targetReplicas := *newSet.Spec.Replicas
-	tsd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "tikv", oldReplicas, targetReplicas))
-	if scaling > 0 {
-		return tsd.ScaleOut(tc, oldSet, newSet)
-	} else if scaling < 0 {
-		return tsd.ScaleIn(tc, oldSet, newSet)
+	if scaling != 0 {
+		if scaling > 0 {
+			err := tsd.ScaleOut(tc, oldSet, newSet)
+			if err != nil {
+				return err
+			}
+		} else if scaling < 0 {
+			err := tsd.ScaleIn(tc, oldSet, newSet)
+			if err != nil {
+				return err
+			}
+		}
+		tsd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "tikv", oldReplicas, targetReplicas))
+		return nil
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
 	return tsd.SyncAutoScalerAnn(tc, oldSet)

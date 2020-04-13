@@ -47,11 +47,20 @@ func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, n
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	oldReplicas := *oldSet.Spec.Replicas
 	targetReplicas := *newSet.Spec.Replicas
-	psd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "pd", oldReplicas, targetReplicas))
-	if scaling > 0 {
-		return psd.ScaleOut(tc, oldSet, newSet)
-	} else if scaling < 0 {
-		return psd.ScaleIn(tc, oldSet, newSet)
+	if scaling != 0 {
+		if scaling > 0 {
+			err := psd.ScaleOut(tc, oldSet, newSet)
+			if err != nil {
+				return err
+			}
+		} else if scaling < 0 {
+			err := psd.ScaleIn(tc, oldSet, newSet)
+			if err != nil {
+				return err
+			}
+		}
+		psd.recorder.Event(tc, corev1.EventTypeNormal, scalingEventReason, fmt.Sprintf(scalingEventMsgPattern, "pd", oldReplicas, targetReplicas))
+		return nil
 	}
 	return psd.SyncAutoScalerAnn(tc, oldSet)
 }
