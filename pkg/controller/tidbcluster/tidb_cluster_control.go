@@ -184,7 +184,7 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// works that should do to making the tiflash cluster current state match the desired state:
-	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - waiting for the tidb cluster available
 	//   - create or update tiflash headless service
 	//   - create the tiflash statefulset
 	//   - sync tiflash cluster status from pd to TidbCluster object

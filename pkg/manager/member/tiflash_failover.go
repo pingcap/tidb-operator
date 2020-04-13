@@ -1,4 +1,4 @@
-// Copyright 2018 PingCAP, Inc.
+// Copyright 2020 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ func NewTiFlashFailover(tiflashFailoverPeriod time.Duration) Failover {
 	return &tiflashFailover{tiflashFailoverPeriod}
 }
 
+// TODO: Finish the failover logic
 func (tff *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
