@@ -1829,11 +1829,16 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"dashboard": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashboardConfig"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMetricConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashboardConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDLogConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMetricConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDReplicationConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDScheduleConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel"},
 	}
 }
 
