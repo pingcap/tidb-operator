@@ -48,54 +48,14 @@ func TestRestoreControllerEnqueueRestoreFailed(t *testing.T) {
 
 func TestRestoreControllerUpdateRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+
+	tests := []struct {
 		name                    string
 		restoreIsInvalid        bool
 		restoreHasBeenCompleted bool
 		restoreHasBeenScheduled bool
 		expectFn                func(*GomegaWithT, *Controller)
-	}
-
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-
-		restore := newRestore()
-		rtc, _, _ := newFakeRestoreController()
-
-		if test.restoreIsInvalid {
-			restore.Status.Conditions = []v1alpha1.RestoreCondition{
-				{
-					Type:   v1alpha1.RestoreInvalid,
-					Status: corev1.ConditionTrue,
-				},
-			}
-		}
-
-		if test.restoreHasBeenCompleted {
-			restore.Status.Conditions = []v1alpha1.RestoreCondition{
-				{
-					Type:   v1alpha1.RestoreComplete,
-					Status: corev1.ConditionTrue,
-				},
-			}
-		}
-
-		if test.restoreHasBeenScheduled {
-			restore.Status.Conditions = []v1alpha1.RestoreCondition{
-				{
-					Type:   v1alpha1.RestoreScheduled,
-					Status: corev1.ConditionTrue,
-				},
-			}
-		}
-
-		rtc.updateRestore(restore)
-		if test.expectFn != nil {
-			test.expectFn(g, rtc)
-		}
-	}
-
-	tests := []testcase{
+	}{
 		{
 			name:                    "restore is invalid",
 			restoreIsInvalid:        true,
@@ -134,49 +94,56 @@ func TestRestoreControllerUpdateRestore(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			restore := newRestore()
+			rtc, _, _ := newFakeRestoreController()
+
+			if tt.restoreIsInvalid {
+				restore.Status.Conditions = []v1alpha1.RestoreCondition{
+					{
+						Type:   v1alpha1.RestoreInvalid,
+						Status: corev1.ConditionTrue,
+					},
+				}
+			}
+
+			if tt.restoreHasBeenCompleted {
+				restore.Status.Conditions = []v1alpha1.RestoreCondition{
+					{
+						Type:   v1alpha1.RestoreComplete,
+						Status: corev1.ConditionTrue,
+					},
+				}
+			}
+
+			if tt.restoreHasBeenScheduled {
+				restore.Status.Conditions = []v1alpha1.RestoreCondition{
+					{
+						Type:   v1alpha1.RestoreScheduled,
+						Status: corev1.ConditionTrue,
+					},
+				}
+			}
+
+			rtc.updateRestore(restore)
+			if tt.expectFn != nil {
+				tt.expectFn(g, rtc)
+			}
+		})
 	}
 }
 
 func TestRestoreControllerSync(t *testing.T) {
 	g := NewGomegaWithT(t)
-	type testcase struct {
+	tests := []struct {
 		name                 string
 		addRestoreToIndexer  bool
 		errWhenUpdateRestore bool
 		invalidKeyFn         func(restore *v1alpha1.Restore) string
 		errExpectFn          func(*GomegaWithT, error)
-	}
-
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-
-		restore := newRestore()
-		rtc, restoreIndexer, restoreControl := newFakeRestoreController()
-
-		if test.addRestoreToIndexer {
-			err := restoreIndexer.Add(restore)
-			g.Expect(err).NotTo(HaveOccurred())
-		}
-
-		key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(restore)
-		if test.invalidKeyFn != nil {
-			key = test.invalidKeyFn(restore)
-		}
-
-		if test.errWhenUpdateRestore {
-			restoreControl.SetUpdateRestoreError(fmt.Errorf("update restore failed"), 0)
-		}
-
-		err := rtc.sync(key)
-
-		if test.errExpectFn != nil {
-			test.errExpectFn(g, err)
-		}
-	}
-
-	tests := []testcase{
+	}{
 		{
 			name:                 "normal",
 			addRestoreToIndexer:  true,
@@ -218,10 +185,32 @@ func TestRestoreControllerSync(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			restore := newRestore()
+			rtc, restoreIndexer, restoreControl := newFakeRestoreController()
 
+			if tt.addRestoreToIndexer {
+				err := restoreIndexer.Add(restore)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+
+			key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(restore)
+			if tt.invalidKeyFn != nil {
+				key = tt.invalidKeyFn(restore)
+			}
+
+			if tt.errWhenUpdateRestore {
+				restoreControl.SetUpdateRestoreError(fmt.Errorf("update restore failed"), 0)
+			}
+
+			err := rtc.sync(key)
+
+			if tt.errExpectFn != nil {
+				tt.errExpectFn(g, err)
+			}
+		})
+	}
 }
 
 func newFakeRestoreController() (*Controller, cache.Indexer, *FakeRestoreControl) {

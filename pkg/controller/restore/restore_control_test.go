@@ -28,29 +28,11 @@ import (
 func TestRestoreControlUpdateRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	type testcase struct {
+	tests :=  []struct {
 		name                  string
 		syncRestoreManagerErr bool
 		errExpectFn           func(*GomegaWithT, error)
-	}
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-
-		restore := newRestore()
-		control, restoreIndexer, restoreManager := newFakeRestoreControl()
-
-		restoreIndexer.Add(restore)
-
-		if test.syncRestoreManagerErr {
-			restoreManager.SetSyncError(fmt.Errorf("restore manager sync error"))
-		}
-
-		err := control.UpdateRestore(restore)
-		if test.errExpectFn != nil {
-			test.errExpectFn(g, err)
-		}
-	}
-	tests := []testcase{
+	} {
 		{
 			name:                  "restore manager sync failed",
 			syncRestoreManagerErr: true,
@@ -67,9 +49,22 @@ func TestRestoreControlUpdateRestore(t *testing.T) {
 			},
 		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T){
+			restore := newRestore()
+			control, restoreIndexer, restoreManager := newFakeRestoreControl()
 
-	for i := range tests {
-		testFn(&tests[i], t)
+			restoreIndexer.Add(restore)
+
+			if tt.syncRestoreManagerErr {
+				restoreManager.SetSyncError(fmt.Errorf("restore manager sync error"))
+			}
+
+			err := control.UpdateRestore(restore)
+			if tt.errExpectFn != nil {
+				tt.errExpectFn(g, err)
+			}
+		})
 	}
 }
 
