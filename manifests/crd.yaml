@@ -50,6 +50,9 @@ spec:
     description: The desired replicas number of TiDB cluster
     name: Desire
     type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbCluster
@@ -7651,6 +7654,9 @@ spec:
     name: Completed
     priority: 1
     type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: Backup
@@ -8491,6 +8497,9 @@ spec:
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
     name: Completed
+    type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
     type: date
   group: pingcap.com
   names:
@@ -9343,6 +9352,9 @@ spec:
     description: The last time the backup was successfully created
     name: LastBackupTime
     priority: 1
+    type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
     type: date
   group: pingcap.com
   names:
@@ -10359,6 +10371,9 @@ spec:
     name: Phase
     priority: 1
     type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbInitializer
@@ -10461,6 +10476,9 @@ spec:
     description: The minimal replicas of TiKV
     name: TiKV-MinReplicas
     type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbClusterAutoScaler

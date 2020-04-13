@@ -198,19 +198,24 @@ var (
 		Description: "The minimal replicas of TiDB",
 		JSONPath:    ".spec.tidb.minReplicas",
 	}
+	ageColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Age",
+		Type:     "date",
+		JSONPath: ".metadata.creationTimestamp",
+	}
 )
 
 func init() {
 	tidbClusteradditionalPrinterColumns = append(tidbClusteradditionalPrinterColumns,
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
-		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn)
-	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn)
-	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime)
-	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase)
+		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, ageColumn)
+	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
+	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, ageColumn)
+	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
+	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
-		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn)
+		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn, ageColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
