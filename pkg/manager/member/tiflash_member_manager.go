@@ -229,11 +229,6 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 }
 
 func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-	if tc.Spec.TiFlash.Config == nil {
-		tc.Spec.TiFlash.Config = &v1alpha1.TiFlashConfig{}
-	}
-	setTiFlashConfigDefault(tc.Spec.TiFlash.Config, tc.Name, tc.Namespace)
-
 	newCm, err := getTiFlashConfigMap(tc)
 	if err != nil {
 		return nil, err
@@ -397,7 +392,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		Command: []string{
 			"sh",
 			"-c",
-			"set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NAME/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NAME/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml",
+			"set -ex;ordinal=`echo ${POD_NAME} | awk -F- '{print $NF}'`;sed s/POD_NUM/${ordinal}/g /etc/tiflash/config_templ.toml > /data0/config.toml;sed s/POD_NUM/${ordinal}/g /etc/tiflash/proxy_templ.toml > /data0/proxy.toml",
 		},
 		Env:          initEnv,
 		VolumeMounts: initVolMounts,
@@ -553,11 +548,11 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 }
 
 func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	if tc.Spec.TiFlash.Config == nil {
-		tc.Spec.TiFlash.Config = &v1alpha1.TiFlashConfig{}
+	config := tc.Spec.TiFlash.Config.DeepCopy()
+	if config == nil {
+		config = &v1alpha1.TiFlashConfig{}
 	}
-	setTiFlashConfigDefault(tc.Spec.TiFlash.Config, tc.Name, tc.Namespace)
-	config := tc.Spec.TiFlash.Config
+	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
 
 	// override CA if tls enabled
 	// if tc.IsTLSClusterEnabled() {

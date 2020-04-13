@@ -281,6 +281,7 @@ func newFakeTidbClusterController() (*Controller, cache.Indexer, *FakeTidbCluste
 		5*time.Minute,
 		5*time.Minute,
 		5*time.Minute,
+		5*time.Minute,
 	)
 	tcc.tcListerSynced = alwaysReady
 	tcc.setListerSynced = alwaysReady
