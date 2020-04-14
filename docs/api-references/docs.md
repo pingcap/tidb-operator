@@ -2354,6 +2354,61 @@ If not set, the default value is 5.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbAutoScalerStatus">TidbAutoScalerStatus</a>, 
+<a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metrics</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.MetricsStatus">
+[]MetricsStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetricsStatusList describes the metrics status in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>CurrentReplicas describes the current replicas for the component(tidb/tikv)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recommendedReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.Binlog">Binlog
 </h3>
 <p>
@@ -3984,6 +4039,57 @@ optional</p>
 <p>
 <p>MemberType represents member type</p>
 </p>
+<h3 id="pingcap.com/v1alpha1.MetricsStatus">MetricsStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name indicates the metrics name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentValue</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CurrentValue indicates the value calculated in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>thresholdValue</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TargetValue indicates the threshold value for this metrics in auto-scaling</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.MonitorComponentAccessor">MonitorComponentAccessor
 </h3>
 <p>
@@ -12888,6 +12994,39 @@ BasicAutoScalerSpec
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.TidbAutoScalerStatus">TidbAutoScalerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>BasicAutoScalerStatus</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">
+BasicAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BasicAutoScalerStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec
 </h3>
 <p>
@@ -12983,8 +13122,46 @@ TidbAutoScalerSpec
 <a href="#pingcap.com/v1alpha1.TidbClusterAutoScaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
-<p>TODO: sync status</p>
+<p>TidbClusterAutoSclaerStatus describe the whole status</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>tikv</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">
+TikvAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tikv describes the status for the tikv in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TidbAutoScalerStatus">
+TidbAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tidb describes the status for the tidb in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TidbClusterRef">TidbClusterRef
 </h3>
 <p>
@@ -13871,6 +14048,39 @@ BasicAutoScalerSpec
 <td>
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>BasicAutoScalerStatus</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">
+BasicAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BasicAutoScalerStatus</code> are embedded into this type.)
 </p>
 </td>
 </tr>
