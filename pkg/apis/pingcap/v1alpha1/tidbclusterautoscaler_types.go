@@ -175,7 +175,8 @@ type BasicAutoScalerStatus struct {
 	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
 	CurrentReplicas int32 `json:"currentReplicas"`
 	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
-	RecommendedReplicas int32 `json:"recommendedReplicas"`
+	// +optional
+	RecommendedReplicas *int32 `json:"recommendedReplicas"`
 }
 
 type MetricsStatus struct {

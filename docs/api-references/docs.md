@@ -2404,6 +2404,7 @@ int32
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)</p>
 </td>
 </tr>

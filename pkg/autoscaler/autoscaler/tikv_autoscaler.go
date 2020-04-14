@@ -103,7 +103,7 @@ func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAuto
 		}
 	}
 	tc.Spec.TiKV.Replicas = recommendedReplicas
-	tac.Status.TiKV.RecommendedReplicas = recommendedReplicas
+	tac.Status.TiKV.RecommendedReplicas = &recommendedReplicas
 	return nil
 }
 
