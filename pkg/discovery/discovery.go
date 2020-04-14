@@ -21,7 +21,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -34,12 +33,11 @@ type TiDBDiscovery interface {
 }
 
 type tidbDiscovery struct {
-	cli         versioned.Interface
-	certControl controller.CertControlInterface
-	lock        sync.Mutex
-	clusters    map[string]*clusterInfo
-	tcGetFn     func(ns, tcName string) (*v1alpha1.TidbCluster, error)
-	pdControl   pdapi.PDControlInterface
+	cli       versioned.Interface
+	lock      sync.Mutex
+	clusters  map[string]*clusterInfo
+	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
+	pdControl pdapi.PDControlInterface
 }
 
 type clusterInfo struct {
