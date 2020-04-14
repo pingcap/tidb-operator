@@ -58,6 +58,8 @@ controllerManager:
   tikvFailoverPeriod: 5m
   # tidb failover period default(5m)
   tidbFailoverPeriod: 5m
+  # tiflash failover period default(5m)
+  tiflashFailoverPeriod: 5m
   ## affinity defines pod scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
