@@ -140,8 +140,8 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			return err
 		}
 
-		pf.recorder.Eventf(tc, apiv1.EventTypeWarning, "PDMemberMarkedAsFailure",
-			"%s(%s) marked as a failure member", podName, pdMember.ID)
+		msg := fmt.Sprintf("pd member[%s] is unhealthy", pdMember.ID)
+		pf.recorder.Event(tc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "pd", podName, msg))
 
 		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
