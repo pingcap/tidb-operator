@@ -160,14 +160,20 @@ type TidbClusterAutoSclaerStatus struct {
 	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
 }
 
+// +k8s:openapi-gen=true
+// TidbAutoScalerStatus describe the auto-scaling status of tidb
 type TidbAutoScalerStatus struct {
 	BasicAutoScalerStatus `json:",inline"`
 }
 
+// +k8s:openapi-gen=true
+// TikvAutoScalerStatus describe the auto-scaling status of tikv
 type TikvAutoScalerStatus struct {
 	BasicAutoScalerStatus `json:",inline"`
 }
 
+// +k8s:openapi-gen=true
+// BasicAutoScalerStatus describe the basic auto-scaling status
 type BasicAutoScalerStatus struct {
 	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
 	// +optional
@@ -179,6 +185,8 @@ type BasicAutoScalerStatus struct {
 	RecommendedReplicas *int32 `json:"recommendedReplicas"`
 }
 
+// +k8s:openapi-gen=true
+// MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation
 type MetricsStatus struct {
 	// Name indicates the metrics name
 	Name string `json:"name"`

@@ -2362,6 +2362,7 @@ If not set, the default value is 5.</p>
 <a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus</a>)
 </p>
 <p>
+<p>BasicAutoScalerStatus describe the basic auto-scaling status</p>
 </p>
 <table>
 <thead>
@@ -4047,6 +4048,7 @@ optional</p>
 <a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus</a>)
 </p>
 <p>
+<p>MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation</p>
 </p>
 <table>
 <thead>
@@ -13002,6 +13004,7 @@ BasicAutoScalerSpec
 <a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
 </p>
 <p>
+<p>TidbAutoScalerStatus describe the auto-scaling status of tidb</p>
 </p>
 <table>
 <thead>
@@ -14061,6 +14064,7 @@ BasicAutoScalerSpec
 <a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
 </p>
 <p>
+<p>TikvAutoScalerStatus describe the auto-scaling status of tikv</p>
 </p>
 <table>
 <thead>
