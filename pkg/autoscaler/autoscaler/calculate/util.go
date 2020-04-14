@@ -63,7 +63,14 @@ func addMetricsStatusIntoMetricsStatusList(metrics v1alpha1.MetricsStatus, basic
 	if basicStatus.MetricsStatusList == nil {
 		basicStatus.MetricsStatusList = []v1alpha1.MetricsStatus{}
 	}
+	for id, m := range basicStatus.MetricsStatusList {
+		if m.Name == metrics.Name {
+			basicStatus.MetricsStatusList[id] = metrics
+			return
+		}
+	}
 	basicStatus.MetricsStatusList = append(basicStatus.MetricsStatusList, metrics)
+	return
 }
 
 const (

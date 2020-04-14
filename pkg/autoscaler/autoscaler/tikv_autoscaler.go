@@ -30,8 +30,8 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if tac.Spec.TiKV == nil {
 		return nil
 	}
-	if tac.Status.Tikv == nil {
-		tac.Status.Tikv = &v1alpha1.TikvAutoScalerStatus{}
+	if tac.Status.TiKV == nil {
+		tac.Status.TiKV = &v1alpha1.TikvAutoScalerStatus{}
 	}
 	sts, err := am.stsLister.StatefulSets(tc.Namespace).Get(operatorUtils.GetStatefulSetName(tc, v1alpha1.TiKVMemberType))
 	if err != nil {

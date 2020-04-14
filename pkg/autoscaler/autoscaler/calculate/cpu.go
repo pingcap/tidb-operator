@@ -66,7 +66,7 @@ func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, 
 		return -1, err
 	}
 	metrics := v1alpha1.MetricsStatus{
-		Name:           "cpu",
+		Name:           string(MetricTypeCPU),
 		CurrentValue:   fmt.Sprintf("%v", cpuSecsTotal),
 		ThresholdValue: fmt.Sprintf("%v", expectedCpuSecsTotal),
 	}
