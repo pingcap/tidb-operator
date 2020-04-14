@@ -514,7 +514,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -552,7 +552,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -703,7 +703,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		if config.Dashboard == nil {
 			config.Dashboard = &v1alpha1.DashboardConfig{}
 		}
