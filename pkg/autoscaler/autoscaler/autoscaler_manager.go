@@ -85,7 +85,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err := am.syncTidbClusterReplicas(tac, tc, oldTc); err != nil {
 		return err
 	}
-	return am.syncAutoScalingStatus(tc, oldTc, tac)
+	return am.updateAutoScaling(oldTc, tac)
 }
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
@@ -125,9 +125,14 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tac *v1alpha1.TidbClusterAu
 	return nil
 }
 
-//TODO: sync tac status
-func (am *autoScalerManager) syncAutoScalingStatus(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster,
+func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 	tac *v1alpha1.TidbClusterAutoScaler) error {
+	if tac.Spec.TiKV != nil {
+		tac.Status.TiKV.CurrentReplicas = oldTc.Status.TiKV.StatefulSet.CurrentReplicas
+	}
+	if tac.Spec.TiDB != nil {
+		tac.Status.TiDB.CurrentReplicas = oldTc.Status.TiDB.StatefulSet.CurrentReplicas
+	}
 	return am.updateTidbClusterAutoScaler(tac)
 }
 

@@ -149,6 +149,40 @@ type TidbMonitorRef struct {
 	Name string `json:"name"`
 }
 
-// TODO: sync status
+// +k8s:openapi-gen=true
+// TidbClusterAutoSclaerStatus describe the whole status
 type TidbClusterAutoSclaerStatus struct {
+	// Tikv describes the status for the tikv in the last auto-scaling reconciliation
+	// +optional
+	TiKV *TikvAutoScalerStatus `json:"tikv,omitempty"`
+	// Tidb describes the status for the tidb in the last auto-scaling reconciliation
+	// +optional
+	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
+}
+
+type TidbAutoScalerStatus struct {
+	BasicAutoScalerStatus `json:",inline"`
+}
+
+type TikvAutoScalerStatus struct {
+	BasicAutoScalerStatus `json:",inline"`
+}
+
+type BasicAutoScalerStatus struct {
+	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
+	// +optional
+	MetricsStatusList []MetricsStatus `json:"metrics,omitempty"`
+	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
+	CurrentReplicas int32 `json:"currentReplicas"`
+	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
+	RecommendedReplicas int32 `json:"recommendedReplicas"`
+}
+
+type MetricsStatus struct {
+	// Name indicates the metrics name
+	Name string `json:"name"`
+	// CurrentValue indicates the value calculated in the last auto-scaling reconciliation
+	CurrentValue string `json:"currentValue"`
+	// TargetValue indicates the threshold value for this metrics in auto-scaling
+	ThresholdValue string `json:"thresholdValue"`
 }
