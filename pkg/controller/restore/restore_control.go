@@ -16,7 +16,9 @@ package restore
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"k8s.io/client-go/tools/cache"
 )
 
 // ControlInterface implements the control logic for updating Restore
@@ -39,8 +41,42 @@ type defaultRestoreControl struct {
 	restoreManager backup.RestoreManager
 }
 
+var _ ControlInterface = &defaultRestoreControl{}
+
 // UpdateRestore executes the core logic loop for a Restore.
 func (rc *defaultRestoreControl) UpdateRestore(restore *v1alpha1.Restore) error {
 	restore.SetGroupVersionKind(controller.RestoreControllerKind)
 	return rc.restoreManager.Sync(restore)
 }
+
+// FakeRestoreControl is a fake RestoreControlInterface
+type FakeRestoreControl struct {
+	backupIndexer        cache.Indexer
+	updateRestoreTracker controller.RequestTracker
+}
+
+// NewFakeRestoreControl returns a FakeRestoreControl
+func NewFakeRestoreControl(restoreInformer informers.RestoreInformer) *FakeRestoreControl {
+	return &FakeRestoreControl{
+		restoreInformer.Informer().GetIndexer(),
+		controller.RequestTracker{},
+	}
+}
+
+// SetUpdateRestoreError sets the error attributes of updateRestoreTracker
+func (fbc *FakeRestoreControl) SetUpdateRestoreError(err error, after int) {
+	fbc.updateRestoreTracker.SetError(err).SetAfter(after)
+}
+
+// UpdateRestore adds the backup to RestoreIndexer
+func (fbc *FakeRestoreControl) UpdateRestore(backup *v1alpha1.Restore) error {
+	defer fbc.updateRestoreTracker.Inc()
+	if fbc.updateRestoreTracker.ErrorReady() {
+		defer fbc.updateRestoreTracker.Reset()
+		return fbc.updateRestoreTracker.GetError()
+	}
+
+	return fbc.backupIndexer.Add(backup)
+}
+
+var _ ControlInterface = &FakeRestoreControl{}

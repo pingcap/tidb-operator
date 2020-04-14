@@ -2489,19 +2489,6 @@ int64
 </tr>
 <tr>
 <td>
-<code>flash</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.Flash">
-Flash
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
 <code>loger</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.FlashLogger">
@@ -3207,92 +3194,6 @@ FlashCluster
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.FlashApplication">FlashApplication
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
-</p>
-<p>
-<p>FlashApplication is the configuration of [application] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>runAsDaemon</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to true</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashCluster">FlashCluster
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Flash">Flash</a>)
-</p>
-<p>
-<p>FlashCluster is the configuration of [flash.flash_cluster] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>refresh_interval</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 20</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>update_rule_interval</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 10</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>master_ttl</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 60</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="pingcap.com/v1alpha1.FlashLogger">FlashLogger
 </h3>
 <p>
@@ -3344,335 +3245,6 @@ int32
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 10</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashProfile">FlashProfile
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
-</p>
-<p>
-<p>FlashProfile is the configuration of [profiles] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>readonly</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.Profile">
-Profile
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>default</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.Profile">
-Profile
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashProxy">FlashProxy
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Flash">Flash</a>)
-</p>
-<p>
-<p>FlashProxy is the configuration of [flash.proxy] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 0.0.0.0:20170</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>advertise-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>data-dir</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data/proxy</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>config</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data/proxy.toml</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>log-file</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data/logs/proxy.log</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashQuota">FlashQuota
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
-</p>
-<p>
-<p>FlashQuota is the configuration of [quotas] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>default</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.Quota">
-Quota
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashRaft">FlashRaft
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
-</p>
-<p>
-<p>FlashRaft is the configuration of [raft] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>pd_addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>kvstore_path</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data/kvstore</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storage_engine</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to dt</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashServerConfig">FlashServerConfig
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>)
-</p>
-<p>
-<p>FlashServerConfig is the configuration of Proxy server.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>engine-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>TiKVServerConfig</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVServerConfig">
-TiKVServerConfig
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>TiKVServerConfig</code> are embedded into this type.)
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashStatus">FlashStatus
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
-</p>
-<p>
-<p>FlashStatus is the configuration of [status] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>metrics_port</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 8234</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.FlashUser">FlashUser
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
-</p>
-<p>
-<p>FlashUser is the configuration of [users] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>readonly</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.User">
-User
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>default</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.User">
-User
-</a>
-</em>
-</td>
-<td>
 </td>
 </tr>
 </tbody>
@@ -4246,6 +3818,151 @@ uint32
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 1</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.LogTailerSpec">LogTailerSpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>)
+</p>
+<p>
+<p>LogTailerSpec represents an optional log tailer sidecar container</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.MasterKeyFileConfig">MasterKeyFileConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Encrypyion method, use master key encryption data key
+Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+Optional: Default to plaintext
+optional</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.MasterKeyKMSConfig">MasterKeyKMSConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>key-id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AWS CMK key-id it can be find in AWS Console or use aws cli
+This field is required</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AccessKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secret-access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>region</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Region of this KMS key
+Optional: Default to us-east-1
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
+optional</p>
 </td>
 </tr>
 </tbody>
@@ -6610,10 +6327,6 @@ float64
 <h3 id="pingcap.com/v1alpha1.Profile">Profile
 </h3>
 <p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.FlashProfile">FlashProfile</a>)
-</p>
-<p>
 <p>Profile is the configuration profiles.</p>
 </p>
 <table>
@@ -6737,215 +6450,6 @@ int
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ProxyConfig">ProxyConfig
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiFlashConfig">TiFlashConfig</a>)
-</p>
-<p>
-<p>ProxyConfig is the configuration of TiFlash proxy process.
-All the configurations are same with those of TiKV except adding <code>engine-addr</code> in the TiKVServerConfig</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>log-level</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to info</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>log-file</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>log-rotation-timespan</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 24h</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>panic-when-unexpected-key-or-data</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>server</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.FlashServerConfig">
-FlashServerConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>storage</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVStorageConfig">
-TiKVStorageConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>raftstore</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVRaftstoreConfig">
-TiKVRaftstoreConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>rocksdb</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVDbConfig">
-TiKVDbConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>coprocessor</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVCoprocessorConfig">
-TiKVCoprocessorConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>readpool</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVReadPoolConfig">
-TiKVReadPoolConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>raftdb</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVRaftDBConfig">
-TiKVRaftDBConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>import</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVImportConfig">
-TiKVImportConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>gc</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVGCConfig">
-TiKVGCConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>pd</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVPDConfig">
-TiKVPDConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>security</code></br>
-<em>
-<a href="#pingcap.com/v1alpha1.TiKVSecurityConfig">
-TiKVSecurityConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="pingcap.com/v1alpha1.ProxyProtocol">ProxyProtocol
 </h3>
 <p>
@@ -6987,32 +6491,6 @@ uint
 <td>
 <em>(Optional)</em>
 <p>PROXY protocol header read timeout, Unit is second.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pingcap.com/v1alpha1.ProxyServer">ProxyServer
-</h3>
-<p>
-<p>ProxyServer is the configuration of TiFlash proxy server.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>engine-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -7175,10 +6653,6 @@ Kubernetes apps/v1.StatefulSetStatus
 </table>
 <h3 id="pingcap.com/v1alpha1.Quota">Quota
 </h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.FlashQuota">FlashQuota</a>)
-</p>
 <p>
 <p>Quota is the configuration of [quotas.default] section.</p>
 </p>
@@ -9488,6 +8962,20 @@ TiFlashConfig
 <p>Config is the Configuration of TiFlash</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>logTailer</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.LogTailerSpec">
+LogTailerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTailer is the configurations of the log tailers for TiFlash</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiKVBlockCacheConfig">TiKVBlockCacheConfig
@@ -10358,13 +9846,25 @@ TiKVSecurityConfig
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>encryption</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVEncryptionConfig">
+TiKVEncryptionConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiKVCoprocessorConfig">TiKVCoprocessorConfig
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -10574,7 +10074,6 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -10929,6 +10428,78 @@ TiKVTitanDBConfig
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.TiKVEncryptionConfig">TiKVEncryptionConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Encrypyion method, use data key encryption raw rocksdb data
+Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+Optional: Default to plaintext
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-key-rotation-period</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The frequency of datakey rotation, It managered by tikv
+Optional: default to 7d
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master-key</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">
+TiKVMasterKeyConfig
+</a>
+</em>
+</td>
+<td>
+<p>Master key config</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>previous-master-key</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">
+TiKVMasterKeyConfig
+</a>
+</em>
+</td>
+<td>
+<p>Previous master key config
+It used in master key rotation, the data key should decryption by previous master key and  then encrypytion by new master key</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TiKVFailureStore">TiKVFailureStore
 </h3>
 <p>
@@ -10984,7 +10555,6 @@ Kubernetes meta/v1.Time
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -11026,7 +10596,6 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -11140,11 +10709,75 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVEncryptionConfig">TiKVEncryptionConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Use KMS encryption or use file encryption, possible values: kms, file
+If set to kms, kms MasterKeyKMSConfig should be filled, if set to file MasterKeyFileConfig should be filled
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyFileConfig</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.MasterKeyFileConfig">
+MasterKeyFileConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyFileConfig</code> are embedded into this type.)
+</p>
+<p>Master key file config
+If the type set to file, this config should be filled</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyKMSConfig</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.MasterKeyKMSConfig">
+MasterKeyKMSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyKMSConfig</code> are embedded into this type.)
+</p>
+<p>Master key KMS config
+If the type set to kms, this config should be filled</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TiKVPDConfig">TiKVPDConfig
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -11219,7 +10852,6 @@ Optional: Defaults to 10</p>
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -11504,7 +11136,6 @@ TiKVCfConfig
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12095,7 +11726,6 @@ bool
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12140,7 +11770,6 @@ TiKVStorageReadPoolConfig
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12226,7 +11855,6 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.FlashServerConfig">FlashServerConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12750,7 +12378,6 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ProxyConfig">ProxyConfig</a>, 
 <a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13791,6 +13418,18 @@ PumpStatus
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>tiflash</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiFlashStatus">
+TiFlashStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TidbInitializerSpec">TidbInitializerSpec
@@ -14331,10 +13970,6 @@ Kubernetes meta/v1.Time
 </table>
 <h3 id="pingcap.com/v1alpha1.User">User
 </h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.FlashUser">FlashUser</a>)
-</p>
 <p>
 <p>User is the configuration of users.</p>
 </p>

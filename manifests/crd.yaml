@@ -50,6 +50,9 @@ spec:
     description: The desired replicas number of TiDB cluster
     name: Desire
     type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbCluster
@@ -5215,6 +5218,21 @@ spec:
                   description: 'Limits describes the maximum amount of compute resources
                     allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                   type: object
+                logTailer:
+                  description: LogTailerSpec represents an optional log tailer sidecar
+                    container
+                  properties:
+                    limits:
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
                 maxFailoverCount:
                   description: 'MaxFailoverCount limit the max replicas could be added
                     in failover, 0 means no failover Optional: Defaults to 3'
@@ -6116,6 +6134,103 @@ spec:
                             will be a large number of tables created. Optional: Defaults
                             to false optional'
                           type: boolean
+                      type: object
+                    encryption:
+                      properties:
+                        data-key-rotation-period:
+                          description: 'The frequency of datakey rotation, It managered
+                            by tikv Optional: default to 7d optional'
+                          type: string
+                        master-key:
+                          properties:
+                            access-key:
+                              description: AccessKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            endpoint:
+                              description: Used for KMS compatible KMS, such as Ceph,
+                                minio, If use AWS, leave empty optional
+                              type: string
+                            key-id:
+                              description: AWS CMK key-id it can be find in AWS Console
+                                or use aws cli This field is required
+                              type: string
+                            method:
+                              description: 'Encrypyion method, use master key encryption
+                                data key Possible values: plaintext, aes128-ctr, aes192-ctr,
+                                aes256-ctr Optional: Default to plaintext optional'
+                              type: string
+                            path:
+                              description: |-
+                                Text file containing the key in hex form, end with '
+                                '
+                              type: string
+                            region:
+                              description: 'Region of this KMS key Optional: Default
+                                to us-east-1 optional'
+                              type: string
+                            secret-access-key:
+                              description: SecretKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            type:
+                              description: 'Use KMS encryption or use file encryption,
+                                possible values: kms, file If set to kms, kms MasterKeyKMSConfig
+                                should be filled, if set to file MasterKeyFileConfig
+                                should be filled optional'
+                              type: string
+                          required:
+                          - path
+                          - key-id
+                          type: object
+                        method:
+                          description: 'Encrypyion method, use data key encryption
+                            raw rocksdb data Possible values: plaintext, aes128-ctr,
+                            aes192-ctr, aes256-ctr Optional: Default to plaintext
+                            optional'
+                          type: string
+                        previous-master-key:
+                          properties:
+                            access-key:
+                              description: AccessKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            endpoint:
+                              description: Used for KMS compatible KMS, such as Ceph,
+                                minio, If use AWS, leave empty optional
+                              type: string
+                            key-id:
+                              description: AWS CMK key-id it can be find in AWS Console
+                                or use aws cli This field is required
+                              type: string
+                            method:
+                              description: 'Encrypyion method, use master key encryption
+                                data key Possible values: plaintext, aes128-ctr, aes192-ctr,
+                                aes256-ctr Optional: Default to plaintext optional'
+                              type: string
+                            path:
+                              description: |-
+                                Text file containing the key in hex form, end with '
+                                '
+                              type: string
+                            region:
+                              description: 'Region of this KMS key Optional: Default
+                                to us-east-1 optional'
+                              type: string
+                            secret-access-key:
+                              description: SecretKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            type:
+                              description: 'Use KMS encryption or use file encryption,
+                                possible values: kms, file If set to kms, kms MasterKeyKMSConfig
+                                should be filled, if set to file MasterKeyFileConfig
+                                should be filled optional'
+                              type: string
+                          required:
+                          - path
+                          - key-id
+                          type: object
                       type: object
                     gc:
                       properties:
@@ -7651,6 +7766,9 @@ spec:
     name: Completed
     priority: 1
     type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: Backup
@@ -8491,6 +8609,9 @@ spec:
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
     name: Completed
+    type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
     type: date
   group: pingcap.com
   names:
@@ -9343,6 +9464,9 @@ spec:
     description: The last time the backup was successfully created
     name: LastBackupTime
     priority: 1
+    type: date
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
     type: date
   group: pingcap.com
   names:
@@ -10359,6 +10483,9 @@ spec:
     name: Phase
     priority: 1
     type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbInitializer
@@ -10461,6 +10588,9 @@ spec:
     description: The minimal replicas of TiKV
     name: TiKV-MinReplicas
     type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbClusterAutoScaler
