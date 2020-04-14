@@ -9,12 +9,13 @@
     "TCPPort",
     "HTTPPort",
     "InternalServerHTTPPort",
-    "Errorlog",
+    "ErrorLog",
     "ServerLog",
     "TiDBStatusAddr",
     "ServiceAddr",
     "ProxyConfig",
     "ClusterManagerPath",
+    "Flash",
     "FlashStatus",
     "FlashQuota",
     "FlashUser",
@@ -27,7 +28,18 @@
   "hideTypePatterns": [
     "ParseError$",
     "List$",
-    "DataResource"
+    "DataResource",
+    "ProxyConfig",
+    "^Flash$",
+    "FlashCluster",
+    "FlashStatus",
+    "FlashQuota",
+    "FlashUser",
+    "FlashProfile",
+    "FlashApplication",
+    "FlashProxy",
+    "FlashServerConfig",
+    "FlashRaft"
   ],
   "externalPackages": [
     {
