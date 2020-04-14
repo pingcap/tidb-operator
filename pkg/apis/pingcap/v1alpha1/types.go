@@ -42,6 +42,8 @@ const (
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv container type
 	TiKVMemberType MemberType = "tikv"
+	// TiFlashMemberType is tiflash container type
+	TiFlashMemberType MemberType = "tiflash"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
@@ -203,11 +205,12 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string     `json:"clusterID,omitempty"`
-	PD        PDStatus   `json:"pd,omitempty"`
-	TiKV      TiKVStatus `json:"tikv,omitempty"`
-	TiDB      TiDBStatus `json:"tidb,omitempty"`
-	Pump      PumpStatus `josn:"pump,omitempty"`
+	ClusterID string        `json:"clusterID,omitempty"`
+	PD        PDStatus      `json:"pd,omitempty"`
+	TiKV      TiKVStatus    `json:"tikv,omitempty"`
+	TiDB      TiDBStatus    `json:"tidb,omitempty"`
+	Pump      PumpStatus    `josn:"pump,omitempty"`
+	TiFlash   TiFlashStatus `json:"tiflash,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -319,6 +322,16 @@ type TiFlashSpec struct {
 	// Config is the Configuration of TiFlash
 	// +optional
 	Config *TiFlashConfig `json:"config,omitempty"`
+
+	// LogTailer is the configurations of the log tailers for TiFlash
+	// +optional
+	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// LogTailerSpec represents an optional log tailer sidecar container
+type LogTailerSpec struct {
+	corev1.ResourceRequirements `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
@@ -646,6 +659,17 @@ type TiDBFailureMember struct {
 
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
+	Synced          bool                        `json:"synced,omitempty"`
+	Phase           MemberPhase                 `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
+	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
+	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	Image           string                      `json:"image,omitempty"`
+}
+
+// TiFlashStatus is TiFlash status
+type TiFlashStatus struct {
 	Synced          bool                        `json:"synced,omitempty"`
 	Phase           MemberPhase                 `json:"phase,omitempty"`
 	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
