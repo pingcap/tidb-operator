@@ -14,21 +14,26 @@
 package member
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type tidbFailover struct {
 	tidbFailoverPeriod time.Duration
+	recorder           record.EventRecorder
 }
 
 // NewTiDBFailover returns a tidbFailover instance
-func NewTiDBFailover(failoverPeriod time.Duration) Failover {
+func NewTiDBFailover(failoverPeriod time.Duration, recorder record.EventRecorder) Failover {
 	return &tidbFailover{
 		tidbFailoverPeriod: failoverPeriod,
+		recorder:           recorder,
 	}
 }
 
@@ -59,6 +64,8 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 					PodName:   tidbMember.Name,
 					CreatedAt: metav1.Now(),
 				}
+				msg := fmt.Sprintf("tidb[%s] is unhealthy", tidbMember.Name)
+				tf.recorder.Event(tc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "tidb", tidbMember.Name, msg))
 				break
 			}
 		}
@@ -71,7 +78,8 @@ func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
 }
 
-type fakeTiDBFailover struct{}
+type fakeTiDBFailover struct {
+}
 
 // NewFakeTiDBFailover returns a fake Failover
 func NewFakeTiDBFailover() Failover {

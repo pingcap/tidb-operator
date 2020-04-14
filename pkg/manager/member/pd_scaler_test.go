@@ -15,11 +15,11 @@ package member
 
 import (
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/pdpb"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
