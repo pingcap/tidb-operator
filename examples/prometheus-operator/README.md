@@ -1,4 +1,8 @@
-# If you are use prometheus operator to monitor your service,you can see this example.
+# How to monitor TiDB using prometheus-operator
+
+> **Note:**
+>
+> This example describe ServiceMonitor and PrometheusRule yaml demo , you can use existing Prometheus CRD instance to load .
 
 **Prerequisites**: 
 - Has Prometheus operator installed. [Doc](https://github.com/coreos/kube-prometheus)
