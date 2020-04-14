@@ -71,9 +71,9 @@ category: how-to
     }
     ```
 
-> **注意：**
->
-> 这里的 `profile server` 的 `usages` 必须添加上 `"client auth"`。因为这套 Server 端证书同时也会作为 Client 端证书使用。
+    > **注意：**
+    >
+    > 这里的 `profile server` 的 `usages` 必须添加上 `"client auth"`。因为这套 Server 端证书同时也会作为 Client 端证书使用。
 
 3. 您还可以修改 `ca-csr.json` 证书签名请求 (CSR)：
 
@@ -671,7 +671,6 @@ category: how-to
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-tidb-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiDB 组件使用。
 
-
     - Pump 组件的 Server 端证书。
 
         ``` yaml
@@ -862,10 +861,10 @@ category: how-to
 
 在这一步中，需要完成以下操作：
 
-    - 创建一套 TiDB 集群
-    - 为 TiDB 组件间开启 TLS，并开启 CN 验证
-    - 部署一套监控系统
-    - 部署 Pump 组件，并开启 CN 验证
+- 创建一套 TiDB 集群
+- 为 TiDB 组件间开启 TLS，并开启 CN 验证
+- 部署一套监控系统
+- 部署 Pump 组件，并开启 CN 验证
 
 1. 创建一套 TiDB 集群（监控系统和 Pump 组件已包含在内）：
 
@@ -1063,7 +1062,7 @@ category: how-to
         kubectl apply -f restore.yaml
         ```
 
-## 第三步：配置 `pd-ctl` 连接集群。
+## 第三步：配置 `pd-ctl` 连接集群
 
 1. 下载 `pd-ctl`。
 

@@ -31,7 +31,6 @@ category: how-to
 
     修改完 `values.yaml` 文件中的上述配置项以后，进行 TiDB Operator 部署或者更新。安装与更新 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)。 
 
-
 ## 使用 annotate 标记目标 Pod 节点
 
 我们通过 `kubectl annotate` 的方式来标记目标 TiDB 集群 Pod 节点组件，当 `annotate` 标记完成以后，TiDB Operator 会自动进行 Pod 节点的优雅下线并重启。你可以通过以下方式来进行标记:

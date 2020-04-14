@@ -258,11 +258,11 @@ category: how-to
 
 创建好 `Restore` CR 后，可通过以下命令查看恢复的状态：
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-     ```shell
-     kubectl get rt -n test2 -o wide
-     ```
+```shell
+kubectl get rt -n test2 -o wide
+```
 
 更多 `Restore` CR 字段的详细解释：
 

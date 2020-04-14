@@ -165,7 +165,7 @@ You can use the `terraform output` command to get the output again.
     >
     > * Replace all `CLUSTER_NAME` in `db.yaml` and `db-monitor.yaml` files with `default_cluster_name` configured during EKS deployment.
     > * Make sure that during EKS deployment, the number of PD, TiKV or TiDB nodes is consistent with the value of the `replicas` field of the corresponding component in `db.yaml`.
-    > * Make sure that `spec.initializer.version` in `db-monitor.yaml` and `spec.version` in `db.yaml` are the same to ensure normal monitor display.
+    > * Make sure that `spec.initializer.version` in `db-monitor.yaml` and `spec.version` in `db.yaml` are the same to ensure normal monitor display.
 
 2. Create `Namespace`:
 

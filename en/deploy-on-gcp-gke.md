@@ -211,7 +211,7 @@ After `terraform apply` is successful executed, perform the following steps to a
 
 1. Get the IP address of the TiDB Internal LoadBalancer:
 
-{{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb -n <namespace>

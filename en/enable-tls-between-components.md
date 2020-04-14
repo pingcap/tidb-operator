@@ -20,8 +20,8 @@ To enable TLS between TiDB components, perform the following steps:
 
 Certificates can be issued in multiple methods. This document describes two methods. You can choose either of them to issue certificates for the TiDB cluster:
 
-    - [Using the `cfssl` system](#using-cfssl)
-    - [Using the `cert-manager` system](#using-cert-manager)
+- [Using the `cfssl` system](#using-cfssl)
+- [Using the `cert-manager` system](#using-cert-manager)
 
 ## Step 1: Generate certificates for components of the TiDB cluster
 
@@ -877,10 +877,10 @@ When you deploy a TiDB cluster, you can enable TLS between TiDB components, and 
 
 In this step, you need to perform the following operations:
 
-    - Create a TiDB cluster
-    - Enable TLS between the TiDB components, and enable CN verification
-    - Deploy a monitoring system
-    - Deploy the Pump component, and enable CN verification
+- Create a TiDB cluster
+- Enable TLS between the TiDB components, and enable CN verification
+- Deploy a monitoring system
+- Deploy the Pump component, and enable CN verification
 
 1. Create a TiDB cluster:
 

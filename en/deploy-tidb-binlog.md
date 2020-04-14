@@ -134,6 +134,7 @@ TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster
                         - <cluster-name>
                     topologyKey: kubernetes.io/hostname
         ```
+
     > **Note:**
     >
     > If you update the affinity configuration of the TiDB components, it will cause rolling updates of the TiDB components in the cluster.

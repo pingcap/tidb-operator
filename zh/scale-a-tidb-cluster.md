@@ -14,7 +14,6 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 
 ### 水平扩缩容操作 (Helm)
 
-
 1. 修改集群的 `value.yaml` 文件中的 `pd.replicas`、`tidb.replicas`、`tikv.replicas` 至期望值。
 
 2. 执行 `helm upgrade` 命令进行扩缩容：
