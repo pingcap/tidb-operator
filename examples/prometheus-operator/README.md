@@ -38,7 +38,7 @@ basic-tikv   24h
 ```
 
 ```bash
-$ kubectl get PrometheusRule -n monitoring|grep basic
+$ kubectl get PrometheusRule -n <namespace>|grep basic
 NAME         AGE
 basic-prometheus-rules   23h
 ```
