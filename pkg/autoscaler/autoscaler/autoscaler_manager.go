@@ -152,7 +152,9 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 		if err != nil {
 			return err
 		}
-		tac.Status.TiKV.LastAutoScalingTimestamp = &lastTimestamp
+		if len(lastTimestamp) > 0 {
+			tac.Status.TiKV.LastAutoScalingTimestamp = &lastTimestamp
+		}
 	} else {
 		tac.Status.TiKV = nil
 	}
@@ -162,7 +164,9 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 		if err != nil {
 			return err
 		}
-		tac.Status.TiDB.LastAutoScalingTimestamp = &lastTimestamp
+		if len(lastTimestamp) > 0 {
+			tac.Status.TiDB.LastAutoScalingTimestamp = &lastTimestamp
+		}
 	} else {
 		tac.Status.TiDB = nil
 	}
