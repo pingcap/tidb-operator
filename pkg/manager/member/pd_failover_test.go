@@ -33,6 +33,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/pointer"
 )
 
 func TestPDFailoverFailover(t *testing.T) {
@@ -42,6 +43,7 @@ func TestPDFailoverFailover(t *testing.T) {
 	type testcase struct {
 		name                     string
 		update                   func(*v1alpha1.TidbCluster)
+		maxFailoverCount         int32
 		hasPVC                   bool
 		hasPod                   bool
 		podWithDeletionTimestamp bool
@@ -53,53 +55,12 @@ func TestPDFailoverFailover(t *testing.T) {
 		errExpectFn              func(*GomegaWithT, error)
 		expectFn                 func(*v1alpha1.TidbCluster, *pdFailover)
 	}
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-		tc := newTidbClusterForPD()
-		test.update(tc)
 
-		pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
-		pdClient := controller.NewFakePDClient(fakePDControl, tc)
-		pdFailover.recorder = recorder
-
-		pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
-			if test.delMemberFailed {
-				return nil, fmt.Errorf("failed to delete member")
-			}
-			return nil, nil
-		})
-
-		if test.hasPVC {
-			pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
-			if test.pvcWithDeletionTimestamp {
-				pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-			}
-			pvcIndexer.Add(pvc)
-		}
-		if test.hasPod {
-			pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
-			if test.podWithDeletionTimestamp {
-				pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-			}
-			podIndexer.Add(pod)
-		}
-		if test.delPodFailed {
-			fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)
-		}
-		if test.delPVCFailed {
-			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("delete pvc: API server failed")), 0)
-		}
-
-		tc.Status.PD.Synced = !test.statusSyncFailed
-
-		err := pdFailover.Failover(tc)
-		test.errExpectFn(g, err)
-		test.expectFn(tc, pdFailover)
-	}
 	tests := []testcase{
 		{
 			name:                     "all members are ready",
 			update:                   allMembersReady,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -118,6 +79,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "pd status sync failed",
 			update:                   allMembersReady,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -135,6 +97,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "two members are not ready, not in quorum",
 			update:                   twoMembersNotReady,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -159,6 +122,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "two members are ready and a failure member",
 			update:                   oneFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -187,6 +151,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.LastTransitionTime = metav1.Time{Time: time.Now().Add(-2 * time.Minute)}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -212,6 +177,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.LastTransitionTime = metav1.Time{}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -231,6 +197,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member, don't have pvc",
 			update:                   oneNotReadyMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -253,6 +220,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member",
 			update:                   oneNotReadyMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -279,8 +247,29 @@ func TestPDFailoverFailover(t *testing.T) {
 			},
 		},
 		{
+			name:                     "has one not ready member but maxFailoverCount is 0",
+			update:                   oneNotReadyMember,
+			maxFailoverCount:         0,
+			hasPVC:                   true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             false,
+			statusSyncFailed:         false,
+			errExpectFn:              errExpectNil,
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+			},
+		},
+		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -310,6 +299,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.MemberID = "wrong-id"
 				tc.Status.PD.FailureMembers[pd1Name] = pd1
 			},
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -335,6 +325,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete member failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -360,6 +351,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -386,6 +378,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member, and exceed deadline, has Pod, delete pvc failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -412,6 +405,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member, and exceed deadline, has Pod with deletion timestamp",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: true,
@@ -441,6 +435,7 @@ func TestPDFailoverFailover(t *testing.T) {
 		{
 			name:                     "has one not ready member, and exceed deadline, has PVC with deletion timestamp",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -470,8 +465,50 @@ func TestPDFailoverFailover(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc := newTidbClusterForPD()
+			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(test.maxFailoverCount)
+			test.update(tc)
+
+			pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
+			pdClient := controller.NewFakePDClient(fakePDControl, tc)
+			pdFailover.recorder = recorder
+
+			pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
+				if test.delMemberFailed {
+					return nil, fmt.Errorf("failed to delete member")
+				}
+				return nil, nil
+			})
+
+			if test.hasPVC {
+				pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				if test.pvcWithDeletionTimestamp {
+					pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				}
+				pvcIndexer.Add(pvc)
+			}
+			if test.hasPod {
+				pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				if test.podWithDeletionTimestamp {
+					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				}
+				podIndexer.Add(pod)
+			}
+			if test.delPodFailed {
+				fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)
+			}
+			if test.delPVCFailed {
+				fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("delete pvc: API server failed")), 0)
+			}
+
+			tc.Status.PD.Synced = !test.statusSyncFailed
+
+			err := pdFailover.Failover(tc)
+			test.errExpectFn(g, err)
+			test.expectFn(tc, pdFailover)
+		})
 	}
 }
 

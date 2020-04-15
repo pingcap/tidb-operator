@@ -189,39 +189,6 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				framework.ExpectEqual(err, wait.ErrWaitTimeout, "TiDB cluster is not affeteced")
 			})
 		}
-	})
-
-	ginkgo.Context("operator with auto-failover disabled", func() {
-		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
-		var genericCli client.Client
-
-		ginkgo.BeforeEach(func() {
-			ocfg = &tests.OperatorConfig{
-				Namespace:    ns,
-				ReleaseName:  "operator",
-				Image:        cfg.OperatorImage,
-				Tag:          cfg.OperatorTag,
-				LogLevel:     "4",
-				TestMode:     true,
-				AutoFailover: pointer.BoolPtr(false),
-			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
-			ginkgo.By("Installing CRDs")
-			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie(ocfg)
-			ginkgo.By("Installing tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			oa.DeployOperatorOrDie(ocfg)
-			var err error
-			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
-			framework.ExpectNoError(err, "failed to create clientset")
-		})
-
-		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstall tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-		})
 
 		// In this test, we demonstrate and verify the recover process when a
 		// node (and local storage on it) is permanently gone.
@@ -309,8 +276,11 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			clusterName := "test"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 3
+			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(0)
 			tc.Spec.TiDB.Replicas = 1
+			tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(0)
 			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(0)
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
