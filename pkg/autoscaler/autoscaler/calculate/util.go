@@ -59,6 +59,20 @@ func filterContainer(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSe
 	return nil, fmt.Errorf("tac[%s/%s]'s Target have not %s container", tac.Namespace, tac.Name, containerName)
 }
 
+func addMetricsStatusIntoMetricsStatusList(metrics v1alpha1.MetricsStatus, basicStatus *v1alpha1.BasicAutoScalerStatus) {
+	if basicStatus.MetricsStatusList == nil {
+		basicStatus.MetricsStatusList = []v1alpha1.MetricsStatus{}
+	}
+	for id, m := range basicStatus.MetricsStatusList {
+		if m.Name == metrics.Name {
+			basicStatus.MetricsStatusList[id] = metrics
+			return
+		}
+	}
+	basicStatus.MetricsStatusList = append(basicStatus.MetricsStatusList, metrics)
+	return
+}
+
 const (
 	statusSuccess = "success"
 )
