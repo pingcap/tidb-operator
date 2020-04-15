@@ -66,12 +66,14 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	return allErrs
 }
 
 func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	return allErrs
 }
 
@@ -113,6 +115,15 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	allErrs := field.ErrorList{}
 	// TODO validate other fields
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
+	return allErrs
+}
+
+//validateRequestsStorage validates resources requests storage
+func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if _, ok := requests[corev1.ResourceStorage]; !ok {
+		allErrs = append(allErrs, field.Required(fldPath.Child("requests.storage").Key((string(corev1.ResourceStorage))), "PD or TiKV request storage must not be empty"))
+	}
 	return allErrs
 }
 
@@ -256,12 +267,6 @@ func validateNewTidbClusterSpec(spec *v1alpha1.TidbClusterSpec, path *field.Path
 	}
 	if spec.PD.Image != "" {
 		allErrs = append(allErrs, field.Invalid(path.Child("pd.image"), spec.PD.Image, "image has been deprecated, use baseImage instead"))
-	}
-	if _, ok := spec.PD.ResourceRequirements.Requests[corev1.ResourceStorage]; !ok {
-		allErrs = append(allErrs, field.Required(path.Child("pd.resources.requests").Key((string(corev1.ResourceStorage))), "request storage of PD must not be empty"))
-	}
-	if _, ok := spec.TiKV.ResourceRequirements.Requests[corev1.ResourceStorage]; !ok {
-		allErrs = append(allErrs, field.Required(path.Child("tikv.resources.requests").Key((string(corev1.ResourceStorage))), "request storage of TiKV must not be empty"))
 	}
 	return allErrs
 }

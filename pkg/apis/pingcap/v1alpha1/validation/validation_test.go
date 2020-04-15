@@ -257,11 +257,11 @@ func TestValidateNewTiDBCluster(t *testing.T) {
 			errs: []field.Error{
 				{
 					Type:   field.ErrorTypeRequired,
-					Detail: `request storage of PD must not be empty`,
+					Detail: `PD or TiKV request storage must not be empty`,
 				},
 				{
 					Type:   field.ErrorTypeRequired,
-					Detail: `request storage of TiKV must not be empty`,
+					Detail: `PD or TiKV request storage must not be empty`,
 				},
 			},
 		},
