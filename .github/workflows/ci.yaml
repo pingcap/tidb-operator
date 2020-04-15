@@ -15,7 +15,7 @@ jobs:
       matrix:
         target:
         - "check-setup check"
-        - "docker e2e-docker cli"
+        - "docker e2e-docker cli debug-build-docker"
         - "test GOFLAGS=-race"
         - "e2e-examples"
     steps:
