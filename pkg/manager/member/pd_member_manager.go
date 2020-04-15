@@ -489,6 +489,16 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	return false, nil
 }
 
+func getFailureReplicas(tc *v1alpha1.TidbCluster) int {
+	failureReplicas := 0
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
+
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -568,12 +578,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	failureReplicas := 0
-	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
+	failureReplicas := getFailureReplicas(tc)
 
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
