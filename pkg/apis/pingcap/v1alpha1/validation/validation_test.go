@@ -222,7 +222,7 @@ func TestValidateNewTiDBCluster(t *testing.T) {
 		},
 	}
 	for _, v := range successCases {
-		if errs := ValidateTidbCluster(&v.tc); len(errs) != 0 {
+		if errs := ValidateCreateTidbCluster(&v.tc); len(errs) != 0 {
 			t.Errorf("[%s]: unexpected error: %v", v.name, errs)
 		}
 	}
@@ -256,14 +256,18 @@ func TestValidateNewTiDBCluster(t *testing.T) {
 			},
 			errs: []field.Error{
 				{
-					Type:   field.ErrorTypeInvalid,
+					Type:   field.ErrorTypeRequired,
 					Detail: `request storage of PD must not be empty`,
+				},
+				{
+					Type:   field.ErrorTypeRequired,
+					Detail: `request storage of TiKV must not be empty`,
 				},
 			},
 		},
 	}
 	for _, v := range errorCases {
-		errs := ValidateTidbCluster(&v.tc)
+		errs := ValidateCreateTidbCluster(&v.tc)
 		if len(errs) != len(v.errs) {
 			t.Errorf("[%s]: expected %d failures, got %d failures: %v", v.name, len(v.errs), len(errs), errs)
 			continue
