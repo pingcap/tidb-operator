@@ -59,7 +59,6 @@ type tidbMemberManager struct {
 	svcControl                   controller.ServiceControlInterface
 	tidbControl                  controller.TiDBControlInterface
 	typedControl                 controller.TypedControlInterface
-	certControl                  controller.CertControlInterface
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
@@ -74,7 +73,6 @@ type tidbMemberManager struct {
 func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	tidbControl controller.TiDBControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -87,7 +85,6 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		svcControl:                   svcControl,
 		tidbControl:                  tidbControl,
 		typedControl:                 typedControl,
-		certControl:                  certControl,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,

@@ -50,7 +50,6 @@ type tiflashMemberManager struct {
 	setControl                      controller.StatefulSetControlInterface
 	svcControl                      controller.ServiceControlInterface
 	pdControl                       pdapi.PDControlInterface
-	certControl                     controller.CertControlInterface
 	typedControl                    controller.TypedControlInterface
 	setLister                       v1.StatefulSetLister
 	svcLister                       corelisters.ServiceLister
@@ -68,7 +67,6 @@ func NewTiFlashMemberManager(
 	pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -84,7 +82,6 @@ func NewTiFlashMemberManager(
 		nodeLister:      nodeLister,
 		setControl:      setControl,
 		svcControl:      svcControl,
-		certControl:     certControl,
 		typedControl:    typedControl,
 		setLister:       setLister,
 		svcLister:       svcLister,
