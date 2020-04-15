@@ -66,18 +66,19 @@ echo "info: downloading latest crc"
 cd $HOME
 CRC_VERSION=$(curl --retry 10 -L -s 'https://mirror.openshift.com/pub/openshift-v4/clients/crc/latest/release-info.json' | jq -r '.version.crcVersion')
 if ! test -e crc-linux-amd64.tar.xz; then
-    curl --retryn 10 -LO https://mirror.openshift.com/pub/openshift-v4/clients/crc/$CRC_VERSION/crc-linux-amd64.tar.xz
+    curl --retry 10 -LO https://mirror.openshift.com/pub/openshift-v4/clients/crc/$CRC_VERSION/crc-linux-amd64.tar.xz
     tar -xvf crc-linux-amd64.tar.xz
 fi
 export PATH=$HOME/crc-linux-$CRC_VERSION-amd64:$PATH
 
 crc version
 
-echo "info: starting the OpenShift clsuter"
-crcStatus=$(crc status | awk '/CRC VM:/ {print $3}')
+crcStatus=$(crc status 2>/dev/null | awk '/CRC VM:/ {print $3}') || true
 if [[ "$crcStatus" == "Running" ]]; then
+    echo "info: OpenShift cluster is running"
     crc status
 else
+    echo "info: starting OpenShift clsuter"
     crc setup
     crc config set cpus 6
     crc config set memory 24576
