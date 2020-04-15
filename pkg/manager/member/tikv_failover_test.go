@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -304,5 +305,6 @@ func TestTiKVFailoverFailover(t *testing.T) {
 }
 
 func newFakeTiKVFailover() *tikvFailover {
-	return &tikvFailover{1 * time.Hour}
+	recorder := record.NewFakeRecorder(100)
+	return &tikvFailover{1 * time.Hour, recorder}
 }

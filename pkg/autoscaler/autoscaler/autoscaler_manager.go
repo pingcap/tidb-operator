@@ -15,12 +15,14 @@ package autoscaler
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -80,7 +82,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err
 	}
-	if err := am.syncTidbClusterReplicas(tc, oldTc); err != nil {
+	if err := am.syncTidbClusterReplicas(tac, tc, oldTc); err != nil {
 		return err
 	}
 	return am.syncAutoScalingStatus(tc, oldTc, tac)
@@ -102,7 +104,7 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	return nil
 }
 
-func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster) error {
+func (am *autoScalerManager) syncTidbClusterReplicas(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster) error {
 	if tc.Spec.TiDB.Replicas == oldTc.Spec.TiDB.Replicas && tc.Spec.TiKV.Replicas == oldTc.Spec.TiKV.Replicas {
 		return nil
 	}
@@ -111,6 +113,15 @@ func (am *autoScalerManager) syncTidbClusterReplicas(tc *v1alpha1.TidbCluster, o
 	if err != nil {
 		return err
 	}
+	reason := fmt.Sprintf("Successful %s", strings.Title("auto-scaling"))
+	msg := ""
+	if tc.Spec.TiDB.Replicas != oldTc.Spec.TiDB.Replicas {
+		msg = fmt.Sprintf("%s auto-scaling tidb from %d to %d", msg, oldTc.Spec.TiDB.Replicas, tc.Spec.TiDB.Replicas)
+	}
+	if tc.Spec.TiKV.Replicas != oldTc.Spec.TiKV.Replicas {
+		msg = fmt.Sprintf("%s auto-scaling tikv from %d to %d", msg, oldTc.Spec.TiKV.Replicas, tc.Spec.TiKV.Replicas)
+	}
+	am.recorder.Event(tac, corev1.EventTypeNormal, reason, msg)
 	return nil
 }
 
