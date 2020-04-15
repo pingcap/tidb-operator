@@ -65,6 +65,16 @@ func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, 
 	if err != nil {
 		return -1, err
 	}
+	metrics := v1alpha1.MetricsStatus{
+		Name:           string(MetricTypeCPU),
+		CurrentValue:   fmt.Sprintf("%v", cpuSecsTotal),
+		ThresholdValue: fmt.Sprintf("%v", expectedCpuSecsTotal),
+	}
+	if memberType == v1alpha1.TiKVMemberType {
+		addMetricsStatusIntoMetricsStatusList(metrics, &tac.Status.TiKV.BasicAutoScalerStatus)
+	} else if memberType == v1alpha1.TiDBMemberType {
+		addMetricsStatusIntoMetricsStatusList(metrics, &tac.Status.TiDB.BasicAutoScalerStatus)
+	}
 	return rc, nil
 }
 
