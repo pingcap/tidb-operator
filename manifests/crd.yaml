@@ -1818,6 +1818,11 @@ spec:
                   description: 'Limits describes the maximum amount of compute resources
                     allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                   type: object
+                maxFailoverCount:
+                  description: 'MaxFailoverCount limit the max replicas could be added
+                    in failover, 0 means no failover. Optional: Defaults to 3'
+                  format: int32
+                  type: integer
                 nodeSelector:
                   description: 'NodeSelector of the component. Merged into the cluster-level
                     nodeSelector if non-empty Optional: Defaults to cluster-level
