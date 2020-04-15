@@ -2413,7 +2413,9 @@ int32
 <td>
 <code>lastAutoScalingTimestamp</code></br>
 <em>
-string
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
 </em>
 </td>
 <td>

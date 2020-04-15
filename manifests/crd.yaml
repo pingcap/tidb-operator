@@ -10781,8 +10781,10 @@ spec:
                   format: int32
                   type: integer
                 lastAutoScalingTimestamp:
-                  description: LastAutoScalingTimestamp describes the last auto-scaling
-                    timestamp for the component(tidb/tikv)
+                  description: Time is a wrapper around time.Time which supports correct
+                    marshaling to YAML and JSON.  Wrappers are provided for many of
+                    the factory methods that the time package offers.
+                  format: date-time
                   type: string
                 metrics:
                   description: MetricsStatusList describes the metrics status in the
@@ -10826,8 +10828,10 @@ spec:
                   format: int32
                   type: integer
                 lastAutoScalingTimestamp:
-                  description: LastAutoScalingTimestamp describes the last auto-scaling
-                    timestamp for the component(tidb/tikv)
+                  description: Time is a wrapper around time.Time which supports correct
+                    marshaling to YAML and JSON.  Wrappers are provided for many of
+                    the factory methods that the time package offers.
+                  format: date-time
                   type: string
                 metrics:
                   description: MetricsStatusList describes the metrics status in the

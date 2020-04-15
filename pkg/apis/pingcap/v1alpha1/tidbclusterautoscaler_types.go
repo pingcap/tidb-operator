@@ -185,7 +185,7 @@ type BasicAutoScalerStatus struct {
 	RecommendedReplicas *int32 `json:"recommendedReplicas,omitempty"`
 	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
 	// +optional
-	LastAutoScalingTimestamp *string `json:"lastAutoScalingTimestamp,omitempty"`
+	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`
 }
 
 // +k8s:openapi-gen=true

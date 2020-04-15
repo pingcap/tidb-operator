@@ -133,17 +133,18 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
 	}
-	f := func(key string) (string, error) {
+	f := func(key string) (*time.Time, error) {
 		v, ok := tac.Annotations[key]
 		if ok {
 			ts, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				klog.Errorf("failed to convert label[%s] key to int64, err:%v", key, err)
-				return "", err
+				return nil, err
 			}
-			return time.Unix(ts, 0).Format(time.RFC3339), nil
+			t := time.Unix(ts, 0)
+			return &t, nil
 		}
-		return "", nil
+		return nil, nil
 	}
 
 	if tac.Spec.TiKV != nil {
@@ -152,8 +153,8 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 		if err != nil {
 			return err
 		}
-		if len(lastTimestamp) > 0 {
-			tac.Status.TiKV.LastAutoScalingTimestamp = &lastTimestamp
+		if lastTimestamp != nil {
+			tac.Status.TiKV.LastAutoScalingTimestamp = &metav1.Time{Time: *lastTimestamp}
 		}
 	} else {
 		tac.Status.TiKV = nil
@@ -164,8 +165,8 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 		if err != nil {
 			return err
 		}
-		if len(lastTimestamp) > 0 {
-			tac.Status.TiDB.LastAutoScalingTimestamp = &lastTimestamp
+		if lastTimestamp != nil {
+			tac.Status.TiDB.LastAutoScalingTimestamp = &metav1.Time{Time: *lastTimestamp}
 		}
 	} else {
 		tac.Status.TiDB = nil

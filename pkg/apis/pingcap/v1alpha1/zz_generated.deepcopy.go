@@ -399,8 +399,7 @@ func (in *BasicAutoScalerStatus) DeepCopyInto(out *BasicAutoScalerStatus) {
 	}
 	if in.LastAutoScalingTimestamp != nil {
 		in, out := &in.LastAutoScalingTimestamp, &out.LastAutoScalingTimestamp
-		*out = new(string)
-		**out = **in
+		*out = (*in).DeepCopy()
 	}
 	return
 }
