@@ -12,9 +12,9 @@ spec:
       namespace: monitoring
       port: web
   thanos:
-    baseImage: docker.17usoft.com/bigdata/thanosio/thanos
+    baseImage: thanosio/thanos
     version: v0.8.1
-  baseImage: docker.17usoft.com/bigdata/prometheus/prometheus
+  baseImage: prom/prometheus
   version: v2.11.0
   nodeSelector:
     kubernetes.io/os: linux
