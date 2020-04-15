@@ -31,7 +31,6 @@ import (
 	"k8s.io/klog"
 )
 
-// TODO add maxFailoverCount
 type pdFailover struct {
 	cli              versioned.Interface
 	pdControl        pdapi.PDControlInterface
@@ -91,6 +90,12 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("TidbCluster: %s/%s's pd cluster is not health: %d/%d, "+
 			"replicas: %d, failureCount: %d, can't failover",
 			ns, tcName, healthCount, tc.PDStsDesiredReplicas(), tc.Spec.PD.Replicas, len(tc.Status.PD.FailureMembers))
+	}
+
+	failureReplicas := getFailureReplicas(tc)
+	if failureReplicas >= int(*tc.Spec.PD.MaxFailoverCount) {
+		klog.Errorf("PD failover replicas (%d) reaches the limit (%d), skip failover", failureReplicas, *tc.Spec.PD.MaxFailoverCount)
+		return nil
 	}
 
 	notDeletedCount := 0
