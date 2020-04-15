@@ -121,12 +121,17 @@ const (
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
 	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
+	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
+	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
+
 	// PDLabelVal is PD label value
 	PDLabelVal string = "pd"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
+	// TiFlashLabelVal is TiKV label value
+	TiFlashLabelVal string = "tiflash"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
@@ -301,6 +306,12 @@ func (l Label) TiDB() Label {
 // TiKV assigns tikv to component key in label
 func (l Label) TiKV() Label {
 	l.Component(TiKVLabelVal)
+	return l
+}
+
+// TiFlash assigns tiflash to component key in label
+func (l Label) TiFlash() Label {
+	l.Component(TiFlashLabelVal)
 	return l
 }
 

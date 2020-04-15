@@ -16,7 +16,9 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -81,6 +83,10 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateTiFlashConfig(spec.Config, fldPath)...)
+	if len(spec.StorageClaims) < 1 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims"),
+			spec.StorageClaims, "storageClaims should be configured at least one item."))
+	}
 	return allErrs
 }
 
@@ -89,11 +95,58 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 	if config == nil {
 		return allErrs
 	}
-	if config.CommonConfig.Flash.OverlapThreshold != nil {
-		if *config.CommonConfig.Flash.OverlapThreshold < 0 || *config.CommonConfig.Flash.OverlapThreshold > 1 {
-			allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
-				config.CommonConfig.Flash.OverlapThreshold,
-				"overlap_threshold must be in the range of [0,1]."))
+
+	if config.CommonConfig != nil {
+		if config.CommonConfig.Flash != nil {
+			if config.CommonConfig.Flash.OverlapThreshold != nil {
+				if *config.CommonConfig.Flash.OverlapThreshold < 0 || *config.CommonConfig.Flash.OverlapThreshold > 1 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.overlap_threshold"),
+						config.CommonConfig.Flash.OverlapThreshold,
+						"overlap_threshold must be in the range of [0,1]."))
+				}
+			}
+			if config.CommonConfig.Flash.FlashCluster != nil {
+				if config.CommonConfig.Flash.FlashCluster.ClusterLog != "" {
+					splitPath := strings.Split(config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
+					// The log path should be at least /dir/base.log
+					if len(splitPath) < 3 {
+						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
+							config.CommonConfig.Flash.FlashCluster.ClusterLog,
+							"log path should include at least one level dir."))
+					}
+				}
+			}
+			if config.CommonConfig.Flash.FlashProxy != nil {
+				if config.CommonConfig.Flash.FlashProxy.LogFile != "" {
+					splitPath := strings.Split(config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
+					// The log path should be at least /dir/base.log
+					if len(splitPath) < 3 {
+						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_proxy.log-file"),
+							config.CommonConfig.Flash.FlashProxy.LogFile,
+							"log path should include at least one level dir."))
+					}
+				}
+			}
+		}
+		if config.CommonConfig.FlashLogger != nil {
+			if config.CommonConfig.FlashLogger.ServerLog != "" {
+				splitPath := strings.Split(config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
+				// The log path should be at least /dir/base.log
+				if len(splitPath) < 3 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
+						config.CommonConfig.FlashLogger.ServerLog,
+						"log path should include at least one level dir."))
+				}
+			}
+			if config.CommonConfig.FlashLogger.ErrorLog != "" {
+				splitPath := strings.Split(config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
+				// The log path should be at least /dir/base.log
+				if len(splitPath) < 3 {
+					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
+						config.CommonConfig.FlashLogger.ErrorLog,
+						"log path should include at least one level dir."))
+				}
+			}
 		}
 	}
 	return allErrs

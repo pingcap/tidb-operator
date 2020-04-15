@@ -104,7 +104,7 @@ func TestBackupControlUpdateBackup(t *testing.T) {
 			},
 		},
 		{
-			name: "backup manager update failed",
+			name: "backup manager sync failed",
 			update: func(backup *v1alpha1.Backup) {
 				backup.Finalizers = append(backup.Finalizers, label.BackupProtectionFinalizer)
 			},

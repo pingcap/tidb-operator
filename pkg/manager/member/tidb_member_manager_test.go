@@ -754,7 +754,6 @@ type fakeIndexers struct {
 	tc     cache.Indexer
 	svc    cache.Indexer
 	eps    cache.Indexer
-	csr    cache.Indexer
 	secret cache.Indexer
 	set    cache.Indexer
 }
@@ -767,13 +766,10 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
-	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
 	secretInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Secrets()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
-	secControl := controller.NewFakeSecretControl(kubeCli)
-	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	genericControl := controller.NewFakeGenericControl()
 	tidbUpgrader := NewFakeTiDBUpgrader()
 	tidbFailover := NewFakeTiDBFailover()
@@ -784,7 +780,6 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		svcControl,
 		tidbControl,
 		controller.NewTypedControl(genericControl),
-		certControl,
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
@@ -799,7 +794,6 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		tc:     tcInformer.Informer().GetIndexer(),
 		svc:    svcInformer.Informer().GetIndexer(),
 		eps:    epsInformer.Informer().GetIndexer(),
-		csr:    csrInformer.Informer().GetIndexer(),
 		secret: secretInformer.Informer().GetIndexer(),
 		set:    setInformer.Informer().GetIndexer(),
 	}

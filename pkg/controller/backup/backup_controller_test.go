@@ -53,6 +53,7 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 	type testcase struct {
 		name                   string
 		backupHasBeenDeleted   bool
+		backupIsInvalid        bool
 		backupHasBeenCompleted bool
 		backupHasBeenScheduled bool
 		expectFn               func(*GomegaWithT, *Controller)
@@ -66,6 +67,15 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 
 		if test.backupHasBeenDeleted {
 			backup.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+		}
+
+		if test.backupIsInvalid {
+			backup.Status.Conditions = []v1alpha1.BackupCondition{
+				{
+					Type:   v1alpha1.BackupInvalid,
+					Status: corev1.ConditionTrue,
+				},
+			}
 		}
 
 		if test.backupHasBeenCompleted {
@@ -96,6 +106,7 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 		{
 			name:                   "backup has been deleted",
 			backupHasBeenDeleted:   true,
+			backupIsInvalid:        false,
 			backupHasBeenCompleted: false,
 			backupHasBeenScheduled: false,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
@@ -103,8 +114,19 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 			},
 		},
 		{
+			name:                   "backup is invalid",
+			backupHasBeenDeleted:   false,
+			backupIsInvalid:        true,
+			backupHasBeenCompleted: false,
+			backupHasBeenScheduled: false,
+			expectFn: func(g *GomegaWithT, bkc *Controller) {
+				g.Expect(bkc.queue.Len()).To(Equal(0))
+			},
+		},
+		{
 			name:                   "backup has been completed",
 			backupHasBeenDeleted:   false,
+			backupIsInvalid:        false,
 			backupHasBeenCompleted: true,
 			backupHasBeenScheduled: false,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
@@ -114,6 +136,7 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 		{
 			name:                   "backup has been scheduled",
 			backupHasBeenDeleted:   false,
+			backupIsInvalid:        false,
 			backupHasBeenCompleted: false,
 			backupHasBeenScheduled: true,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {
@@ -123,6 +146,7 @@ func TestBackupControllerUpdateBackup(t *testing.T) {
 		{
 			name:                   "backup is newly created",
 			backupHasBeenDeleted:   false,
+			backupIsInvalid:        false,
 			backupHasBeenCompleted: false,
 			backupHasBeenScheduled: false,
 			expectFn: func(g *GomegaWithT, bkc *Controller) {

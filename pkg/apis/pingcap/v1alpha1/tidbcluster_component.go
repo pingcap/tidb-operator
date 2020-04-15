@@ -175,6 +175,11 @@ func (tc *TidbCluster) BaseTiKVSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiKV.ComponentSpec}
 }
 
+// BaseTiFlashSpec returns the base spec of TiFlash servers
+func (tc *TidbCluster) BaseTiFlashSpec() ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tc.Spec.TiFlash.ComponentSpec}
+}
+
 // BasePDSpec returns the base spec of PD servers
 func (tc *TidbCluster) BasePDSpec() ComponentAccessor {
 	return &componentAccessorImpl{&tc.Spec, &tc.Spec.PD.ComponentSpec}

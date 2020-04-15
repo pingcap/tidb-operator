@@ -16,6 +16,7 @@ spec:
     baseImage: pingcap/tikv
     replicas: 3
     requests:
+      cpu: "1"
       storage: "1Gi"
     config: {}
   tidb:
@@ -24,3 +25,5 @@ spec:
     service:
       type: ClusterIP
     config: {}
+    requests:
+      cpu: "1"

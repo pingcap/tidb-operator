@@ -51,7 +51,6 @@ type tikvMemberManager struct {
 	setControl                   controller.StatefulSetControlInterface
 	svcControl                   controller.ServiceControlInterface
 	pdControl                    pdapi.PDControlInterface
-	certControl                  controller.CertControlInterface
 	typedControl                 controller.TypedControlInterface
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
@@ -69,7 +68,6 @@ func NewTiKVMemberManager(
 	pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -85,7 +83,6 @@ func NewTiKVMemberManager(
 		nodeLister:   nodeLister,
 		setControl:   setControl,
 		svcControl:   svcControl,
-		certControl:  certControl,
 		typedControl: typedControl,
 		setLister:    setLister,
 		svcLister:    svcLister,

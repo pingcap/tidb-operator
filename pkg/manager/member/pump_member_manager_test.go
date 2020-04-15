@@ -441,18 +441,14 @@ func newFakePumpMemberManager() (*pumpMemberManager, *pumpFakeControls, *pumpFak
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
-	csrInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Certificates().V1beta1().CertificateSigningRequests()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	setControl := controller.NewFakeStatefulSetControl(setInformer, tcInformer)
-	secControl := controller.NewFakeSecretControl(kubeCli)
-	certControl := controller.NewFakeCertControl(kubeCli, csrInformer.Lister(), secControl)
 	svcControl := controller.NewFakeServiceControl(svcInformer, epsInformer, tcInformer)
 	cmControl := controller.NewFakeConfigMapControl(cmInformer)
 	genericControl := controller.NewFakeGenericControl()
 	pmm := &pumpMemberManager{
-		certControl,
 		setControl,
 		svcControl,
 		controller.NewTypedControl(genericControl),

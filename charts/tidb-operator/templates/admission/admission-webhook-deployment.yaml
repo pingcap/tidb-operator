@@ -30,6 +30,8 @@ spec:
           imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
           command:
             - /usr/local/bin/tidb-admission-webhook
+            # use > 1024 port, then we can run it as non-root user
+            - --secure-port=6443
             {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false }}
             - --tls-cert-file=/var/serving-cert/tls.crt
             - --tls-private-key-file=/var/serving-cert/tls.key
@@ -41,7 +43,7 @@ spec:
             failureThreshold: 5
             httpGet:
               path: /healthz
-              port: 443
+              port: 6443
               scheme: HTTPS
             initialDelaySeconds: 5
             timeoutSeconds: 5
@@ -49,7 +51,7 @@ spec:
             failureThreshold: 5
             httpGet:
               path: /healthz
-              port: 443
+              port: 6443
               scheme: HTTPS
             initialDelaySeconds: 5
             timeoutSeconds: 5
@@ -58,16 +60,23 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
           volumeMounts:
+          {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
             - mountPath: /var/serving-cert
               name: serving-cert
+          {{- else }}
+            - mountPath: /apiserver.local.config
+              name: apiserver-local-config
           {{- end }}
-      {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
       volumes:
+      {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
         - name: serving-cert
           secret:
             defaultMode: 420
             secretName: {{ .Values.admissionWebhook.apiservice.tlsSecret }}
+      {{- else }}
+        # rootfs maybe read-only, we need to an empty dir volume to store self-signed certifiates, etc.
+        - name: apiserver-local-config
+          emptyDir: {}
       {{- end }}
 {{- end }}
