@@ -10676,6 +10676,103 @@ spec:
           required:
           - cluster
           type: object
-        status: {}
+        status:
+          description: TidbClusterAutoSclaerStatus describe the whole status
+          properties:
+            tidb:
+              description: TidbAutoScalerStatus describe the auto-scaling status of
+                tidb
+              properties:
+                currentReplicas:
+                  description: CurrentReplicas describes the current replicas for
+                    the component(tidb/tikv)
+                  format: int32
+                  type: integer
+                lastAutoScalingTimestamp:
+                  description: Time is a wrapper around time.Time which supports correct
+                    marshaling to YAML and JSON.  Wrappers are provided for many of
+                    the factory methods that the time package offers.
+                  format: date-time
+                  type: string
+                metrics:
+                  description: MetricsStatusList describes the metrics status in the
+                    last auto-scaling reconciliation
+                  items:
+                    description: MetricsStatus describe the basic metrics status in
+                      the last auto-scaling reconciliation
+                    properties:
+                      currentValue:
+                        description: CurrentValue indicates the value calculated in
+                          the last auto-scaling reconciliation
+                        type: string
+                      name:
+                        description: Name indicates the metrics name
+                        type: string
+                      thresholdValue:
+                        description: TargetValue indicates the threshold value for
+                          this metrics in auto-scaling
+                        type: string
+                    required:
+                    - name
+                    - currentValue
+                    - thresholdValue
+                    type: object
+                  type: array
+                recommendedReplicas:
+                  description: RecommendedReplicas describes the calculated replicas
+                    in the last auto-scaling reconciliation for the component(tidb/tikv)
+                  format: int32
+                  type: integer
+              required:
+              - currentReplicas
+              type: object
+            tikv:
+              description: TikvAutoScalerStatus describe the auto-scaling status of
+                tikv
+              properties:
+                currentReplicas:
+                  description: CurrentReplicas describes the current replicas for
+                    the component(tidb/tikv)
+                  format: int32
+                  type: integer
+                lastAutoScalingTimestamp:
+                  description: Time is a wrapper around time.Time which supports correct
+                    marshaling to YAML and JSON.  Wrappers are provided for many of
+                    the factory methods that the time package offers.
+                  format: date-time
+                  type: string
+                metrics:
+                  description: MetricsStatusList describes the metrics status in the
+                    last auto-scaling reconciliation
+                  items:
+                    description: MetricsStatus describe the basic metrics status in
+                      the last auto-scaling reconciliation
+                    properties:
+                      currentValue:
+                        description: CurrentValue indicates the value calculated in
+                          the last auto-scaling reconciliation
+                        type: string
+                      name:
+                        description: Name indicates the metrics name
+                        type: string
+                      thresholdValue:
+                        description: TargetValue indicates the threshold value for
+                          this metrics in auto-scaling
+                        type: string
+                    required:
+                    - name
+                    - currentValue
+                    - thresholdValue
+                    type: object
+                  type: array
+                recommendedReplicas:
+                  description: RecommendedReplicas describes the calculated replicas
+                    in the last auto-scaling reconciliation for the component(tidb/tikv)
+                  format: int32
+                  type: integer
+              required:
+              - currentReplicas
+              type: object
+          type: object
       type: object
   version: v1alpha1

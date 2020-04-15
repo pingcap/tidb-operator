@@ -149,6 +149,52 @@ type TidbMonitorRef struct {
 	Name string `json:"name"`
 }
 
-// TODO: sync status
+// +k8s:openapi-gen=true
+// TidbClusterAutoSclaerStatus describe the whole status
 type TidbClusterAutoSclaerStatus struct {
+	// Tikv describes the status for the tikv in the last auto-scaling reconciliation
+	// +optional
+	TiKV *TikvAutoScalerStatus `json:"tikv,omitempty"`
+	// Tidb describes the status for the tidb in the last auto-scaling reconciliation
+	// +optional
+	TiDB *TidbAutoScalerStatus `json:"tidb,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// TidbAutoScalerStatus describe the auto-scaling status of tidb
+type TidbAutoScalerStatus struct {
+	BasicAutoScalerStatus `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
+// TikvAutoScalerStatus describe the auto-scaling status of tikv
+type TikvAutoScalerStatus struct {
+	BasicAutoScalerStatus `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
+// BasicAutoScalerStatus describe the basic auto-scaling status
+type BasicAutoScalerStatus struct {
+	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
+	// +optional
+	MetricsStatusList []MetricsStatus `json:"metrics,omitempty"`
+	// CurrentReplicas describes the current replicas for the component(tidb/tikv)
+	CurrentReplicas int32 `json:"currentReplicas"`
+	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
+	// +optional
+	RecommendedReplicas *int32 `json:"recommendedReplicas,omitempty"`
+	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
+	// +optional
+	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation
+type MetricsStatus struct {
+	// Name indicates the metrics name
+	Name string `json:"name"`
+	// CurrentValue indicates the value calculated in the last auto-scaling reconciliation
+	CurrentValue string `json:"currentValue"`
+	// TargetValue indicates the threshold value for this metrics in auto-scaling
+	ThresholdValue string `json:"thresholdValue"`
 }
