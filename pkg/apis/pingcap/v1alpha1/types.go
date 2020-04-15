@@ -234,6 +234,12 @@ type PDSpec struct {
 	// +optional
 	Service *ServiceSpec `json:"service,omitempty"`
 
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
 	// The storageClassName of the persistent volume for PD data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional

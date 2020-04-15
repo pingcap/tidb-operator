@@ -107,6 +107,9 @@ func setPdSpecDefault(tc *v1alpha1.TidbCluster) {
 			tc.Spec.PD.BaseImage = defaultPDImage
 		}
 	}
+	if tc.Spec.PD.MaxFailoverCount == nil {
+		tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
 }
 
 func setPumpSpecDefault(tc *v1alpha1.TidbCluster) {
