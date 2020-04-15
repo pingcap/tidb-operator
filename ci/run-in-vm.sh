@@ -143,7 +143,7 @@ cd \$HOME
 sudo rm -rf tidb-operator
 git init tidb-operator
 cd tidb-operator
-git fetch --tags --progress ${GIT_URL} +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*
+git fetch --depth 1 --tags --progress ${GIT_URL} +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/* +refs/heads/*:refs/*
 GIT_COMMIT=\$(git rev-parse ${GIT_REF}^{commit})
 git checkout -f \${GIT_COMMIT}
 $@
