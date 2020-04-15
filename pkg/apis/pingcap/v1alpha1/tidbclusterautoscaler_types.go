@@ -182,7 +182,10 @@ type BasicAutoScalerStatus struct {
 	CurrentReplicas int32 `json:"currentReplicas"`
 	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
 	// +optional
-	RecommendedReplicas *int32 `json:"recommendedReplicas"`
+	RecommendedReplicas *int32 `json:"recommendedReplicas,omitempty"`
+	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
+	// +optional
+	LastAutoScalingTimestamp *string `json:"lastAutoScalingTimestamp,omitempty"`
 }
 
 // +k8s:openapi-gen=true

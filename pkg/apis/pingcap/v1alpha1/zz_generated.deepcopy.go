@@ -397,6 +397,11 @@ func (in *BasicAutoScalerStatus) DeepCopyInto(out *BasicAutoScalerStatus) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.LastAutoScalingTimestamp != nil {
+		in, out := &in.LastAutoScalingTimestamp, &out.LastAutoScalingTimestamp
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

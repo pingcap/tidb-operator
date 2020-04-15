@@ -2409,6 +2409,18 @@ int32
 <p>RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>lastAutoScalingTimestamp</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.Binlog">Binlog

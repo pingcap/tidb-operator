@@ -918,6 +918,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.Reference
 							Format:      "int32",
 						},
 					},
+					"lastAutoScalingTimestamp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"currentReplicas"},
 			},
@@ -6850,6 +6857,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceC
 							Format:      "int32",
 						},
 					},
+					"lastAutoScalingTimestamp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"currentReplicas"},
 			},
@@ -7864,6 +7878,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerStatus(ref common.ReferenceC
 							Description: "RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"lastAutoScalingTimestamp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
