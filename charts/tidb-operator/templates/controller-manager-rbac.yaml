@@ -74,12 +74,6 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumes"]
   verbs: ["get", "list", "watch", "patch","update"]
-- apiGroups: ["certificates.k8s.io"]
-  resources: ["certificatesigningrequests"]
-  verbs: ["create", "get", "list", "watch", "delete"]
-- apiGroups: ["certificates.k8s.io"]
-  resources: ["certificatesigningrequests/approval", "certificatesigningrequests/status"]
-  verbs: ["update"]
 {{/*
 Allow controller manager to escalate its privileges to other subjects, the subjects may never have privilege over the controller.
 Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping

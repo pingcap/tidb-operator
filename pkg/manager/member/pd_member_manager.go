@@ -47,7 +47,6 @@ type pdMemberManager struct {
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	podControl   controller.PodControlInterface
-	certControl  controller.CertControlInterface
 	typedControl controller.TypedControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
@@ -65,7 +64,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	podControl controller.PodControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -81,7 +79,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		setControl,
 		svcControl,
 		podControl,
-		certControl,
 		typedControl,
 		setLister,
 		svcLister,
