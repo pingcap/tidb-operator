@@ -46,6 +46,7 @@ spec:
          {{- end }}
           - -pd-failover-period={{ .Values.controllerManager.pdFailoverPeriod | default "5m" }}
           - -tikv-failover-period={{ .Values.controllerManager.tikvFailoverPeriod | default "5m" }}
+          - -tiflash-failover-period={{ .Values.controllerManager.tiflashFailoverPeriod | default "5m" }}
           - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -v={{ .Values.controllerManager.logLevel }}
           {{- if .Values.testMode }}

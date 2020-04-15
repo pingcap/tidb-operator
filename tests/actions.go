@@ -475,7 +475,17 @@ func (oa *operatorActions) runKubectlOrDie(args ...string) string {
 }
 
 func (oa *operatorActions) CleanCRDOrDie() {
-	oa.runKubectlOrDie("delete", "crds", "--all")
+	crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
+	framework.ExpectNoError(err)
+	for _, crd := range crdList.Items {
+		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
+			framework.Logf("CRD %q ignored", crd.Name)
+			continue
+		}
+		framework.Logf("Deleting CRD %q", crd.Name)
+		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err)
+	}
 }
 
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.

@@ -290,7 +290,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		})
 	}
-	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled {
+
+	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
 		if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.TLSSecret != "" {
@@ -401,3 +402,21 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 }
 
 var _ backup.RestoreManager = &restoreManager{}
+
+type FakeRestoreManager struct {
+	err error
+}
+
+func NewFakeRestoreManager() *FakeRestoreManager {
+	return &FakeRestoreManager{}
+}
+
+func (frm *FakeRestoreManager) SetSyncError(err error) {
+	frm.err = err
+}
+
+func (frm *FakeRestoreManager) Sync(_ *v1alpha1.Restore) error {
+	return frm.err
+}
+
+var _ backup.RestoreManager = &FakeRestoreManager{}

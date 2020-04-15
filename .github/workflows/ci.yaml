@@ -13,11 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-        - "check-setup check"
-        - "docker e2e-docker cli"
-        - "test GOFLAGS=-race"
-        - "e2e-examples"
+        job:
+        - verify
+        - build
+        - test
+        - e2e-examples
     steps:
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
@@ -31,12 +31,20 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         path: go/src/github.com/${{ github.repository }}
 
-    - name: make ${{ matrix.target }}
+    - name: ${{ matrix.job }}
       run: |
         # workaround for https://github.com/actions/setup-go/issues/14
         export GOPATH=${GITHUB_WORKSPACE}/go
         export PATH=$PATH:$GOPATH/bin
-        make $target
+        if [[ "$job" == "verify" ]]; then
+          make check-setup check
+        elif [[ "$job" == "build" ]]; then
+          make docker e2e-docker cli debug-build-docker
+        elif [[ "$job" == "test" ]]; then
+          make test GOFLAGS=-race
+        else
+          make $job
+        fi
       working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       env:
-        target: ${{ matrix.target }}
+        job: ${{ matrix.job }}

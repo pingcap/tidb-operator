@@ -47,7 +47,6 @@ type pdMemberManager struct {
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	podControl   controller.PodControlInterface
-	certControl  controller.CertControlInterface
 	typedControl controller.TypedControlInterface
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
@@ -65,7 +64,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	podControl controller.PodControlInterface,
-	certControl controller.CertControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
@@ -81,7 +79,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		setControl,
 		svcControl,
 		podControl,
-		certControl,
 		typedControl,
 		setLister,
 		svcLister,
@@ -492,6 +489,16 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	return false, nil
 }
 
+func getFailureReplicas(tc *v1alpha1.TidbCluster) int {
+	failureReplicas := 0
+	for _, failureMember := range tc.Status.PD.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
+
 func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.Namespace
 	tcName := tc.Name
@@ -514,7 +521,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -552,7 +559,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -571,12 +578,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
 	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
-	failureReplicas := 0
-	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
+	failureReplicas := getFailureReplicas(tc)
 
 	pdContainer := corev1.Container{
 		Name:            v1alpha1.PDMemberType.String(),
@@ -703,7 +705,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
 		if config.Dashboard == nil {
 			config.Dashboard = &v1alpha1.DashboardConfig{}
 		}

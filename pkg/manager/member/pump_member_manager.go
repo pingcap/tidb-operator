@@ -41,7 +41,6 @@ const (
 )
 
 type pumpMemberManager struct {
-	certControl  controller.CertControlInterface
 	setControl   controller.StatefulSetControlInterface
 	svcControl   controller.ServiceControlInterface
 	typedControl controller.TypedControlInterface
@@ -53,7 +52,6 @@ type pumpMemberManager struct {
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
 func NewPumpMemberManager(
-	certControl controller.CertControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	typedControl controller.TypedControlInterface,
@@ -62,7 +60,6 @@ func NewPumpMemberManager(
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister) manager.Manager {
 	return &pumpMemberManager{
-		certControl,
 		setControl,
 		svcControl,
 		typedControl,

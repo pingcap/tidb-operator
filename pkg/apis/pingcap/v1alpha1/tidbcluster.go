@@ -74,6 +74,28 @@ func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
 	return tc.Spec.TiKV.Privileged
 }
 
+func (tc *TidbCluster) TiFlashImage() string {
+	image := tc.Spec.TiFlash.Image
+	baseImage := tc.Spec.TiFlash.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiFlash.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, *version)
+	}
+	return image
+}
+
+func (tc *TidbCluster) TiFlashContainerPrivilege() *bool {
+	if tc.Spec.TiFlash.Privileged == nil {
+		pri := false
+		return &pri
+	}
+	return tc.Spec.TiFlash.Privileged
+}
+
 func (tc *TidbCluster) TiDBImage() string {
 	image := tc.Spec.TiDB.Image
 	baseImage := tc.Spec.TiDB.BaseImage
@@ -218,6 +240,36 @@ func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 
 func (tc *TidbCluster) TiKVStsActualReplicas() int32 {
 	stsStatus := tc.Status.TiKV.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
+func (tc *TidbCluster) TiFlashAllPodsStarted() bool {
+	return tc.TiFlashStsDesiredReplicas() == tc.TiFlashStsActualReplicas()
+}
+
+func (tc *TidbCluster) TiFlashAllStoresReady() bool {
+	if int(tc.TiFlashStsDesiredReplicas()) != len(tc.Status.TiFlash.Stores) {
+		return false
+	}
+
+	for _, store := range tc.Status.TiFlash.Stores {
+		if store.State != TiKVStateUp {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (tc *TidbCluster) TiFlashStsDesiredReplicas() int32 {
+	return tc.Spec.TiFlash.Replicas + int32(len(tc.Status.TiFlash.FailureStores))
+}
+
+func (tc *TidbCluster) TiFlashStsActualReplicas() int32 {
+	stsStatus := tc.Status.TiFlash.StatefulSet
 	if stsStatus == nil {
 		return 0
 	}
@@ -378,4 +430,9 @@ func (tc *TidbCluster) GetInstanceName() string {
 		return inst
 	}
 	return tc.Name
+}
+
+func (tc *TidbCluster) SkipTLSWhenConnectTiDB() bool {
+	_, ok := tc.Annotations[label.AnnSkipTLSWhenConnectTiDB]
+	return ok
 }

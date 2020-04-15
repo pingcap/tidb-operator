@@ -17,21 +17,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/label"
 	certutil "github.com/pingcap/tidb-operator/pkg/util/crypto"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
 // SecretControlInterface manages certificates used by TiDB clusters
 type SecretControlInterface interface {
-	Create(or metav1.OwnerReference, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error
 	Load(ns string, secretName string) ([]byte, []byte, error)
 	Check(ns string, secretName string) bool
 }
@@ -47,32 +42,6 @@ func NewRealSecretControl(
 	return &realSecretControl{
 		kubeCli: kubeCli,
 	}
-}
-
-func (rsc *realSecretControl) Create(or metav1.OwnerReference, certOpts *TiDBClusterCertOptions, cert []byte, key []byte) error {
-	secretName := fmt.Sprintf("%s-%s", certOpts.Instance, certOpts.Suffix)
-
-	secretLabel := label.New().Instance(certOpts.Instance).
-		Component(certOpts.Component).Labels()
-
-	secret := &corev1.Secret{
-		ObjectMeta: types.ObjectMeta{
-			Name:            secretName,
-			Labels:          secretLabel,
-			OwnerReferences: []metav1.OwnerReference{or},
-		},
-		Data: map[string][]byte{
-			v1.TLSCertKey:       cert,
-			v1.TLSPrivateKeyKey: key,
-		},
-		Type: v1.SecretTypeTLS,
-	}
-
-	_, err := rsc.kubeCli.CoreV1().Secrets(certOpts.Namespace).Create(secret)
-	if err == nil {
-		klog.Infof("save cert to secret %s/%s", certOpts.Namespace, secretName)
-	}
-	return err
 }
 
 // Load loads cert and key from Secret matching the name

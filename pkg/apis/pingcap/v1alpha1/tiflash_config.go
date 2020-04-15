@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2020 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,17 +74,10 @@ type ProxyConfig struct {
 	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
 }
 
-// ProxyServer is the configuration of TiFlash proxy server.
-// +k8s:openapi-gen=false
-type ProxyServer struct {
-	// +optional
-	EngineAddr string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
-}
-
 // CommonConfig is the configuration of TiFlash process.
 // +k8s:openapi-gen=true
 type CommonConfig struct {
-	// Optional: Defaults to "/data/tmp"
+	// Optional: Defaults to "/data0/tmp"
 	// +optional
 	// +k8s:openapi-gen=false
 	TmpPath string `json:"tmp_path,omitempty" toml:"tmp_path,omitempty"`
@@ -99,7 +92,7 @@ type CommonConfig struct {
 	// +k8s:openapi-gen=false
 	DefaultProfile string `json:"default_profile,omitempty" toml:"default_profile,omitempty"`
 
-	// Optional: Defaults to "/data/db"
+	// Optional: Defaults to "/data0/db"
 	// +optional
 	// +k8s:openapi-gen=false
 	Path string `json:"path,omitempty" toml:"path,omitempty"`
@@ -191,7 +184,7 @@ type FlashUser struct {
 // +k8s:openapi-gen=false
 type User struct {
 	// +optional
-	Password string `json:"password,omitempty" toml:"password,omitempty"`
+	Password string `json:"password,omitempty" toml:"password"`
 	// +optional
 	Profile string `json:"profile,omitempty" toml:"profile,omitempty"`
 	// +optional
@@ -257,7 +250,7 @@ type FlashStatus struct {
 type FlashRaft struct {
 	// +optional
 	PDAddr string `json:"pd_addr,omitempty" toml:"pd_addr,omitempty"`
-	// Optional: Defaults to /data/kvstore
+	// Optional: Defaults to /data0/kvstore
 	// +optional
 	KVStorePath string `json:"kvstore_path,omitempty" toml:"kvstore_path,omitempty"`
 	// Optional: Defaults to dt
@@ -276,14 +269,14 @@ type FlashApplication struct {
 // FlashLogger is the configuration of [logger] section.
 // +k8s:openapi-gen=true
 type FlashLogger struct {
-	// Optional: Defaults to /data/logs/error.log
+	// Optional: Defaults to /data0/logs/error.log
 	// +optional
 	// +k8s:openapi-gen=false
-	Errorlog string `json:"errorlog,omitempty" toml:"errorlog,omitempty"`
+	ErrorLog string `json:"errorlog,omitempty" toml:"errorlog,omitempty"`
 	// Optional: Defaults to 100M
 	// +optional
 	Size string `json:"size,omitempty" toml:"size,omitempty"`
-	// Optional: Defaults to /data/logs/server.log
+	// Optional: Defaults to /data0/logs/server.log
 	// +optional
 	// +k8s:openapi-gen=false
 	ServerLog string `json:"log,omitempty" toml:"log,omitempty"`
@@ -324,7 +317,7 @@ type FlashCluster struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	ClusterManagerPath string `json:"cluster_manager_path,omitempty" toml:"cluster_manager_path,omitempty"`
-	// Optional: Defaults to /data/logs/flash_cluster_manager.log
+	// Optional: Defaults to /data0/logs/flash_cluster_manager.log
 	// +optional
 	// +k8s:openapi-gen=false
 	ClusterLog string `json:"log,omitempty" toml:"log,omitempty"`
@@ -347,13 +340,13 @@ type FlashProxy struct {
 	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
 	// +optional
 	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
-	// Optional: Defaults to /data/proxy
+	// Optional: Defaults to /data0/proxy
 	// +optional
 	DataDir string `json:"data-dir,omitempty" toml:"data-dir,omitempty"`
-	// Optional: Defaults to /data/proxy.toml
+	// Optional: Defaults to /data0/proxy.toml
 	// +optional
 	Config string `json:"config,omitempty" toml:"config,omitempty"`
-	// Optional: Defaults to /data/logs/proxy.log
+	// Optional: Defaults to /data0/logs/proxy.log
 	// +optional
 	LogFile string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 }
