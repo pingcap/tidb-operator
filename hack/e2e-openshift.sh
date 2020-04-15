@@ -66,7 +66,7 @@ echo "info: downloading latest crc"
 cd $HOME
 CRC_VERSION=$(curl --retry 10 -L -s 'https://mirror.openshift.com/pub/openshift-v4/clients/crc/latest/release-info.json' | jq -r '.version.crcVersion')
 if ! test -e crc-linux-amd64.tar.xz; then
-    curl --retryn 10 -LO https://mirror.openshift.com/pub/openshift-v4/clients/crc/$CRC_VERSION/crc-linux-amd64.tar.xz
+    curl --retry 10 -LO https://mirror.openshift.com/pub/openshift-v4/clients/crc/$CRC_VERSION/crc-linux-amd64.tar.xz
     tar -xvf crc-linux-amd64.tar.xz
 fi
 export PATH=$HOME/crc-linux-$CRC_VERSION-amd64:$PATH
