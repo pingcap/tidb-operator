@@ -30,8 +30,8 @@ import (
 var (
 	cmdHelpMsg        string
 	supportedVersions = map[string]struct{}{
-		"3.1": struct{}{},
-		"4.0": struct{}{},
+		"3.1": {},
+		"4.0": {},
 	}
 	// DefaultVersion is the default tikv and br version
 	DefaultVersion = "4.0"
