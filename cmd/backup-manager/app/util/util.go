@@ -19,14 +19,22 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/spf13/pflag"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 )
 
 var (
-	cmdHelpMsg string
+	cmdHelpMsg        string
+	supportedVersions = map[string]struct{}{
+		"3.1": struct{}{},
+		"4.0": struct{}{},
+	}
+	// DefaultVersion is the default tikv and br version
+	DefaultVersion = "4.0"
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
@@ -161,4 +169,21 @@ func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {
 		args = append(args, fmt.Sprintf("--send-credentials-to-tikv=%t", *config.SendCredToTikv))
 	}
 	return args
+}
+
+// Suffix parses the major and minor version from the string and return the suffix
+func Suffix(version string) string {
+	numS := strings.Split(DefaultVersion, ".")
+	defaultSuffix := numS[0] + numS[1]
+
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return defaultSuffix
+	}
+	parsed := fmt.Sprintf("%d.%d", v.Major(), v.Minor())
+	if _, ok := supportedVersions[parsed]; ok {
+		return fmt.Sprintf("%d%d", v.Major(), v.Minor())
+	}
+	return defaultSuffix
 }
