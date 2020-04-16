@@ -39,6 +39,7 @@ type GenericOptions struct {
 	Port         int32
 	Password     string
 	User         string
+	TiKVVersion  string
 }
 
 func (bo *GenericOptions) String() string {
