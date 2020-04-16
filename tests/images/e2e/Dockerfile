@@ -4,7 +4,8 @@ ENV KUBECTL_VERSION=v1.12.2
 ENV HELM_VERSION=v2.9.1
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates curl git openssl default-mysql-client unzip
+    apt-get install -y ca-certificates curl git openssl default-mysql-client unzip && \
+    apt-get install -y python # required by gcloud
 RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
