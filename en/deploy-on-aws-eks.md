@@ -156,7 +156,7 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
+    cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
     To complete the CR file configuration, refer to [API documentation](api-references.md).
@@ -172,7 +172,7 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
     ```
 
     > **Note:**
@@ -184,7 +184,8 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f manifests/ -n ${namespace}
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db.yaml -n ${namespace} &&
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db-monitor.yaml -n ${namespace}
     ```
 
 ## Access the database

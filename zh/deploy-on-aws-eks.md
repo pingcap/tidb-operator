@@ -154,7 +154,7 @@ region = us-west-21
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
+    cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
     参考 [API 文档](api-references.md)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
@@ -170,7 +170,7 @@ region = us-west-21
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
     ```
 
     > **注意：**
@@ -182,7 +182,8 @@ region = us-west-21
   {{< copyable "shell-regular" >}}
 
   ```shell
-  kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f manifests/ -n ${namespace}
+  kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db.yaml -n ${namespace} &&
+  kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db-monitor.yaml -n ${namespace}
   ```
 
 ## 访问数据库

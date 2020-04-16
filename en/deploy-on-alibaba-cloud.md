@@ -162,7 +162,7 @@ All the instances except ACK mandatory workers are deployed across availability 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd manifests/ && mv db-monitor.yaml.example db-monitor.yaml && mv db.yaml.example db.yaml
+    cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
     To complete the CR file configuration, refer to [TiDB Operator API documentation](api-references.md) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
@@ -178,7 +178,7 @@ All the instances except ACK mandatory workers are deployed across availability 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace ${namespace}
+    kubectl --kubeconfig credentials/kubeconfig create namespace ${namespace}
     ```
 
     > **Note:**
@@ -190,7 +190,8 @@ All the instances except ACK mandatory workers are deployed across availability 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n ${namespace}
+    kubectl --kubeconfig credentials/kubeconfig create -f db.yaml -n ${namespace} &&
+    kubectl --kubeconfig credentials/kubeconfig create -f db-monitor.yaml -n ${namespace}
     ```
 
 ## Access the database
