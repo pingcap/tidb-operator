@@ -42,6 +42,7 @@ func NewBackupCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
 	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
+	cmd.Flags().StringVar(&bo.TiKVVersion, "tikvVersion", util.DefaultVersion, "TiKV version")
 	cmd.Flags().BoolVar(&bo.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().BoolVar(&bo.TLSCluster, "cluster-tls", false, "Whether cluster tls is enabled")
 	return cmd
