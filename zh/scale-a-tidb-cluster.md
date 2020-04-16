@@ -21,7 +21,7 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```
 
 ### 水平扩缩容操作 (CR)
@@ -33,7 +33,7 @@ TiDB 水平扩缩容操作指的是通过增加或减少节点的数量，来达
 {{< copyable "shell-regular" >}}
 
 ```shell
-watch kubectl -n <namespace> get pod -o wide
+watch kubectl -n ${namespace} get pod -o wide
 ```
 
 当所有组件的 Pod 数量都达到了预设值，并且都进入 `Running` 状态后，水平扩缩容完成。
@@ -41,7 +41,7 @@ watch kubectl -n <namespace> get pod -o wide
 > **注意：**
 >
 > - PD、TiKV 组件在滚动升级的过程中不会触发扩缩容操作。
-> - TiKV 组件在缩容过程中会调用 PD 接口将对应 TiKV 标记为下线，然后将其上数据迁移到其它 TiKV 节点，在数据迁移期间 TiKV Pod 依然是 `Running` 状态，数据迁移完成后对应 Pod 才会被删除，缩容时间与待缩容的 TiKV 上的数据量有关，可以通过 `kubectl get tidbcluster -n <namespace> <release-name> -o json | jq '.status.tikv.stores'` 查看 TiKV 是否处于下线 `Offline` 状态。
+> - TiKV 组件在缩容过程中会调用 PD 接口将对应 TiKV 标记为下线，然后将其上数据迁移到其它 TiKV 节点，在数据迁移期间 TiKV Pod 依然是 `Running` 状态，数据迁移完成后对应 Pod 才会被删除，缩容时间与待缩容的 TiKV 上的数据量有关，可以通过 `kubectl get tidbcluster -n ${namespace} ${release_name} -o json | jq '.status.tikv.stores'` 查看 TiKV 是否处于下线 `Offline` 状态。
 > - PD、TiKV 组件在缩容过程中被删除的节点的 PVC 会保留，并且由于 PV 的 `Reclaim Policy` 设置为 `Retain`，即使 PVC 被删除，数据依然可以找回。
 > - TiKV 组件不支持在缩容过程中进行扩容操作，强制执行此操作可能导致集群状态异常。假如异常已经发生，可以参考 [TiKV Store 异常进入 Tombstone 状态](troubleshoot.md#tikv-store-异常进入-tombstone-状态) 进行解决。
 
@@ -58,7 +58,7 @@ watch kubectl -n <namespace> get pod -o wide
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```
 
 ### 垂直扩缩容操作 (CR)
@@ -70,7 +70,7 @@ watch kubectl -n <namespace> get pod -o wide
 {{< copyable "shell-regular" >}}
 
 ```shell
-watch kubectl -n <namespace> get pod -o wide
+watch kubectl -n ${namespace} get pod -o wide
 ```
 
 当所有 Pod 都重建完毕进入 `Running` 状态后，垂直扩缩容完成。

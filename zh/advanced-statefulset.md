@@ -60,7 +60,7 @@ Kubernetes 内置 [StatefulSet](https://kubernetes.io/docs/concepts/workloads/co
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get -n <namespace> asts
+kubectl get -n ${namespace} asts
 ```
 
 ### 操作 TidbCluster 对象指定 pod 进行缩容

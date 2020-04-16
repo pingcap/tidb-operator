@@ -63,9 +63,9 @@ All the instances except ACK mandatory workers are deployed across availability 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    export TF_VAR_ALICLOUD_REGION=<YOUR_REGION> && \
-    export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY> && \
-    export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
+    export TF_VAR_ALICLOUD_REGION=${REGION} && \
+    export TF_VAR_ALICLOUD_ACCESS_KEY=${ACCESS_KEY} && \
+    export TF_VAR_ALICLOUD_SECRET_KEY=${SECRET_KEY}
     ```
 
     The `variables.tf` file contains default settings of variables used for deploying the cluster. You can change it or use the `-var` option to override a specific variable to fit your need.
@@ -178,7 +178,7 @@ All the instances except ACK mandatory workers are deployed across availability 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace <namespace>
+    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace ${namespace}
     ```
 
     > **Note:**
@@ -190,23 +190,23 @@ All the instances except ACK mandatory workers are deployed across availability 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n ${namespace}
     ```
 
 ## Access the database
 
-You can connect the TiDB cluster via the bastion instance. All necessary information is in the output printed after installation is finished (replace the `<>` parts with values from the output):
+You can connect the TiDB cluster via the bastion instance. All necessary information is in the output printed after installation is finished (replace the `${}` parts with values from the output):
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-ssh -i credentials/<cluster_name>-key.pem root@<bastion_ip>
+ssh -i credentials/${cluster_name}-key.pem root@${bastion_ip}
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h <tidb_lb_ip> -P 4000 -u root
+mysql -h ${tidb_lb_ip} -P 4000 -u root
 ```
 
 `tidb_lb_ip` is the LoadBalancer IP of the TiDB service.
@@ -226,21 +226,21 @@ The initial login user account and password:
 
 ## Upgrade
 
-To upgrade the TiDB cluster, modify the `spec.version` variable by executing `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>`.
+To upgrade the TiDB cluster, modify the `spec.version` variable by executing `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}`.
 
 This may take a while to complete. You can watch the process using the following command:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pods --namespace <namespace> -o wide --watch
+kubectl get pods --namespace ${namespace} -o wide --watch
 ```
 
 ## Scale
 
 To scale the TiDB cluster, modify `tikv_count` or `tidb_count` in the `terraform.tfvars` file, and then run `terraform apply` to scale out the number of nodes for the corresponding components.
 
-After the nodes scale out, modify the `replicas` of the corresponding components by running `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>`.
+After the nodes scale out, modify the `replicas` of the corresponding components by running `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}`.
 
 ## Configure
 
@@ -341,17 +341,17 @@ It is recommended to use a separate Terraform module to manage a specific Kubern
 
     ```hcl
     provider "alicloud" {
-        region     = <YOUR_REGION>
-        access_key = <YOUR_ACCESS_KEY>
-        secret_key = <YOUR_SECRET_KEY>
+        region     = ${REGION}
+        access_key = ${ACCESS_KEY}
+        secret_key = ${SECRET_KEY}
     }
 
     module "tidb-operator" {
         source     = "../modules/aliyun/tidb-operator"
 
-        region          = <YOUR_REGION>
-        access_key      = <YOUR_ACCESS_KEY>
-        secret_key      = <YOUR_SECRET_KEY>
+        region          = ${REGION}
+        access_key      = ${ACCESS_KEY}
+        secret_key      = ${SECRET_KEY}
         cluster_name    = "example-cluster"
         key_file        = "ssh-key.pem"
         kubeconfig_file = "kubeconfig"

@@ -38,7 +38,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     ```yaml
     admissionWebhook:
       # 将上述命令的返回值填写到 admissionWebhook.cabundle 中
-      cabundle: <cabundle>
+      cabundle: ${cabundle}
     ```
 
 2. 配置失败策略
@@ -118,10 +118,10 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     {
         "CN": "TiDB Operator Webhook",
         "hosts": [
-            "tidb-admission-webhook.<namespace>",
-            "tidb-admission-webhook.<namespace>.svc",
-            "tidb-admission-webhook.<namespace>.svc.cluster",
-            "tidb-admission-webhook.<namespace>.svc.cluster.local"
+            "tidb-admission-webhook.${namespace}",
+            "tidb-admission-webhook.${namespace}.svc",
+            "tidb-admission-webhook.${namespace}.svc.cluster",
+            "tidb-admission-webhook.${namespace}.svc.cluster.local"
         ],
         "key": {
             "algo": "rsa",
@@ -139,7 +139,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     }
     ```
 
-    其中 `<namespace>` 为 TiDB Operator 部署的命名空间。
+    其中 `${namespace}` 为 TiDB Operator 部署的命名空间。
 
     然后生成 TiDB Operator Webhook Server 端证书:
 
@@ -163,7 +163,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=~/cfssl/webhook-server.pem --from-file=tls.key=~/cfssl/webhook-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=~/cfssl/webhook-server.pem --from-file=tls.key=~/cfssl/webhook-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
 4. 修改 values.yaml 并安装或升级 TiDB Operator
@@ -173,7 +173,7 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
+    kubectl get secret ${secret_name} --namespace=${namespace} -o=jsonpath='{.data.ca\.crt}'
     ```
 
     将 `values.yaml` 中下述配置按说明来进行配置:
@@ -182,8 +182,8 @@ TiDB Operator 在默认安装情况下不会开启准入控制器，你需要手
     admissionWebhook:
       apiservice:
         insecureSkipTLSVerify: false # 开启 TLS 验证
-        tlsSecret: "<secret-name>" # 将上文中所创建的 secret 的 name 填写在这里
-        caBundle: "<caBundle>" # 将上文中 ca.crt 的值填入此处
+        tlsSecret: "${secret_name}" # 将上文中所创建的 secret 的 name 填写在这里
+        caBundle: "${caBundle}" # 将上文中 ca.crt 的值填入此处
     ```
 
     修改完 `values.yaml` 文件中上述配置项以后进行 TiDB Operator 部署或者更新。安装 TiDB Operator 请参考[在 Kubernetes 上部署 TiDB Operator](deploy-tidb-operator.md)，升级 TiDB Operator 请参考[升级 TiDB Operator](upgrade-tidb-operator.md)
@@ -217,8 +217,8 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $  kubectl annotate tidbcluster <name> -n <namespace> tidb.pingcap.com/tikv-partition=2 
-    tidbcluster.pingcap.com/<name> annotated
+    $  kubectl annotate tidbcluster ${name} -n ${namespace} tidb.pingcap.com/tikv-partition=2 
+    tidbcluster.pingcap.com/${name} annotated
     ```
 
     执行以下命令取消灰度发布设置：
@@ -226,8 +226,8 @@ TiDB Operator 通过准入控制器的帮助实现了许多功能。我们将在
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $  kubectl annotate tidbcluster <name> -n <namespace> tidb.pingcap.com/tikv-partition- 
-    tidbcluster.pingcap.com/<name> annotated
+    $  kubectl annotate tidbcluster ${name} -n ${namespace} tidb.pingcap.com/tikv-partition- 
+    tidbcluster.pingcap.com/${name} annotated
     ```
 
     以上设置同样适用于 TiDB 组件。

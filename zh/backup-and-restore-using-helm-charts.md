@@ -54,7 +54,7 @@ Kubernetes 上的 TiDB 集群支持两种备份策略：
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=<user> --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
 5. 通过 `helm install` 创建一个配置了定时全量备份的 TiDB 集群，针对现有集群，则使用 `helm upgrade` 为集群打开定时全量备份：
@@ -62,7 +62,7 @@ Kubernetes 上的 TiDB 集群支持两种备份策略：
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release_name> pingcap/tidb-cluster -f values.yaml --version=<tidb-operator-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
 ### Ad-hoc 全量备份
@@ -86,7 +86,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=<user> --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
 3. 使用下面的命令执行一次 Ad-hoc 全量备份：
@@ -94,7 +94,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --name=<backup-name> --namespace=<namespace> -f values.yaml --version=<tidb-operator-version>
+    helm install pingcap/tidb-backup --name=${backup_name} --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
 ### 查看备份
@@ -104,7 +104,7 @@ Ad-hoc 全量备份封装在 `pingcap/tidb-backup` 这个 Helm chart 中。根�
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=<cluster-name>
+kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=${cluster_name}
 ```
 
 假如你将数据存储在 [Google Cloud Storage](https://cloud.google.com/storage/)，[Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) 或 [Amazon S3](https://aws.amazon.com/s3/) 中，你可以用这些存储系统自带的图形界面或命令行工具查看全量备份。
@@ -122,7 +122,7 @@ kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=<user> --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
 3. 恢复数据：
@@ -130,7 +130,7 @@ kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --namespace=<namespace> --name=<restore-name> -f values.yaml --version=<tidb-operator-version>
+    helm install pingcap/tidb-backup --namespace=${namespace} --name=${restore_name} -f values.yaml --version=${version}
     ```
 
 ## 增量备份
@@ -145,12 +145,12 @@ kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com
 
 1. 下线 Pump 节点：
 
-    假设现在有 3 个 Pump 节点，我们需要下线第 3 个 Pump 节点，将 `<ordinal-id>` 替换成 `2`，操作方式如下（`<version>` 为当前 TiDB 的版本）。
+    假设现在有 3 个 Pump 节点，我们需要下线第 3 个 Pump 节点，将 `${ordinal_id}` 替换成 `2`，操作方式如下（`${version}` 为当前 TiDB 的版本）。
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl run offline-pump-<ordinal-id> --image=pingcap/tidb-binlog:<version> --namespace=<namespace> --restart=OnFailure -- /binlogctl -pd-urls=http://<release-name>-pd:2379 -cmd offline-pump -node-id <release-name>-pump-<ordinal-id>:8250
+    kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${release_name}-pd:2379 -cmd offline-pump -node-id ${release_name}-pump-${ordinal_id}:8250
     ```
 
     然后查看 Pump 的日志输出，输出 `pump offline, please delete my pod` 后即可确认该节点已经成功下线。
@@ -158,7 +158,7 @@ kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl logs -f -n <namespace> <release-name>-pump-<ordinal-id>
+    kubectl logs -f -n ${namespace} ${release_name}-pump-${ordinal_id}
     ```
 
 2. 删除对应的 Pump Pod：
@@ -168,5 +168,5 @@ kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```

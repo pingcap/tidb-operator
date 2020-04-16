@@ -48,9 +48,9 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
       namespace: test1
     spec:
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -82,9 +82,9 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
       namespace: test1
     spec:
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: ceph
@@ -116,9 +116,9 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     spec:
     backupType: full
     from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
     s3:
         provider: aws
@@ -151,9 +151,9 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     backupType: full
     serviceAccount: tidb-backup-manager
     from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
     s3:
         provider: aws
@@ -252,9 +252,9 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     schedule: "*/2 * * * *"
     backupTemplate:
         from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
         s3:
         provider: aws
@@ -291,9 +291,9 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     schedule: "*/2 * * * *"
     backupTemplate:
         from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
         s3:
         provider: ceph
@@ -329,9 +329,9 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
       schedule: "*/2 * * * *"
       backupTemplate:
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -368,9 +368,9 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
       serviceAccount: tidb-backup-manager
       backupTemplate:
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws

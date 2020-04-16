@@ -25,7 +25,7 @@ To perform a horizontal scaling operation, take the following steps:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart_version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
 ### Horizontal scaling operations (CR)
@@ -39,7 +39,7 @@ To view the scaling status of the cluster, run the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-watch kubectl -n <namespace> get pod -o wide
+watch kubectl -n ${namespace} get pod -o wide
 ```
 
 When the number of Pods for all components reaches the preset value and all components go to the `Running` state, the horizontal scaling is completed.
@@ -47,7 +47,7 @@ When the number of Pods for all components reaches the preset value and all comp
 > **Note:**
 >
 > - The PD and TiKV components do not trigger scaling in and out operations during the rolling update.
-> - When the TiKV component scales in, it calls the PD interface to mark the corresponding TiKV instance as offline, and then migrates the data on it to other TiKV nodes. During the data migration, the TiKV Pod is still in the `Running` state, and the corresponding Pod is deleted only after the data migration is completed. The time consumed by scaling in depends on the amount of data on the TiKV instance to be scaled in. You can check whether TiKV is in the `Offline` state by running `kubectl get tidbcluster -n <namespace> <release-name> -o json | jq '.status.tikv.stores'`.
+> - When the TiKV component scales in, it calls the PD interface to mark the corresponding TiKV instance as offline, and then migrates the data on it to other TiKV nodes. During the data migration, the TiKV Pod is still in the `Running` state, and the corresponding Pod is deleted only after the data migration is completed. The time consumed by scaling in depends on the amount of data on the TiKV instance to be scaled in. You can check whether TiKV is in the `Offline` state by running `kubectl get tidbcluster -n ${namespace} ${release_name} -o json | jq '.status.tikv.stores'`.
 > - When the PD and TiKV components scale in, the PVC of the deleted node is retained during the scaling in process. Because the PV's reclaim policy is changed to `Retain`, the data can still be retrieved even if the PVC is deleted.
 > - The TiKV component does not support scale out while a scale-in operation is in progress. Forcing a scale-out operation might cause anomalies in the cluster. If an anomaly already happens, refer to [TiKV Store is in Tombstone status abnormally](troubleshoot.md#tikv-store-is-in-tombstone-status-abnormally) to fix it.
 
@@ -68,7 +68,7 @@ To perform a vertical scaling operation:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart_version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
 ### Vertical scaling operations (CR)
@@ -82,7 +82,7 @@ To view the upgrade progress of the cluster, run the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-watch kubectl -n <namespace> get pod -o wide
+watch kubectl -n ${namespace} get pod -o wide
 ```
 
 When all Pods are rebuilt and in the `Running` state, the vertical scaling is completed.

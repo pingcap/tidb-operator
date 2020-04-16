@@ -9,8 +9,8 @@ category: how-to
 本文主要描述了在 Kubernetes 上如何为 TiDB 集群组件间开启 TLS。TiDB Operator 从 v1.1 开始已经支持为 Kubernetes 上 TiDB 集群组件间开启 TLS。开启步骤为：
 
 1. 为即将被创建的 TiDB 集群的每个组件生成证书：
-    - 为 PD/TiKV/TiDB/Pump/Drainer 组件分别创建一套 Server 端证书，保存为 Kubernetes Secret 对象：`<cluster-name>-<component-name>-cluster-secret`
-    - 为它们的各种客户端创建一套共用的 Client 端证书，保存为 Kubernetes Secret 对象：`<cluster-name>-cluster-client-secret`
+    - 为 PD/TiKV/TiDB/Pump/Drainer 组件分别创建一套 Server 端证书，保存为 Kubernetes Secret 对象：`${cluster_name}-${component_name}-cluster-secret`
+    - 为它们的各种客户端创建一套共用的 Client 端证书，保存为 Kubernetes Secret 对象：`${cluster_name}-cluster-client-secret`
 2. 部署集群，设置 `.spec.tlsCluster.enabled` 属性为 `true`；
 3. 配置 `pd-ctl` 连接集群。
 
@@ -126,20 +126,20 @@ category: how-to
             "hosts": [
               "127.0.0.1",
               "::1",
-              "<cluster-name>-pd",
-              "<cluster-name>-pd.<namespace>",
-              "<cluster-name>-pd.<namespace>.svc",
-              "<cluster-name>-pd-peer",
-              "<cluster-name>-pd-peer.<namespace>",
-              "<cluster-name>-pd-peer.<namespace>.svc",
-              "*.<cluster-name>-pd-peer",
-              "*.<cluster-name>-pd-peer.<namespace>",
-              "*.<cluster-name>-pd-peer.<namespace>.svc"
+              "${cluster_name}-pd",
+              "${cluster_name}-pd.${namespace}",
+              "${cluster_name}-pd.${namespace}.svc",
+              "${cluster_name}-pd-peer",
+              "${cluster_name}-pd-peer.${namespace}",
+              "${cluster_name}-pd-peer.${namespace}.svc",
+              "*.${cluster_name}-pd-peer",
+              "*.${cluster_name}-pd-peer.${namespace}",
+              "*.${cluster_name}-pd-peer.${namespace}.svc"
             ],
         ...
         ```
 
-        其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
 
         最后生成 PD Server 端证书：
 
@@ -167,20 +167,20 @@ category: how-to
             "hosts": [
               "127.0.0.1",
               "::1",
-              "<cluster-name>-tikv",
-              "<cluster-name>-tikv.<namespace>",
-              "<cluster-name>-tikv.<namespace>.svc",
-              "<cluster-name>-tikv-peer",
-              "<cluster-name>-tikv-peer.<namespace>",
-              "<cluster-name>-tikv-peer.<namespace>.svc",
-              "*.<cluster-name>-tikv-peer",
-              "*.<cluster-name>-tikv-peer.<namespace>",
-              "*.<cluster-name>-tikv-peer.<namespace>.svc"
+              "${cluster_name}-tikv",
+              "${cluster_name}-tikv.${namespace}",
+              "${cluster_name}-tikv.${namespace}.svc",
+              "${cluster_name}-tikv-peer",
+              "${cluster_name}-tikv-peer.${namespace}",
+              "${cluster_name}-tikv-peer.${namespace}.svc",
+              "*.${cluster_name}-tikv-peer",
+              "*.${cluster_name}-tikv-peer.${namespace}",
+              "*.${cluster_name}-tikv-peer.${namespace}.svc"
             ],
         ...
         ```
 
-        其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
 
         最后生成 TiKV Server 端证书：
 
@@ -208,20 +208,20 @@ category: how-to
             "hosts": [
               "127.0.0.1",
               "::1",
-              "<cluster-name>-tidb",
-              "<cluster-name>-tidb.<namespace>",
-              "<cluster-name>-tidb.<namespace>.svc",
-              "<cluster-name>-tidb-peer",
-              "<cluster-name>-tidb-peer.<namespace>",
-              "<cluster-name>-tidb-peer.<namespace>.svc",
-              "*.<cluster-name>-tidb-peer",
-              "*.<cluster-name>-tidb-peer.<namespace>",
-              "*.<cluster-name>-tidb-peer.<namespace>.svc"
+              "${cluster_name}-tidb",
+              "${cluster_name}-tidb.${namespace}",
+              "${cluster_name}-tidb.${namespace}.svc",
+              "${cluster_name}-tidb-peer",
+              "${cluster_name}-tidb-peer.${namespace}",
+              "${cluster_name}-tidb-peer.${namespace}.svc",
+              "*.${cluster_name}-tidb-peer",
+              "*.${cluster_name}-tidb-peer.${namespace}",
+              "*.${cluster_name}-tidb-peer.${namespace}.svc"
             ],
         ...
         ```
 
-        其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
 
         最后生成 TiDB Server 端证书：
 
@@ -249,14 +249,14 @@ category: how-to
             "hosts": [
               "127.0.0.1",
               "::1",
-              "*.<cluster-name>-pump",
-              "*.<cluster-name>-pump.<namespace>",
-              "*.<cluster-name>-pump.<namespace>.svc"
+              "*.${cluster_name}-pump",
+              "*.${cluster_name}-pump.${namespace}",
+              "*.${cluster_name}-pump.${namespace}.svc"
             ],
         ...
         ```
 
-        其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
 
         最后生成 Pump Server 端证书：
 
@@ -310,9 +310,9 @@ category: how-to
             "hosts": [
               "127.0.0.1",
               "::1",
-              "*.<drainer-name>",
-              "*.<drainer-name>.<namespace>",
-              "*.<drainer-name>.<namespace>.svc"
+              "*.${drainer_name}",
+              "*.${drainer_name}.${namespace}",
+              "*.${drainer_name}.${namespace}.svc"
             ],
         ...
         ```
@@ -325,14 +325,14 @@ category: how-to
             "hosts": [
               "127.0.0.1",
               "::1",
-              "*.<cluster-name>-<release-name>-drainer",
-              "*.<cluster-name>-<release-name>-drainer.<namespace>",
-              "*.<cluster-name>-<release-name>-drainer.<namespace>.svc"
+              "*.${cluster_name}-${release_name}-drainer",
+              "*.${cluster_name}-${release_name}-drainer.${namespace}",
+              "*.${cluster_name}-${release_name}-drainer.${namespace}.svc"
             ],
         ...
         ```
 
-        其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，`<release-name>` 是 `helm install` 时候填写的 `release name`，`<drainer-name>` 为 `values.yaml` 文件里的 `drainerName`，用户也可以添加自定义 `hosts`。
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，`${release_name}` 是 `helm install` 时候填写的 `release name`，`${drainer_name}` 为 `values.yaml` 文件里的 `drainerName`，用户也可以添加自定义 `hosts`。
 
         最后生成 Drainer Server 端证书：
 
@@ -376,7 +376,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/pd-server.pem --from-file=tls.key=~/cfssl/pd-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pd-server.pem --from-file=tls.key=~/cfssl/pd-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     TiKV 集群证书 Secret：
@@ -384,7 +384,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/tikv-server.pem --from-file=tls.key=~/cfssl/tikv-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tikv-server.pem --from-file=tls.key=~/cfssl/tikv-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     TiDB 集群证书 Secret：
@@ -392,7 +392,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/tidb-server.pem --from-file=tls.key=~/cfssl/tidb-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tidb-server.pem --from-file=tls.key=~/cfssl/tidb-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     Pump 集群证书 Secret：
@@ -400,7 +400,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-pump-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/pump-server.pem --from-file=tls.key=~/cfssl/pump-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pump-server.pem --from-file=tls.key=~/cfssl/pump-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     Drainer 集群证书 Secret：
@@ -408,7 +408,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-drainer-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/drainer-server.pem --from-file=tls.key=~/cfssl/drainer-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/drainer-server.pem --from-file=tls.key=~/cfssl/drainer-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     Client 证书 Secret：
@@ -416,7 +416,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     这里给 PD/TiKV/TiDB/Pump/Drainer 的 Server 端证书分别创建了一个 Secret 供他们启动时加载使用，另外一套 Client 端证书供他们的客户端连接使用。
@@ -446,35 +446,35 @@ category: how-to
     apiVersion: cert-manager.io/v1alpha2
     kind: Issuer
     metadata:
-      name: <cluster-name>-selfsigned-ca-issuer
-      namespace: <namespace>
+      name: ${cluster_name}-selfsigned-ca-issuer
+      namespace: ${namespace}
     spec:
       selfSigned: {}
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: <cluster-name>-ca
-      namespace: <namespace>
+      name: ${cluster_name}-ca
+      namespace: ${namespace}
     spec:
-      secretName: <cluster-name>-ca-secret
+      secretName: ${cluster_name}-ca-secret
       commonName: "TiDB"
       isCA: true
       issuerRef:
-        name: <cluster-name>-selfsigned-ca-issuer
+        name: ${cluster_name}-selfsigned-ca-issuer
         kind: Issuer
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Issuer
     metadata:
-      name: <cluster-name>-tidb-issuer
-      namespace: <namespace>
+      name: ${cluster_name}-tidb-issuer
+      namespace: ${namespace}
     spec:
       ca:
-        secretName: <cluster-name>-ca-secret
+        secretName: ${cluster_name}-ca-secret
     ```
 
-    其中 `<cluster-name>` 为集群的名字，上面的文件创建三个对象：
+    其中 `${cluster_name}` 为集群的名字，上面的文件创建三个对象：
 
     - 一个 SelfSigned 类型的 Isser 对象（用于生成 CA 类型 Issuer 所需要的 CA 证书）;
     - 一个 Certificate 对象，`isCa` 属性设置为 `true`；
@@ -500,10 +500,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-pd-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-pd-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-pd-cluster-secret
+          secretName: ${cluster_name}-pd-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -513,45 +513,45 @@ category: how-to
             - server auth
             - client auth
           dnsNames:
-          - "<cluster-name>-pd"
-          - "<cluster-name>-pd.<namespace>"
-          - "<cluster-name>-pd.<namespace>.svc"
-          - "<cluster-name>-pd-peer"
-          - "<cluster-name>-pd-peer.<namespace>"
-          - "<cluster-name>-pd-peer.<namespace>.svc"
-          - "*.<cluster-name>-pd-peer"
-          - "*.<cluster-name>-pd-peer.<namespace>"
-          - "*.<cluster-name>-pd-peer.<namespace>.svc"
+          - "${cluster_name}-pd"
+          - "${cluster_name}-pd.${namespace}"
+          - "${cluster_name}-pd.${namespace}.svc"
+          - "${cluster_name}-pd-peer"
+          - "${cluster_name}-pd-peer.${namespace}"
+          - "${cluster_name}-pd-peer.${namespace}.svc"
+          - "*.${cluster_name}-pd-peer"
+          - "*.${cluster_name}-pd-peer.${namespace}"
+          - "*.${cluster_name}-pd-peer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        其中 `<cluster-name>` 为集群的名字：
+        其中 `${cluster_name}` 为集群的名字：
 
-        - `spec.secretName` 请设置为 `<cluster-name>-pd-cluster-secret`；
+        - `spec.secretName` 请设置为 `${cluster_name}-pd-cluster-secret`；
         - `usages` 请添加上  `server auth` 和 `client auth`；
         - `dnsNames` 需要填写这些 DNS，根据需要可以填写其他 DNS：
-          - `<cluster-name>-pd`
-          - `<cluster-name>-pd.<namespace>`
-          - `<cluster-name>-pd.<namespace>.svc`
-          - `<cluster-name>-pd-pee`
-          - `<cluster-name>-pd-peer.<namespace>`
-          - `<cluster-name>-pd-peer.<namespace>.svc`
-          - `*.<cluster-name>-pd-peer`
-          - `*.<cluster-name>-pd-peer.<namespace>`
-          - `*.<cluster-name>-pd-peer.<namespace>.svc`
+          - `${cluster_name}-pd`
+          - `${cluster_name}-pd.${namespace}`
+          - `${cluster_name}-pd.${namespace}.svc`
+          - `${cluster_name}-pd-pee`
+          - `${cluster_name}-pd-peer.${namespace}`
+          - `${cluster_name}-pd-peer.${namespace}.svc`
+          - `*.${cluster_name}-pd-peer`
+          - `*.${cluster_name}-pd-peer.${namespace}`
+          - `*.${cluster_name}-pd-peer.${namespace}.svc`
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-pd-cluster-secret` 的 Secret 对象供 TiDB 集群的 PD 组件使用。
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-pd-cluster-secret` 的 Secret 对象供 TiDB 集群的 PD 组件使用。
 
     - TiKV 组件的 Server 端证书。
 
@@ -559,10 +559,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-tikv-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-tikv-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-tikv-cluster-secret
+          secretName: ${cluster_name}-tikv-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -572,45 +572,45 @@ category: how-to
             - server auth
             - client auth
           dnsNames:
-          - "<cluster-name>-tikv"
-          - "<cluster-name>-tikv.<namespace>"
-          - "<cluster-name>-tikv.<namespace>.svc"
-          - "<cluster-name>-tikv-peer"
-          - "<cluster-name>-tikv-peer.<namespace>"
-          - "<cluster-name>-tikv-peer.<namespace>.svc"
-          - "*.<cluster-name>-tikv-peer"
-          - "*.<cluster-name>-tikv-peer.<namespace>"
-          - "*.<cluster-name>-tikv-peer.<namespace>.svc"
+          - "${cluster_name}-tikv"
+          - "${cluster_name}-tikv.${namespace}"
+          - "${cluster_name}-tikv.${namespace}.svc"
+          - "${cluster_name}-tikv-peer"
+          - "${cluster_name}-tikv-peer.${namespace}"
+          - "${cluster_name}-tikv-peer.${namespace}.svc"
+          - "*.${cluster_name}-tikv-peer"
+          - "*.${cluster_name}-tikv-peer.${namespace}"
+          - "*.${cluster_name}-tikv-peer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        其中 `<cluster-name>` 为集群的名字：
+        其中 `${cluster_name}` 为集群的名字：
 
-        - `spec.secretName` 请设置为 `<clusterName>-tikv-cluster-secret`；
+        - `spec.secretName` 请设置为 `${cluster_name}-tikv-cluster-secret`；
         - `usages` 请添加上  `server auth` 和 `client auth`；
         - `dnsNames` 需要填写这些 DNS，根据需要可以填写其他 DNS：
-          - `<cluster-name>-tikv`
-          - `<cluster-name>-tikv.<namespace>`
-          - `<cluster-name>-tikv.<namespace>.svc`
-          - `<cluster-name>-tikv-peer`
-          - `<cluster-name>-tikv-peer.<namespace>`
-          - `<cluster-name>-tikv-peer.<namespace>.svc`
-          - `*.<cluster-name>-tikv-peer`
-          - `*.<cluster-name>-tikv-peer.<namespace>`
-          - `*.<cluster-name>-tikv-peer.<namespace>.svc`
+          - `${cluster_name}-tikv`
+          - `${cluster_name}-tikv.${namespace}`
+          - `${cluster_name}-tikv.${namespace}.svc`
+          - `${cluster_name}-tikv-peer`
+          - `${cluster_name}-tikv-peer.${namespace}`
+          - `${cluster_name}-tikv-peer.${namespace}.svc`
+          - `*.${cluster_name}-tikv-peer`
+          - `*.${cluster_name}-tikv-peer.${namespace}`
+          - `*.${cluster_name}-tikv-peer.${namespace}.svc`
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-tikv-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiKV 组件使用。
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-tikv-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiKV 组件使用。
 
     - TiDB 组件的 Server 端证书。
 
@@ -618,10 +618,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-tidb-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-tidb-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-tidb-cluster-secret
+          secretName: ${cluster_name}-tidb-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -631,45 +631,45 @@ category: how-to
             - server auth
             - client auth
           dnsNames:
-          - "<cluster-name>-tidb"
-          - "<cluster-name>-tidb.<namespace>"
-          - "<cluster-name>-tidb.<namespace>.svc"
-          - "<cluster-name>-tidb-peer"
-          - "<cluster-name>-tidb-peer.<namespace>"
-          - "<cluster-name>-tidb-peer.<namespace>.svc"
-          - "*.<cluster-name>-tidb-peer"
-          - "*.<cluster-name>-tidb-peer.<namespace>"
-          - "*.<cluster-name>-tidb-peer.<namespace>.svc"
+          - "${cluster_name}-tidb"
+          - "${cluster_name}-tidb.${namespace}"
+          - "${cluster_name}-tidb.${namespace}.svc"
+          - "${cluster_name}-tidb-peer"
+          - "${cluster_name}-tidb-peer.${namespace}"
+          - "${cluster_name}-tidb-peer.${namespace}.svc"
+          - "*.${cluster_name}-tidb-peer"
+          - "*.${cluster_name}-tidb-peer.${namespace}"
+          - "*.${cluster_name}-tidb-peer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        其中 `<cluster-name>` 为集群的名字：
+        其中 `${cluster_name}` 为集群的名字：
 
-        - `spec.secretName` 请设置为 `<clusterName>-tidb-cluster-secret`；
+        - `spec.secretName` 请设置为 `${cluster_name}-tidb-cluster-secret`；
         - `usages` 请添加上  `server auth` 和 `client auth`；
         - `dnsNames` 需要填写这些 DNS，根据需要可以填写其他 DNS：
-          - `<cluster-name>-tidb`
-          - `<cluster-name>-tidb.<namespace>`
-          - `<cluster-name>-tidb.<namespace>.svc`
-          - `<cluster-name>-tidb-peer`
-          - `<cluster-name>-tidb-peer.<namespace>`
-          - `<cluster-name>-tidb-peer.<namespace>.svc`
-          - `*.<cluster-name>-tidb-peer`
-          - `*.<cluster-name>-tidb-peer.<namespace>`
-          - `*.<cluster-name>-tidb-peer.<namespace>.svc`
+          - `${cluster_name}-tidb`
+          - `${cluster_name}-tidb.${namespace}`
+          - `${cluster_name}-tidb.${namespace}.svc`
+          - `${cluster_name}-tidb-peer`
+          - `${cluster_name}-tidb-peer.${namespace}`
+          - `${cluster_name}-tidb-peer.${namespace}.svc`
+          - `*.${cluster_name}-tidb-peer`
+          - `*.${cluster_name}-tidb-peer.${namespace}`
+          - `*.${cluster_name}-tidb-peer.${namespace}.svc`
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-tidb-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiDB 组件使用。
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-tidb-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiDB 组件使用。
 
     - Pump 组件的 Server 端证书。
 
@@ -677,10 +677,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-pump-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-pump-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-pump-cluster-secret
+          secretName: ${cluster_name}-pump-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -690,33 +690,33 @@ category: how-to
             - server auth
             - client auth
           dnsNames:
-          - "*.<cluster-name>-pump"
-          - "*.<cluster-name>-pump.<namespace>"
-          - "*.<cluster-name>-pump.<namespace>.svc"
+          - "*.${cluster_name}-pump"
+          - "*.${cluster_name}-pump.${namespace}"
+          - "*.${cluster_name}-pump.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        其中 `<cluster-name>` 为集群的名字：
+        其中 `${cluster_name}` 为集群的名字：
 
-        - `spec.secretName` 请设置为 `<cluster-name>-pump-cluster-secret`；
+        - `spec.secretName` 请设置为 `${cluster_name}-pump-cluster-secret`；
         - `usages` 请添加上  `server auth` 和 `client auth`；
         - `dnsNames` 需要填写这些 DNS，根据需要可以填写其他 DNS：
-          - `*.<cluster-name>-pump`
-          - `*.<cluster-name>-pump.<namespace>`
-          - `*.<cluster-name>-pump.<namespace>.svc`
+          - `*.${cluster_name}-pump`
+          - `*.${cluster_name}-pump.${namespace}`
+          - `*.${cluster_name}-pump.${namespace}.svc`
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
           - `127.0.0.1`
           - `::1`
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-pump-cluster-secret` 的 Secret 对象供 TiDB 集群的 Pump 组件使用。
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-pump-cluster-secret` 的 Secret 对象供 TiDB 集群的 Pump 组件使用。
 
     - Drainer 组件的 Server 端证书。
 
@@ -739,10 +739,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-drainer-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-drainer-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-drainer-cluster-secret
+          secretName: ${cluster_name}-drainer-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -752,14 +752,14 @@ category: how-to
             - server auth
             - client auth
           dnsNames:
-          - "*.<drainer-name>"
-          - "*.<drainer-name>.<namespace>"
-          - "*.<drainer-name>.<namespace>.svc"
+          - "*.${drainer_name}"
+          - "*.${drainer_name}.${namespace}"
+          - "*.${drainer_name}.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
@@ -770,10 +770,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-drainer-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-drainer-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-drainer-cluster-secret
+          secretName: ${cluster_name}-drainer-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -783,21 +783,21 @@ category: how-to
             - server auth
             - client auth
           dnsNames:
-          - "*.<cluster-name>-<release-name>-drainer"
-          - "*.<cluster-name>-<release-name>-drainer.<namespace>"
-          - "*.<cluster-name>-<release-name>-drainer.<namespace>.svc"
+          - "*.${cluster_name}-${release_name}-drainer"
+          - "*.${cluster_name}-${release_name}-drainer.${namespace}"
+          - "*.${cluster_name}-${release_name}-drainer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，`<release-name>` 是 `helm install` 时候填写的 `release name`，`<drainer-name>` 为 `values.yaml` 文件里的 `drainerName`，用户也可以添加自定义 `dnsNames`。
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，`${release_name}` 是 `helm install` 时候填写的 `release name`，`${drainer_name}` 为 `values.yaml` 文件里的 `drainerName`，用户也可以添加自定义 `dnsNames`。
 
-        - `spec.secretName` 请设置为 `<cluster-name>-drainer-cluster-secret`；
+        - `spec.secretName` 请设置为 `${cluster_name}-drainer-cluster-secret`；
         - `usages` 请添加上  `server auth` 和 `client auth`；
         - `dnsNames` 请参考上面的描述；
         - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
@@ -806,7 +806,7 @@ category: how-to
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-drainer-cluster-secret` 的 Secret 对象供 TiDB 集群的 Drainer 组件使用。
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-drainer-cluster-secret` 的 Secret 对象供 TiDB 集群的 Drainer 组件使用。
 
     - 一套 TiDB 集群组件的 Client 端证书。
 
@@ -814,10 +814,10 @@ category: how-to
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-cluster-client-secret
-          namespace: <namespace>
+          name: ${cluster_name}-cluster-client-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-cluster-client-secret
+          secretName: ${cluster_name}-cluster-client-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -826,29 +826,29 @@ category: how-to
           usages:
             - client auth
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        其中 `<cluster-name>` 为集群的名字：
+        其中 `${cluster_name}` 为集群的名字：
 
-        - `spec.secretName` 请设置为 `<cluster-name>-cluster-client-secret`；
+        - `spec.secretName` 请设置为 `${cluster_name}-cluster-client-secret`；
         - `usages` 请添加上  `client auth`；
         - `dnsNames` 和 `ipAddresses` 不需要填写；
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `<cluster-name>-cluster-client-secret` 的 Secret 对象供 TiDB 组件的 Client 使用。获取 Client 证书的方式是：
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-cluster-client-secret` 的 Secret 对象供 TiDB 组件的 Client 使用。获取 Client 证书的方式是：
 
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        mkdir -p ~/<cluster-name>-cluster-client-tls
-        cd ~/<cluster-name>-cluster-client-tls
-        kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-        kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-        kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+        mkdir -p ~/${cluster_name}-cluster-client-tls
+        cd ~/${cluster_name}-cluster-client-tls
+        kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
+        kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
+        kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
         ```
 
 ## 第二步：部署 TiDB 集群
@@ -874,8 +874,8 @@ category: how-to
     apiVersion: pingcap.com/v1alpha1
     kind: TidbCluster
     metadata:
-     name: <cluster-name>
-     namespace: <namespace>
+     name: ${cluster_name}
+     namespace: ${namespace}
     spec:
      tlsClusster:
        enabled: true
@@ -922,11 +922,11 @@ category: how-to
     apiVersion: pingcap.com/v1alpha1
     kind: TidbMonitor
     metadata:
-     name: <cluser-name>-monitor
-     namespace: <namespace>
+     name: ${cluster_name}
+     namespace: ${namespace}
     spec:
      clusters:
-     - name: <cluster-name>
+     - name: ${cluster_name}
      prometheus:
        baseImage: prom/prometheus
        version: v2.11.1
@@ -952,7 +952,7 @@ category: how-to
 
         ``` yaml
         ...
-        drainerName: <drainer-name>
+        drainerName: ${drainer_name}
         tlsCluster:
           enabled: true
           certAllowedCN:
@@ -965,7 +965,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=<release-name> --namespace=<namespace>
+        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
         ```
 
     - 第二种方式：创建 Drainer 的时候不设置 `drainerName`：
@@ -986,7 +986,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=<release-name> --namespace=<namespace>
+        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
         ```
 
 3. 创建 Backup/Restore 资源对象。
@@ -997,25 +997,25 @@ category: how-to
         apiVersion: pingcap.com/v1alpha1
         kind: Backup
         metadata:
-          name: <cluster-name>-backup
-          namespace: <namespace>
+          name: ${cluster_name}-backup
+          namespace: ${namespace}
         spec:
           backupType: full
           br:
-            cluster: <cluster-name>
-            clusterNamespace: <namespace>
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
             sendCredToTikv: true
           from:
-            host: <host>
-            secretName: <tidb-secret>
+            host: ${host}
+            secretName: ${tidb_secret}
             port: 4000
             user: root
           s3:
             provider: aws
-            region: <my-region>
-            secretName: <s3-secret>
-            bucket: <my-bucket>
-            prefix: <my-folder>
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
         ````
 
         然后部署 Backup：
@@ -1032,25 +1032,25 @@ category: how-to
         apiVersion: pingcap.com/v1alpha1
         kind: Restore
         metadata:
-          name: <cluster-name>-restore
-          namespace: <namespace>
+          name: ${cluster_name}-restore
+          namespace: ${namespace}
         spec:
           backupType: full
           br:
-            cluster: <cluster-name>
-            clusterNamespace: <namespace>
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
             sendCredToTikv: true
           to:
-            host: <host>
-            secretName: <tidb-secret>
+            host: ${host}
+            secretName: ${tidb_secret}
             port: 4000
             user: root
           s3:
             provider: aws
-            region: <my-region>
-            secretName: <s3-secret>
-            bucket: <my-bucket>
-            prefix: <my-folder>
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
 
         ````
 
@@ -1070,16 +1070,16 @@ category: how-to
 
 2. 连接集群。
 
-    首先需要下载 Client 端证书，Client 端证书就是上面创建的那套 Client 证书，可以直接使用或者从 K8s Secret 对象（之前创建的）里获取，这个 Secret 对象的名字是: `<cluster-name>-cluster-client-secret`。
+    首先需要下载 Client 端证书，Client 端证书就是上面创建的那套 Client 证书，可以直接使用或者从 K8s Secret 对象（之前创建的）里获取，这个 Secret 对象的名字是: `${cluster_name}-cluster-client-secret`。
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/<cluster-name>-cluster-client-tls
-    cd ~/<cluster-name>-cluster-client-tls
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+    mkdir -p ~/${cluster_name}-cluster-client-tls
+    cd ~/${cluster_name}-cluster-client-tls
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
     ```
 
 3. 使用 pd-ctl 连接 PD 集群。
@@ -1089,5 +1089,5 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    pd-ctl --cacert=~/<cluster-name>-cluster-client-tls/ca.crt --cert=~/<cluster-name>-cluster-client-tls/tls.crt --key=~/<cluster-name>-cluster-client-tls/tls.key -u https://<cluster-name>-pd.<namespace>.svc:2379 member
+    pd-ctl --cacert=~/${cluster_name}-cluster-client-tls/ca.crt --cert=~/${cluster_name}-cluster-client-tls/tls.crt --key=~/${cluster_name}-cluster-client-tls/tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
     ```

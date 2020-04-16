@@ -54,7 +54,7 @@ To configure a scheduled full backup, modify the `scheduledBackup` section in th
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=<user> --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
 5. Create a new TiDB cluster with the scheduled full backup task by running `helm install`, or enable the scheduled full backup for the existing cluster by `helm upgrade`:
@@ -62,7 +62,7 @@ To configure a scheduled full backup, modify the `scheduledBackup` section in th
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release_name> pingcap/tidb-cluster -f values.yaml --version=<tidb-operator-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
 ### Ad-hoc full backup
@@ -86,7 +86,7 @@ Follow the steps below to perform an ad-hoc full backup task:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=<user> --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
 3. Run the following command to perform an ad-hoc backup task:
@@ -94,7 +94,7 @@ Follow the steps below to perform an ad-hoc full backup task:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --name=<backup-name> --namespace=<namespace> -f values.yaml --version=<tidb-operator-version>
+    helm install pingcap/tidb-backup --name=${backup_name} --namespace=${namespace} -f values.yaml --version=${version}
     ```
 
 ### View backups
@@ -104,7 +104,7 @@ For backups stored in PV, you can view them by using the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pvc -n <namespace> -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=<cluster-name>
+kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.com/backup-cluster-name=${cluster_name}
 ```
 
 If you store your backup data in [Google Cloud Storage](https://cloud.google.com/storage/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/) or [Amazon S3](https://aws.amazon.com/s3/), you can view the backups by using the GUI or CLI tools provided by these storage providers.
@@ -122,7 +122,7 @@ The `pingcap/tidb-backup` helm chart helps restore a TiDB cluster using backup d
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=<user> --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
 3. Restore the backup:
@@ -130,7 +130,7 @@ The `pingcap/tidb-backup` helm chart helps restore a TiDB cluster using backup d
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-backup --namespace=<namespace> --name=<restore-name> -f values.yaml --version=<tidb-operator-version>
+    helm install pingcap/tidb-backup --namespace=${namespace} --name=${restore_name} -f values.yaml --version=${version}
     ```
 
 ## Incremental backup
@@ -145,12 +145,12 @@ To scale in Pump, for each Pump node, make the node offline and then run the `he
 
 1. Make a Pump node offline from the TiDB cluster
 
-    Suppose there are 3 Pump nodes, and you want to get the third node offline and modify `<ordinal-id>` to `2`, run the following command (`<version>` is the current version of TiDB).
+    Suppose there are 3 Pump nodes, and you want to get the third node offline and modify `${ordinal_id}` to `2`, run the following command (`${version}` is the current version of TiDB).
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl run offline-pump-<ordinal-id> --image=pingcap/tidb-binlog:<version> --namespace=<namespace> --restart=OnFailure -- /binlogctl -pd-urls=http://<release-name>-pd:2379 -cmd offline-pump -node-id <release-name>-pump-<ordinal-id>:8250
+    kubectl run offline-pump-${ordinal_id} --image=pingcap/tidb-binlog:${version} --namespace=${namespace} --restart=OnFailure -- /binlogctl -pd-urls=http://${release_name}-pd:2379 -cmd offline-pump -node-id ${release_name}-pump-${ordinal_id}:8250
     ```
 
     Then, check the log output of Pump. If Pump outputs `pump offline, please delete my pod`, the state of the Pump node is successfully switched to `offline`.
@@ -158,7 +158,7 @@ To scale in Pump, for each Pump node, make the node offline and then run the `he
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl logs -f -n <namespace> <release-name>-pump-<ordinal-id>
+    kubectl logs -f -n ${namespace} ${release_name}-pump-${ordinal_id}
     ```
 
 2. Delete the corresponding Pump Pod
@@ -168,5 +168,5 @@ To scale in Pump, for each Pump node, make the node offline and then run the `he
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```

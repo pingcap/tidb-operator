@@ -12,8 +12,8 @@ To enable TLS between TiDB components, perform the following steps:
 
 1. Generate certificates for each component of the TiDB cluster to be created:
 
-   - A set of server-side certificates for the PD/TiKV/TiDB/Pump/Drainer component, saved as the Kubernetes Secret objects: `<cluster-name>-<component-name>-cluster-secret`
-   - A set of shared client-side certificates for the various clients of each component, saved as the Kubernetes Secret objects: `<cluster-name>-cluster-client-secret`.
+   - A set of server-side certificates for the PD/TiKV/TiDB/Pump/Drainer component, saved as the Kubernetes Secret objects: `${cluster_name}-${component_name}-cluster-secret`
+   - A set of shared client-side certificates for the various clients of each component, saved as the Kubernetes Secret objects: `${cluster_name}-cluster-client-secret`.
 
 2. Deploy the cluster, and set `.spec.tlsClient.enabled` to `true`.
 3. Configure `pd-ctl` to connect to the cluster.
@@ -131,20 +131,20 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             "hosts": [
               "127.0.0.1",
               "::1",
-              "<cluster-name>-pd",
-              "<cluster-name>-pd.<namespace>",
-              "<cluster-name>-pd.<namespace>.svc",
-              "<cluster-name>-pd-peer",
-              "<cluster-name>-pd-peer.<namespace>",
-              "<cluster-name>-pd-peer.<namespace>.svc",
-              "*.<cluster-name>-pd-peer",
-              "*.<cluster-name>-pd-peer.<namespace>",
-              "*.<cluster-name>-pd-peer.<namespace>.svc"
+              "${cluster_name}-pd",
+              "${cluster_name}-pd.${namespace}",
+              "${cluster_name}-pd.${namespace}.svc",
+              "${cluster_name}-pd-peer",
+              "${cluster_name}-pd-peer.${namespace}",
+              "${cluster_name}-pd-peer.${namespace}.svc",
+              "*.${cluster_name}-pd-peer",
+              "*.${cluster_name}-pd-peer.${namespace}",
+              "*.${cluster_name}-pd-peer.${namespace}.svc"
             ],
         ...
         ```
 
-        `<cluster-name>` is the name of the cluster. `<namespace>` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
+        `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
 
         Finally, generate the PD server-side certificate:
 
@@ -172,20 +172,20 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             "hosts": [
               "127.0.0.1",
               "::1",
-              "<cluster-name>-tikv",
-              "<cluster-name>-tikv.<namespace>",
-              "<cluster-name>-tikv.<namespace>.svc",
-              "<cluster-name>-tikv-peer",
-              "<cluster-name>-tikv-peer.<namespace>",
-              "<cluster-name>-tikv-peer.<namespace>.svc",
-              "*.<cluster-name>-tikv-peer",
-              "*.<cluster-name>-tikv-peer.<namespace>",
-              "*.<cluster-name>-tikv-peer.<namespace>.svc"
+              "${cluster_name}-tikv",
+              "${cluster_name}-tikv.${namespace}",
+              "${cluster_name}-tikv.${namespace}.svc",
+              "${cluster_name}-tikv-peer",
+              "${cluster_name}-tikv-peer.${namespace}",
+              "${cluster_name}-tikv-peer.${namespace}.svc",
+              "*.${cluster_name}-tikv-peer",
+              "*.${cluster_name}-tikv-peer.${namespace}",
+              "*.${cluster_name}-tikv-peer.${namespace}.svc"
             ],
         ...
         ```
 
-        `<cluster-name>` is the name of the cluster. `<namespace>` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
+        `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
 
         Finally, generate the TiKV server-side certificate:
 
@@ -213,20 +213,20 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             "hosts": [
               "127.0.0.1",
               "::1",
-              "<cluster-name>-tidb",
-              "<cluster-name>-tidb.<namespace>",
-              "<cluster-name>-tidb.<namespace>.svc",
-              "<cluster-name>-tidb-peer",
-              "<cluster-name>-tidb-peer.<namespace>",
-              "<cluster-name>-tidb-peer.<namespace>.svc",
-              "*.<cluster-name>-tidb-peer",
-              "*.<cluster-name>-tidb-peer.<namespace>",
-              "*.<cluster-name>-tidb-peer.<namespace>.svc"
+              "${cluster_name}-tidb",
+              "${cluster_name}-tidb.${namespace}",
+              "${cluster_name}-tidb.${namespace}.svc",
+              "${cluster_name}-tidb-peer",
+              "${cluster_name}-tidb-peer.${namespace}",
+              "${cluster_name}-tidb-peer.${namespace}.svc",
+              "*.${cluster_name}-tidb-peer",
+              "*.${cluster_name}-tidb-peer.${namespace}",
+              "*.${cluster_name}-tidb-peer.${namespace}.svc"
             ],
         ...
         ```
 
-        `<cluster-name>` is the name of the cluster. `<namespace>` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
+        `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
 
         Finally, generate the TiDB server-side certificate:
 
@@ -254,14 +254,14 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             "hosts": [
               "127.0.0.1",
               "::1",
-              "*.<cluster-name>-pump",
-              "*.<cluster-name>-pump.<namespace>",
-              "*.<cluster-name>-pump.<namespace>.svc"
+              "*.${cluster_name}-pump",
+              "*.${cluster_name}-pump.${namespace}",
+              "*.${cluster_name}-pump.${namespace}.svc"
             ],
         ...
         ```
 
-        `<cluster-name>` is the name of the cluster. `<namespace>` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
+        `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
 
         Finally, generate the Pump server-side certificate:
 
@@ -315,9 +315,9 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             "hosts": [
               "127.0.0.1",
               "::1",
-              "*.<drainer-name>",
-              "*.<drainer-name>.<namespace>",
-              "*.<drainer-name>.<namespace>.svc"
+              "*.${drainer_name}",
+              "*.${drainer_name}.${namespace}",
+              "*.${drainer_name}.${namespace}.svc"
             ],
         ...
         ```
@@ -330,14 +330,14 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             "hosts": [
               "127.0.0.1",
               "::1",
-              "*.<cluster-name>-<release-name>-drainer",
-              "*.<cluster-name>-<release-name>-drainer.<namespace>",
-              "*.<cluster-name>-<release-name>-drainer.<namespace>.svc"
+              "*.${cluster_name}-${release_name}-drainer",
+              "*.${cluster_name}-${release_name}-drainer.${namespace}",
+              "*.${cluster_name}-${release_name}-drainer.${namespace}.svc"
             ],
         ...
         ```
 
-        `<cluster-name>` is the name of the cluster. `<namespace>` is the namespace in which the TiDB cluster is deployed. `<release-name>` is the `release name` you set when `helm install` is executed. `<drainer-name>` is `drainerName` in the `values.yaml` file. You can also add your customized `hosts`.
+        `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. `${release_name}` is the `release name` you set when `helm install` is executed. `${drainer_name}` is `drainerName` in the `values.yaml` file. You can also add your customized `hosts`.
 
         Finally, generate the Drainer server-side certificate:
 
@@ -381,7 +381,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic <cluster-name>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/pd-server.pem --from-file=tls.key=~/cfssl/pd-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pd-server.pem --from-file=tls.key=~/cfssl/pd-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
         ```
 
     - The TiKV cluster certificate Secret:
@@ -389,7 +389,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic <cluster-name>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/tikv-server.pem --from-file=tls.key=~/cfssl/tikv-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tikv-server.pem --from-file=tls.key=~/cfssl/tikv-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
         ```
 
     - The TiDB cluster certificate Secret:
@@ -397,7 +397,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic <cluster-name>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/tidb-server.pem --from-file=tls.key=~/cfssl/tidb-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tidb-server.pem --from-file=tls.key=~/cfssl/tidb-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
         ```
 
     - The Pump cluster certificate Secret:
@@ -405,7 +405,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic <cluster-name>-pump-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/pump-server.pem --from-file=tls.key=~/cfssl/pump-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pump-server.pem --from-file=tls.key=~/cfssl/pump-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
         ```
 
     - The Drainer cluster certificate Secret:
@@ -413,7 +413,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic <cluster-name>-drainer-cluster-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/drainer-server.pem --from-file=tls.key=~/cfssl/drainer-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/drainer-server.pem --from-file=tls.key=~/cfssl/drainer-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
         ```
 
     - The client certificate Secret:
@@ -421,7 +421,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic <cluster-name>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
         ```
 
     You have created two Secret objects:
@@ -454,35 +454,35 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     apiVersion: cert-manager.io/v1alpha2
     kind: Issuer
     metadata:
-      name: <cluster-name>-selfsigned-ca-issuer
-      namespace: <namespace>
+      name: ${cluster_name}-selfsigned-ca-issuer
+      namespace: ${namespace}
     spec:
       selfSigned: {}
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: <cluster-name>-ca
-      namespace: <namespace>
+      name: ${cluster_name}-ca
+      namespace: ${namespace}
     spec:
-      secretName: <cluster-name>-ca-secret
+      secretName: ${cluster_name}-ca-secret
       commonName: "TiDB"
       isCA: true
       issuerRef:
-        name: <cluster-name>-selfsigned-ca-issuer
+        name: ${cluster_name}-selfsigned-ca-issuer
         kind: Issuer
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Issuer
     metadata:
-      name: <cluster-name>-tidb-issuer
-      namespace: <namespace>
+      name: ${cluster_name}-tidb-issuer
+      namespace: ${namespace}
     spec:
       ca:
-        secretName: <cluster-name>-ca-secret
+        secretName: ${cluster_name}-ca-secret
     ```
 
-    `<cluster-name>` is the name of the cluster. The above yaml file creates three objects:
+    `${cluster_name}` is the name of the cluster. The above yaml file creates three objects:
 
     - An Issuer object of the SelfSigned type, used to generate the CA certificate needed by Issuer of the CA type;
     - A Certificate object, whose `isCa` is set to `true`.
@@ -508,10 +508,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-pd-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-pd-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-pd-cluster-secret
+          secretName: ${cluster_name}-pd-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -521,45 +521,45 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - server auth
             - client auth
           dnsNames:
-          - "<cluster-name>-pd"
-          - "<cluster-name>-pd.<namespace>"
-          - "<cluster-name>-pd.<namespace>.svc"
-          - "<cluster-name>-pd-peer"
-          - "<cluster-name>-pd-peer.<namespace>"
-          - "<cluster-name>-pd-peer.<namespace>.svc"
-          - "*.<cluster-name>-pd-peer"
-          - "*.<cluster-name>-pd-peer.<namespace>"
-          - "*.<cluster-name>-pd-peer.<namespace>.svc"
+          - "${cluster_name}-pd"
+          - "${cluster_name}-pd.${namespace}"
+          - "${cluster_name}-pd.${namespace}.svc"
+          - "${cluster_name}-pd-peer"
+          - "${cluster_name}-pd-peer.${namespace}"
+          - "${cluster_name}-pd-peer.${namespace}.svc"
+          - "*.${cluster_name}-pd-peer"
+          - "*.${cluster_name}-pd-peer.${namespace}"
+          - "*.${cluster_name}-pd-peer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        `<cluster-name>` is the name of the cluster. Configure the items as follows:
+        `${cluster_name}` is the name of the cluster. Configure the items as follows:
 
-        - Set `spec.secretName` to `<cluster-name>-pd-cluster-secret`.
+        - Set `spec.secretName` to `${cluster_name}-pd-cluster-secret`.
         - Add `server auth` and `client auth` in `usages`.
         - Add the following DNSs in `dnsNames`. You can also add other DNSs according to your needs:
-            - `<cluster-name>-pd`
-            - `<cluster-name>-pd.<namespace>`
-            - `<cluster-name>-pd.<namespace>.svc`
-            - `<cluster-name>-pd-peer`
-            - `<cluster-name>-pd-peer.<namespace>`
-            - `<cluster-name>-pd-peer.<namespace>.svc`
-            - `*.<cluster-name>-pd-peer`
-            - `*.<cluster-name>-pd-peer.<namespace>`
-            - `*.<cluster-name>-pd-peer.<namespace>.svc`
+            - `${cluster_name}-pd`
+            - `${cluster_name}-pd.${namespace}`
+            - `${cluster_name}-pd.${namespace}.svc`
+            - `${cluster_name}-pd-peer`
+            - `${cluster_name}-pd-peer.${namespace}`
+            - `${cluster_name}-pd-peer.${namespace}.svc`
+            - `*.${cluster_name}-pd-peer`
+            - `*.${cluster_name}-pd-peer.${namespace}`
+            - `*.${cluster_name}-pd-peer.${namespace}.svc`
         - Add the following two IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
             - `::1`
         - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
-        After the object is created, `cert-manager` generates a `<cluster-name>-pd-cluster-secret` Secret object to be used by the PD component of the TiDB server.
+        After the object is created, `cert-manager` generates a `${cluster_name}-pd-cluster-secret` Secret object to be used by the PD component of the TiDB server.
 
     - TiKV
 
@@ -567,10 +567,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-tikv-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-tikv-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-tikv-cluster-secret
+          secretName: ${cluster_name}-tikv-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -580,39 +580,39 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - server auth
             - client auth
           dnsNames:
-          - "<cluster-name>-tikv"
-          - "<cluster-name>-tikv.<namespace>"
-          - "<cluster-name>-tikv.<namespace>.svc"
-          - "<cluster-name>-tikv-peer"
-          - "<cluster-name>-tikv-peer.<namespace>"
-          - "<cluster-name>-tikv-peer.<namespace>.svc"
-          - "*.<cluster-name>-tikv-peer"
-          - "*.<cluster-name>-tikv-peer.<namespace>"
-          - "*.<cluster-name>-tikv-peer.<namespace>.svc"
+          - "${cluster_name}-tikv"
+          - "${cluster_name}-tikv.${namespace}"
+          - "${cluster_name}-tikv.${namespace}.svc"
+          - "${cluster_name}-tikv-peer"
+          - "${cluster_name}-tikv-peer.${namespace}"
+          - "${cluster_name}-tikv-peer.${namespace}.svc"
+          - "*.${cluster_name}-tikv-peer"
+          - "*.${cluster_name}-tikv-peer.${namespace}"
+          - "*.${cluster_name}-tikv-peer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        `<cluster-name>` is the name of the cluster. Configure the items as follows:
+        `${cluster_name}` is the name of the cluster. Configure the items as follows:
 
-        - Set `spec.secretName` to `<cluster-name>-tikv-cluster-secret`.
+        - Set `spec.secretName` to `${cluster_name}-tikv-cluster-secret`.
         - Add `server auth` and `client auth` in `usages`.
         - Add the following DNSs in `dnsNames`. You can also add other DNSs according to your needs:
 
-            - `<cluster-name>-tikv`
-            - `<cluster-name>-tikv.<namespace>`
-            - `<cluster-name>-tikv.<namespace>.svc`
-            - `<cluster-name>-tikv-peer`
-            - `<cluster-name>-tikv-peer.<namespace>`
-            - `<cluster-name>-tikv-peer.<namespace>.svc`
-            - `*.<cluster-name>-tikv-peer`
-            - `*.<cluster-name>-tikv-peer.<namespace>`
-            - `*.<cluster-name>-tikv-peer.<namespace>.svc`
+            - `${cluster_name}-tikv`
+            - `${cluster_name}-tikv.${namespace}`
+            - `${cluster_name}-tikv.${namespace}.svc`
+            - `${cluster_name}-tikv-peer`
+            - `${cluster_name}-tikv-peer.${namespace}`
+            - `${cluster_name}-tikv-peer.${namespace}.svc`
+            - `*.${cluster_name}-tikv-peer`
+            - `*.${cluster_name}-tikv-peer.${namespace}`
+            - `*.${cluster_name}-tikv-peer.${namespace}.svc`
 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
@@ -620,7 +620,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
-        After the object is created, `cert-manager` generates a `<cluster-name>-tikv-cluster-secret` Secret object to be used by the TiKV component of the TiDB server.
+        After the object is created, `cert-manager` generates a `${cluster_name}-tikv-cluster-secret` Secret object to be used by the TiKV component of the TiDB server.
 
     - TiDB
 
@@ -628,10 +628,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-tidb-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-tidb-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-tidb-cluster-secret
+          secretName: ${cluster_name}-tidb-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -641,39 +641,39 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - server auth
             - client auth
           dnsNames:
-          - "<cluster-name>-tidb"
-          - "<cluster-name>-tidb.<namespace>"
-          - "<cluster-name>-tidb.<namespace>.svc"
-          - "<cluster-name>-tidb-peer"
-          - "<cluster-name>-tidb-peer.<namespace>"
-          - "<cluster-name>-tidb-peer.<namespace>.svc"
-          - "*.<cluster-name>-tidb-peer"
-          - "*.<cluster-name>-tidb-peer.<namespace>"
-          - "*.<cluster-name>-tidb-peer.<namespace>.svc"
+          - "${cluster_name}-tidb"
+          - "${cluster_name}-tidb.${namespace}"
+          - "${cluster_name}-tidb.${namespace}.svc"
+          - "${cluster_name}-tidb-peer"
+          - "${cluster_name}-tidb-peer.${namespace}"
+          - "${cluster_name}-tidb-peer.${namespace}.svc"
+          - "*.${cluster_name}-tidb-peer"
+          - "*.${cluster_name}-tidb-peer.${namespace}"
+          - "*.${cluster_name}-tidb-peer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        `<cluster-name>` is the name of the cluster. Configure the items as follows:
+        `${cluster_name}` is the name of the cluster. Configure the items as follows:
 
-        - Set `spec.secretName` to `<cluster-name>-tidb-cluster-secret`
+        - Set `spec.secretName` to `${cluster_name}-tidb-cluster-secret`
         - Add `server auth` and `client auth` in `usages`
         - Add the following DNSs in `dnsNames`. You can also add other DNSs according to your needs:
 
-            - `<cluster-name>-tidb`
-            - `<cluster-name>-tidb.<namespace>`
-            - `<cluster-name>-tidb.<namespace>.svc`
-            - `<cluster-name>-tidb-peer`
-            - `<cluster-name>-tidb-peer.<namespace>`
-            - `<cluster-name>-tidb-peer.<namespace>.svc`
-            - `*.<cluster-name>-tidb-peer`
-            - `*.<cluster-name>-tidb-peer.<namespace>`
-            - `*.<cluster-name>-tidb-peer.<namespace>.svc`
+            - `${cluster_name}-tidb`
+            - `${cluster_name}-tidb.${namespace}`
+            - `${cluster_name}-tidb.${namespace}.svc`
+            - `${cluster_name}-tidb-peer`
+            - `${cluster_name}-tidb-peer.${namespace}`
+            - `${cluster_name}-tidb-peer.${namespace}.svc`
+            - `*.${cluster_name}-tidb-peer`
+            - `*.${cluster_name}-tidb-peer.${namespace}`
+            - `*.${cluster_name}-tidb-peer.${namespace}.svc`
 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
@@ -681,7 +681,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
-        After the object is created, `cert-manager` generates a `<cluster-name>-tidb-cluster-secret` Secret object to be used by the TiDB component of the TiDB server.
+        After the object is created, `cert-manager` generates a `${cluster_name}-tidb-cluster-secret` Secret object to be used by the TiDB component of the TiDB server.
 
     - Pump
 
@@ -689,10 +689,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-pump-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-pump-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-pump-cluster-secret
+          secretName: ${cluster_name}-pump-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -702,27 +702,27 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - server auth
             - client auth
           dnsNames:
-          - "*.<cluster-name>-pump"
-          - "*.<cluster-name>-pump.<namespace>"
-          - "*.<cluster-name>-pump.<namespace>.svc"
+          - "*.${cluster_name}-pump"
+          - "*.${cluster_name}-pump.${namespace}"
+          - "*.${cluster_name}-pump.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        `<cluster-name>` is the name of the cluster. Configure the items as follows:
+        `${cluster_name}` is the name of the cluster. Configure the items as follows:
 
-        - Set `spec.secretName` to `<cluster-name>-pump-cluster-secret`
+        - Set `spec.secretName` to `${cluster_name}-pump-cluster-secret`
         - Add `server auth` and `client auth` in `usages`
         - Add the following DNSs in `dnsNames`. You can also add other DNSs according to your needs:
 
-            - `*.<cluster-name>-pump`
-            - `*.<cluster-name>-pump.<namespace>`
-            - `*.<cluster-name>-pump.<namespace>.svc`
+            - `*.${cluster_name}-pump`
+            - `*.${cluster_name}-pump.${namespace}`
+            - `*.${cluster_name}-pump.${namespace}.svc`
 
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
             - `127.0.0.1`
@@ -730,7 +730,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the Issuer created above in the `issuerRef`
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
-        After the object is created, `cert-manager` generates a `<cluster-name>-pump-cluster-secret` Secret object to be used by the Pump component of the TiDB server.
+        After the object is created, `cert-manager` generates a `${cluster_name}-pump-cluster-secret` Secret object to be used by the Pump component of the TiDB server.
 
     - Drainer
 
@@ -753,10 +753,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-drainer-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-drainer-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-drainer-cluster-secret
+          secretName: ${cluster_name}-drainer-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -766,14 +766,14 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - server auth
             - client auth
           dnsNames:
-          - "*.<drainer-name>"
-          - "*.<drainer-name>.<namespace>"
-          - "*.<drainer-name>.<namespace>.svc"
+          - "*.${drainer_name}"
+          - "*.${drainer_name}.${namespace}"
+          - "*.${drainer_name}.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
@@ -784,10 +784,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         apiVersion: cert-manager.io/v1alpha2
         kind: Certificate
         metadata:
-          name: <cluster-name>-drainer-cluster-secret
-          namespace: <namespace>
+          name: ${cluster_name}-drainer-cluster-secret
+          namespace: ${namespace}
         spec:
-          secretName: <cluster-name>-drainer-cluster-secret
+          secretName: ${cluster_name}-drainer-cluster-secret
           duration: 8760h # 365d
           renewBefore: 360h # 15d
           organization:
@@ -797,21 +797,21 @@ This section describes how to issue certificates using two methods: `cfssl` and 
             - server auth
             - client auth
           dnsNames:
-          - "*.<cluster-name>-<release-name>-drainer"
-          - "*.<cluster-name>-<release-name>-drainer.<namespace>"
-          - "*.<cluster-name>-<release-name>-drainer.<namespace>.svc"
+          - "*.${cluster_name}-${release_name}-drainer"
+          - "*.${cluster_name}-${release_name}-drainer.${namespace}"
+          - "*.${cluster_name}-${release_name}-drainer.${namespace}.svc"
           ipAddresses:
           - 127.0.0.1
           - ::1
           issuerRef:
-            name: <cluster-name>-tidb-issuer
+            name: ${cluster_name}-tidb-issuer
             kind: Issuer
             group: cert-manager.io
         ```
 
-        `<cluster-name>` is the name of the cluster. `<namespace>` is the namespace in which the TiDB cluster is deployed. `<release-name>` is the `release name` you set when `helm install` is executed. `<drainer-name>` is `drainerName` in the `values.yaml` file. You can also add your customized `dnsNames`.
+        `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. `${release_name}` is the `release name` you set when `helm install` is executed. `${drainer_name}` is `drainerName` in the `values.yaml` file. You can also add your customized `dnsNames`.
 
-        - Set `spec.secretName` to `<cluster-name>-drainer-cluster-secret`.
+        - Set `spec.secretName` to `${cluster_name}-drainer-cluster-secret`.
         - Add `server auth` and `client auth` in `usages`.
         - See the above descriptions for `dnsNames`.
         - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
@@ -820,7 +820,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - Add the Issuer created above in `issuerRef`.
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
-        After the object is created, `cert-manager` generates a `<cluster-name>-drainer-cluster-secret` Secret object to be used by the Drainer component of the TiDB server.
+        After the object is created, `cert-manager` generates a `${cluster_name}-drainer-cluster-secret` Secret object to be used by the Drainer component of the TiDB server.
 
 4. Generate the client-side certificate for components of the TiDB cluster.
 
@@ -828,10 +828,10 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-        name: <cluster-name>-cluster-client-secret
-        namespace: <namespace>
+        name: ${cluster_name}-cluster-client-secret
+        namespace: ${namespace}
     spec:
-        secretName: <cluster-name>-cluster-client-secret
+        secretName: ${cluster_name}-cluster-client-secret
         duration: 8760h # 365d
         renewBefore: 360h # 15d
         organization:
@@ -840,31 +840,31 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         usages:
         - client auth
         issuerRef:
-        name: <cluster-name>-tidb-issuer
+        name: ${cluster_name}-tidb-issuer
         kind: Issuer
         group: cert-manager.io
     ```
 
-    `<cluster-name>` is the name of the cluster. Configure the items as follows:
+    `${cluster_name}` is the name of the cluster. Configure the items as follows:
 
-    - Set `spec.secretName` to `<cluster-name>-cluster-client-secret`.
+    - Set `spec.secretName` to `${cluster_name}-cluster-client-secret`.
     - Add `client auth` in `usages`.
     - You can leave `dnsNames` and `ipAddresses` empty.
     - Add the Issuer created above in `issuerRef`.
     - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
-    After the object is created, `cert-manager` generates a `<cluster-name>-cluster-client-secret` Secret object to be used by the clients of the TiDB components.
+    After the object is created, `cert-manager` generates a `${cluster_name}-cluster-client-secret` Secret object to be used by the clients of the TiDB components.
 
     To obtain the client certificate, run the following commands:
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/<cluster-name>-cluster-client-tls
-    cd ~/<cluster-name>-cluster-client-tls
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+    mkdir -p ~/${cluster_name}-cluster-client-tls
+    cd ~/${cluster_name}-cluster-client-tls
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
     ```
 
 ## Step 2: Deploy the TiDB cluster
@@ -890,8 +890,8 @@ In this step, you need to perform the following operations:
     apiVersion: pingcap.com/v1alpha1
     kind: TidbCluster
     metadata:
-     name: <cluster-name>
-     namespace: <namespace>
+     name: ${cluster_name}
+     namespace: ${namespace}
     spec:
      tlsClusster:
        enabled: true
@@ -938,11 +938,11 @@ In this step, you need to perform the following operations:
     apiVersion: pingcap.com/v1alpha1
     kind: TidbMonitor
     metadata:
-     name: <cluser-name>-monitor
-     namespace: <namespace>
+     name: ${cluster_name}
+     namespace: ${namespace}
     spec:
      clusters:
-     - name: <cluster-name>
+     - name: ${cluster_name}
      prometheus:
        baseImage: prom/prometheus
        version: v2.11.1
@@ -970,7 +970,7 @@ In this step, you need to perform the following operations:
 
         ``` yaml
         ...
-        drainerName: <drainer-name>
+        drainerName: ${drainer_name}
         tlsCluster:
           enabled: true
           certAllowedCN:
@@ -983,7 +983,7 @@ In this step, you need to perform the following operations:
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=<release-name> --namespace=<namespace>
+        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
         ```
 
     - Method 2: Do not set `drainerName` when you create Drainer.
@@ -1004,7 +1004,7 @@ In this step, you need to perform the following operations:
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=<release-name> --namespace=<namespace>
+        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
         ```
 
 3. Create the Backup/Restore resource object:
@@ -1015,25 +1015,25 @@ In this step, you need to perform the following operations:
         apiVersion: pingcap.com/v1alpha1
         kind: Backup
         metadata:
-          name: <cluster-name>-backup
-          namespace: <namespace>
+          name: ${cluster_name}-backup
+          namespace: ${namespace}
         spec:
           backupType: full
           br:
-            cluster: <cluster-name>
-            clusterNamespace: <namespace>
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
             sendCredToTikv: true
           from:
-            host: <host>
-            secretName: <tidb-secret>
+            host: ${host}
+            secretName: ${tidb_secret}
             port: 4000
             user: root
           s3:
             provider: aws
-            region: <my-region>
-            secretName: <s3-secret>
-            bucket: <my-bucket>
-            prefix: <my-folder>
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
         ````
 
         Deploy Backup:
@@ -1050,25 +1050,25 @@ In this step, you need to perform the following operations:
         apiVersion: pingcap.com/v1alpha1
         kind: Restore
         metadata:
-          name: <cluster-name>-restore
-          namespace: <namespace>
+          name: ${cluster_name}-restore
+          namespace: ${namespace}
         spec:
           backupType: full
           br:
-            cluster: <cluster-name>
-            clusterNamespace: <namespace>
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
             sendCredToTikv: true
           to:
-            host: <host>
-            secretName: <tidb-secret>
+            host: ${host}
+            secretName: ${tidb_secret}
             port: 4000
             user: root
           s3:
             provider: aws
-            region: <my-region>
-            secretName: <s3-secret>
-            bucket: <my-bucket>
-            prefix: <my-folder>
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
         ```
 
         Deploy Restore:
@@ -1087,16 +1087,16 @@ In this step, you need to perform the following operations:
 
 2. Connect to the cluster:
 
-    First, download the client-side certificate, which is the client certificate you have created in Step 1. You can directly use it, or obtain it from the `<cluster-name>-cluster-client-secret` Kubernetes Secret object created before.
+    First, download the client-side certificate, which is the client certificate you have created in Step 1. You can directly use it, or obtain it from the `${cluster_name}-cluster-client-secret` Kubernetes Secret object created before.
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/<cluster-name>-cluster-client-tls
-    cd ~/<cluster-name>-cluster-client-tls
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-    kubectl get secret -n <namespace> <cluster-name>-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+    mkdir -p ~/${cluster_name}-cluster-client-tls
+    cd ~/${cluster_name}-cluster-client-tls
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
     ```
 
 3. Connect to the PD cluster by `pd-ctl`:
@@ -1106,5 +1106,5 @@ In this step, you need to perform the following operations:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    pd-ctl --cacert=~/<cluster-name>-cluster-client-tls/ca.crt --cert=~/<cluster-name>-cluster-client-tls/tls.crt --key=~/<cluster-name>-cluster-client-tls/tls.key -u https://<cluster-name>-pd.<namespace>.svc:2379 member
+    pd-ctl --cacert=~/${cluster_name}-cluster-client-tls/ca.crt --cert=~/${cluster_name}-cluster-client-tls/tls.crt --key=~/${cluster_name}-cluster-client-tls/tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
     ```

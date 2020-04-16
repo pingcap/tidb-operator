@@ -15,7 +15,7 @@ This document describes how to initialize a TiDB cluster in Kubernetes (K8s), sp
 
 ## Step 1: Configure TidbInitializer
 
-Refer to [TidbInitializer example](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml), [API documentation](api-references.md), and the following steps to complete TidbInitializer Custom Resource (CR), and save it to the `<cluster-name>/tidb-initializer.yaml` file. Please switch the TidbInitializer example and API documentation to the currently used version of TiDB Operator.
+Refer to [TidbInitializer example](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml), [API documentation](api-references.md), and the following steps to complete TidbInitializer Custom Resource (CR), and save it to the `${cluster_name}/tidb-initializer.yaml` file. Please switch the TidbInitializer example and API documentation to the currently used version of TiDB Operator.
 
 ### Set initial account and password
 
@@ -26,7 +26,7 @@ When a cluster is created, a default account `root` is created with no password.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
+    kubectl create secret generic tidb-secret --from-literal=root=${root_password} --namespace=${namespace}
     ```
 
 - If you want to create more than one user, add the desired username and the password in the above command. For example:
@@ -34,14 +34,14 @@ When a cluster is created, a default account `root` is created with no password.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic tidb-secret --from-literal=root=<root-password> --from-literal=developer=<developer-passowrd> --namespace=<namespace>
+    kubectl create secret generic tidb-secret --from-literal=root=${root_password} --from-literal=developer=${developer_password} --namespace=${namespace}
     ```
 
     This command creates `root` and `developer` users with their passwords, which are saved in the `tidb-secret` object. By default, the regular `developer` user is only granted with the `USAGE` privilege. You can set other privileges in the `initSql` configuration item.
 
 ## Step 2: Set a host that has access to TiDB
 
-To set a host that has access to TiDB, modify the `permitHost: <mysql-client-host-name>` configuration item in `<cluster-name>/tidb-initializer.yaml`. If it is not set, all hosts have access to TiDB. For details, refer to [Mysql GRANT host name](https://dev.mysql.com/doc/refman/5.7/en/grant.html).
+To set a host that has access to TiDB, modify the `permitHost: ${mysql_client_host_name}` configuration item in `${cluster_name}/tidb-initializer.yaml`. If it is not set, all hosts have access to TiDB. For details, refer to [Mysql GRANT host name](https://dev.mysql.com/doc/refman/5.7/en/grant.html).
 
 ## Step 3: Initialize SQL statements in batch
 
@@ -68,7 +68,7 @@ initSql: |-
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f <cluster-name>/tidb-initializer.yaml --namespace=<namespace>
+kubectl apply -f ${cluster_name}/tidb-initializer.yaml --namespace=${namespace}
 ```
 
 The above command automatically creates an initialized Job. This Job tries to set the initial password for the `root` account using the `secret` object provided. It also tries to create other accounts and passwords, if they are specified.

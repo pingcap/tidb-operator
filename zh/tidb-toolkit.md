@@ -15,7 +15,7 @@ Kubernetes 上的 TiDB 运维管理需要使用一些开源工具。同时，在
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<cluster-name>-pd 2379:2379 &>/tmp/portforward-pd.log &
+kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
 执行上述命令后，就可以通过 `127.0.0.1:2379` 访问到 PD 服务，从而直接使用 `pd-ctl` 命令的默认参数执行操作，如：
@@ -31,7 +31,7 @@ pd-ctl -d config show
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<cluster-name>-pd <local-port>:2379 &>/tmp/portforward-pd.log &
+kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &>/tmp/portforward-pd.log &
 ```
 
 此时，需要为 `pd-ctl` 命令显式指定 PD 端口：
@@ -39,7 +39,7 @@ kubectl port-forward -n <namespace> svc/<cluster-name>-pd <local-port>:2379 &>/t
 {{< copyable "shell-regular" >}}
 
 ```shell
-pd-ctl -u 127.0.0.1:<local-port> -d config show
+pd-ctl -u 127.0.0.1:${local_port} -d config show
 ```
 
 ## 在 Kubernetes 上使用 TiKV Control
@@ -51,13 +51,13 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward -n <namespace> svc/<cluster-name>-pd 2379:2379 &>/tmp/portforward-pd.log &
+    kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward -n <namespace> <tikv-pod-name> 20160:20160 &>/tmp/portforward-tikv.log &
+    kubectl port-forward -n ${namespace} ${pod_name} 20160:20160 &>/tmp/portforward-tikv.log &
     ```
 
     打开连接后，即可通过本地的对应端口访问 PD 服务和 TiKV 节点：
@@ -65,7 +65,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $ tikv-ctl --host 127.0.0.1:20160 <subcommands>
+    $ tikv-ctl --host 127.0.0.1:20160 ${subcommands}
     ```
 
     {{< copyable "shell-regular" >}}
@@ -81,7 +81,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl annotate pod <tikv-pod-name> -n <namespace> runmode=debug
+        kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
         ```
 
     2. 关闭 TiKV 进程：
@@ -89,7 +89,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl exec <tikv-pod-name> -n <namespace> -c tikv -- kill -s TERM 1
+        kubectl exec ${pod_name} -n ${namespace} -c tikv -- kill -s TERM 1
         ```
 
     3. 启动 debug 容器：
@@ -97,7 +97,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tkctl debug <tikv-pod-name> -c tikv
+        tkctl debug ${pod_name} -c tikv
         ```
 
     4. 开始使用 `tikv-ctl` 的本地模式，需要注意的是 `tikv` 容器的根文件系统在 `/proc/1/root` 下，因此执行命令时也需要调整数据目录的路径：
@@ -117,13 +117,13 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<cluster-name>-pd 2379:2379 &>/tmp/portforward-pd.log &
+kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> <tidb-pod-name> 10080:10080 &>/tmp/portforward-tidb.log &
+kubectl port-forward -n ${namespace} ${pod_name} 10080:10080 &>/tmp/portforward-tidb.log &
 ```
 
 接下来便可开始使用 `tidb-ctl` 命令：
@@ -231,7 +231,7 @@ helm ls
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install <chart-name> --name=<release-name> --namespace=<namespace> --version=<chart-version> -f <values-file>
+    helm install ${chart_name} --name=${release_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
     ```
 
 * 执行升级（升级可以是修改 `chart-version` 升级到新版本的 chart，也可以是修改 `values.yaml` 文件更新应用配置）：
@@ -239,7 +239,7 @@ helm ls
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> <chart-name> --version=<chart-version> -f <values-file>
+    helm upgrade ${release_name} ${chart_name} --version=${chart_version} -f ${values_file}
     ```
 
 最后，假如要删除 helm 部署的应用，可以执行：
@@ -247,7 +247,7 @@ helm ls
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm del --purge <release-name>
+helm del --purge ${release_name}
 ```
 
 更多 helm 的相关文档，请参考 [Helm 官方文档](https://helm.sh/docs/)。

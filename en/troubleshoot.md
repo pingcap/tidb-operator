@@ -21,7 +21,7 @@ To use the diagnostic mode for troubleshooting:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl annotate pod <pod-name> -n <namespace> runmode=debug
+    kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
     ```
 
     The next time the container in the Pod is restarted, it detects this annotation and enters the diagnostic mode.
@@ -31,7 +31,7 @@ To use the diagnostic mode for troubleshooting:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl get pod <pod-name> -n <namespace>
+    watch kubectl get pod ${pod_name} -n ${namespace}
     ```
 
 3. Start the diagnosis.
@@ -41,13 +41,13 @@ To use the diagnostic mode for troubleshooting:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl exec -it <pod-name> -n <namespace> -- /bin/sh
+    kubectl exec -it ${pod_name} -n ${namespace} -- /bin/sh
     ```
 
 4. After finishing the diagnosis and resolving the problem, delete the Pod.
 
     ```shell
-    kubectl delete pod <pod-name> -n <namespace>
+    kubectl delete pod ${pod_name} -n ${namespace}
     ```
 
     After the Pod is rebuilt, it automatically returns to the normal mode.
@@ -61,7 +61,7 @@ To restore the cluster at this time, use the `helm install` command to create a 
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm install pingcap/tidb-cluster -n <release-name> --namespace=<namespace> --version=<chart_version> -f values.yaml
+helm install pingcap/tidb-cluster -n ${release_name} --namespace=${namespace} --version=${version} -f values.yaml
 ```
 
 ## Pod is not created normally
@@ -71,9 +71,9 @@ After creating a cluster using `helm install`, if the Pod is not created, you ca
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get tidbclusters -n <namespace>
-kubectl get statefulsets -n <namespace>
-kubectl describe statefulsets -n <namespace> <release-name>-pd
+kubectl get tidbclusters -n ${namespace}
+kubectl get statefulsets -n ${namespace}
+kubectl describe statefulsets -n ${namespace} ${release_name}-pd
 ```
 
 ## Network connection failure between Pods
@@ -87,11 +87,11 @@ When you find some network connection issues between Pods from the log or monito
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl -n <namespace> get endpoints <release-name>-pd
-    kubectl -n <namespace> get endpoints <release-name>-tidb
-    kubectl -n <namespace> get endpoints <release-name>-pd-peer
-    kubectl -n <namespace> get endpoints <release-name>-tikv-peer
-    kubectl -n <namespace> get endpoints <release-name>-tidb-peer
+    kubectl -n ${namespace} get endpoints ${release_name}-pd
+    kubectl -n ${namespace} get endpoints ${release_name}-tidb
+    kubectl -n ${namespace} get endpoints ${release_name}-pd-peer
+    kubectl -n ${namespace} get endpoints ${release_name}-tikv-peer
+    kubectl -n ${namespace} get endpoints ${release_name}-tidb-peer
     ```
 
     The `ENDPOINTS` field shown in the above command should be a comma-separated list of `cluster_ip:port`. If the field is empty or incorrect, check the health of the Pod and whether `kube-controller-manager` is working properly.
@@ -101,7 +101,7 @@ When you find some network connection issues between Pods from the log or monito
     {{< copyable "shell-regular" >}}
 
     ```shell
-    tkctl debug -n <namespace> <pod-name>
+    tkctl debug -n ${namespace} ${pod_name}
     ```
 
     After the remote shell is started, use the `dig` command to diagnose the DNS resolution. If the DNS resolution is abnormal, refer to [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/) for troubleshooting.
@@ -109,7 +109,7 @@ When you find some network connection issues between Pods from the log or monito
     {{< copyable "shell-regular" >}}
 
     ```shell
-    dig <HOSTNAME>
+    dig ${HOSTNAME}
     ```
 
     Use the `ping` command to diagnose the connection with the destination IP (the ClusterIP resolved using `dig`):
@@ -117,7 +117,7 @@ When you find some network connection issues between Pods from the log or monito
     {{< copyable "shell-regular" >}}
 
     ```shell
-    ping <TARGET_IP>
+    ping ${TARGET_IP}
     ```
 
     - If the `ping` check fails, refer to [Debugging Kubernetes Networking](https://www.praqma.com/stories/debugging-kubernetes-networking/) for troubleshooting.
@@ -127,7 +127,7 @@ When you find some network connection issues between Pods from the log or monito
         {{< copyable "shell-regular" >}}
 
         ```shell
-        telnet <target_ip> <target_port>
+        telnet ${target_ip} ${target_port}
         ```
 
         If the `telnet` check fails, check whether the port corresponding to the Pod is correctly exposed and whether the applied port is correctly configured:
@@ -136,15 +136,15 @@ When you find some network connection issues between Pods from the log or monito
 
         ```shell
         # Checks whether the ports are consistent.
-        kubectl -n <namespace> get po <pod-name> -ojson | jq '.spec.containers[].ports[].containerPort'
+        kubectl -n ${namespace} get po ${pod_name} -ojson | jq '.spec.containers[].ports[].containerPort'
 
         # Checks whether the application is correctly configured to serve the specified port.
         # The default port of PD is 2379 when not configured.
-        kubectl -n <namespace> -it exec <pod-name> -- cat /etc/pd/pd.toml | grep client-urls
+        kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/pd/pd.toml | grep client-urls
         # The default port of PD is 20160 when not configured.
-        kubectl -n <namespace> -it exec <pod-name> -- cat /etc/tikv/tikv.toml | grep addr
+        kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/tikv/tikv.toml | grep addr
         # The default port of TiDB is 4000 when not configured.
-        kubectl -n <namespace> -it exec <pod-name> -- cat /etc/tidb/tidb.toml | grep port
+        kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/tidb/tidb.toml | grep port
         ```
 
 ## The Pod is in the Pending state
@@ -160,7 +160,7 @@ You can check the specific reason for Pending by using the `kubectl describe pod
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl describe po -n <namespace> <pod-name>
+kubectl describe po -n ${namespace} ${pod_name}
 ```
 
 - If the CPU or memory resources are insufficient, you can lower the CPU or memory resources requested by the corresponding component for scheduling, or add a new Kubernetes node.
@@ -184,7 +184,7 @@ A Pod in the `CrashLoopBackOff` state means that the container in the Pod repeat
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl -n <namespace> logs -f <pod-name>
+kubectl -n ${namespace} logs -f ${pod_name}
 ```
 
 If the log fails to help diagnose the problem, you can add the `-p` parameter to output the log information when the container was last started:
@@ -192,7 +192,7 @@ If the log fails to help diagnose the problem, you can add the `-p` parameter to
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl -n <namespace> logs -p <pod-name>
+kubectl -n ${namespace} logs -p ${pod_name}
 ```
 
 After checking the error messages in the log, you can refer to [Cannot start `tidb-server`](https://pingcap.com/docs/v3.0/how-to/troubleshoot/cluster-setup#cannot-start-tidb-server), [Cannot start `tikv-server`](https://pingcap.com/docs/v3.0/how-to/troubleshoot/cluster-setup#cannot-start-tikv-server), and [Cannot start `pd-server`](https://pingcap.com/docs/v3.0/how-to/troubleshoot/cluster-setup#cannot-start-pd-server) for further troubleshooting.
@@ -221,7 +221,7 @@ If you cannot access the TiDB service, first check whether the TiDB service is d
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get po -n <namespace>
+    kubectl get po -n ${namespace}
     ```
 
 2. Check the log of TiDB components to see whether errors are reported.
@@ -229,7 +229,7 @@ If you cannot access the TiDB service, first check whether the TiDB service is d
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl logs -f <tidb-pod-name> -n <namespace> -c tidb
+    kubectl logs -f ${pod_name} -n ${namespace} -c tidb
     ```
 
 If the cluster is successfully deployed, check the network using the following steps:
@@ -247,7 +247,7 @@ If the cluster is successfully deployed, check the network using the following s
 
         ```shell
         kubectl get po -n kube-system -l k8s-app=kube-dns
-        dig <tidb-service-domain>
+        dig ${tidb_service_domain}
         ```
 
     - Check whether `kube-proxy` on each node is working.
@@ -263,7 +263,7 @@ If the cluster is successfully deployed, check the network using the following s
         {{< copyable "shell-regular" >}}
 
         ```shell
-        iptables-save -t nat |grep <clusterIP>
+        iptables-save -t nat |grep ${clusterIP}
         ```
 
     - Check whether the corresponding endpoint is correct.
@@ -283,7 +283,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get -n <namespace> tidbcluster <release-name> -ojson | jq '.status.tikv.stores'
+    kubectl get -n ${namespace} tidbcluster ${release_name} -ojson | jq '.status.tikv.stores'
     ```
 
 2. View the state of the TiKV Pod:
@@ -291,7 +291,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get -n <namespace> po -l app.kubernetes.io/component=tikv
+    kubectl get -n ${namespace} po -l app.kubernetes.io/component=tikv
     ```
 
 3. Compare the state of the TiKV store with that of the Pod. If the store corresponding to a TiKV Pod is in the `Offline` state, it means the store is being taken offline abnormally. You can use the following commands to cancel the offline process and perform recovery operations:
@@ -301,7 +301,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl port-forward -n <namespace> svc/<cluster-name>-pd <local-port>:2379 &>/tmp/portforward-pd.log &
+        kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &>/tmp/portforward-pd.log &
         ```
 
     2. Bring online the corresponding store:
@@ -309,7 +309,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
         {{< copyable "shell-regular" >}}
 
         ```shell
-        curl -X POST http://127.0.0.1:2379/pd/api/v1/store/<store-id>/state?state=Up
+        curl -X POST http://127.0.0.1:2379/pd/api/v1/store/${store_id}/state?state=Up
         ```
 
 4. If the TiKV store with the latest `lastHeartbeatTime` that corresponds to a Pod is in a `Tombstone` state, it means that the offline process is completed. At this time, you need to re-create the Pod and bind it with a new PV to perform recovery by taking the following steps:
@@ -319,7 +319,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl patch $(kubectl get pv -l app.kubernetes.io/instance=<release-name>,tidb.pingcap.com/store-id=<store-id> -o name) -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}
+        kubectl patch $(kubectl get pv -l app.kubernetes.io/instance=${release_name},tidb.pingcap.com/store-id=${store_id} -o name) -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}
         ```
 
     2. Remove the PVC used by the Pod:
@@ -327,7 +327,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl delete -n <namespace> pvc tikv-<pod-name> --wait=false
+        kubectl delete -n ${namespace} pvc tikv-${pod_name} --wait=false
         ```
 
     3. Remove the Pod, and wait for it to be re-created:
@@ -335,7 +335,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl delete -n <namespace> pod <pod-name>
+        kubectl delete -n ${namespace} pod ${pod_name}
         ```
 
     After the Pod is re-created, a new store is registered in the TiKV cluster. Then the recovery is completed.

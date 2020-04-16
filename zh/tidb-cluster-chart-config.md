@@ -81,7 +81,7 @@ category: reference
 | `tidb.resources.limits.memory` | 每个 TiDB Pod 的内存资源限额 | `nil` |
 | `tidb.resources.requests.cpu` | 每个 TiDB Pod 的 CPU 资源请求 | `nil` |
 | `tidb.resources.requests.memory` | 每个 TiDB Pod 的内存资源请求 | `nil` |
-| `tidb.passwordSecretName`| 存放 TiDB 用户名及密码的 Secret 的名字，该 Secret 可以使用以下命令创建机密：`kubectl create secret generic tidb secret--from literal=root=<root password>--namespace=<namespace>`，如果没有设置，则 TiDB 根密码为空 | `nil` |
+| `tidb.passwordSecretName`| 存放 TiDB 用户名及密码的 Secret 的名字，该 Secret 可以使用以下命令创建机密：`kubectl create secret generic tidb secret--from literal=root=${password}--namespace=${namespace}`，如果没有设置，则 TiDB 根密码为空 | `nil` |
 | `tidb.initSql`| 在 TiDB 集群启动成功后，会执行的初始化脚本 | `nil` |
 | `tidb.affinity` | `tidb.affinity` 定义 TiDB 的调度规则和偏好，详细请参考：[affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
 | `tidb.nodeSelector` | `tidb.nodeSelector`确保 TiDB Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector) | `{}` |

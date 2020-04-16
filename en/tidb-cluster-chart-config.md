@@ -81,7 +81,7 @@ This document describes the configuration of the tidb-cluster chart.
 | `tidb.resources.limits.memory` | Memory resource limit for each TiDB Pod | `nil` |
 | `tidb.resources.requests.cpu` | Storage capacity limit for each TiDB Pod | `nil` |
 | `tidb.resources.requests.memory` | Memory resource request for each TiDB Pod | `nil` |
-| `tidb.passwordSecretName`| The name of the Secret which stores the TiDB username and password. This Secret can be created with the following command: `kubectl create secret generic tidb secret--from literal=root=<root password>--namespace=<namespace>`. If the parameter is not set, the TiDB root password is empty. | `nil` |
+| `tidb.passwordSecretName`| The name of the Secret which stores the TiDB username and password. This Secret can be created with the following command: `kubectl create secret generic tidb secret--from literal=root=${password}--namespace=${namespace}`. If the parameter is not set, the TiDB root password is empty. | `nil` |
 | `tidb.initSql`| The initialization script that will be executed after the TiDB cluster is successfully started. | `nil` |
 | `tidb.affinity` | `tidb.affinity` defines the scheduling rules and preferences of TiDB. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity). | `{}` |
 | `tidb.nodeSelector` | `tidb.nodeSelector` makes sure that TiDB Pods are only dispatched to nodes that have this key-value pair as a label. For details, refer to[nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector). | `{}` |

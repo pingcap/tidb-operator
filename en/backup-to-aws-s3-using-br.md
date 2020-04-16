@@ -70,7 +70,7 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 #### Grant permissions by associating IAM with Pod
@@ -88,7 +88,7 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 3. Create the IAM role:
@@ -127,7 +127,7 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 3. Enable the IAM role for the service account on the cluster:
@@ -185,16 +185,16 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
         cluster: demo1
         clusterNamespace: test1
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
         # sendCredToTikv: true
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -230,15 +230,15 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
         sendCredToTikv: false
         clusterNamespace: test1
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -272,15 +272,15 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
         sendCredToTikv: false
         clusterNamespace: test1
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -330,12 +330,12 @@ More `Backup` CR fields are described as follows:
 - `.spec.from.tidbSecretName`: the secret of the user password of the `.spec.from.user` TiDB cluster.
 - `.spec.from.tlsClient.tlsSecret`: the secret of the certificate used during the backup.
 
-    If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to back up data using the `<cluster-name>-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the backup. To generate the secret, run the following command:
+    If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to back up data using the `${cluster_name}-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the backup. To generate the secret, run the following command:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic <secretName> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
 More S3-compatible `provider`s are described as follows:
@@ -387,16 +387,16 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
           cluster: demo1
           clusterNamespace: test1
           # logLevel: info
-          # statusAddr: <status-addr>
+          # statusAddr: ${status_addr}
           # concurrency: 4
           # rateLimit: 0
-          # timeAgo: <time>
+          # timeAgo: ${time}
           # checksum: true
           # sendCredToTikv: true
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -437,15 +437,15 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
           sendCredToTikv: false
           clusterNamespace: test1
           # logLevel: info
-          # statusAddr: <status-addr>
+          # statusAddr: ${status_addr}
           # concurrency: 4
           # rateLimit: 0
-          # timeAgo: <time>
+          # timeAgo: ${time}
           # checksum: true
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -484,15 +484,15 @@ The prerequisites for the scheduled full backup is the same with the [prerequisi
           sendCredToTikv: false
           clusterNamespace: test1
           # logLevel: info
-          # statusAddr: <status-addr>
+          # statusAddr: ${status_addr}
           # concurrency: 4
           # rateLimit: 0
-          # timeAgo: <time>
+          # timeAgo: ${time}
           # checksum: true
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws

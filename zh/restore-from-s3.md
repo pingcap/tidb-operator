@@ -44,15 +44,15 @@ category: how-to
         spec:
           backupType: full
           to:
-            host: <tidb-host-ip>
-            port: <tidb-port>
-            user: <tidb-user>
+            host: ${tidb_host}
+            port: ${tidb_port}
+            user: ${tidb_user}
             secretName: restore-demo2-tidb-secret
           s3:
             provider: ceph
             endpoint: http://10.233.2.161
             secretName: s3-secret
-            path: s3://<path-to-backup>
+            path: s3://${backup_path}
           storageClassName: local-storage
           storageSize: 1Gi
         ```
@@ -77,15 +77,15 @@ category: how-to
         spec:
           backupType: full
           to:
-            host: <tidb-host-ip>
-            port: <tidb-port>
-            user: <tidb-user>
+            host: ${tidb_host}
+            port: ${tidb_port}
+            user: ${tidb_user}
             secretName: restore-demo2-tidb-secret
           s3:
             provider: aws
             region: us-west-1
             secretName: s3-secret
-            path: s3://<path-to-backup>
+            path: s3://${backup_path}
           storageClassName: local-storage
           storageSize: 1Gi
         ```
@@ -112,14 +112,14 @@ category: how-to
           spec:
             backupType: full
             to:
-              host: <tidb-host-ip>
-              port: <tidb-port>
-              user: <tidb-user>
+              host: ${tidb_host}
+              port: ${tidb_port}
+              user: ${tidb_user}
               secretName: restore-demo2-tidb-secret
             s3:
               provider: aws
               region: us-west-1
-              path: s3://<path-to-backup>
+              path: s3://${backup_path}
             storageClassName: local-storage
             storageSize: 1Gi
         ```
@@ -145,14 +145,14 @@ category: how-to
             backupType: full
             serviceAccount: tidb-backup-manager
             to:
-              host: <tidb-host-ip>
-              port: <tidb-port>
-              user: <tidb-user>
+              host: ${tidb_host}
+              port: ${tidb_port}
+              user: ${tidb_user}
               secretName: restore-demo2-tidb-secret
             s3:
               provider: aws
               region: us-west-1
-              path: s3://<path-to-backup>
+              path: s3://${backup_path}
             storageClassName: local-storage
             storageSize: 1Gi
         ```

@@ -76,7 +76,7 @@ free -m
 {{< copyable "shell-regular" >}}
 
 ```shell
-cat /proc/interrupts|grep <iface-name>|awk '{print $1,$NF}'
+cat /proc/interrupts|grep ${iface_name}|awk '{print $1,$NF}'
 ```
 
 以上命令输出的第一列是中断号，第二列是设备名称。如果是多队列网卡，上面的命令会显示多行信息，网卡的每个队列对应一个中断号。通过以下命令可以查看该中断号被绑定到哪个 CPU 上：
@@ -84,7 +84,7 @@ cat /proc/interrupts|grep <iface-name>|awk '{print $1,$NF}'
 {{< copyable "shell-regular" >}}
 
 ```shell
-cat /proc/irq/<ir_num>/smp_affinity
+cat /proc/irq/${ir_num}/smp_affinity
 ```
 
 上面命令输出 CPU 序号对应的十六进制值。输出结果欠直观。具体计算方法可参见 [SMP IRQ Affinity](https://cs.uwaterloo.ca/~brecht/servers/apic/SMP-affinity.txt) 文档。
@@ -92,7 +92,7 @@ cat /proc/irq/<ir_num>/smp_affinity
 {{< copyable "shell-regular" >}}
 
 ```shell
-cat /proc/irq/<ir_num>/smp_affinity_list
+cat /proc/irq/${ir_num}/smp_affinity_list
 ```
 
 上面命令输出 CPU 序号对应的十进制值，输出结果较为直观。

@@ -14,7 +14,7 @@ category: how-to
 
 ## 配置 TiDB 集群
 
-参考 TidbCluster [示例](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml)和 [API 文档](api-references.md)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 TidbCluster CR(Custom Resource)，并保存到文件 `<cluster-name>/tidb-cluster.yaml`。
+参考 TidbCluster [示例](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml)和 [API 文档](api-references.md)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 TidbCluster CR(Custom Resource)，并保存到文件 `${cluster_name}/tidb-cluster.yaml`。
 
 需要注意的是，TidbCluster CR 中关于镜像配置有多个参数：
 
@@ -31,14 +31,14 @@ category: how-to
 
 默认条件下，修改配置不会自动应用到 TiDB 集群中，只有在 Pod 重启时，才会重新加载新的配置文件，建议设置 `spec.configUpdateStrategy` 为 `RollingUpdate` 开启配置自动更新特性，在每次配置更新时，自动对组件执行滚动更新，将修改后的配置应用到集群中。
 
-如果要部署 TiDB 集群监控，请参考 TidbMonitor [示例](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml)和 [API 文档](api-references.md)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 TidbMonitor CR，并保存到文件 `<cluster-name>/tidb-monitor.yaml`。
+如果要部署 TiDB 集群监控，请参考 TidbMonitor [示例](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml)和 [API 文档](api-references.md)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）完成 TidbMonitor CR，并保存到文件 `${cluster_name}/tidb-monitor.yaml`。
 
 ### 存储类型
 
 - 生产环境：推荐使用本地存储，但实际 Kubernetes 集群中本地存储可能按磁盘类型进行了分类，例如 `nvme-disks`，`sas-disks`。
 - 演示环境或功能性验证：可以使用网络存储，例如 `ebs`，`nfs` 等。
 
-另外 TiDB 集群不同组件对磁盘的要求不一样，所以部署集群前要根据当前 Kubernetes 集群支持的存储类型以及使用场景为 TiDB 集群各组件选择合适的存储类型，通过修改 `<cluster-name>/tidb-cluster.yaml` 和 `<cluster-name>/tidb-monitor.yaml` 中各组件的 `storageClassName` 字段设置存储类型。关于 Kubernetes 集群支持哪些[存储类型](configure-storage-class.md)，请联系系统管理员确定。
+另外 TiDB 集群不同组件对磁盘的要求不一样，所以部署集群前要根据当前 Kubernetes 集群支持的存储类型以及使用场景为 TiDB 集群各组件选择合适的存储类型，通过修改 `${cluster_name}/tidb-cluster.yaml` 和 `${cluster_name}/tidb-monitor.yaml` 中各组件的 `storageClassName` 字段设置存储类型。关于 Kubernetes 集群支持哪些[存储类型](configure-storage-class.md)，请联系系统管理员确定。
 
 > **注意：**
 >
@@ -59,7 +59,7 @@ TiDB Operator 部署并配置完成后，可以通过下面命令部署 TiDB 集
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create namespace <namespace>
+    kubectl create namespace ${namespace}
     ```
 
     > **注意：**
@@ -70,7 +70,7 @@ TiDB Operator 部署并配置完成后，可以通过下面命令部署 TiDB 集
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f <cluster-name> -n <namespace>
+    kubectl apply -f ${cluster_name} -n ${namespace}
     ```
 
 3. 通过下面命令查看 Pod 状态：
@@ -78,7 +78,7 @@ TiDB Operator 部署并配置完成后，可以通过下面命令部署 TiDB 集
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl get po -n <namespace> -l app.kubernetes.io/instance=<cluster-name>
+    kubectl get po -n ${namespace} -l app.kubernetes.io/instance=${cluster_name}
     ```
 
 单个 Kubernetes 集群中可以利用 TiDB Operator 部署管理多套 TiDB 集群，重复以上步骤并将 `cluster-name` 替换成不同名字即可。不同集群既可以在相同 `namespace` 中，也可以在不同 `namespace` 中，可根据实际需求进行选择。

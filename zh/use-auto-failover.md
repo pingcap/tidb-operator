@@ -51,7 +51,7 @@ TiDB 集群有 PD、TiKV 和 TiDB 三个组件，它们的故障转移策略有�
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl edit tc -n <namespace> <clusterName>
+kubectl edit tc -n ${namespace} ${cluster_name}
 ```
 
 ```

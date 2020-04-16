@@ -29,7 +29,7 @@ PD 和 TiDB 实例的迁移较快，可以采取主动驱逐实例到其它节�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get pod --all-namespaces -o wide | grep <node-name>
+    kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
     假如存在 TiKV 实例，请参考[维护 TiKV 实例所在节点](#维护-tikv-实例所在节点)。
@@ -39,7 +39,7 @@ PD 和 TiDB 实例的迁移较快，可以采取主动驱逐实例到其它节�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl cordon <node-name>
+    kubectl cordon ${node_name}
     ```
 
 3. 使用 `kubectl drain` 命令将待维护节点上的数据库实例迁移到其它节点上：
@@ -47,7 +47,7 @@ PD 和 TiDB 实例的迁移较快，可以采取主动驱逐实例到其它节�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl drain <node-name> --ignore-daemonsets --delete-local-data
+    kubectl drain ${node_name} --ignore-daemonsets --delete-local-data
     ```
 
     运行后，该节点上的 TiDB 实例会自动迁移到其它可用节点上，PD 实例则会在 5 分钟后触发自动故障转移补齐节点。
@@ -57,7 +57,7 @@ PD 和 TiDB 实例的迁移较快，可以采取主动驱逐实例到其它节�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete node <node-name>
+    kubectl delete node ${node_name}
     ```
 
     假如希望恢复 Kubernetes 节点，则需要在恢复节点后确认其健康状态：
@@ -65,7 +65,7 @@ PD 和 TiDB 实例的迁移较快，可以采取主动驱逐实例到其它节�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl get node <node-name>
+    watch kubectl get node ${node_name}
     ```
 
     观察到节点进入 `Ready` 状态后，继续操作。
@@ -75,7 +75,7 @@ PD 和 TiDB 实例的迁移较快，可以采取主动驱逐实例到其它节�
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl uncordon <node-name>
+    kubectl uncordon ${node_name}
     ```
 
 6. 观察 Pod 是否全部恢复正常运行：
@@ -110,7 +110,7 @@ TiKV 实例迁移较慢，并且会对集群造成一定的数据迁移负载，
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward svc/<CLUSTER_NAME>-pd 2379:2379
+kubectl port-forward svc/${CLUSTER_NAME}-pd 2379:2379
 ```
 
 {{< copyable "shell-regular" >}}
@@ -130,7 +130,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl cordon <node-name>
+    kubectl cordon ${node_name}
     ```
 
 2. 查看待维护节点上的 TiKV 实例：
@@ -138,7 +138,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    tkctl get -A tikv | grep <node-name>
+    tkctl get -A tikv | grep ${node_name}
     ```
 
 3. 使用 `pd-ctl` 主动下线 TiKV 实例。
@@ -152,7 +152,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get tc <CLUSTER_NAME> -ojson | jq '.status.tikv.stores | .[] | select ( .podName == "<POD_NAME>" ) | .id'
+    kubectl get tc ${CLUSTER_NAME} -ojson | jq '.status.tikv.stores | .[] | select ( .podName == "${POD_NAME}" ) | .id'
     ```
 
     下线实例：
@@ -160,13 +160,13 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward svc/<CLUSTER_NAME>-pd 2379:2379
+    kubectl port-forward svc/${CLUSTER_NAME}-pd 2379:2379
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    pd-ctl -d store delete <ID>
+    pd-ctl -d store delete ${ID}
     ```
 
 4. 等待 store 状态（`state_name`）转移为 `Tombstone`：
@@ -174,7 +174,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch pd-ctl -d store <ID>
+    watch pd-ctl -d store ${ID}
     ```
 
 5. 解除 TiKV 实例与节点本地盘的绑定。
@@ -184,7 +184,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get -n <namespace> pod <pod_name> -ojson | jq '.spec.volumes | .[] | select (.name == "tikv") | .persistentVolumeClaim.claimName'
+    kubectl get -n ${namespace} pod ${pod_name} -ojson | jq '.spec.volumes | .[] | select (.name == "tikv") | .persistentVolumeClaim.claimName'
     ```
 
     删除该 `PesistentVolumeClaim`：
@@ -192,7 +192,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete -n <namespace> pvc <pvc_name>
+    kubectl delete -n ${namespace} pvc ${pvc_name}
     ```
 
 6. 删除 TiKV 实例：
@@ -200,7 +200,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete -n <namespace> pod <pod_name>
+    kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
 7. 观察该 TiKV 实例是否正常调度到其它节点上：
@@ -208,7 +208,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     假如待维护节点上还有其它 TiKV 实例，则重复同样的操作步骤直到所有的 TiKV 实例都迁移到其它节点上。
@@ -218,7 +218,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl drain <node-name> --ignore-daemonsets --delete-local-data
+    kubectl drain ${node_name} --ignore-daemonsets --delete-local-data
     ```
 
 9. 再次确认节点不再有任何 TiKV、TiDB 和 PD 实例运行：
@@ -226,7 +226,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get pod --all-namespaces | grep <node-name>
+    kubectl get pod --all-namespaces | grep ${node_name}
     ```
 
 10. 最后（可选），假如是长期下线节点，建议将节点从 Kubernetes 集群中删除：
@@ -234,7 +234,7 @@ pd-ctl -d config set max-store-down-time 10m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kuebctl delete node <node-name>
+    kuebctl delete node ${node_name}
     ```
 
 至此，操作完成。

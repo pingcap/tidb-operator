@@ -80,7 +80,7 @@ Follow these steps to check whether you have configured SMP IRQ Affinity on the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cat /proc/interrupts|grep <iface-name>|awk '{print $1,$NF}'
+    cat /proc/interrupts|grep ${iface_name}|awk '{print $1,$NF}'
     ```
 
     In the output result of the above command, the first column indicates the interrupt and the second column indicates the device name. If it is a multi-queue network card, the above command outputs information in multiple rows and each queue corresponds to an interrupt.
@@ -90,7 +90,7 @@ Follow these steps to check whether you have configured SMP IRQ Affinity on the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cat /proc/irq/<ir_num>/smp_affinity
+    cat /proc/irq/${ir_num}/smp_affinity
     ```
 
     The above command outputs the hexadecimal value corresponding to the CPU serial number, and the output result is not so intuitive. For the detailed calculation method, refer to [SMP IRQ Affinity](https://cs.uwaterloo.ca/~brecht/servers/apic/SMP-affinity.txt).
@@ -98,7 +98,7 @@ Follow these steps to check whether you have configured SMP IRQ Affinity on the 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cat /proc/irq/<ir_num>/smp_affinity_list
+    cat /proc/irq/${ir_num}/smp_affinity_list
     ```
 
     The above command outputs the decimal value corresponding to the CPU serial number. The result is more intuitive.

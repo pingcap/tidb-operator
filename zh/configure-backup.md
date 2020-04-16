@@ -27,7 +27,7 @@ category: reference
 ## `name`
 
 + 备份名
-+ 默认值："fullbackup-<date>"，`<date>` 是备份的开始时间，精确到分钟
++ 默认值："fullbackup-${date}"，`${date}` 是备份的开始时间，精确到分钟
 + 备份名用于区分不同的备份数据
 
 ## `secretName`
@@ -39,7 +39,7 @@ category: reference
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-secret -n <namespace> --from-literal=user=root --from-literal=password=<password>
+    kubectl create secret generic backup-secret -n ${namespace} --from-literal=user=root --from-literal=password=${password}
     ```
 
 ## `storage.className`
@@ -84,7 +84,7 @@ category: reference
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic gcp-backup-secret -n <namespace> --from-file=./credentials.json
+    kubectl create secret generic gcp-backup-secret -n ${namespace} --from-file=./credentials.json
     ```
 
 ## `ceph.endpoint`
@@ -112,5 +112,5 @@ category: reference
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic ceph-backup-secret -n <namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+    kubectl create secret generic ceph-backup-secret -n ${namespace} --from-literal=access_key=${access_key} --from-literal=secret_key=${secret_key}
     ```

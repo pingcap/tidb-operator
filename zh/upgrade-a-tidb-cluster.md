@@ -38,7 +38,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl edit tc <cluster-name> -n <namespace>
+    kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
 2. 查看升级进度：
@@ -46,7 +46,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
@@ -62,7 +62,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
@@ -77,7 +77,7 @@ category: how-to
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/force-upgrade=true
+kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
 ```
 
 然后修改 PD 相关配置，确保 PD 进入正常状态。
@@ -89,7 +89,7 @@ kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/f
 > {{< copyable "shell-regular" >}}
 >
 > ```shell
-> kubectl annotate tc <cluster-name> -n <namespace> tidb.pingcap.com/force-upgrade-
+> kubectl annotate tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
 
 ## 通过 Helm 升级
@@ -104,7 +104,7 @@ kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/f
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```
 
 3. 查看升级进度：
@@ -112,7 +112,7 @@ kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/f
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
@@ -130,7 +130,7 @@ kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/f
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
     ```
 
 4. 查看升级进度：
@@ -138,7 +138,7 @@ kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/f
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
@@ -157,7 +157,7 @@ kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/f
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl annotate --overwrite tc <release-name> -n <namespace> tidb.pingcap.com/force-upgrade=true
+kubectl annotate --overwrite tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
 ```
 
 然后执行对应操作中的 `helm upgrade` 命令：
@@ -165,7 +165,7 @@ kubectl annotate --overwrite tc <release-name> -n <namespace> tidb.pingcap.com/f
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
 ```
 
 > **警告：**
@@ -175,5 +175,5 @@ helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart
 > {{< copyable "shell-regular" >}}
 >
 > ```shell
-> kubectl annotate tc <release-name> -n <namespace> tidb.pingcap.com/force-upgrade-
+> kubectl annotate tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```

@@ -8,7 +8,7 @@ category: how-to
 
 本文主要描述了在 Kubernetes 上如何为 TiDB 集群的 MySQL 客户端开启 TLS。TiDB Operator 从 v1.1 开始已经支持为 Kubernetes 上 TiDB 集群开启 MySQL 客户端 TLS。开启步骤为：
 
-1. 为 TiDB Server 颁发一套 Server 端证书，为 MySQL Client 颁发一套 Client 端证书。并创建两个 Secret 对象，Secret 名字分别为：`<cluster-name>-tidb-server-secret` 和  `<cluster-name>-tidb-client-secret`，分别包含前面创建的两套证书；
+1. 为 TiDB Server 颁发一套 Server 端证书，为 MySQL Client 颁发一套 Client 端证书。并创建两个 Secret 对象，Secret 名字分别为：`${cluster_name}-tidb-server-secret` 和  `${cluster_name}-tidb-client-secret`，分别包含前面创建的两套证书；
 2. 部署集群，设置 `.spec.tidb.tlsClient.enabled` 属性为 `true`；
 3. 配置 MySQL 客户端使用加密连接。
 
@@ -115,17 +115,17 @@ category: how-to
         "hosts": [
           "127.0.0.1",
           "::1",
-          "<cluster-name>-tidb",
-          "<cluster-name>-tidb.<namespace>",
-          "<cluster-name>-tidb.<namespace>.svc",
-          "*.<cluster-name>-tidb",
-          "*.<cluster-name>-tidb.<namespace>",
-          "*.<cluster-name>-tidb.<namespace>.svc"
+          "${cluster_name}-tidb",
+          "${cluster_name}-tidb.${namespace}",
+          "${cluster_name}-tidb.${namespace}.svc",
+          "*.${cluster_name}-tidb",
+          "*.${cluster_name}-tidb.${namespace}",
+          "*.${cluster_name}-tidb.${namespace}.svc"
         ],
     ...
     ```
     
-    其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
+    其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
     
     最后生成 Server 端证书：
     
@@ -169,8 +169,8 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic <cluster-name>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/server.pem --from-file=tls.key=~/cfssl/server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
-    kubectl create secret generic <cluster-name>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tidb-server-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/server.pem --from-file=tls.key=~/cfssl/server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tidb-client-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
     ```
 
     这样就给 Server/Client 端证书分别创建了：
@@ -205,32 +205,32 @@ category: how-to
     apiVersion: cert-manager.io/v1alpha2
     kind: Issuer
     metadata:
-      name: <cluster-name>-selfsigned-ca-issuer
-      namespace: <namespace>
+      name: ${cluster_name}-selfsigned-ca-issuer
+      namespace: ${namespace}
     spec:
       selfSigned: {}
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: <cluster-name>-ca
-      namespace: <namespace>
+      name: ${cluster_name}-ca
+      namespace: ${namespace}
     spec:
-      secretName: <cluster-name>-ca-secret
+      secretName: ${cluster_name}-ca-secret
       commonName: "TiDB CA"
       isCA: true
       issuerRef:
-        name: <cluster-name>-selfsigned-ca-issuer
+        name: ${cluster_name}-selfsigned-ca-issuer
         kind: Issuer
     ---
     apiVersion: cert-manager.io/v1alpha2
     kind: Issuer
     metadata:
-      name: <cluster-name>-tidb-issuer
-      namespace: <namespace>
+      name: ${cluster_name}-tidb-issuer
+      namespace: ${namespace}
     spec:
       ca:
-        secretName: <cluster-name>-ca-secret
+        secretName: ${cluster_name}-ca-secret
     ```
 
     上面的文件创建三个对象：
@@ -257,10 +257,10 @@ category: how-to
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: <cluster-name>-tidb-server-secret
-      namespace: <namespace>
+      name: ${cluster_name}-tidb-server-secret
+      namespace: ${namespace}
     spec:
-      secretName: <cluster-name>-tidb-server-secret
+      secretName: ${cluster_name}-tidb-server-secret
       duration: 8760h # 365d
       renewBefore: 360h # 15d
       organization:
@@ -269,32 +269,32 @@ category: how-to
       usages:
         - server auth
       dnsNames:
-        - "<cluster-name>-tidb"
-        - "<cluster-name>-tidb.<namespace>"
-        - "<cluster-name>-tidb.<namespace>.svc"
-        - "*.<cluster-name>-tidb"
-        - "*.<cluster-name>-tidb.<namespace>"
-        - "*.<cluster-name>-tidb.<namespace>.svc"
+        - "${cluster_name}-tidb"
+        - "${cluster_name}-tidb.${namespace}"
+        - "${cluster_name}-tidb.${namespace}.svc"
+        - "*.${cluster_name}-tidb"
+        - "*.${cluster_name}-tidb.${namespace}"
+        - "*.${cluster_name}-tidb.${namespace}.svc"
       ipAddresses:
         - 127.0.0.1
         - ::1
       issuerRef:
-        name: <cluster-name>-tidb-issuer
+        name: ${cluster_name}-tidb-issuer
         kind: Issuer
         group: cert-manager.io
     ```
 
-    其中 `<cluster-name>` 为集群的名字：
+    其中 `${cluster_name}` 为集群的名字：
 
-    - `spec.secretName` 请设置为 `<cluster-name>-tidb-server-secret`；
+    - `spec.secretName` 请设置为 `${cluster_name}-tidb-server-secret`；
     - `usages` 请添加上 `server auth`；
     - `dnsNames` 需要填写这 6 个 DNS，根据需要可以填写其他 DNS：
-      - `<cluster-name>-tidb`
-      - `<cluster-name>-tidb.<namespace>`
-      - `<cluster-name>-tidb.<namespace>.svc`
-      - `*.<cluster-name>-tidb`
-      - `*.<cluster-name>-tidb.<namespace>`
-      - `*.<cluster-name>-tidb.<namespace>.svc`
+      - `${cluster_name}-tidb`
+      - `${cluster_name}-tidb.${namespace}`
+      - `${cluster_name}-tidb.${namespace}.svc`
+      - `*.${cluster_name}-tidb`
+      - `*.${cluster_name}-tidb.${namespace}`
+      - `*.${cluster_name}-tidb.${namespace}.svc`
     - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
       - `127.0.0.1`
       - `::1`
@@ -309,7 +309,7 @@ category: how-to
     kubectl apply -f ~/cert-manager/tidb-server-cert.yaml
     ```
 
-    创建这个对象以后，cert-manager 会生成一个名字为 `<cluster-name>-tidb-server-secret` 的 Secret 对象供 TiDB Server 使用。
+    创建这个对象以后，cert-manager 会生成一个名字为 `${cluster_name}-tidb-server-secret` 的 Secret 对象供 TiDB Server 使用。
 
 4. 创建 Client 端证书。
 
@@ -321,10 +321,10 @@ category: how-to
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
     metadata:
-      name: <cluster-name>-tidb-client-secret
-      namespace: <namespace>
+      name: ${cluster_name}-tidb-client-secret
+      namespace: ${namespace}
     spec:
-      secretName: <cluster-name>-tidb-client-secret
+      secretName: ${cluster_name}-tidb-client-secret
       duration: 8760h # 365d
       renewBefore: 360h # 15d
       organization:
@@ -333,14 +333,14 @@ category: how-to
       usages:
         - client auth
       issuerRef:
-        name: <cluster-name>-tidb-issuer
+        name: ${cluster_name}-tidb-issuer
         kind: Issuer
         group: cert-manager.io
     ```
 
-    其中 `<cluster-name>` 为集群的名字：
+    其中 `${cluster_name}` 为集群的名字：
     
-    - `spec.secretName` 请设置为 `<cluster-name>-tidb-client-secret`；
+    - `spec.secretName` 请设置为 `${cluster_name}-tidb-client-secret`；
     - `usages` 请添加上 `client auth`；
     - `dnsNames` 和 `ipAddresses` 不需要填写；
     - `issuerRef` 请填写上面创建的 Issuer；
@@ -354,7 +354,7 @@ category: how-to
     kubectl apply -f ~/cert-manager/tidb-client-cert.yaml
     ```
 
-    创建这个对象以后，cert-manager 会生成一个名字为 `<cluster-name>-tidb-client-secret` 的 Secret 对象供 TiDB Client 使用。
+    创建这个对象以后，cert-manager 会生成一个名字为 `${cluster_name}-tidb-client-secret` 的 Secret 对象供 TiDB Client 使用。
 
 用户可以生成多套 Client 端证书，并且至少要生成一套 Client 证书供 TiDB Operator 内部组件访问 TiDB Server（目前有 TidbInitializer 会访问 TiDB Server 来设置密码或者一些初始化操作）。
 
@@ -373,8 +373,8 @@ category: how-to
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
- name: <cluster-name>
- namespace: <namespace>
+ name: ${cluster_name}
+ namespace: ${namespace}
 spec:
  version: v3.0.8
  timezone: UTC
@@ -403,18 +403,18 @@ spec:
 apiVersion: pingcap.com/v1alpha1
 kind: TidbInitializer
 metadata:
- name: <cluster-name>-init
- namespace: <namespace>
+ name: ${cluster_name}-init
+ namespace: ${namespace}
 spec:
  image: tnir/mysqlclient
  cluster:
-   namespace: <namespace>
-   name: <cluster-name>
+   namespace: ${namespace}
+   name: ${cluster_name}
  initSql: |-
    create database app;
 ```
 
-其中 `<cluster-name>` 为集群的名字，`<namespace>` 为 TiDB 集群部署的命名空间。通过设置 `spec.tidb.tlsClient.enabled` 属性为 `true` 来开启 MySQL 客户端 TLS。
+其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间。通过设置 `spec.tidb.tlsClient.enabled` 属性为 `true` 来开启 MySQL 客户端 TLS。
 
 将上面文件保存为 `cr.yaml`，然后使用 `kubectl apply -f cr.yaml` 来创建 TiDB 集群。
 
@@ -427,7 +427,7 @@ spec:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mysql -uroot -p -P 4000 -h <tidb-host> --ssl-cert=~/cfssl/client.pem --ssl-key=~/cfssl/client-key.pem --ssl-ca=~/cfssl/ca.pe
+    mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=~/cfssl/client.pem --ssl-key=~/cfssl/client-key.pem --ssl-ca=~/cfssl/ca.pe
     ```
 
 2. 通过 `cert-manager` 颁发证书，获取 Client 证书的方式并连接 TiDB Server 的方法是：
@@ -435,15 +435,15 @@ spec:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl get secret -n <namespace> <cluster-name>-tidb-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > ~/cert-manager/client-tls.crt
-    kubectl get secret -n <namespace> <cluster-name>-tidb-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > ~/cert-manager/client-tls.key
-    kubectl get secret -n <namespace> <cluster-name>-tidb-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode >  ~/cert-manager/client-ca.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > ~/cert-manager/client-tls.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > ~/cert-manager/client-tls.key
+    kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode >  ~/cert-manager/client-ca.crt
     ```
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mysql -uroot -p -P 4000 -h <tidb-host> --ssl-cert=~/cert-manager/client-tls.crt --ssl-key=~/cert-manager/client-tls.key --ssl-ca=~/cert-manager/client-ca.crt
+    mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=~/cert-manager/client-tls.crt --ssl-key=~/cert-manager/client-tls.key --ssl-ca=~/cert-manager/client-ca.crt
     ```
 
 最后请参考 [官网文档](https://pingcap.com/docs-cn/v3.0/how-to/secure/enable-tls-clients/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。

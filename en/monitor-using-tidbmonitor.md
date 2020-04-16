@@ -69,7 +69,7 @@ You can also quickly deploy TidbMonitor using the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n <namespace>
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n ${namespace}
 ```
 
 After the deployment is finished, you can check whether TidbMonitor is started by executing the `kubectl get pod` command:
@@ -77,7 +77,7 @@ After the deployment is finished, you can check whether TidbMonitor is started b
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pod -l app.kubernetes.io/instance=basic -n <namespace> | grep monitor
+kubectl get pod -l app.kubernetes.io/instance=basic -n ${namespace} | grep monitor
 ```
 
 ```
@@ -91,7 +91,7 @@ To view the monitoring dashboard, execute the following command:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
+kubectl -n ${namespace} port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
 Visit `localhost:3000` to access the dashboard.
@@ -101,7 +101,7 @@ Visit `localhost:3000` to access the dashboard.
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl delete tidbmonitor basic -n <namespace>
+kubectl delete tidbmonitor basic -n ${namespace}
 ```
 
 ## Persist the monitoring data
@@ -117,7 +117,7 @@ spec:
   clusters:
     - name: basic
   persistent: true
-  storageClassName: <storageClassName>
+  storageClassName: ${storageClassName}
   storage: 5G
   prometheus:
     baseImage: prom/prometheus
@@ -143,7 +143,7 @@ To verify the status of Persistent Volume Claim (PVC), execute the following com
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n <namespace>
+kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n ${namespace}
 ```
 
 ```

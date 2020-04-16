@@ -29,7 +29,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get pod --all-namespaces -o wide | grep <node-name>
+    kubectl get pod --all-namespaces -o wide | grep ${node_name}
     ```
 
     If any TiKV instance is found, see [Maintain nodes that hold TiKV instances](#maintain-nodes-that-hold-tikv-instances).
@@ -39,7 +39,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl cordon <node-name>
+    kubectl cordon ${node_name}
     ```
 
 3. Use the `kubectl drain` command to migrate the database instances on the maintenance node to other nodes:
@@ -47,7 +47,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl drain <node-name> --ignore-daemonsets --delete-local-data
+    kubectl drain ${node_name} --ignore-daemonsets --delete-local-data
     ```
 
     After running this command, TiDB instances on this node are automatically migrated to another available node, and the PD instance will trigger the auto-failover mechanism after five minutes and complete the nodes.
@@ -57,7 +57,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete node <node-name>
+    kubectl delete node ${node_name}
     ```
 
     If you want to recover a Kubernetes node, you need to first make sure that it is in a healthy state:
@@ -65,7 +65,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl get node <node-name>
+    watch kubectl get node ${node_name}
     ```
 
     After the node goes into the `Ready` state, you can proceed with the following operations.
@@ -75,7 +75,7 @@ Migrating PD and TiDB instances from a node is relatively fast, so you can proac
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl uncordon <node-name>
+    kubectl uncordon ${node_name}
     ```
 
 6. See whether all Pods get back to normal and are running:
@@ -110,7 +110,7 @@ For a short-term maintenance, you can increase the TiKV instance downtime that t
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward svc/<CLUSTER_NAME>-pd 2379:2379
+kubectl port-forward svc/${CLUSTER_NAME}-pd 2379:2379
 ```
 
 {{< copyable "shell-regular" >}}
@@ -130,7 +130,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl cordon <node-name>
+    kubectl cordon ${node_name}
     ```
 
 2. Check the TiKV instance on the maintenance node:
@@ -138,7 +138,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    tkctl get -A tikv | grep <node-name>
+    tkctl get -A tikv | grep ${node_name}
     ```
 
 3. Use `pd-ctl` to proactively put the TiKV instance offline:
@@ -152,7 +152,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get tc <CLUSTER_NAME> -ojson | jq '.status.tikv.stores | .[] | select ( .podName == "<POD_NAME>" ) | .id'
+    kubectl get tc ${CLUSTER_NAME} -ojson | jq '.status.tikv.stores | .[] | select ( .podName == "${POD_NAME}" ) | .id'
     ```
 
     Make the TiKV instance offline:
@@ -160,13 +160,13 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward svc/<CLUSTER_NAME>-pd 2379:2379
+    kubectl port-forward svc/${CLUSTER_NAME}-pd 2379:2379
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    pd-ctl -d store delete <ID>
+    pd-ctl -d store delete ${ID}
     ```
 
 4. Wait for the store to change its status from `state_name` to `Tombstone`:
@@ -174,7 +174,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch pd-ctl -d store <ID>
+    watch pd-ctl -d store ${ID}
     ```
 
 5. Unbind the TiKV instance from the local drive of the node:
@@ -184,7 +184,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get -n <namespace> pod <pod_name> -ojson | jq '.spec.volumes | .[] | select (.name == "tikv") | .persistentVolumeClaim.claimName'
+    kubectl get -n ${namespace} pod ${pod_name} -ojson | jq '.spec.volumes | .[] | select (.name == "tikv") | .persistentVolumeClaim.claimName'
     ```
 
     Delete the `PesistentVolumeClaim`:
@@ -192,7 +192,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete -n <namespace> pvc <pvc_name>
+    kubectl delete -n ${namespace} pvc ${pvc_name}
     ```
 
 6. Delete the TiKV instance:
@@ -200,7 +200,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete -n <namespace> pod <pod_name>
+    kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
 7. Check whether the TiKV instance is normally scheduled to another node:
@@ -208,7 +208,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     If there are more TiKV instances on the maintenance node, you need to follow the above steps until all instances are migrated to other nodes.
@@ -218,7 +218,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl drain <node-name> --ignore-daemonsets --delete-local-data
+    kubectl drain ${node_name} --ignore-daemonsets --delete-local-data
     ```
 
 9. Confirm again that there is no more TiKV, TiDB and PD instances running on this node:
@@ -226,7 +226,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get pod --all-namespaces | grep <node-name>
+    kubectl get pod --all-namespaces | grep ${node_name}
     ```
 
 10. (Optional) If this node is made offline for a long time, it is recommended to delete it from the Kubernetes cluster:
@@ -234,7 +234,7 @@ For the maintenance on an node that cannot be recovered in a short term (for exa
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kuebctl delete node <node-name>
+    kuebctl delete node ${node_name}
     ```
 
 Now, you have successfully finished the maintenance task for the node.

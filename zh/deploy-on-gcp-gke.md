@@ -174,8 +174,8 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     使用 GKE 部署过程中配置的 `default_tidb_cluster_name`（默认为 `tidb-cluster`）替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`：
 
     ```
-    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db.yaml.example > db.yaml
-    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db-monitor.yaml.example > db-monitor.yaml
+    sed 's/CLUSTER_NAME/${cluster_name}/g' db.yaml.example > db.yaml
+    sed 's/CLUSTER_NAME/${cluster_name}/g' db-monitor.yaml.example > db-monitor.yaml
     ```
 
     参考 [API 文档](api-references.md)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
@@ -190,7 +190,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create namespace <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create namespace ${namespace}
     ```
 
     > **注意：**
@@ -202,18 +202,18 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
   {{< copyable "shell-regular" >}}
 
   ```shell
-  kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db.yaml -n <namespace>
-  kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db-monitor.yaml -n <namespace>
+  kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db.yaml -n ${namespace}
+  kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db-monitor.yaml -n ${namespace}
   ```
 
 ## 访问 TiDB 数据库
 
-`terraform apply` 运行完成后，可执行以下步骤来访问 TiDB 数据库。注意用[部署 TiDB 集群](#部署-tidb-集群)小节的输出信息替换 `<>` 部分的内容。
+`terraform apply` 运行完成后，可执行以下步骤来访问 TiDB 数据库。注意用[部署 TiDB 集群](#部署-tidb-集群)小节的输出信息替换 `${}` 部分的内容。
 
 1. 获取 TiDB Internal LoadBalancer IP 地址:
 
   ```shell
-  kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb -n <namespace>
+  kubectl --kubeconfig credentials/kubeconfig_${gke_name} get svc ${cluster_name}-tidb -n ${namespace}
   ```
 
   其中 `EXTERNAL-IP` 为 Internal LoadBalancer IP 地址。
@@ -223,7 +223,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```bash
-    gcloud compute ssh <gke-cluster-name>-bastion --zone <zone>
+    gcloud compute ssh ${gke_cluster_name}-bastion --zone ${zone}
     ```
 
 3. 通过 MySQL 客户端来访问 TiDB 集群。
@@ -231,17 +231,17 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```bash
-    mysql -h <tidb_ilb_ip> -P 4000 -u root
+    mysql -h ${tidb_ilb_ip} -P 4000 -u root
     ```
 
     > **注意：**
     >
     > 通过 MySQL 连接 TiDB 前，需要先安装 MySQL 客户端。CentOS 系统可通过 `sudo yum install -y mysql` 安装。
-    > `<tidb_ilb_ip>` 为前面获取的 Internal LoadBalancer IP 地址。
+    > `${tidb_ilb_ip}` 为前面获取的 Internal LoadBalancer IP 地址。
 
 ## 与 GKE 集群交互
 
-你可以通过 `kubectl` 和 `helm` 使用 kubeconfig 文件 `credentials/kubeconfig_<gke_cluster_name>` 和 GKE 集群交互。交互方式主要有以下两种。
+你可以通过 `kubectl` 和 `helm` 使用 kubeconfig 文件 `credentials/kubeconfig_${gke_cluster_name}` 和 GKE 集群交互。交互方式主要有以下两种。
 
 > **注意：**
 >
@@ -252,7 +252,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```bash
-    kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_cluster_name>
+    kubectl --kubeconfig credentials/kubeconfig_${gke_cluster_name} get po -n ${tidb_cluster_name}
     ```
 
     > **注意：**
@@ -262,7 +262,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```bash
-    helm --kubeconfig credentials/kubeconfig_<gke_cluster_name> ls
+    helm --kubeconfig credentials/kubeconfig_${gke_cluster_name} ls
     ```
 
 - 设置 `KUBECONFIG` 环境变量：
@@ -270,13 +270,13 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
     {{< copyable "shell-regular" >}}
 
     ```bash
-    export KUBECONFIG=$PWD/credentials/kubeconfig_<gke_cluster_name>
+    export KUBECONFIG=$PWD/credentials/kubeconfig_${gke_cluster_name}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```bash
-    kubectl get po -n <tidb_cluster_name>
+    kubectl get po -n ${tidb_cluster_name}
     ```
 
     {{< copyable "shell-regular" >}}
@@ -305,8 +305,8 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
       tidb_operator_id           = module.tidb-operator.tidb_operator_id
       gcp_project                = var.GCP_PROJECT
       gke_cluster_location       = local.location
-      gke_cluster_name           = <gke-cluster-name>
-      cluster_name               = <example-tidb-cluster>
+      gke_cluster_name           = ${gke_cluster_name}
+      cluster_name               = "example-tidb-cluster"
       cluster_version            = "v3.0.1"
       kubeconfig_path            = local.kubeconfig
       tidb_cluster_chart_version = "v1.0.0"
@@ -351,7 +351,7 @@ Terraform 自动加载和填充匹配 `terraform.tfvars` 或 `*.auto.tfvars` 文
 {{< copyable "shell-regular" >}}
 
 ```
-kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_cluster_name> --watch
+kubectl --kubeconfig credentials/kubeconfig_${gke_cluster_name} get po -n ${tidb_cluster_name} --watch
 ```
 
 例如，可以将 `tidb_count` 从 1 改为 2 来扩容 TiDB：
@@ -492,7 +492,7 @@ GKE 使用 [Fluentd](https://www.fluentd.org/) 作为其默认的日志收集工
     {{< copyable "shell-regular" >}}
 
     ```bash
-    gcloud compute instance-groups managed list-instances <the-name-of-the-managed-instance-group> --zone <zone>
+    gcloud compute instance-groups managed list-instances ${instance_group} --zone ${zone}
     ```
 
     示例：
@@ -555,7 +555,7 @@ terraform destroy
     {{< copyable "shell-regular" >}}
 
     ```bash
-    ./change-pv-reclaimpolicy.sh /path/to/kubeconfig/file <tidb-cluster-namespace>
+    ./change-pv-reclaimpolicy.sh /path/to/kubeconfig/file ${tidb_cluster_namespace}
     ```
 
 ## 管理多个 Kubernetes 集群

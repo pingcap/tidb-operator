@@ -38,5 +38,5 @@ You can use `kubectl annotate` to mark the target Pod component of the TiDB clus
 {{< copyable "shell-regular" >}}
 
 ```sh
-kubectl annotate <pod-name> -n <namespace> tidb.pingcap.com/pod-defer-deleting=true
+kubectl annotate ${pod_name} -n ${namespace} tidb.pingcap.com/pod-defer-deleting=true
 ```

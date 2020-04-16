@@ -170,7 +170,7 @@ region = us-west-21
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig_<eks_name> create namespace <namespace>
+    cd .. && kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
     ```
 
     > **注意：**
@@ -182,45 +182,45 @@ region = us-west-21
   {{< copyable "shell-regular" >}}
 
   ```shell
-  kubectl --kubeconfig credentials/kubeconfig_<eks_name> create -f manifests/ -n <namespace>
+  kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f manifests/ -n ${namespace}
   ```
 
 ## 访问数据库
 
 集群部署完成后，可先通过 `ssh` 远程连接到堡垒机，再通过 MySQL client 来访问 TiDB 集群。
 
-所需命令如下（用上面的输出信息替换 `<>` 部分内容)：
+所需命令如下（用上面的输出信息替换 `${}` 部分内容)：
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-ssh -i credentials/<eks_name>.pem centos@<bastion_ip>
+ssh -i credentials/${eks_name}.pem centos@${bastion_ip}
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h <tidb_lb> -P 4000 -u root
+mysql -h ${tidb_lb} -P 4000 -u root
 ```
 
 `eks_name` 默认为 `my-cluster`。如果 DNS 名字无法解析，请耐心等待几分钟。
 
 `tidb_lb` 为 TiDB Service 的 LoadBalancer。
 
-你还可以通过 `kubectl` 和 `helm` 命令使用 kubeconfig 文件 `credentials/kubeconfig_<eks_name>` 和 EKS 集群交互，主要有两种方式，如下所示。
+你还可以通过 `kubectl` 和 `helm` 命令使用 kubeconfig 文件 `credentials/kubeconfig_${eks_name}` 和 EKS 集群交互，主要有两种方式，如下所示。
 
 - 指定 --kubeconfig 参数：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<eks_name> get po -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm --kubeconfig credentials/kubeconfig_<eks_name> ls
+    helm --kubeconfig credentials/kubeconfig_${eks_name} ls
     ```
 
 - 或者，设置 KUBECONFIG 环境变量：
@@ -228,13 +228,13 @@ mysql -h <tidb_lb> -P 4000 -u root
     {{< copyable "shell-regular" >}}
 
     ```shell
-    export KUBECONFIG=$PWD/credentials/kubeconfig_<eks_name>
+    export KUBECONFIG=$PWD/credentials/kubeconfig_${eks_name}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get po -n <namespace>
+    kubectl get po -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
@@ -256,13 +256,13 @@ Grafana 默认登录信息：
 
 ## 升级 TiDB 集群
 
-要升级 TiDB 集群，可以通过 `kubectl --kubeconfig credentials/kubeconfig_<eks_name> edit tc <default_cluster_name> -n <namespace>` 修改 `spec.version`。
+要升级 TiDB 集群，可以通过 `kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}` 修改 `spec.version`。
 
-升级过程会持续一段时间，你可以通过 `kubectl --kubeconfig credentials/kubeconfig_<eks_name> get po -n <namespace> --watch` 命令持续观察升级进度。
+升级过程会持续一段时间，你可以通过 `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace} --watch` 命令持续观察升级进度。
 
 ## 扩容 TiDB 集群
 
-若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `default_cluster_tikv_count` 或者 `default_cluster_tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig_<eks_name> edit tc <default_cluster_name> -n <namespace>` 修改对应组件的 `replicas`。
+若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `default_cluster_tikv_count` 或者 `default_cluster_tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}` 修改对应组件的 `replicas`。
 
 例如，可以将 `default_cluster_tidb_count` 从 2 改为 4 以扩容 TiDB 节点：
 
@@ -275,7 +275,7 @@ default_cluster_tidb_count = 4
 > **注意：**
 >
 > - 由于缩容过程中无法确定会缩掉哪个节点，目前还不支持 TiDB 集群的缩容。
-> - 扩容过程会持续几分钟，你可以通过 `kubectl --kubeconfig credentials/kubeconfig_<eks_name> get po -n <namespace> --watch` 命令持续观察进度。
+> - 扩容过程会持续几分钟，你可以通过 `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace} --watch` 命令持续观察进度。
 
 ## 自定义
 

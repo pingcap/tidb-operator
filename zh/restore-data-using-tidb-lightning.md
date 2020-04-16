@@ -35,7 +35,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm inspect values pingcap/tikv-importer --version=<chart-version> > values.yaml
+    helm inspect values pingcap/tikv-importer --version=${chart_version} > values.yaml
     ```
 
 3. 修改 `values.yaml` 文件以指定目标 TiDB 集群。示例如下：
@@ -63,7 +63,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tikv-importer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    helm install pingcap/tikv-importer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     > **注意：**
@@ -79,7 +79,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm inspect values pingcap/tidb-lightning --version=<chart-version> > tidb-lightning-values.yaml
+helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
 
 tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
@@ -114,22 +114,22 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
               type = s3
               provider = AWS
               env_auth = false
-              access_key_id = <my-access-key>
-              secret_access_key = <my-secret-key>
+              access_key_id = ${access_key}
+              secret_access_key = ${secret_key}
               region = us-east-1
               [ceph]
               type = s3
               provider = Ceph
               env_auth = false
-              access_key_id = <my-access-key>
-              secret_access_key = <my-secret-key>
-              endpoint = <ceph-object-store-endpoint>
+              access_key_id = ${access_key}
+              secret_access_key = ${secret_key}
+              endpoint = ${endpoint}
               region = :default-placement
               [gcs]
               type = google cloud storage
               # 该服务账号必须被授予 Storage Object Viewer 角色。
-              # 该内容可以通过 `cat <service-account-file.json> | jq -c .` 命令获取。
-              service_account_credentials = <service-account-json-file-content>
+              # 该内容可以通过 `cat ${service-account-file} | jq -c .` 命令获取。
+              service_account_credentials = ${service_account_json_file_content}
             ```
     
         + 使用 AWS S3 IAM 绑定 Pod 的授权方式或者 AWS S3 IAM 绑定 ServiceAccount 授权方式时，可以省略 `s3.access_key_id` 以及 `s3.secret_access_key：
@@ -153,7 +153,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
               region = us-east-1
             ```
 
-            使用你的实际配置替换上述配置中的占位符，并将该文件存储为 `secret.yaml`。然后通过 `kubectl apply -f secret.yaml -n <namespace>` 命令创建该 `Secret`。
+            使用你的实际配置替换上述配置中的占位符，并将该文件存储为 `secret.yaml`。然后通过 `kubectl apply -f secret.yaml -n ${namespace}` 命令创建该 `Secret`。
 
     3. 将 `dataSource.remote.storageClassName` 设置为 Kubernetes 集群中现有的一个存储类型。
 
@@ -166,7 +166,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
+    helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
 + 使用 AWS S3 IAM 绑定 Pod 的授权方式时，需要做以下步骤：
@@ -182,7 +182,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
+        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **注意：**
@@ -204,7 +204,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl annotate sa <servie-account> -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
+        kubectl annotate sa ${servieaccount} -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
         ```
     
     4. 部署 Tidb-Lightning：
@@ -212,23 +212,23 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set-string failFast=true,serviceAccount=<servie-account> -f tidb-lightning-values.yaml --version=<chart-version>
+        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **注意：**
         >
         > `arn:aws:iam::123456789012:role/user` 为步骤 1 中创建的 IAM 角色。
-        > <service-account> 为 tidb-lightning 使用的 ServiceAccount，默认为 default。
+        > ${service-account} 为 tidb-lightning 使用的 ServiceAccount，默认为 default。
 
 当 TiDB Lightning 未能成功恢复数据时，不能简单地直接重启进程，必须进行**手动干预**，否则将很容易出现错误。因此，tidb-lightning 的 `Job` 重启策略被设置为 `Never`。
 
 如果 TiDB Lightning 未能成功恢复数据，需要采用以下步骤进行手动干预：
 
-1. 运行 `kubectl delete job -n <namespace> <tidb-lightning-release-name>-tidb-lightning`，删除 lightning `Job`。
+1. 运行 `kubectl delete job -n ${namespace} ${release_name}-tidb-lightning`，删除 lightning `Job`。
 
-2. 运行 `helm template pingcap/tidb-lightning --name <tidb-lightning-release-name> --set failFast=false -f tidb-lightning-values.yaml | kubectl apply -n <namespace> -f -`，重新创建禁用 `failFast` 的 lightning `Job`。
+2. 运行 `helm template pingcap/tidb-lightning --name ${release_name} --set failFast=false -f tidb-lightning-values.yaml | kubectl apply -n ${namespace} -f -`，重新创建禁用 `failFast` 的 lightning `Job`。
 
-3. 当 lightning pod 重新运行时，在 lightning 容器中执行 `kubectl exec -it -n <namesapce> <tidb-lightning-pod-name> sh` 命令。
+3. 当 lightning pod 重新运行时，在 lightning 容器中执行 `kubectl exec -it -n ${namespace} ${pod_name} sh` 命令。
 
 4. 运行 `cat /proc/1/cmdline`，获得启动脚本。
 
@@ -240,8 +240,8 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 删除 tikv-importer 的步骤：
 
-* 运行 `helm delete <tikv-importer-release-name> --purge`。
+* 运行 `helm delete ${release_name} --purge`。
 
 删除 tidb-lightning 的方法：
 
-* 运行 `helm delete <tidb-lightning-release-name> --purge`。
+* 运行 `helm delete ${release_name} --purge`。

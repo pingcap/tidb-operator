@@ -15,7 +15,7 @@ category: how-to
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl delete tc <cluster-name> -n <namespace>
+kubectl delete tc ${cluster_name} -n ${namespace}
 ```
 
 如果集群中通过 `TidbMonitor` 部署了监控，要删除监控组件，可以执行以下命令：
@@ -23,7 +23,7 @@ kubectl delete tc <cluster-name> -n <namespace>
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl delete tidbmonitor <tidb-monitor-name> -n <namespace>
+kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
 ```
 
 ## 销毁使用 Helm 管理的 TiDB 集群
@@ -33,7 +33,7 @@ kubectl delete tidbmonitor <tidb-monitor-name> -n <namespace>
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm delete <cluster-name> --purge
+helm delete ${cluster_name} --purge
 ```
 
 ## 清除数据
@@ -47,11 +47,11 @@ helm delete <cluster-name> --purge
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl delete pvc -n <namespace> -l app.kubernetes.io/instance=<cluster-name>,app.kubernetes.io/managed-by=tidb-operator
+kubectl delete pvc -n ${namespace} -l app.kubernetes.io/instance=${cluster_name},app.kubernetes.io/managed-by=tidb-operator
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get pv -l app.kubernetes.io/namespace=<namespace>,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=<cluster-name> -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+kubectl get pv -l app.kubernetes.io/namespace=${namespace},app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=${cluster_name} -o name | xargs -I {} kubectl patch {} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 ```

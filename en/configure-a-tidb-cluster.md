@@ -42,41 +42,41 @@ affinity:
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "region"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
    # this term works when the nodes have the label named zone
    - weight: 20
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "zone"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
    # this term works when the nodes have the label named rack
    - weight: 40
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "rack"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
    # this term works when the nodes have the label named kubernetes.io/hostname
    - weight: 80
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "kubernetes.io/hostname"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
 ```
 
 ### Disaster recovery of data
@@ -103,7 +103,7 @@ To add the data disaster recovery feature in Kubernetes:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl label node <nodeName> region=<regionName> zone=<zoneName> rack=<rackName> kubernetes.io/hostname=<hostName>
+    kubectl label node ${node_name} region=${region_name} zone=${zone_name} rack=${rack_name} kubernetes.io/hostname=${host_name}
     ```
 
     In the command above, `region`, `zone`, `rack`, and `kubernetes.io/hostname` are just examples. The name and number of the label to be added can be arbitrarily defined, as long as it conforms to the specification and is consistent with the labels set by `location-labels` in `pd.config`.

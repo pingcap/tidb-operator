@@ -7032,11 +7032,11 @@ There are multiple ways to generate these certificates:
 - use the K8s built-in certificate signing system signed certificates: <a href="https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/">https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/</a>
 - or use cert-manager signed certificates: <a href="https://cert-manager.io/">https://cert-manager.io/</a>
 2. Create one secret object for one component which contains the certificates created above.
-The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.
-For PD: kubectl create secret generic <clusterName>-pd-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
-For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
-For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
-For Client: kubectl create secret generic <clusterName>-cluster-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+The name of this Secret must be: ${cluster_name}-<componentName>-cluster-secret.
+For PD: kubectl create secret generic ${cluster_name}-pd-cluster-secret &ndash;namespace=${namespace} &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+For TiKV: kubectl create secret generic ${cluster_name}-tikv-cluster-secret &ndash;namespace=${namespace} &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+For TiDB: kubectl create secret generic ${cluster_name}-tidb-cluster-secret &ndash;namespace=${namespace} &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+For Client: kubectl create secret generic ${cluster_name}-cluster-client-secret &ndash;namespace=${namespace} &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 Same for other components.</p>
 </td>
 </tr>
@@ -8136,11 +8136,11 @@ There are multiple ways to generate certificates:
 - use the K8s built-in certificate signing system signed certificates: <a href="https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/">https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/</a>
 - or use cert-manager signed certificates: <a href="https://cert-manager.io/">https://cert-manager.io/</a>
 2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
-The name of this Secret must be: <clusterName>-tidb-server-secret.
-kubectl create secret generic <clusterName>-tidb-server-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+The name of this Secret must be: ${cluster_name}-tidb-server-secret.
+kubectl create secret generic ${cluster_name}-tidb-server-secret &ndash;namespace=${namespace} &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
-The name of this Secret must be: <clusterName>-tidb-client-secret.
-kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+The name of this Secret must be: ${cluster_name}-tidb-client-secret.
+kubectl create secret generic ${cluster_name}-tidb-client-secret &ndash;namespace=${namespace} &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 4. Set Enabled to <code>true</code>.</p>
 </td>
 </tr>

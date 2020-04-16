@@ -136,7 +136,7 @@ sysctl net.ipv4.tcp_syncookies=0
 
 ```shell
 sysbench \
-  --mysql-host=<tidb-host> \
+  --mysql-host=${tidb_host} \
   --mysql-port=4000 \
   --mysql-user=root \
   --mysql-db=sbtest \
@@ -152,13 +152,13 @@ sysbench \
   prepare
 ```
 
-`<tidb-host>` 为 TiDB 的数据库地址，根据不同测试需求选择不同的地址，比如 Pod IP、Service 域名、Host IP 以及 Load Balancer IP（下同）。
+`${tidb_host}` 为 TiDB 的数据库地址，根据不同测试需求选择不同的地址，比如 Pod IP、Service 域名、Host IP 以及 Load Balancer IP（下同）。
 
 #### 预热
 
 ```shell
 sysbench \
-  --mysql-host=<tidb-host> \
+  --mysql-host=${tidb_host} \
   --mysql-port=4000 \
   --mysql-user=root \
   --mysql-db=sbtest \
@@ -178,23 +178,23 @@ sysbench \
 
 ```shell
 sysbench \
-  --mysql-host=<tidb-host> \
+  --mysql-host=${tidb_host} \
   --mysql-port=4000 \
   --mysql-user=root \
   --mysql-db=sbtest \
   --time=600 \
-  --threads=<threads> \
+  --threads=${threads} \
   --report-interval=10 \
   --db-driver=mysql \
   --rand-type=uniform \
   --rand-seed=$RANDOM \
   --tables=16 \
   --table-size=10000000 \
-  <test> \
+  ${test} \
   run
 ```
 
-`<test>` 为 sysbench 的测试 case。我们选择了 oltp_point_select、oltp_update_index、oltp_update_no_index、oltp_read_write 这几种。
+`${test}` 为 sysbench 的测试 case。我们选择了 oltp_point_select、oltp_update_index、oltp_update_no_index、oltp_read_write 这几种。
 
 ## 测试报告
 

@@ -14,7 +14,7 @@ This document describes how to deploy a TiDB cluster on general Kubernetes.
 
 ## Configure TiDB cluster
 
-Refer to the [TidbCluster example](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml) and [API documentation](api-references.md) to complete TidbCluster Custom Resource (CR), and save it to the `<cluster-name>/tidb-cluster.yaml` file. Switch the TidbCluster example and API documentation to the currently used version of TiDB Operator.
+Refer to the [TidbCluster example](https://github.com/pingcap/tidb-operator/blob/master/examples/basic/tidb-cluster.yaml) and [API documentation](api-references.md) to complete TidbCluster Custom Resource (CR), and save it to the `${cluster_name}/tidb-cluster.yaml` file. Switch the TidbCluster example and API documentation to the currently used version of TiDB Operator.
 
 Note that TidbCluster CR has multiple parameters for the image configuration:
 
@@ -36,7 +36,7 @@ The modified configuration is not automatically applied to the TiDB cluster by d
 
 It is recommended that you set `spec.configUpdateStrategy` to `RollingUpdate` to enable automatic update of configurations. This way, every time the configuration is updated, all components are rolling updated automatically, and the modified configuration is applied to the cluster.
 
-To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](api-references.md) to complete TidbMonitor CR, and save it to the `<cluster-name>/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
+To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](api-references.md) to complete TidbMonitor CR, and save it to the `${cluster_name}/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
 
 ### Storage class
 
@@ -45,7 +45,7 @@ To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://githu
 
 Different components of a TiDB cluster have different disk requirements. Before deploying a TiDB cluster, select the appropriate storage class for each component according to the storage classes supported by the current Kubernetes cluster and usage scenario.
 
-You can set the storage class by modifying `storageClassName` of each component in `<cluster-name>/tidb-cluster.yaml` and `<cluster-name>/tidb-monitor.yaml`. For the [storage classes](configure-storage-class.md) supported by the Kubernetes cluster, check with your system administrator.
+You can set the storage class by modifying `storageClassName` of each component in `${cluster_name}/tidb-cluster.yaml` and `${cluster_name}/tidb-monitor.yaml`. For the [storage classes](configure-storage-class.md) supported by the Kubernetes cluster, check with your system administrator.
 
 > **Note:**
 >
@@ -68,7 +68,7 @@ After you deploy and configure TiDB Operator, deploy the TiDB cluster by the fol
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create namespace <namespace>
+    kubectl create namespace ${namespace}
     ```
 
     > **Note:**
@@ -80,7 +80,7 @@ After you deploy and configure TiDB Operator, deploy the TiDB cluster by the fol
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f <cluster-name> -n <namespace>
+    kubectl apply -f ${cluster_name} -n ${namespace}
     ```
 
 3. View the Pod status:
@@ -88,7 +88,7 @@ After you deploy and configure TiDB Operator, deploy the TiDB cluster by the fol
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl get po -n <namespace> -l app.kubernetes.io/instance=<cluster-name>
+    kubectl get po -n ${namespace} -l app.kubernetes.io/instance=${cluster_name}
     ```
 
 You can use TiDB Operator to deploy and manage multiple TiDB clusters in a single Kubernetes cluster by repeating the above procedure and replacing `cluster-name` with a different name.

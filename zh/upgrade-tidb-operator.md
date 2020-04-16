@@ -15,29 +15,29 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/<version>/manifests/crd.yaml && \
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${version}/manifests/crd.yaml && \
     kubectl get crd tidbclusters.pingcap.com
     ```
 
     > **注意：**
     >
-    > `<version>` 在后续文档中代表 TiDB Operator 版本，例如 `v1.1.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
+    > `${version}` 在后续文档中代表 TiDB Operator 版本，例如 `v1.1.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
 
 2. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p /home/tidb/tidb-operator/<version> && \
-    helm inspect values pingcap/tidb-operator --version=<version> > /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    mkdir -p /home/tidb/tidb-operator/${version} && \
+    helm inspect values pingcap/tidb-operator --version=${version} > /home/tidb/tidb-operator/${version}/values-tidb-operator.yaml
     ```
     
-3. 修改 `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml` 中 `operatorImage` 镜像版本，并将旧版本 `values.yaml` 中的自定义配置合并到 `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml`，然后执行 `helm upgrade`：
+3. 修改 `/home/tidb/tidb-operator/${version}/values-tidb-operator.yaml` 中 `operatorImage` 镜像版本，并将旧版本 `values.yaml` 中的自定义配置合并到 `/home/tidb/tidb-operator/${version}/values-tidb-operator.yaml`，然后执行 `helm upgrade`：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade tidb-operator pingcap/tidb-operator --version=<version> -f /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    helm upgrade tidb-operator pingcap/tidb-operator --version=${version} -f /home/tidb/tidb-operator/${version}/values-tidb-operator.yaml
     ```
 
     > **注意：**

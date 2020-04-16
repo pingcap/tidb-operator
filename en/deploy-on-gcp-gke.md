@@ -173,8 +173,8 @@ This section describes how to deploy a TiDB cluster.
     Replace all `CLUSTER_NAME` in the `db.yaml` and `db-monitor.yaml` files with `default_tidb_cluster_name` (`tidb-cluster` by default) configured in the deployment using GKE.
 
     ```
-    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db.yaml.example > db.yaml
-    sed 's/CLUSTER_NAME/<tidb-cluster-name>/g' db-monitor.yaml.example > db-monitor.yaml
+    sed 's/CLUSTER_NAME/${cluster_name}/g' db.yaml.example > db.yaml
+    sed 's/CLUSTER_NAME/${cluster_name}/g' db-monitor.yaml.example > db-monitor.yaml
     ```
 
     To complete the CR file configuration, refer to [TiDB Operator API documentation](api-references.md) and [Configure Cluster using TidbCluster](configure-cluster-using-tidbcluster.md).
@@ -189,7 +189,7 @@ This section describes how to deploy a TiDB cluster.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create namespace <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create namespace ${namespace}
     ```
 
     > **Note:**
@@ -201,20 +201,20 @@ This section describes how to deploy a TiDB cluster.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db.yaml -n <namespace>
-    kubectl --kubeconfig credentials/kubeconfig_<gke_name> create -f db-monitor.yaml -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db.yaml -n ${namespace}
+    kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db-monitor.yaml -n ${namespace}
     ```
 
 ## Access the TiDB database
 
-After `terraform apply` is successful executed, perform the following steps to access the TiDB cluster. Replace the `<>` section with the output of running `terraform apply` above.
+After `terraform apply` is successful executed, perform the following steps to access the TiDB cluster. Replace the `${}` section with the output of running `terraform apply` above.
 
 1. Get the IP address of the TiDB Internal LoadBalancer:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<gke_name> get svc <cluster-name>-tidb -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${gke_name} get svc ${cluster_name}-tidb -n ${namespace}
     ```
 
     `EXTERNAL-IP` is the IP address of the Internal LoadBalancer.
@@ -224,7 +224,7 @@ After `terraform apply` is successful executed, perform the following steps to a
     {{< copyable "shell-regular" >}}
 
     ```bash
-    gcloud compute ssh <gke-cluster-name>-bastion --zone <zone>
+    gcloud compute ssh ${gke_cluster_name}-bastion --zone ${zone}
     ```
 
 3. Access the TiDB cluster via a MySQL client.
@@ -232,17 +232,17 @@ After `terraform apply` is successful executed, perform the following steps to a
     {{< copyable "shell-regular" >}}
 
     ```bash
-    mysql -h <tidb_ilb_ip> -P 4000 -u root
+    mysql -h ${tidb_ilb_ip} -P 4000 -u root
     ```
 
     > **Note:**
     >
     > You need to install the MySQL client before you connect to TiDB via MySQL. If you use CentOS, install the client by executing `sudo yum install -y mysql`.
-    > `<tidb_ilb_ip> is the IP address of the Internal LoadBalancer acquired in step 1.
+    > `${tidb_ilb_ip} is the IP address of the Internal LoadBalancer acquired in step 1.
 
 ## Interact with the GKE cluster
 
-You can interact with the GKE cluster by using `kubectl` and `helm` with the `credentials/kubeconfig_<gke_cluster_name>` kubeconfig file in the following two ways.
+You can interact with the GKE cluster by using `kubectl` and `helm` with the `credentials/kubeconfig_${gke_cluster_name}` kubeconfig file in the following two ways.
 
 > **Note:**
 >
@@ -253,7 +253,7 @@ You can interact with the GKE cluster by using `kubectl` and `helm` with the `cr
     {{< copyable "shell-regular" >}}
 
     ```bash
-    kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_cluster_name>
+    kubectl --kubeconfig credentials/kubeconfig_${gke_cluster_name} get po -n ${tidb_cluster_name}
     ```
 
     > **Note:**
@@ -263,7 +263,7 @@ You can interact with the GKE cluster by using `kubectl` and `helm` with the `cr
     {{< copyable "shell-regular" >}}
 
     ```bash
-    helm --kubeconfig credentials/kubeconfig_<gke_cluster_name> ls
+    helm --kubeconfig credentials/kubeconfig_${gke_cluster_name} ls
     ```
 
 - Set the `KUBECONFIG` environment variable:
@@ -271,13 +271,13 @@ You can interact with the GKE cluster by using `kubectl` and `helm` with the `cr
     {{< copyable "shell-regular" >}}
 
     ```bash
-    export KUBECONFIG=$PWD/credentials/kubeconfig_<gke_cluster_name>
+    export KUBECONFIG=$PWD/credentials/kubeconfig_${gke_cluster_name}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```bash
-    kubectl get po -n <tidb_cluster_name>
+    kubectl get po -n ${tidb_cluster_name}
     ```
 
     {{< copyable "shell-regular" >}}
@@ -306,8 +306,8 @@ An instance of a `tidb-cluster` module corresponds to a TiDB cluster in the GKE 
       tidb_operator_id           = module.tidb-operator.tidb_operator_id
       gcp_project                = var.GCP_PROJECT
       gke_cluster_location       = local.location
-      gke_cluster_name           = <gke-cluster-name>
-      cluster_name               = <example-tidb-cluster>
+      gke_cluster_name           = ${gke_cluster_name}
+      cluster_name               = "example-tidb-cluster"
       cluster_version            = "v3.0.1"
       kubeconfig_path            = local.kubeconfig
       tidb_cluster_chart_version = "v1.0.0"
@@ -343,7 +343,7 @@ To scale the TiDB cluster, perform the following steps:
 Scaling out needs a few minutes to complete, you can watch the scaling-out process by running the following command:
 
 ```bash
-kubectl --kubeconfig credentials/kubeconfig_<gke_cluster_name> get po -n <tidb_cluster_name> --watch
+kubectl --kubeconfig credentials/kubeconfig_${gke_cluster_name} get po -n ${tidb_cluster_name} --watch
 ```
 
 For example, to scale out the cluster, you can modify the number of TiDB instances (`tidb_count`) from 1 to 2:
@@ -485,7 +485,7 @@ Suppose that you need to delete a node from the monitor pool. You can perform th
     {{< copyable "shell-regular" >}}
 
     ```bash
-    gcloud compute instance-groups managed list-instances <the-name-of-the-managed-instance-group> --zone <zone>
+    gcloud compute instance-groups managed list-instances ${instance_group} --zone ${zone}
     ```
 
     For example:

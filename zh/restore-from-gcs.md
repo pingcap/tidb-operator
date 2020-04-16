@@ -27,7 +27,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=${password} --namespace=test2
     ```
 
 ## 将指定备份数据恢复到 TiDB 集群
@@ -51,14 +51,14 @@ category: how-to
       namespace: test2
     spec:
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       gcs:
-        projectId: <your-project-id>
+        projectId: ${project_id}
         secretName: gcs-secret
-        path: gcs://<path-to-backup>
+        path: gcs://${backup_path}
       storageClassName: local-storage
       storageSize: 1Gi
     ```

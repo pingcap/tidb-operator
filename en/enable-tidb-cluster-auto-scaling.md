@@ -98,7 +98,7 @@ spec:
   cluster:
     name: auto-scaling-demo
     namespace: default
-  metricsUrl: "http://<release-name>-prometheus.<release-namespace>.svc:9090"
+  metricsUrl: "http://${release_name}-prometheus.${namespace}.svc:9090"
   ......
 ```
 
@@ -107,13 +107,13 @@ spec:
 Run the following commands to quickly deploy a TiDB cluster with 3 PD instances, 3 TiKV instances, 2 TiDB instances, and the monitoring and the auto-scaling features.
 
 ```shell
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n <namespace>
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
 tidbcluster.pingcap.com/auto-scaling-demo created
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n <namespace>
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
 tidbmonitor.pingcap.com/auto-scaling-demo created
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n <namespace>
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
 tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
 ```
 
@@ -122,9 +122,9 @@ After the TiDB cluster is created, you can stress test the auto-scaling feature 
 Run the following commands to destroy the environment:
 
 ```shell
-kubectl delete tidbcluster auto-scaling-demo -n <namespace>
-kubectl delete tidbmonitor auto-scaling-demo -n <namespace>
-kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
+kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
+kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
+kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
 ```
 
 ## TidbClusterAutoScaler configurations

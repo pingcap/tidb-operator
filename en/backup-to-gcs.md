@@ -39,7 +39,7 @@ To better explain how to perform the backup operation, this document shows an ex
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 ### Ad-hoc backup process
@@ -57,13 +57,13 @@ To better explain how to perform the backup operation, this document shows an ex
     namespace: test1
     spec:
     from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
     gcs:
         secretName: gcs-secret
-        projectId: <your-project-id>
+        projectId: ${project_id}
         # location: us-east1
         # storageClass: STANDARD_IA
         # objectAcl: private
@@ -161,13 +161,13 @@ The prerequisites for the scheduled backup is the same with the [prerequisites f
     schedule: "*/2 * * * *"
     backupTemplate:
         from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
         gcs:
         secretName: gcs-secret
-        projectId: <your-project-id>
+        projectId: ${project_id}
         # location: us-east1
         # storageClass: STANDARD_IA
         # objectAcl: private

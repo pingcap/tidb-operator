@@ -40,7 +40,7 @@ Kubernetes 1.11 and later versions support [volume expansion of network PV](http
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl patch storageclass <storage-class-name> -p '{"allowVolumeExpansion": true}'
+kubectl patch storageclass ${storage_class} -p '{"allowVolumeExpansion": true}'
 ```
 
 After volume expansion is enabled, expand the PV using the following method:
@@ -52,17 +52,17 @@ After volume expansion is enabled, expand the PV using the following method:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl patch pvc -n <namespace> <pvc-name> -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
+    kubectl patch pvc -n ${namespace} ${pvc_name} -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
     ```
 
 2. View the size of the PV:
 
-    After the expansion, the size displayed by running `kubectl get pvc -n <namespace> <pvc-name>` is still the original one. But if you run the following command to view the size of the PV, it shows that the size has been expanded to the expected one.
+    After the expansion, the size displayed by running `kubectl get pvc -n ${namespace} ${pvc_name}` is still the original one. But if you run the following command to view the size of the PV, it shows that the size has been expanded to the expected one.
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get pv | grep <pvc-name>
+    kubectl get pv | grep ${pvc_name}
     ```
 
 ## Local PV configuration
@@ -253,7 +253,7 @@ In general, after a PVC is no longer used and deleted, the PV bound to it is rec
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     ```
 
 > **Note:**
@@ -267,7 +267,7 @@ When the reclaim policy of PVs is set to `Retain`, if the data of a PV can be de
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete pvc <pvc-name> --namespace=<namespace>
+    kubectl delete pvc ${pvc_name} --namespace=${namespace}
     ```
 
 2. Set the reclaim policy of the PV to `Delete`. Then the PV is automatically deleted and reclaimed.
@@ -275,7 +275,7 @@ When the reclaim policy of PVs is set to `Retain`, if the data of a PV can be de
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+    kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     ```
 
 For more details, refer to [Change the Reclaim Policy of a PersistentVolume](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/).

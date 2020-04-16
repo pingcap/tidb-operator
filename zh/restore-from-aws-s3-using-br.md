@@ -41,7 +41,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
 ### 通过 IAM 绑定 Pod 授权
@@ -59,7 +59,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
 3. 创建 IAM 角色：
@@ -97,7 +97,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
 3. 在集群上为服务帐户启用 IAM 角色：
@@ -154,16 +154,16 @@ category: how-to
         cluster: demo2
         clusterNamespace: test2
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
         # sendCredToTikv: true
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
@@ -198,15 +198,15 @@ category: how-to
         sendCredToTikv: false
         clusterNamespace: test2
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
@@ -239,15 +239,15 @@ category: how-to
         sendCredToTikv: false
         clusterNamespace: test2
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
@@ -273,10 +273,10 @@ kubectl get rt -n test2 -o wide
 * `.spec.to.tidbSecretName`：待恢复 TiDB 集群 `.spec.to.user` 用户的密码所对应的 secret。
 * `.spec.to.tlsClient.tlsSecret`：指定恢复备份使用的存储证书的 Secret。
 
-    如果 TiDB 集群开启了 [TLS](enable-tls-between-components.md)，但是不想使用[文档](enable-tls-between-components.md)中创建的 `<cluster-name>-cluster-client-secret` 恢复备份，可以通过这个参数为恢复备份指定一个 Secret，可以通过如下命令生成：
+    如果 TiDB 集群开启了 [TLS](enable-tls-between-components.md)，但是不想使用[文档](enable-tls-between-components.md)中创建的 `${cluster_name}-cluster-client-secret` 恢复备份，可以通过这个参数为恢复备份指定一个 Secret，可以通过如下命令生成：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic <secretName> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```  

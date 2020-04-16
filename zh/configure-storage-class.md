@@ -40,7 +40,7 @@ Kubernetes 1.11 及以上的版本支持[网络 PV 的动态扩容](https://kube
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl patch storageclass <storage-class-name> -p '{"allowVolumeExpansion": true}'
+kubectl patch storageclass ${storage_class} -p '{"allowVolumeExpansion": true}'
 ```
 
 开启动态扩容后，通过下面方式对 PV 进行扩容：
@@ -52,17 +52,17 @@ kubectl patch storageclass <storage-class-name> -p '{"allowVolumeExpansion": tru
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl patch pvc -n <namespace> <pvc-name> -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
+    kubectl patch pvc -n ${namespace} ${pvc_name} -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
     ```
 
 2. 查看 PV 扩容成功
 
-    扩容成功后，通过 `kubectl get pvc -n <namespace> <pvc-name>` 显示的大小仍然是初始大小，但查看 PV 大小会显示已经扩容到预期的大小。
+    扩容成功后，通过 `kubectl get pvc -n ${namespace} ${pvc_name}` 显示的大小仍然是初始大小，但查看 PV 大小会显示已经扩容到预期的大小。
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get pv | grep <pvc-name>
+    kubectl get pv | grep ${pvc_name}
     ```
 
 ## 本地 PV 配置
@@ -253,7 +253,7 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     ```
 
 > **注意：**
@@ -267,7 +267,7 @@ PV 保留策略是 `Retain` 时，如果确认某个 PV 的数据可以被删除
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl delete pvc <pvc-name> --namespace=<namespace>
+    kubectl delete pvc ${pvc_name} --namespace=${namespace}
     ```
 
 2. 设置 PV 的保留策略为 `Delete`，PV 会被自动删除并回收：
@@ -275,7 +275,7 @@ PV 保留策略是 `Retain` 时，如果确认某个 PV 的数据可以被删除
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
+    kubectl patch pv ${pv_name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     ```
 
 要了解更多关于 PV 的保留策略可参考[修改 PV 保留策略](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/)。

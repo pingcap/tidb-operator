@@ -64,7 +64,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 #### 通过 IAM 绑定 Pod 授权
@@ -82,7 +82,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 3. 创建 IAM 角色：
@@ -120,7 +120,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
+    kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=${password} --namespace=test1
     ```
 
 3. 在集群上为服务帐户启用 IAM 角色：
@@ -177,16 +177,16 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
         cluster: demo1
         clusterNamespace: test1
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
         # sendCredToTikv: true
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -222,15 +222,15 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
         sendCredToTikv: false
         clusterNamespace: test1
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -264,15 +264,15 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
         sendCredToTikv: false
         clusterNamespace: test1
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -322,12 +322,12 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 * `.spec.from.tidbSecretName`：待备份 TiDB 集群 `.spec.from.user` 用户的密码所对应的 secret。
 * `.spec.from.tlsClient.tlsSecret`：指定备份使用的存储证书的 Secret。
 
-    如果 TiDB 集群开启了 [TLS](enable-tls-between-components.md)，但是不想使用[文档](enable-tls-between-components.md)中创建的 `<cluster-name>-cluster-client-secret` 进行备份，可以通过这个参数为备份指定一个 Secret，可以通过如下命令生成：
+    如果 TiDB 集群开启了 [TLS](enable-tls-between-components.md)，但是不想使用[文档](enable-tls-between-components.md)中创建的 `${cluster_name}-cluster-client-secret` 进行备份，可以通过这个参数为备份指定一个 Secret，可以通过如下命令生成：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic <secretName> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```     
 
 更多支持的兼容 S3 的 `provider` 如下：
@@ -379,16 +379,16 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           cluster: demo1
           clusterNamespace: test1
           # logLevel: info
-          # statusAddr: <status-addr>
+          # statusAddr: ${status_addr}
           # concurrency: 4
           # rateLimit: 0
-          # timeAgo: <time>
+          # timeAgo: ${time}
           # checksum: true
           # sendCredToTikv: true
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -429,15 +429,15 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           sendCredToTikv: false
           clusterNamespace: test1
           # logLevel: info
-          # statusAddr: <status-addr>
+          # statusAddr: ${status_addr}
           # concurrency: 4
           # rateLimit: 0
-          # timeAgo: <time>
+          # timeAgo: ${time}
           # checksum: true
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -476,15 +476,15 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           sendCredToTikv: false
           clusterNamespace: test1
           # logLevel: info
-          # statusAddr: <status-addr>
+          # statusAddr: ${status_addr}
           # concurrency: 4
           # rateLimit: 0
-          # timeAgo: <time>
+          # timeAgo: ${time}
           # checksum: true
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws

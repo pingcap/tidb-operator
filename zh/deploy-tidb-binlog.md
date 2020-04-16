@@ -71,7 +71,7 @@ spec
                   - key: "app.kubernetes.io/instance"
                     operator: In
                     values:
-                    - <cluster-name>
+                    - ${cluster_name}
                 topologyKey: kubernetes.io/hostname
     ```
 
@@ -102,7 +102,7 @@ spec
                   - key: "app.kubernetes.io/instance"
                     operator: In
                     values:
-                    - <cluster-name>
+                    - ${cluster_name}
                 topologyKey: kubernetes.io/hostname
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
@@ -125,7 +125,7 @@ spec
                   - key: "app.kubernetes.io/instance"
                     operator: In
                     values:
-                    - <cluster-name>
+                    - ${cluster_name}
                 topologyKey: kubernetes.io/hostname
     ```
 
@@ -156,7 +156,7 @@ spec
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm inspect values pingcap/tidb-drainer --version=<chart-version> > values.yaml
+    helm inspect values pingcap/tidb-drainer --version=${chart_version} > values.yaml
     ```
 
 3. 修改 `values.yaml` 文件以指定源 TiDB 集群和 drainer 的下游数据库。示例如下：
@@ -191,7 +191,7 @@ spec
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-drainer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    helm install pingcap/tidb-drainer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     > **注意：**

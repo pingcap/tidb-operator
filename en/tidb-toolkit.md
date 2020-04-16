@@ -15,7 +15,7 @@ Operations on TiDB in Kubernetes require some open source tools. In the meantime
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<cluster-name>-pd 2379:2379 &>/tmp/portforward-pd.log &
+kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
 After the above command is executed, you can access the PD service via `127.0.0.1:2379`, and then use the default parameters of `pd-ctl` to operate. For example:
@@ -31,7 +31,7 @@ Assume that your local port `2379` has been occupied and you want to switch to a
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<cluster-name>-pd <local-port>:2379 &>/tmp/portforward-pd.log &
+kubectl port-forward -n ${namespace} svc/${cluster_name}-pd ${local_port}:2379 &>/tmp/portforward-pd.log &
 ```
 
 Then you need to explicitly assign a PD port for `pd-ctl`:
@@ -39,7 +39,7 @@ Then you need to explicitly assign a PD port for `pd-ctl`:
 {{< copyable "shell-regular" >}}
 
 ```shell
-pd-ctl -u 127.0.0.1:<local-port> -d config show
+pd-ctl -u 127.0.0.1:${local_port} -d config show
 ```
 
 ## Use TiKV Control in Kubernetes
@@ -51,13 +51,13 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward -n <namespace> svc/<cluster-name>-pd 2379:2379 &>/tmp/portforward-pd.log &
+    kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward -n <namespace> <tikv-pod-name> 20160:20160 &>/tmp/portforward-tikv.log &
+    kubectl port-forward -n ${namespace} ${pod_name} 20160:20160 &>/tmp/portforward-tikv.log &
     ```
 
     After the connection is established, you can access the PD service and the TiKV node via the corresponding port in local:
@@ -65,7 +65,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
     {{< copyable "shell-regular" >}}
 
     ```shell
-    tikv-ctl --host 127.0.0.1:20160 <subcommands>
+    tikv-ctl --host 127.0.0.1:20160 ${subcommands}
     ```
 
     {{< copyable "shell-regular" >}}
@@ -81,7 +81,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl annotate pod <tikv-pod-name> -n <namespace> runmode=debug
+        kubectl annotate pod ${pod_name} -n ${namespace} runmode=debug
         ```
 
     2. Stop the TiKV process:
@@ -89,7 +89,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl exec <tikv-pod-name> -n <namespace> -c tikv -- kill -s TERM 1
+        kubectl exec ${pod_name} -n ${namespace} -c tikv -- kill -s TERM 1
         ```
 
     3. Start the debug container:
@@ -97,7 +97,7 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
         {{< copyable "shell-regular" >}}
 
         ```shell
-        tkctl debug <tikv-pod-name> -c tikv
+        tkctl debug ${pod_name} -c tikv
         ```
 
     4. Start using `tikv-ctl` in local mode. It should be noted that the root file system of `tikv` is under `/proc/1/root`, so you need to adjust the path of the data directory accordingly when executing a command:
@@ -119,13 +119,13 @@ pd-ctl -u 127.0.0.1:<local-port> -d config show
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> svc/<cluster-name>-pd 2379:2379 &>/tmp/portforward-pd.log &
+kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379 &>/tmp/portforward-pd.log &
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward -n <namespace> <tidb-pod-name> 10080:10080 &>/tmp/portforward-tidb.log &
+kubectl port-forward -n ${namespace} ${pod_name} 10080:10080 &>/tmp/portforward-tidb.log &
 ```
 
 Then you can use the `tidb-ctl`:
@@ -226,7 +226,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install <chart-name> --name=<release-name> --namespace=<namespace> --version=<chart-version> -f <values-file>
+    helm install ${chart_name} --name=${release_name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
     ```
 
 * Upgrade (upgrade can be done by modifying the `chart-version` to upgrade to the latest chart version or the `values.yaml` file to update the configuration):
@@ -234,7 +234,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> <chart-name> --version=<chart-version> -f <values-file>
+    helm upgrade ${release_name} ${chart_name} --version=${chart_version} -f ${values_file}
     ```
 
 * To delete the application deployed by Helm, run the following command:
@@ -242,7 +242,7 @@ When performing a deployment or upgrade, you must specify the chart name (`chart
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm del --purge <release-name>
+    helm del --purge ${release_name}
     ```
 
 For more information on Helm, refer to [Helm Documentation](https://helm.sh/docs/).

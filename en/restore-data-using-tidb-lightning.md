@@ -35,7 +35,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm inspect values pingcap/tikv-importer --version=<chart-version> > values.yaml
+    helm inspect values pingcap/tikv-importer --version=${chart_version} > values.yaml
     ```
 
 3. Modify the `values.yaml` file to specify the target TiDB cluster. See the following example:
@@ -63,7 +63,7 @@ You can deploy tikv-importer using the Helm chart. See the following example:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tikv-importer --name=<cluster-name> --namespace=<namespace> --version=<chart-version> -f values.yaml
+    helm install pingcap/tikv-importer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
     > **Note:**
@@ -79,7 +79,7 @@ Use the following command to get the default configuration of TiDB Lightning:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm inspect values pingcap/tidb-lightning --version=<chart-version> > tidb-lightning-values.yaml
+helm inspect values pingcap/tidb-lightning --version=${chart_version} > tidb-lightning-values.yaml
 ```
 
 TiDB Lightning Helm chart supports both local and remote data sources.
@@ -116,24 +116,24 @@ TiDB Lightning Helm chart supports both local and remote data sources.
               type = s3
               provider = AWS
               env_auth = false
-              access_key_id = <my-access-key>
-              secret_access_key = <my-secret-key>
+              access_key_id = ${access_key}
+              secret_access_key = ${secret_key}
               region = us-east-1
 
               [ceph]
               type = s3
               provider = Ceph
               env_auth = false
-              access_key_id = <my-access-key>
-              secret_access_key = <my-secret-key>
-              endpoint = <ceph-object-store-endpoint>
+              access_key_id = ${access_key}
+              secret_access_key = ${secret_key}
+              endpoint = ${endpoint}
               region = :default-placement
 
               [gcs]
               type = google cloud storage
               # The service account must include Storage Object Viewer role
-              # The content can be retrieved by `cat <service-account-file.json> | jq -c .`
-              service_account_credentials = <service-account-json-file-content>
+              # The content can be retrieved by `cat ${service-account-file} | jq -c .`
+              service_account_credentials = ${service_account_json_file_content}
             ```
 
         * If you grant permissions by associating AWS S3 IAM with Pod or with ServiceAccount, you can ignore `s3.access_key_id` and `s3.secret_access_key`:
@@ -157,7 +157,7 @@ TiDB Lightning Helm chart supports both local and remote data sources.
               region = us-east-1
             ```
 
-            Fill in the placeholders with your configurations and save it as `secret.yaml`, and then create the `Secret` via `kubectl apply -f secret.yaml -n <namespace>`.
+            Fill in the placeholders with your configurations and save it as `secret.yaml`, and then create the `Secret` via `kubectl apply -f secret.yaml -n ${namespace}`.
 
     3. Configure the `dataSource.remote.storageClassName` to an existing storage class in the Kubernetes cluster.
 
@@ -170,7 +170,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
+    helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
 * If you grant permissions by associating AWS S3 IAM with Pod, take the following steps:
@@ -186,7 +186,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set failFast=true -f tidb-lightning-values.yaml --version=<chart-version>
+        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **Note:**
@@ -208,7 +208,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl annotate sa <servie-account> -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
+        kubectl annotate sa ${servieaccount} -n eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/user
         ```
 
     4. Deploy TiDB Lightning:
@@ -216,23 +216,23 @@ The method of deploying TiDB Lightning varies with different methods of granting
         {{< copyable "shell-regular" >}}
 
         ```shell
-        helm install pingcap/tidb-lightning --name=<tidb-lightning-release-name> --namespace=<namespace> --set-string failFast=true,serviceAccount=<servie-account> -f tidb-lightning-values.yaml --version=<chart-version>
+        helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set-string failFast=true,serviceAccount=${servieaccount} -f tidb-lightning-values.yaml --version=${chart_version}
         ```
 
         > **Note:**
         >
         > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 1.
-        > `<service-account>` is the ServiceAccount used by TiDB Lightning. The default value is `default`.
+        > `${service-account}` is the ServiceAccount used by TiDB Lightning. The default value is `default`.
 
 When TiDB Lightning fails to restore data, you cannot simply restart it. **Manual intervention** is required. So the TiDB Lightning's `Job` restart policy is set to `Never`.
 
 If the lightning fails to restore data, follow the steps below to do manual intervention:
 
-1. Delete the lightning job by running `kubectl delete job -n <namespace> <tidb-lightning-release-name>-tidb-lightning`.
+1. Delete the lightning job by running `kubectl delete job -n ${namespace} ${release_name}-tidb-lightning`.
 
-2. Create the lightning job again with `failFast` disabled by `helm template pingcap/tidb-lightning --name <tidb-lightning-release-name> --set failFast=false -f tidb-lightning-values.yaml | kubectl apply -n <namespace> -f -`.
+2. Create the lightning job again with `failFast` disabled by `helm template pingcap/tidb-lightning --name ${release_name} --set failFast=false -f tidb-lightning-values.yaml | kubectl apply -n ${namespace} -f -`.
 
-3. When the lightning pod is running again, use `kubectl exec -it -n <namesapce> <tidb-lightning-pod-name> sh` to `exec` into the lightning container.
+3. When the lightning pod is running again, use `kubectl exec -it -n ${namespace} ${pod_name} sh` to `exec` into the lightning container.
 
 4. Get the startup script by running `cat /proc/1/cmdline`.
 
@@ -242,6 +242,6 @@ If the lightning fails to restore data, follow the steps below to do manual inte
 
 Currently, TiDB Lightning can only restore data offline. When the restoration finishes and the TiDB cluster needs to provide service for applications, the TiDB Lightning should be deleted to save cost.
 
-* To delete tikv-importer, run `helm delete <tikv-importer-release-name> --purge`.
+* To delete tikv-importer, run `helm delete ${release_name} --purge`.
 
-* To delete tidb-lightning, run `helm delete <tidb-lightning-release-name> --purge`.
+* To delete tidb-lightning, run `helm delete ${release_name} --purge`.

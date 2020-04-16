@@ -98,7 +98,7 @@ spec:
   cluster:
     name: auto-scaling-demo
     namespace: default
-  metricsUrl: "http://<release-name>-prometheus.<release-namespace>.svc:9090"
+  metricsUrl: "http://${release_name}-prometheus.${namespace}.svc:9090"
   ......
 ```
 
@@ -107,13 +107,13 @@ spec:
 我们将通过以下指令快速部署一个 3 PD、3 TiKV、2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
 
 ```shell
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n <namespace>
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
 tidbcluster.pingcap.com/auto-scaling-demo created
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n <namespace>
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
 tidbmonitor.pingcap.com/auto-scaling-demo created
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n <namespace>
+$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
 tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
 ```
 
@@ -122,9 +122,9 @@ tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
 使用如下命令销毁环境：
 
 ```shell
-kubectl delete tidbcluster auto-scaling-demo -n <namespace>
-kubectl delete tidbmonitor auto-scaling-demo -n <namespace>
-kubectl delete tidbclusterautoscaler auto-scaling-demo -n <namespace>
+kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
+kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
+kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
 ```
 
 ## 配置 TidbClusterAutoScaler

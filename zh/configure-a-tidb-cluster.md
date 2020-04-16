@@ -39,41 +39,41 @@ affinity:
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "region"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
    # this term works when the nodes have the label named zone
    - weight: 20
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "zone"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
    # this term works when the nodes have the label named rack
    - weight: 40
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "rack"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
    # this term works when the nodes have the label named kubernetes.io/hostname
    - weight: 80
      podAffinityTerm:
        labelSelector:
          matchLabels:
-           app.kubernetes.io/instance: <cluster-name>
+           app.kubernetes.io/instance: ${cluster_name}
            app.kubernetes.io/component: "pd"
        topologyKey: "kubernetes.io/hostname"
        namespaces:
-       - <helm namespace>
+       - ${namespace}
 ```
 
 ### 数据的容灾
@@ -100,7 +100,7 @@ affinity:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl label node <nodeName> region=<regionName> zone=<zoneName> rack=<rackName> kubernetes.io/hostname=<hostName>
+    kubectl label node ${node_name} region=${region_name} zone=${zone_name} rack=${rack_name} kubernetes.io/hostname=${host_name}
     ```
 
     其中 `region`、`zone`、`rack`、`kubernetes.io/hostname` 只是举例，要添加的 Label 名字和数量可以任意定义，只要符合规范且和 `pd.config` 里的 `location-labels` 设置的 Labels 保持一致即可。

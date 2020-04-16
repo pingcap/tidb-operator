@@ -38,7 +38,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl edit tc <cluster-name> -n <namespace>
+    kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
 2. Check the upgrade progress:
@@ -46,7 +46,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     After all the Pods finish rebuilding and become `Running`, the upgrade is completed.
@@ -66,7 +66,7 @@ It is recommended that you set `spec.configUpdateStrategy` to `RollingUpdate` to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
     After all the Pods finish rebuilding and become `Running`, the upgrade is completed.
@@ -82,7 +82,7 @@ First, set `annotation` for the cluster:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl annotate --overwrite tc <cluster-name> -n <namespace> tidb.pingcap.com/force-upgrade=true
+kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
 ```
 
 Change the related PD configuration to make sure that PD is in a normal state.
@@ -94,7 +94,7 @@ Change the related PD configuration to make sure that PD is in a normal state.
 > {{< copyable "shell-regular" >}}
 >
 > ```shell
-> kubectl annotate tc <cluster-name> -n <namespace> tidb.pingcap.com/force-upgrade-
+> kubectl annotate tc ${cluster_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```
 
 ## Upgrade using Helm
@@ -110,7 +110,7 @@ If you continue to manage your cluster using Helm, refer to the following steps 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart_version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
 3. Check the upgrade progress:
@@ -118,7 +118,7 @@ If you continue to manage your cluster using Helm, refer to the following steps 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
 ### Change the configuration of TiDB cluster using Helm
@@ -134,7 +134,7 @@ You can change the configuration of TiDB cluster through the following steps:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart_version>
+    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
     ```
 
 4. Check the upgrade process:
@@ -142,7 +142,7 @@ You can change the configuration of TiDB cluster through the following steps:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    watch kubectl -n <namespace> get pod -o wide
+    watch kubectl -n ${namespace} get pod -o wide
     ```
 
 > **Note:**
@@ -160,7 +160,7 @@ First, set `annotation` for the cluster:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl annotate --overwrite tc <release-name> -n <namespace> tidb.pingcap.com/force-upgrade=true
+kubectl annotate --overwrite tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade=true
 ```
 
 Then execute the `helm upgrade` command to continue your interrupted operation:
@@ -168,7 +168,7 @@ Then execute the `helm upgrade` command to continue your interrupted operation:
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart-version>
+helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
 ```
 
 > **Warning:**
@@ -178,5 +178,5 @@ helm upgrade <release-name> pingcap/tidb-cluster -f values.yaml --version=<chart
 > {{< copyable "shell-regular" >}}
 >
 > ```shell
-> kubectl annotate tc <release-name> -n <namespace> tidb.pingcap.com/force-upgrade-
+> kubectl annotate tc ${release_name} -n ${namespace} tidb.pingcap.com/force-upgrade-
 > ```

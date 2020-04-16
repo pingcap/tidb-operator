@@ -51,7 +51,7 @@ When a TiKV node fails, its status turns to `Disconnected`. After 30 minutes (co
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl edit tc -n <namespace> <clusterName>
+kubectl edit tc -n ${namespace} ${cluster_name}
 ```
 
 ```

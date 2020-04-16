@@ -45,9 +45,9 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       namespace: test1
     spec:
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -79,9 +79,9 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       namespace: test1
     spec:
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: ceph
@@ -113,9 +113,9 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
     spec:
       backupType: full
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -148,9 +148,9 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
       backupType: full
       serviceAccount: tidb-backup-manager
       from:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: backup-demo1-tidb-secret
       s3:
         provider: aws
@@ -249,9 +249,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
       schedule: "*/2 * * * *"
       backupTemplate:
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -288,9 +288,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
       schedule: "*/2 * * * *"
       backupTemplate:
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: ceph
@@ -326,9 +326,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
       schedule: "*/2 * * * *"
       backupTemplate:
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
@@ -365,9 +365,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
       serviceAccount: tidb-backup-manager
       backupTemplate:
         from:
-          host: <tidb-host-ip>
-          port: <tidb-port>
-          user: <tidb-user>
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws

@@ -6,7 +6,7 @@ category: how-to
 
 # 访问 Kubernetes 上的 TiDB 集群
 
-在 Kubernetes 集群内访问 TiDB 时，使用 TiDB service 域名 `<cluster-name>-tidb.<namespace>` 即可。
+在 Kubernetes 集群内访问 TiDB 时，使用 TiDB service 域名 `${cluster_name}-tidb.${namespace}` 即可。
 
 若需要在集群外访问，则需将 TiDB 服务端口暴露出去。在 `TidbCluster` CR 中，通过 `spec.tidb.service` 字段进行配置：
 
@@ -46,7 +46,7 @@ spec:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl -n <namespace> get svc <cluster-name>-tidb -ojsonpath="{.spec.ports[?(@.name=='mysql-client')].nodePort}{'\n'}"
+kubectl -n ${namespace} get svc ${cluster_name}-tidb -ojsonpath="{.spec.ports[?(@.name=='mysql-client')].nodePort}{'\n'}"
 ```
 
 查看可通过哪些节点的 IP 访问 TiDB 服务，有两种情况：
@@ -57,7 +57,7 @@ kubectl -n <namespace> get svc <cluster-name>-tidb -ojsonpath="{.spec.ports[?(@.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl -n <namespace> get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=<cluster-name>" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
+    kubectl -n ${namespace} get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=${cluster_name}" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
     ```
 
 ## LoadBalancer

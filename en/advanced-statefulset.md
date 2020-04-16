@@ -62,7 +62,7 @@ The data format of `AdvancedStatefulSet` is the same as that of `StatefulSet`, b
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl get -n <namespace> asts
+kubectl get -n ${namespace} asts
 ```
 
 ### Specify the Pod to be scaled in

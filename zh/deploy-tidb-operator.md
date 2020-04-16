@@ -59,12 +59,12 @@ kubectl get crd tidbclusters.pingcap.com
 
     ```shell
     mkdir -p /home/tidb/tidb-operator && \
-    helm inspect values pingcap/tidb-operator --version=<chart-version> > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    helm inspect values pingcap/tidb-operator --version=${chart_version} > /home/tidb/tidb-operator/values-tidb-operator.yaml
     ```
 
     > **注意：**
     >
-    > `<chart-version>` 在后续文档中代表 chart 版本，例如 `v1.0.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
+    > `${chart_version}` 在后续文档中代表 chart 版本，例如 `v1.0.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
 
 2. 配置 TiDB Operator
 
@@ -75,7 +75,7 @@ kubectl get crd tidbclusters.pingcap.com
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=<chart-version> -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
+    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=${chart_version} -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
 
@@ -95,5 +95,5 @@ TiDB Operator 有两个组件：
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=<chart-version> -f /home/tidb/tidb-operator/values-tidb-operator.yaml
+helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} -f /home/tidb/tidb-operator/values-tidb-operator.yaml
 ```

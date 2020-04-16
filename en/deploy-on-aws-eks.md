@@ -172,7 +172,7 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig_<eks_name> create namespace <namespace>
+    cd .. && kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
     ```
 
     > **Note:**
@@ -184,43 +184,43 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<eks_name> create -f manifests/ -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f manifests/ -n ${namespace}
     ```
 
 ## Access the database
 
-After deploying the cluster, to access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `<>` parts with values from the output):
+After deploying the cluster, to access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `${}` parts with values from the output):
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-ssh -i credentials/<eks_name>.pem centos@<bastion_ip>
+ssh -i credentials/${eks_name}.pem centos@${bastion_ip}
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h <tidb_lb> -P 4000 -u root
+mysql -h ${tidb_lb} -P 4000 -u root
 ```
 
 The default value of `eks_name` is `my-cluster`. If the DNS name is not resolvable, be patient and wait a few minutes.
 
 `tidb_lb` is the LoadBalancer of TiDB Service.
 
-You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_<eks_name>` in the following two ways.
+You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_${eks_name}` in the following two ways.
 
 - By specifying `--kubeconfig` argument:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_<eks_name> get po -n <namespace>
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm --kubeconfig credentials/kubeconfig_<eks_name> ls
+    helm --kubeconfig credentials/kubeconfig_${eks_name} ls
     ```
 
 - Or by setting the `KUBECONFIG` environment variable:
@@ -228,13 +228,13 @@ You can interact with the EKS cluster using `kubectl` and `helm` with the kubeco
     {{< copyable "shell-regular" >}}
 
     ```shell
-    export KUBECONFIG=$PWD/credentials/kubeconfig_<eks_name>
+    export KUBECONFIG=$PWD/credentials/kubeconfig_${eks_name}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get po -n <namespace>
+    kubectl get po -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
@@ -256,9 +256,9 @@ The initial Grafana login credentials are:
 
 ## Upgrade
 
-To upgrade the TiDB cluster, edit the `spec.version` by `kubectl --kubeconfig credentials/kubeconfig_<eks_name> edit tc <default_cluster_name> -n <namespace>`.
+To upgrade the TiDB cluster, edit the `spec.version` by `kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}`.
 
-The upgrading doesn't finish immediately. You can watch the upgrading progress by `kubectl --kubeconfig credentials/kubeconfig_<eks_name> get po -n <namespace> --watch`.
+The upgrading doesn't finish immediately. You can watch the upgrading progress by `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace} --watch`.
 
 ## Scale
 
@@ -269,7 +269,7 @@ After the scaling, modify the `replicas` of the corresponding component by the f
 {{< copyable "shell-regular" >}}
 
 ```
-kubectl --kubeconfig credentials/kubeconfig_<eks_name> edit tc <default_cluster_name> -n <namespace>
+kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}
 ```
 
 For example, to scale out the TiDB nodes, you can modify the number of TiDB instances from 2 to 4:
@@ -283,7 +283,7 @@ After the nodes scale out, modify the `spec.tidb.replicas` in `TidbCluster` to s
 > **Note:**
 >
 > Currently, scaling in is NOT supported because we cannot determine which node to scale in.
-> Scaling out needs a few minutes to complete, you can watch the scaling out progress by `kubectl --kubeconfig credentials/kubeconfig_<eks_name> get po -n <namespace> --watch`.
+> Scaling out needs a few minutes to complete, you can watch the scaling out progress by `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace} --watch`.
 
 ## Customize
 

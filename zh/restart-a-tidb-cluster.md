@@ -38,5 +38,5 @@ category: how-to
 {{< copyable "shell-regular" >}}
 
 ```sh
-kubectl annotate <pod-name> -n <namespace> tidb.pingcap.com/pod-defer-deleting=true
+kubectl annotate ${pod_name} -n ${namespace} tidb.pingcap.com/pod-defer-deleting=true
 ```

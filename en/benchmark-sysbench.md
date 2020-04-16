@@ -144,7 +144,7 @@ Before the test, the `prewarm` command of `oltp_common` is used to warm up data.
 
 ```shell
 sysbench \
-  --mysql-host=<tidb-host> \
+  --mysql-host=${tidb_host} \
   --mysql-port=4000 \
   --mysql-user=root \
   --mysql-db=sbtest \
@@ -160,7 +160,7 @@ sysbench \
   prepare
 ```
 
-`<tidb-host>` is the address of TiDB database, which is specified according to actual test needs. For example, Pod IP, Service domain name, Host IP, and Load Balancer IP (the same below).
+`${tidb_host}` is the address of TiDB database, which is specified according to actual test needs. For example, Pod IP, Service domain name, Host IP, and Load Balancer IP (the same below).
 
 #### Warming-up
 
@@ -168,7 +168,7 @@ sysbench \
 
 ```shell
 sysbench \
-  --mysql-host=<tidb-host> \
+  --mysql-host=${tidb_host} \
   --mysql-port=4000 \
   --mysql-user=root \
   --mysql-db=sbtest \
@@ -190,23 +190,23 @@ sysbench \
 
 ```shell
 sysbench \
-  --mysql-host=<tidb-host> \
+  --mysql-host=${tidb_host} \
   --mysql-port=4000 \
   --mysql-user=root \
   --mysql-db=sbtest \
   --time=600 \
-  --threads=<threads> \
+  --threads=${threads} \
   --report-interval=10 \
   --db-driver=mysql \
   --rand-type=uniform \
   --rand-seed=$RANDOM \
   --tables=16 \
   --table-size=10000000 \
-  <test> \
+  ${test} \
   run
 ```
 
-`<test>` is the test case of sysbench. In this test, `oltp_point_select`, `oltp_update_index`, `oltp_update_no_index`, and `oltp_read_write` are chosen as `<test>`.
+`${test}` is the test case of sysbench. In this test, `oltp_point_select`, `oltp_update_index`, `oltp_update_no_index`, and `oltp_read_write` are chosen as `${test}`.
 
 ## Test report
 

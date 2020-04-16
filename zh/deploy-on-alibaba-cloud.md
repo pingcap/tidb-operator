@@ -63,9 +63,9 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    export TF_VAR_ALICLOUD_REGION=<YOUR_REGION> && \
-    export TF_VAR_ALICLOUD_ACCESS_KEY=<YOUR_ACCESS_KEY> && \
-    export TF_VAR_ALICLOUD_SECRET_KEY=<YOUR_SECRET_KEY>
+    export TF_VAR_ALICLOUD_REGION=${REGION} && \
+    export TF_VAR_ALICLOUD_ACCESS_KEY=${ACCESS_KEY} && \
+    export TF_VAR_ALICLOUD_SECRET_KEY=${SECRET_KEY}
     ```
 
     用于部署集群的各变量的默认值存储在 `variables.tf` 文件中，如需定制可以修改此文件或在安装时通过 `-var` 参数覆盖。
@@ -173,7 +173,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace <namespace>
+    cd .. && kubectl --kubeconfig credentials/kubeconfig create namespace ${namespace}
     ```
 
     > **注意：**
@@ -185,7 +185,7 @@ category: how-to
   {{< copyable "shell-regular" >}}
 
   ```shell
-  kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n <namespace>
+  kubectl --kubeconfig credentials/kubeconfig create -f manifests/ -n ${namespace}
   ```
 
 ## 连接数据库
@@ -195,13 +195,13 @@ category: how-to
 {{< copyable "shell-regular" >}}
 
 ```shell
-ssh -i credentials/<cluster_name>-key.pem root@<bastion_ip>
+ssh -i credentials/${cluster_name}-key.pem root@${bastion_ip}
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-mysql -h <tidb_lb_ip> -P 4000 -u root
+mysql -h ${tidb_lb_ip} -P 4000 -u root
 ```
 
 `tidb_lb_ip` 为 TiDB Service 的 LoadBalancer IP。
@@ -223,19 +223,19 @@ mysql -h <tidb_lb_ip> -P 4000 -u root
 
 ## 升级 TiDB 集群
 
-要升级 TiDB 集群，可以通过 `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>` 修改 `spec.version`。
+要升级 TiDB 集群，可以通过 `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}` 修改 `spec.version`。
 
 升级操作可能会执行较长时间，可以通过以下命令来持续观察进度：
 
 {{< copyable "shell-regular" >}}
 
 ```
-kubectl get pods --namespace <namespace> -o wide --watch
+kubectl get pods --namespace ${namespace} -o wide --watch
 ```
 
 ## TiDB 集群水平伸缩
 
-若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `tikv_count` 或者 `tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig edit tc <tidb_cluster_name> -n <namespace>` 修改对应组件的 `replicas`。
+若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `tikv_count` 或者 `tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}` 修改对应组件的 `replicas`。
 
 ## 销毁集群
 
@@ -364,17 +364,17 @@ module "tidb-cluster-staging" {
 
     ```hcl
     provider "alicloud" {
-        region     = <YOUR_REGION>
-        access_key = <YOUR_ACCESS_KEY>
-        secret_key = <YOUR_SECRET_KEY>
+        region     = ${REGION}
+        access_key = ${ACCESS_KEY}
+        secret_key = ${SECRET_KEY}
     }
 
     module "tidb-operator" {
         source     = "../modules/aliyun/tidb-operator"
 
-        region          = <YOUR_REGION>
-        access_key      = <YOUR_ACCESS_KEY>
-        secret_key      = <YOUR_SECRET_KEY>
+        region          = ${REGION}
+        access_key      = ${ACCESS_KEY}
+        secret_key      = ${SECRET_KEY}
         cluster_name    = "example-cluster"
         key_file        = "ssh-key.pem"
         kubeconfig_file = "kubeconfig"

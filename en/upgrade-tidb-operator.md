@@ -15,29 +15,29 @@ This document describes how to upgrade TiDB Operator and Kubernetes.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/<version>/manifests/crd.yaml && \
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${version}/manifests/crd.yaml && \
     kubectl get crd tidbclusters.pingcap.com
     ```
 
     > **Note:**
     >
-    > The `<version>` in this document represents the version of TiDB Operator, such as `v1.1.0`. You can check the currently supported version using the `helm search -l tidb-operator` command.
+    > The `${version}` in this document represents the version of TiDB Operator, such as `v1.1.0`. You can check the currently supported version using the `helm search -l tidb-operator` command.
 
 2. Get the `values.yaml` file of the `tidb-operator` chart that you want to install:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p /home/tidb/tidb-operator/<version> && \
-    helm inspect values pingcap/tidb-operator --version=<version> > /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    mkdir -p /home/tidb/tidb-operator/${version} && \
+    helm inspect values pingcap/tidb-operator --version=${version} > /home/tidb/tidb-operator/${version}/values-tidb-operator.yaml
     ```
 
-3. Modify the `operatorImage` image in the `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml` file. Merge the customized configuration in the old `values.yaml` file with the `/home/tidb/tidb-operator/<version>/values-tidb-operator.yaml` file, and execute `helm upgrade`:
+3. Modify the `operatorImage` image in the `/home/tidb/tidb-operator/${version}/values-tidb-operator.yaml` file. Merge the customized configuration in the old `values.yaml` file with the `/home/tidb/tidb-operator/${version}/values-tidb-operator.yaml` file, and execute `helm upgrade`:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade tidb-operator pingcap/tidb-operator --version=<version> -f /home/tidb/tidb-operator/<version>/values-tidb-operator.yaml
+    helm upgrade tidb-operator pingcap/tidb-operator --version=${version} -f /home/tidb/tidb-operator/${version}/values-tidb-operator.yaml
     ```
 
     > **Note:**

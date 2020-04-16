@@ -62,7 +62,7 @@ spec:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n <namespace>
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n ${namespace}
 ```
 
 然后我们通过 kubectl get pod 命令来检查 TidbMonitor 启动完毕:
@@ -70,7 +70,7 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 {{< copyable "shell-regular" >}}
 
 ```shell
-$ kubectl get pod -l app.kubernetes.io/instance=basic -n <namespace> | grep monitor
+$ kubectl get pod -l app.kubernetes.io/instance=basic -n ${namespace} | grep monitor
 basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 ```
 
@@ -81,7 +81,7 @@ basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 {{< copyable "shell-regular" >}}
 
 ```shell
-> kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
+kubectl -n ${namespace} port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
 然后访问 localhost:3000。
@@ -91,7 +91,7 @@ basic-monitor-85fcf66bc4-cwpcn     3/3     Running   0          117s
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl delete tidbmonitor basic -n <namespace>
+kubectl delete tidbmonitor basic -n ${namespace}
 ```
 
 ## 持久化监控数据
@@ -107,7 +107,7 @@ spec:
   clusters:
     - name: basic
   persistent: true
-  storageClassName: <storageClassName>
+  storageClassName: ${storageClassName}
   storage: 5G
   prometheus:
     baseImage: prom/prometheus
@@ -131,7 +131,7 @@ spec:
 你可以通过以下命令来确认 PVC 情况:
 
 ```shell
-$ kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n <namespace>
+$ kubectl get pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/component=monitor -n ${namespace}
 NAME            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 basic-monitor   Bound    pvc-6db79253-cc9e-4730-bbba-ba987c29db6f   5G         RWO            standard       51s
 ```

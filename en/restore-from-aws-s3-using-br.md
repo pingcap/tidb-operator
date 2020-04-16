@@ -43,7 +43,7 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
 ### Grant permissions by associating IAM with Pod
@@ -61,7 +61,7 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
 3. Create the IAM role:
@@ -100,7 +100,7 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=<password> --namespace=test2
+    kubectl create secret generic restore-demo2-tidb-secret --from-literal=password=${password} --namespace=test2
     ```
 
 3. Enable the IAM role for the service account on the cluster:
@@ -157,16 +157,16 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
         cluster: demo2
         clusterNamespace: test2
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
         # sendCredToTikv: true
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
@@ -201,15 +201,15 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
         sendCredToTikv: false
         clusterNamespace: test2
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
@@ -242,15 +242,15 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
         sendCredToTikv: false
         clusterNamespace: test2
         # logLevel: info
-        # statusAddr: <status-addr>
+        # statusAddr: ${status_addr}
         # concurrency: 4
         # rateLimit: 0
-        # timeAgo: <time>
+        # timeAgo: ${time}
         # checksum: true
       to:
-        host: <tidb-host-ip>
-        port: <tidb-port>
-        user: <tidb-user>
+        host: ${tidb_host}
+        port: ${tidb_port}
+        user: ${tidb_user}
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
@@ -276,10 +276,10 @@ More `Restore` CR fields are described as follows:
 * `.spec.to.tidbSecretName`: the secret of the user password of the `.spec.to.tidbSecretName` TiDB cluster.
 * `.spec.to.tlsClient.tlsSecret`: the secret of the certificate used during the restoration.
 
-    If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to restore data using the `<cluster-name>-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the restoration. To generate the secret, run the following command:
+    If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to restore data using the `${cluster_name}-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the restoration. To generate the secret, run the following command:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic <secretName> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+    kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
