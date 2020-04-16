@@ -123,11 +123,13 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		prometheusSvc := fmt.Sprintf("http://%s/api/v1/query?query=up", prometheusAddr)
 		resp, err := http.Get(prometheusSvc)
 		if err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
 		response := &struct {
@@ -135,6 +137,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		}{}
 		err = json.Unmarshal(body, response)
 		if err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
 		if response.Status != "success" {
@@ -144,18 +147,22 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 		return true, nil
 	})
 	if err != nil {
+		klog.Error(err.Error())
 		return err
 	}
+	klog.Infof("prometheus[%s/%s] is up", namespace, name)
 
 	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		prometheusTargets := fmt.Sprintf("http://%s/api/v1/targets", prometheusAddr)
 		targetResponse, err := http.Get(prometheusTargets)
 		if err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
 		defer targetResponse.Body.Close()
 		body, err := ioutil.ReadAll(targetResponse.Body)
 		if err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
 		data := struct {
@@ -171,6 +178,7 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 			} `json:"data"`
 		}{}
 		if err := json.Unmarshal(body, &data); err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
 		klog.Infof("monitor[%s/%s]'s prometheus targets error", namespace, name)

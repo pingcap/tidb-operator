@@ -19,6 +19,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -761,6 +762,16 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
 			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+
+			// Replace Prometheus into Mock Prometheus
+			l := strings.Split(e2econfig.TestConfig.E2EImage, ":")
+			image := ""
+			for _, s := range l[:len(l)-1] {
+				image = fmt.Sprintf("%s%s:", image, s)
+			}
+			monitor.Spec.Prometheus.BaseImage = image[:len(image)-1]
+			monitor.Spec.Prometheus.Version = l[len(l)-1]
+
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
 			framework.ExpectNoError(err, "Create TidbMonitor error")
 			err = tests.CheckTidbMonitor(monitor, c, fw)
