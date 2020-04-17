@@ -23,48 +23,56 @@ func TestGetImageTag(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name   string
-		image  string
-		expect string
+		name      string
+		image     string
+		imageName string
+		tag       string
 	}
 
 	tests := []*testcase{
 		{
-			name:   "with repo",
-			image:  "localhost:5000/tikv:v3.1.0",
-			expect: "v3.1.0",
+			name:      "with repo",
+			image:     "localhost:5000/tikv:v3.1.0",
+			imageName: "localhost:5000/tikv",
+			tag:       "v3.1.0",
 		},
 		{
-			name:   "no colon",
-			image:  "tikv",
-			expect: "",
+			name:      "no colon",
+			image:     "tikv",
+			imageName: "tikv",
+			tag:       "",
 		},
 		{
-			name:   "no repo",
-			image:  "tikv:nightly",
-			expect: "nightly",
+			name:      "no repo",
+			image:     "tikv:nightly",
+			imageName: "tikv",
+			tag:       "nightly",
 		},
 		{
-			name:   "start with colon",
-			image:  ":v4.0.0",
-			expect: "v4.0.0",
+			name:      "start with colon",
+			image:     ":v4.0.0",
+			imageName: "",
+			tag:       "v4.0.0",
 		},
 		{
-			name:   "end with colon",
-			image:  "tikv:",
-			expect: "",
+			name:      "end with colon",
+			image:     "tikv:",
+			imageName: "tikv",
+			tag:       "",
 		},
 		{
-			name:   "only colon",
-			image:  ":",
-			expect: "",
+			name:      "only colon",
+			image:     ":",
+			imageName: "",
+			tag:       "",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			version := GetImageTag(test.image)
-			g.Expect(version).To(Equal(test.expect))
+			name, version := ParseImage(test.image)
+			g.Expect(version).To(Equal(test.tag))
+			g.Expect(name).To(Equal(test.imageName))
 		})
 	}
 }

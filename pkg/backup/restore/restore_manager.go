@@ -275,7 +275,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		fmt.Sprintf("--restoreName=%s", name),
 	}
 	tikvImage := tc.TiKVImage()
-	tikvVersion := backuputil.GetImageTag(tikvImage)
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
