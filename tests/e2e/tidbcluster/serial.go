@@ -897,6 +897,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", "auto-scaling-tikv-3"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv mock metrics error")
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -957,6 +958,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				InstancesPod: []string{"auto-scaling-tidb-0", "auto-scaling-tidb-1"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tidb mock metrics error")
 
 			// Scale Tidb to 3 replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -1015,6 +1017,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				InstancesPod: []string{"auto-scaling-tidb-0", "auto-scaling-tidb-1", "auto-scaling-tidb-2"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tidb mock metrics error")
 
 			// Scale Tidb to 2 Replicas and Check
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
