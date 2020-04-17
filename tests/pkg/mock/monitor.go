@@ -62,6 +62,7 @@ func (m *mockPrometheus) ServeQuery(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, "no query param")
 		return
 	}
+	klog.Infof("receive query, key: %s", key)
 	v, ok := m.responses[key]
 	if !ok {
 		writeResponse(w, "no response value found")
@@ -82,7 +83,13 @@ func (m *mockPrometheus) SetResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m.addIntoMaps(mp.Name, mp.MemberType, mp.Duration, mp.Value)
+	b, err := json.Marshal(BuildResponse(mp.InstancesPod, mp.Value))
+	if err != nil {
+		writeResponse(w, err.Error())
+		return
+	}
+
+	m.addIntoMaps(mp.Name, mp.MemberType, mp.Duration, string(b))
 	writeResponse(w, "ok")
 	return
 }
@@ -112,12 +119,14 @@ func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
 
 func (m *mockPrometheus) addIntoMaps(name, memberType, duration, value string) {
 	key := ""
+	klog.Infof("name= %s , memberType = %s , duration = %s , value = %s", name, memberType, duration, value)
 	if memberType == "tidb" {
 		key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
-	} else if key == "tikv" {
+	} else if memberType == "tikv" {
 		key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
 	}
 	m.responses[fmt.Sprintf("%s", key)] = value
+	klog.Infof("add key: %s with value: %s", key, value)
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {
