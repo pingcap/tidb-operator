@@ -15,6 +15,7 @@ package backup
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -269,6 +270,13 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
 
+	var tikvVersion string
+	tikvImage := tc.TiKVImage()
+	imageVersion := strings.Split(tikvImage, ":")
+	if len(imageVersion) == 2 {
+		tikvVersion = imageVersion[1]
+	}
+
 	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.kubeCli)
 	if err != nil {
 		return nil, reason, err
@@ -280,11 +288,18 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	envVars = append(envVars, storageEnv...)
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "BR_LOG_TO_TERM",
+		Value: string(1),
+	})
 
 	args := []string{
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
+	}
+	if tikvVersion != "" {
+		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)
