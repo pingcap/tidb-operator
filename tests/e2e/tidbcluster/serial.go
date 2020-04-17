@@ -767,13 +767,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
 
 			// Replace Prometheus into Mock Prometheus
-			l := strings.Split(e2econfig.TestConfig.E2EImage, ":")
-			image := ""
-			for _, s := range l[:len(l)-1] {
-				image = fmt.Sprintf("%s%s:", image, s)
-			}
-			monitor.Spec.Prometheus.BaseImage = image[:len(image)-1]
-			monitor.Spec.Prometheus.Version = l[len(l)-1]
+			a := e2econfig.TestConfig.E2EImage
+			colonIdx := strings.LastIndexByte(a, ':')
+			image := a[:colonIdx]
+			tag := a[colonIdx+1:]
+			monitor.Spec.Prometheus.BaseImage = image
+			monitor.Spec.Prometheus.Version = tag
 
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
 			framework.ExpectNoError(err, "Create TidbMonitor error")
