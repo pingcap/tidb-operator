@@ -36,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
@@ -107,6 +106,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	klog.Infof("recover %s/%s successfully", ns, podName)
 	return nil
 }
+
 func (oa *operatorActions) DeletePDDataThenCheckFailoverOrDie(info *TidbClusterConfig, pdFailoverPeriod time.Duration) {
 	if err := oa.DeletePDDataThenCheckFailover(info, pdFailoverPeriod); err != nil {
 		slack.NotifyAndPanic(err)
@@ -189,6 +189,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return true, nil
 	})
 	if err != nil {
+		klog.Error(err.Error())
 		return err
 	}
 
@@ -232,28 +233,24 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return err
 	}
 
-	// clear failure stores
-	err = wait.Poll(8*time.Second, 10*time.Minute, func() (done bool, err error) {
-		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
+	ns := info.Namespace
+	tcName := info.ClusterName
+	return wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
+			klog.Error(err.Error())
 			return false, nil
 		}
-		if tc.Status.TiKV.FailureStores == nil || len(tc.Status.TiKV.FailureStores) == 0 {
+		if tc.Status.TiKV.FailureStores == nil || len(tc.Status.TiKV.FailureStores) < 1 {
 			return true, nil
 		}
 		tc.Status.TiKV.FailureStores = nil
-		_, err = oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Update(tc)
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if err != nil {
-			return false, nil
+			klog.Error(err.Error())
 		}
 		return false, nil
 	})
-	err = oa.CheckTidbClusterStatus(info)
-	if err != nil {
-		return err
-	}
-	klog.Info("TruncateSSTFileThenCheckFailover success")
-	return nil
 }
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
@@ -435,26 +432,13 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	}
 
 	// recover tikv manually
-	klog.Infof("recover tikv[%s/%s] failover manually", cluster.Namespace, cluster.ClusterName)
-	err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
-		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-		if err != nil {
-			return false, nil
-		}
-		if tc.Status.TiKV.FailureStores == nil || len(tc.Status.TiKV.FailureStores) < 1 {
-			klog.Infof("tc[%s/%s] 's tikv failover has been recovered", tc.Namespace, tc.Name)
-			return true, nil
-		}
+	if tc.Status.TiKV.FailureStores != nil {
 		tc.Status.TiKV.FailureStores = nil
-		_, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
 		if err != nil {
 			klog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
 			return false, nil
 		}
-		return false, nil
-	})
-	if err != nil {
-		return false, err
 	}
 
 	return true, nil
@@ -823,7 +807,7 @@ func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string
 }
 
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error {
-	return wait.Poll(3*time.Second, 10*time.Minute, func() (bool, error) {
+	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
 			klog.Errorf("failed to list nodes,error:%v", err)
@@ -835,8 +819,7 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			for _, condition := range node.Status.Conditions {
 				if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
-					klog.Infof("node[%s] is not running, condition[%v] status is %v", node.GetName(), condition.Type, condition.Status)
-					return false, nil
+					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
 				}
 			}
 		}
@@ -942,28 +925,6 @@ func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, erro
 	}
 
 	return true, nil
-}
-
-func (oa *operatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
-	err := wait.Poll(1*time.Minute, 60*time.Minute, func() (bool, error) {
-		for _, cluster := range clusters {
-			pods, err := oa.getPodsByNode(cluster, faultNode)
-			if err != nil {
-				return false, nil
-			}
-			for _, pod := range pods {
-				klog.Infof("start to check whether pod[%s/%s] is ready on node[%s]", pod.Namespace, pod.Name, faultNode)
-				ready := podutil.IsPodReady(pod)
-				if !ready {
-					return false, nil
-				}
-			}
-		}
-		return true, nil
-	})
-	if err != nil {
-		slack.NotifyAndPanic(fmt.Errorf("failed to wait pod ready on restarted node"))
-	}
 }
 
 func GetPodStatus(pod *corev1.Pod) string {
