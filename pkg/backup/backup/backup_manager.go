@@ -291,7 +291,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--backupName=%s", name),
 	}
 	tikvImage := tc.TiKVImage()
-	tikvVersion := backuputil.GetImageTag(tikvImage)
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
