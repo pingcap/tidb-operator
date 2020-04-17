@@ -24,6 +24,7 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
@@ -483,6 +484,76 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.ExpectNoError(err)
 		})
 
+		// There is no guarantee but tidb pods should be assigned back to
+		// previous nodes if no other pods to occupy the positions.
+		// See docs/design-proposals/tidb-stable-scheduling.md
+		ginkgo.It("[Feature: StableScheduling] TiDB pods should be scheduled to preivous nodes", func() {
+			clusterName := "tidb-scheduling"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 3
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(clusterName).Component(label.TiDBLabelVal).Labels()).String(),
+			}
+			oldPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Update tidb configuration")
+			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Config.TokenLimit = func(i uint) *uint {
+					return &i
+				}(2000)
+				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
+				return nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Waiting for all tidb pods are recreated and assigned to the same node")
+			getOldPodByName := func(pod *v1.Pod) *v1.Pod {
+				for _, oldPod := range oldPodList.Items {
+					if oldPod.Name == pod.Name {
+						return &oldPod
+					}
+				}
+				return nil
+			}
+			err = wait.PollImmediate(time.Second*5, time.Minute*15, func() (bool, error) {
+				newPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, err
+				}
+				if apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				if len(newPodList.Items) != len(oldPodList.Items) {
+					return false, nil
+				}
+				for _, newPod := range newPodList.Items {
+					oldPod := getOldPodByName(&newPod)
+					if oldPod == nil {
+						return false, fmt.Errorf("found an unexpected pod: %q", newPod.Name)
+					}
+					if oldPod.UID == newPod.UID {
+						// not recreated yet
+						return false, nil
+					}
+					if oldPod.Spec.NodeName != newPod.Spec.NodeName {
+						// recreated but assigned to another node
+						return false, fmt.Errorf("pod %q recreated but not assigned to previous node %q, got %q", oldPod.Name, oldPod.Spec.NodeName, newPod.Spec.NodeName)
+					}
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err)
+		})
 	})
 
 })
