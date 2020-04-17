@@ -14,9 +14,11 @@
 package backup
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os/exec"
 	"path"
 	"strings"
@@ -64,28 +66,38 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	cmd := exec.Command("br", fullArgs...)
-	cmd.Stderr = cmd.Stdout
+	bin := "br" + backupUtil.Suffix(bo.TiKVVersion)
+	cmd := exec.Command(bin, fullArgs...)
+
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
 		return remotePath, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
+	}
+	stdErr, err := cmd.StderrPipe()
+	if err != nil {
+		return remotePath, fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
 	}
 	err = cmd.Start()
 	if err != nil {
 		return remotePath, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
-	var tmpOutput, errMsg string
+	var errMsg string
+	reader := bufio.NewReader(stdOut)
 	for {
-		tmp := make([]byte, 1024)
-		_, err := stdOut.Read(tmp)
-		tmpOutput = string(tmp)
-		if strings.Contains(tmpOutput, "[ERROR]") {
-			errMsg += tmpOutput
+		line, err := reader.ReadString('\n')
+		if strings.Contains(line, "[ERROR]") {
+			errMsg += line
 		}
-		klog.Infof(strings.Replace(tmpOutput, "\n", "", -1))
-		if err != nil {
+
+		klog.Infof(strings.Replace(line, "\n", "", -1))
+		if err != nil || io.EOF == err {
 			break
 		}
+	}
+	tmpErr, _ := ioutil.ReadAll(stdErr)
+	if len(tmpErr) > 0 {
+		klog.Infof(string(tmpErr))
+		errMsg += string(tmpErr)
 	}
 	err = cmd.Wait()
 	if err != nil {

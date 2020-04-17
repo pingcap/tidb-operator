@@ -19,6 +19,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -39,6 +40,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
+	"github.com/pingcap/tidb-operator/tests/pkg/mock"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -761,23 +765,55 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err, "Check TidbCluster error")
 			monitor := fixture.NewTidbMonitor("monitor", ns, tc, false, false)
+
+			// Replace Prometheus into Mock Prometheus
+			a := e2econfig.TestConfig.E2EImage
+			colonIdx := strings.LastIndexByte(a, ':')
+			image := a[:colonIdx]
+			tag := a[colonIdx+1:]
+			monitor.Spec.Prometheus.BaseImage = image
+			monitor.Spec.Prometheus.Version = tag
+
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
 			framework.ExpectNoError(err, "Create TidbMonitor error")
 			err = tests.CheckTidbMonitor(monitor, c, fw)
 			framework.ExpectNoError(err, "Check TidbMonitor error")
 			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
 
-			//TODO we should mock the tidbmonitor metrics data to check the metrics calculating
-			// Currently these steps are checked by unit test
-			// For now, we make minReplicas and maxReplicas equal to run the auto-scaling
+			duration := "1m"
+			mp := &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiKVMemberType.String(),
+				Duration:   duration,
+				// The cpu requests of tikv is 100m, so the threshold value would be 60*0.1*3*0.8 = 14.4
+				// so we would set Value as "5" for each instance so that the sum in each auto-scaling calculating would be 15
+				Value:        "5.0",
+				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
+			}
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv mock metrics error")
 
-			// Scale Tikv To 4 replicas and Check
-			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
-				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas: 4,
-					MinReplicas: pointer.Int32Ptr(4),
+			var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
+				Type: autoscalingv2beta2.ResourceMetricSourceType,
+				Resource: &autoscalingv2beta2.ResourceMetricSource{
+					Name: corev1.ResourceCPU,
+					Target: autoscalingv2beta2.MetricTarget{
+						AverageUtilization: pointer.Int32Ptr(80),
+					},
 				},
 			}
+
+			// Scale Tikv To 4 replicas and Check, cpu load threshold 80%
+			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
+				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
+					MaxReplicas:            4,
+					MinReplicas:            pointer.Int32Ptr(3),
+					MetricsTimeDuration:    &duration,
+					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
+				},
+			}
+			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
+
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
 			framework.ExpectNoError(err, "Create TidbMonitorClusterAutoScaler error")
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
@@ -850,18 +886,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
 			klog.Info("success to check tikv auto scale-out to 4 replicas")
 
-			// Scale Tikv To 3 replicas and Check
-			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
-			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
-				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas:            3,
-					MinReplicas:            pointer.Int32Ptr(3),
-					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
-				},
+			mp = &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiKVMemberType.String(),
+				Duration:   duration,
+				// The cpu requests of tikv is 100m, so the threshold value would be 60*0.1*4*0.8 = 19.2
+				// so we would set Value as "1" for each instance so that the sum in each auto-scaling calculating would be 4
+				Value:        "1.0",
+				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", "auto-scaling-tikv-3"},
 			}
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
-			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tikv mock metrics error")
+
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
@@ -911,16 +947,31 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check tikv auto-scale to 3 error")
 			klog.Info("success to check tikv auto scale-in to 3 replicas")
 
+			mp = &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiDBMemberType.String(),
+				Duration:   duration,
+				// The cpu requests of tidb is 100m, so the threshold value would be 60*0.1*2*0.8 = 9.6
+				// so we would set Value as "5" for each instance so that the sum in each auto-scaling calculating would be 10
+				Value:        "5.0",
+				InstancesPod: []string{"auto-scaling-tidb-0", "auto-scaling-tidb-1"},
+			}
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tidb mock metrics error")
+
 			// Scale Tidb to 3 replicas and Check
 			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
 			tac.Spec.TiKV = nil
 			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas: 3,
-					MinReplicas: pointer.Int32Ptr(3),
+					MaxReplicas:            3,
+					MinReplicas:            pointer.Int32Ptr(2),
+					MetricsTimeDuration:    &duration,
+					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
+			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
 
@@ -955,20 +1006,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check tidb auto-scale to 3 error")
 			klog.Infof("success to check tidb auto scale-out to 3 replicas")
 
-			// Scale Tidb to 2 Replicas and Check
-			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
-			tac.Spec.TiKV = nil
-			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
-				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas:            2,
-					MinReplicas:            pointer.Int32Ptr(2),
-					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
-				},
+			mp = &mock.MonitorParams{
+				Name:       tc.Name,
+				MemberType: v1alpha1.TiDBMemberType.String(),
+				Duration:   duration,
+				// The cpu requests of tidb is 100m, so the threshold value would be 60*0.1*2*0.8 = 9.6
+				// so we would set Value as "1" for each instance so that the sum in each auto-scaling calculating would be 3
+				Value:        "1.0",
+				InstancesPod: []string{"auto-scaling-tidb-0", "auto-scaling-tidb-1", "auto-scaling-tidb-2"},
 			}
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
-			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
+			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
+			framework.ExpectNoError(err, "set tidb mock metrics error")
 
+			// Scale Tidb to 2 Replicas and Check
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
