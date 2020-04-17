@@ -8,6 +8,12 @@ category: how-to
 
 Kubernetes v1.9 introduces the [dynamic admission control](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) to modify and validate resources. TiDB Operator also supports the dynamic admission control to modify, validate, and maintain resources. This document describes how to enable the admission controller and introduces the functionality of the admission controller.
 
+## Prerequisites
+
+Unlike those of most products on Kubernetes, the admission controller of TiDB Operator consists of two mechanisms: [extension API-server](https://kubernetes.io/docs/tasks/access-kubernetes-api/setup-extension-api-server/) and [Webhook Configuration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#configure-admission-webhooks-on-the-fly).
+
+To use the admission controller, you need to enable the aggregation layer feature of the Kubernetes cluster. The feature is enabled by default. To check whether it is enabled, see [Enable Kubernetes Apiserver flags](https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#enable-kubernetes-apiserver-flags).
+
 ## Enable the admission controller
 
 With a default installation, TiDB Operator disables the admission controller. Take the following steps to manually turn it on.
@@ -20,6 +26,22 @@ With a default installation, TiDB Operator disables the admission controller. Ta
     admissionWebhook:
       create: true
     ```
+
+    * If your Kubernetes cluster version >= v1.13.0, enable the Webhook feature by using the configuration above.
+
+    * If your Kubernetes cluster version < v1.13.0, run the following command and configure the `admissionWebhook.cabundle` in `values.yaml` as the return value:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
+        ```
+
+        ```yaml
+        admissionWebhook:
+          # Configure the value of `admissionWebhook.cabundle` as the return value of the command above
+          cabundle: <cabundle>
+        ```
 
 2. Configure the failure policy.
 
@@ -46,6 +68,128 @@ With a default installation, TiDB Operator disables the admission controller. Ta
 3. Install or update TiDB Operator.
 
     To install or update TiDB Operator, see [Deploy TiDB Operator in Kubernetes](deploy-tidb-operator.md).
+
+## Set the TLS certificate for the admission controller
+
+By default, the admission controller and Kubernetes api-server skip the [TLS verification](https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver). To manually enable and configure the TLS verification between the admission controller and Kubernetes api-server, take the following steps:
+
+1. Generate the custom certificate.
+
+    To generate the custom CA (client auth) file, refer to Step 1 to Step 4 in [Generate certificates using `cfssl`](enable-tls-between-components.md#using-cfssl).
+
+    Use the following configuration in `ca-config.json`:
+
+    ```json
+    {
+        "signing": {
+            "default": {
+                "expiry": "8760h"
+            },
+            "profiles": {
+                "server": {
+                    "expiry": "8760h",
+                    "usages": [
+                        "signing",
+                        "key encipherment",
+                        "server auth"
+                    ]
+                }
+            }
+        }
+    }
+    ```
+
+    After executing Step 4, run the `ls` command. The following files should be listed in the `cfssl` folder:
+
+    ```bash
+    ca-config.json    ca-csr.json    ca-key.pem    ca.csr    ca.pem
+    ```
+
+2. Generate the certificate for the admission controller.
+
+    1. Create the default `webhook-server.json` file:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        cfssl print-defaults csr > webhook-server.json
+        ```
+
+    2. Modify the `webhook-server.json` file as follows:
+
+        ```json
+        {
+            "CN": "TiDB Operator Webhook",
+            "hosts": [
+                "tidb-admission-webhook.<namespace>",
+                "tidb-admission-webhook.<namespace>.svc",
+                "tidb-admission-webhook.<namespace>.svc.cluster",
+                "tidb-admission-webhook.<namespace>.svc.cluster.local"
+            ],
+            "key": {
+                "algo": "rsa",
+                "size": 2048
+            },
+            "names": [
+                {
+                    "C": "US",
+                    "L": "CA",
+                    "O": "PingCAP",
+                    "ST": "Beijing",
+                    "OU": "TiDB"
+                }
+            ]
+        }
+        ```
+
+        `<namespace>` is the namespace which TiDB Operator is deployed in.
+
+    3. Generate the server-side certificate for TiDB Operator Webhook:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server webhook-server.json | cfssljson -bare webhook-server
+        ```
+
+    4. Run the `ls | grep webhook-server` command. The following files should be listed:
+
+        ```bash
+        webhook-server-key.pem
+        webhook-server.csr
+        webhook-server.json
+        webhook-server.pem
+        ```
+
+3. Create a secret in the Kubernetes cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=~/cfssl/webhook-server.pem --from-file=tls.key=~/cfssl/webhook-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    ```
+
+4. Modify `values.yaml`, and install or upgrade TiDB Operator.
+
+    Get the value of `ca.crt`:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
+    ```
+
+    Configure the items in `values.yaml` as described below:
+
+    ```yaml
+    admissionWebhook:
+      apiservice:
+        insecureSkipTLSVerify: false # Enable TLS verification
+        tlsSecret: "<secret-name>" # The name of the secret created in Step 3
+        caBundle: "<caBundle>" # The value of `ca.crt` obtained in the above step
+    ```
+
+    After configuring the items, install or upgrade TiDB Operator. For installation, see [Deploy TiDB Operator](deploy-tidb-operator.md). For upgrade, see [Upgrade TiDB Operator](upgrade-tidb-operator.md).
 
 ## Functionality of admission controller
 
