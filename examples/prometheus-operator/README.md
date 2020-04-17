@@ -2,11 +2,12 @@
 
 > **Note:**
 >
-> This example describe ServiceMonitor and PrometheusRule yaml demo , you can use existing Prometheus CRD instance to load .
+> this example describe how to monitor TidbCluster with existing Prometheus managed by [prometheus-operator](https://github.com/coreos/prometheus-operator) in the Kubernetes
+> this case is only used to demo and not suggest to use in the prod env.
 
 **Prerequisites**: 
 - Has Prometheus operator installed. [Doc](https://github.com/coreos/kube-prometheus)
-
+    
   This could by verified by the following command:
   
   ```bash
@@ -26,13 +27,12 @@
   
 ## Initialize
 
-Initialize serviceMonitor with label ` app: tidb cluster: basic` and prometheus rules.
-
 ```bash
 > kubectl -n <namespace> apply -f ./
 ```
 
 Wait for Initialize job done:
+
 ```bash
 $ kubectl get serviceMonitor -n <namespace>| grep basic
 NAME         AGE
@@ -47,6 +47,7 @@ NAME         AGE
 basic-prometheus-rules   23h
 ```
 
+Then we can go to prometheus homepage to see if it works, like http://<IP>:9090/rules and http://<IP>:9090/targets URL.
 
 ## Destroy
 
