@@ -20,7 +20,6 @@ Scheduling rule 1: Make sure that the number of PD instances scheduled on each n
 
 | PD cluster size (Replicas) | Maximum number of PD instances that can be scheduled on each node |
 | ------------- | ------------- |
-This conversation was marked as resolved by toutdesuite
 | 1  | 1  |
 | 2  | 1  |
 | 3  | 1  |
