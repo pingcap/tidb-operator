@@ -930,6 +930,7 @@ func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, erro
 
 func (oa *operatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
 
+	err := wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
 		for _, cluster := range clusters {
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(
