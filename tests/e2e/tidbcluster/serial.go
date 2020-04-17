@@ -784,7 +784,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			duration := "1m"
 			mp := &mock.MonitorParams{
 				Name:       tc.Name,
-				MemberType: "tikv",
+				MemberType: v1alpha1.TiKVMemberType.String(),
 				Duration:   duration,
 				// The cpu requests of tikv is 100m, so the threshold value would be 60*0.1*3*0.8 = 14.4
 				// so we would set Value as "5" for each instance so that the sum in each auto-scaling calculating would be 15
@@ -807,9 +807,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			// Scale Tikv To 4 replicas and Check, cpu load threshold 80%
 			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas:         4,
-					MinReplicas:         pointer.Int32Ptr(3),
-					MetricsTimeDuration: &duration,
+					MaxReplicas:            4,
+					MinReplicas:            pointer.Int32Ptr(3),
+					MetricsTimeDuration:    &duration,
+					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
@@ -888,7 +889,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
-				MemberType: "tikv",
+				MemberType: v1alpha1.TiKVMemberType.String(),
 				Duration:   duration,
 				// The cpu requests of tikv is 100m, so the threshold value would be 60*0.1*4*0.8 = 19.2
 				// so we would set Value as "1" for each instance so that the sum in each auto-scaling calculating would be 4
@@ -897,20 +898,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 
-			// Scale Tikv To 3 replicas and Check
-			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
-			tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{
-				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas:            4,
-					MinReplicas:            pointer.Int32Ptr(3),
-					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
-					MetricsTimeDuration:    &duration,
-				},
-			}
-			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
-			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
@@ -962,7 +949,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
-				MemberType: "tidb",
+				MemberType: v1alpha1.TiDBMemberType.String(),
 				Duration:   duration,
 				// The cpu requests of tidb is 100m, so the threshold value would be 60*0.1*2*0.8 = 9.6
 				// so we would set Value as "5" for each instance so that the sum in each auto-scaling calculating would be 10
@@ -977,9 +964,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tac.Spec.TiKV = nil
 			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
 				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas:         3,
-					MinReplicas:         pointer.Int32Ptr(2),
-					MetricsTimeDuration: &duration,
+					MaxReplicas:            3,
+					MinReplicas:            pointer.Int32Ptr(2),
+					MetricsTimeDuration:    &duration,
+					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
@@ -1019,7 +1007,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
-				MemberType: "tidb",
+				MemberType: v1alpha1.TiDBMemberType.String(),
 				Duration:   duration,
 				// The cpu requests of tidb is 100m, so the threshold value would be 60*0.1*2*0.8 = 9.6
 				// so we would set Value as "1" for each instance so that the sum in each auto-scaling calculating would be 3
@@ -1029,21 +1017,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 
 			// Scale Tidb to 2 Replicas and Check
-			tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err, "Get TidbCluster AutoScaler err")
-			tac.Spec.TiKV = nil
-			tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{
-				BasicAutoScalerSpec: v1alpha1.BasicAutoScalerSpec{
-					MaxReplicas:            3,
-					MinReplicas:            pointer.Int32Ptr(2),
-					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
-					MetricsTimeDuration:    &duration,
-				},
-			}
-			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
-			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
-
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
