@@ -315,8 +315,6 @@ category: how-to
 
     创建一个 `tidb-client-cert.yaml` 文件，并输入以下内容：
 
-    {{< copyable "shell-regular" >}}
-
     ``` yaml
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate

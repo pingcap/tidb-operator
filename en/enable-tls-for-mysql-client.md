@@ -321,8 +321,6 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
     Create a `tidb-client-cert.yaml` file with the following content:
 
-    {{< copyable "shell-regular" >}}
-
     ``` yaml
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
