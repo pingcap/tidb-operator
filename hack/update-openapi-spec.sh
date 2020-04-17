@@ -26,7 +26,7 @@ source "${ROOT}/hack/lib.sh"
 export GOBIN="${OUTPUT_BIN}"
 PATH="${GOBIN}:${PATH}"
 
-# Enable go modules explicilty.
+# Enable go modules explicitly.
 export GO111MODULE=on
 go install k8s.io/code-generator/cmd/openapi-gen
 

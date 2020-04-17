@@ -692,6 +692,15 @@ type ComponentSpec struct {
 	// - SLOW_LOG_FILE
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Additional containers of the component.
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
+
+	// Additional volumes of component pod. Currently this only
+	// supports additional volume mounts for sidecar containers.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
 }
 
 // +k8s:openapi-gen=true

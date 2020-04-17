@@ -512,11 +512,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		})
 	}
 	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
-	podSpec.Volumes = vols
+	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
-	podSpec.Containers = []corev1.Container{tiflashContainer}
-	podSpec.Containers = append(podSpec.Containers, buildTiFlashSidecarContainers(tc)...)
+	podSpec.Containers = append([]corev1.Container{tiflashContainer}, buildTiFlashSidecarContainers(tc)...)
+	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 
 	tiflashset := &apps.StatefulSet{

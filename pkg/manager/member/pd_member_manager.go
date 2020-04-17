@@ -685,8 +685,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
-	podSpec.Volumes = vols
-	podSpec.Containers = []corev1.Container{pdContainer}
+	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
+	podSpec.Containers = append([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers()...)
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
