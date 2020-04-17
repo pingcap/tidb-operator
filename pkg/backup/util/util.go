@@ -410,3 +410,16 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 	}
 	return nil
 }
+
+// ParseImage returns the image name and the tag from the input image string
+func ParseImage(image string) (string, string) {
+	var name, tag string
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		name = image[:colonIdx]
+		tag = image[colonIdx+1:]
+	} else {
+		name = image
+	}
+	return name, tag
+}

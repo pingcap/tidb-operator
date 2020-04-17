@@ -15,7 +15,6 @@ package restore
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -255,13 +254,6 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster), err
 	}
 
-	var tikvVersion string
-	tikvImage := tc.TiKVImage()
-	imageVersion := strings.Split(tikvImage, ":")
-	if len(imageVersion) == 2 {
-		tikvVersion = imageVersion[1]
-	}
-
 	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, restore.Spec.To.SecretName, restore.Spec.UseKMS, rm.kubeCli)
 	if err != nil {
 		return nil, reason, err
@@ -282,6 +274,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
 	}
+	tikvImage := tc.TiKVImage()
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
