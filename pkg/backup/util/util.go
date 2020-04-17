@@ -410,3 +410,13 @@ func ValidateRestore(restore *v1alpha1.Restore) error {
 	}
 	return nil
 }
+
+// GetImageTag get the image tag
+func GetImageTag(image string) string {
+	var tag string
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		tag = image[colonIdx+1:]
+	}
+	return tag
+}
