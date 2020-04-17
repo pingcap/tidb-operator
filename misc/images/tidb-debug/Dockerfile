@@ -27,8 +27,8 @@ RUN yum update -y && yum install -y \
 
 RUN wget -q http://download.pingcap.org/tidb-latest-linux-amd64.tar.gz \
     && tar xzf tidb-latest-linux-amd64.tar.gz \
-    && mv tidb-latest-linux-amd64/bin/* /usr/local/bin/ \
-    && rm -rf tidb-latest-linux-amd64.tar.gz tidb-latest-linux-amd64
+    && mv tidb-*-linux-amd64/bin/* /usr/local/bin/ \
+    && rm -rf tidb-latest-linux-amd64.tar.gz tidb-*-linux-amd64
 
 RUN wget https://github.com/brendangregg/FlameGraph/archive/master.zip \
     && unzip master.zip \
