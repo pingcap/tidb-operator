@@ -15,18 +15,22 @@ package mock
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"io/ioutil"
-	"k8s.io/klog"
 	"net/http"
+
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"k8s.io/klog"
 )
 
 type MonitorParams struct {
-	Name       string `json:"name"`
-	MemberType string `json:"type"`
-	Duration   string `json:"duration"`
-	Value      string `json:"value"`
+	Name         string   `json:"name"`
+	MemberType   string   `json:"type"`
+	Duration     string   `json:"duration"`
+	Value        string   `json:"value"`
+	InstancesPod []string `json:"instances"`
 }
 
 type MonitorTargets struct {
@@ -48,14 +52,28 @@ type DiscoveredLabels struct {
 	PodName string `json:"__meta_kubernetes_pod_name"`
 }
 
-func SetResponse(svc, name, duration, memberType, value string) error {
-	ep := fmt.Sprintf("http://%s/response", svc)
-	body := fmt.Sprintf(`{"name":"%s","type":"%s","duration":"%s","value":"%s"}`, name, memberType, duration, value)
-	r, err := http.Post(ep, "application/json", bytes.NewBuffer([]byte(body)))
+func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorParams, fw portforward.PortForward) error {
+	var prometheusAddr string
+	if fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, monitorNamespace, fmt.Sprintf("svc/%s-prometheus", monitorName), 9090)
+		if err != nil {
+			return err
+		}
+		defer cancel()
+		prometheusAddr = fmt.Sprintf("%s:%d", localHost, localPort)
+	} else {
+		prometheusAddr = fmt.Sprintf("%s-prometheus.%s:9090", monitorName, monitorNamespace)
+	}
+	b, err := json.Marshal(mp)
 	if err != nil {
 		return err
 	}
-	b, err := ioutil.ReadAll(r.Body)
+	ep := fmt.Sprintf("http://%s/response", prometheusAddr)
+	r, err := http.Post(ep, "application/json", bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	b, err = ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
@@ -76,7 +94,12 @@ func BuildResponse(instances []string, value string) *calculate.Response {
 	for _, instance := range instances {
 		r := calculate.Result{
 			Metric: calculate.Metric{
-				Instance: instance,
+				Instance:            instance,
+				Cluster:             "foo",
+				Job:                 "foo",
+				KubernetesNamespace: "foo",
+				KubernetesNode:      "foo",
+				KubernetesPodIp:     "foo",
 			},
 			Value: []interface{}{
 				value,
@@ -85,5 +108,6 @@ func BuildResponse(instances []string, value string) *calculate.Response {
 		}
 		resp.Data.Result = append(resp.Data.Result, r)
 	}
+	resp.Data.ResultType = "foo"
 	return resp
 }

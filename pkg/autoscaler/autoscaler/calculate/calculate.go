@@ -26,6 +26,7 @@ import (
 	promClient "github.com/prometheus/client_golang/api"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog"
 )
 
 const (
@@ -62,11 +63,13 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client prom
 	req.URL.RawQuery = q.Encode()
 	r, body, err := client.Do(req.Context(), req)
 	if err != nil {
+		klog.Info(err.Error())
 		return err
 	}
 	if r.StatusCode != http.StatusOK {
 		return fmt.Errorf("tac[%s/%s] query error, status code:%d", tac.Namespace, tac.Name, r.StatusCode)
 	}
+	klog.Info("response = %v", string(body))
 	err = json.Unmarshal(body, resp)
 	if err != nil {
 		return err
