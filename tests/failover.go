@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
@@ -925,6 +926,33 @@ func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, erro
 	}
 
 	return true, nil
+}
+
+func (oa *operatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
+
+		for _, cluster := range clusters {
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(cluster.ClusterName).Labels()).String(),
+			}
+			pods, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(listOptions)
+			if err != nil {
+				klog.Error(err.Error())
+				return false, nil
+			}
+			for _, pod := range pods.Items {
+				if pod.Spec.NodeName == faultNode {
+					if !podutil.IsPodReady(&pod) {
+						return false, nil
+					}
+				}
+			}
+		}
+		return true, nil
+	})
+	if err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("pod on node[%s] not ready, err:%v", faultNode, err))
+	}
 }
 
 func GetPodStatus(pod *corev1.Pod) string {
