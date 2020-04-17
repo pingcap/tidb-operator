@@ -47,7 +47,7 @@ Usage: hack/e2e.sh [-h] -- [extra test args]
 Environments:
 
     PROVIDER              Kubernetes provider, e.g. kind, gke, eks, defaults: kind
-    DOCKER_REGISTRY       image docker registry
+    DOCKER_REPO           docker image repo
     IMAGE_TAG             image tag
     CLUSTER               the name of e2e cluster, defaults: tidb-operator
     KUBECONFIG            path to the kubeconfig file, defaults: ~/.kube/config
@@ -172,7 +172,7 @@ if [ "${1:-}" == "--" ]; then
 fi
 
 PROVIDER=${PROVIDER:-kind}
-DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
+DOCKER_REPO=${DOCKER_REPO:-localhost:5000/pingcap}
 IMAGE_TAG=${IMAGE_TAG:-latest}
 CLUSTER=${CLUSTER:-tidb-operator}
 KUBECONFIG=${KUBECONFIG:-~/.kube/config}
@@ -204,7 +204,7 @@ SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 
 echo "PROVIDER: $PROVIDER"
-echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
+echo "DOCKER_REPO: $DOCKER_REPO"
 echo "IMAGE_TAG: $IMAGE_TAG"
 echo "CLUSTER: $CLUSTER"
 echo "KUBECONFIG: $KUBECONFIG"
@@ -248,8 +248,8 @@ function e2e::image_build() {
         echo "info: skip building and pushing images"
         return
     fi
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker
+    DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make docker
+    DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make e2e-docker
 }
 
 function e2e::__restart_docker() {
@@ -523,9 +523,9 @@ export AWS_ZONE
 export IMAGE_TAG
 export SKIP_GINKGO
 export SKIP_IMAGE_LOAD
-export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
-export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
-export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
+export TIDB_OPERATOR_IMAGE=$DOCKER_REPO/tidb-operator:${IMAGE_TAG}
+export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REPO/tidb-backup-manager:${IMAGE_TAG}
+export E2E_IMAGE=$DOCKER_REPO/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
 
 # Environments for kubetest2
