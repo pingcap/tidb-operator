@@ -69,7 +69,6 @@ func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client prom
 	if r.StatusCode != http.StatusOK {
 		return fmt.Errorf("tac[%s/%s] query error, status code:%d", tac.Namespace, tac.Name, r.StatusCode)
 	}
-	klog.Info("response = %v", string(body))
 	err = json.Unmarshal(body, resp)
 	if err != nil {
 		return err

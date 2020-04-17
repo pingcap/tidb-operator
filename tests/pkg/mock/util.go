@@ -84,7 +84,7 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 	return nil
 }
 
-func BuildResponse(instances []string, value string) *calculate.Response {
+func buildPrometheusResponse(instances []string, value string) *calculate.Response {
 	resp := &calculate.Response{}
 	resp.Status = "success"
 	resp.Data = calculate.Data{}
