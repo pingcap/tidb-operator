@@ -14,6 +14,7 @@
 package member
 
 import (
+	"crypto/tls"
 	"fmt"
 	"path"
 	"strconv"
@@ -28,7 +29,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -63,6 +63,7 @@ type tidbMemberManager struct {
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
 	cmLister                     corelisters.ConfigMapLister
+	secretLister                 corelisters.SecretLister
 	tidbUpgrader                 Upgrader
 	autoFailover                 bool
 	tidbFailover                 Failover
@@ -77,6 +78,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	secretLister corelisters.SecretLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
@@ -88,6 +90,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,
+		secretLister:                 secretLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
 		tidbFailover:                 tidbFailover,
@@ -113,8 +116,35 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 
+	if tc.Spec.TiDB.IsTLSClientEnabled() {
+		if err := tmm.checkTLSClientCert(tc); err != nil {
+			return err
+		}
+	}
+
 	// Sync TiDB StatefulSet
 	return tmm.syncTiDBStatefulSetForTidbCluster(tc)
+}
+
+func (tmm *tidbMemberManager) checkTLSClientCert(tc *v1alpha1.TidbCluster) error {
+	ns := tc.Namespace
+	secretName := tlsClientSecretName(tc)
+	secret, err := tmm.secretLister.Secrets(ns).Get(secretName)
+	if err != nil {
+		return fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
+	}
+
+	clientCert, certExists := secret.Data[corev1.TLSCertKey]
+	clientKey, keyExists := secret.Data[corev1.TLSPrivateKeyKey]
+	if !certExists || !keyExists {
+		return fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
+	}
+
+	_, err = tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
+	}
+	return nil
 }
 
 func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -735,7 +765,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 			}
 		}
 		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
 		if pod != nil && pod.Spec.NodeName != "" {
