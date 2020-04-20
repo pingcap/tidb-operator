@@ -19,11 +19,12 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	e2esset "k8s.io/kubernetes/test/e2e/framework/statefulset"
 )
 
 var statefulPodRegex = regexp.MustCompile("(.*)-([0-9]+)$")
@@ -43,7 +44,11 @@ func GetStatefulPodOrdinal(podName string) int {
 // IsAllDesiredPodsRunningAndReady checks if all desired pods of given statefulset are running and ready
 func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.StatefulSet) bool {
 	deleteSlots := helper.GetDeleteSlots(sts)
-	actualPodList := e2esset.GetPodList(c, sts)
+	actualPodList, err := getPodList(c, sts)
+	if err != nil {
+		klog.Infof("get podlist error in IsAllDesiredPodsRunningAndReady, err:%v", err)
+		return false
+	}
 	actualPodOrdinals := sets.NewInt32()
 	for _, pod := range actualPodList.Items {
 		actualPodOrdinals.Insert(int32(GetStatefulPodOrdinal(pod.Name)))
@@ -61,4 +66,15 @@ func IsAllDesiredPodsRunningAndReady(c kubernetes.Interface, sts *appsv1.Statefu
 	}
 	klog.Infof("desired pods of sts %s/%s are running and ready (%v)", sts.Namespace, sts.Name, actualPodOrdinals.List())
 	return true
+}
+
+// GetPodList gets the current Pods in ss.
+// e2esset.GetPodList(c, sts) would panic while we want return error if something wrong
+func getPodList(c kubernetes.Interface, ss *appsv1.StatefulSet) (*corev1.PodList, error) {
+	selector, err := metav1.LabelSelectorAsSelector(ss.Spec.Selector)
+	if err != nil {
+		return nil, err
+	}
+	podList, err := c.CoreV1().Pods(ss.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
+	return podList, err
 }
