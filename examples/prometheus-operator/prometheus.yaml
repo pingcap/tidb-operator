@@ -22,7 +22,7 @@ spec:
   replicas: 1
   resources:
     requests:
-      memory: 25Gi
+      memory: 8Gi
   ruleSelector:
     matchLabels:
       prometheus: basic
