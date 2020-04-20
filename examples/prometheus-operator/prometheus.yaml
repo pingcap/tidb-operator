@@ -11,9 +11,6 @@ spec:
     - name: alertmanager-main
       namespace: monitoring
       port: web
-  thanos:
-    baseImage: thanosio/thanos
-    version: v0.8.1
   baseImage: prom/prometheus
   version: v2.11.0
   nodeSelector:
