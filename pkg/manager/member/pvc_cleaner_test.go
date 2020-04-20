@@ -142,7 +142,7 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
-				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerIsNotPDOrTiKV))
+				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerIsNotTarget))
 			},
 		},
 		{
@@ -866,7 +866,7 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
-				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerIsNotPDOrTiKV))
+				g.Expect(skipReason["tidb-test-tidb-0"]).To(Equal(skipReasonPVCCleanerIsNotTarget))
 			},
 		},
 		{

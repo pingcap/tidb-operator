@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -23,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
@@ -54,38 +54,94 @@ type generalScaler struct {
 }
 
 func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
-	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[int32]string, error) {
+	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
 	ns := tc.GetNamespace()
 	// for unit test
-	skipReason := map[int32]string{}
+	skipReason := map[string]string{}
 
-	pvcName := ordinalPVCName(memberType, setName, ordinal)
-	pvc, err := gs.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-	if errors.IsNotFound(err) {
-		skipReason[ordinal] = skipReasonScalerPVCNotFound
-		return skipReason, nil
-	}
+	// pvcName := ordinalPVCName(memberType, setName, ordinal)
+	podName := ordinalPodName(memberType, tc.Name, ordinal)
+	l := label.New().Instance(tc.GetInstanceName())
+	l[label.AnnPodNameKey] = podName
+	selector, err := l.Selector()
 	if err != nil {
-		return skipReason, err
+		return skipReason, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tc.Name, err)
 	}
 
-	if pvc.Annotations == nil {
-		skipReason[ordinal] = skipReasonScalerAnnIsNil
-		return skipReason, nil
-	}
-	if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
-		skipReason[ordinal] = skipReasonScalerAnnDeferDeletingIsEmpty
-		return skipReason, nil
-	}
-
-	err = gs.pvcControl.DeletePVC(tc, pvc)
+	pvcs, err := gs.pvcLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
-		klog.Errorf("scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
-		return skipReason, err
+		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
+		klog.Errorf(msg)
+		return skipReason, fmt.Errorf(msg)
 	}
-	klog.Infof("scale out: delete pvc %s/%s successfully", ns, pvcName)
+	if len(pvcs) == 0 {
+		klog.Infof("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
+		skipReason[podName] = skipReasonScalerPVCNotFound
+		return skipReason, nil
+	}
 
+	for _, pvc := range pvcs {
+		pvcName := pvc.Name
+		if pvc.Annotations == nil {
+			skipReason[pvcName] = skipReasonScalerAnnIsNil
+			continue
+		}
+		if _, ok := pvc.Annotations[label.AnnPVCDeferDeleting]; !ok {
+			skipReason[pvcName] = skipReasonScalerAnnDeferDeletingIsEmpty
+			continue
+		}
+
+		err = gs.pvcControl.DeletePVC(tc, pvc)
+		if err != nil {
+			klog.Errorf("Scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
+			return skipReason, err
+		}
+		klog.Infof("Scale out: delete pvc %s/%s successfully", ns, pvcName)
+	}
 	return skipReason, nil
+}
+
+func (gs *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
+	memberType v1alpha1.MemberType, ordinal int32) error {
+	ns := tc.GetNamespace()
+	podName := ordinalPodName(memberType, tc.Name, ordinal)
+
+	l := label.New().Instance(tc.GetInstanceName())
+	l[label.AnnPodNameKey] = podName
+	selector, err := l.Selector()
+	if err != nil {
+		return fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tc.Name, err)
+	}
+
+	pvcs, err := gs.pvcLister.PersistentVolumeClaims(ns).List(selector)
+	if err != nil {
+		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
+		klog.Errorf(msg)
+		return fmt.Errorf(msg)
+	}
+	if len(pvcs) == 0 {
+		msg := fmt.Sprintf("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
+		klog.Errorf(msg)
+		return fmt.Errorf(msg)
+	}
+
+	for _, pvc := range pvcs {
+		pvcName := pvc.Name
+		if pvc.Annotations == nil {
+			pvc.Annotations = map[string]string{}
+		}
+		now := time.Now().Format(time.RFC3339)
+		pvc.Annotations[label.AnnPVCDeferDeleting] = now
+		_, err = gs.pvcControl.UpdatePVC(tc, pvc)
+		if err != nil {
+			klog.Errorf("Scale in: failed to set pvc %s/%s annotation: %s to %s, error: %v",
+				ns, pvcName, label.AnnPVCDeferDeleting, now, err)
+			return err
+		}
+		klog.Infof("Scale in: set pvc %s/%s annotation: %s to %s",
+			ns, pvcName, label.AnnPVCDeferDeleting, now)
+	}
+	return nil
 }
 
 func resetReplicas(newSet *apps.StatefulSet, oldSet *apps.StatefulSet) {
