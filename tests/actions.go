@@ -138,7 +138,7 @@ func NewOperatorActions(cli versioned.Interface,
 }
 
 const (
-	DefaultPollTimeout          time.Duration = 10 * time.Minute
+	DefaultPollTimeout          time.Duration = 20 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
 	grafanaUsername                           = "admin"
@@ -236,6 +236,7 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
+	WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string)
 	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
 }
 
@@ -1007,7 +1008,8 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 }
 
 func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database string) *corev1.Pod {
-	return &corev1.Pod{
+
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: info.Namespace,
 			Name:      blockWriterPodName(info),
@@ -1037,6 +1039,10 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 			RestartPolicy: corev1.RestartPolicyAlways,
 		},
 	}
+	if info.OperatorTag != "e2e" {
+		pod.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
+	}
+	return pod
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
@@ -1052,6 +1058,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
+	klog.Infof("begin insert Data in pod[%s/%s]", pod.Namespace, pod.Name)
 	return nil
 }
 
@@ -1068,16 +1075,20 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	}
 	oa.EmitEvent(info, "StopInsertData")
 
-	pod := info.blockWriterPod
-	err := oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		pod := info.blockWriterPod
+		err = oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		}
+		return true, nil
+	})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-	err = e2epod.WaitForPodNotFoundInNamespace(oa.kubeCli, pod.Name, pod.Namespace, time.Minute*5)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-
 	info.blockWriterPod = nil
 }
 
