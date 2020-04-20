@@ -130,7 +130,14 @@ func installCertManager(cli clientset.Interface) error {
 		return fmt.Errorf("failed to install cert-manager %s %v", string(data), err)
 	}
 
-	return e2epod.WaitForPodsRunningReady(cli, "cert-manager", 3, 0, 10*time.Minute, nil)
+	err := e2epod.WaitForPodsRunningReady(cli, "cert-manager", 3, 0, 10*time.Minute, nil)
+	if err != nil {
+		return err
+	}
+
+	// It may take a minute or so for the TLS assets required for the webhook to function to be provisioned.
+	time.Sleep(time.Minute)
+	return nil
 }
 
 func deleteCertManager(cli clientset.Interface) error {
