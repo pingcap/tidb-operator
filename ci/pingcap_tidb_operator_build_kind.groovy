@@ -159,21 +159,10 @@ def build(String SHELL_CODE, String ARTIFACTS = "", Map resources = e2ePodResour
 							"""
 						}
 						stage('Run') {
-							ansiColor('xterm') {
-								sh """#!/bin/bash
-								export GOPATH=${WORKSPACE}/go
-								echo "info: restore docker images"
-								images=(
-									tidb-operator:latest
-									tidb-backup-manager:latest
-									tidb-operator-e2e:latest
-								)
-								for image in \${images[@]}; do
-									docker load -i \$image.tar.gz
-								done
-								${SHELL_CODE}
-								"""
-							}
+							sh """#!/bin/bash
+							export GOPATH=${WORKSPACE}/go
+							${SHELL_CODE}
+							"""
 						}
 					}
 				} finally {
@@ -211,22 +200,23 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 
 	catchError {
 		// use fixed label, so we can reuse previous workers
-		def buildPodLabel = "tidb-operator-build"
+		// increase verison in pod label when we update pod template
+		def buildPodLabel = "tidb-operator-build-v1"
 		def resources = [
 			requests: [
-				cpu: "8",
-				memory: "8G"
+				cpu: "4",
+				memory: "4G"
 			],
 			limits: [
 				cpu: "8",
-				memory: "16G"
+				memory: "32G"
 			],
 		]
 		podTemplate(
 			label: buildPodLabel,
 			yaml: buildPodYAML(resources: resources, any: true),
 			// We allow this pod to remain active for a while, later jobs can
-			// reuse cache in previous workers.
+			// reuse cache in previous created nodes.
 			idleMinutes: 180,
 		) {
 		node(buildPodLabel) {
@@ -234,6 +224,16 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 				dir("${PROJECT_DIR}") {
 
 					stage('Checkout') {
+						sh """
+						echo "info: change ownerships for jenkins"
+						# we run as root in our pods, this is required
+						# otherwise jenkins agent will fail because of the lack of permission
+						chown -R 1000:1000 .
+						"""
+
+						// clean stale files because we may reuse previous created nodes
+						deleteDir()
+
 						checkout changelog: false,
 						poll: false,
 						scm: [
@@ -253,58 +253,54 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						withCredentials([
 							string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'CODECOV_TOKEN')
 						]) {
-							ansiColor('xterm') {
-								sh """#!/bin/bash
-								echo "info: building"
-								make build e2e-build
-								if [ "${BUILD_BRANCH}" == "master" ]; then
-									echo "info: run unit tests and report coverage results for master branch"
-									make test GOFLAGS='-race' GO_COVER=y
-									curl -s https://codecov.io/bash | bash -s - -t \${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
-								fi
-								"""
-							}
-						}
-					}
-
-					stage("Prepare for e2e") {
-						ansiColor('xterm') {
 							sh """#!/bin/bash
-							echo "info: preparing for e2e (this will build docker images only)"
-							SKIP_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
-							echo "info: saving docker images"
-							images=(
-								tidb-operator:latest
-								tidb-backup-manager:latest
-								tidb-operator-e2e:latest
-							)
-							for image in \${images[@]}; do
-								docker save localhost:5000/pingcap/\$image -o \$image.tar.gz
-							done
+							echo "info: building"
+							make build e2e-build
+							if [ "${BUILD_BRANCH}" == "master" ]; then
+								echo "info: run unit tests and report coverage results for master branch"
+								make test GOFLAGS='-race' GO_COVER=y
+								curl -s https://codecov.io/bash | bash -s - -t \${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
+							fi
 							"""
 						}
 					}
 
-					stash excludes: "vendor/**,deploy/**", name: "tidb-operator"
+					stage("Prepare for e2e") {
+						withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+							sh """#!/bin/bash
+							echo "info: logging into hub.pingcap.net"
+							docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
+							echo "info: build and push images for e2e"
+							NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} make docker-push e2e-docker-push
+							echo "info: download binaries for e2e"
+							SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
+							echo "info: change ownerships for jenkins"
+							# we run as root in our pods, this is required
+							# otherwise jenkins agent will fail because of the lack of permission
+							chown -R 1000:1000 .
+							"""
+						}
+						stash excludes: "vendor/**,deploy/**,tests/**", name: "tidb-operator"
+					}
 				}
 			}
 		}
 		}
 
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
-		def GLOBALS = "SKIP_IMAGE_BUILD=y"
+		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH}"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
 		}
 		builds["E2E v1.18.0"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-serial IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts, e2eSerialResources)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-serial KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts, e2eSerialResources)
 		}
 		builds.failFast = false
 		parallel builds
