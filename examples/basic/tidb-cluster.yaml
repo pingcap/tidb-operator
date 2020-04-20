@@ -12,15 +12,18 @@ spec:
     requests:
       storage: "1Gi"
     config: {}
+    annotations: {}
   tikv:
     baseImage: pingcap/tikv
     replicas: 3
     requests:
       storage: "1Gi"
     config: {}
+    annotations: {}
   tidb:
     baseImage: pingcap/tidb
     replicas: 2
     service:
       type: ClusterIP
     config: {}
+    annotations: {}
