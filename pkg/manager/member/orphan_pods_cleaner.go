@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	skipReasonOrphanPodsCleanerIsNotPDOrTiKV       = "orphan pods cleaner: member type is not pd or tikv"
+	skipReasonOrphanPodsCleanerIsNotTarget         = "orphan pods cleaner: member type is not pd, tikv or tiflash"
 	skipReasonOrphanPodsCleanerPVCNameIsEmpty      = "orphan pods cleaner: pvcName is empty"
 	skipReasonOrphanPodsCleanerPVCIsFound          = "orphan pods cleaner: pvc is found"
 	skipReasonOrphanPodsCleanerPodHasBeenScheduled = "orphan pods cleaner: pod has been scheduled"
@@ -82,8 +82,8 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 	for _, pod := range pods {
 		podName := pod.GetName()
 		l := label.Label(pod.Labels)
-		if !(l.IsPD() || l.IsTiKV()) {
-			skipReason[podName] = skipReasonOrphanPodsCleanerIsNotPDOrTiKV
+		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash()) {
+			skipReason[podName] = skipReasonOrphanPodsCleanerIsNotTarget
 			continue
 		}
 
@@ -92,38 +92,45 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			continue
 		}
 
-		// TODO support multiple pvcs case?
-		var pvcName string
+		var pvcName []string
 		for _, vol := range pod.Spec.Volumes {
 			if vol.PersistentVolumeClaim != nil {
-				pvcName = vol.PersistentVolumeClaim.ClaimName
-				break
+				if vol.PersistentVolumeClaim.ClaimName != "" {
+					pvcName = append(pvcName, vol.PersistentVolumeClaim.ClaimName)
+				}
 			}
 		}
-		if pvcName == "" {
+		if len(pvcName) < 1 {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPVCNameIsEmpty
 			continue
 		}
 
 		var err error
-		// check informer cache
-		_, err = opc.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
-		if err == nil {
-			skipReason[podName] = skipReasonOrphanPodsCleanerPVCIsFound
-			continue
-		}
-		if !errors.IsNotFound(err) {
-			return skipReason, err
+		var pvcNotFound bool
+		for _, p := range pvcName {
+			// check informer cache
+			_, err = opc.pvcLister.PersistentVolumeClaims(ns).Get(p)
+			if err == nil {
+				continue
+			}
+			if !errors.IsNotFound(err) {
+				return skipReason, err
+			}
+			// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
+			_, err = opc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})
+			if err == nil {
+				continue
+			}
+			if !errors.IsNotFound(err) {
+				return skipReason, err
+			}
+			pvcNotFound = true
+			break
 		}
 
-		// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
-		_, err = opc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
-		if err == nil {
+		if !pvcNotFound {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPVCIsFound
 			continue
-		}
-		if !errors.IsNotFound(err) {
-			return skipReason, err
 		}
 
 		// if the PVC is not found in apiserver (also informer cache) and the

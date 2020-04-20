@@ -317,6 +317,11 @@ func (l Label) TiFlash() Label {
 	return l
 }
 
+// IsTiFlash returns whether label is a TiFlash
+func (l Label) IsTiFlash() bool {
+	return l[ComponentLabelKey] == TiFlashLabelVal
+}
+
 // IsTiKV returns whether label is a TiKV
 func (l Label) IsTiKV() bool {
 	return l[ComponentLabelKey] == TiKVLabelVal
