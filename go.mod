@@ -10,6 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/mocks v0.3.0 // indirect
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
+	github.com/Masterminds/semver v1.4.2
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/ant31/crd-validation v0.0.0-20180702145049-30f8a35d0ac2

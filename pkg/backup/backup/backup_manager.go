@@ -280,11 +280,20 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	}
 
 	envVars = append(envVars, storageEnv...)
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "BR_LOG_TO_TERM",
+		Value: string(1),
+	})
 
 	args := []string{
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
+	}
+	tikvImage := tc.TiKVImage()
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
+	if tikvVersion != "" {
+		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
 	backupLabel := label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name)

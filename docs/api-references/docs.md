@@ -2354,6 +2354,77 @@ If not set, the default value is 5.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbAutoScalerStatus">TidbAutoScalerStatus</a>, 
+<a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus</a>)
+</p>
+<p>
+<p>BasicAutoScalerStatus describe the basic auto-scaling status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metrics</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.MetricsStatus">
+[]MetricsStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MetricsStatusList describes the metrics status in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>CurrentReplicas describes the current replicas for the component(tidb/tikv)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recommendedReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastAutoScalingTimestamp</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.Binlog">Binlog
 </h3>
 <p>
@@ -3856,6 +3927,117 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.MasterKeyFileConfig">MasterKeyFileConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Encrypyion method, use master key encryption data key
+Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+Optional: Default to plaintext
+optional</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.MasterKeyKMSConfig">MasterKeyKMSConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>key-id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AWS CMK key-id it can be find in AWS Console or use aws cli
+This field is required</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AccessKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secret-access-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretKey of AWS user, leave empty if using other authrization method
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>region</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Region of this KMS key
+Optional: Default to us-east-1
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
+optional</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.MemberPhase">MemberPhase
 (<code>string</code> alias)</p></h3>
 <p>
@@ -3873,6 +4055,58 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 <p>MemberType represents member type</p>
 </p>
+<h3 id="pingcap.com/v1alpha1.MetricsStatus">MetricsStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus</a>)
+</p>
+<p>
+<p>MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name indicates the metrics name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentValue</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CurrentValue indicates the value calculated in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>thresholdValue</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TargetValue indicates the threshold value for this metrics in auto-scaling</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.MonitorComponentAccessor">MonitorComponentAccessor
 </h3>
 <p>
@@ -9748,6 +9982,19 @@ TiKVSecurityConfig
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>encryption</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVEncryptionConfig">
+TiKVEncryptionConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.TiKVCoprocessorConfig">TiKVCoprocessorConfig
@@ -10317,6 +10564,78 @@ TiKVTitanDBConfig
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.TiKVEncryptionConfig">TiKVEncryptionConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Encrypyion method, use data key encryption raw rocksdb data
+Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+Optional: Default to plaintext
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-key-rotation-period</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The frequency of datakey rotation, It managered by tikv
+Optional: default to 7d
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master-key</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">
+TiKVMasterKeyConfig
+</a>
+</em>
+</td>
+<td>
+<p>Master key config</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>previous-master-key</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">
+TiKVMasterKeyConfig
+</a>
+</em>
+</td>
+<td>
+<p>Previous master key config
+It used in master key rotation, the data key should decryption by previous master key and  then encrypytion by new master key</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TiKVFailureStore">TiKVFailureStore
 </h3>
 <p>
@@ -10522,6 +10841,71 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TiKVEncryptionConfig">TiKVEncryptionConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Use KMS encryption or use file encryption, possible values: kms, file
+If set to kms, kms MasterKeyKMSConfig should be filled, if set to file MasterKeyFileConfig should be filled
+optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyFileConfig</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.MasterKeyFileConfig">
+MasterKeyFileConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyFileConfig</code> are embedded into this type.)
+</p>
+<p>Master key file config
+If the type set to file, this config should be filled</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyKMSConfig</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.MasterKeyKMSConfig">
+MasterKeyKMSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyKMSConfig</code> are embedded into this type.)
+</p>
+<p>Master key KMS config
+If the type set to kms, this config should be filled</p>
 </td>
 </tr>
 </tbody>
@@ -12640,6 +13024,40 @@ BasicAutoScalerSpec
 </tr>
 </tbody>
 </table>
+<h3 id="pingcap.com/v1alpha1.TidbAutoScalerStatus">TidbAutoScalerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
+</p>
+<p>
+<p>TidbAutoScalerStatus describe the auto-scaling status of tidb</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>BasicAutoScalerStatus</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">
+BasicAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BasicAutoScalerStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec
 </h3>
 <p>
@@ -12735,8 +13153,46 @@ TidbAutoScalerSpec
 <a href="#pingcap.com/v1alpha1.TidbClusterAutoScaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
-<p>TODO: sync status</p>
+<p>TidbClusterAutoSclaerStatus describe the whole status</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>tikv</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">
+TikvAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tikv describes the status for the tikv in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.TidbAutoScalerStatus">
+TidbAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tidb describes the status for the tidb in the last auto-scaling reconciliation</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.TidbClusterRef">TidbClusterRef
 </h3>
 <p>
@@ -13623,6 +14079,40 @@ BasicAutoScalerSpec
 <td>
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
+</p>
+<p>
+<p>TikvAutoScalerStatus describe the auto-scaling status of tikv</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>BasicAutoScalerStatus</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">
+BasicAutoScalerStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BasicAutoScalerStatus</code> are embedded into this type.)
 </p>
 </td>
 </tr>

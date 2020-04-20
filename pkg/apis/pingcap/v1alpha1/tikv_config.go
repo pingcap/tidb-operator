@@ -51,6 +51,8 @@ type TiKVConfig struct {
 	PD *TiKVPDConfig `json:"pd,omitempty" toml:"pd,omitempty"`
 	// +optional
 	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
+	// +optional
+	Encryption *TiKVEncryptionConfig `json:"encryption,omitempty" toml:"encryption,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -741,4 +743,73 @@ type TiKVCoprocessorConfig struct {
 	// Optional: Defaults to 960000
 	// optional
 	RegionSplitKeys *int64 `json:"region-split-keys,omitempty" toml:"region-split-keys,omitempty"`
+}
+
+type TiKVEncryptionConfig struct {
+	// Encrypyion method, use data key encryption raw rocksdb data
+	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+	// Optional: Default to plaintext
+	// optional
+	Method string `json:"method,omitempty" toml:"method,omitempty"`
+
+	// The frequency of datakey rotation, It managered by tikv
+	// Optional: default to 7d
+	// optional
+	DataKeyRotationPeriod string `json:"data-key-rotation-period,omitempty" toml:"data-key-rotation-period,omitempty"`
+
+	// Master key config
+	MasterKey *TiKVMasterKeyConfig `json:"master-key,omitempty" toml:"master-key,omitempty"`
+
+	// Previous master key config
+	// It used in master key rotation, the data key should decryption by previous master key and  then encrypytion by new master key
+	PreviousMasterKey *TiKVMasterKeyConfig `json:"previous-master-key,omitempty" toml:"previoud-master-key,omitempty"`
+}
+
+type TiKVMasterKeyConfig struct {
+	// Use KMS encryption or use file encryption, possible values: kms, file
+	// If set to kms, kms MasterKeyKMSConfig should be filled, if set to file MasterKeyFileConfig should be filled
+	// optional
+	Type string `json:"type,omitempty" toml:"type,omitempty"`
+
+	// Master key file config
+	// If the type set to file, this config should be filled
+	MasterKeyFileConfig `json:",inline"`
+
+	// Master key KMS config
+	// If the type set to kms, this config should be filled
+	MasterKeyKMSConfig `json:",inline"`
+}
+
+type MasterKeyFileConfig struct {
+	// Encrypyion method, use master key encryption data key
+	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
+	// Optional: Default to plaintext
+	// optional
+	Method string `json:"method,omitempty" toml:"method,omitempty"`
+
+	// Text file containing the key in hex form, end with '\n'
+	Path string `json:"path" toml:"path"`
+}
+
+type MasterKeyKMSConfig struct {
+	// AWS CMK key-id it can be find in AWS Console or use aws cli
+	// This field is required
+	KeyID string `json:"key-id" toml:"key-id"`
+
+	// AccessKey of AWS user, leave empty if using other authrization method
+	// optional
+	AccessKey string `json:"access-key,omitempty" toml:"access-key,omitempty"`
+
+	// SecretKey of AWS user, leave empty if using other authrization method
+	// optional
+	SecretKey string `json:"secret-access-key,omitempty" toml:"access-key,omitempty"`
+
+	// Region of this KMS key
+	// Optional: Default to us-east-1
+	// optional
+	Region string `json:"region,omitempty" toml:"region,omitempty"`
+
+	// Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
+	// optional
+	Endpoint string `json:"endpoint,omitempty" toml:"endpoint,omitempty"`
 }

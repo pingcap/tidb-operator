@@ -265,10 +265,19 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	envVars = append(envVars, storageEnv...)
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "BR_LOG_TO_TERM",
+		Value: string(1),
+	})
 	args := []string{
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
+	}
+	tikvImage := tc.TiKVImage()
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
+	if tikvVersion != "" {
+		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)

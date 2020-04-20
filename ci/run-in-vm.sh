@@ -33,6 +33,7 @@ GCP_ZONE=${GCP_ZONE:-}
 GCP_SSH_PRIVATE_KEY=${GCP_SSH_PRIVATE_KEY:-}
 GCP_SSH_PUBLIC_KEY=${GCP_SSH_PUBLIC_KEY:-}
 NAME=${NAME:-tidb-operator-e2e}
+SSH_USER=${SSH_USER:-vagrant}
 GIT_URL=${GIT_URL:-https://github.com/pingcap/tidb-operator}
 GIT_REF=${GIT_REF:-origin/master}
 SYNC_FILES=${SYNC_FILES:-}
@@ -127,13 +128,15 @@ function e2e::up() {
 
 function e2e::test() {
     echo "info: testing"
+    echo "info: waiting for the VM is ready"
+    hack::wait_for_success 60 3 "gcloud compute ssh $SSH_USER@$NAME --command 'uname -a'"
     echo "info: syncing files $SYNC_FILES"
     while IFS=$',' read -r line; do
         IFS=':' read -r src dst <<< "$line"
         if [ -z "$dst" ]; then
             dst="$src"
         fi
-        gcloud compute scp $src vagrant@$NAME:$dst
+        gcloud compute scp $src $SSH_USER@$NAME:$dst
     done <<< "$SYNC_FILES"
     local tmpfile=$(mktemp)
     trap "rm -f $tmpfile" RETURN
@@ -149,8 +152,8 @@ git checkout -f \${GIT_COMMIT}
 $@
 EOF
     cat $tmpfile
-    gcloud compute scp $tmpfile vagrant@$NAME:/tmp/e2e.sh
-    gcloud compute ssh vagrant@$NAME --command "bash /tmp/e2e.sh"
+    gcloud compute scp $tmpfile $SSH_USER@$NAME:/tmp/e2e.sh
+    gcloud compute ssh $SSH_USER@$NAME --command "bash /tmp/e2e.sh"
 }
 
 e2e::down
