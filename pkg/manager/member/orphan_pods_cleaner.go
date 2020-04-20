@@ -92,22 +92,22 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			continue
 		}
 
-		var pvcName []string
+		var pvcNames []string
 		for _, vol := range pod.Spec.Volumes {
 			if vol.PersistentVolumeClaim != nil {
 				if vol.PersistentVolumeClaim.ClaimName != "" {
-					pvcName = append(pvcName, vol.PersistentVolumeClaim.ClaimName)
+					pvcNames = append(pvcNames, vol.PersistentVolumeClaim.ClaimName)
 				}
 			}
 		}
-		if len(pvcName) < 1 {
+		if len(pvcNames) < 1 {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPVCNameIsEmpty
 			continue
 		}
 
 		var err error
 		var pvcNotFound bool
-		for _, p := range pvcName {
+		for _, p := range pvcNames {
 			// check informer cache
 			_, err = opc.pvcLister.PersistentVolumeClaims(ns).Get(p)
 			if err == nil {
