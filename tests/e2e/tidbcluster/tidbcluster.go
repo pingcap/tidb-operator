@@ -303,7 +303,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		backupFolder := time.Now().Format(time.RFC3339)
 
 		// create backup cluster
-		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBBRVersion)
+		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
 		tcFrom.Spec.PD.Replicas = 1
 		tcFrom.Spec.TiKV.Replicas = 1
 		tcFrom.Spec.TiDB.Replicas = 1
@@ -314,7 +314,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", "")
 
 		// create restore cluster
-		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBBRVersion)
+		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
 		tcTo.Spec.PD.Replicas = 1
 		tcTo.Spec.TiKV.Replicas = 1
 		tcTo.Spec.TiDB.Replicas = 1
@@ -1165,7 +1165,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate template")
 
 			ginkgo.By("Creating tidb cluster")
-			tc := fixture.GetTidbCluster(ns, tcName, "v4.0.0-rc")
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
