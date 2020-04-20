@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
@@ -78,15 +79,26 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	}
 	klog.Infof("check pd %s/%s failover successfully", ns, podName)
 
-	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) < 1 {
+			return true, nil
+		}
+		tc.Status.PD.FailureMembers = nil
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		if err != nil {
+			klog.Error(err.Error())
+		}
+		return false, nil
+	})
 	if err != nil {
 		return err
 	}
-	tc.Status.PD.FailureMembers = nil
-	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
-	if err != nil {
-		return err
-	}
+
 	err = oa.CheckTidbClusterStatus(info)
 	if err != nil {
 		return err
@@ -170,13 +182,17 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 
 	// delete tikv pod
 	klog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
-	wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
 		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
 		if err != nil {
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
 
 	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
 
@@ -207,12 +223,34 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	klog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
-	return wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
 		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
 		if err != nil {
 			return false, nil
 		}
 		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	ns := info.Namespace
+	tcName := info.ClusterName
+	return wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		if tc.Status.TiKV.FailureStores == nil || len(tc.Status.TiKV.FailureStores) < 1 {
+			return true, nil
+		}
+		tc.Status.TiKV.FailureStores = nil
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		if err != nil {
+			klog.Error(err.Error())
+		}
+		return false, nil
 	})
 }
 
@@ -888,6 +926,34 @@ func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, erro
 	}
 
 	return true, nil
+}
+
+func (oa *operatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
+
+	err := wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+		for _, cluster := range clusters {
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(cluster.ClusterName).Labels()).String(),
+			}
+			pods, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(listOptions)
+			if err != nil {
+				klog.Error(err.Error())
+				return false, nil
+			}
+			for _, pod := range pods.Items {
+				if pod.Spec.NodeName == faultNode {
+					if !podutil.IsPodReady(&pod) {
+						return false, nil
+					}
+				}
+			}
+		}
+		return true, nil
+	})
+	if err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("pod on node[%s] not ready, err:%v", faultNode, err))
+	}
 }
 
 func GetPodStatus(pod *corev1.Pod) string {
