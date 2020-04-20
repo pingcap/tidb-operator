@@ -741,6 +741,8 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Dashboard.TiDBCertPath = path.Join(tidbClientCertPath, corev1.TLSCertKey)
 		config.Dashboard.TiDBKeyPath = path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey)
 	}
+	// TiFlash requires PD to enable the `replication.enable-placement-rules`
+	// Check detail in https://pingcap.com/docs/stable/reference/tiflash/deploy/
 	if tc.Spec.TiFlash != nil {
 		if config.Replication == nil {
 			config.Replication = &v1alpha1.PDReplicationConfig{}
