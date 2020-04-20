@@ -1141,36 +1141,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
-
 		ginkgo.BeforeEach(func() {
-			ocfg = &tests.OperatorConfig{
-				Namespace:   ns,
-				ReleaseName: "operator",
-				Image:       cfg.OperatorImage,
-				Tag:         cfg.OperatorTag,
-				LogLevel:    "4",
-			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
-			ginkgo.By("Installing CRDs")
-			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie(ocfg)
-			ginkgo.By("Installing tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			oa.DeployOperatorOrDie(ocfg)
-
 			ginkgo.By("Installing cert-manager")
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
 		})
 
 		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstall tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
-
 			ginkgo.By("Deleting cert-manager")
 			err := deleteCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to delete cert-manager")
