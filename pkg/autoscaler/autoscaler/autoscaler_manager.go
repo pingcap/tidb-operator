@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -54,7 +55,7 @@ type predictInfo struct {
 	HistoryR2ScoreTotal float64        `json:"history_r2_score_tot"`
 	TableInfo           []preTableInfo `json:"table_info"`
 	TiKVReplicas        int32          `json:"tikv_replicas"`
-	TiDBReplicas        int32          `json:"tidb_replicas"`
+	//TiDBReplicas        int32          `json:"tidb_replicas"`
 }
 
 type autoScalerManager struct {
@@ -141,13 +142,13 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 		klog.Errorf("tac[%s/%s] tikv sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
 	}
 
-	oldTidbReplicas := tc.Spec.TiDB.Replicas
-	TidbReplicas := p.TiDBReplicas
-	if err := am.syncTiDB(tc, tac, TidbReplicas); err != nil {
-		tc.Spec.TiDB.Replicas = oldTidbReplicas
-		klog.Errorf("tac[%s/%s] tidb sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
-	}
-	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
+	//oldTidbReplicas := tc.Spec.TiDB.Replicas
+	////TidbReplicas := p.TiDBReplicas
+	//if err := am.syncTiDB(tc, tac); err != nil {
+	//	tc.Spec.TiDB.Replicas = oldTidbReplicas
+	//	klog.Errorf("tac[%s/%s] tidb sync failed, continue to sync next, err:%v", tac.Namespace, tac.Name, err)
+	//}
+	//klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
 	return nil
 }
 

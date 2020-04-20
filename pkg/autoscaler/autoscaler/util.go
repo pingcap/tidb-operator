@@ -145,10 +145,12 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
 		}
 		if tac.Spec.TiKV.ScaleOutIntervalSeconds == nil {
-			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+			//tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(600)
 		}
 		if tac.Spec.TiKV.ScaleInIntervalSeconds == nil {
-			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+			//tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(600)
 		}
 	}
 

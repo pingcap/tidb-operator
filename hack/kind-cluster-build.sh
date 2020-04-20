@@ -16,6 +16,8 @@
 set -e
 
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+
+echo $ROOT
 cd $ROOT
 
 source $ROOT/hack/lib.sh

@@ -70,6 +70,7 @@ require (
 	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
+	go.uber.org/zap v1.9.1
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gomodules.xyz/jsonpatch/v2 v2.0.1
