@@ -592,27 +592,35 @@ func getFaultNode(kubeCli kubernetes.Interface) (string, error) {
 		return "", fmt.Errorf("the number of nodes cannot be less than 1")
 	}
 
-	myNode := getMyNodeName()
-
-	index := rand.Intn(len(nodes.Items))
-	faultNode := nodes.Items[index].Name
-	if faultNode != myNode {
-		return faultNode, nil
+	listOption := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			"app":  "helm",
+			"name": "tiller",
+		}).String(),
 	}
-
-	if index == 0 {
-		faultNode = nodes.Items[index+1].Name
-	} else {
-		faultNode = nodes.Items[index-1].Name
-	}
-
-	if faultNode == myNode {
-		err := fmt.Errorf("there are at least two nodes with the name %s", myNode)
-		klog.Error(err.Error())
+	pods, err := kubeCli.CoreV1().Pods("kube-system").List(listOption)
+	if err != nil {
 		return "", err
 	}
+	if len(pods.Items) < 1 {
+		return "", fmt.Errorf("failed to get tiller pods")
+	}
+	tillerNodeName := pods.Items[0].Spec.NodeName
+	myNode := getMyNodeName()
 
-	return faultNode, nil
+	var filterNodes []string
+	for _, node := range nodes.Items {
+		if node.Name != myNode && node.Name != tillerNodeName {
+			filterNodes = append(filterNodes, node.Name)
+		}
+	}
+
+	if filterNodes == nil || len(filterNodes) < 1 {
+		return "", fmt.Errorf("no nodes filtered after selecting nodes and filter the tiller and stabiltiy pod")
+	}
+
+	index := rand.Intn(len(filterNodes))
+	return filterNodes[index], nil
 }
 
 func getPhysicalNode(faultNode string, cfg *Config) string {
