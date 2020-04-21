@@ -38,9 +38,19 @@ func NewTiFlashUpgrader(pdControl pdapi.PDControlInterface,
 	}
 }
 
-// TODO: Finish the upgrade logic
 func (tku *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	//  Wait for PD, TiKV and TiDB to finish upgrade
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
+		if err != nil {
+			return err
+		}
+		newSet.Spec.Template.Spec = *podSpec
+		return nil
+	}
 
+	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	return nil
 }
 
