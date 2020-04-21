@@ -2,7 +2,6 @@
 // E2E Jenkins file.
 //
 
-import groovy.transform.Field
 import groovy.text.SimpleTemplateEngine
 
 podYAML = '''\
