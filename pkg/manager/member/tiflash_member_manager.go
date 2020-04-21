@@ -425,7 +425,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		},
 		{
 			Name:  "TZ",
-			Value: tc.Timezone(),
+			Value: tc.Spec.Timezone,
 		},
 	}
 	tiflashContainer := corev1.Container{
