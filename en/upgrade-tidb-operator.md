@@ -44,7 +44,7 @@ This document describes how to upgrade TiDB Operator and Kubernetes.
     >
     > After TiDB Operator is upgraded, the `discovery` deployment in all TiDB clusters will automatically upgrade to the specified version of TiDB Operator.
 
-# Upgrade TiDB Operator from v1.0 to v1.1 or later releases
+## Upgrade TiDB Operator from v1.0 to v1.1 or later releases
 
 Since TiDB Operator v1.1.0, PingCAP no longer updates or maintains the tidb-cluster chart. The components and features that have been managed using the tidb-cluster chart will be managed by CR (Custom Resource) or dedicated charts in v1.1. For more details, refer to [TiDB Operator v1.1 Notes](notes-tidb-operator-v1.1.md).
 

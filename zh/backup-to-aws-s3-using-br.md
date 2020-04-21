@@ -4,6 +4,8 @@ summary: 介绍如何使用 BR 工具备份 AWS 上的 TiDB 集群。
 category: how-to
 ---
 
+<!-- markdownlint-disable MD007 -->
+
 # 使用 BR 工具备份 AWS 上的 TiDB 集群
 
 本文详细描述了如何将运行在 AWS Kubernetes 环境中的 TiDB 集群数据备份到 AWS 的存储上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份）。底层通过使用 [`BR`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 获取集群的逻辑备份，然后再将备份数据上传到 AWS 的存储上。

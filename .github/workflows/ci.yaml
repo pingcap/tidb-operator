@@ -15,3 +15,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Verify links
       run: ./hack/verify-links.sh
+    - name: Markdown lint
+      uses: avto-dev/markdown-lint@v1
+      with:
+        config: './.markdownlint.yaml'
+        args: '.'
