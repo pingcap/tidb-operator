@@ -67,4 +67,4 @@
   - [增强型 StatefulSet 控制器](advanced-statefulset.md)
 - [故障诊断](troubleshoot.md)
 - [常见问题](faq.md)
-- [TiDB Operator API 参考文档](api-references.md)
+- [API 参考文档](api-references.md)

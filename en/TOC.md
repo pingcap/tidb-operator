@@ -67,4 +67,4 @@
   - [Advanced StatefulSet Controller](advanced-statefulset.md)
 - [Troubleshoot](troubleshoot.md)
 - [FAQs](faq.md)
-- [TiDB Operator API References](api-references.md)
+- [API References](api-references.md)
