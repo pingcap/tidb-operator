@@ -81,11 +81,11 @@ type TidbCluster struct {
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
-	// `Spec` defines the behavior of a tidb cluster.
+	// `Spec` defines the behavior of a TiDB cluster.
 	Spec TidbClusterSpec `json:"spec"`
 
 	// +k8s:openapi-gen=false
-	// Most recently observed status of the tidb cluster.
+	// Most recently observed status of the TiDB cluster.
 	Status TidbClusterStatus `json:"status"`
 }
 
@@ -205,7 +205,7 @@ type TidbClusterSpec struct {
 	Services []Service `json:"services,omitempty"`
 }
 
-// `TidbClusterStatus` represents the current status of a tidb cluster.
+// `TidbClusterStatus` represents the current status of a TiDB cluster.
 type TidbClusterStatus struct {
 	ClusterID string        `json:"clusterID,omitempty"`
 	PD        PDStatus      `json:"pd,omitempty"`
@@ -469,7 +469,7 @@ type TiDBSlowLogTailerSpec struct {
 }
 
 // +k8s:openapi-gen=true
-// `ComponentSpec` is the base spec of each component. The fields should always be accessed by the Basic<Component>Spec() method to respect the cluster-level properties.
+// `ComponentSpec` is the base spec of each component. The fields should always be accessed by the Basic&lt;Component&gt;Spec() method to respect the cluster-level properties.
 type ComponentSpec struct {
 	// Image of the component. Override baseImage and version if present.<br>
 	// Deprecated
@@ -532,7 +532,7 @@ type ComponentSpec struct {
 
 	// List of environment variables to set in the container, like
 	// v1.Container.Env.<br>
-	// Note that following env names cannot be used and may be overrided by
+	// Note that following env names cannot be used and may be overridden by
 	// tidb-operator built envs.
 	// - `NAMESPACE`
 	// - `TZ`
@@ -720,16 +720,16 @@ type TiDBTLSClient struct {
 	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- use the <a href="https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/">K8s built-in certificate signing system signed certificates</a><br>
 	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- or use <a href="https://cert-manager.io/">cert-manager signed certificates</a><br>
 	// &nbsp;&nbsp;2. Create a K8s Secret object which contains the TiDB server-side certificate created above.<br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The name of this Secret must be: <clusterName>-tidb-server-secret.<br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;kubectl create secret generic <clusterName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The name of this Secret must be: ${clusterName}-tidb-server-secret.<br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;kubectl create secret generic ${clusterName}-tidb-server-secret --namespace=${namespace} --from-file=tls.crt=&lt;path/to/tls.crt&gt; --from-file=tls.key=&lt;path/to/tls.key&gt; --from-file=ca.crt=&lt;path/to/ca.crt&gt;<br>
 	// &nbsp;&nbsp;3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.<br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The name of this Secret must be: <clusterName>-tidb-client-secret.<br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;kubectl create secret generic <clusterName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The name of this Secret must be: ${clusterName}-tidb-client-secret.<br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;kubectl create secret generic ${clusterName}-tidb-client-secret --namespace=${namespace} --from-file=tls.crt=&lt;path/to/tls.crt&gt; --from-file=tls.key=&lt;path/to/tls.key&gt; --from-file=ca.crt=&lt;path/to/ca.crt&gt;<br>
 	// &nbsp;&nbsp;4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 	// Specifies a secret of client cert for backup/restore<br>
-	// Optional: Defaults to <cluster>-tidb-client-secret<br><br>
+	// Optional: Defaults to &lt;cluster&gt;-tidb-client-secret<br><br>
 	// +optional
 	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure. The difference is that the Secret Name can be freely defined, and you can then copy the Secret Name to TLSSecret.<br>
 	// This field only works in backup/restore process.
@@ -749,11 +749,11 @@ type TLSCluster struct {
 	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- use the <a href="https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/">K8s built-in certificate signing system signed certificates</a><br>
 	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- or use <a href="https://cert-manager.io/">cert-manager signed certificates</a><br>
 	// &nbsp;&nbsp;2. Create one secret object for one component which contains the certificates created above.<br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.<br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For PD: kubectl create secret generic <clusterName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
-	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The name of this Secret must be: ${clusterName}-&lt;componentName&gt;-cluster-secret.<br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For PD: kubectl create secret generic ${clusterName}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=&lt;path/to/tls.crt&gt; --from-file=tls.key=&lt;path/to/tls.key&gt; --from-file=ca.crt=&lt;path/to/ca.crt&gt;<br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For TiKV: kubectl create secret generic ${clusterName}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt><br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For TiDB: kubectl create secret generic ${clusterName}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=<path/to/&lt;tls.crt&gt; --from-file=tls.key=&lt;path/to/tls.key&gt; --from-file=ca.crt=&lt;path/to/ca.crt&gt;<br>
+	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For Client: kubectl create secret generic ${clusterName}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=&lt;path/to/tls.crt&gt; --from-file=tls.key=&lt;path/to/tls.key&gt; --from-file=ca.crt=&lt;path/to/ca.crt&gt;<br>
 	// &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Same for other components.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
@@ -763,7 +763,7 @@ type TLSCluster struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +k8s:openapi-gen=true
-// `Backup` is a backup of tidb cluster.
+// `Backup` is a backup of the TiDB cluster.
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -825,7 +825,7 @@ type S3StorageProvider struct {
 	// Region in which the S3 compatible bucket is located.
 	Region string `json:"region,omitempty"`
 	// The full path where the backup is saved<br>
-	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	// The format of the path must be: "&lt;bucket-name&gt;/&lt;path-to-backup-file&gt;"
 	Path string `json:"path,omitempty"`
 	// Bucket in which the backup data is stored
 	Bucket string `json:"bucket,omitempty"`
@@ -852,7 +852,7 @@ type GcsStorageProvider struct {
 	// Location in which the gcs bucket is located.
 	Location string `json:"location,omitempty"`
 	// Path is the full path where the backup is saved.<br>
-	// The format of the path must be: "<bucket-name>/<path-to-backup-file>"
+	// The format of the path must be: "&lt;bucket-name&gt;/&lt;path-to-backup-file&gt;"
 	Path string `json:"path,omitempty"`
 	// Bucket in which to store the backup data.
 	Bucket string `json:"bucket,omitempty"`
@@ -872,26 +872,26 @@ type GcsStorageProvider struct {
 type BackupType string
 
 const (
-	// Represents the full backup of tidb cluster.
+	// Represents the full backup of the TiDB cluster.
 	BackupTypeFull BackupType = "full"
-	// Represents the incremental backup of tidb cluster.
+	// Represents the incremental backup of the TiDB cluster.
 	BackupTypeInc BackupType = "incremental"
-	// Represents the backup of one DB for the tidb cluster.
+	// Represents the backup of one DB for the TiDB cluster.
 	BackupTypeDB BackupType = "db"
-	// Represents the backup of one table for the tidb cluster.
+	// Represents the backup of one table for the TiDB cluster.
 	BackupTypeTable BackupType = "table"
 )
 
 // +k8s:openapi-gen=true
-// `TiDBAccessConfig` defines the configuration for access tidb cluster.
+// `TiDBAccessConfig` defines the configuration for accessing the TiDB cluster.
 type TiDBAccessConfig struct {
-	// The tidb cluster access address.
+	// The TiDB cluster access address.
 	Host string `json:"host"`
-	// The port number to use for connecting tidb cluster.
+	// The port number to use for connecting the TiDB cluster.
 	Port int32 `json:"port,omitempty"`
-	// The user for login tidb cluster.
+	// The user for login the TiDB cluster.
 	User string `json:"user,omitempty"`
-	// The name of secret which stores tidb cluster's password.
+	// The name of secret which stores the TiDB cluster's password.
 	SecretName string `json:"secretName"`
 	// Determines whether to enable the TLS connection between the SQL client and TiDB server.<br>
 	// Optional: Defaults to `nil`
@@ -900,13 +900,13 @@ type TiDBAccessConfig struct {
 }
 
 // +k8s:openapi-gen=true
-// `BackupSpec` contains the backup specification for a tidb cluster.
+// `BackupSpec` contains the backup specification for a TiDB cluster.
 type BackupSpec struct {
-	// `From` is the tidb cluster that needs to backup.
+	// `From` is the TiDB cluster that needs to backup.
 	From TiDBAccessConfig `json:"from,omitempty"`
-	// `Type` is the backup type for tidb cluster.
+	// `Type` is the backup type for TiDB cluster.
 	Type BackupType `json:"backupType,omitempty"`
-	// `TikvGCLifeTime` is to specify the safe gc life time for backup.<br>
+	// `TikvGCLifeTime` is to specify the safe GC life time for backup.<br>
 	// The time limit during which data is retained for each GC, in the format of Go Duration.<br>
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
@@ -1001,7 +1001,7 @@ type BackupStatus struct {
 	TimeCompleted metav1.Time `json:"timeCompleted"`
 	// `BackupSize` is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
-	// `CommitTs` is the snapshot time point of tidb cluster.
+	// `CommitTs` is the snapshot time point of the TiDB cluster.
 	CommitTs   string            `json:"commitTs"`
 	Conditions []BackupCondition `json:"conditions"`
 }
@@ -1068,7 +1068,7 @@ type BackupScheduleStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +k8s:openapi-gen=true
-// `Restore` represents the restoration of backup of a tidb cluster.
+// `Restore` represents the restoration of backup of a TiDB cluster.
 type Restore struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -1152,7 +1152,7 @@ type RestoreSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
-// `RestoreStatus` represents the current status of a tidb cluster restore.
+// `RestoreStatus` represents the current status of a TiDB cluster restore.
 type RestoreStatus struct {
 	// `TimeStarted` is the time at which the restore was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
