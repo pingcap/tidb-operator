@@ -79,6 +79,7 @@ Environments:
     GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
     RUNNER_SUITE_NAME     the suite name of runner
     SKIP_GINKGO           if set to `y`, skip ginkgo
+    ARTIFACTS             directory to put artifacts
 
 Examples:
 
@@ -202,6 +203,7 @@ GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
+ARTIFACTS=${ARTIFACTS:-}
 
 echo "PROVIDER: $PROVIDER"
 echo "DOCKER_REPO: $DOCKER_REPO"
@@ -227,6 +229,7 @@ echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
+echo "ARTIFACTS: $ARTIFACTS"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.8.1
 declare -A kind_node_images
@@ -549,9 +552,9 @@ export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REPO/tidb-backup-manager:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REPO/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
 
-# Environments for kubetest2
-if [ -n "${REPORT_DIR:-}" ]; then
-    export ARTIFACTS=${REPORT_DIR:-}
+if [ -n "${ARTIFACTS}" ]; then
+    export REPORT_DIR=${ARTIFACTS}
+    kubetest2_args+=(--dump)
 fi
 
 hack::ensure_kubetest2
