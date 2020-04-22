@@ -241,7 +241,7 @@ kind_node_images["v1.18.0"]="kindest/node:v1.18.0@sha256:0e20578828edd939d25eb98
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
-        echo "info: skip building images"
+        echo "info: skip building binaries"
         export NO_BUILD=y
     fi
     if [ -n "$SKIP_IMAGE_BUILD" ]; then
@@ -364,11 +364,11 @@ hack::ensure_kind
 hack::ensure_kubectl
 hack::ensure_helm
 
-e2e::image_build
-
 if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
     e2e::__configure_docker_mirror_for_dind
 fi
+
+e2e::image_build
 
 kubetest2_args=(
     $PROVIDER

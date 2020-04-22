@@ -204,7 +204,7 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 		return err
 	}
 
-	if !templateEqual(newSet, oldSet) || tc.Status.TiFlash.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newSet, oldSet) {
 		if err := tfmm.tiflashUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
 			return err
 		}
@@ -514,9 +514,6 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			PodManagementPolicy:  apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: controller.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
-				},
 			},
 		},
 	}
@@ -609,7 +606,7 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 	if err != nil {
 		return err
 	}
-	if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
+	if upgrading {
 		tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiFlash.Phase = v1alpha1.NormalPhase
