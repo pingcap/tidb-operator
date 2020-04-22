@@ -1384,6 +1384,13 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"prefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Prefix for the keys.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"projectId", "secretName"},
 			},

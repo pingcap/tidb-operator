@@ -866,6 +866,8 @@ type GcsStorageProvider struct {
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON .
 	SecretName string `json:"secretName"`
+	// Prefix for the keys.
+	Prefix string `json:"prefix,omitempty"`
 }
 
 // +k8s:openapi-gen=true

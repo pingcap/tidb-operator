@@ -3415,6 +3415,17 @@ string
 gcs service account credentials JSON .</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prefix for the keys.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.GrafanaSpec">GrafanaSpec

@@ -103,8 +103,8 @@ pd:
     # clusterIP: "<if you set service type as ClusterIP,you can specify ClusterIP>"
     # annotations: {} "<the default name will be used>"
     # portName: "client"
-  replicas: 3
-  image: pingcap/pd:v3.0.8
+  replicas: 1
+  image: pingcap/pd:nightly
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -250,8 +250,8 @@ tikv:
   # Note that we can't set raftstore.capacity in config because it will be overridden by the command line parameter,
   # we can only set capacity in tikv.resources.limits.storage.
 
-  replicas: 3
-  image: pingcap/tikv:v3.0.8
+  replicas: 1
+  image: hub.pingcap.net/qa/tikv:br_gcs-yiwu-arbug
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -333,7 +333,7 @@ tidb:
   #   # Normally it should be tuned to `tidb.resources.limits.cpu`, for example: 16000m -> 16
   #   max-procs = 0
 
-  replicas: 2
+  replicas: 1
   # The secret name of root password, you can create secret with following command:
   # kubectl create secret generic tidb-secret --from-literal=root=<root-password> --namespace=<namespace>
   # If unset, the root password will be empty and you can set it after connecting
@@ -348,7 +348,7 @@ tidb:
   # initSqlConfigMapName: tidb-initsql
   # initSql: |-
   #   create database app;
-  image: pingcap/tidb:v3.0.8
+  image: pingcap/tidb:nightly
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
@@ -493,7 +493,7 @@ busybox:
   imagePullPolicy: IfNotPresent
 
 monitor:
-  create: true
+  create: false
   # Also see rbac.create
   # If you set rbac.create to false, you need to provide a value here.
   # If you set rbac.create to true, you should leave this empty.
