@@ -37,6 +37,8 @@ spec:
   schedulerName: tidb-scheduler
   tidb:
     affinity: {}
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
     baseImage: pingcap/tidb
     config:
       log:
