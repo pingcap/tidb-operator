@@ -196,6 +196,13 @@ function e2e::image_load() {
         $TIDB_BACKUP_MANAGER_IMAGE
         $E2E_IMAGE
     )
+    echo "info: pull if images does not exist"
+    for image in ${images[@]}; do
+        if ! docker inspect -f '{{.Id}}' $image &>/dev/null; then
+            echo "info: pulling $image"
+            docker pull $image
+        fi
+    done
     if [ "$PROVIDER" == "kind" ]; then
         local nodes=$($KIND_BIN get nodes --name $CLUSTER | grep -v 'control-plane$')
         echo "info: load images ${images[@]}"
