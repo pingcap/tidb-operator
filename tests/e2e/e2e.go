@@ -145,8 +145,9 @@ func setupSuite() {
 	// which be used and we must clean them later.
 	// We set local-storage class as default for simplicity.
 	// The default storage class of kind is local-path-provisioner which
-	// consumes local storage like local-volume-provisioner.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
+	// consumes local storage like local-volume-provisioner. However, it's not
+	// stable in our e2e testing, so we don't use it too.
+	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
 		framework.ExpectNoError(err)
