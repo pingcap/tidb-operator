@@ -438,16 +438,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.It("[PodAdmissionWebhook] able to upgrade TiDB Cluster with pod admission webhook", func() {
 			klog.Info("start to upgrade tidbcluster with pod admission webhook")
 			// deploy new cluster and test upgrade and scale-in/out with pod admission webhook
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", "")
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "admission", "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "3"
 			cluster.Resources["tidb.replicas"] = "2"
 
 			oa.DeployTidbClusterOrDie(&cluster)
 			oa.CheckTidbClusterStatusOrDie(&cluster)
-			upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
-			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
-			cluster.UpgradeAll(upgradeVersions[0])
+			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, utilimage.TiDBV3UpgradeVersion))
+			cluster.UpgradeAll(utilimage.TiDBV3UpgradeVersion)
 			oa.UpgradeTidbClusterOrDie(&cluster)
 			// TODO: find a more graceful way to check tidbcluster during upgrading
 			oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -986,7 +985,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
 			tcName := "tidbcluster"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", "")
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "3"
 			cluster.Resources["tidb.replicas"] = "2"
@@ -1115,7 +1114,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.It("basic deployment", func() {
 			tcName := "basic"
-			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", "")
+			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "1"
 			cluster.Resources["tikv.replicas"] = "1"
 			cluster.Resources["tidb.replicas"] = "1"

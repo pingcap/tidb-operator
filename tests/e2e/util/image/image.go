@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -32,14 +31,16 @@ const (
 	TiDBV3UpgradeVersion = "v3.0.9"
 	TiDBV2Version        = "v2.1.19"
 	TiDBV4Version        = "v4.0.0-rc"
+	TiDBNightly          = "nightly"
 )
 
 func ListImages() []string {
 	images := []string{}
-	versions := strings.Split(e2econfig.TestConfig.TidbVersions, ",")
+	versions := make([]string, 0)
 	versions = append(versions, TiDBV3Version)
 	versions = append(versions, TiDBV2Version)
 	versions = append(versions, TiDBV4Version)
+	versions = append(versions, TiDBNightly)
 	for _, v := range versions {
 		images = append(images, fmt.Sprintf("pingcap/pd:%s", v))
 		images = append(images, fmt.Sprintf("pingcap/tidb:%s", v))
