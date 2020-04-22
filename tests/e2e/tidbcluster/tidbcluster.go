@@ -143,13 +143,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name:    "basic-v3",
 			},
 			{
-				Version: utilimage.TiDBV2Version,
-				Name:    "basic-v2",
-				Values: map[string]string{
-					// verify v2.1.x configuration compatibility
-					// https://github.com/pingcap/tidb-operator/pull/950
-					"tikv.resources.limits.storage": "1G",
-				},
+				Version: utilimage.TiDBV4Version,
+				Name:    "basic-v4",
 			},
 		}
 
@@ -1202,7 +1197,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Upgrading tidb cluster")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = utilimage.TiDBNightly
+				tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
 				return nil
 			})
 			framework.ExpectNoError(err)
