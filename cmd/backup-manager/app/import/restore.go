@@ -22,7 +22,6 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the restore command
@@ -69,7 +68,7 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		fmt.Sprintf("-tidb-host=%s", ro.Host),
 		fmt.Sprintf("-d=%s", restorePath),
 	}
-	
+
 	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
