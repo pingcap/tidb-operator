@@ -116,7 +116,7 @@ run the following command to install them into our local binary directory:
 `output/bin`.
 
 ```
-$ hack/install-up-operator.sh -i
+$ hack/local-up-operator.sh -i
 $ export PATH=$(pwd)/output/bin:$PATH
 ```
 
