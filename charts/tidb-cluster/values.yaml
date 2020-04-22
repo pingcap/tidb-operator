@@ -251,7 +251,7 @@ tikv:
   # we can only set capacity in tikv.resources.limits.storage.
 
   replicas: 3
-  image: hub.pingcap.net/qa/tikv:v3.0.8
+  image: pingcap/tikv:v3.0.8
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
