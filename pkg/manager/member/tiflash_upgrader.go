@@ -49,8 +49,6 @@ func (tku *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.State
 		newSet.Spec.Template.Spec = *podSpec
 		return nil
 	}
-
-	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	return nil
 }
 
@@ -62,6 +60,5 @@ func NewFakeTiFlashUpgrader() Upgrader {
 }
 
 func (tku *fakeTiFlashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
-	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	return nil
 }
