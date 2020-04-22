@@ -18,6 +18,7 @@ RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VER
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install
+RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v0.11.1/cert-manager.yaml" -o "/cert-manager.yaml"
 
 ADD tidb-operator /charts/e2e/tidb-operator
 ADD tidb-cluster /charts/e2e/tidb-cluster
