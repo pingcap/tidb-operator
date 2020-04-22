@@ -62,7 +62,7 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		"--backend=tidb",
 		"--server-mode=false",
 		"--log-file=",
-		"--tidb-port=4000",
+		fmt.Sprintf("--tidb-port=%d", ro.Port),
 		fmt.Sprintf("--tidb-user=%s", ro.User),
 		fmt.Sprintf("--tidb-password=%s", ro.Password),
 		fmt.Sprintf("--tidb-host=%s", ro.Host),
