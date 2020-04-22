@@ -87,6 +87,10 @@ func GenerateS3CertEnvVar(s3 *v1alpha1.S3StorageProvider, useKMS bool) ([]corev1
 			Name:  "AWS_STORAGE_CLASS",
 			Value: s3.StorageClass,
 		},
+		{
+			Name:  "S3_PREFIX",
+			Value: s3.Prefix,
+		},
 	}
 	if useKMS {
 		envVars = append(envVars, []corev1.EnvVar{

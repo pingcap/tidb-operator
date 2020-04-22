@@ -46,6 +46,7 @@ func NewExportCommand() *cobra.Command {
 	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
 	cmd.Flags().StringVar(&bo.Bucket, "bucket", "", "Bucket in which to store the backup data")
 	cmd.Flags().StringVar(&bo.StorageType, "storageType", "", "Backend storage type")
+	cmd.Flags().StringVar(&bo.Prefix, "prefix", "", "Prefix to store backup at")
 	return cmd
 }
 

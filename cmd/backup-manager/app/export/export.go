@@ -33,6 +33,7 @@ type Options struct {
 	util.GenericOptions
 	Bucket      string
 	StorageType string
+	Prefix      string
 }
 
 func (bo *Options) getBackupFullPath() string {
@@ -45,7 +46,11 @@ func (bo *Options) getBackupRelativePath() string {
 }
 
 func (bo *Options) getDestBucketURI(remotePath string) string {
-	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
+	prefix := bo.Prefix
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+	return fmt.Sprintf("%s://%s%s", bo.StorageType, prefix, remotePath)
 }
 
 func (bo *Options) dumpTidbClusterData() (string, error) {

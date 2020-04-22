@@ -16,14 +16,6 @@ package backup
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +24,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
+	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 )
 
 type backupManager struct {
@@ -196,6 +197,11 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--backupName=%s", name),
 		fmt.Sprintf("--bucket=%s", bucketName),
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
+	}
+	if backup.Spec.S3 != nil && backup.Spec.S3.Prefix != "" {
+		args = append(args,
+			fmt.Sprintf("--prefix=%s", backup.Spec.S3.Prefix),
+		)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName
