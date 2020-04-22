@@ -330,8 +330,6 @@ e2e_args=(
     --operator-image="${TIDB_OPERATOR_IMAGE}"
     --backup-image="${TIDB_BACKUP_MANAGER_IMAGE}"
     --e2e-image="${E2E_IMAGE}"
-    # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
-    --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
     -v=4
 )
