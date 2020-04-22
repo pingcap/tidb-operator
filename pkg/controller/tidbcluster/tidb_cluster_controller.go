@@ -108,7 +108,7 @@ func NewController(
 	tiflashScaler := mm.NewTiFlashScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
 	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod, recorder)
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, recorder)
+	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, recorder, podInformer.Lister())
 	tiflashFailover := mm.NewTiFlashFailover(tiflashFailoverPeriod, recorder)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
