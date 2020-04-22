@@ -2,6 +2,10 @@
 
 This is the second release candidate of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
 
+## Action Required
+
+- Change TiDB pod `readiness` probe from `HTTPGet` to `TCPSocket` 4000 port. This will trigger rolling-upgrade for the `tidb-server` component. You can set `spec.paused` to `true` before upgrading tidb-operator to avoid the rolling upgrade, and set it back to `false` when you are ready to upgrade your tidb server ([#2139](https://github.com/pingcap/tidb-operator/pull/2139), [@weekface](https://github.com/weekface))
+
 ## Notable Changes
 
 - Add `status` field for `TidbAutoScaler` CR ([#2182](https://github.com/pingcap/tidb-operator/pull/2182), [@Yisaer](https://github.com/Yisaer))
@@ -9,7 +13,6 @@ This is the second release candidate of `v1.1.0`, which focuses on the usability
 - Emit more events for `TidbCluster` and `TidbClusterAutoScaler` to help users know TiDB running status ([#2150](https://github.com/pingcap/tidb-operator/pull/2150), [@Yisaer](https://github.com/Yisaer))
 - Add the `AGE` column to show creation timestamp for all CRDs ([#2168](https://github.com/pingcap/tidb-operator/pull/2168), [@cofyc](https://github.com/cofyc))
 - Add a switch to skip PD Dashboard TLS configuration ([#2143](https://github.com/pingcap/tidb-operator/pull/2143), [@weekface](https://github.com/weekface))
-- Change TiDB pod `readiness` probe from `HTTPGet` to `TCPSocket` 4000 port ([#2139](https://github.com/pingcap/tidb-operator/pull/2139), [@weekface](https://github.com/weekface))
 - Support deploying TiFlash with TidbCluster CR ([#2157](https://github.com/pingcap/tidb-operator/pull/2157), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Add TLS support for TiKV metrics API ([#2137](https://github.com/pingcap/tidb-operator/pull/2137), [@weekface](https://github.com/weekface))
 - Set PD DashboardConfig when TLS between the MySQL client and TiDB server is enabled ([#2085](https://github.com/pingcap/tidb-operator/pull/2085), [@weekface](https://github.com/weekface))
