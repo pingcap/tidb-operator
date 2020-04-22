@@ -57,6 +57,7 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 	if exist := util.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
+	// args for restore
 	args := []string{
 		"--status-addr=0.0.0.0:8289",
 		"--backend=tidb",
