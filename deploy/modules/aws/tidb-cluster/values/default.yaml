@@ -7,6 +7,8 @@ tikv:
   stroageClassName: local-storage
   syncLog: true
 tidb:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
   service:
     type: LoadBalancer
     externalTrafficPolicy: Local
