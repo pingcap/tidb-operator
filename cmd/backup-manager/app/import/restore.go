@@ -69,8 +69,7 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		fmt.Sprintf("-tidb-host=%s", ro.Host),
 		fmt.Sprintf("-d=%s", restorePath),
 	}
-
-	klog.Infof("/tidb-lightning %v", args)
+	
 	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute loader command %v failed, output: %s, err: %v", ro, args, string(output), err)
