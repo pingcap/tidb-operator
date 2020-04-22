@@ -2,10 +2,9 @@
 // E2E Jenkins file.
 //
 
-import groovy.transform.Field
+import groovy.text.SimpleTemplateEngine
 
-@Field
-def podYAML = '''
+podYAML = '''\
 apiVersion: v1
 kind: Pod
 metadata:
@@ -25,7 +24,7 @@ spec:
     - |
       function clean() {
         echo "info: clean all containers to avoid cgroup leaking"
-        docker kill $(docker ps -q) || true
+        docker kill `docker ps -q` || true
         docker system prune -af || true
       }
       trap clean TERM
@@ -36,15 +35,21 @@ spec:
     env:
     - name: DOCKER_IN_DOCKER_ENABLED
       value: "true"
+<% if (resources && (resources.requests || resources.limits)) { %>
     resources:
+    <% if (resources.requests) { %>
       requests:
-        memory: "8000Mi"
-        cpu: 8000m
-        ephemeral-storage: "60Gi"
+        cpu: <%= resources.requests.cpu %>
+        memory: <%= resources.requests.memory %>
+        ephemeral-storage: 60Gi
+    <% } %>
+    <% if (resources.limits) { %>
       limits:
-        memory: "8000Mi"
-        cpu: 8000m
-        ephemeral-storage: "60Gi"
+        cpu: <%= resources.limits.cpu %>
+        memory: <%= resources.limits.memory %>
+        ephemeral-storage: 60Gi
+    <% } %>
+<% } %>
     # kind needs /lib/modules and cgroups from the host
     volumeMounts:
     - mountPath: /lib/modules
@@ -76,7 +81,9 @@ spec:
     key: tidb-operator
     operator: Exists
   affinity:
-    # running on nodes for tidb-operator only
+<% if (!any) { %>
+    # run on nodes prepared for tidb-operator by default
+    # https://github.com/pingcap/tidb-operator/issues/1603
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
@@ -85,6 +92,7 @@ spec:
             operator: In
             values:
             - tidb-operator
+<% } %>
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -98,8 +106,38 @@ spec:
           topologyKey: kubernetes.io/hostname
 '''
 
-def build(SHELL_CODE, ARTIFACTS = "") {
-	podTemplate(yaml: podYAML) {
+String buildPodYAML(Map m = [:]) {
+	m.putIfAbsent("resources", [:])
+	m.putIfAbsent("any", false)
+	def engine = new groovy.text.SimpleTemplateEngine()
+	def template = engine.createTemplate(podYAML).make(m)
+	return template.toString()
+}
+
+e2ePodResources = [
+		requests: [
+			cpu: "8",
+			memory: "8G"
+		],
+		limits: [
+			cpu: "8",
+			memory: "8G"
+		],
+	]
+
+e2eSerialResources = [
+		requests: [
+			cpu: "4",
+			memory: "8G"
+		],
+		limits: [
+			cpu: "4",
+			memory: "8G"
+		],
+	]
+
+def build(String SHELL_CODE, String ARTIFACTS = "", Map resources = e2ePodResources) {
+	podTemplate(yaml: buildPodYAML(resources: resources)) {
 		node(POD_LABEL) {
 			container('main') {
 				def WORKSPACE = pwd()
@@ -120,12 +158,10 @@ def build(SHELL_CODE, ARTIFACTS = "") {
 							"""
 						}
 						stage('Run') {
-							ansiColor('xterm') {
-								sh """
-								export GOPATH=${WORKSPACE}/go
-								${SHELL_CODE}
-								"""
-							}
+							sh """#!/bin/bash
+							export GOPATH=${WORKSPACE}/go
+							${SHELL_CODE}
+							"""
 						}
 					}
 				} finally {
@@ -157,27 +193,51 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 	timeout (time: 2, unit: 'HOURS') {
 
 	def GITHASH
-	def CODECOV_TOKEN
 	def UCLOUD_OSS_URL = "http://pingcap-dev.hk.ufileos.com"
 	def BUILD_URL = "git@github.com:pingcap/tidb-operator.git"
 	def PROJECT_DIR = "go/src/github.com/pingcap/tidb-operator"
 
 	catchError {
-		node('build_go1130_memvolume') {
-			container("golang") {
-				def WORKSPACE = pwd()
+		// use fixed label, so we can reuse previous workers
+		// increase verison in pod label when we update pod template
+		def buildPodLabel = "tidb-operator-build-v1"
+		def resources = [
+			requests: [
+				cpu: "4",
+				memory: "4G"
+			],
+			limits: [
+				cpu: "8",
+				memory: "32G"
+			],
+		]
+		podTemplate(
+			label: buildPodLabel,
+			yaml: buildPodYAML(resources: resources, any: true),
+			// We allow this pod to remain active for a while, later jobs can
+			// reuse cache in previous created nodes.
+			idleMinutes: 180,
+		) {
+		node(buildPodLabel) {
+			container("main") {
 				dir("${PROJECT_DIR}") {
-					deleteDir()
 
 					stage('Checkout') {
+						sh """
+						echo "info: change ownerships for jenkins"
+						# we run as root in our pods, this is required
+						# otherwise jenkins agent will fail because of the lack of permission
+						chown -R 1000:1000 .
+						"""
+
+						// clean stale files because we may reuse previous created nodes
+						deleteDir()
+
 						checkout changelog: false,
 						poll: false,
 						scm: [
 							$class: 'GitSCM',
 							branches: [[name: "${BUILD_BRANCH}"]],
-							doGenerateSubmoduleConfigurations: false,
-							extensions: [],
-							submoduleCfg: [],
 							userRemoteConfigs: [[
 								credentialsId: "${CREDENTIALS_ID}",
 								refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*',
@@ -186,90 +246,83 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 						]
 
 						GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
-						withCredentials([string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'codecovToken')]) {
-							CODECOV_TOKEN = codecovToken
-						}
 					}
 
-					// moved to Github Actions
-					// stage("Check") {
-						// ansiColor('xterm') {
-							// sh """
-							// export GOPATH=${WORKSPACE}/go
-							// export PATH=${WORKSPACE}/go/bin:\$PATH
-							// make check-setup
-							// make check
-							// """
-						// }
-					// }
-
 					stage("Build and Test") {
-						ansiColor('xterm') {
-							sh """
-							make
-							make e2e-build
-							if [ ${BUILD_BRANCH} == "master" ]
-							then
+						withCredentials([
+							string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'CODECOV_TOKEN')
+						]) {
+							sh """#!/bin/bash
+							echo "info: building"
+							make build e2e-build
+							if [ "${BUILD_BRANCH}" == "master" ]; then
+								echo "info: run unit tests and report coverage results for master branch"
 								make test GOFLAGS='-race' GO_COVER=y
-								curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
-							else
-								make test GOFLAGS='-race'
+								curl -s https://codecov.io/bash | bash -s - -t \${CODECOV_TOKEN} || echo 'Codecov did not collect coverage reports'
 							fi
 							"""
 						}
 					}
 
 					stage("Prepare for e2e") {
-						ansiColor('xterm') {
-							sh """
-							hack/prepare-e2e.sh
+						withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+							sh """#!/bin/bash
+							echo "info: logging into hub.pingcap.net"
+							docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
+							echo "info: build and push images for e2e"
+							NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} make docker-push e2e-docker-push
+							echo "info: download binaries for e2e"
+							SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
+							echo "info: change ownerships for jenkins"
+							# we run as root in our pods, this is required
+							# otherwise jenkins agent will fail because of the lack of permission
+							chown -R 1000:1000 .
 							"""
 						}
+						stash excludes: "vendor/**,deploy/**,tests/**", name: "tidb-operator"
 					}
-
-					stash excludes: "vendor/**,deploy/**", name: "tidb-operator"
 				}
 			}
 		}
+		}
 
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
-		// unstable in our IDC, disable temporarily
-		//def MIRRORS = "DOCKER_IO_MIRROR=https://dockerhub.azk8s.cn GCR_IO_MIRROR=https://gcr.azk8s.cn QUAY_IO_MIRROR=https://quay.azk8s.cn"
-		def MIRRORS = "DOCKER_IO_MIRROR=http://172.16.4.143:5000 QUAY_IO_MIRROR=http://172.16.4.143:5001"
+		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH}"
 		def builds = [:]
 		builds["E2E v1.12.10"] = {
-			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
 		}
 		builds["E2E v1.18.0"] = {
-			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.18 IMAGE_TAG=${GITHASH} SKIP_BUILD=y GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 Serial"] = {
-			build("${MIRRORS} RUNNER_SUITE_NAME=e2e-v1.12-serial IMAGE_TAG=${GITHASH} SKIP_BUILD=y KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-serial KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts, e2eSerialResources)
 		}
 		builds.failFast = false
 		parallel builds
 
-		if ( !(BUILD_BRANCH ==~ /[a-z0-9]{40}/) ) {
-			node('build_go1130_memvolume') {
-				container("golang") {
-					def WORKSPACE = pwd()
-					dir("${PROJECT_DIR}") {
-						unstash 'tidb-operator'
-						stage('upload tidb-operator binaries and charts'){
-							withCredentials([
-								string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
-								string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
-							]) {
-								sh """
-								export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
-								export UCLOUD_UFILE_BUCKET=pingcap-dev
-								export BUILD_BRANCH=${BUILD_BRANCH}
-								export GITHASH=${GITHASH}
-								./ci/upload-binaries-charts.sh
-								"""
+		if (!(BUILD_BRANCH ==~ /[a-z0-9]{40}/)) {
+			podTemplate(yaml: buildPodYAML(resources: [requests: [cpu: "1", memory: "1G"]])) {
+				node(POD_LABEL) {
+					container("main") {
+						dir("${PROJECT_DIR}") {
+							unstash 'tidb-operator'
+							stage('upload tidb-operator binaries and charts'){
+								withCredentials([
+									string(credentialsId: 'UCLOUD_PUBLIC_KEY', variable: 'UCLOUD_PUBLIC_KEY'),
+									string(credentialsId: 'UCLOUD_PRIVATE_KEY', variable: 'UCLOUD_PRIVATE_KEY'),
+								]) {
+									sh """
+									export UCLOUD_UFILE_PROXY_HOST=mainland-hk.ufileos.com
+									export UCLOUD_UFILE_BUCKET=pingcap-dev
+									export BUILD_BRANCH=${BUILD_BRANCH}
+									export GITHASH=${GITHASH}
+									./ci/upload-binaries-charts.sh
+									"""
+								}
 							}
 						}
 					}
