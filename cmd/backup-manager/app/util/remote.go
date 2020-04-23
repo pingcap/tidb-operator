@@ -244,14 +244,6 @@ func checkGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsQuery
 	gqs.secretName = gcs.SecretName
 	gqs.prefix = gcs.Prefix
 
-	// gcs temporary not support gcs like endpoint
-	// so region have to exist
-	if gqs.location == "" {
-		gqs.location = "us-east1"
-	}
-	if gqs.objectAcl == "" {
-		gqs.objectAcl = "private"
-	}
 	gqs.prefix = strings.Trim(gqs.prefix, "/")
 	gqs.prefix += "/"
 
