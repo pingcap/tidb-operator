@@ -2560,7 +2560,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>loger</code></br>
+<code>logger</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.FlashLogger">
 FlashLogger
