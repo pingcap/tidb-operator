@@ -42,7 +42,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	currentReplicas := tc.Spec.TiDB.Replicas
-	var targetReplicas = currentReplicas
+	targetReplicas := currentReplicas
 	if tac.Spec.TiDB.ExternalEndpoint == nil {
 		instances := filterTidbInstances(tc)
 		targetReplicas, err = calculateTidbMetrics(tac, sts, instances)
