@@ -94,7 +94,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
-				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerIsNotPDOrTiKV))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerIsNotTarget))
 			},
 		},
 		{
@@ -218,6 +218,56 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				},
 			},
 			pvcs: []*corev1.PersistentVolumeClaim{},
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+				_, err = opc.podLister.Pods("default").Get("pod-1")
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "not found")).To(BeTrue())
+			},
+		},
+		{
+			name: "one of two pvcs is not found",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
+					},
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: "pd1",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-1",
+									},
+								},
+							},
+							{
+								Name: "pd0",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-0",
+									},
+								},
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pvc-1",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(0))
@@ -471,7 +521,7 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 				g.Expect(len(skipReason)).To(Equal(3))
 				g.Expect(skipReason["pod-2"]).To(Equal(skipReasonOrphanPodsCleanerPVCNameIsEmpty))
 				g.Expect(skipReason["pod-3"]).To(Equal(skipReasonOrphanPodsCleanerPVCIsFound))
-				g.Expect(skipReason["pod-4"]).To(Equal(skipReasonOrphanPodsCleanerIsNotPDOrTiKV))
+				g.Expect(skipReason["pod-4"]).To(Equal(skipReasonOrphanPodsCleanerIsNotTarget))
 				g.Expect(err).NotTo(HaveOccurred())
 				_, err = opc.podLister.Pods("default").Get("pod-1")
 				g.Expect(err).To(HaveOccurred())

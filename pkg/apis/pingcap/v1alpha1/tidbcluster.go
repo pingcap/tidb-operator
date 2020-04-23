@@ -174,6 +174,10 @@ func (tc *TidbCluster) TiDBUpgrading() bool {
 	return tc.Status.TiDB.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) TiFlashUpgrading() bool {
+	return tc.Status.TiFlash.Phase == UpgradePhase
+}
+
 func (tc *TidbCluster) PDAllPodsStarted() bool {
 	return tc.PDStsDesiredReplicas() == tc.PDStsActualReplicas()
 }
