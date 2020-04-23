@@ -225,6 +225,8 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}
 	// Get clients
 	config, err := framework.LoadConfig()
+	config.QPS = 20
+	config.Burst = 50
 	framework.ExpectNoError(err, "failed to load config")
 	cli, err := versioned.NewForConfig(config)
 	framework.ExpectNoError(err, "failed to create clientset")
@@ -273,8 +275,10 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	// reqeust this. To reduce storage usage, we set
 	// persistentVolumeReclaimPolicy to Delete if the PVC namespace is gone.
 	go wait.Forever(func() {
+		framework.Logf("recycling orphan PVs")
 		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 		if err != nil {
+			framework.Logf("failed to list pvs: %v", err)
 			return
 		}
 		for _, pv := range pvList.Items {
