@@ -30,6 +30,7 @@ import (
 	"github.com/onsi/gomega"
 	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -39,6 +40,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	runtimeutils "k8s.io/apimachinery/pkg/util/runtime"
@@ -205,9 +207,9 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		framework.Failf("failed to clear validatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
 	}
 	ginkgo.By("Clear tidb-operator mutatingwebhookconfigurations")
-	clearValidatingWebhookConfigurationsCmd := "kubectl delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"
-	if err := exec.Command("sh", "-c", clearValidatingWebhookConfigurationsCmd).Run(); err != nil {
-		framework.Failf("failed to clear mutatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
+	clearMutatingWebhookConfigurationsCmd := "kubectl delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"
+	if err := exec.Command("sh", "-c", clearMutatingWebhookConfigurationsCmd).Run(); err != nil {
+		framework.Failf("failed to clear mutatingwebhookconfigurations (cmd: %q, error: %v", clearMutatingWebhookConfigurationsCmd, err)
 	}
 	setupSuite()
 	// override with hard-coded value
@@ -266,6 +268,41 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		return true, nil
 	})
 	framework.ExpectNoError(err, "failed to wait for all PVs to be available")
+
+	// tidb-operator will set persistentVolumeReclaimPolicy to Retain if users
+	// reqeust this. To reduce storage usage, we set
+	// persistentVolumeReclaimPolicy to Delete if the PVC namespace is gone.
+	go wait.Forever(func() {
+		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+		if err != nil {
+			return
+		}
+		for _, pv := range pvList.Items {
+			if pv.Spec.PersistentVolumeReclaimPolicy != v1.PersistentVolumeReclaimRetain {
+				continue
+			}
+			pvcNamespaceName, ok := pv.ObjectMeta.Labels[label.NamespaceLabelKey]
+			if !ok {
+				continue
+			}
+			pvcNamespace, err := kubeCli.CoreV1().Namespaces().Get(pvcNamespaceName, metav1.GetOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				framework.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
+				continue
+			}
+			if pvcNamespace != nil {
+				continue
+			}
+			pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
+			_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
+			if err != nil {
+				framework.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
+			} else {
+				framework.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
+			}
+		}
+	}, time.Second*10)
+
 	ginkgo.By("Labeling nodes")
 	oa := tests.NewOperatorActions(cli, kubeCli, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, nil, e2econfig.TestConfig, nil, nil, nil)
 	oa.LabelNodesOrDie()
