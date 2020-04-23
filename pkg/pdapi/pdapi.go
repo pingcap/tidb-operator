@@ -67,7 +67,6 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 // It loads in-cluster root ca if caCert is empty.
 func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, caCert []byte) (*tls.Config, error) {
 	secretName := util.ClusterClientTLSSecretName(tcName)
-	// TODO use secretLister instead of kubeCli.CoreV1().Secrets().Get() to optimize the performance
 	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
