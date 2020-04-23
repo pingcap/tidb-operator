@@ -135,6 +135,11 @@ type BasicAutoScalerSpec struct {
 	// If not set, the default value is 5.
 	// +optional
 	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
+
+	// ExternalEndpoint make auto-scaler controller could query the external service by http/https to
+	// fetch the result of the recommended replicas for tikv/tidb
+	// +optional
+	ExternalEndpoint *ExternalEndpoint `json:"externalEndpoint,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -197,4 +202,27 @@ type MetricsStatus struct {
 	CurrentValue string `json:"currentValue"`
 	// TargetValue indicates the threshold value for this metrics in auto-scaling
 	ThresholdValue string `json:"thresholdValue"`
+}
+
+// +k8s:openapi-gen=true
+// ExternalEndpoint describe the external service enpoint
+// who provide the tikv/tidb auto-scaling recommended replicas ability
+type ExternalEndpoint struct {
+	// Host indicates the external service's host
+	Host string `json:"host"`
+	// Port indicates the external service's post
+	Port int32 `json:"port"`
+	// Path indicates the external service's path
+	Path string `json:"path"`
+	// TlsSecretRef indicates the Secret which stored the tls configuration. If enabled, operator would use https
+	// to communicate to the external service
+	// +optional
+	TlsSecretRef *SecretRef `json:"tlsSecret,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// SecretRef indicates to secret ref
+type SecretRef struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
 }

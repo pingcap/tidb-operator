@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -37,6 +38,7 @@ import (
 )
 
 type autoScalerManager struct {
+	kubecli   kubernetes.Interface
 	cli       versioned.Interface
 	tcControl controller.TidbClusterControlInterface
 	taLister  v1alpha1listers.TidbClusterAutoScalerLister
@@ -45,6 +47,7 @@ type autoScalerManager struct {
 }
 
 func NewAutoScalerManager(
+	kubecli kubernetes.Interface,
 	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
@@ -52,6 +55,7 @@ func NewAutoScalerManager(
 	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 	return &autoScalerManager{
+		kubecli:   kubecli,
 		cli:       cli,
 		tcControl: controller.NewRealTidbClusterControl(cli, tcLister, recorder),
 		taLister:  informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),

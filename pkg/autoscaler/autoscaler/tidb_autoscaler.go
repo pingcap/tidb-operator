@@ -19,10 +19,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/klog"
 )
 
 func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
@@ -40,10 +42,19 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	currentReplicas := tc.Spec.TiDB.Replicas
-	instances := filterTidbInstances(tc)
-	targetReplicas, err := calculateTidbMetrics(tac, sts, instances)
-	if err != nil {
-		return err
+	var targetReplicas = currentReplicas
+	if tac.Spec.TiDB.ExternalEndpoint == nil {
+		instances := filterTidbInstances(tc)
+		targetReplicas, err = calculateTidbMetrics(tac, sts, instances)
+		if err != nil {
+			return err
+		}
+	} else {
+		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.ExternalEndpoint, am.kubecli)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] 's externalEndpoint meet error, err:%v", tac.Namespace, tac.Name, err)
+			return err
+		}
 	}
 	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiDBMemberType)
 	if targetReplicas == tc.Spec.TiDB.Replicas {

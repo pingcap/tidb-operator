@@ -16,7 +16,6 @@ package pdapi
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -25,17 +24,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/util"
-
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
-
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/crypto"
 	types "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 const (
@@ -72,30 +69,7 @@ func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName stri
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
 	}
 
-	rootCAs := x509.NewCertPool()
-	var tlsCert tls.Certificate
-
-	if len(caCert) > 0 {
-		rootCAs.AppendCertsFromPEM(caCert)
-	} else {
-		rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
-	}
-
-	clientCert, certExists := secret.Data[v1.TLSCertKey]
-	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
-	if !certExists || !keyExists {
-		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", namespace, secretName)
-	}
-
-	tlsCert, err = tls.X509KeyPair(clientCert, clientKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
-	}
-
-	return &tls.Config{
-		RootCAs:      rootCAs,
-		Certificates: []tls.Certificate{tlsCert},
-	}, nil
+	return crypto.LoadTlsConfigFromSecret(secret, caCert)
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
