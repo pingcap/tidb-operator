@@ -18,6 +18,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -147,16 +148,16 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 					Annotations: map[string]string{},
 				},
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       "prom/prometheus",
-					Version:         "v2.11.1",
+					BaseImage:       utilimage.PrometheusImage,
+					Version:         utilimage.PrometheusVersion,
 					ImagePullPolicy: &imagePullPolicy,
 					Resources:       corev1.ResourceRequirements{},
 				},
 			},
 			Reloader: v1alpha1.ReloaderSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       "pingcap/tidb-monitor-reloader",
-					Version:         "v1.0.1",
+					BaseImage:       utilimage.TiDBMonitorReloaderImage,
+					Version:         utilimage.TiDBMonitorReloaderVersion,
 					ImagePullPolicy: &imagePullPolicy,
 					Resources:       corev1.ResourceRequirements{},
 				},
@@ -167,8 +168,8 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			},
 			Initializer: v1alpha1.InitializerSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       "pingcap/tidb-monitor-initializer",
-					Version:         "v3.0.8",
+					BaseImage:       utilimage.TiDBMonitorInitializerImage,
+					Version:         utilimage.TiDBMonitorInitializerVersion,
 					ImagePullPolicy: &imagePullPolicy,
 					Resources:       corev1.ResourceRequirements{},
 				},
@@ -180,8 +181,8 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 	if grafanaEnabled {
 		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
 			MonitorContainer: v1alpha1.MonitorContainer{
-				BaseImage:       "grafana/grafana",
-				Version:         "6.0.1",
+				BaseImage:       utilimage.GrafanaImage,
+				Version:         utilimage.GrafanaVersion,
 				ImagePullPolicy: &imagePullPolicy,
 				Resources:       corev1.ResourceRequirements{},
 			},
