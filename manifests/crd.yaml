@@ -5080,7 +5080,7 @@ spec:
                               format: double
                               type: number
                           type: object
-                        loger:
+                        logger:
                           description: FlashLogger is the configuration of [logger]
                             section.
                           properties:

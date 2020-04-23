@@ -2575,7 +2575,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>loger</code></br>
+<code>logger</code></br>
 <em>
 <a href="#flashlogger">
 FlashLogger
