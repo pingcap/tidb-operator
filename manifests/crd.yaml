@@ -10653,6 +10653,36 @@ spec:
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
+                externalEndpoint:
+                  description: ExternalEndpoint describe the external service enpoint
+                    who provide the tikv/tidb auto-scaling recommended replicas ability
+                  properties:
+                    host:
+                      description: Host indicates the external service's host
+                      type: string
+                    path:
+                      description: Path indicates the external service's path
+                      type: string
+                    port:
+                      description: Port indicates the external service's post
+                      format: int32
+                      type: integer
+                    tlsSecret:
+                      description: SecretRef indicates to secret ref
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - host
+                  - port
+                  - path
+                  type: object
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -10713,6 +10743,36 @@ spec:
             tikv:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
+                externalEndpoint:
+                  description: ExternalEndpoint describe the external service enpoint
+                    who provide the tikv/tidb auto-scaling recommended replicas ability
+                  properties:
+                    host:
+                      description: Host indicates the external service's host
+                      type: string
+                    path:
+                      description: Path indicates the external service's path
+                      type: string
+                    port:
+                      description: Port indicates the external service's post
+                      format: int32
+                      type: integer
+                    tlsSecret:
+                      description: SecretRef indicates to secret ref
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - host
+                  - port
+                  - path
+                  type: object
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
