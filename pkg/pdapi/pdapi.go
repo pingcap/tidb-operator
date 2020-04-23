@@ -67,6 +67,7 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 // It loads in-cluster root ca if caCert is empty.
 func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName string, caCert []byte) (*tls.Config, error) {
 	secretName := util.ClusterClientTLSSecretName(tcName)
+	// TODO use secretLister instead of kubeCli.CoreV1().Secrets().Get() to optimize the performance
 	secret, err := kubeCli.CoreV1().Secrets(string(namespace)).Get(secretName, types.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", namespace, secretName, err)
@@ -105,21 +106,22 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 	var tlsConfig *tls.Config
 	var err error
-	scheme := "http"
+	var scheme = "http"
+
 	if tlsEnabled {
 		scheme = "https"
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+
+		return NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
 	}
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		if tlsEnabled {
-			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
-			if err != nil {
-				klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
-				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
-			}
-		}
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
 	}
 	return pdc.pdClients[key]
 }
