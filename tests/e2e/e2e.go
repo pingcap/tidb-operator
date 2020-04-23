@@ -204,6 +204,11 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	if err := exec.Command("sh", "-c", clearValidatingWebhookConfigurationsCmd).Run(); err != nil {
 		framework.Failf("failed to clear validatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
 	}
+	ginkgo.By("Clear tidb-operator mutatingwebhookconfigurations")
+	clearValidatingWebhookConfigurationsCmd := "kubectl delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"
+	if err := exec.Command("sh", "-c", clearValidatingWebhookConfigurationsCmd).Run(); err != nil {
+		framework.Failf("failed to clear mutatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
+	}
 	setupSuite()
 	// override with hard-coded value
 	e2econfig.TestConfig.ManifestDir = "/manifests"
