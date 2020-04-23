@@ -41,13 +41,13 @@ spec:
       requests:
         cpu: <%= resources.requests.cpu %>
         memory: <%= resources.requests.memory %>
-        ephemeral-storage: 60Gi
+        ephemeral-storage: 70Gi
     <% } %>
     <% if (resources.limits) { %>
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 60Gi
+        ephemeral-storage: 70Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
