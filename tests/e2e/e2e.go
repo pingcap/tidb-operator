@@ -147,8 +147,9 @@ func setupSuite() {
 	// which be used and we must clean them later.
 	// We set local-storage class as default for simplicity.
 	// The default storage class of kind is local-path-provisioner which
-	// consumes local storage like local-volume-provisioner.
-	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" {
+	// consumes local storage like local-volume-provisioner. However, it's not
+	// stable in our e2e testing.
+	if framework.TestContext.Provider == "gke" || framework.TestContext.Provider == "aws" || framework.TestContext.Provider == "kind" {
 		defaultSCName := "local-storage"
 		list, err := c.StorageV1().StorageClasses().List(metav1.ListOptions{})
 		framework.ExpectNoError(err)
@@ -275,33 +276,49 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	// reqeust this. To reduce storage usage, we set
 	// persistentVolumeReclaimPolicy to Delete if the PVC namespace is gone.
 	go wait.Forever(func() {
-		framework.Logf("recycling orphan PVs")
 		pvList, err := kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 		if err != nil {
 			framework.Logf("failed to list pvs: %v", err)
 			return
 		}
+		var (
+			total          int = len(pvList.Items)
+			retainReleased int
+			skipped        int
+			failed         int
+			succeeded      int
+		)
+		defer func() {
+			framework.Logf("recycling orphan PVs (total: %d, retainReleased: %d, skipped: %d, failed: %d, succeeded: %d)", total, retainReleased, skipped, failed, succeeded)
+		}()
 		for _, pv := range pvList.Items {
-			if pv.Spec.PersistentVolumeReclaimPolicy != v1.PersistentVolumeReclaimRetain {
+			if pv.Spec.PersistentVolumeReclaimPolicy != v1.PersistentVolumeReclaimRetain || pv.Status.Phase != v1.VolumeReleased {
 				continue
 			}
-			pvcNamespaceName, ok := pv.ObjectMeta.Labels[label.NamespaceLabelKey]
+			retainReleased++
+			pvcNamespaceName, ok := pv.Labels[label.NamespaceLabelKey]
 			if !ok {
+				framework.Logf("label %q does not exist in PV %q", label.NamespaceLabelKey, pv.Name)
+				failed++
 				continue
 			}
-			pvcNamespace, err := kubeCli.CoreV1().Namespaces().Get(pvcNamespaceName, metav1.GetOptions{})
+			_, err := kubeCli.CoreV1().Namespaces().Get(pvcNamespaceName, metav1.GetOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
 				framework.Logf("failed to get namespace %q: %v", pvcNamespaceName, err)
+				failed++
 				continue
 			}
-			if pvcNamespace != nil {
+			if apierrors.IsNotFound(err) {
+				skipped++
 				continue
 			}
 			pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
 			_, err = kubeCli.CoreV1().PersistentVolumes().Update(&pv)
 			if err != nil {
+				failed++
 				framework.Logf("failed to set PersistentVolumeReclaimPolicy of PV %q to Delete: %v", pv.Name, err)
 			} else {
+				succeeded++
 				framework.Logf("successfully set PersistentVolumeReclaimPolicy of PV %q to Delete", pv.Name)
 			}
 		}
