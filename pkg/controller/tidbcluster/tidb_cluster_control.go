@@ -128,7 +128,7 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
-	// cleaning all orphan pods(pd or tikv which don't have a related PVC) managed by operator
+	// cleaning all orphan pods(pd, tikv or tiflash which don't have a related PVC) managed by operator
 	if _, err := tcc.orphanPodsCleaner.Clean(tc); err != nil {
 		return err
 	}
