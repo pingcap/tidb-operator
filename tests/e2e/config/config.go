@@ -34,7 +34,6 @@ var TestConfig *tests.Config = tests.NewDefaultConfig()
 func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.StringVar(&TestConfig.LogDir, "log-dir", "/logDir", "log directory")
 	flags.IntVar(&TestConfig.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flags.StringVar(&TestConfig.TidbVersions, "tidb-versions", "v3.0.6,v3.0.7,v3.0.8", "tidb versions")
 	flags.StringVar(&TestConfig.E2EImage, "e2e-image", "", "e2e image")
 	flags.BoolVar(&TestConfig.InstallOperator, "install-operator", true, "install a default operator")
 	flags.StringVar(&TestConfig.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
