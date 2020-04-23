@@ -156,7 +156,7 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			},
 			Reloader: v1alpha1.ReloaderSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       utilimage.TiDBMonitorReloaderVersion,
+					BaseImage:       utilimage.TiDBMonitorReloaderImage,
 					Version:         utilimage.TiDBMonitorReloaderVersion,
 					ImagePullPolicy: &imagePullPolicy,
 					Resources:       corev1.ResourceRequirements{},
