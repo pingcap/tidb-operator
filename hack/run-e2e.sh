@@ -196,6 +196,13 @@ function e2e::image_load() {
         $TIDB_BACKUP_MANAGER_IMAGE
         $E2E_IMAGE
     )
+    echo "info: pull if images do not exist"
+    for image in ${images[@]}; do
+        if ! docker inspect -f '{{.Id}}' $image &>/dev/null; then
+            echo "info: pulling $image"
+            docker pull $image
+        fi
+    done
     if [ "$PROVIDER" == "kind" ]; then
         local nodes=$($KIND_BIN get nodes --name $CLUSTER | grep -v 'control-plane$')
         echo "info: load images ${images[@]}"
@@ -323,8 +330,6 @@ e2e_args=(
     --operator-image="${TIDB_OPERATOR_IMAGE}"
     --backup-image="${TIDB_BACKUP_MANAGER_IMAGE}"
     --e2e-image="${E2E_IMAGE}"
-    # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
-    --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
     -v=4
 )
