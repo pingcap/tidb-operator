@@ -68,7 +68,6 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 	tcName := tc.GetName()
 	svcName := svc.GetName()
 	svcSpec := svc.Spec.DeepCopy()
-	serviceType := svcSpec.Type
 
 	var updateSvc *corev1.Service
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
