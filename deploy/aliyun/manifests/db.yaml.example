@@ -106,5 +106,5 @@ spec:
       operator: Equal
       value: TIDB_CLUSTER_NAME-tikv
   timezone: UTC
-  version: v3.0.12
+  version: v3.0.13
 
