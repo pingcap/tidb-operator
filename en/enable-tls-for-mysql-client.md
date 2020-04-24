@@ -126,7 +126,10 @@ This section describe how to issue certificates for the TiDB cluster using two m
           "${cluster_name}-tidb.${namespace}.svc",
           "*.${cluster_name}-tidb",
           "*.${cluster_name}-tidb.${namespace}",
-          "*.${cluster_name}-tidb.${namespace}.svc"
+          "*.${cluster_name}-tidb.${namespace}.svc",
+          "*.${cluster_name}-tidb-peer",
+          "*.${cluster_name}-tidb-peer.${namespace}",
+          "*.${cluster_name}-tidb-peer.${namespace}.svc"
         ],
     ...
     ```
@@ -281,6 +284,9 @@ You can generate multiple sets of client-side certificates. At least one set of 
         - "*.${cluster_name}-tidb"
         - "*.${cluster_name}-tidb.${namespace}"
         - "*.${cluster_name}-tidb.${namespace}.svc"
+        - "*.${cluster_name}-tidb-peer"
+        - "*.${cluster_name}-tidb-peer.${namespace}"
+        - "*.${cluster_name}-tidb-peer.${namespace}.svc"
       ipAddresses:
         - 127.0.0.1
         - ::1
@@ -301,6 +307,9 @@ You can generate multiple sets of client-side certificates. At least one set of 
         - `*.${cluster_name}-tidb`
         - `*.${cluster_name}-tidb.${namespace}`
         - `*.${cluster_name}-tidb.${namespace}.svc`
+        - `*.${cluster_name}-tidb-peer`
+        - `*.${cluster_name}-tidb-peer.${namespace}`
+        - `*.${cluster_name}-tidb-peer.${namespace}.svc`
     - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
         - `127.0.0.1`
         - `::1`

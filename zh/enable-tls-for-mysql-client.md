@@ -120,7 +120,10 @@ category: how-to
           "${cluster_name}-tidb.${namespace}.svc",
           "*.${cluster_name}-tidb",
           "*.${cluster_name}-tidb.${namespace}",
-          "*.${cluster_name}-tidb.${namespace}.svc"
+          "*.${cluster_name}-tidb.${namespace}.svc",
+          "*.${cluster_name}-tidb-peer",
+          "*.${cluster_name}-tidb-peer.${namespace}",
+          "*.${cluster_name}-tidb-peer.${namespace}.svc"
         ],
     ...
     ```
@@ -275,6 +278,9 @@ category: how-to
         - "*.${cluster_name}-tidb"
         - "*.${cluster_name}-tidb.${namespace}"
         - "*.${cluster_name}-tidb.${namespace}.svc"
+        - "*.${cluster_name}-tidb-peer"
+        - "*.${cluster_name}-tidb-peer.${namespace}"
+        - "*.${cluster_name}-tidb-peer.${namespace}.svc"
       ipAddresses:
         - 127.0.0.1
         - ::1
@@ -295,6 +301,9 @@ category: how-to
       - `*.${cluster_name}-tidb`
       - `*.${cluster_name}-tidb.${namespace}`
       - `*.${cluster_name}-tidb.${namespace}.svc`
+      - `*.${cluster_name}-tidb-peer`
+      - `*.${cluster_name}-tidb-peer.${namespace}`
+      - `*.${cluster_name}-tidb-peer.${namespace}.svc`
     - `ipAddresses` 需要填写这两个 IP ，根据需要可以填写其他 IP：
       - `127.0.0.1`
       - `::1`
