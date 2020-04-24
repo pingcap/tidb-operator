@@ -68,6 +68,7 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 	tcName := tc.GetName()
 	svcName := svc.GetName()
 	svcSpec := svc.Spec.DeepCopy()
+	serviceType := svcSpec.Type
 
 	var updateSvc *corev1.Service
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
@@ -83,6 +84,26 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 		} else {
 			svc = updated.DeepCopy()
 			svc.Spec = *svcSpec
+
+			existingSvc := updated
+			desiredSvc := svc
+			ports := existingSvc.Spec.Ports
+
+			// If the existed service and the desired service is NodePort or LoadBalancerType, we should keep the nodePort unchanged.
+			if (serviceType == corev1.ServiceTypeNodePort || serviceType == corev1.ServiceTypeLoadBalancer) &&
+				(desiredSvc.Spec.Type == corev1.ServiceTypeNodePort || desiredSvc.Spec.Type == corev1.ServiceTypeLoadBalancer) {
+				for i, dport := range existingSvc.Spec.Ports {
+					for _, eport := range ports {
+						// Because the portName could be edited,
+						// we use Port number to link the desired Service Port and the existed Service Port in the nested loop
+						if dport.Port == eport.Port && dport.Protocol == eport.Protocol {
+							dport.NodePort = eport.NodePort
+							existingSvc.Spec.Ports[i] = dport
+							break
+						}
+					}
+				}
+			}
 		}
 
 		return updateErr

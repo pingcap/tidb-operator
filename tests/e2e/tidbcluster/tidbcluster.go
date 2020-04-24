@@ -528,6 +528,50 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 
 		framework.ExpectNoError(err)
+
+		// Create TidbCluster with NodePort to check whether node port would change
+		nodeTc := fixture.GetTidbCluster(ns, "nodePort", utilimage.TiDBV3Version)
+		nodeTc.Spec.PD.Replicas = 1
+		nodeTc.Spec.TiKV.Replicas = 1
+		nodeTc.Spec.TiDB.Replicas = 1
+		nodeTc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+			ServiceSpec: v1alpha1.ServiceSpec{
+				Type: corev1.ServiceTypeNodePort,
+			},
+		}
+		err = genericCli.Create(context.TODO(), nodeTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+		s, err := c.CoreV1().Services(ns).Get("nodePort-tidb", metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		if s.Spec.Type != corev1.ServiceTypeNodePort {
+			framework.Failf("nodePort tidbcluster tidb service type isn't NodePort")
+		}
+		ports := s.Spec.Ports
+		// check node port unchanged for 5mins
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			s, err := c.CoreV1().Services(ns).Get("nodePort-tidb", metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf(err.Error())
+				return true, nil
+			}
+			if s.Spec.Type != corev1.ServiceTypeNodePort {
+				klog.Error("nodePort tidbcluster tidb service type isn't NodePort")
+				return true, nil
+			}
+			for _, dport := range s.Spec.Ports {
+				for _, eport := range ports {
+					if dport.Port == eport.Port && dport.NodePort != eport.NodePort {
+						klog.Error("nodePort tidbcluster tidb service NodePort changed")
+						return true, nil
+					}
+				}
+			}
+			return false, nil
+		})
+		klog.Info("nodePort tidbcluster tidb service NodePort haven't changed")
+		framework.ExpectError(err)
 	})
 
 	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
