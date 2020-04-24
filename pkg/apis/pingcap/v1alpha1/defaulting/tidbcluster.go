@@ -126,4 +126,7 @@ func setTiFlashSpecDefault(tc *v1alpha1.TidbCluster) {
 			tc.Spec.TiFlash.BaseImage = defaultTiFlashImage
 		}
 	}
+	if tc.Spec.TiFlash.MaxFailoverCount == nil {
+		tc.Spec.TiFlash.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
 }
