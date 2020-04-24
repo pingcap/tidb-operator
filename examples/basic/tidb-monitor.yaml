@@ -13,7 +13,7 @@ spec:
     version: 6.0.1
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v3.0.5
+    version: v3.0.13
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
