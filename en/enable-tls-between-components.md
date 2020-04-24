@@ -84,7 +84,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     ``` json
     {
-        "CN": "TiDB Server",
+        "CN": "TiDB",
         "key": {
             "algo": "rsa",
             "size": 2048
@@ -127,7 +127,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ```json
         ...
-            "CN": "PD Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -168,7 +168,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ```json
         ...
-            "CN": "TiKV Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -209,7 +209,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ```json
         ...
-            "CN": "TiDB Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -250,7 +250,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ``` json
         ...
-            "CN": "Pump Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -285,7 +285,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ```json
         ...
-            "CN": "Drainer Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -311,7 +311,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ```json
         ...
-            "CN": "Drainer Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -326,7 +326,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
         ```json
         ...
-            "CN": "Drainer Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -361,7 +361,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     ```json
     ...
-        "CN": "TiDB Cluster Client",
+        "CN": "TiDB",
         "hosts": [],
     ...
     ```

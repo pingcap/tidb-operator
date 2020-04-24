@@ -79,7 +79,7 @@ category: how-to
 
     ``` json
     {
-        "CN": "TiDB Server",
+        "CN": "TiDB",
         "key": {
             "algo": "rsa",
             "size": 2048
@@ -122,7 +122,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "PD Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -163,7 +163,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "TiKV Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -204,7 +204,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "TiDB Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -245,7 +245,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "Pump Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -280,7 +280,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "Drainer Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -306,7 +306,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "Drainer Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -321,7 +321,7 @@ category: how-to
 
         ``` json
         ...
-            "CN": "Drainer Server",
+            "CN": "TiDB",
             "hosts": [
               "127.0.0.1",
               "::1",
@@ -356,7 +356,7 @@ category: how-to
 
     ``` json
     ...
-        "CN": "TiDB Cluster Client",
+        "CN": "TiDB",
         "hosts": [],
     ...
     ```
