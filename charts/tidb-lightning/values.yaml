@@ -5,7 +5,7 @@
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/tidb-lightning:v3.0.9
+image: pingcap/tidb-lightning:v3.0.13
 imagePullPolicy: IfNotPresent
 service:
   type: NodePort
