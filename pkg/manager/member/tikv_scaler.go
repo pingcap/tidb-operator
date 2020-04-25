@@ -85,8 +85,8 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		if store.Store.Address == scaleOutTikvAddresss {
 			err := pdClient.DeleteStore(store.Store.Id)
 			if err == nil {
-				err = fmt.Errorf("tc[%s/%s]'s tikv found occupied store address before scale,start to delete store[%d/%s]", tc.Name, tc.Namespace, store.Store.Id, store.Store.Address)
-
+				err = fmt.Errorf("tc[%s/%s]'s tikv found occupied store address before scale-out, start to delete store[%d/%s]",
+					tc.Name, tc.Namespace, store.Store.Id, store.Store.Address)
 			}
 			klog.Error(err.Error())
 			return err
