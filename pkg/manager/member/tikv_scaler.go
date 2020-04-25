@@ -67,6 +67,32 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		return err
 	}
 
+	tcName := tc.Name
+	namespace := tc.Namespace
+	scaleOutTikvAddresss := fmt.Sprintf("%s.%s.%s.svc", util.GetPodName(tc, v1alpha1.TiKVMemberType, ordinal), util.GetPeerServiceName(tc, v1alpha1.TiKVMemberType), namespace)
+	pdClient := tsd.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+	storesInfo, err := pdClient.GetStores()
+	if err != nil {
+		klog.Errorf(err.Error())
+		return err
+	}
+	// check whether there existed store which have occupied the address before scale-out. If existed, we would delete the store first
+	// and wait the next round.
+	// The existed store which have occupied the address could be caused by the tikv which start failed due to the unexpected terminal
+	// In that case, the address might been registered but the data couldn't be persisted which would occupied the address until
+	// be deleted manually.
+	for _, store := range storesInfo.Stores {
+		if store.Store.Address == scaleOutTikvAddresss {
+			err := pdClient.DeleteStore(store.Store.Id)
+			if err == nil {
+				err = fmt.Errorf("tc[%s/%s]'s tikv found occupied store address before scale,start to delete store[%d/%s]", tc.Name, tc.Namespace, store.Store.Id, store.Store.Address)
+
+			}
+			klog.Error(err.Error())
+			return err
+		}
+	}
+
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
