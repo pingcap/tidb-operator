@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -82,7 +83,7 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 	// In that case, the address might been registered but the data couldn't be persisted which would occupied the address until
 	// be deleted manually.
 	for _, store := range storesInfo.Stores {
-		if store.Store.Address == scaleOutTikvAddresss {
+		if strings.HasPrefix(store.Store.Address, scaleOutTikvAddresss) {
 			err := pdClient.DeleteStore(store.Store.Id)
 			if err == nil {
 				err = fmt.Errorf("tc[%s/%s]'s tikv found occupied store address before scale-out, start to delete store[%d/%s]",
