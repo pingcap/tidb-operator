@@ -110,12 +110,11 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 		return util.ARFail(err)
 	}
 
-	setPartition := *(stsPartition)
-	if setPartition > 0 && setPartition <= int32(partition) {
+	if stsPartition != nil && *stsPartition > 0 && *stsPartition <= int32(partition) {
 		klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
 		return util.ARFail(errors.New("protect by partition annotation"))
 	}
-	klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, setPartition, partition)
+	klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
 	return util.ARSuccess()
 }
 
@@ -125,12 +124,18 @@ func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int3
 		if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
 			return nil, nil, err
 		}
-		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+		if set.Spec.UpdateStrategy.RollingUpdate != nil {
+			return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+		}
+		return &(set.ObjectMeta), nil, nil
 	}
 
 	set := apps.StatefulSet{}
 	if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
 		return nil, nil, err
 	}
-	return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+	if set.Spec.UpdateStrategy.RollingUpdate != nil {
+		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+	}
+	return &(set.ObjectMeta), nil, nil
 }
