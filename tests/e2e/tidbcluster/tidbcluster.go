@@ -543,12 +543,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
-		s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
+
+		var s *corev1.Service
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			s, err = c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf(err.Error())
+				return false, nil
+			}
+			if s.Spec.Type != corev1.ServiceTypeNodePort {
+				return false, fmt.Errorf("nodePort tidbcluster tidb service type isn't NodePort")
+			}
+			return true, nil
+		})
 		framework.ExpectNoError(err)
-		if s.Spec.Type != corev1.ServiceTypeNodePort {
-			framework.Failf("nodePort tidbcluster tidb service type isn't NodePort")
-		}
 		ports := s.Spec.Ports
+
 		// check node port unchanged for 5mins
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
@@ -572,6 +582,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectError(err)
 		klog.Info("nodePort tidbcluster tidb service NodePort haven't changed")
+
 		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get("nodeport", metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		tc.Spec.TiDB.Service.Annotations = map[string]string{
@@ -579,6 +590,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		framework.ExpectNoError(err)
+
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			s, err = c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
 			if err != nil {
@@ -601,6 +613,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err)
+		klog.Info("nodePort tidbcluster tidb service NodePort haven't changed after update")
 	})
 
 	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
