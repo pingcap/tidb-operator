@@ -141,7 +141,7 @@ func installCertManager(cli clientset.Interface) error {
 }
 
 func deleteCertManager(cli clientset.Interface) error {
-	cmd := "kubectl delete -f /cert-manager.yaml"
+	cmd := "kubectl delete -f /cert-manager.yaml --ignore-not-found"
 	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete cert-manager %s %v", string(data), err)
 	}
