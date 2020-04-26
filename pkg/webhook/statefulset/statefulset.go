@@ -118,9 +118,8 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 			klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
 			return util.ARSuccess()
 		}
-	} else {
-		return util.ARSuccess()
 	}
+	return util.ARSuccess()
 }
 
 func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int32, error) {
