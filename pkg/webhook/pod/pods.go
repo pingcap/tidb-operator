@@ -54,7 +54,7 @@ const (
 	podDeleteMsgPattern          = "pod[%s] deleted"
 	pdScaleInReason              = "pd scale-in"
 	pdUpgradeReason              = "pd upgrade"
-	tikvScaleInReason              = "tikv scale-in"
+	tikvScaleInReason            = "tikv scale-in"
 	tikvUpgradeReason            = "tikv upgrade"
 )
 
