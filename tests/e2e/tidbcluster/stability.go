@@ -49,6 +49,8 @@ import (
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
+	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
+	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -91,6 +93,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
+		// We may do destructive operations in stability tests, so we wait for all nodes to ready before proceeeding.
+		ginkgo.By("Wait for all nodes are schedulable")
+		framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout))
 	})
 
 	ginkgo.AfterEach(func() {
@@ -265,9 +270,6 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			if !supportedProviders.Has(framework.TestContext.Provider) {
 				framework.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
 			}
-
-			ginkgo.By("Wait for all nodes are schedulable")
-			framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout))
 
 			ginkgo.By("Make sure we have at least 3 schedulable nodes")
 			nodeList := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
@@ -552,6 +554,85 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				}
 				return true, nil
 			})
+			framework.ExpectNoError(err)
+		})
+
+		ginkgo.It("[Feature: AutoFailover] PD: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
+			// TODO make storageutils.KubeletCommand work with KIND provider
+			supportedProviders := sets.NewString("aws", "gke")
+			if !supportedProviders.Has(framework.TestContext.Provider) {
+				framework.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
+			}
+			clusterName := "failover"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Pre-create an invalid PVC to fail the auto-created failover member")
+			invalidPVC := v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      fmt.Sprintf("pd-%s-pd-%d", clusterName, 3),
+				},
+				Spec: v1.PersistentVolumeClaimSpec{
+					StorageClassName: pointer.StringPtr("does-not-exist"),
+				},
+			}
+			_, err = c.CoreV1().PersistentVolumeClaims(ns).Create(&invalidPVC)
+			framework.ExpectNoError(err)
+
+			// Note that we shouldn't simply delete PD data here, because
+			// tidb-operator will try to deleting pod & pvc to recover soon
+			// after a new replacement is created.
+			ginkgo.By("Fail a PD")
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(clusterName).Component(label.PDLabelVal).Labels()).String(),
+			}
+			pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+			framework.ExpectNoError(err)
+			gomega.Expect(len(pdPodList.Items)).To(gomega.BeNumerically("==", 3), "the number of pd nodes should be 3")
+			pod0 := pdPodList.Items[0]
+			// This command is to make sure kubelet is started after test finishes no matter it fails or not.
+			defer func() {
+				storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
+			}()
+			storageutils.KubeletCommand(storageutils.KStop, c, &pod0)
+
+			ginkgo.By("Wait for a replacement to be created")
+			podName := controller.PDMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 10*time.Minute /* 5 minutes failover period + 5 extra minute */, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return !apierrors.IsNotFound(err), nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for only one replacement to be created")
+			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
+				pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				if len(pdPodList.Items) != 4 {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+
+			ginkgo.By("Recover failed PD")
+			storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
+
+			ginkgo.By("Wait for the replacement to be gone")
+			e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 		})
 	})
