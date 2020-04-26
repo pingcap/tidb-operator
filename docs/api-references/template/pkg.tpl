@@ -8,14 +8,6 @@ category: how-to
 ---
 
 <h1>API Document</h1>
-<h2>Packages:</h2>
-<ul>
-    {{ range . }}
-    <li>
-        <a href="#{{- packageAnchorID . -}}">{{ packageDisplayName . }}</a>
-    </li>
-    {{ end }}
-</ul>
 {{ end}}
 
 {{ range .packages }}

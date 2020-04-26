@@ -1,11 +1,9 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  annotations:
-    tikv.tidb.pingcap.com/delete-slots: '[1]'
-  name: asts
+  name: basic
 spec:
-  version: v3.0.13
+  version: v3.0.8
   timezone: UTC
   pvReclaimPolicy: Delete
   pd:
