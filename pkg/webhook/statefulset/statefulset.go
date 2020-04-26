@@ -63,7 +63,7 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 
 	klog.Infof("admit %s [%s/%s]", setResource, namespace, name)
 
-	stsObjectMeta, stsPartition, err := getStsAttributes(ar.OldObject.Raw, apiVersion)
+	stsObjectMeta, stsPartition, err := getStsAttributes(ar.OldObject.Raw)
 	if err != nil {
 		err = fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
 		klog.Error(err)
@@ -120,18 +120,7 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 	return util.ARSuccess()
 }
 
-func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int32, error) {
-	if apiVersion == "v1" {
-		set := apps.StatefulSet{}
-		if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
-			return nil, nil, err
-		}
-		if set.Spec.UpdateStrategy.RollingUpdate != nil {
-			return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
-		}
-		return &(set.ObjectMeta), nil, nil
-	}
-
+func getStsAttributes(data []byte) (*metav1.ObjectMeta, *int32, error) {
 	set := apps.StatefulSet{}
 	if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
 		return nil, nil, err
