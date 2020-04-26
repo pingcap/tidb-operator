@@ -580,6 +580,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 					Name:      fmt.Sprintf("pd-%s-pd-%d", clusterName, 3),
 				},
 				Spec: v1.PersistentVolumeClaimSpec{
+					AccessModes: []v1.PersistentVolumeAccessMode{
+						v1.ReadWriteOnce,
+					},
 					StorageClassName: pointer.StringPtr("does-not-exist"),
 				},
 			}
