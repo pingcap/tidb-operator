@@ -152,7 +152,9 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 	}
 
 	if tac.Spec.TiKV != nil {
-		tac.Status.TiKV.CurrentReplicas = oldTc.Status.TiKV.StatefulSet.CurrentReplicas
+		if oldTc.Status.TiKV.StatefulSet != nil {
+			tac.Status.TiKV.CurrentReplicas = oldTc.Status.TiKV.StatefulSet.CurrentReplicas
+		}
 		lastTimestamp, err := f(label.AnnTiKVLastAutoScalingTimestamp)
 		if err != nil {
 			return err
@@ -164,7 +166,9 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 		tac.Status.TiKV = nil
 	}
 	if tac.Spec.TiDB != nil {
-		tac.Status.TiDB.CurrentReplicas = oldTc.Status.TiDB.StatefulSet.CurrentReplicas
+		if oldTc.Status.TiDB.StatefulSet != nil {
+			tac.Status.TiDB.CurrentReplicas = oldTc.Status.TiDB.StatefulSet.CurrentReplicas
+		}
 		lastTimestamp, err := f(label.AnnTiDBLastAutoScalingTimestamp)
 		if err != nil {
 			return err

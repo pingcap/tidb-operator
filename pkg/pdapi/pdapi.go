@@ -79,21 +79,22 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 	var tlsConfig *tls.Config
 	var err error
-	scheme := "http"
+	var scheme = "http"
+
 	if tlsEnabled {
 		scheme = "https"
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
+			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+		}
+
+		return NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
 	}
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		if tlsEnabled {
-			tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
-			if err != nil {
-				klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
-				return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
-			}
-		}
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
 	}
 	return pdc.pdClients[key]
 }
