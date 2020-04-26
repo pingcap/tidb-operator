@@ -85,7 +85,7 @@ type PrometheusSpec struct {
 
 // Config  is the the desired state of Prometheus Configuration
 type Configuration struct {
-	ExternalConfigMap string `json:"externalConfigMap,omitempty"`
+	ConfigMapRef string `json:"externalConfigMap,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana
