@@ -110,12 +110,17 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 		return util.ARFail(err)
 	}
 
-	if stsPartition != nil && *stsPartition > 0 && *stsPartition <= int32(partition) {
-		klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
-		return util.ARFail(errors.New("protect by partition annotation"))
+	if stsPartition != nil {
+		if *stsPartition > 0 && *stsPartition <= int32(partition) {
+			klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
+			return util.ARFail(errors.New("protect by partition annotation"))
+		} else {
+			klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
+			return util.ARSuccess()
+		}
+	} else {
+		return util.ARSuccess()
 	}
-	klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
-	return util.ARSuccess()
 }
 
 func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int32, error) {
