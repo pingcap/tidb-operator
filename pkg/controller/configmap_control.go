@@ -38,6 +38,8 @@ type ConfigMapControlInterface interface {
 	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// DeleteConfigMap delete the given ConfigMap owned by the controller object
 	DeleteConfigMap(controller runtime.Object, cm *corev1.ConfigMap) error
+	// GetConfigMap get the ConfigMap by configMap name
+	GetConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 }
 
 type realConfigMapControl struct {
@@ -93,6 +95,11 @@ func (cc *realConfigMapControl) DeleteConfigMap(owner runtime.Object, cm *corev1
 	err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Delete(cm.Name, nil)
 	cc.recordConfigMapEvent("delete", owner, cm, err)
 	return err
+}
+
+func (cc *realConfigMapControl) GetConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	existConfigMap, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cm.Name, metav1.GetOptions{})
+	return existConfigMap, err
 }
 
 func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.Object, cm *corev1.ConfigMap, err error) {

@@ -79,6 +79,13 @@ type PrometheusSpec struct {
 	Service  ServiceSpec `json:"service,omitempty"`
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
+	// +optional
+	Config *Configuration `json:"config,omitempty"`
+}
+
+// Config  is the the desired state of Prometheus Configuration
+type Configuration struct {
+	ExternalConfigMap string `json:"externalConfigMap,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana

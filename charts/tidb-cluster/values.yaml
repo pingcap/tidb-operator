@@ -554,6 +554,8 @@ monitor:
       type: NodePort
       portName: http-grafana
   prometheus:
+    externalConfigMaps:
+      config: external-config
     image: prom/prometheus:v2.11.1
     imagePullPolicy: IfNotPresent
     logLevel: info

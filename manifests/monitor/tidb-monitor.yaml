@@ -6,6 +6,8 @@ spec:
   clusters:
   - name: demo
   prometheus:
+    config:
+      externalConfigMap: external-config
     baseImage: prom/prometheus
     version: v2.11.1
     resources: {}

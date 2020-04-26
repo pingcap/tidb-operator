@@ -15,7 +15,6 @@ package monitor
 
 import (
 	"fmt"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -23,6 +22,7 @@ import (
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	kubeinformers "k8s.io/client-go/informers"
@@ -41,6 +41,7 @@ type MonitorManager struct {
 	pvLister           corelisters.PersistentVolumeLister
 	pvControl          controller.PVControlInterface
 	recorder           record.EventRecorder
+	cmControl          controller.ConfigMapControlInterface
 }
 
 const (
@@ -206,6 +207,25 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {
 		return nil, err
+	}
+	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.ExternalConfigMap) > 0 {
+		externalCM, err := mm.cmControl.GetConfigMap(monitor, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      monitor.Spec.Prometheus.Config.ExternalConfigMap,
+				Namespace: monitor.Namespace,
+			},
+		})
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", monitor.Namespace, monitor.Spec.Prometheus.Config.ExternalConfigMap, err)
+			return nil, err
+		}
+		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
+			newCM.Data["prometheus-config"] = externalContent
+		}
+
+		if externalContent, ok := externalCM.Data["dashboard-config"]; ok {
+			newCM.Data["dashboard-config"] = externalContent
+		}
 	}
 	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
