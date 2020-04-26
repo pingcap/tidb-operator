@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: auto-scaling-demo
 spec:
-  version: v3.0.8
+  version: v3.0.13
   timezone: UTC
   pvReclaimPolicy: Delete
   pd:
