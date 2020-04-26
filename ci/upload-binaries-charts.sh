@@ -63,7 +63,7 @@ function upload() {
 EOF
 
     echo "info: downloading filemgr from $FILEMGR_URL"
-    curl --retry 10 -L -s "$FILEMGR_URL" | tar --strip-components 2 -C $dir -xzvf - ./linux64/filemgr-linux64
+    curl --retry 10 -L -s "$FILEMGR_URL" | tar --strip-components 1 -C $dir -xzvf - filemgr-linux64.elf/filemgr-linux64
 
     echo "info: uploading charts and binaries"
     tar -zcvf $dir/tidb-operator.tar.gz images/tidb-operator images/tidb-backup-manager charts
