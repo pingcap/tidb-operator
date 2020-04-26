@@ -146,7 +146,7 @@ func (tfmm *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) 
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}

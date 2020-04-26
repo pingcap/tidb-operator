@@ -163,7 +163,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
