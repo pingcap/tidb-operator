@@ -893,7 +893,7 @@ In this step, you need to perform the following operations:
      name: ${cluster_name}
      namespace: ${namespace}
     spec:
-     tlsClusster:
+     tlsCluster:
        enabled: true
      version: v3.0.8
      timezone: UTC
