@@ -187,4 +187,4 @@ data:
     --storage.tsdb.path=/data/prometheus
     --storage.tsdb.retention=12d
 
----
+
