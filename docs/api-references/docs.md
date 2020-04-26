@@ -4,12 +4,6 @@ summary: Reference of TiDB Operator API
 category: how-to
 ---
 <h1>API Document</h1>
-<h2>Packages:</h2>
-<ul>
-<li>
-<a href="#pingcap.com%2fv1alpha1">pingcap.com/v1alpha1</a>
-</li>
-</ul>
 <h2 id="pingcap.com/v1alpha1">pingcap.com/v1alpha1</h2>
 <p>
 <p>Package v1alpha1 is the v1alpha1 version of the API.</p>
@@ -30,8 +24,7 @@ Resource Types:
 </li><li>
 <a href="#tidbmonitor">TidbMonitor</a>
 </li></ul>
-<h3 id="backup">Backup
-</h3>
+<h3 id="backup">Backup</h3>
 <p>
 <p>Backup is a backup of tidb cluster.</p>
 </p>
@@ -246,8 +239,7 @@ BackupStatus
 </tr>
 </tbody>
 </table>
-<h3 id="backupschedule">BackupSchedule
-</h3>
+<h3 id="backupschedule">BackupSchedule</h3>
 <p>
 <p>BackupSchedule is a backup schedule of tidb cluster.</p>
 </p>
@@ -402,8 +394,7 @@ BackupScheduleStatus
 </tr>
 </tbody>
 </table>
-<h3 id="restore">Restore
-</h3>
+<h3 id="restore">Restore</h3>
 <p>
 <p>Restore represents the restoration of backup of a tidb cluster.</p>
 </p>
@@ -618,8 +609,7 @@ RestoreStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbcluster">TidbCluster
-</h3>
+<h3 id="tidbcluster">TidbCluster</h3>
 <p>
 <p>TidbCluster is the control script&rsquo;s spec</p>
 </p>
@@ -988,8 +978,7 @@ TidbClusterStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterautoscaler">TidbClusterAutoScaler
-</h3>
+<h3 id="tidbclusterautoscaler">TidbClusterAutoScaler</h3>
 <p>
 <p>TidbClusterAutoScaler is the control script&rsquo;s spec</p>
 </p>
@@ -1133,8 +1122,7 @@ TidbClusterAutoSclaerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbinitializer">TidbInitializer
-</h3>
+<h3 id="tidbinitializer">TidbInitializer</h3>
 <p>
 <p>TidbInitializer is a TiDB cluster initializing job</p>
 </p>
@@ -1316,8 +1304,7 @@ TidbInitializerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbmonitor">TidbMonitor
-</h3>
+<h3 id="tidbmonitor">TidbMonitor</h3>
 <p>
 <p>TidbMonitor encode the spec and status of the monitoring component of a TiDB cluster</p>
 </p>
@@ -1559,8 +1546,7 @@ TidbMonitorStatus
 </tr>
 </tbody>
 </table>
-<h3 id="brconfig">BRConfig
-</h3>
+<h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
@@ -1711,8 +1697,7 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="backupcondition">BackupCondition
-</h3>
+<h3 id="backupcondition">BackupCondition</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupstatus">BackupStatus</a>)
@@ -1786,8 +1771,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="backupconditiontype">BackupConditionType
-(<code>string</code> alias)</p></h3>
+<h3 id="backupconditiontype">BackupConditionType</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>)
@@ -1795,8 +1779,7 @@ string
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
 </p>
-<h3 id="backupschedulespec">BackupScheduleSpec
-</h3>
+<h3 id="backupschedulespec">BackupScheduleSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupschedule">BackupSchedule</a>)
@@ -1896,8 +1879,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="backupschedulestatus">BackupScheduleStatus
-</h3>
+<h3 id="backupschedulestatus">BackupScheduleStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupschedule">BackupSchedule</a>)
@@ -1952,8 +1934,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="backupspec">BackupSpec
-</h3>
+<h3 id="backupspec">BackupSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backup">Backup</a>, 
@@ -2114,8 +2095,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="backupstatus">BackupStatus
-</h3>
+<h3 id="backupstatus">BackupStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backup">Backup</a>)
@@ -2204,13 +2184,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="backupstoragetype">BackupStorageType
-(<code>string</code> alias)</p></h3>
+<h3 id="backupstoragetype">BackupStorageType</h3>
 <p>
 <p>BackupStorageType represents the backend storage type of backup.</p>
 </p>
-<h3 id="backuptype">BackupType
-(<code>string</code> alias)</p></h3>
+<h3 id="backuptype">BackupType</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
@@ -2219,8 +2197,7 @@ string
 <p>
 <p>BackupType represents the backup type.</p>
 </p>
-<h3 id="basicautoscalerspec">BasicAutoScalerSpec
-</h3>
+<h3 id="basicautoscalerspec">BasicAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbautoscalerspec">TidbAutoScalerSpec</a>, 
@@ -2369,8 +2346,7 @@ fetch the result of the recommended replicas for tikv/tidb</p>
 </tr>
 </tbody>
 </table>
-<h3 id="basicautoscalerstatus">BasicAutoScalerStatus
-</h3>
+<h3 id="basicautoscalerstatus">BasicAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbautoscalerstatus">TidbAutoScalerStatus</a>, 
@@ -2440,8 +2416,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="binlog">Binlog
-</h3>
+<h3 id="binlog">Binlog</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -2520,8 +2495,7 @@ Optional: Defaults to range</p>
 </tr>
 </tbody>
 </table>
-<h3 id="commonconfig">CommonConfig
-</h3>
+<h3 id="commonconfig">CommonConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tiflashconfig">TiFlashConfig</a>)
@@ -2588,14 +2562,12 @@ FlashLogger
 </tr>
 </tbody>
 </table>
-<h3 id="componentaccessor">ComponentAccessor
-</h3>
+<h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
 and component-level overrides</p>
 </p>
-<h3 id="componentspec">ComponentSpec
-</h3>
+<h3 id="componentspec">ComponentSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>, 
@@ -2809,8 +2781,7 @@ tidb-operator built envs.
 </tr>
 </tbody>
 </table>
-<h3 id="configupdatestrategy">ConfigUpdateStrategy
-(<code>string</code> alias)</p></h3>
+<h3 id="configupdatestrategy">ConfigUpdateStrategy</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
@@ -2819,8 +2790,7 @@ tidb-operator built envs.
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
 </p>
-<h3 id="coprocessorcache">CoprocessorCache
-</h3>
+<h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvclient">TiKVClient</a>)
@@ -2887,8 +2857,7 @@ uint64
 </tr>
 </tbody>
 </table>
-<h3 id="crdkind">CrdKind
-</h3>
+<h3 id="crdkind">CrdKind</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#crdkinds">CrdKinds</a>)
@@ -2955,8 +2924,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="crdkinds">CrdKinds
-</h3>
+<h3 id="crdkinds">CrdKinds</h3>
 <p>
 </p>
 <table>
@@ -3063,8 +3031,7 @@ CrdKind
 </tr>
 </tbody>
 </table>
-<h3 id="dashboardconfig">DashboardConfig
-</h3>
+<h3 id="dashboardconfig">DashboardConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -3112,8 +3079,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="experimental">Experimental
-</h3>
+<h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -3145,8 +3111,7 @@ imported from TiDB v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="externalendpoint">ExternalEndpoint
-</h3>
+<h3 id="externalendpoint">ExternalEndpoint</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
@@ -3202,8 +3167,7 @@ to communicate to the external service</p>
 </tr>
 </tbody>
 </table>
-<h3 id="filelogconfig">FileLogConfig
-</h3>
+<h3 id="filelogconfig">FileLogConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#log">Log</a>, 
@@ -3281,8 +3245,7 @@ int
 </tr>
 </tbody>
 </table>
-<h3 id="flash">Flash
-</h3>
+<h3 id="flash">Flash</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#commonconfig">CommonConfig</a>)
@@ -3337,8 +3300,7 @@ FlashCluster
 </tr>
 </tbody>
 </table>
-<h3 id="flashlogger">FlashLogger
-</h3>
+<h3 id="flashlogger">FlashLogger</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#commonconfig">CommonConfig</a>)
@@ -3392,8 +3354,7 @@ int32
 </tr>
 </tbody>
 </table>
-<h3 id="gcsstorageprovider">GcsStorageProvider
-</h3>
+<h3 id="gcsstorageprovider">GcsStorageProvider</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#storageprovider">StorageProvider</a>)
@@ -3489,8 +3450,7 @@ gcs service account credentials JSON .</p>
 </tr>
 </tbody>
 </table>
-<h3 id="grafanaspec">GrafanaSpec
-</h3>
+<h3 id="grafanaspec">GrafanaSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
@@ -3576,8 +3536,7 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<h3 id="helperspec">HelperSpec
-</h3>
+<h3 id="helperspec">HelperSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -3623,16 +3582,14 @@ Optional: Defaults to the cluster-level setting</p>
 </tr>
 </tbody>
 </table>
-<h3 id="initializephase">InitializePhase
-(<code>string</code> alias)</p></h3>
+<h3 id="initializephase">InitializePhase</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbinitializerstatus">TidbInitializerStatus</a>)
 </p>
 <p>
 </p>
-<h3 id="initializerspec">InitializerSpec
-</h3>
+<h3 id="initializerspec">InitializerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
@@ -3676,8 +3633,7 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<h3 id="interval">Interval
-</h3>
+<h3 id="interval">Interval</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#quota">Quota</a>)
@@ -3767,8 +3723,7 @@ int32
 </tr>
 </tbody>
 </table>
-<h3 id="isolationread">IsolationRead
-</h3>
+<h3 id="isolationread">IsolationRead</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -3799,8 +3754,7 @@ imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="log">Log
-</h3>
+<h3 id="log">Log</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -3965,8 +3919,7 @@ uint32
 </tr>
 </tbody>
 </table>
-<h3 id="logtailerspec">LogTailerSpec
-</h3>
+<h3 id="logtailerspec">LogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tiflashspec">TiFlashSpec</a>)
@@ -3999,8 +3952,7 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
-<h3 id="masterkeyfileconfig">MasterKeyFileConfig
-</h3>
+<h3 id="masterkeyfileconfig">MasterKeyFileConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
@@ -4031,8 +3983,7 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="masterkeykmsconfig">MasterKeyKMSConfig
-</h3>
+<h3 id="masterkeykmsconfig">MasterKeyKMSConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
@@ -4110,8 +4061,7 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="memberphase">MemberPhase
-(<code>string</code> alias)</p></h3>
+<h3 id="memberphase">MemberPhase</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>, 
@@ -4122,13 +4072,11 @@ optional</p>
 <p>
 <p>MemberPhase is the current state of member</p>
 </p>
-<h3 id="membertype">MemberType
-(<code>string</code> alias)</p></h3>
+<h3 id="membertype">MemberType</h3>
 <p>
 <p>MemberType represents member type</p>
 </p>
-<h3 id="metricsstatus">MetricsStatus
-</h3>
+<h3 id="metricsstatus">MetricsStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
@@ -4179,12 +4127,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="monitorcomponentaccessor">MonitorComponentAccessor
-</h3>
+<h3 id="monitorcomponentaccessor">MonitorComponentAccessor</h3>
 <p>
 </p>
-<h3 id="monitorcontainer">MonitorContainer
-</h3>
+<h3 id="monitorcontainer">MonitorContainer</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
@@ -4253,8 +4199,7 @@ Kubernetes core/v1.PullPolicy
 </tr>
 </tbody>
 </table>
-<h3 id="networks">Networks
-</h3>
+<h3 id="networks">Networks</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#user">User</a>)
@@ -4283,8 +4228,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="opentracing">OpenTracing
-</h3>
+<h3 id="opentracing">OpenTracing</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -4351,8 +4295,7 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="opentracingreporter">OpenTracingReporter
-</h3>
+<h3 id="opentracingreporter">OpenTracingReporter</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#opentracing">OpenTracing</a>)
@@ -4415,8 +4358,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="opentracingsampler">OpenTracingSampler
-</h3>
+<h3 id="opentracingsampler">OpenTracingSampler</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#opentracing">OpenTracing</a>)
@@ -4490,8 +4432,7 @@ time.Duration
 </tr>
 </tbody>
 </table>
-<h3 id="pdconfig">PDConfig
-</h3>
+<h3 id="pdconfig">PDConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>)
@@ -4811,8 +4752,7 @@ DashboardConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pdfailuremember">PDFailureMember
-</h3>
+<h3 id="pdfailuremember">PDFailureMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>)
@@ -4882,16 +4822,14 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pdlabelpropertyconfig">PDLabelPropertyConfig
-(<code>map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabels</code> alias)</p></h3>
+<h3 id="pdlabelpropertyconfig">PDLabelPropertyConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 </p>
-<h3 id="pdlogconfig">PDLogConfig
-</h3>
+<h3 id="pdlogconfig">PDLogConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5013,8 +4951,7 @@ message.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pdmember">PDMember
-</h3>
+<h3 id="pdmember">PDMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>)
@@ -5087,8 +5024,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pdmetricconfig">PDMetricConfig
-</h3>
+<h3 id="pdmetricconfig">PDMetricConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5138,8 +5074,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pdnamespaceconfig">PDNamespaceConfig
-</h3>
+<h3 id="pdnamespaceconfig">PDNamespaceConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5229,8 +5164,7 @@ uint64
 </tr>
 </tbody>
 </table>
-<h3 id="pdreplicationconfig">PDReplicationConfig
-</h3>
+<h3 id="pdreplicationconfig">PDReplicationConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5304,8 +5238,7 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pdscheduleconfig">PDScheduleConfig
-</h3>
+<h3 id="pdscheduleconfig">PDScheduleConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5706,8 +5639,7 @@ Imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pdschedulerconfig">PDSchedulerConfig
-</h3>
+<h3 id="pdschedulerconfig">PDSchedulerConfig</h3>
 <p>
 <p>PDSchedulerConfig is customized scheduler configuration</p>
 </p>
@@ -5757,16 +5689,14 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pdschedulerconfigs">PDSchedulerConfigs
-(<code>[]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig</code> alias)</p></h3>
+<h3 id="pdschedulerconfigs">PDSchedulerConfigs</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdscheduleconfig">PDScheduleConfig</a>)
 </p>
 <p>
 </p>
-<h3 id="pdsecurityconfig">PDSecurityConfig
-</h3>
+<h3 id="pdsecurityconfig">PDSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5832,8 +5762,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pdserverconfig">PDServerConfig
-</h3>
+<h3 id="pdserverconfig">PDServerConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdconfig">PDConfig</a>)
@@ -5877,8 +5806,7 @@ Imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pdspec">PDSpec
-</h3>
+<h3 id="pdspec">PDSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -6005,8 +5933,7 @@ PDConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pdstatus">PDStatus
-</h3>
+<h3 id="pdstatus">PDStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
@@ -6116,8 +6043,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pdstorelabel">PDStoreLabel
-</h3>
+<h3 id="pdstorelabel">PDStoreLabel</h3>
 <p>
 <p>PDStoreLabel is the config item of LabelPropertyConfig.</p>
 </p>
@@ -6153,12 +6079,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pdstorelabels">PDStoreLabels
-(<code>[]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel</code> alias)</p></h3>
+<h3 id="pdstorelabels">PDStoreLabels</h3>
 <p>
 </p>
-<h3 id="performance">Performance
-</h3>
+<h3 id="performance">Performance</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -6343,8 +6267,7 @@ uint64
 </tr>
 </tbody>
 </table>
-<h3 id="pessimistictxn">PessimisticTxn
-</h3>
+<h3 id="pessimistictxn">PessimisticTxn</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -6388,8 +6311,7 @@ Optional: Defaults to 256</p>
 </tr>
 </tbody>
 </table>
-<h3 id="plancache">PlanCache
-</h3>
+<h3 id="plancache">PlanCache</h3>
 <p>
 <p>PlanCache is the PlanCache section of the config.</p>
 </p>
@@ -6436,8 +6358,7 @@ uint
 </tr>
 </tbody>
 </table>
-<h3 id="plugin">Plugin
-</h3>
+<h3 id="plugin">Plugin</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -6477,8 +6398,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="preparedplancache">PreparedPlanCache
-</h3>
+<h3 id="preparedplancache">PreparedPlanCache</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -6532,8 +6452,7 @@ float64
 </tr>
 </tbody>
 </table>
-<h3 id="profile">Profile
-</h3>
+<h3 id="profile">Profile</h3>
 <p>
 <p>Profile is the configuration profiles.</p>
 </p>
@@ -6591,8 +6510,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="prometheusspec">PrometheusSpec
-</h3>
+<h3 id="prometheusspec">PrometheusSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
@@ -6658,8 +6576,7 @@ int
 </tr>
 </tbody>
 </table>
-<h3 id="proxyprotocol">ProxyProtocol
-</h3>
+<h3 id="proxyprotocol">ProxyProtocol</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -6703,8 +6620,7 @@ uint
 </tr>
 </tbody>
 </table>
-<h3 id="pumpspec">PumpSpec
-</h3>
+<h3 id="pumpspec">PumpSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -6816,8 +6732,7 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pumpstatus">PumpStatus
-</h3>
+<h3 id="pumpstatus">PumpStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
@@ -6859,8 +6774,7 @@ Kubernetes apps/v1.StatefulSetStatus
 </tr>
 </tbody>
 </table>
-<h3 id="quota">Quota
-</h3>
+<h3 id="quota">Quota</h3>
 <p>
 <p>Quota is the configuration of [quotas.default] section.</p>
 </p>
@@ -6887,8 +6801,7 @@ Interval
 </tr>
 </tbody>
 </table>
-<h3 id="reloaderspec">ReloaderSpec
-</h3>
+<h3 id="reloaderspec">ReloaderSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
@@ -6933,8 +6846,7 @@ ServiceSpec
 </tr>
 </tbody>
 </table>
-<h3 id="restorecondition">RestoreCondition
-</h3>
+<h3 id="restorecondition">RestoreCondition</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#restorestatus">RestoreStatus</a>)
@@ -7008,8 +6920,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="restoreconditiontype">RestoreConditionType
-(<code>string</code> alias)</p></h3>
+<h3 id="restoreconditiontype">RestoreConditionType</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#restorecondition">RestoreCondition</a>)
@@ -7017,8 +6928,7 @@ string
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
 </p>
-<h3 id="restorespec">RestoreSpec
-</h3>
+<h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#restore">Restore</a>)
@@ -7178,8 +7088,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="restorestatus">RestoreStatus
-</h3>
+<h3 id="restorestatus">RestoreStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#restore">Restore</a>)
@@ -7235,8 +7144,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="s3storageprovider">S3StorageProvider
-</h3>
+<h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#storageprovider">StorageProvider</a>)
@@ -7356,8 +7264,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="s3storageprovidertype">S3StorageProviderType
-(<code>string</code> alias)</p></h3>
+<h3 id="s3storageprovidertype">S3StorageProviderType</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#s3storageprovider">S3StorageProvider</a>)
@@ -7365,8 +7272,7 @@ string
 <p>
 <p>S3StorageProviderType represents the specific storage provider that implements the S3 interface</p>
 </p>
-<h3 id="secretref">SecretRef
-</h3>
+<h3 id="secretref">SecretRef</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#externalendpoint">ExternalEndpoint</a>)
@@ -7404,8 +7310,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="security">Security
-</h3>
+<h3 id="security">Security</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -7512,8 +7417,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="service">Service
-</h3>
+<h3 id="service">Service</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -7552,8 +7456,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="servicespec">ServiceSpec
-</h3>
+<h3 id="servicespec">ServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
@@ -7636,8 +7539,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="status">Status
-</h3>
+<h3 id="status">Status</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -7702,8 +7604,7 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="stmtsummary">StmtSummary
-</h3>
+<h3 id="stmtsummary">StmtSummary</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -7783,8 +7684,7 @@ int
 </tr>
 </tbody>
 </table>
-<h3 id="storageclaim">StorageClaim
-</h3>
+<h3 id="storageclaim">StorageClaim</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tiflashspec">TiFlashSpec</a>)
@@ -7830,8 +7730,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volum
 </tr>
 </tbody>
 </table>
-<h3 id="storageprovider">StorageProvider
-</h3>
+<h3 id="storageprovider">StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
@@ -7874,8 +7773,7 @@ GcsStorageProvider
 </tr>
 </tbody>
 </table>
-<h3 id="tlscluster">TLSCluster
-</h3>
+<h3 id="tlscluster">TLSCluster</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -7921,8 +7819,7 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tidbaccessconfig">TiDBAccessConfig
-</h3>
+<h3 id="tidbaccessconfig">TiDBAccessConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
@@ -8000,8 +7897,7 @@ Optional: Defaults to nil</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tidbconfig">TiDBConfig
-</h3>
+<h3 id="tidbconfig">TiDBConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbspec">TiDBSpec</a>)
@@ -8489,8 +8385,7 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tidbfailuremember">TiDBFailureMember
-</h3>
+<h3 id="tidbfailuremember">TiDBFailureMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbstatus">TiDBStatus</a>)
@@ -8530,8 +8425,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="tidbmember">TiDBMember
-</h3>
+<h3 id="tidbmember">TiDBMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbstatus">TiDBStatus</a>)
@@ -8593,8 +8487,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbservicespec">TiDBServiceSpec
-</h3>
+<h3 id="tidbservicespec">TiDBServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbspec">TiDBSpec</a>)
@@ -8651,8 +8544,7 @@ Optional: Defaults to true</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec
-</h3>
+<h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbspec">TiDBSpec</a>)
@@ -8711,8 +8603,7 @@ Deprecated, use TidbCluster.HelperImagePullPolicy instead</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tidbspec">TiDBSpec
-</h3>
+<h3 id="tidbspec">TiDBSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -8893,8 +8784,7 @@ TiDBConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tidbstatus">TiDBStatus
-</h3>
+<h3 id="tidbstatus">TiDBStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
@@ -8980,8 +8870,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbtlsclient">TiDBTLSClient
-</h3>
+<h3 id="tidbtlsclient">TiDBTLSClient</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbaccessconfig">TiDBAccessConfig</a>, 
@@ -9040,8 +8929,7 @@ this field only work in backup/restore process</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tiflashconfig">TiFlashConfig
-</h3>
+<h3 id="tiflashconfig">TiFlashConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tiflashspec">TiFlashSpec</a>)
@@ -9073,8 +8961,7 @@ CommonConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tiflashspec">TiFlashSpec
-</h3>
+<h3 id="tiflashspec">TiFlashSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -9225,8 +9112,7 @@ LogTailerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tikvblockcacheconfig">TiKVBlockCacheConfig
-</h3>
+<h3 id="tikvblockcacheconfig">TiKVBlockCacheConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvstorageconfig">TiKVStorageConfig</a>)
@@ -9311,8 +9197,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvcfconfig">TiKVCfConfig
-</h3>
+<h3 id="tikvcfconfig">TiKVCfConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvdbconfig">TiKVDbConfig</a>, 
@@ -9707,8 +9592,7 @@ TiKVTitanCfConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvclient">TiKVClient
-</h3>
+<h3 id="tikvclient">TiKVClient</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -9887,8 +9771,7 @@ CoprocessorCache
 </tr>
 </tbody>
 </table>
-<h3 id="tikvconfig">TiKVConfig
-</h3>
+<h3 id="tikvconfig">TiKVConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvspec">TiKVSpec</a>)
@@ -10108,8 +9991,7 @@ TiKVEncryptionConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig
-</h3>
+<h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -10215,8 +10097,7 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tikvcoprocessorreadpoolconfig">TiKVCoprocessorReadPoolConfig
-</h3>
+<h3 id="tikvcoprocessorreadpoolconfig">TiKVCoprocessorReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvreadpoolconfig">TiKVReadPoolConfig</a>)
@@ -10317,8 +10198,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvdbconfig">TiKVDbConfig
-</h3>
+<h3 id="tikvdbconfig">TiKVDbConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -10675,8 +10555,7 @@ TiKVTitanDBConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvencryptionconfig">TiKVEncryptionConfig
-</h3>
+<h3 id="tikvencryptionconfig">TiKVEncryptionConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -10747,8 +10626,7 @@ It used in master key rotation, the data key should decryption by previous maste
 </tr>
 </tbody>
 </table>
-<h3 id="tikvfailurestore">TiKVFailureStore
-</h3>
+<h3 id="tikvfailurestore">TiKVFailureStore</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvstatus">TiKVStatus</a>)
@@ -10798,8 +10676,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="tikvgcconfig">TiKVGCConfig
-</h3>
+<h3 id="tikvgcconfig">TiKVGCConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -10839,8 +10716,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvimportconfig">TiKVImportConfig
-</h3>
+<h3 id="tikvimportconfig">TiKVImportConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -10956,8 +10832,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvmasterkeyconfig">TiKVMasterKeyConfig
-</h3>
+<h3 id="tikvmasterkeyconfig">TiKVMasterKeyConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvencryptionconfig">TiKVEncryptionConfig</a>)
@@ -11021,8 +10896,7 @@ If the type set to kms, this config should be filled</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tikvpdconfig">TiKVPDConfig
-</h3>
+<h3 id="tikvpdconfig">TiKVPDConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -11095,8 +10969,7 @@ Optional: Defaults to 10</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tikvraftdbconfig">TiKVRaftDBConfig
-</h3>
+<h3 id="tikvraftdbconfig">TiKVRaftDBConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -11379,8 +11252,7 @@ TiKVCfConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvraftstoreconfig">TiKVRaftstoreConfig
-</h3>
+<h3 id="tikvraftstoreconfig">TiKVRaftstoreConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -11969,8 +11841,7 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="tikvreadpoolconfig">TiKVReadPoolConfig
-</h3>
+<h3 id="tikvreadpoolconfig">TiKVReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -12013,8 +11884,7 @@ TiKVStorageReadPoolConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvsecurityconfig">TiKVSecurityConfig
-</h3>
+<h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -12098,8 +11968,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvserverconfig">TiKVServerConfig
-</h3>
+<h3 id="tikvserverconfig">TiKVServerConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -12384,8 +12253,7 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvspec">TiKVSpec
-</h3>
+<h3 id="tikvspec">TiKVSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
@@ -12522,8 +12390,7 @@ TiKVConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvstatus">TiKVStatus
-</h3>
+<h3 id="tikvstatus">TiKVStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
@@ -12621,8 +12488,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvstorageconfig">TiKVStorageConfig
-</h3>
+<h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvconfig">TiKVConfig</a>)
@@ -12711,8 +12577,7 @@ TiKVBlockCacheConfig
 </tr>
 </tbody>
 </table>
-<h3 id="tikvstoragereadpoolconfig">TiKVStorageReadPoolConfig
-</h3>
+<h3 id="tikvstoragereadpoolconfig">TiKVStorageReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvreadpoolconfig">TiKVReadPoolConfig</a>)
@@ -12813,8 +12678,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvstore">TiKVStore
-</h3>
+<h3 id="tikvstore">TiKVStore</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvstatus">TiKVStatus</a>)
@@ -12908,8 +12772,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="tikvtitancfconfig">TiKVTitanCfConfig
-</h3>
+<h3 id="tikvtitancfconfig">TiKVTitanCfConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvcfconfig">TiKVCfConfig</a>)
@@ -13026,8 +12889,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tikvtitandbconfig">TiKVTitanDBConfig
-</h3>
+<h3 id="tikvtitandbconfig">TiKVTitanDBConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tikvdbconfig">TiKVDbConfig</a>)
@@ -13101,8 +12963,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbautoscalerspec">TidbAutoScalerSpec
-</h3>
+<h3 id="tidbautoscalerspec">TidbAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
@@ -13135,8 +12996,7 @@ BasicAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tidbautoscalerstatus">TidbAutoScalerStatus
-</h3>
+<h3 id="tidbautoscalerstatus">TidbAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
@@ -13169,8 +13029,7 @@ BasicAutoScalerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterautoscalerspec">TidbClusterAutoScalerSpec
-</h3>
+<h3 id="tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
@@ -13257,8 +13116,7 @@ TidbAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus
-</h3>
+<h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
@@ -13304,8 +13162,7 @@ TidbAutoScalerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterref">TidbClusterRef
-</h3>
+<h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
@@ -13349,8 +13206,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterspec">TidbClusterSpec
-</h3>
+<h3 id="tidbclusterspec">TidbClusterSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbcluster">TidbCluster</a>)
@@ -13662,8 +13518,7 @@ Deprecated</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tidbclusterstatus">TidbClusterStatus
-</h3>
+<h3 id="tidbclusterstatus">TidbClusterStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbcluster">TidbCluster</a>)
@@ -13751,8 +13606,7 @@ TiFlashStatus
 </tr>
 </tbody>
 </table>
-<h3 id="tidbinitializerspec">TidbInitializerSpec
-</h3>
+<h3 id="tidbinitializerspec">TidbInitializerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbinitializer">TidbInitializer</a>)
@@ -13877,8 +13731,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbinitializerstatus">TidbInitializerStatus
-</h3>
+<h3 id="tidbinitializerstatus">TidbInitializerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbinitializer">TidbInitializer</a>)
@@ -13923,8 +13776,7 @@ InitializePhase
 </tr>
 </tbody>
 </table>
-<h3 id="tidbmonitorref">TidbMonitorRef
-</h3>
+<h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
@@ -13966,8 +13818,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="tidbmonitorspec">TidbMonitorSpec
-</h3>
+<h3 id="tidbmonitorspec">TidbMonitorSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbmonitor">TidbMonitor</a>)
@@ -14152,8 +14003,7 @@ Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometh
 </tr>
 </tbody>
 </table>
-<h3 id="tidbmonitorstatus">TidbMonitorStatus
-</h3>
+<h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbmonitor">TidbMonitor</a>)
@@ -14161,8 +14011,7 @@ Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometh
 <p>
 <p>TODO: sync status</p>
 </p>
-<h3 id="tikvautoscalerspec">TikvAutoScalerSpec
-</h3>
+<h3 id="tikvautoscalerspec">TikvAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
@@ -14195,8 +14044,7 @@ BasicAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tikvautoscalerstatus">TikvAutoScalerStatus
-</h3>
+<h3 id="tikvautoscalerstatus">TikvAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
@@ -14229,8 +14077,7 @@ BasicAutoScalerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="txnlocallatches">TxnLocalLatches
-</h3>
+<h3 id="txnlocallatches">TxnLocalLatches</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -14270,8 +14117,7 @@ uint
 </tr>
 </tbody>
 </table>
-<h3 id="unjoinedmember">UnjoinedMember
-</h3>
+<h3 id="unjoinedmember">UnjoinedMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>)
@@ -14321,8 +14167,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="user">User
-</h3>
+<h3 id="user">User</h3>
 <p>
 <p>User is the configuration of users.</p>
 </p>
