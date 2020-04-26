@@ -21,6 +21,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -93,6 +94,10 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 		return pc.transferPDLeader(payload)
 	}
 
+	if isUpgrading {
+		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdUpgradeReason, podDeleteEventMessage(name))
+	}
+
 	klog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
 	return util.ARSuccess()
 }
@@ -138,6 +143,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 			}
 		}
 		klog.Infof("pd pod[%s/%s] is not member of tc[%s/%s],admit to delete", namespace, name, namespace, tcName)
+		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdScaleInReason, podDeleteEventMessage(name))
 		return util.ARSuccess()
 
 	}

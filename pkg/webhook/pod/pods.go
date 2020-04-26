@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -44,17 +45,24 @@ type PodAdmissionControl struct {
 	pdControl pdapi.PDControlInterface
 	// the map of the service account from the request which should be checked by webhook
 	serviceAccounts sets.String
+	// recorder to send event
+	recorder record.EventRecorder
 }
 
 const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
+	podDeleteMsgPattern          = "pod[%s] deleted"
+	pdScaleInReason              = "pd scale-in"
+	pdUpgradeReason              = "pd upgrade"
+	tikvScaleInReason              = "tikv scale-in"
+	tikvUpgradeReason            = "tikv upgrade"
 )
 
 var (
 	AstsControllerServiceAccounts string
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, recorder record.EventRecorder) *PodAdmissionControl {
 
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
@@ -69,6 +77,7 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		operatorCli:     operatorCli,
 		pdControl:       PdControl,
 		serviceAccounts: serviceAccounts,
+		recorder:        recorder,
 	}
 }
 
