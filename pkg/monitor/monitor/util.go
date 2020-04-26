@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -194,7 +195,7 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	deployment := getMonitorDeploymentSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, initContainer)
-	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
+	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, config)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	if monitor.Spec.Grafana != nil {
@@ -358,19 +359,24 @@ chmod 777 /data/prometheus /data/grafana
 	return container
 }
 
-func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, config *core.ConfigMap) core.Container {
+	command := []string{
+		"/bin/prometheus",
+		"--web.enable-admin-api",
+		"--web.enable-lifecycle",
+		"--config.file=/etc/prometheus/prometheus.yml",
+		"--storage.tsdb.path=/data/prometheus",
+		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
+	}
+
+	if startCommand, ok := config.Data["start-command"]; ok {
+		command = strings.Split(startCommand, "\n")
+	}
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.Resources),
-		Command: []string{
-			"/bin/prometheus",
-			"--web.enable-admin-api",
-			"--web.enable-lifecycle",
-			"--config.file=/etc/prometheus/prometheus.yml",
-			"--storage.tsdb.path=/data/prometheus",
-			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
-		},
+		Command:   command,
 		Ports: []core.ContainerPort{
 			{
 				Name:          "prometheus",
