@@ -41,8 +41,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if !checkAutoScalingPrerequisites(tc, sts, v1alpha1.TiDBMemberType) {
 		return nil
 	}
-	currentReplicas := tc.Spec.TiDB.Replicas
-	targetReplicas := currentReplicas
+	var targetReplicas int32
 	if tac.Spec.TiDB.ExternalEndpoint == nil {
 		instances := filterTidbInstances(tc)
 		targetReplicas, err = calculateTidbMetrics(tac, sts, instances)
@@ -60,7 +59,7 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	if targetReplicas == tc.Spec.TiDB.Replicas {
 		return nil
 	}
-	return syncTiDBAfterCalculated(tc, tac, currentReplicas, targetReplicas, sts)
+	return syncTiDBAfterCalculated(tc, tac, tc.Spec.TiDB.Replicas, targetReplicas, sts)
 }
 
 // syncTiDBAfterCalculated would check the Consecutive count to avoid jitter, and it would also check the interval
