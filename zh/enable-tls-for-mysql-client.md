@@ -24,14 +24,14 @@ category: how-to
 1. 首先下载 `cfssl` 软件并初始化证书颁发机构：
 
     {{< copyable "shell-regular" >}}
-    
+
     ``` shell
     mkdir -p ~/bin
     curl -s -L -o ~/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
     curl -s -L -o ~/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
     chmod +x ~/bin/{cfssl,cfssljson}
     export PATH=$PATH:~/bin
-    
+
     mkdir -p ~/cfssl
     cd ~/cfssl
     cfssl print-defaults config > ca-config.json
@@ -92,7 +92,7 @@ category: how-to
 4. 使用定义的选项生成 CA：
 
     {{< copyable "shell-regular" >}}
-    
+
     ``` shell
     cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
     ```
@@ -100,15 +100,15 @@ category: how-to
 5. 生成 Server 端证书。
 
     首先生成默认的 `server.json` 文件：
-    
+
     {{< copyable "shell-regular" >}}
-    
+
     ``` shell
     cfssl print-defaults csr > server.json
     ```
-    
+
     然后编辑这个文件，修改 `CN`，`hosts` 属性：
-    
+
     ``` json
     ...
         "CN": "TiDB Server",
@@ -127,13 +127,13 @@ category: how-to
         ],
     ...
     ```
-    
+
     其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
-    
+
     最后生成 Server 端证书：
-    
+
     {{< copyable "shell-regular" >}}
-    
+
     ``` shell
     cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server server.json | cfssljson -bare server
     ```
@@ -141,26 +141,26 @@ category: how-to
 6. 生成 Client 端证书。
 
     首先生成默认的 `client.json` 文件：
-    
+
     {{< copyable "shell-regular" >}}
-    
+
     ``` shell
     cfssl print-defaults csr > client.json
     ```
-    
+
     然后编辑这个文件，修改 `CN`，`hosts` 属性，`hosts` 可以留空：
-    
+
     ``` json
     ...
         "CN": "TiDB Client",
         "hosts": [],
     ...
     ```
-    
+
     最后生成 Client 端证书：
-    
+
     {{< copyable "shell-regular" >}}
-    
+
     ``` shell
     cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
     ```
@@ -255,7 +255,7 @@ category: how-to
     在 `cert-manager` 中，Certificate 资源表示证书接口，该证书将由上面创建的 Issuer 颁发并保持更新。
 
     首先来创建 Server 端证书，创建一个 `tidb-server-cert.yaml` 文件，并输入以下内容：
-    
+
     ``` yaml
     apiVersion: cert-manager.io/v1alpha2
     kind: Certificate
@@ -346,7 +346,7 @@ category: how-to
     ```
 
     其中 `${cluster_name}` 为集群的名字：
-    
+
     - `spec.secretName` 请设置为 `${cluster_name}-tidb-client-secret`；
     - `usages` 请添加上 `client auth`；
     - `dnsNames` 和 `ipAddresses` 不需要填写；
@@ -383,7 +383,7 @@ metadata:
  name: ${cluster_name}
  namespace: ${namespace}
 spec:
- version: v3.0.8
+ version: v3.1.0
  timezone: UTC
  pvReclaimPolicy: Retain
  pd:
@@ -453,4 +453,4 @@ spec:
     mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=~/cert-manager/client-tls.crt --ssl-key=~/cert-manager/client-tls.key --ssl-ca=~/cert-manager/client-ca.crt
     ```
 
-最后请参考 [官网文档](https://pingcap.com/docs-cn/v3.0/how-to/secure/enable-tls-clients/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。
+最后请参考 [官网文档](https://pingcap.com/docs-cn/v3.1/how-to/secure/enable-tls-clients/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。

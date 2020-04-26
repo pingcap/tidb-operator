@@ -388,7 +388,7 @@ In this step, you create a TiDB cluster using two CR object, enable TLS for the 
     name: ${cluster_name}
     namespace: ${namespace}
     spec:
-    version: v3.0.8
+    version: v3.1.0
     timezone: UTC
     pvReclaimPolicy: Retain
     pd:
@@ -460,4 +460,4 @@ To connect the MySQL client with the TiDB cluster, use the client-side certifica
     mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=~/cert-manager/client-tls.crt --ssl-key=~/cert-manager/client-tls.key --ssl-ca=~/cert-manager/client-ca.crt
     ```
 
-Finally, to verify whether TLS is successfully enabled, refer to [checking the current connection](https://pingcap.com/docs/v3.0/how-to/secure/enable-tls-clients/#check-whether-the-current-connection-uses-encryption).
+Finally, to verify whether TLS is successfully enabled, refer to [checking the current connection](https://pingcap.com/docs/v3.1/how-to/secure/enable-tls-clients/#check-whether-the-current-connection-uses-encryption).
