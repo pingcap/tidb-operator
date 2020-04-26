@@ -114,10 +114,8 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 		if *stsPartition > 0 && *stsPartition <= int32(partition) {
 			klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
 			return util.ARFail(errors.New("protect by partition annotation"))
-		} else {
-			klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
-			return util.ARSuccess()
 		}
+		klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
 	}
 	return util.ARSuccess()
 }
