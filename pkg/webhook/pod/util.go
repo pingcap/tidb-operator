@@ -203,3 +203,7 @@ func appendExtraLabelsENVForTiKV(labels map[string]string, container *core.Conta
 		})
 	}
 }
+
+func podDeleteEventMessage(name string) string {
+	return fmt.Sprintf(podDeleteMsgPattern, name)
+}
