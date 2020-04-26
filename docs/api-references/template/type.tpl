@@ -1,9 +1,6 @@
 {{ define "type" }}
 
-<h3 id="{{ anchorIDForType . }}">
-    {{- .Name.Name }}
-    {{ if eq .Kind "Alias" }}(<code>{{.Underlying}}</code> alias)</p>{{ end -}}
-</h3>
+<h3 id="{{ anchorIDForType . }}">{{- .Name.Name }}</h3>
 {{ with (typeReferences .) }}
     <p>
         (<em>Appears on:</em>
