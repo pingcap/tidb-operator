@@ -16,8 +16,6 @@ package pod
 import (
 	"testing"
 
-	"k8s.io/client-go/kubernetes"
-
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	operatorClifake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -28,7 +26,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -130,10 +130,12 @@ func newAdmissionRequest() *admission.AdmissionRequest {
 func newPodAdmissionControl(kubeCli kubernetes.Interface) *PodAdmissionControl {
 	operatorCli := operatorClifake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
+	recorder := record.NewFakeRecorder(10)
 	return &PodAdmissionControl{
 		kubeCli:     kubeCli,
 		operatorCli: operatorCli,
 		pdControl:   pdControl,
+		recorder:    recorder,
 	}
 }
 
