@@ -291,9 +291,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-		if newSvc.Spec.ClusterIP == "" {
-			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		// apply change of annotations if any
 		for k, v := range newSvc.Annotations {
 			svc.Annotations[k] = v

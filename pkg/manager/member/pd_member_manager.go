@@ -142,9 +142,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		if err != nil {
 			return err
 		}
-		if newSvc.Spec.ClusterIP == "" {
-			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		_, err = pmm.svcControl.UpdateService(tc, &svc)
 		return err
 	}
