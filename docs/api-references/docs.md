@@ -3529,7 +3529,7 @@ Optional: Defaults to the cluster-level setting</p>
 <tbody>
 <tr>
 <td>
-<code>Hosts</code></br>
+<code>hosts</code></br>
 <em>
 []string
 </em>

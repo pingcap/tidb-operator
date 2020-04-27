@@ -1712,15 +1712,15 @@ spec:
                   description: IngressSpec describe the ingress desired state for
                     the target component
                   properties:
-                    Hosts:
-                      description: Hosts describe the hosts for the ingress
-                      items:
-                        type: string
-                      type: array
                     annotations:
                       description: Annotations describe the desired annotations for
                         the ingress
                       type: object
+                    hosts:
+                      description: Hosts describe the hosts for the ingress
+                      items:
+                        type: string
+                      type: array
                     tls:
                       description: TLS configuration. Currently the Ingress only supports
                         a single TLS port, 443. If multiple members of this list specify
@@ -1731,7 +1731,7 @@ spec:
                       items: {}
                       type: array
                   required:
-                  - Hosts
+                  - hosts
                   type: object
                 env:
                   description: List of environment variables to set in the container,

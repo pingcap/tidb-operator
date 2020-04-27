@@ -1171,7 +1171,7 @@ type RestoreStatus struct {
 // IngressSpec describe the ingress desired state for the target component
 type IngressSpec struct {
 	// Hosts describe the hosts for the ingress
-	Hosts []string
+	Hosts []string `json:"hosts"`
 	// Annotations describe the desired annotations for the ingress
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`

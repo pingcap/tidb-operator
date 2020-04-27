@@ -1426,7 +1426,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) 
 				Description: "IngressSpec describe the ingress desired state for the target component",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"Hosts": {
+					"hosts": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Hosts describe the hosts for the ingress",
 							Type:        []string{"array"},
@@ -1469,7 +1469,7 @@ func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"Hosts"},
+				Required: []string{"hosts"},
 			},
 		},
 		Dependencies: []string{

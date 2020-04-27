@@ -93,4 +93,5 @@ func IngressEqual(newIngress, oldIngres *extensionsv1beta1.Ingress) (bool, error
 		}
 		return apiequality.Semantic.DeepEqual(oldIngressSpec, newIngress.Spec), nil
 	}
+	return false, nil
 }
