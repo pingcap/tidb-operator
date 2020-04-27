@@ -100,7 +100,14 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
-	if !apiequality.Semantic.DeepEqual(new.Annotations, old.Annotations) {
+	// The annotations in old sts may include LastAppliedConfigAnnotation
+	var tmpAnno map[string]string
+	for k, v := range old.Annotations {
+		if k != LastAppliedConfigAnnotation {
+			tmpAnno[k] = v
+		}
+	}
+	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
 		return false
 	}
 	oldConfig := apps.StatefulSetSpec{}
@@ -110,8 +117,16 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 			klog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
 			return false
 		}
+		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
+		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
+		tmpTemplate := oldConfig.Template.DeepCopy()
+		if tmpTemplate.Annotations != nil {
+			if _, ok := tmpTemplate.Annotations[LastAppliedConfigAnnotation]; ok {
+				delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
+			}
+		}
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
-			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
 			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
 	}
 	return false
