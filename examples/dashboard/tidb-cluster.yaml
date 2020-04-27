@@ -1,0 +1,38 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: dashboard-view
+spec:
+  dashboard:
+    ingress:
+      hosts:
+        - exmaple.com
+        - hello.com
+      annotations:
+        foo: "bar"
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  imagePullPolicy: IfNotPresent
+  pd:
+    image: pingcap/pd:v4.0.0-rc
+    replicas: 1
+    requests:
+      storage: "1Gi"
+    config: {}
+  tikv:
+    config: {}
+    image: pingcap/tikv:v4.0.0-rc
+    replicas: 1
+    requests:
+      storage: "1Gi"
+  tidb:
+    enableAdvertiseAddress: true
+    image: pingcap/tidb:v4.0.0-rc
+    imagePullPolicy: IfNotPresent
+    replicas: 1
+    service:
+      type: ClusterIP
+    config: {}
+    requests:
+      cpu: 1
+
