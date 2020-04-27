@@ -116,6 +116,7 @@ func NewController(
 	tiflashUpgrader := mm.NewTiFlashUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
 	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
+	dashboardManager := mm.NewDashboardManager(ingresInformer.Lister(), typedControl)
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -133,7 +134,6 @@ func NewController(
 				podInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
-				ingresInformer.Lister(),
 				pdScaler,
 				pdUpgrader,
 				autoFailover,
@@ -218,6 +218,7 @@ func NewController(
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
 			podRestarter,
+			dashboardManager,
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

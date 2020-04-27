@@ -50,6 +50,7 @@ func NewDefaultTidbClusterControl(
 	tiflashMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	podRestarter member.PodRestarter,
+	dashboardManager member.DashboardManager,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 		tiflashMemberManager,
 		discoveryManager,
 		podRestarter,
+		dashboardManager,
 		recorder,
 	}
 }
@@ -81,6 +83,7 @@ type defaultTidbClusterControl struct {
 	tiflashMemberManager manager.Manager
 	discoveryManager     member.TidbDiscoveryManager
 	podRestarter         member.PodRestarter
+	dashboardManager     member.DashboardManager
 	recorder             record.EventRecorder
 }
 

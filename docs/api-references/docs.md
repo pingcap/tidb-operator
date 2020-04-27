@@ -960,6 +960,20 @@ Optional: Defaults to UTC</p>
 Deprecated</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>dashboard</code></br>
+<em>
+<a href="#dashboardspec">
+DashBoardSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DashBoard describe the TiDB Dashboard desired state</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -3016,6 +3030,38 @@ CrdKind
 </tr>
 </tbody>
 </table>
+<h3 id="dashboardspec">DashBoardSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>DashBoard describe the TiDB Dashboard desired state</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDDashboardIngress describe the ingress of the TiDB Dashboard</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="dashboardconfig">DashboardConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -3514,7 +3560,7 @@ Optional: Defaults to the cluster-level setting</p>
 <h3 id="ingressspec">IngressSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pdspec">PDSpec</a>)
+<a href="#dashboardspec">DashBoardSpec</a>)
 </p>
 <p>
 <p>IngressSpec describe the ingress desired state for the target component</p>
@@ -5917,20 +5963,6 @@ PDConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of pd-servers</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>dashboardIngress</code></br>
-<em>
-<a href="#ingressspec">
-IngressSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PDDashboardIngress describe the ingress of the TiDB Dashboard</p>
 </td>
 </tr>
 </tbody>
@@ -13478,6 +13510,20 @@ Optional: Defaults to UTC</p>
 <td>
 <p>Services list non-headless services type used in TidbCluster
 Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dashboard</code></br>
+<em>
+<a href="#dashboardspec">
+DashBoardSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DashBoard describe the TiDB Dashboard desired state</p>
 </td>
 </tr>
 </tbody>

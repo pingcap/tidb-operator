@@ -27,14 +27,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/klog"
 )
 
@@ -55,7 +53,6 @@ type pdMemberManager struct {
 	podLister     corelisters.PodLister
 	epsLister     corelisters.EndpointsLister
 	pvcLister     corelisters.PersistentVolumeClaimLister
-	ingressLister extensionslister.IngressLister
 	pdScaler      Scaler
 	pdUpgrader    Upgrader
 	autoFailover  bool
@@ -73,7 +70,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
-	ingressLister extensionslister.IngressLister,
 	pdScaler Scaler,
 	pdUpgrader Upgrader,
 	autoFailover bool,
@@ -89,7 +85,6 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		podLister,
 		epsLister,
 		pvcLister,
-		ingressLister,
 		pdScaler,
 		pdUpgrader,
 		autoFailover,
@@ -108,12 +103,7 @@ func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	// Sync PD StatefulSet
-	if err := pmm.syncPDStatefulSetForTidbCluster(tc); err != nil {
-		return err
-	}
-
-	// Sync Dashboard Ingress
-	return pmm.syncDashboardIngress(tc)
+	return pmm.syncPDStatefulSetForTidbCluster(tc)
 }
 
 func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) error {
@@ -440,61 +430,6 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 		}
 	}
 	return pdService
-}
-
-func (pmm *pdMemberManager) syncDashboardIngress(tc *v1alpha1.TidbCluster) error {
-	// If DashboardIngress is not defined, check whether the ingress existed. If it does, delete it.
-	if tc.Spec.PD.DashboardIngress == nil {
-		ingress, err := pmm.ingressLister.Ingresses(tc.Namespace).Get(util.GetDashboardIngressName(tc))
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
-		return pmm.typedControl.Delete(tc, ingress)
-	}
-	ingress := getDashboardIngress(tc)
-	_, err := pmm.typedControl.CreateOrUpdateIngress(tc, ingress)
-	return err
-}
-
-func getDashboardIngress(tc *v1alpha1.TidbCluster) *extensionsv1beta1.Ingress {
-	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
-	backend := extensionsv1beta1.IngressBackend{
-		ServiceName: controller.PDMemberName(tc.Name),
-		ServicePort: intstr.FromInt(2379),
-	}
-	ingress := &extensionsv1beta1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            util.GetDashboardIngressName(tc),
-			Namespace:       tc.Namespace,
-			Labels:          pdLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Spec: extensionsv1beta1.IngressSpec{
-			TLS: tc.Spec.PD.DashboardIngress.TLS,
-		},
-	}
-
-	for _, host := range tc.Spec.PD.DashboardIngress.Hosts {
-		rule := extensionsv1beta1.IngressRule{
-			Host: host,
-			IngressRuleValue: extensionsv1beta1.IngressRuleValue{
-				HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
-					Paths: []extensionsv1beta1.HTTPIngressPath{
-						{
-							Path:    "/dashboard",
-							Backend: backend,
-						},
-					},
-				},
-			},
-		}
-		ingress.Spec.Rules = append(ingress.Spec.Rules, rule)
-	}
-	return ingress
 }
 
 func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

@@ -39,6 +39,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashBoardSpec":                 schema_pkg_apis_pingcap_v1alpha1_DashBoardSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash":                         schema_pkg_apis_pingcap_v1alpha1_Flash(ref),
@@ -1150,6 +1151,27 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_DashBoardSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DashBoard describe the TiDB Dashboard desired state",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ingress": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PDDashboardIngress describe the ingress of the TiDB Dashboard",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec"},
 	}
 }
 
@@ -2807,18 +2829,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig"),
 						},
 					},
-					"dashboardIngress": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PDDashboardIngress describe the ingress of the TiDB Dashboard",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec"),
-						},
-					},
 				},
 				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -7375,12 +7391,18 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"dashboard": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DashBoard describe the TiDB Dashboard desired state",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashBoardSpec"),
+						},
+					},
 				},
 				Required: []string{"pd", "tidb", "tikv"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashBoardSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 

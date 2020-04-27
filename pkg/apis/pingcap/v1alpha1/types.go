@@ -202,6 +202,10 @@ type TidbClusterSpec struct {
 	// Deprecated
 	// +k8s:openapi-gen=false
 	Services []Service `json:"services,omitempty"`
+
+	// DashBoard describe the TiDB Dashboard desired state
+	// +optional
+	Dashboard *DashBoardSpec `json:"dashboard,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -249,10 +253,6 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
-
-	// PDDashboardIngress describe the ingress of the TiDB Dashboard
-	// +optional
-	DashboardIngress *IngressSpec `json:"dashboardIngress,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1165,6 +1165,14 @@ type RestoreStatus struct {
 	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time        `json:"timeCompleted"`
 	Conditions    []RestoreCondition `json:"conditions"`
+}
+
+// +k8s:openapi-gen=true
+// DashBoard describe the TiDB Dashboard desired state
+type DashBoardSpec struct {
+	// PDDashboardIngress describe the ingress of the TiDB Dashboard
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
 }
 
 // +k8s:openapi-gen=true
