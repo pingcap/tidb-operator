@@ -266,6 +266,12 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 	if len(oa.cfg.AdditionalDrainerVersion) > 0 {
 		override["clusterVersion"] = oa.cfg.AdditionalDrainerVersion
 	}
+	if info.TLSCluster {
+		override["clusterVersion"] = source.ClusterVersion
+	}
+	if info.TLSCluster {
+		override["tlsCluster.enabled"] = "true"
+	}
 
 	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s -f %s",
 		oa.drainerChartPath(source.OperatorTag), info.DrainerName, source.Namespace, info.DrainerHelmString(override, source), valuesPath)
