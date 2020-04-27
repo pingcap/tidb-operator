@@ -235,5 +235,10 @@ func (pc *PodAdmissionControl) admitDeleteDownTikvPod(payload *admitPayload) *ad
 	if !isInOrdinal {
 		return pc.rejectDeleteTiKVPod()
 	}
+	name := payload.pod.Name
+	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
+	if isUpgrading {
+		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, tikvUpgradeReason, podDeleteEventMessage(name))
+	}
 	return util.ARSuccess()
 }
