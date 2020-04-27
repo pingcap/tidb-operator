@@ -48,3 +48,28 @@ Verify that the Dashboard Ingress has been deployed:
 ```bash
 > kubectl -n <namespace> get ingress dashboard-view-dashboard
 ```
+
+## Support TLS
+
+To enable TLS, you could set it with following configuration:
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: dashboard-view
+spec:
+  dashboard:
+    ingress:
+      hosts:
+        - exmaple.com
+        - hello.com
+      annotations:
+        foo: "bar"
+      tls:
+        - hosts:
+          - sslexample.foo.com
+          secretName: testsecret-tls
+```
+
+Note that as Ingress assume the TLS termination, if the `spec.TlsCluster.enabled` is true, the Dashboard wouldn't be visited through Ingress.
+For more detail about Ingress Tls, see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
