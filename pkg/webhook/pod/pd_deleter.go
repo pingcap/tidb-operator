@@ -141,11 +141,10 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
 			}
+			pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdScaleInReason, podDeleteEventMessage(name))
 		}
 		klog.Infof("pd pod[%s/%s] is not member of tc[%s/%s],admit to delete", namespace, name, namespace, tcName)
-		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdScaleInReason, podDeleteEventMessage(name))
 		return util.ARSuccess()
-
 	}
 	err = payload.pdClient.DeleteMember(name)
 	if err != nil {
