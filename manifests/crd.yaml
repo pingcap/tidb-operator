@@ -1708,6 +1708,31 @@ spec:
                     cluster-level updateStrategy if present Optional: Defaults to
                     cluster-level setting'
                   type: string
+                dashboardIngress:
+                  description: IngressSpec describe the ingress desired state for
+                    the target component
+                  properties:
+                    Hosts:
+                      description: Hosts describe the hosts for the ingress
+                      items:
+                        type: string
+                      type: array
+                    annotations:
+                      description: Annotations describe the desired annotations for
+                        the ingress
+                      type: object
+                    tls:
+                      description: TLS configuration. Currently the Ingress only supports
+                        a single TLS port, 443. If multiple members of this list specify
+                        different hosts, they will be multiplexed on the same port
+                        according to the hostname specified through the SNI TLS extension,
+                        if the ingress controller fulfilling the ingress supports
+                        SNI.
+                      items: {}
+                      type: array
+                  required:
+                  - Hosts
+                  type: object
                 env:
                   description: List of environment variables to set in the container,
                     like v1.Container.Env. Note that following env names cannot be
