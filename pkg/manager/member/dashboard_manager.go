@@ -39,7 +39,7 @@ func NewDashboardManager(ingressLister extensionslister.IngressLister, typedCont
 
 func (dm *DashboardManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Dashboard == nil {
-		return nil
+		return dm.removeIngressIfExist(tc)
 	}
 	return dm.syncDashboardIngress(tc)
 }
@@ -47,18 +47,23 @@ func (dm *DashboardManager) Sync(tc *v1alpha1.TidbCluster) error {
 func (dm *DashboardManager) syncDashboardIngress(tc *v1alpha1.TidbCluster) error {
 	// If DashboardIngress is not defined, check whether the ingress existed. If it does, delete it.
 	if tc.Spec.Dashboard.Ingress == nil {
-		ingress, err := dm.ingressLister.Ingresses(tc.Namespace).Get(util.GetDashboardIngressName(tc))
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
-		return dm.typedControl.Delete(tc, ingress)
+		return dm.removeIngressIfExist(tc)
 	}
 	ingress := getDashboardIngress(tc)
 	_, err := dm.typedControl.CreateOrUpdateIngress(tc, ingress)
 	return err
+}
+
+// If the dashboard or dashboard ingress is nil when ingress also existed, we would remove Ingress
+func (dm *DashboardManager) removeIngressIfExist(tc *v1alpha1.TidbCluster) error {
+	ingress, err := dm.ingressLister.Ingresses(tc.Namespace).Get(util.GetDashboardIngressName(tc))
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return dm.typedControl.Delete(tc, ingress)
 }
 
 func getDashboardIngress(tc *v1alpha1.TidbCluster) *extensionsv1beta1.Ingress {

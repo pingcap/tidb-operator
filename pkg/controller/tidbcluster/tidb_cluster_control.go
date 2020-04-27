@@ -207,6 +207,12 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+	// syncing the configuration for dashboard
+	//   - tidb-dashboard ingress
+	if err := tcc.dashboardManager.Sync(tc); tc != nil {
+		return err
+	}
+
 	// cleaning the pod scheduling annotation for pd and tikv
 	if _, err := tcc.pvcCleaner.Clean(tc); err != nil {
 		return err
