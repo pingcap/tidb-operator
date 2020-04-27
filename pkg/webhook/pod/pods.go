@@ -51,7 +51,7 @@ type PodAdmissionControl struct {
 
 const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
-	podDeleteMsgPattern          = "pod[%s] deleted"
+	podDeleteMsgPattern          = "pod [%s] deleted"
 	pdScaleInReason              = "PDScaleIn"
 	pdUpgradeReason              = "PDUpgrade"
 	tikvScaleInReason            = "TiKVScaleIn"
