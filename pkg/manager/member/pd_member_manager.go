@@ -43,20 +43,20 @@ const (
 )
 
 type pdMemberManager struct {
-	pdControl     pdapi.PDControlInterface
-	setControl    controller.StatefulSetControlInterface
-	svcControl    controller.ServiceControlInterface
-	podControl    controller.PodControlInterface
-	typedControl  controller.TypedControlInterface
-	setLister     v1.StatefulSetLister
-	svcLister     corelisters.ServiceLister
-	podLister     corelisters.PodLister
-	epsLister     corelisters.EndpointsLister
-	pvcLister     corelisters.PersistentVolumeClaimLister
-	pdScaler      Scaler
-	pdUpgrader    Upgrader
-	autoFailover  bool
-	pdFailover    Failover
+	pdControl    pdapi.PDControlInterface
+	setControl   controller.StatefulSetControlInterface
+	svcControl   controller.ServiceControlInterface
+	podControl   controller.PodControlInterface
+	typedControl controller.TypedControlInterface
+	setLister    v1.StatefulSetLister
+	svcLister    corelisters.ServiceLister
+	podLister    corelisters.PodLister
+	epsLister    corelisters.EndpointsLister
+	pvcLister    corelisters.PersistentVolumeClaimLister
+	pdScaler     Scaler
+	pdUpgrader   Upgrader
+	autoFailover bool
+	pdFailover   Failover
 }
 
 // NewPDMemberManager returns a *pdMemberManager
