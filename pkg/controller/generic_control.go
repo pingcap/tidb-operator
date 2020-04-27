@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -56,6 +57,8 @@ type TypedControlInterface interface {
 	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
 	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
 	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
+	// CreateOrUpdateIngress create the desired ingress or update the current one to desired state if already existed
+	CreateOrUpdateIngress(controller runtime.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
 	// UpdateStatus update the /status subresource of the object
 	UpdateStatus(newStatus runtime.Object) error
 	// Delete delete the given object from the cluster
@@ -299,6 +302,39 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 		return nil, err
 	}
 	return result.(*corev1.Service), nil
+}
+
+func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error) {
+	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired runtime.Object) error {
+		existingIngress := existing.(*extensionsv1beta1.Ingress)
+		desiredIngress := desired.(*extensionsv1beta1.Ingress)
+
+		if existingIngress.Annotations == nil {
+			existingIngress.Annotations = map[string]string{}
+		}
+		for k, v := range desiredIngress.Annotations {
+			desiredIngress.Annotations[k] = v
+		}
+		existingIngress.Labels = desiredIngress.Labels
+		equal, err := IngressEqual(desiredIngress, existingIngress)
+		if err != nil {
+			return err
+		}
+		if !equal {
+			// record desiredSvc Spec in annotations in favor of future equality checks
+			b, err := json.Marshal(desiredIngress.Spec)
+			if err != nil {
+				return err
+			}
+			existingIngress.Annotations[LastAppliedConfigAnnotation] = string(b)
+			existingIngress.Spec = desiredIngress.Spec
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*extensionsv1beta1.Ingress), nil
 }
 
 func (w *typedWrapper) Create(controller, obj runtime.Object) error {

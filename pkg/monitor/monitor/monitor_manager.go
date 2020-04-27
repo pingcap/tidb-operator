@@ -15,6 +15,7 @@ package monitor
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
@@ -39,6 +41,7 @@ type MonitorManager struct {
 	deploymentLister   appslisters.DeploymentLister
 	tcLister           v1alpha1listers.TidbClusterLister
 	pvLister           corelisters.PersistentVolumeLister
+	ingressLister      extensionslister.IngressLister
 	pvControl          controller.PVControlInterface
 	recorder           record.EventRecorder
 }
@@ -63,6 +66,7 @@ func NewMonitorManager(
 		tcLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:           pvLister,
+		ingressLister:      kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
 		recorder:           recorder,
 	}
 }
@@ -107,6 +111,15 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		}
 	}
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
+
+	// Sync Ingress
+	if err := mm.syncIngress(monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Ingress failed,err:%v", monitor.Namespace, monitor.Name, err)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		return err
+	}
+	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
+	
 	return nil
 }
 
@@ -271,4 +284,45 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	}
 
 	return sa, nil
+}
+
+func (mm *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
+	if err := mm.syncPrometheusIngress(monitor); err != nil {
+		return err
+	}
+
+	return mm.syncGrafanaIngress(monitor)
+}
+
+func (mm *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
+	if monitor.Spec.Prometheus.Ingress == nil {
+		return mm.removeIngressIfExist(monitor, prometheusName(monitor))
+	}
+
+	ingress := getPrometheusIngress(monitor)
+	_, err := mm.typedControl.CreateOrUpdateIngress(monitor, ingress)
+	return err
+}
+
+func (mm *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
+	if monitor.Spec.Grafana == nil {
+		return mm.removeIngressIfExist(monitor, grafanaName(monitor))
+	} else if monitor.Spec.Grafana.Ingress == nil {
+		return mm.removeIngressIfExist(monitor, grafanaName(monitor))
+	}
+	ingress := getGrafanaIngress(monitor)
+	_, err := mm.typedControl.CreateOrUpdateIngress(monitor, ingress)
+	return err
+}
+
+// If the dashboard or dashboard ingress is nil when ingress also existed, we would remove Ingress
+func (mm *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, name string) error {
+	ingress, err := mm.ingressLister.Ingresses(monitor.Namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return mm.typedControl.Delete(monitor, ingress)
 }
