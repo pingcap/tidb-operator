@@ -448,7 +448,9 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 	}
 
 	// object do not exist, return the creation result
-	c.RecordControllerEvent("create", controller, desired, err)
+	if err == nil {
+		c.RecordControllerEvent("create", controller, desired, err)
+	}
 	return desired, err
 }
 
