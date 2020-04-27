@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	utilcloud "github.com/pingcap/tidb-operator/tests/e2e/util/cloud"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
@@ -40,6 +41,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -93,9 +95,6 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-		// We may do destructive operations in stability tests, so we wait for all nodes to ready before proceeeding.
-		ginkgo.By("Wait for all nodes are schedulable")
-		framework.ExpectNoError(framework.WaitForAllNodesSchedulable(c, framework.TestContext.NodeSchedulableTimeout))
 	})
 
 	ginkgo.AfterEach(func() {
@@ -558,11 +557,15 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		})
 
 		ginkgo.It("[Feature: AutoFailover] PD: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
-			// TODO make storageutils.KubeletCommand work with KIND provider
-			supportedProviders := sets.NewString("aws", "gke")
+			// TODO support aws (eks), kind
+			supportedProviders := sets.NewString("gke")
 			if !supportedProviders.Has(framework.TestContext.Provider) {
 				framework.Skipf("current provider is not supported list %v, skipping", supportedProviders.List())
 			}
+			// Disable node auto repair, otherwise the node on which the
+			// kubelet is not running will be recreated.
+			defer utilcloud.EnableNodeAutoRepair()
+			utilcloud.DisableNodeAutoRepair()
 			clusterName := "failover"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 3
@@ -584,14 +587,19 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 						v1.ReadWriteOnce,
 					},
 					StorageClassName: pointer.StringPtr("does-not-exist"),
+					Resources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceStorage: *resource.NewQuantity(1, resource.BinarySI),
+						},
+					},
 				},
 			}
 			_, err = c.CoreV1().PersistentVolumeClaims(ns).Create(&invalidPVC)
 			framework.ExpectNoError(err)
 
-			// Note that we shouldn't simply delete PD data here, because
-			// tidb-operator will try to deleting pod & pvc to recover soon
-			// after a new replacement is created.
+			// We should stop the kubelet after failing the PD. Because
+			// tidb-operator will try to recreate POD & PVC soon after a new
+			// replacement is created.
 			ginkgo.By("Fail a PD")
 			listOptions := metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(
@@ -601,6 +609,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.ExpectNoError(err)
 			gomega.Expect(len(pdPodList.Items)).To(gomega.BeNumerically("==", 3), "the number of pd nodes should be 3")
 			pod0 := pdPodList.Items[0]
+			f.ExecCommandInContainer(pod0.Name, "pd", "sh", "-c", "rm -rf /var/lib/pd/member")
 			// This command is to make sure kubelet is started after test finishes no matter it fails or not.
 			defer func() {
 				storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
@@ -619,7 +628,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Wait for only one replacement to be created")
-			err = wait.PollImmediate(time.Second*10, 5*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
 				pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
@@ -634,8 +643,12 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			ginkgo.By("Recover failed PD")
 			storageutils.KubeletCommand(storageutils.KStart, c, &pod0)
 
+			ginkgo.By("Wait for the failed PD to be recovered")
+			err = e2epod.WaitTimeoutForPodRunningInNamespace(c, pod0.Name, ns, time.Minute*5)
+			framework.ExpectNoError(err)
+
 			ginkgo.By("Wait for the replacement to be gone")
-			e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
+			err = e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 		})
 	})
