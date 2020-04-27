@@ -158,7 +158,7 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbcluster"})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-admission-controller"})
 
 	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout, recorder)
 	a.podAC = pc
