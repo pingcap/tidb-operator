@@ -55,7 +55,7 @@ const (
 	pdScaleInReason              = "PDScaleIn"
 	pdUpgradeReason              = "PDUpgrade"
 	tikvScaleInReason            = "TiKVScaleIn"
-	tikvUpgradeReason            = "PDUpgrade"
+	tikvUpgradeReason            = "TiKVUpgrade"
 )
 
 var (
