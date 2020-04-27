@@ -145,11 +145,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		}
 	}
 
-	isUpgrading := operatorUtils.IsStatefulSetUpgrading(payload.ownerStatefulSet)
-	if isUpgrading {
-		// If the tikv is both during upgrading and scaling-in, we would take it as upgrading
-		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, tikvUpgradeReason, podDeleteEventMessage(name))
-	} else if !isInOrdinal {
+	if !isInOrdinal {
 		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))
 	}
 
@@ -224,6 +220,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPodDuringUpgrading(payload *admi
 		}
 	}
 
+	pc.recorder.Event(payload.tc, corev1.EventTypeNormal, tikvUpgradeReason, podDeleteEventMessage(name))
 	return util.ARSuccess()
 }
 
