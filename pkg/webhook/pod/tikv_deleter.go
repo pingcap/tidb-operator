@@ -134,6 +134,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
+				pc.recorder.Event(payload.tc, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))
 				return util.ARSuccess()
 			}
 			return util.ARFail(err)
@@ -143,9 +144,6 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
 		}
-	}
-
-	if !isInOrdinal {
 		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))
 	}
 
