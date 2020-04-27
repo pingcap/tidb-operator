@@ -798,7 +798,8 @@ func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec
 			Annotations:     ingressSpec.Annotations,
 		},
 		Spec: extensionsv1beta1.IngressSpec{
-			TLS: ingressSpec.TLS,
+			TLS:   ingressSpec.TLS,
+			Rules: []extensionsv1beta1.IngressRule{},
 		},
 	}
 
