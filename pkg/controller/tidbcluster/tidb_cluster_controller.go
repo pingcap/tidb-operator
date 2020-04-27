@@ -92,6 +92,7 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
+	ingresInformer := kubeInformerFactory.Extensions().V1beta1().Ingresses()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
@@ -132,6 +133,7 @@ func NewController(
 				podInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
+				ingresInformer.Lister(),
 				pdScaler,
 				pdUpgrader,
 				autoFailover,

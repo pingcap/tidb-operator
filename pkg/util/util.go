@@ -226,3 +226,7 @@ func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
 	}
 	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
 }
+
+func GetDashboardIngressName(tc *v1alpha1.TidbCluster) string {
+	return fmt.Sprintf("%s-dashboard", tc.Name)
+}

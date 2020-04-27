@@ -17,6 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -248,6 +249,10 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
+
+	// PDDashboardIngress describe the ingress of the TiDB Dashboard
+	// +optional
+	DashboardIngress *IngressSpec `json:"dashboardIngress,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1160,4 +1165,22 @@ type RestoreStatus struct {
 	// TimeCompleted is the time at which the restore was completed.
 	TimeCompleted metav1.Time        `json:"timeCompleted"`
 	Conditions    []RestoreCondition `json:"conditions"`
+}
+
+// +k8s:openapi-gen=true
+// IngressSpec describe the ingress desired state for the target component
+type IngressSpec struct {
+	// Hosts describe the hosts for the ingress
+	Hosts []string
+	// Annotations describe the desired annotations for the ingress
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// TLS configuration. Currently the Ingress only supports a single TLS
+	// port, 443. If multiple members of this list specify different hosts, they
+	// will be multiplexed on the same port according to the hostname specified
+	// through the SNI TLS extension, if the ingress controller fulfilling the
+	// ingress supports SNI.
+	// +optional
+	TLS []extensionsv1beta1.IngressTLS `json:"tls,omitempty"`
 }
