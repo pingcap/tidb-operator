@@ -274,10 +274,11 @@ func (pmm *pdMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
 	// healthy, we can perform our failover recovery operation.
 	// Note that failover pods may fail (e.g. lack of resources) and we don't care
 	// about them because we're going to delete them.
-	for _, ordinal := range tc.PDStsDesiredOrdinals(true) {
+	for ordinal := range tc.PDStsDesiredOrdinals(true) {
 		name := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
 		pod, err := pmm.podLister.Pods(tc.Namespace).Get(name)
 		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
 			return false
 		}
 		if !podutil.IsPodReady(pod) {
