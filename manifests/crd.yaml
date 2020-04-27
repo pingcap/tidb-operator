@@ -675,7 +675,7 @@ spec:
                 configuration will be applied automatically.
               type: string
             dashboard:
-              description: DashBoard describe the TiDB Dashboard desired state
+              description: DashboardSpec describe the TiDB Dashboard desired state
               properties:
                 ingress:
                   description: IngressSpec describe the ingress desired state for

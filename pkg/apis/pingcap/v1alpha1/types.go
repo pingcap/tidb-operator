@@ -205,7 +205,7 @@ type TidbClusterSpec struct {
 
 	// DashBoard describe the TiDB Dashboard desired state
 	// +optional
-	Dashboard *DashBoardSpec `json:"dashboard,omitempty"`
+	Dashboard *DashboardSpec `json:"dashboard,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1168,8 +1168,8 @@ type RestoreStatus struct {
 }
 
 // +k8s:openapi-gen=true
-// DashBoard describe the TiDB Dashboard desired state
-type DashBoardSpec struct {
+// DashboardSpec describe the TiDB Dashboard desired state
+type DashboardSpec struct {
 	// PDDashboardIngress describe the ingress of the TiDB Dashboard
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`

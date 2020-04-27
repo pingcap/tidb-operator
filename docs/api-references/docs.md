@@ -965,7 +965,7 @@ Deprecated</p>
 <code>dashboard</code></br>
 <em>
 <a href="#dashboardspec">
-DashBoardSpec
+DashboardSpec
 </a>
 </em>
 </td>
@@ -3030,38 +3030,6 @@ CrdKind
 </tr>
 </tbody>
 </table>
-<h3 id="dashboardspec">DashBoardSpec</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbclusterspec">TidbClusterSpec</a>)
-</p>
-<p>
-<p>DashBoard describe the TiDB Dashboard desired state</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>ingress</code></br>
-<em>
-<a href="#ingressspec">
-IngressSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PDDashboardIngress describe the ingress of the TiDB Dashboard</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="dashboardconfig">DashboardConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -3106,6 +3074,38 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dashboardspec">DashboardSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>DashboardSpec describe the TiDB Dashboard desired state</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDDashboardIngress describe the ingress of the TiDB Dashboard</p>
 </td>
 </tr>
 </tbody>
@@ -3560,7 +3560,7 @@ Optional: Defaults to the cluster-level setting</p>
 <h3 id="ingressspec">IngressSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#dashboardspec">DashBoardSpec</a>)
+<a href="#dashboardspec">DashboardSpec</a>)
 </p>
 <p>
 <p>IngressSpec describe the ingress desired state for the target component</p>
@@ -13517,7 +13517,7 @@ Deprecated</p>
 <code>dashboard</code></br>
 <em>
 <a href="#dashboardspec">
-DashBoardSpec
+DashboardSpec
 </a>
 </em>
 </td>
