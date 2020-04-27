@@ -25,26 +25,30 @@ import (
 	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
 )
 
-type DashboardManager struct {
+type DashboardManager interface {
+	Sync(tc *v1alpha1.TidbCluster) error
+}
+
+type dashboardManager struct {
 	ingressLister extensionslister.IngressLister
 	typedControl  controller.TypedControlInterface
 }
 
 func NewDashboardManager(ingressLister extensionslister.IngressLister, typedControl controller.TypedControlInterface) DashboardManager {
-	return DashboardManager{
+	return &dashboardManager{
 		ingressLister: ingressLister,
 		typedControl:  typedControl,
 	}
 }
 
-func (dm *DashboardManager) Sync(tc *v1alpha1.TidbCluster) error {
+func (dm *dashboardManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Dashboard == nil {
 		return dm.removeIngressIfExist(tc)
 	}
 	return dm.syncDashboardIngress(tc)
 }
 
-func (dm *DashboardManager) syncDashboardIngress(tc *v1alpha1.TidbCluster) error {
+func (dm *dashboardManager) syncDashboardIngress(tc *v1alpha1.TidbCluster) error {
 	// If DashboardIngress is not defined, check whether the ingress existed. If it does, delete it.
 	if tc.Spec.Dashboard.Ingress == nil {
 		return dm.removeIngressIfExist(tc)
@@ -55,7 +59,7 @@ func (dm *DashboardManager) syncDashboardIngress(tc *v1alpha1.TidbCluster) error
 }
 
 // If the dashboard or dashboard ingress is nil when ingress also existed, we would remove Ingress
-func (dm *DashboardManager) removeIngressIfExist(tc *v1alpha1.TidbCluster) error {
+func (dm *dashboardManager) removeIngressIfExist(tc *v1alpha1.TidbCluster) error {
 	ingress, err := dm.ingressLister.Ingresses(tc.Namespace).Get(util.GetDashboardIngressName(tc))
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -103,4 +107,14 @@ func getDashboardIngress(tc *v1alpha1.TidbCluster) *extensionsv1beta1.Ingress {
 		ingress.Spec.Rules = append(ingress.Spec.Rules, rule)
 	}
 	return ingress
+}
+
+type fakeDashboardManager struct{}
+
+func NewFakeDashboaredManager() DashboardManager {
+	return &fakeDashboardManager{}
+}
+
+func (fdm *fakeDashboardManager) Sync(tc *v1alpha1.TidbCluster) error {
+	return nil
 }

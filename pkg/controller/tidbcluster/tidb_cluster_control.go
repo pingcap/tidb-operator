@@ -209,7 +209,7 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// syncing the configuration for dashboard
 	//   - tidb-dashboard ingress
-	if err := tcc.dashboardManager.Sync(tc); tc != nil {
+	if err := tcc.dashboardManager.Sync(tc); err != nil {
 		return err
 	}
 

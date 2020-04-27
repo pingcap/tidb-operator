@@ -319,6 +319,7 @@ func newFakeTidbClusterControl() (
 	tiflashMemberManager := mm.NewFakeTiFlashMemberManager()
 	discoveryManager := mm.NewFakeDiscoveryManger()
 	podRestarter := mm.NewFakePodRestarter()
+	dashboardManager := mm.NewFakeDashboaredManager()
 	control := NewDefaultTidbClusterControl(
 		tcUpdater,
 		pdMemberManager,
@@ -332,6 +333,7 @@ func newFakeTidbClusterControl() (
 		tiflashMemberManager,
 		discoveryManager,
 		podRestarter,
+		dashboardManager,
 		recorder,
 	)
 
