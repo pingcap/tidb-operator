@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -48,6 +49,17 @@ func NewOperatorKiller(config OperatorKillerConfig, client kubernetes.Interface,
 	}
 }
 
+// check the pod has been restarted or not
+func hasBeenRestarted(pod *v1.Pod) bool {
+	allContainerStatues := append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...)
+	for _, containerStatus := range allContainerStatues {
+		if containerStatus.RestartCount > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // Run starts OperatorKiller until stopCh is closed.
 func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 	// wait.JitterUntil starts work immediately, so wait first.
@@ -59,11 +71,18 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 			return
 		}
 		for _, pod := range pods {
+			if !podutil.IsPodReady(&pod) || hasBeenRestarted(&pod) {
+				// deleting the pod will recreate it, we should skip if the pod
+				// is not ready or has been restarted before, otherwise
+				// potential errors (e.g. panic) in operator may be hidden.
+				framework.Logf("pod %s/%s is not ready or crashed before, skip deleting", pod.Namespace, pod.Name)
+				continue
+			}
 			err = k.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 			if err != nil {
 				framework.Logf("failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 			} else {
-				framework.Logf("successfully deleted tidb-operator pod %s/%s", pod.Namespace, pod.Name)
+				framework.Logf("successfully deleted pod %s/%s", pod.Namespace, pod.Name)
 			}
 		}
 	}, k.config.Interval, k.config.JitterFactor, true, stopCh)
