@@ -127,7 +127,8 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	}
 
 	restoreDataPath := rm.getRestoreDataPath()
-	if err := rm.downloadBackupData(restoreDataPath); err != nil {
+	opts := util.GetOptions(restore.Spec.StorageProvider)
+	if err := rm.downloadBackupData(restoreDataPath, opts); err != nil {
 		klog.Errorf("download cluster %s backup %s data failed, err: %s", rm, rm.BackupPath, err)
 		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,

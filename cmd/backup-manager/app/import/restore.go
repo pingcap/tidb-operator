@@ -36,13 +36,14 @@ func (ro *Options) getRestoreDataPath() string {
 	return filepath.Join(constants.BackupRootPath, bucketName, backupName)
 }
 
-func (ro *Options) downloadBackupData(localPath string) error {
+func (ro *Options) downloadBackupData(localPath, opts string) error {
 	if err := util.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
 		return err
 	}
 
 	remoteBucket := util.NormalizeBucketURI(ro.BackupPath)
-	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", remoteBucket, localPath)
+	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath)
+	rcCopy := exec.Command("rclone", args...)
 	if err := rcCopy.Start(); err != nil {
 		return fmt.Errorf("cluster %s, start rclone copyto command for download backup data %s falied, err: %v", ro, ro.BackupPath, err)
 	}

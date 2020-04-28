@@ -229,7 +229,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
 
-	size, err := getBackupSize(archiveBackupPath)
+	opts := util.GetOptions(backup.Spec.StorageProvider)
+	size, err := getBackupSize(archiveBackupPath, opts)
 	if err != nil {
 		klog.Errorf("get cluster %s archived backup file %s size %d failed, err: %s", bm, archiveBackupPath, size, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -255,7 +256,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
 	bucketURI := bm.getDestBucketURI(remotePath)
-	err = bm.backupDataToRemote(archiveBackupPath, bucketURI)
+	err = bm.backupDataToRemote(archiveBackupPath, bucketURI, opts)
 	if err != nil {
 		klog.Errorf("backup cluster %s data to %s failed, err: %s", bm, bm.StorageType, err)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
