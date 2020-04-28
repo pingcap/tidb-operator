@@ -367,6 +367,7 @@ elif [ "$PROVIDER" == "gke" ]; then
         --gce-project="${GCP_PROJECT}"
         --gce-region="${GCP_REGION}"
         --gce-zone="${GCP_ZONE}"
+        --gke-cluster="${CLUSTER}"
     )
     docker_args+=(
         -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
@@ -379,6 +380,8 @@ elif [ "$PROVIDER" == "gke" ]; then
         exit 1
     fi
     docker_args+=(
+        # gcloud config
+        -v $HOME/.config/gcloud:/root/.config/gcloud
         -v ${GCP_SDK}:/google-cloud-sdk
         # ~/.ssh/google_compute_engine must be mounted into e2e container to run ssh
         -v $HOME/.ssh/google_compute_engine:/root/.ssh/google_compute_engine
