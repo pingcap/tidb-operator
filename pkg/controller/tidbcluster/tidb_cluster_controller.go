@@ -91,6 +91,7 @@ func NewController(
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
@@ -158,6 +159,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				secretInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,

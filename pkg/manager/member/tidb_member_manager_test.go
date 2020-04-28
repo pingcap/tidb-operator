@@ -784,6 +784,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		svcInformer.Lister(),
 		podInformer.Lister(),
 		cmInformer.Lister(),
+		secretInformer.Lister(),
 		tidbUpgrader,
 		true,
 		tidbFailover,
