@@ -74,7 +74,7 @@ func (bo *Options) dumpTidbClusterData() (string, error) {
 	return bfPath, nil
 }
 
-func (bo *Options) backupDataToRemote(source, bucketURI, opts string) error {
+func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
 	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket)
@@ -136,7 +136,7 @@ func getCommitTsFromMetadata(backupPath string) (string, error) {
 }
 
 // getBackupSize get the backup data size
-func getBackupSize(backupPath, opts string) (int64, error) {
+func getBackupSize(backupPath string, opts []string) (int64, error) {
 	var size int64
 	if exist := util.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)

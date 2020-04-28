@@ -3467,7 +3467,7 @@ map[string]string
 <td>
 <code>ingress</code></br>
 <em>
-<a href="#ingressspec">
+<a href="#pingcap.com/v1alpha1.IngressSpec">
 IngressSpec
 </a>
 </em>
@@ -3524,11 +3524,11 @@ Optional: Defaults to the cluster-level setting</p>
 </tr>
 </tbody>
 </table>
-<h3 id="ingressspec">IngressSpec</h3>
+<h3 id="pingcap.com/v1alpha1.IngressSpec">IngressSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#grafanaspec">GrafanaSpec</a>, 
-<a href="#prometheusspec">PrometheusSpec</a>)
+<a href="#pingcap.com/v1alpha1.GrafanaSpec">GrafanaSpec</a>, 
+<a href="#pingcap.com/v1alpha1.PrometheusSpec">PrometheusSpec</a>)
 </p>
 <p>
 <p>IngressSpec describe the ingress desired state for the target component</p>
@@ -6580,7 +6580,7 @@ int
 <td>
 <code>ingress</code></br>
 <em>
-<a href="#ingressspec">
+<a href="#pingcap.com/v1alpha1.IngressSpec">
 IngressSpec
 </a>
 </em>
@@ -7281,7 +7281,7 @@ string
 <td>
 <code>options</code></br>
 <em>
-string
+[]string
 </em>
 </td>
 <td>

@@ -190,27 +190,24 @@ func Suffix(version string) string {
 }
 
 // GetOptions gets the rclone options
-func GetOptions(provider v1alpha1.StorageProvider) string {
+func GetOptions(provider v1alpha1.StorageProvider) []string {
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
 		return provider.S3.Options
 	default:
-		return ""
+		return nil
 	}
 }
 
 // ConstructArgs constructs the rclone args
-func ConstructArgs(conf, opts, command, source, dest string) []string {
+func ConstructArgs(conf string, opts []string, command, source, dest string) []string {
 	var args []string
 	if conf != "" {
 		args = append(args, conf)
 	}
-	if opts != "" {
-		sopts := strings.Split(opts, ";")
-		if len(sopts) > 0 {
-			args = append(args, sopts...)
-		}
+	if len(opts) > 0 {
+		args = append(args, opts...)
 	}
 	if command != "" {
 		args = append(args, command)
