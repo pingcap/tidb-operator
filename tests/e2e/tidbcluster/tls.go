@@ -310,9 +310,17 @@ func installCertManager(cli clientset.Interface) error {
 		return err
 	}
 
-	// It may take a minute or so for the TLS assets required for the webhook to function to be provisioned.
-	time.Sleep(time.Minute)
-	return nil
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		secret, err := cli.CoreV1().Secrets("cert-manager").Get("cert-manager-webhook-tls", metav1.GetOptions{})
+		if err != nil {
+			return false, nil
+		}
+
+		if secret.Data["ca.crt"] != nil && secret.Data["tls.crt"] != nil && secret.Data["tls.key"] != nil {
+			return true, nil
+		}
+		return false, nil
+	})
 }
 
 func deleteCertManager(cli clientset.Interface) error {
@@ -440,6 +448,7 @@ func binlogWorksWhileTLSIsEnabled(fw portforward.PortForward, c clientset.Interf
 	return func() (bool, error) {
 		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, false)
 		if err != nil {
+			framework.Logf("can't connect to %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 		defer db.Close()
@@ -447,13 +456,15 @@ func binlogWorksWhileTLSIsEnabled(fw portforward.PortForward, c clientset.Interf
 
 		rows, err := db.Query("SELECT name from tls limit 1")
 		if err != nil {
-			return false, err
+			framework.Logf("can't select from %s/%s, %v", ns, tcName, err)
+			return false, nil
 		}
 		var name string
 		for rows.Next() {
 			err := rows.Scan(&name)
 			if err != nil {
-				return false, err
+				framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
+				return false, nil
 			}
 
 			framework.Logf("TABLE test.tls name = %s", name)
