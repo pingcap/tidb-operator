@@ -68,11 +68,11 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	tmpErr, _ := ioutil.ReadAll(stdErr)
 	if len(tmpErr) > 0 {
 		klog.Infof(string(tmpErr))
-		errMsg += string(tmpErr)
+		errMsg = string(tmpErr)
 	}
 
 	if err := rcCopy.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copyto command for download backup data %s failed, err: %v", ro, ro.BackupPath, err)
+		return fmt.Errorf("cluster %s, execute rclone copyto command for download backup data %s failed, errMsg: %v, err: %v", ro, ro.BackupPath, errMsg, err)
 	}
 
 	return nil
