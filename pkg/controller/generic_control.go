@@ -313,7 +313,7 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress 
 			existingIngress.Annotations = map[string]string{}
 		}
 		for k, v := range desiredIngress.Annotations {
-			desiredIngress.Annotations[k] = v
+			existingIngress.Annotations[k] = v
 		}
 		existingIngress.Labels = desiredIngress.Labels
 		equal, err := IngressEqual(desiredIngress, existingIngress)

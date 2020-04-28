@@ -15,7 +15,6 @@ package monitor
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -24,6 +23,7 @@ import (
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	kubeinformers "k8s.io/client-go/informers"
@@ -119,7 +119,7 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
-	
+
 	return nil
 }
 
