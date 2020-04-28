@@ -295,7 +295,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer", artifacts)
 		}
 		builds["E2E v1.18.0"] = {
 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
