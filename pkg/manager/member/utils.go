@@ -101,7 +101,7 @@ func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1
 // statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
 func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
-	var tmpAnno map[string]string
+	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
 		if k != LastAppliedConfigAnnotation {
 			tmpAnno[k] = v
@@ -120,11 +120,7 @@ func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
 		// oldConfig.Template.Annotations may include LastAppliedConfigAnnotation to keep backward compatiability
 		// Please check detail in https://github.com/pingcap/tidb-operator/pull/1489
 		tmpTemplate := oldConfig.Template.DeepCopy()
-		if tmpTemplate.Annotations != nil {
-			if _, ok := tmpTemplate.Annotations[LastAppliedConfigAnnotation]; ok {
-				delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
-			}
-		}
+		delete(tmpTemplate.Annotations, LastAppliedConfigAnnotation)
 		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
 			apiequality.Semantic.DeepEqual(*tmpTemplate, new.Spec.Template) &&
 			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
