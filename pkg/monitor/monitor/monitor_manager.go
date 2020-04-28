@@ -305,7 +305,7 @@ func (mm *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) e
 }
 
 func (mm *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
-	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil  {
+	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
 		return mm.removeIngressIfExist(monitor, grafanaName(monitor))
 	}
 	ingress := getGrafanaIngress(monitor)
