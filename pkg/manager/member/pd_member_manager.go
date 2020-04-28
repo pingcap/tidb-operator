@@ -34,6 +34,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 const (
@@ -252,7 +253,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if pmm.autoFailover {
-		if tc.PDAllPodsStarted() && tc.PDAllMembersReady() && tc.Status.PD.FailureMembers != nil {
+		if pmm.shouldRecover(tc) {
 			pmm.pdFailover.Recover(tc)
 		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
 			if err := pmm.pdFailover.Failover(tc); err != nil {
@@ -262,6 +263,33 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func (pmm *pdMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
+	if tc.Status.PD.FailureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of tidb cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range tc.PDStsDesiredOrdinals(true) {
+		name := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
+		pod, err := pmm.podLister.Pods(tc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		status, ok := tc.Status.PD.Members[pod.Name]
+		if !ok || !status.Health {
+			return false
+		}
+	}
+	return true
 }
 
 func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
