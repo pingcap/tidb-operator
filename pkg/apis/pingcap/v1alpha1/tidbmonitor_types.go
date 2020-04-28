@@ -79,6 +79,9 @@ type PrometheusSpec struct {
 	Service  ServiceSpec `json:"service,omitempty"`
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
+
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana
@@ -91,6 +94,9 @@ type GrafanaSpec struct {
 	Password string      `json:"password,omitempty"`
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
+
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
 }
 
 // ReloaderSpec is the desired state of reloader
