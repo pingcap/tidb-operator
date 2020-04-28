@@ -268,8 +268,6 @@ func (oa *operatorActions) DeployDrainer(info *DrainerConfig, source *TidbCluste
 	}
 	if info.TLSCluster {
 		override["clusterVersion"] = source.ClusterVersion
-	}
-	if info.TLSCluster {
 		override["tlsCluster.enabled"] = "true"
 	}
 

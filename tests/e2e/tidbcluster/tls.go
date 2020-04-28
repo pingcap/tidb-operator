@@ -310,17 +310,9 @@ func installCertManager(cli clientset.Interface) error {
 		return err
 	}
 
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		secret, err := cli.CoreV1().Secrets("cert-manager").Get("cert-manager-webhook-tls", metav1.GetOptions{})
-		if err != nil {
-			return false, nil
-		}
-
-		if secret.Data["ca.crt"] != nil && secret.Data["tls.crt"] != nil && secret.Data["tls.key"] != nil {
-			return true, nil
-		}
-		return false, nil
-	})
+	// It may take a minute or so for the TLS assets required for the webhook to function to be provisioned.
+	time.Sleep(time.Minute)
+	return nil
 }
 
 func deleteCertManager(cli clientset.Interface) error {
