@@ -321,7 +321,7 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress 
 			return err
 		}
 		if !equal {
-			// record desiredSvc Spec in annotations in favor of future equality checks
+			// record desiredIngress Spec in annotations in favor of future equality checks
 			b, err := json.Marshal(desiredIngress.Spec)
 			if err != nil {
 				return err
