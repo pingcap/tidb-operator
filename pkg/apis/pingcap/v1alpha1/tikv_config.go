@@ -745,6 +745,7 @@ type TiKVCoprocessorConfig struct {
 	RegionSplitKeys *int64 `json:"region-split-keys,omitempty" toml:"region-split-keys,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type TiKVEncryptionConfig struct {
 	// Encrypyion method, use data key encryption raw rocksdb data
 	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
@@ -765,6 +766,7 @@ type TiKVEncryptionConfig struct {
 	PreviousMasterKey *TiKVMasterKeyConfig `json:"previous-master-key,omitempty" toml:"previoud-master-key,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type TiKVMasterKeyConfig struct {
 	// Use KMS encryption or use file encryption, possible values: kms, file
 	// If set to kms, kms MasterKeyKMSConfig should be filled, if set to file MasterKeyFileConfig should be filled
@@ -780,6 +782,7 @@ type TiKVMasterKeyConfig struct {
 	MasterKeyKMSConfig `json:",inline"`
 }
 
+// +k8s:openapi-gen=true
 type MasterKeyFileConfig struct {
 	// Encrypyion method, use master key encryption data key
 	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
@@ -791,6 +794,7 @@ type MasterKeyFileConfig struct {
 	Path string `json:"path" toml:"path"`
 }
 
+// +k8s:openapi-gen=true
 type MasterKeyKMSConfig struct {
 	// AWS CMK key-id it can be find in AWS Console or use aws cli
 	// This field is required

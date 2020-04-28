@@ -49,6 +49,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IsolationRead":                 schema_pkg_apis_pingcap_v1alpha1_IsolationRead(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Log":                           schema_pkg_apis_pingcap_v1alpha1_Log(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec":                 schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterKeyFileConfig":           schema_pkg_apis_pingcap_v1alpha1_MasterKeyFileConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterKeyKMSConfig":            schema_pkg_apis_pingcap_v1alpha1_MasterKeyKMSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MetricsStatus":                 schema_pkg_apis_pingcap_v1alpha1_MetricsStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MonitorContainer":              schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing":                   schema_pkg_apis_pingcap_v1alpha1_OpenTracing(ref),
@@ -96,8 +98,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig":         schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorReadPoolConfig": schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorReadPoolConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig":                  schema_pkg_apis_pingcap_v1alpha1_TiKVDbConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVEncryptionConfig":          schema_pkg_apis_pingcap_v1alpha1_TiKVEncryptionConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig":                  schema_pkg_apis_pingcap_v1alpha1_TiKVGCConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig":              schema_pkg_apis_pingcap_v1alpha1_TiKVImportConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVMasterKeyConfig":           schema_pkg_apis_pingcap_v1alpha1_TiKVMasterKeyConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig":                  schema_pkg_apis_pingcap_v1alpha1_TiKVPDConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig":              schema_pkg_apis_pingcap_v1alpha1_TiKVRaftDBConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig":           schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref),
@@ -1577,6 +1581,81 @@ func schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_MasterKeyFileConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"method": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Encrypyion method, use master key encryption data key Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr Optional: Default to plaintext optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Text file containing the key in hex form, end with '\n'",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"path"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_MasterKeyKMSConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"key-id": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AWS CMK key-id it can be find in AWS Console or use aws cli This field is required",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"access-key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AccessKey of AWS user, leave empty if using other authrization method optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"secret-access-key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretKey of AWS user, leave empty if using other authrization method optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"region": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Region of this KMS key Optional: Default to us-east-1 optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"endpoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"key-id"},
+			},
+		},
 	}
 }
 
@@ -5275,6 +5354,46 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVDbConfig(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_TiKVEncryptionConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"method": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Encrypyion method, use data key encryption raw rocksdb data Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr Optional: Default to plaintext optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"data-key-rotation-period": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The frequency of datakey rotation, It managered by tikv Optional: default to 7d optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"master-key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Master key config",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVMasterKeyConfig"),
+						},
+					},
+					"previous-master-key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Previous master key config It used in master key rotation, the data key should decryption by previous master key and  then encrypytion by new master key",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVMasterKeyConfig"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVMasterKeyConfig"},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_TiKVGCConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5361,6 +5480,75 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVImportConfig(ref common.ReferenceCallb
 						},
 					},
 				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiKVMasterKeyConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Use KMS encryption or use file encryption, possible values: kms, file If set to kms, kms MasterKeyKMSConfig should be filled, if set to file MasterKeyFileConfig should be filled optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"method": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Encrypyion method, use master key encryption data key Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr Optional: Default to plaintext optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Text file containing the key in hex form, end with '\n'",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"key-id": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AWS CMK key-id it can be find in AWS Console or use aws cli This field is required",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"access-key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AccessKey of AWS user, leave empty if using other authrization method optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"secret-access-key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretKey of AWS user, leave empty if using other authrization method optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"region": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Region of this KMS key Optional: Default to us-east-1 optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"endpoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"path", "key-id"},
 			},
 		},
 	}
