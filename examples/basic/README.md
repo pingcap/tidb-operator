@@ -54,10 +54,10 @@ Explore the TiDB sql interface:
 Explore the monitoring dashboards:
 
 ```bash
-> kubectl -n <namespace> port-forward svc/basic-grafana 4000:4000 &>/tmp/pf-grafana.log &
+> kubectl -n <namespace> port-forward svc/basic-grafana 3000:3000 &>/tmp/pf-grafana.log &
 ```
 
-Browse [localhost:4000](http://localhost:4000).
+Browse [localhost:3000](http://localhost:3000).
 
 ## Destroy
 
