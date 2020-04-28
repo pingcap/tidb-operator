@@ -50,6 +50,10 @@ type TiDBConfig struct {
 	// Optional: Defaults to 1000
 	// +optional
 	TokenLimit *uint `toml:"token-limit,omitempty" json:"token-limit,omitempty"`
+	// +optional
+	OOMUseTmpStorage *bool `toml:"oom-use-tmp-storage" json:"oom-use-tmp-storage,omitempty"`
+	// +optional
+	TempStoragePath *string `toml:"tmp-storage-path" json:"tmp-storage-path,omitempty"`
 	// Optional: Defaults to log
 	// +optional
 	OOMAction *string `toml:"oom-action,omitempty" json:"oom-action,omitempty"`
@@ -473,6 +477,9 @@ type StmtSummary struct {
 	// Enable statement summary or not.
 	// +optional
 	Enable *bool `toml:"enable" json:"enable,omitempty"`
+	// Enable summary internal query.
+	// +optional
+	EnableInternalQuery *bool `toml:"enable-internal-query" json:"enable-internal-query,omitempty"`
 	// The maximum number of statements kept in memory.
 	// Optional: Defaults to 100
 	// +optional
@@ -506,4 +513,7 @@ type Experimental struct {
 	// imported from TiDB v3.1.0
 	// +optional
 	AllowAutoRandom *bool `toml:"allow-auto-random" json:"allow-auto-random,omitempty"`
+	// Whether enable creating expression index.
+	// +optional
+	AllowsExpressionIndex *bool `toml:"allow-expression-index" json:"allow-expression-index,omitempty"`
 }
