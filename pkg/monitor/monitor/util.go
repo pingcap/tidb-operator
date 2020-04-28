@@ -26,9 +26,11 @@ import (
 	"github.com/prometheus/prometheus/config"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 )
@@ -656,7 +658,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 	}
 
-	promethuesName := fmt.Sprintf("%s-prometheus", monitor.Name)
+	promethuesName := prometheusName(monitor)
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            promethuesName,
@@ -716,7 +718,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	if monitor.Spec.Grafana != nil {
 		grafanaService := &core.Service{
 			ObjectMeta: meta.ObjectMeta{
-				Name:            fmt.Sprintf("%s-grafana", monitor.Name),
+				Name:            grafanaName(monitor),
 				Namespace:       monitor.Namespace,
 				Labels:          buildTidbMonitorLabel(monitor.Name),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
@@ -770,4 +772,60 @@ func getMonitorPVC(monitor *v1alpha1.TidbMonitor) *core.PersistentVolumeClaim {
 			StorageClassName: monitor.Spec.StorageClassName,
 		},
 	}
+}
+
+func getPrometheusIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Prometheus.Ingress, prometheusName(monitor), 9090)
+}
+
+func getGrafanaIngress(monitor *v1alpha1.TidbMonitor) *extensionsv1beta1.Ingress {
+	return getIngress(monitor, monitor.Spec.Grafana.Ingress, grafanaName(monitor), 3000)
+}
+
+func getIngress(monitor *v1alpha1.TidbMonitor, ingressSpec *v1alpha1.IngressSpec, svcName string, port int) *extensionsv1beta1.Ingress {
+	monitorLabel := buildTidbMonitorLabel(monitor.Name)
+	backend := extensionsv1beta1.IngressBackend{
+		ServiceName: svcName,
+		ServicePort: intstr.FromInt(port),
+	}
+
+	ingress := &extensionsv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            svcName,
+			Namespace:       monitor.Namespace,
+			Labels:          monitorLabel,
+			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Annotations:     ingressSpec.Annotations,
+		},
+		Spec: extensionsv1beta1.IngressSpec{
+			TLS:   ingressSpec.TLS,
+			Rules: []extensionsv1beta1.IngressRule{},
+		},
+	}
+
+	for _, host := range ingressSpec.Hosts {
+		rule := extensionsv1beta1.IngressRule{
+			Host: host,
+			IngressRuleValue: extensionsv1beta1.IngressRuleValue{
+				HTTP: &extensionsv1beta1.HTTPIngressRuleValue{
+					Paths: []extensionsv1beta1.HTTPIngressPath{
+						{
+							Path:    "/",
+							Backend: backend,
+						},
+					},
+				},
+			},
+		}
+		ingress.Spec.Rules = append(ingress.Spec.Rules, rule)
+	}
+	return ingress
+}
+
+func prometheusName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-prometheus", monitor.Name)
+}
+
+func grafanaName(monitor *v1alpha1.TidbMonitor) string {
+	return fmt.Sprintf("%s-grafana", monitor.Name)
 }

@@ -3463,6 +3463,19 @@ map[string]string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="helperspec">HelperSpec</h3>
@@ -3507,6 +3520,66 @@ Kubernetes core/v1.PullPolicy
 <em>(Optional)</em>
 <p>ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 Optional: Defaults to the cluster-level setting</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ingressspec">IngressSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
+<p>IngressSpec describe the ingress desired state for the target component</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>hosts</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Hosts describe the hosts for the ingress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Annotations describe the desired annotations for the ingress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tls</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ingresstls-v1beta1-extensions">
+[]Kubernetes extensions/v1beta1.IngressTLS
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLS configuration. Currently the Ingress only supports a single TLS
+port, 443. If multiple members of this list specify different hosts, they
+will be multiplexed on the same port according to the hostname specified
+through the SNI TLS extension, if the ingress controller fulfilling the
+ingress supports SNI.</p>
 </td>
 </tr>
 </tbody>
@@ -6497,6 +6570,19 @@ ServiceSpec
 <code>reserveDays</code></br>
 <em>
 int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
 </em>
 </td>
 <td>
