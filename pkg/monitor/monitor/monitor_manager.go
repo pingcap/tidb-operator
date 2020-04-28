@@ -315,7 +315,7 @@ func (mm *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) erro
 	return err
 }
 
-// If the dashboard or dashboard ingress is nil when ingress also existed, we would remove Ingress
+// removeIngressIfExist removes Ingress if it exists
 func (mm *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, name string) error {
 	ingress, err := mm.ingressLister.Ingresses(monitor.Namespace).Get(name)
 	if err != nil {
