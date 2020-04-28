@@ -23,29 +23,26 @@
 package periodicity
 
 import (
+	"encoding/json"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type Controller struct {
-	stsLister          appslisters.StatefulSetLister
-	tcLister           v1alpha1listers.TidbClusterLister
-	statefulSetControl controller.StatefulSetControlInterface
+	kubeCli   kubernetes.Interface
+	stsLister appslisters.StatefulSetLister
+	tcLister  v1alpha1listers.TidbClusterLister
 }
 
 func NewController(
@@ -53,17 +50,12 @@ func NewController(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory) *Controller {
 
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
-		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "periodiciy-controller"})
 	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 
 	return &Controller{
-		tcLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
-		statefulSetControl: controller.NewRealStatefuSetControl(kubeCli, stsLister, recorder),
-		stsLister:          stsLister,
+		kubeCli:   kubeCli,
+		tcLister:  informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+		stsLister: stsLister,
 	}
 
 }
@@ -94,29 +86,35 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 	if err != nil {
 		return err
 	}
+
 	var errs []error
 	for _, sts := range stsList {
 		// If there is any error during our sts annotation updating, we just collect the error
 		// and continue to next sts
-		ok, tcRef := util.IsOwnedByTidbCluster(sts)
+		ok, _ := util.IsOwnedByTidbCluster(sts)
 		if !ok {
-			continue
-		}
-		tc, err := c.tcLister.TidbClusters(sts.Namespace).Get(tcRef.Name)
-		if err != nil {
-			errs = append(errs, err)
 			continue
 		}
 		if sts.Annotations == nil {
 			sts.Annotations = map[string]string{}
 		}
 		sts.Annotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
-		newSts, err := c.statefulSetControl.UpdateStatefulSet(tc, sts)
+		var mergePatch []byte
+		mergePatch, err = json.Marshal(map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"annotations": sts.Annotations,
+			},
+		})
 		if err != nil {
-			klog.Errorf("failed to update statefulset %q, error: %v", sts.Name, err)
 			errs = append(errs, err)
+			continue
 		}
-		klog.Infof("successfully updated statefulset %q", newSts.Name)
+		_, err = c.kubeCli.AppsV1().StatefulSets(sts.Namespace).Patch(sts.Name, types.MergePatchType, mergePatch)
+		if err != nil {
+			klog.Errorf("sts[%s/%s] patch timestamp failed, error: %v", sts.Namespace, sts.Name, err.Error())
+			errs = append(errs, err)
+			continue
+		}
 	}
 	return errors.NewAggregate(errs)
 }
