@@ -19,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -68,7 +69,8 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 	if backup.Spec.BR != nil {
 		err = bm.cleanBRRemoteBackupData(backup)
 	} else {
-		err = bm.cleanRemoteBackupData(backup.Status.BackupPath)
+		opts := util.GetOptions(backup.Spec.StorageProvider)
+		err = bm.cleanRemoteBackupData(backup.Status.BackupPath, opts)
 	}
 
 	if err != nil {
