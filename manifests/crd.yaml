@@ -6140,7 +6140,103 @@ spec:
                             to false optional'
                           type: boolean
                       type: object
-                    encryption: {}
+                    encryption:
+                      properties:
+                        data-key-rotation-period:
+                          description: 'The frequency of datakey rotation, It managered
+                            by tikv Optional: default to 7d optional'
+                          type: string
+                        master-key:
+                          properties:
+                            access-key:
+                              description: AccessKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            endpoint:
+                              description: Used for KMS compatible KMS, such as Ceph,
+                                minio, If use AWS, leave empty optional
+                              type: string
+                            key-id:
+                              description: AWS CMK key-id it can be find in AWS Console
+                                or use aws cli This field is required
+                              type: string
+                            method:
+                              description: 'Encrypyion method, use master key encryption
+                                data key Possible values: plaintext, aes128-ctr, aes192-ctr,
+                                aes256-ctr Optional: Default to plaintext optional'
+                              type: string
+                            path:
+                              description: |-
+                                Text file containing the key in hex form, end with '
+                                '
+                              type: string
+                            region:
+                              description: 'Region of this KMS key Optional: Default
+                                to us-east-1 optional'
+                              type: string
+                            secret-access-key:
+                              description: SecretKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            type:
+                              description: 'Use KMS encryption or use file encryption,
+                                possible values: kms, file If set to kms, kms MasterKeyKMSConfig
+                                should be filled, if set to file MasterKeyFileConfig
+                                should be filled optional'
+                              type: string
+                          required:
+                          - path
+                          - key-id
+                          type: object
+                        method:
+                          description: 'Encrypyion method, use data key encryption
+                            raw rocksdb data Possible values: plaintext, aes128-ctr,
+                            aes192-ctr, aes256-ctr Optional: Default to plaintext
+                            optional'
+                          type: string
+                        previous-master-key:
+                          properties:
+                            access-key:
+                              description: AccessKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            endpoint:
+                              description: Used for KMS compatible KMS, such as Ceph,
+                                minio, If use AWS, leave empty optional
+                              type: string
+                            key-id:
+                              description: AWS CMK key-id it can be find in AWS Console
+                                or use aws cli This field is required
+                              type: string
+                            method:
+                              description: 'Encrypyion method, use master key encryption
+                                data key Possible values: plaintext, aes128-ctr, aes192-ctr,
+                                aes256-ctr Optional: Default to plaintext optional'
+                              type: string
+                            path:
+                              description: |-
+                                Text file containing the key in hex form, end with '
+                                '
+                              type: string
+                            region:
+                              description: 'Region of this KMS key Optional: Default
+                                to us-east-1 optional'
+                              type: string
+                            secret-access-key:
+                              description: SecretKey of AWS user, leave empty if using
+                                other authrization method optional
+                              type: string
+                            type:
+                              description: 'Use KMS encryption or use file encryption,
+                                possible values: kms, file If set to kms, kms MasterKeyKMSConfig
+                                should be filled, if set to file MasterKeyFileConfig
+                                should be filled optional'
+                              type: string
+                          required:
+                          - path
+                          - key-id
+                          type: object
+                      type: object
                     gc:
                       properties:
                         "\tbatch-keys":
