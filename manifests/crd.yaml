@@ -8512,7 +8512,9 @@ spec:
                 options:
                   description: Options Rclone options for backup and restore with
                     mydumper and lightning.
-                  type: string
+                  items:
+                    type: string
+                  type: array
                 path:
                   description: 'Path is the full path where the backup is saved. The
                     format of the path must be: "<bucket-name>/<path-to-backup-file>"'
@@ -9337,7 +9339,9 @@ spec:
                 options:
                   description: Options Rclone options for backup and restore with
                     mydumper and lightning.
-                  type: string
+                  items:
+                    type: string
+                  type: array
                 path:
                   description: 'Path is the full path where the backup is saved. The
                     format of the path must be: "<bucket-name>/<path-to-backup-file>"'
@@ -10253,7 +10257,9 @@ spec:
                     options:
                       description: Options Rclone options for backup and restore with
                         mydumper and lightning.
-                      type: string
+                      items:
+                        type: string
+                      type: array
                     path:
                       description: 'Path is the full path where the backup is saved.
                         The format of the path must be: "<bucket-name>/<path-to-backup-file>"'
