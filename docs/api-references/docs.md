@@ -721,6 +721,20 @@ TiFlashSpec
 </tr>
 <tr>
 <td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcspec">
+TiCdcSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCdc cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pump</code></br>
 <em>
 <a href="#pumpspec">
@@ -2557,6 +2571,7 @@ and component-level overrides</p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
+<a href="#ticdcspec">TiCdcSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
@@ -7827,6 +7842,88 @@ For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret &ndash
 For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 For Client: kubectl create secret generic <clusterName>-cluster-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 Same for other components.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcspec">TiCdcSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TiCdcpec contains details of TiCdc members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiCdc</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 </tbody>
@@ -13532,6 +13629,20 @@ TiFlashSpec
 <td>
 <em>(Optional)</em>
 <p>TiFlash cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcspec">
+TiCdcSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCdc cluster spec</p>
 </td>
 </tr>
 <tr>

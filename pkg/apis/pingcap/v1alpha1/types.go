@@ -118,6 +118,10 @@ type TidbClusterSpec struct {
 	// +optional
 	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
 
+	// TiCdc cluster spec
+	// +optional
+	TiCdc *TiCdcSpec `json:"ticdc,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -333,6 +337,25 @@ type TiFlashSpec struct {
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+}
+
+// TiCdcpec contains details of TiCdc members
+// +k8s:openapi-gen=true
+type TiCdcSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCdc
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/ticdc
+	// +optional
+	BaseImage string `json:"baseImage"`
 }
 
 // +k8s:openapi-gen=true
