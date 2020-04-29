@@ -59,7 +59,6 @@ type TidbMonitorSpec struct {
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	// +k8s:openapi-gen=false
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// kubePrometheusURL is where tidb-monitoring get the  common metrics of kube-prometheus.

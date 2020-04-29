@@ -496,7 +496,6 @@ type ComponentSpec struct {
 	// Affinity of the component. Override the cluster-level one if present
 	// Optional: Defaults to cluster-level setting
 	// +optional
-	// +k8s:openapi-gen=false
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// PriorityClassName of the component. Override the cluster-level one if present
@@ -522,7 +521,6 @@ type ComponentSpec struct {
 	// Tolerations of the component. Override the cluster-level tolerations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
-	// +k8s:openapi-gen=false
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// PodSecurityContext of the component
