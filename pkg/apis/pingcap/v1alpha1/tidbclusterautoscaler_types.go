@@ -136,7 +136,7 @@ type BasicAutoScalerSpec struct {
 	// +optional
 	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
 
-	// ExternalEndpoint make auto-scaler controller could query the external service by http/https to
+	// ExternalEndpoint makes the auto-scaler controller able to query the external service
 	// fetch the result of the recommended replicas for tikv/tidb
 	// +optional
 	ExternalEndpoint *ExternalEndpoint `json:"externalEndpoint,omitempty"`
