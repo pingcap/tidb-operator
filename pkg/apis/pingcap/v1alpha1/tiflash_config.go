@@ -129,7 +129,7 @@ type CommonConfig struct {
 	// +optional
 	Flash *Flash `json:"flash,omitempty" toml:"flash,omitempty"`
 	// +optional
-	FlashLogger *FlashLogger `json:"loger,omitempty" toml:"logger,omitempty"`
+	FlashLogger *FlashLogger `json:"logger,omitempty" toml:"logger,omitempty"`
 	// +optional
 	// +k8s:openapi-gen=false
 	FlashApplication *FlashApplication `json:"application,omitempty" toml:"application,omitempty"`

@@ -46,6 +46,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger":                   schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider":            schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec":                    schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec":                   schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IsolationRead":                 schema_pkg_apis_pingcap_v1alpha1_IsolationRead(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Log":                           schema_pkg_apis_pingcap_v1alpha1_Log(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec":                 schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref),
@@ -1014,7 +1015,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref common.ReferenceCallback)
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash"),
 						},
 					},
-					"loger": {
+					"logger": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger"),
 						},
@@ -1415,6 +1416,64 @@ func schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref common.ReferenceCallback) c
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "IngressSpec describe the ingress desired state for the target component",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"hosts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Hosts describe the hosts for the ingress",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"annotations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Annotations describe the desired annotations for the ingress",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tls": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLS configuration. Currently the Ingress only supports a single TLS port, 443. If multiple members of this list specify different hosts, they will be multiplexed on the same port according to the hostname specified through the SNI TLS extension, if the ingress controller fulfilling the ingress supports SNI.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/extensions/v1beta1.IngressTLS"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"hosts"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/extensions/v1beta1.IngressTLS"},
 	}
 }
 
@@ -3475,6 +3534,20 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							Description: "SSE Sever-Side Encryption.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"options": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Options Rclone options for backup and restore with mydumper and lightning.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -53,6 +54,10 @@ type TiDBControlInterface interface {
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
 type defaultTiDBControl struct {
+	// Now, all controllers use this single tidbConrol instance,
+	// we should add a mutex to avoid two controllers update the httpClient.Transport at same time.
+	mutex sync.Mutex
+	// TODO use httpClients cache instead, like pkg/pdapi/pdapi.go does.
 	httpClient *http.Client
 	kubeCli    kubernetes.Interface
 }
@@ -97,6 +102,9 @@ func (tdc *defaultTiDBControl) useTLSHTTPClient(tc *v1alpha1.TidbCluster) error 
 }
 
 func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
+	tdc.mutex.Lock()
+	defer tdc.mutex.Unlock()
+
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
@@ -112,6 +120,9 @@ func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32
 }
 
 func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
+	tdc.mutex.Lock()
+	defer tdc.mutex.Unlock()
+
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()
@@ -147,6 +158,9 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 }
 
 func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
+	tdc.mutex.Lock()
+	defer tdc.mutex.Unlock()
+
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	scheme := tc.Scheme()

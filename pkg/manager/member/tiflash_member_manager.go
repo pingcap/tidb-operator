@@ -146,7 +146,7 @@ func (tfmm *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) 
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
@@ -425,7 +425,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		},
 		{
 			Name:  "TZ",
-			Value: tc.Spec.Timezone,
+			Value: tc.Timezone(),
 		},
 	}
 	tiflashContainer := corev1.Container{

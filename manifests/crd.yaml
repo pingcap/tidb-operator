@@ -5080,7 +5080,7 @@ spec:
                               format: double
                               type: number
                           type: object
-                        loger:
+                        logger:
                           description: FlashLogger is the configuration of [logger]
                             section.
                           properties:
@@ -8509,6 +8509,12 @@ spec:
                 endpoint:
                   description: Endpoint of S3 compatible storage service
                   type: string
+                options:
+                  description: Options Rclone options for backup and restore with
+                    mydumper and lightning.
+                  items:
+                    type: string
+                  type: array
                 path:
                   description: 'Path is the full path where the backup is saved. The
                     format of the path must be: "<bucket-name>/<path-to-backup-file>"'
@@ -9330,6 +9336,12 @@ spec:
                 endpoint:
                   description: Endpoint of S3 compatible storage service
                   type: string
+                options:
+                  description: Options Rclone options for backup and restore with
+                    mydumper and lightning.
+                  items:
+                    type: string
+                  type: array
                 path:
                   description: 'Path is the full path where the backup is saved. The
                     format of the path must be: "<bucket-name>/<path-to-backup-file>"'
@@ -10242,6 +10254,12 @@ spec:
                     endpoint:
                       description: Endpoint of S3 compatible storage service
                       type: string
+                    options:
+                      description: Options Rclone options for backup and restore with
+                        mydumper and lightning.
+                      items:
+                        type: string
+                      type: array
                     path:
                       description: 'Path is the full path where the backup is saved.
                         The format of the path must be: "<bucket-name>/<path-to-backup-file>"'

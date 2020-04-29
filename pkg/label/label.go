@@ -98,6 +98,8 @@ const (
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
 	// TiKVDeleteSlots is annotation key of tikv delete slots.
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
+	// TiFlashDeleteSlots is annotation key of tiflash delete slots.
+	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
 
 	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
@@ -313,6 +315,11 @@ func (l Label) TiKV() Label {
 func (l Label) TiFlash() Label {
 	l.Component(TiFlashLabelVal)
 	return l
+}
+
+// IsTiFlash returns whether label is a TiFlash
+func (l Label) IsTiFlash() bool {
+	return l[ComponentLabelKey] == TiFlashLabelVal
 }
 
 // IsTiKV returns whether label is a TiKV

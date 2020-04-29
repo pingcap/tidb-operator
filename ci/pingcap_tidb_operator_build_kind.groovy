@@ -41,13 +41,13 @@ spec:
       requests:
         cpu: <%= resources.requests.cpu %>
         memory: <%= resources.requests.memory %>
-        ephemeral-storage: 60Gi
+        ephemeral-storage: 70Gi
     <% } %>
     <% if (resources.limits) { %>
       limits:
         cpu: <%= resources.limits.cpu %>
         memory: <%= resources.limits.memory %>
-        ephemeral-storage: 60Gi
+        ephemeral-storage: 70Gi
     <% } %>
 <% } %>
     # kind needs /lib/modules and cgroups from the host
@@ -253,6 +253,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 							string(credentialsId: "${CODECOV_CREDENTIALS_ID}", variable: 'CODECOV_TOKEN')
 						]) {
 							sh """#!/bin/bash
+							set -eu
 							echo "info: building"
 							make build e2e-build
 							if [ "${BUILD_BRANCH}" == "master" ]; then
@@ -267,6 +268,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 					stage("Prepare for e2e") {
 						withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
 							sh """#!/bin/bash
+							set -eu
 							echo "info: logging into hub.pingcap.net"
 							docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
 							echo "info: build and push images for e2e"
@@ -293,7 +295,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
 		}
 		builds["E2E v1.12.10 AdvancedStatefulSet"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true", artifacts)
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12.10 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12.10_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer", artifacts)
 		}
 		builds["E2E v1.18.0"] = {
 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 GINKGO_NODES=6 KUBE_VERSION=v1.18.0 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18.0_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)

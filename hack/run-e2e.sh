@@ -196,7 +196,7 @@ function e2e::image_load() {
         $TIDB_BACKUP_MANAGER_IMAGE
         $E2E_IMAGE
     )
-    echo "info: pull if images does not exist"
+    echo "info: pull if images do not exist"
     for image in ${images[@]}; do
         if ! docker inspect -f '{{.Id}}' $image &>/dev/null; then
             echo "info: pulling $image"
@@ -330,8 +330,6 @@ e2e_args=(
     --operator-image="${TIDB_OPERATOR_IMAGE}"
     --backup-image="${TIDB_BACKUP_MANAGER_IMAGE}"
     --e2e-image="${E2E_IMAGE}"
-    # two tidb versions can be configuraed: <defaultVersion>,<upgradeToVersion>
-    --tidb-versions=v3.0.7,v3.0.8
     --chart-dir=/charts
     -v=4
 )
@@ -369,6 +367,7 @@ elif [ "$PROVIDER" == "gke" ]; then
         --gce-project="${GCP_PROJECT}"
         --gce-region="${GCP_REGION}"
         --gce-zone="${GCP_ZONE}"
+        --gke-cluster="${CLUSTER}"
     )
     docker_args+=(
         -v ${GCP_CREDENTIALS}:${GCP_CREDENTIALS}
@@ -381,6 +380,8 @@ elif [ "$PROVIDER" == "gke" ]; then
         exit 1
     fi
     docker_args+=(
+        # gcloud config
+        -v $HOME/.config/gcloud:/root/.config/gcloud
         -v ${GCP_SDK}:/google-cloud-sdk
         # ~/.ssh/google_compute_engine must be mounted into e2e container to run ssh
         -v $HOME/.ssh/google_compute_engine:/root/.ssh/google_compute_engine
