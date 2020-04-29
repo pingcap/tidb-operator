@@ -6142,6 +6142,12 @@ spec:
                       type: object
                     encryption:
                       properties:
+                        data-encryption-method:
+                          description: 'Encrypyion method, use data key encryption
+                            raw rocksdb data Possible values: plaintext, aes128-ctr,
+                            aes192-ctr, aes256-ctr Optional: Default to plaintext
+                            optional'
+                          type: string
                         data-key-rotation-period:
                           description: 'The frequency of datakey rotation, It managered
                             by tikv Optional: default to 7d optional'
@@ -6188,12 +6194,6 @@ spec:
                           - path
                           - key-id
                           type: object
-                        method:
-                          description: 'Encrypyion method, use data key encryption
-                            raw rocksdb data Possible values: plaintext, aes128-ctr,
-                            aes192-ctr, aes256-ctr Optional: Default to plaintext
-                            optional'
-                          type: string
                         previous-master-key:
                           properties:
                             access-key:

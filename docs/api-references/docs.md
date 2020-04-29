@@ -10582,7 +10582,7 @@ TiKVTitanDBConfig
 <tbody>
 <tr>
 <td>
-<code>method</code></br>
+<code>data-encryption-method</code></br>
 <em>
 string
 </em>
