@@ -844,6 +844,8 @@ type S3StorageProvider struct {
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
 	SSE string `json:"sse,omitempty"`
+	// Options Rclone options for backup and restore with mydumper and lightning.
+	Options []string `json:"options,omitempty"`
 }
 
 // +k8s:openapi-gen=true
