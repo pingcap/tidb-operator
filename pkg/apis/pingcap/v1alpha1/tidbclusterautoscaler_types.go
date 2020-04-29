@@ -217,7 +217,7 @@ type ExternalEndpoint struct {
 	// TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https
 	// to communicate to the external service
 	// +optional
-	TlsSecretRef *SecretRef `json:"tlsSecret,omitempty"`
+	TLSSecret *SecretRef `json:"tlsSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true
