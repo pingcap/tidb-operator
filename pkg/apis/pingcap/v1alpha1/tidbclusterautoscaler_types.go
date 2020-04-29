@@ -205,7 +205,7 @@ type MetricsStatus struct {
 }
 
 // +k8s:openapi-gen=true
-// ExternalEndpoint describe the external service enpoint
+// ExternalEndpoint describes the external service endpoint
 // who provide the tikv/tidb auto-scaling recommended replicas ability
 type ExternalEndpoint struct {
 	// Host indicates the external service's host
