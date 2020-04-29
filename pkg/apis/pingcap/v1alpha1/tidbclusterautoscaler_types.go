@@ -214,7 +214,7 @@ type ExternalEndpoint struct {
 	Port int32 `json:"port"`
 	// Path indicates the external service's path
 	Path string `json:"path"`
-	// TlsSecretRef indicates the Secret which stored the tls configuration. If enabled, operator would use https
+	// TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https
 	// to communicate to the external service
 	// +optional
 	TlsSecretRef *SecretRef `json:"tlsSecret,omitempty"`
