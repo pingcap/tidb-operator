@@ -76,7 +76,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 		return nil, err
 	}
 	if r.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("query from external endpoint[%s] failed, response:%v", url, string(bytes))
+		return nil, fmt.Errorf("query from external endpoint [%s] failed, response: %v, status code: %v", url, string(bytes), r.StatusCode)
 	}
 	return bytes, nil
 }
