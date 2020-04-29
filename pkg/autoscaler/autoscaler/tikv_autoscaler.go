@@ -44,7 +44,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	}
 	instances := filterTiKVInstances(tc)
 	var targetReplicas int32
-	if tac.Spec.TiDB.ExternalEndpoint == nil {
+	if tac.Spec.TiKV.ExternalEndpoint == nil {
 		targetReplicas, err = calculateTikvMetrics(tac, sts, instances)
 		if err != nil {
 			return err
