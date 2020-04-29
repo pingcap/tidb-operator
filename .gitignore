@@ -8,6 +8,7 @@ tests/images/e2e/bin/
 tests/images/fault-trigger/bin/
 tests/images/e2e/tidb-cluster/
 tests/images/e2e/tidb-backup/
+tests/images/e2e/tidb-drainer/
 tests/images/e2e/tidb-operator/
 tests/images/e2e/manifests/
 *.tar
