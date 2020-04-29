@@ -7277,6 +7277,17 @@ string
 <p>SSE Sever-Side Encryption.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options Rclone options for backup and restore with mydumper and lightning.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="s3storageprovidertype">S3StorageProviderType</h3>
