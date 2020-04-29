@@ -77,6 +77,10 @@ spec:
           description: TidbClusterSpec describes the attributes that a user creates
             on a tidb cluster
           properties:
+            annotations:
+              description: Base annotations of TiDB cluster Pods, components may add
+                or override selectors upon this respectively
+              type: object
             configUpdateStrategy:
               description: ConfigUpdateStrategy determines how the configuration change
                 is applied to the cluster. UpdateStrategyInPlace will update the ConfigMap
@@ -111,6 +115,10 @@ spec:
             imagePullPolicy:
               description: ImagePullPolicy of TiDB cluster Pods
               type: string
+            nodeSelector:
+              description: Base node selectors of TiDB cluster Pods, components may
+                add or override selectors upon this respectively
+              type: object
             paused:
               description: Indicates that the tidb cluster is paused and will not
                 be processed by the controller.
@@ -118,6 +126,10 @@ spec:
             pd:
               description: PDSpec contains details of PD members
               properties:
+                annotations:
+                  description: 'Annotations of the component. Merged into the cluster-level
+                    annotations if non-empty Optional: Defaults to cluster-level setting'
+                  type: object
                 baseImage:
                   description: Base image of the component, image tag is now allowed
                     during validation
@@ -616,6 +628,11 @@ spec:
                     in failover, 0 means no failover. Optional: Defaults to 3'
                   format: int32
                   type: integer
+                nodeSelector:
+                  description: 'NodeSelector of the component. Merged into the cluster-level
+                    nodeSelector if non-empty Optional: Defaults to cluster-level
+                    setting'
+                  type: object
                 podSecurityContext:
                   description: PodSecurityContext holds pod-level security attributes
                     and common container settings. Some fields are also present in
@@ -788,6 +805,10 @@ spec:
             pump:
               description: PumpSpec contains details of Pump members
               properties:
+                annotations:
+                  description: 'Annotations of the component. Merged into the cluster-level
+                    annotations if non-empty Optional: Defaults to cluster-level setting'
+                  type: object
                 baseImage:
                   description: Base image of the component, image tag is now allowed
                     during validation
@@ -908,6 +929,11 @@ spec:
                 limits:
                   description: 'Limits describes the maximum amount of compute resources
                     allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                  type: object
+                nodeSelector:
+                  description: 'NodeSelector of the component. Merged into the cluster-level
+                    nodeSelector if non-empty Optional: Defaults to cluster-level
+                    setting'
                   type: object
                 podSecurityContext:
                   description: PodSecurityContext holds pod-level security attributes
@@ -1064,6 +1090,10 @@ spec:
             tidb:
               description: TiDBSpec contains details of TiDB members
               properties:
+                annotations:
+                  description: 'Annotations of the component. Merged into the cluster-level
+                    annotations if non-empty Optional: Defaults to cluster-level setting'
+                  type: object
                 baseImage:
                   description: Base image of the component, image tag is now allowed
                     during validation
@@ -1670,6 +1700,11 @@ spec:
                     in failover, 0 means no failover Optional: Defaults to 3'
                   format: int32
                   type: integer
+                nodeSelector:
+                  description: 'NodeSelector of the component. Merged into the cluster-level
+                    nodeSelector if non-empty Optional: Defaults to cluster-level
+                    setting'
+                  type: object
                 plugins:
                   description: Plugins is a list of plugins that are loaded by TiDB
                     server, empty means plugin disabled
@@ -1851,6 +1886,10 @@ spec:
             tiflash:
               description: TiFlashSpec contains details of TiFlash members
               properties:
+                annotations:
+                  description: 'Annotations of the component. Merged into the cluster-level
+                    annotations if non-empty Optional: Defaults to cluster-level setting'
+                  type: object
                 baseImage:
                   description: Base image of the component, image tag is now allowed
                     during validation
@@ -2053,6 +2092,11 @@ spec:
                     in failover, 0 means no failover Optional: Defaults to 3'
                   format: int32
                   type: integer
+                nodeSelector:
+                  description: 'NodeSelector of the component. Merged into the cluster-level
+                    nodeSelector if non-empty Optional: Defaults to cluster-level
+                    setting'
+                  type: object
                 podSecurityContext:
                   description: PodSecurityContext holds pod-level security attributes
                     and common container settings. Some fields are also present in
@@ -2234,6 +2278,10 @@ spec:
             tikv:
               description: TiKVSpec contains details of TiKV members
               properties:
+                annotations:
+                  description: 'Annotations of the component. Merged into the cluster-level
+                    annotations if non-empty Optional: Defaults to cluster-level setting'
+                  type: object
                 baseImage:
                   description: Base image of the component, image tag is now allowed
                     during validation
@@ -3636,6 +3684,11 @@ spec:
                     in failover, 0 means no failover Optional: Defaults to 3'
                   format: int32
                   type: integer
+                nodeSelector:
+                  description: 'NodeSelector of the component. Merged into the cluster-level
+                    nodeSelector if non-empty Optional: Defaults to cluster-level
+                    setting'
+                  type: object
                 podSecurityContext:
                   description: PodSecurityContext holds pod-level security attributes
                     and common container settings. Some fields are also present in
@@ -6508,45 +6561,6 @@ spec:
               type: string
             storageClassName:
               type: string
-            tolerations:
-              items:
-                description: The pod this Toleration is attached to tolerates any
-                  taint that matches the triple <key,value,effect> using the matching
-                  operator <operator>.
-                properties:
-                  effect:
-                    description: Effect indicates the taint effect to match. Empty
-                      means match all taint effects. When specified, allowed values
-                      are NoSchedule, PreferNoSchedule and NoExecute.
-                    type: string
-                  key:
-                    description: Key is the taint key that the toleration applies
-                      to. Empty means match all taint keys. If the key is empty, operator
-                      must be Exists; this combination means to match all values and
-                      all keys.
-                    type: string
-                  operator:
-                    description: Operator represents a key's relationship to the value.
-                      Valid operators are Exists and Equal. Defaults to Equal. Exists
-                      is equivalent to wildcard for value, so that a pod can tolerate
-                      all taints of a particular category.
-                    type: string
-                  tolerationSeconds:
-                    description: TolerationSeconds represents the period of time the
-                      toleration (which must be of effect NoExecute, otherwise this
-                      field is ignored) tolerates the taint. By default, it is not
-                      set, which means tolerate the taint forever (do not evict).
-                      Zero and negative values will be treated as 0 (evict immediately)
-                      by the system.
-                    format: int64
-                    type: integer
-                  value:
-                    description: Value is the taint value the toleration matches to.
-                      If the operator is Exists, the value should be empty, otherwise
-                      just a regular string.
-                    type: string
-                type: object
-              type: array
           required:
           - clusters
           - prometheus

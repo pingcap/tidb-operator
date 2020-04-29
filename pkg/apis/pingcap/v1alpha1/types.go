@@ -184,12 +184,10 @@ type TidbClusterSpec struct {
 
 	// Base node selectors of TiDB cluster Pods, components may add or override selectors upon this respectively
 	// +optional
-	// +k8s:openapi-gen=false
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively
 	// +optional
-	// +k8s:openapi-gen=false
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
@@ -516,13 +514,11 @@ type ComponentSpec struct {
 	// NodeSelector of the component. Merged into the cluster-level nodeSelector if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
-	// +k8s:openapi-gen=false
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Annotations of the component. Merged into the cluster-level annotations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
-	// +k8s:openapi-gen=false
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Tolerations of the component. Override the cluster-level tolerations if non-empty
