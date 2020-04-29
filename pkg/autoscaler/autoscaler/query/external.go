@@ -81,7 +81,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 	return bytes, nil
 }
 
-func loadTlsConfig(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
+func loadTLSConfig(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
 	secret, err := kubecli.CoreV1().Secrets(endpoint.TlsSecretRef.Namespace).Get(endpoint.TlsSecretRef.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.Error(err)
