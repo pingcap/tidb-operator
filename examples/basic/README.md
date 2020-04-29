@@ -68,6 +68,6 @@ Browse [localhost:3000](http://localhost:3000).
 The PVCs used by TiDB cluster will not be deleted in the above process, therefore, the PVs will be not be released neither. You can delete PVCs and release the PVs by the following command:
 
 ```bash
-> kubectl -n <namespace> delete pvc app.kubernetes.io/instance=basic,app.kubernetes.io,app.kubernetes.io/managed-by=tidb-operator
+> kubectl -n <namespace> delete pvc -l app.kubernetes.io/instance=basic,app.kubernetes.io/managed-by=tidb-operator
 ```
 
