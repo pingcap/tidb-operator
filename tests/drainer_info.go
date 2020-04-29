@@ -44,7 +44,8 @@ type DrainerConfig struct {
 	User     string
 	Password string
 	// use string type in case of empty port (db-type=file)
-	Port string
+	Port       string
+	TLSCluster bool
 }
 
 func (d *DrainerConfig) DrainerHelmString(m map[string]string, source *TidbClusterConfig) string {

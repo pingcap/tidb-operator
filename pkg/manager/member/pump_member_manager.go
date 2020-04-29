@@ -250,6 +250,9 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	objMeta, _ := getPumpMeta(tc, controller.PumpMemberName)
 
 	if tc.IsTLSClusterEnabled() {
+		if spec.Config == nil {
+			spec.Config = make(map[string]interface{})
+		}
 		securityMap := spec.Config["security"]
 		security := map[string]interface{}{}
 		if securityMap != nil {
