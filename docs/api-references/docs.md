@@ -2340,8 +2340,8 @@ ExternalEndpoint
 </td>
 <td>
 <em>(Optional)</em>
-<p>ExternalEndpoint make auto-scaler controller could query the external service by http/https to
-fetch the result of the recommended replicas for tikv/tidb</p>
+<p>ExternalEndpoint makes the auto-scaler controller able to query the external service
+to fetch the recommended replicas for TiKV/TiDB</p>
 </td>
 </tr>
 </tbody>
@@ -3117,8 +3117,8 @@ imported from TiDB v3.1.0</p>
 <a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
 </p>
 <p>
-<p>ExternalEndpoint describe the external service enpoint
-who provide the tikv/tidb auto-scaling recommended replicas ability</p>
+<p>ExternalEndpoint describes the external service endpoint
+which provides the ability to get the tikv/tidb auto-scaling recommended replicas</p>
 </p>
 <table>
 <thead>
@@ -3147,7 +3147,7 @@ int32
 </em>
 </td>
 <td>
-<p>Port indicates the external service&rsquo;s post</p>
+<p>Port indicates the external service&rsquo;s port</p>
 </td>
 </tr>
 <tr>
@@ -3161,7 +3161,7 @@ SecretRef
 </td>
 <td>
 <em>(Optional)</em>
-<p>TlsSecretRef indicates the Secret which stored the tls configuration. If enabled, operator would use https
+<p>TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https
 to communicate to the external service</p>
 </td>
 </tr>

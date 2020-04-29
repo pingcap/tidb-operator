@@ -10654,8 +10654,9 @@ spec:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
                 externalEndpoint:
-                  description: ExternalEndpoint describe the external service enpoint
-                    who provide the tikv/tidb auto-scaling recommended replicas ability
+                  description: ExternalEndpoint describes the external service endpoint
+                    which provides the ability to get the tikv/tidb auto-scaling recommended
+                    replicas
                   properties:
                     host:
                       description: Host indicates the external service's host
@@ -10664,7 +10665,7 @@ spec:
                       description: Path indicates the external service's path
                       type: string
                     port:
-                      description: Port indicates the external service's post
+                      description: Port indicates the external service's port
                       format: int32
                       type: integer
                     tlsSecret:
@@ -10744,8 +10745,9 @@ spec:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
                 externalEndpoint:
-                  description: ExternalEndpoint describe the external service enpoint
-                    who provide the tikv/tidb auto-scaling recommended replicas ability
+                  description: ExternalEndpoint describes the external service endpoint
+                    which provides the ability to get the tikv/tidb auto-scaling recommended
+                    replicas
                   properties:
                     host:
                       description: Host indicates the external service's host
@@ -10754,7 +10756,7 @@ spec:
                       description: Path indicates the external service's path
                       type: string
                     port:
-                      description: Port indicates the external service's post
+                      description: Port indicates the external service's port
                       format: int32
                       type: integer
                     tlsSecret:

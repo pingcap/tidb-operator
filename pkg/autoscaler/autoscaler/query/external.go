@@ -53,9 +53,9 @@ func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, e
 func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) ([]byte, error) {
 	scheme := "http"
 	var client *http.Client
-	if endpoint.TlsSecretRef != nil {
-		schema = "https"
-		tlsConfig, err := loadTlsConfig(endpoint, kubecli)
+	if endpoint.TLSSecret != nil {
+		scheme = "https"
+		tlsConfig, err := loadTLSConfig(endpoint, kubecli)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +66,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 	} else {
 		client = &http.Client{}
 	}
-	url := fmt.Sprintf("%s://%s:%d%s?name=%s&namespace=%s&type=%s", schema, endpoint.Host, endpoint.Port, endpoint.Path, tc.Name, tc.Namespace, memberType.String())
+	url := fmt.Sprintf("%s://%s:%d%s?name=%s&namespace=%s&type=%s", scheme, endpoint.Host, endpoint.Port, endpoint.Path, tc.Name, tc.Namespace, memberType.String())
 	r, err := client.Get(url)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 }
 
 func loadTLSConfig(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
-	secret, err := kubecli.CoreV1().Secrets(endpoint.TlsSecretRef.Namespace).Get(endpoint.TlsSecretRef.Name, metav1.GetOptions{})
+	secret, err := kubecli.CoreV1().Secrets(endpoint.TLSSecret.Namespace).Get(endpoint.TLSSecret.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.Error(err)
 		return nil, err

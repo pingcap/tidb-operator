@@ -880,7 +880,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"externalEndpoint": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint make auto-scaler controller could query the external service by http/https to fetch the result of the recommended replicas for tikv/tidb",
+							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
 						},
 					},
@@ -1185,7 +1185,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref common.ReferenceCallb
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ExternalEndpoint describe the external service enpoint who provide the tikv/tidb auto-scaling recommended replicas ability",
+				Description: "ExternalEndpoint describes the external service endpoint which provides the ability to get the tikv/tidb auto-scaling recommended replicas",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"host": {
@@ -1197,7 +1197,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref common.ReferenceCallb
 					},
 					"port": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Port indicates the external service's post",
+							Description: "Port indicates the external service's port",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -1211,7 +1211,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref common.ReferenceCallb
 					},
 					"tlsSecret": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TlsSecretRef indicates the Secret which stored the tls configuration. If enabled, operator would use https to communicate to the external service",
+							Description: "TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https to communicate to the external service",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretRef"),
 						},
 					},
@@ -6958,7 +6958,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 					},
 					"externalEndpoint": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint make auto-scaler controller could query the external service by http/https to fetch the result of the recommended replicas for tikv/tidb",
+							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
 						},
 					},
@@ -7986,7 +7986,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"externalEndpoint": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint make auto-scaler controller could query the external service by http/https to fetch the result of the recommended replicas for tikv/tidb",
+							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
 						},
 					},
