@@ -174,6 +174,7 @@ type TidbClusterSpec struct {
 
 	// Affinity of TiDB cluster Pods
 	// +optional
+	// +k8s:openapi-gen=false
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// PriorityClassName of TiDB cluster Pods
@@ -183,14 +184,17 @@ type TidbClusterSpec struct {
 
 	// Base node selectors of TiDB cluster Pods, components may add or override selectors upon this respectively
 	// +optional
+	// +k8s:openapi-gen=false
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Base annotations of TiDB cluster Pods, components may add or override selectors upon this respectively
 	// +optional
+	// +k8s:openapi-gen=false
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
+	// +k8s:openapi-gen=false
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// Time zone of TiDB cluster Pods
@@ -496,6 +500,7 @@ type ComponentSpec struct {
 	// Affinity of the component. Override the cluster-level one if present
 	// Optional: Defaults to cluster-level setting
 	// +optional
+	// +k8s:openapi-gen=false
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// PriorityClassName of the component. Override the cluster-level one if present
@@ -511,16 +516,19 @@ type ComponentSpec struct {
 	// NodeSelector of the component. Merged into the cluster-level nodeSelector if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
+	// +k8s:openapi-gen=false
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// Annotations of the component. Merged into the cluster-level annotations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
+	// +k8s:openapi-gen=false
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Tolerations of the component. Override the cluster-level tolerations if non-empty
 	// Optional: Defaults to cluster-level setting
 	// +optional
+	// +k8s:openapi-gen=false
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// PodSecurityContext of the component
