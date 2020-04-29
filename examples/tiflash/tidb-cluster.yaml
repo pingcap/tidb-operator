@@ -1,0 +1,73 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: demo
+spec:
+  configUpdateStrategy: RollingUpdate
+  enablePVReclaim: false
+  imagePullPolicy: IfNotPresent
+  pd:
+    baseImage: pingcap/pd
+    config:
+      log:
+        level: info
+      replication:
+        enable-placement-rules: "true"
+        location-labels:
+        - zone
+        - host
+        max-replicas: 3
+    imagePullPolicy: IfNotPresent
+    maxFailoverCount: 3
+    replicas: 3
+    requests:
+      storage: 10Gi
+    storageClassName: local-storage
+  pvReclaimPolicy: Delete
+  schedulerName: tidb-scheduler
+  services:
+  - name: pd
+    type: ClusterIP
+  tidb:
+    baseImage: pingcap/tidb
+    config:
+      log:
+        file:
+          max-backups: 3
+        level: info
+    imagePullPolicy: IfNotPresent
+    maxFailoverCount: 3
+    replicas: 2
+    separateSlowLog: true
+    service:
+      type: NodePort
+    slowLogTailer:
+      image: busybox:1.26.2
+      imagePullPolicy: IfNotPresent
+      limits:
+        cpu: 100m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 5Mi
+  tiflash:
+    baseImage: pingcap/tiflash
+    maxFailoverCount: 3
+    replicas: 2
+    storageClaims:
+    - resources:
+        requests:
+          storage: 10Gi
+      storageClassName: local-storage
+  tikv:
+    baseImage: pingcap/tikv
+    config:
+      log-level: info
+    imagePullPolicy: IfNotPresent
+    maxFailoverCount: 3
+    replicas: 3
+    requests:
+      storage: 10Gi
+    storageClassName: local-storage
+  timezone: UTC
+  version: v4.0.0-rc
