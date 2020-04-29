@@ -45,7 +45,7 @@ func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, e
 		return -1, err
 	}
 	if resp.Name != tc.Name || resp.Namespace != tc.Namespace || resp.Type != memberType.String() {
-		return -1, fmt.Errorf("external endpoint return wrong info,%v", resp)
+		return -1, fmt.Errorf("external endpoint returns unexpected info, get %#v, expect %s/%s/%s", resp, tc.Namespace, tc.Name, memberType)
 	}
 	return resp.RecommendedReplicas, nil
 }
