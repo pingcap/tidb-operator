@@ -351,17 +351,17 @@ type PDScheduleConfig struct {
 
 	// Only used to display
 	// +optional
-	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
+	SchedulersPayload map[string]string `toml:"schedulers-payload,omitempty" json:"schedulers-payload,omitempty"`
 
 	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
 	// Imported from v3.1.0
 	// +optional
-	EnableOneWayMerge *bool `toml:"enable-one-way-merge" json:"enable-one-way-merge,string,omitempty"`
+	EnableOneWayMerge *bool `toml:"enable-one-way-merge,omitempty" json:"enable-one-way-merge,string,omitempty"`
 	// EnableCrossTableMerge is the option to enable cross table merge. This means two Regions can be merged with different table IDs.
 	// This option only works when key type is "table".
 	// Imported from v3.1.0
 	// +optional
-	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge" json:"enable-cross-table-merge,string,omitempty"`
+	EnableCrossTableMerge *bool `toml:"enable-cross-table-merge,omitempty" json:"enable-cross-table-merge,string,omitempty"`
 }
 
 type PDSchedulerConfigs []PDSchedulerConfig
@@ -421,7 +421,7 @@ type PDServerConfig struct {
 	// Currently we use prometheus as metric storage, we may use PD/TiKV as metric storage later.
 	// Imported from v3.1.0
 	// +optional
-	MetricStorage *string `toml:"metric-storage" json:"metric-storage,omitempty"`
+	MetricStorage *string `toml:"metric-storage,omitempty" json:"metric-storage,omitempty"`
 }
 
 // +k8s:openapi-gen=true
