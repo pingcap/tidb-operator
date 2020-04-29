@@ -15,6 +15,9 @@ package monitor
 
 import (
 	"fmt"
+	"path"
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
@@ -22,8 +25,6 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"path"
-	"time"
 )
 
 const (
@@ -43,6 +44,7 @@ var (
 	allMatchPattern config.Regexp
 	portPattern     config.Regexp
 	tikvPattern     config.Regexp
+	tiflashPattern  config.Regexp
 	pdPattern       config.Regexp
 	tidbPattern     config.Regexp
 	addressPattern  config.Regexp
@@ -80,6 +82,10 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	tiflashPattern, err = config.NewRegexp("tiflash")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 	pdPattern, err = config.NewRegexp("pd")
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
@@ -114,6 +120,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			scrapeJob("pd", pdPattern, cmodel),
 			scrapeJob("tidb", tidbPattern, cmodel),
 			scrapeJob("tikv", tikvPattern, cmodel),
+			scrapeJob("tiflash", tiflashPattern, cmodel),
 		},
 	}
 	return &c
