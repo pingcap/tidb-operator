@@ -52,7 +52,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 	} else {
 		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.ExternalEndpoint, am.kubecli)
 		if err != nil {
-			klog.Errorf("tac[%s/%s] 's externalEndpoint meet error, err:%v", tac.Namespace, tac.Name, err)
+			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
 			return err
 		}
 	}

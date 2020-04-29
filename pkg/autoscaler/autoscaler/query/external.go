@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util/crypto"
@@ -33,6 +34,10 @@ type ExternalResponse struct {
 	Type                string `json:"type"`
 	RecommendedReplicas int32  `json:"recommendedReplicas"`
 }
+
+const (
+	defaultTimeout = 5 * time.Second
+)
 
 func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (int32, error) {
 	bytes, err := sendRequest(tc, memberType, endpoint, kubecli)
@@ -51,20 +56,13 @@ func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, e
 }
 
 func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) ([]byte, error) {
+	client, err := getClient(endpoint, kubecli)
+	if err != nil {
+		return nil, err
+	}
 	scheme := "http"
-	var client *http.Client
 	if endpoint.TLSSecret != nil {
 		scheme = "https"
-		tlsConfig, err := loadTLSConfig(endpoint, kubecli)
-		if err != nil {
-			return nil, err
-		}
-		tr := &http.Transport{
-			TLSClientConfig: tlsConfig,
-		}
-		client = &http.Client{Transport: tr}
-	} else {
-		client = &http.Client{}
 	}
 	url := fmt.Sprintf("%s://%s:%d%s?name=%s&namespace=%s&type=%s", scheme, endpoint.Host, endpoint.Port, endpoint.Path, tc.Name, tc.Namespace, memberType.String())
 	r, err := client.Get(url)
@@ -79,6 +77,28 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 		return nil, fmt.Errorf("query from external endpoint [%s] failed, response: %v, status code: %v", url, string(bytes), r.StatusCode)
 	}
 	return bytes, nil
+}
+
+func getClient(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*http.Client, error) {
+	var client *http.Client
+	if endpoint.TLSSecret != nil {
+		tlsConfig, err := loadTLSConfig(endpoint, kubecli)
+		if err != nil {
+			return nil, err
+		}
+		tr := &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+		client = &http.Client{
+			Timeout:   defaultTimeout,
+			Transport: tr,
+		}
+	} else {
+		client = &http.Client{
+			Timeout: defaultTimeout,
+		}
+	}
+	return client, nil
 }
 
 func loadTLSConfig(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) (*tls.Config, error) {
