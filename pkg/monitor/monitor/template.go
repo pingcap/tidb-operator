@@ -15,7 +15,6 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -106,6 +105,13 @@ type MonitorConfigModel struct {
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
+	pdReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "pd")
+	tikvReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tikv")
+	tidbReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tidb")
+	tiflashReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tiflash")
+	tiflashProxyReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tiflash")
+	tiflashProxyPortLabel := fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")
+
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
@@ -115,21 +121,21 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			"/prometheus-rules/rules/*.rules.yml",
 		},
 		ScrapeConfigs: []*config.ScrapeConfig{
-			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfig("pd", true)),
-			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfig("tidb", true)),
-			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig("tikv", true)),
-			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig("tiflash", true)),
-			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig("tiflash_proxy", true)),
+			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfig(portLabel, pdReplacement, true)),
+			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfig(portLabel, tidbReplacement, true)),
+			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig(portLabel, tikvReplacement, true)),
+			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig(portLabel, tiflashReplacement, true)),
+			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig(tiflashProxyPortLabel, tiflashProxyReplacement, true)),
 		},
 	}
 	return &c
 }
 
-func buildAddressRelabelConfig(name string, isTidbClusterComponent bool) *config.RelabelConfig {
+func buildAddressRelabelConfig(portLabelName, replacement string, isTidbClusterComponent bool) *config.RelabelConfig {
 	addressRelabelConfig := &config.RelabelConfig{
 		SourceLabels: model.LabelNames{
 			"__address__",
-			portLabel,
+			model.LabelName(portLabelName),
 		},
 		Action:      config.RelabelReplace,
 		Regex:       portPattern,
@@ -140,22 +146,13 @@ func buildAddressRelabelConfig(name string, isTidbClusterComponent bool) *config
 		addressRelabelConfig = &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
-			Replacement: fmt.Sprintf("$1.$2-%s-peer:$3", name),
+			Replacement: replacement,
 			TargetLabel: "__address__",
-		}
-		if name == label.PDLabelVal || name == label.TiDBLabelVal || name == label.TiKVLabelVal || name == label.TiFlashLabelVal {
-			addressRelabelConfig.SourceLabels = model.LabelNames{
+			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
-				portLabel,
-			}
-		} else {
-			port := fmt.Sprintf(additionalPortLabelPattern, name)
-			addressRelabelConfig.SourceLabels = model.LabelNames{
-				podNameLabel,
-				instanceLabel,
-				model.LabelName(port),
-			}
+				model.LabelName(portLabelName),
+			},
 		}
 	}
 	return addressRelabelConfig
