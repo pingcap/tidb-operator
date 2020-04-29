@@ -95,20 +95,17 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 		if !ok {
 			continue
 		}
-		if sts.Annotations == nil {
-			sts.Annotations = map[string]string{}
-		}
 		_, err := c.tcLister.TidbClusters(sts.Namespace).Get(tcRef.Name)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		copiedAnnotations := copyAnnotations(sts.Annotations)
-		copiedAnnotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
+		patchAnnotations := map[string]string{}
+		patchAnnotations[label.AnnStsLastSyncTimestamp] = time.Now().Format(time.RFC3339)
 		var mergePatch []byte
 		mergePatch, err = json.Marshal(map[string]interface{}{
 			"metadata": map[string]interface{}{
-				"annotations": copiedAnnotations,
+				"annotations": patchAnnotations,
 			},
 		})
 		if err != nil {
@@ -123,12 +120,4 @@ func (c *Controller) syncStatefulSetTimeStamp() error {
 		}
 	}
 	return errors.NewAggregate(errs)
-}
-
-func copyAnnotations(annotations map[string]string) map[string]string {
-	targetMap := map[string]string{}
-	for k, v := range annotations {
-		targetMap[k] = v
-	}
-	return targetMap
 }
