@@ -210,7 +210,7 @@ type MetricsStatus struct {
 type ExternalEndpoint struct {
 	// Host indicates the external service's host
 	Host string `json:"host"`
-	// Port indicates the external service's post
+	// Port indicates the external service's port
 	Port int32 `json:"port"`
 	// Path indicates the external service's path
 	Path string `json:"path"`
