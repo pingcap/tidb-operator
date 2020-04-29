@@ -559,6 +559,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		var ocfg *tests.OperatorConfig
 		var oa tests.OperatorActions
 		var genericCli client.Client
+		failoverPeriod := time.Minute
 
 		ginkgo.BeforeEach(func() {
 			ocfg = &tests.OperatorConfig{
@@ -569,10 +570,10 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 				LogLevel:    "4",
 				TestMode:    true,
 				StringValues: map[string]string{
-					"controllerManager.pdFailoverPeriod":      "1m",
-					"controllerManager.tidbFailoverPeriod":    "1m",
-					"controllerManager.tikvFailoverPeriod":    "1m",
-					"controllerManager.tiflashFailoverPeriod": "1m",
+					"controllerManager.pdFailoverPeriod":      failoverPeriod.String(),
+					"controllerManager.tidbFailoverPeriod":    failoverPeriod.String(),
+					"controllerManager.tikvFailoverPeriod":    failoverPeriod.String(),
+					"controllerManager.tiflashFailoverPeriod": failoverPeriod.String(),
 				},
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
@@ -649,7 +650,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Wait for a replacement to be created")
 			podName := controller.PDMemberName(clusterName) + "-3"
-			err = wait.PollImmediate(time.Second*10, 1*time.Minute /* 1 minutes failover period + 5 extra minute */, func() (bool, error) {
+			err = wait.PollImmediate(time.Second*10, 2*failoverPeriod, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
@@ -823,7 +824,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Wait for a replacement to be created")
 			newPodName := controller.TiDBMemberName(clusterName) + "-3"
-			err = wait.PollImmediate(time.Second*10, 3*time.Minute, func() (bool, error) {
+			err = wait.PollImmediate(time.Second*10, 2*failoverPeriod, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
