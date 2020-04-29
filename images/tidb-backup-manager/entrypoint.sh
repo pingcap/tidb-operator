@@ -57,8 +57,6 @@ else
 	EXEC_COMMAND="/usr/local/bin/shush exec --"
 fi
 
-cat /tmp/rclone.conf
-
 # exec command
 case "$1" in
     backup)
