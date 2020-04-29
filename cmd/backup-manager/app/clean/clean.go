@@ -63,9 +63,10 @@ func (bo *Options) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-func (bo *Options) cleanRemoteBackupData(bucket string) error {
+func (bo *Options) cleanRemoteBackupData(bucket string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
-	output, err := exec.Command("rclone", constants.RcloneConfigArg, "deletefile", destBucket).CombinedOutput()
+	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "deletefile", destBucket, "")
+	output, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, output: %s, err: %v", bo, string(output), err)
 	}

@@ -3587,6 +3587,20 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"options": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Options Rclone options for backup and restore with mydumper and lightning.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"provider"},
 			},
@@ -5496,7 +5510,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVEncryptionConfig(ref common.ReferenceC
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"method": {
+					"data-encryption-method": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Encrypyion method, use data key encryption raw rocksdb data Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr Optional: Default to plaintext optional",
 							Type:        []string{"string"},
