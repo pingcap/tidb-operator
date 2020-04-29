@@ -60,12 +60,6 @@ spec:
     shortNames:
     - tc
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -4156,12 +4150,6 @@ spec:
     shortNames:
     - bk
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -4580,12 +4568,6 @@ spec:
     shortNames:
     - rt
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -5014,12 +4996,6 @@ spec:
     shortNames:
     - bks
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -5443,12 +5419,6 @@ spec:
     kind: TidbMonitor
     plural: tidbmonitors
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -5536,12 +5506,6 @@ spec:
     shortNames:
     - ti
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -5621,12 +5585,6 @@ spec:
     shortNames:
     - ta
   scope: Namespaced
-  subresources:
-    scale:
-      labelSelectorPath: ""
-      specReplicasPath: ""
-      statusReplicasPath: ""
-    status: {}
   validation:
     openAPIV3Schema:
       properties:
