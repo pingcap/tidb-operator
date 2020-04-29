@@ -14,7 +14,7 @@
 package cmd
 
 import (
-	crdutils "github.com/ant31/crd-validation/pkg"
+	crdutils "github.com/yisaer/crd-validation/pkg"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/to-crdgen/cmd/generate"
 	"github.com/spf13/cobra"
