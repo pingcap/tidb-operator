@@ -24,7 +24,7 @@ The following steps will create a TiDB cluster with TiFlash deployed and monitor
   gold                 kubernetes.io/gce-pd      1d
   ```
   
-  The default storageClassName in `tidb-cluster.yaml` and `tidb-monitor.yaml` is set to `local-storage`, please update them to your availabel storageClass.
+  The default storageClassName in `tidb-cluster.yaml` and `tidb-monitor.yaml` is set to `local-storage`, please update them to your available storageClass.
 
 ## Install
 
@@ -67,9 +67,9 @@ Browse [localhost:3000](http://localhost:3000).
 > kubectl -n <namespace> delete -f ./
 ```
 
-The PVCs used by the TiDB cluster will not be deleted in the above command, therefore, the PVs will be not be released neither. You can delete PVCs and release the PVs with the following command:
+The PVCs used by the TiDB cluster will not be deleted in the above command, therefore, the PVs will be not be released either. You can delete PVCs and release the PVs with the following command:
 
 ```bash
-> kubectl -n <namespace> delete pvc app.kubernetes.io/instance=demo,app.kubernetes.io,app.kubernetes.io/managed-by=tidb-operator
+> kubectl -n <namespace> delete pvc -l app.kubernetes.io/instance=demo,app.kubernetes.io/managed-by=tidb-operator
 ```
 

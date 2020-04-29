@@ -19,6 +19,7 @@ spec:
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
+  persistent: true
   imagePullPolicy: IfNotPresent
   storage: 10Gi
   storageClassName: local-storage

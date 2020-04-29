@@ -53,7 +53,7 @@ spec:
   tiflash:
     baseImage: pingcap/tiflash
     maxFailoverCount: 3
-    replicas: 1
+    replicas: 2
     storageClaims:
     - resources:
         requests:
