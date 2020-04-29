@@ -22,6 +22,7 @@ The following steps will create a TiDB cluster with TiFlash deployed and monitor
   NAME                 PROVISIONER               AGE
   standard (default)   kubernetes.io/gce-pd      1d
   gold                 kubernetes.io/gce-pd      1d
+  local-storage   kubernetes.io/no-provisioner   189d
   ```
   
   The default storageClassName in `tidb-cluster.yaml` and `tidb-monitor.yaml` is set to `local-storage`, please update them to your available storageClass.
