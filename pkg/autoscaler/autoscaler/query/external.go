@@ -51,7 +51,7 @@ func ExternalService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, e
 }
 
 func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface) ([]byte, error) {
-	schema := "http"
+	scheme := "http"
 	var client *http.Client
 	if endpoint.TlsSecretRef != nil {
 		schema = "https"
