@@ -44,15 +44,18 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 	storageutils "k8s.io/kubernetes/test/e2e/storage/utils"
+	testutils "k8s.io/kubernetes/test/utils"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -127,11 +130,6 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			var err error
 			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
 			framework.ExpectNoError(err, "failed to create clientset")
-		})
-
-		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstall tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
 		})
 
 		testCases := []struct {
@@ -555,6 +553,39 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			})
 			framework.ExpectNoError(err)
 		})
+	})
+
+	ginkgo.Context("operator with short auto-failover periods", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+		var genericCli client.Client
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
+				Namespace:   ns,
+				ReleaseName: "operator",
+				Image:       cfg.OperatorImage,
+				Tag:         cfg.OperatorTag,
+				LogLevel:    "4",
+				TestMode:    true,
+				StringValues: map[string]string{
+					"controllerManager.pdFailoverPeriod":      "1m",
+					"controllerManager.tidbFailoverPeriod":    "1m",
+					"controllerManager.tikvFailoverPeriod":    "1m",
+					"controllerManager.tiflashFailoverPeriod": "1m",
+				},
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+			var err error
+			genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+			framework.ExpectNoError(err, "failed to create clientset")
+		})
 
 		ginkgo.It("[Feature: AutoFailover] PD: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
 			// TODO support aws (eks), kind
@@ -618,7 +649,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Wait for a replacement to be created")
 			podName := controller.PDMemberName(clusterName) + "-3"
-			err = wait.PollImmediate(time.Second*10, 10*time.Minute /* 5 minutes failover period + 5 extra minute */, func() (bool, error) {
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute /* 1 minutes failover period + 5 extra minute */, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return false, nil
@@ -651,6 +682,178 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			err = e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 		})
+
+		ginkgo.It("[Feature: AutoFailover] TiDB: one replacement for one failed member and replacements should be deleted when failed members are recovered", func() {
+			ginkgo.By("Make sure we have at least 3 schedulable nodes")
+			nodeList := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
+			gomega.Expect(len(nodeList.Items)).To(gomega.BeNumerically(">=", 3))
+
+			clusterName := "failover"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 2
+			// We use special affinity requiremnets to make sure only 2 tidb pods can be scheduled.
+			tc.Spec.TiDB.Affinity = &v1.Affinity{
+				NodeAffinity: &v1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+						NodeSelectorTerms: []v1.NodeSelectorTerm{
+							{
+								MatchExpressions: []v1.NodeSelectorRequirement{
+									{
+										Key:      v1.LabelHostname,
+										Operator: v1.NodeSelectorOpIn,
+										Values: []string{
+											nodeList.Items[0].Name,
+											nodeList.Items[1].Name,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				PodAntiAffinity: &v1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/instance":  clusterName,
+									"app.kubernetes.io/component": label.TiDBLabelVal,
+								},
+							},
+							TopologyKey: v1.LabelHostname,
+						},
+					},
+				},
+			}
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Increase replicas of TiDB from 2 to 3")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Replicas = 3
+				return nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for the new pod to be created")
+			podName := controller.TiDBMemberName(clusterName) + "-2"
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return !apierrors.IsNotFound(err), nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Make sure the new pod will not be scheduled")
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				if err != nil {
+					if testutils.IsRetryableAPIError(err) {
+						return false, nil
+					}
+					return false, err
+				}
+				_, condition := podutil.GetPodCondition(&pod.Status, v1.PodScheduled)
+				if condition == nil || condition.Status != v1.ConditionTrue {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(clusterName).Component(label.TiDBLabelVal).Labels()).String(),
+			}
+			ginkgo.By("Wait for no new replacement will be created for non-scheduled TiDB pod")
+			err = wait.PollImmediate(time.Second*10, 2*time.Minute, func() (bool, error) {
+				pdPodList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				if len(pdPodList.Items) != 3 {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+
+			ginkgo.By("Fix the TiDB scheduling requirements")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.TiDB.Affinity = nil
+				return nil
+			})
+			framework.ExpectNoError(err)
+
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			ginkgo.By(fmt.Sprintf("Fail the TiDB pod %q", podName))
+			patch := []byte(`
+{
+	"spec": {
+		"containers": [
+			{
+				"name": "tidb",
+				"image": "pingcap/does-not-exist:latest"
+			}
+		]
+	}
+}`)
+			_, err = c.CoreV1().Pods(ns).Patch(podName, types.StrategicMergePatchType, patch)
+			framework.ExpectNoError(err)
+
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+				if err != nil {
+					if testutils.IsRetryableAPIError(err) {
+						return false, nil
+					}
+					return false, err
+				}
+				return !podutil.IsPodReady(pod), nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for a replacement to be created")
+			newPodName := controller.TiDBMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 3*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return !apierrors.IsNotFound(err), nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for only one replacement to be created")
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				podList, err := c.CoreV1().Pods(ns).List(listOptions)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				if len(podList.Items) != 4 {
+					return true, nil
+				}
+				return false, nil
+			})
+			framework.ExpectEqual(err, wait.ErrWaitTimeout)
+
+			ginkgo.By(fmt.Sprintf("Fix the TiDB pod %q", podName))
+			err = c.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for the replacement to be gone")
+			err = e2epod.WaitForPodNotFoundInNamespace(c, newPodName, ns, time.Minute*5)
+			framework.ExpectNoError(err)
+		})
+
 	})
 
 })

@@ -76,7 +76,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			if condition == nil || condition.Status != corev1.ConditionTrue {
 				// if a member is unheathy because it's not scheduled yet, we
 				// should not create failover pod for it
-				klog.Warningf("pod %s/%s is not scheduled yet, skipping auto failover", pod.Namespace, pod.Name)
+				klog.Warningf("pod %s/%s is not scheduled yet, skipping failover", pod.Namespace, pod.Name)
 				continue
 			}
 			tc.Status.TiDB.FailureMembers[tidbMember.Name] = v1alpha1.TiDBFailureMember{

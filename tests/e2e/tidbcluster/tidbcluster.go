@@ -1081,7 +1081,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 	})
 
-	ginkgo.It("tidb-scale: clear TiDB failureMembers when scale TiDB to zero", func() {
+	ginkgo.It("[Feature: AutoFailover] clear TiDB failureMembers when scale TiDB to zero", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "3"
 		cluster.Resources["tikv.replicas"] = "1"
