@@ -174,7 +174,6 @@ type TidbClusterSpec struct {
 
 	// Affinity of TiDB cluster Pods
 	// +optional
-	// +k8s:openapi-gen=false
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
 	// PriorityClassName of TiDB cluster Pods
@@ -192,7 +191,6 @@ type TidbClusterSpec struct {
 
 	// Base tolerations of TiDB cluster Pods, components may add more tolerations upon this respectively
 	// +optional
-	// +k8s:openapi-gen=false
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// Time zone of TiDB cluster Pods
