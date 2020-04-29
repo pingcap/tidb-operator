@@ -27,13 +27,14 @@ import (
 )
 
 const (
-	instanceLabel    = "__meta_kubernetes_pod_label_app_kubernetes_io_instance"
-	componentLabel   = "__meta_kubernetes_pod_label_app_kubernetes_io_component"
-	scrapeLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_scrape"
-	metricsPathLabel = "__meta_kubernetes_pod_annotation_prometheus_io_path"
-	portLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_port"
-	namespaceLabel   = "__meta_kubernetes_namespace"
-	podNameLabel     = "__meta_kubernetes_pod_name"
+	instanceLabel              = "__meta_kubernetes_pod_label_app_kubernetes_io_instance"
+	componentLabel             = "__meta_kubernetes_pod_label_app_kubernetes_io_component"
+	scrapeLabel                = "__meta_kubernetes_pod_annotation_prometheus_io_scrape"
+	metricsPathLabel           = "__meta_kubernetes_pod_annotation_prometheus_io_path"
+	portLabel                  = "__meta_kubernetes_pod_annotation_prometheus_io_port"
+	namespaceLabel             = "__meta_kubernetes_namespace"
+	podNameLabel               = "__meta_kubernetes_pod_name"
+	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
 )
 
 var (
@@ -44,6 +45,7 @@ var (
 	pdPattern       config.Regexp
 	tidbPattern     config.Regexp
 	addressPattern  config.Regexp
+	tiflashPattern  config.Regexp
 	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
@@ -90,6 +92,10 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	tiflashPattern, err = config.NewRegexp("tiflash")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
@@ -109,16 +115,17 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			"/prometheus-rules/rules/*.rules.yml",
 		},
 		ScrapeConfigs: []*config.ScrapeConfig{
-			scrapeJob("pd", pdPattern, cmodel),
-			scrapeJob("tidb", tidbPattern, cmodel),
-			scrapeJob("tikv", tikvPattern, cmodel),
+			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfig("pd", true)),
+			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfig("tidb", true)),
+			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig("tikv", true)),
+			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig("tiflash", true)),
+			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig("tiflash_proxy", true)),
 		},
 	}
 	return &c
 }
 
-func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfigModel) *config.ScrapeConfig {
-
+func buildAddressRelabelConfig(name string, isTidbClusterComponent bool) *config.RelabelConfig {
 	addressRelabelConfig := &config.RelabelConfig{
 		SourceLabels: model.LabelNames{
 			"__address__",
@@ -129,22 +136,35 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 		Replacement: "$1:$2",
 		TargetLabel: "__address__",
 	}
-	if name == label.PDLabelVal || name == label.TiDBLabelVal || name == label.TiKVLabelVal {
+	if isTidbClusterComponent {
 		addressRelabelConfig = &config.RelabelConfig{
-			SourceLabels: model.LabelNames{
-				podNameLabel,
-				instanceLabel,
-				portLabel,
-			},
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
 			Replacement: fmt.Sprintf("$1.$2-%s-peer:$3", name),
 			TargetLabel: "__address__",
 		}
+		if name == label.PDLabelVal || name == label.TiDBLabelVal || name == label.TiKVLabelVal || name == label.TiFlashLabelVal {
+			addressRelabelConfig.SourceLabels = model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				portLabel,
+			}
+		} else {
+			port := fmt.Sprintf(additionalPortLabelPattern, name)
+			addressRelabelConfig.SourceLabels = model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				model.LabelName(port),
+			}
+		}
 	}
+	return addressRelabelConfig
+}
+
+func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) *config.ScrapeConfig {
 	return &config.ScrapeConfig{
 
-		JobName:        name,
+		JobName:        jobName,
 		ScrapeInterval: model.Duration(15 * time.Second),
 		Scheme:         "http",
 		HonorLabels:    true,
@@ -255,6 +275,7 @@ func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
 func addTlsConfig(pc *config.Config) {
 
 	for id, sconfig := range pc.ScrapeConfigs {
+		// TODO support tiflash tls when it gets ready
 		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),

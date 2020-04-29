@@ -299,11 +299,10 @@ func AnnProm(port int32) map[string]string {
 
 // AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod
 // which have multiple metrics endpoint
-func AnnAdditionalProm(name, path string, port int32) map[string]string {
+// we assumes that the metrics path is as same as the previous metrics path
+func AnnAdditionalProm(name string, port int32) map[string]string {
 	return map[string]string{
-		fmt.Sprintf("%s.prometheus.io/scrape", name): "true",
-		fmt.Sprintf("%s.prometheus.io/path", name):   path,
-		fmt.Sprintf("%s.prometheus.io/port", name):   fmt.Sprintf("%d", port),
+		fmt.Sprintf("%s.prometheus.io/port", name): fmt.Sprintf("%d", port),
 	}
 }
 
