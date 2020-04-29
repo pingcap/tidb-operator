@@ -31,11 +31,9 @@ const (
 	componentLabel   = "__meta_kubernetes_pod_label_app_kubernetes_io_component"
 	scrapeLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_scrape"
 	metricsPathLabel = "__meta_kubernetes_pod_annotation_prometheus_io_path"
-	ioPortLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_port"
+	portLabel      = "__meta_kubernetes_pod_annotation_prometheus_io_port"
 	namespaceLabel   = "__meta_kubernetes_namespace"
 	podNameLabel     = "__meta_kubernetes_pod_name"
-	nodeNameLabel    = "__meta_kubernetes_pod_node_name"
-	podIPLabel       = "__meta_kubernetes_pod_ip"
 )
 
 var (
@@ -124,7 +122,7 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 	addressRelabelConfig := &config.RelabelConfig{
 		SourceLabels: model.LabelNames{
 			"__address__",
-			ioPortLabel,
+			portLabel,
 		},
 		Action:      config.RelabelReplace,
 		Regex:       portPattern,
@@ -136,7 +134,7 @@ func scrapeJob(name string, componentPattern config.Regexp, cmodel *MonitorConfi
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
-				ioPortLabel,
+				portLabel,
 			},
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
