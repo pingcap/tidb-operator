@@ -15,10 +15,11 @@ package generate
 
 import (
 	"errors"
-	crdutils "github.com/yisaer/crd-validation/pkg"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	k8sutil "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
+	crdutils "github.com/yisaer/crd-validation/pkg"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 

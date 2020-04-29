@@ -17,8 +17,8 @@ import (
 	"errors"
 	"strings"
 
-	crdutils "github.com/yisaer/crd-validation/pkg"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	crdutils "github.com/yisaer/crd-validation/pkg"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 )
 
