@@ -1056,6 +1056,12 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
 					"priorityClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
@@ -1100,6 +1106,19 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
+									},
+								},
+							},
+						},
+					},
 					"podSecurityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodSecurityContext of the component",
@@ -1130,7 +1149,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext"},
+			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
@@ -2631,6 +2650,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
 					"priorityClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
@@ -2670,6 +2695,19 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 									SchemaProps: spec.SchemaProps{
 										Type:   []string{"string"},
 										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -2774,7 +2812,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -3085,6 +3123,12 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
 					"priorityClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
@@ -3124,6 +3168,19 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 									SchemaProps: spec.SchemaProps{
 										Type:   []string{"string"},
 										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -3223,7 +3280,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -4153,6 +4210,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
 					"priorityClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
@@ -4192,6 +4255,19 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 									SchemaProps: spec.SchemaProps{
 										Type:   []string{"string"},
 										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -4329,7 +4405,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBServiceSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSlowLogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -4382,6 +4458,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
 					"priorityClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
@@ -4421,6 +4503,19 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 									SchemaProps: spec.SchemaProps{
 										Type:   []string{"string"},
 										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -4545,7 +4640,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashConfig", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -6330,6 +6425,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
 					"priorityClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
@@ -6369,6 +6470,19 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 									SchemaProps: spec.SchemaProps{
 										Type:   []string{"string"},
 										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
 									},
 								},
 							},
@@ -6481,7 +6595,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -7697,6 +7811,18 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
+									},
+								},
+							},
+						},
+					},
 					"kubePrometheusURL": {
 						SchemaProps: spec.SchemaProps{
 							Description: "kubePrometheusURL is where tidb-monitoring get the  common metrics of kube-prometheus. Ref: https://github.com/coreos/kube-prometheus",
@@ -7716,7 +7842,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GrafanaSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ReloaderSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
