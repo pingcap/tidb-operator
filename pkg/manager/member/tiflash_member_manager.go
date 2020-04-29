@@ -129,10 +129,10 @@ func (tfmm *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster)
 	if config.Replication.EnablePlacementRules != nil && (!*config.Replication.EnablePlacementRules) {
 		klog.Infof("Cluster %s/%s enable-placement-rules is %v, set it to true", tc.Namespace, tc.Name, *config.Replication.EnablePlacementRules)
 		enable := true
-		rule := pdapi.PDReplicationConfig{
+		rep := pdapi.PDReplicationConfig{
 			EnablePlacementRules: &enable,
 		}
-		return pdCli.UpdateEnablePlacementRules(rule)
+		return pdCli.UpdateReplicationConfig(rep)
 	}
 	return nil
 }

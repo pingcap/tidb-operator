@@ -154,8 +154,8 @@ type PDClient interface {
 	// storeLabelsEqualNodeLabels compares store labels with node labels
 	// for historic reasons, PD stores TiKV labels as []*StoreLabel which is a key-value pair slice
 	SetStoreLabels(storeID uint64, labels map[string]string) (bool, error)
-	// UpdateEnablePlacementRules updates the enable-placement-rules config
-	UpdateEnablePlacementRules(rule PDReplicationConfig) error
+	// UpdateReplicationConfig updates the replication config
+	UpdateReplicationConfig(config PDReplicationConfig) error
 	// DeleteStore deletes a TiKV store from cluster
 	DeleteStore(storeID uint64) error
 	// SetStoreState sets store to specified state.
@@ -515,9 +515,9 @@ func (pc *pdClient) SetStoreLabels(storeID uint64, labels map[string]string) (bo
 	return false, fmt.Errorf("failed %v to set store labels: %v", res.StatusCode, err2)
 }
 
-func (pc *pdClient) UpdateEnablePlacementRules(rule PDReplicationConfig) error {
+func (pc *pdClient) UpdateReplicationConfig(config PDReplicationConfig) error {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, pdReplicationPrefix)
-	data, err := json.Marshal(rule)
+	data, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
@@ -529,8 +529,8 @@ func (pc *pdClient) UpdateEnablePlacementRules(rule PDReplicationConfig) error {
 	if res.StatusCode == http.StatusOK {
 		return nil
 	}
-	err2 := httputil.ReadErrorBody(res.Body)
-	return fmt.Errorf("failed %v to update enable-placement-rules: %v", res.StatusCode, err2)
+	err = httputil.ReadErrorBody(res.Body)
+	return fmt.Errorf("failed %v to update replication: %v", res.StatusCode, err)
 }
 
 func (pc *pdClient) BeginEvictLeader(storeID uint64) error {
@@ -718,7 +718,7 @@ const (
 	DeleteMemberByIDActionType         ActionType = "DeleteMemberByID"
 	DeleteMemberActionType             ActionType = "DeleteMember "
 	SetStoreLabelsActionType           ActionType = "SetStoreLabels"
-	UpdatePlacementRulesActionType     ActionType = "UpdateEnablePlacementRules"
+	UpdateReplicationActionType        ActionType = "UpdateReplicationConfig"
 	BeginEvictLeaderActionType         ActionType = "BeginEvictLeader"
 	EndEvictLeaderActionType           ActionType = "EndEvictLeader"
 	GetEvictLeaderSchedulersActionType ActionType = "GetEvictLeaderSchedulers"
@@ -735,10 +735,10 @@ func (nfr *NotFoundReaction) Error() string {
 }
 
 type Action struct {
-	ID     uint64
-	Name   string
-	Labels map[string]string
-	Rule   PDReplicationConfig
+	ID          uint64
+	Name        string
+	Labels      map[string]string
+	Replication PDReplicationConfig
 }
 
 type Reaction func(action *Action) (interface{}, error)
@@ -878,10 +878,10 @@ func (pc *FakePDClient) SetStoreLabels(storeID uint64, labels map[string]string)
 	return true, nil
 }
 
-// UpdateEnablePlacementRules updates the enable-placement-rules
-func (pc *FakePDClient) UpdateEnablePlacementRules(rule PDReplicationConfig) error {
-	if reaction, ok := pc.reactions[UpdatePlacementRulesActionType]; ok {
-		action := &Action{Rule: rule}
+// UpdateReplicationConfig updates the replication config
+func (pc *FakePDClient) UpdateReplicationConfig(config PDReplicationConfig) error {
+	if reaction, ok := pc.reactions[UpdateReplicationActionType]; ok {
+		action := &Action{Replication: config}
 		_, err := reaction(action)
 		return err
 	}
