@@ -297,6 +297,16 @@ func AnnProm(port int32) map[string]string {
 	}
 }
 
+// AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod
+// which have multiple metrics endpoint
+func AnnAdditionalProm(name, path string, port int32) map[string]string {
+	return map[string]string{
+		fmt.Sprintf("%s.prometheus.io/scrape", name): "true",
+		fmt.Sprintf("%s.prometheus.io/path", name):   path,
+		fmt.Sprintf("%s.prometheus.io/port", name):   fmt.Sprintf("%d", port),
+	}
+}
+
 func ParseStorageRequest(req corev1.ResourceList) (corev1.ResourceRequirements, error) {
 	if req == nil {
 		return corev1.ResourceRequirements{}, nil

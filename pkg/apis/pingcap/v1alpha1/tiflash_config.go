@@ -32,7 +32,9 @@ type TiFlashConfig struct {
 // +k8s:openapi-gen=false
 type FlashServerConfig struct {
 	// +optional
-	EngineAddr       string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
+	EngineAddr string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
+	// +optional
+	StatusAddr       string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
 	TiKVServerConfig `json:",inline"`
 }
 
