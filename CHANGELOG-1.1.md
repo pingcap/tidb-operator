@@ -2,11 +2,7 @@
 
 This is the third release candidate of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
 
-## Action Required
-
-- TiKV encryption configuration field `method` is changed to `data-encryption-method` ([#2334](https://github.com/pingcap/tidb-operator/pull/2334), [@shuijing198799](https://github.com/shuijing198799))
-
-## Other Notable Changes
+## Notable Changes
 
 - Skip auto-failover when pods are not scheduled and perform recovery operation no matter what state failover pods are in ([#2300](https://github.com/pingcap/tidb-operator/pull/2300), [@cofyc](https://github.com/cofyc))
 - Support `TiFlash` metrics in `TidbMonitor` ([#2341](https://github.com/pingcap/tidb-operator/pull/2341), [@Yisaer](https://github.com/Yisaer))
