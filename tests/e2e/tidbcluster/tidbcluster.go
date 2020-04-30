@@ -1081,7 +1081,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 	})
 
-	ginkgo.It("tidb-scale: clear TiDB failureMembers when scale TiDB to zero", func() {
+	ginkgo.It("[Feature: AutoFailover] clear TiDB failureMembers when scale TiDB to zero", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "3"
 		cluster.Resources["tikv.replicas"] = "1"
@@ -1147,7 +1147,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to delete cert-manager")
 		})
 
-		ginkgo.It("TLS for MySQL Client", func() {
+		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
 			ginkgo.By("Installing tidb issuer")
@@ -1156,7 +1156,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = installTiDBCertificates(ns, tcName)
-			framework.ExpectNoError(err, "failed to install tidb server and client certificate template")
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+			ginkgo.By("Installing tidb components certificates")
+			err = installTiDBComponentsCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
@@ -1164,9 +1168,59 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			tc.Spec.Pump = &v1alpha1.PumpSpec{
+				Replicas:             2,
+				BaseImage:            "pingcap/tidb-binlog",
+				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				GenericConfig:        tcconfig.New(map[string]interface{}{}),
+			}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			source := &tests.TidbClusterConfig{
+				Namespace:      ns,
+				ClusterName:    tcName,
+				OperatorTag:    cfg.OperatorTag,
+				ClusterVersion: utilimage.TiDBV4Version,
+			}
+			targetTcName := "tls-target"
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4Version)
+			targetTc.Spec.PD.Replicas = 1
+			targetTc.Spec.TiKV.Replicas = 1
+			targetTc.Spec.TiDB.Replicas = 1
+			err = genericCli.Create(context.TODO(), targetTc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			drainerConfig := &tests.DrainerConfig{
+				DrainerName:       "tls-drainer",
+				OperatorTag:       cfg.OperatorTag,
+				SourceClusterName: tcName,
+				Namespace:         ns,
+				DbType:            tests.DbTypeTiDB,
+				Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
+				Port:              "4000",
+				TLSCluster:        true,
+				User:              "root",
+				Password:          "",
+			}
+
+			ginkgo.By("Deploying tidb drainer")
+			err = oa.DeployDrainer(drainerConfig, source)
+			framework.ExpectNoError(err)
+			err = oa.CheckDrainer(drainerConfig, source)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Inserting data into source db")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, ""))
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Checking tidb-binlog works as expected")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, binlogWorksWhileTLSIsEnabled(fw, c, ns, targetTcName, ""))
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")

@@ -168,9 +168,9 @@ var fileDrainerConfigTemp string = drainerConfigCommon + `
 var sqlDrainerConfigTemp string = drainerConfigCommon + `
   db-type = "{{ .DbType }}"
   [syncer.to]
-  host = {{ .Host }}
-  user = {{ .User }}
-  password = {{ .Password }}
+  host = "{{ .Host }}"
+  user = "{{ .User }}"
+  password = "{{ .Password }}"
   port = {{ .Port }}
 `
 
