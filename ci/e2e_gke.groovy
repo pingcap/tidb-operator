@@ -31,6 +31,11 @@ spec:
       requests:
         memory: "4000Mi"
         cpu: 2000m
+        ephemeral-storage: "20Gi"
+      limits:
+        memory: "4000Mi"
+        cpu: 2000m
+        ephemeral-storage: "20Gi"
     volumeMounts:
     # dind expects /var/lib/docker to be volume
     - name: docker-root
