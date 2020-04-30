@@ -32,9 +32,11 @@ controllerManager:
  tikvFailoverPeriod: 5m
  # tidb failover period default(5m)
  tidbFailoverPeriod: 5m
+ # tiflash failover period default(5m)
+ tiflashFailoverPeriod: 5m
 ```
 
-`pdFailoverPeriod`、`tikvFailoverPeriod` 和 `tidbFailoverPeriod` 默认均为 5 分钟，它们的含义是在确认实例故障后的等待超时时间，超过这个时间后，TiDB Operator 就开始做自动的故障转移。
+`pdFailoverPeriod`、`tikvFailoverPeriod`、`tiflashFailoverPeriod` 和 `tidbFailoverPeriod` 默认均为 5 分钟，它们的含义是在确认实例故障后的等待超时时间，超过这个时间后，TiDB Operator 就开始做自动的故障转移。
 
 ## 实现原理
 
@@ -84,3 +86,38 @@ status
 ### TiDB 故障转移策略
 
 假设 TiDB 集群有 3 个节点，TiDB 的故障转移策略跟 Kubernetes 中的 `Deployment` 的是一致的。如果一个 TiDB 节点挂掉超过 5 分钟（`tidbFailoverPeriod` 可配置），TiDB Operator 会添加一个新的 TiDB 节点。此时会有 4 个 Pod 同时存在，待挂掉的 TiDB 节点恢复后，TiDB Operator 会将新启动的节点删除掉，恢复成原来的 3 个节点。
+
+### TiFlash 故障转移策略
+
+当一个 TiFlash 节点无法正常工作后，该节点的状态会变为 `Disconnected`，30 分钟（通过 `pd.config` 文件中 `[schedule]` 部分的 `max-store-down-time = "30m"` 来配置）后会变成 `Down` 状态，TiDB Operator 会在此基础上再等待 5 分钟（`tiflashFailoverPeriod` 可配置），如果该 TiFlash 节点仍不能恢复，就会新起一个 TiFlash 节点。待挂掉的 TiFlash 节点恢复后，TiDB Operator 不会自动删除新起的节点，用户需要手动减少 TiFlash 节点，恢复成原来的节点数。操作方法是将该 TiFlash 节点从 `TidbCluster` 对象的 `status.tiflash.failureStores` 字段中删除。
+
+示例如下，假如有两个 TiFlash Pod 异常：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl edit tc -n ${namespace} ${cluster_name}
+```
+
+```
+status
+  tiflash:
+    failureStores:
+      "1":
+        podName: cluster1-tiflash-0
+        storeID: "1"
+      "2":
+        podName: cluster1-tiflash-1
+        storeID: "2"
+```
+
+`cluster1-tiflash-0` Pod 恢复后，将其删除后变为：
+
+```
+status
+  tiflash:
+    failureStores:
+      "2":
+        podName: cluster1-tiflash-1
+        storeID: "2"
+```
