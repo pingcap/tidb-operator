@@ -606,9 +606,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					},
 					TiKV: v1alpha1.TiKVSpec{
 						Replicas: 1,
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
+						},
 					},
 					PD: v1alpha1.PDSpec{
 						Replicas: 1,
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
+						},
 					},
 				},
 			}
