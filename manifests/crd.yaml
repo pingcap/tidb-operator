@@ -5666,22 +5666,15 @@ spec:
             tidb:
               properties:
                 externalEndpoint:
-                  description: ExternalEndpoint describes the external service endpoint
-                    which provides the ability to get the tikv/tidb auto-scaling recommended
-                    replicas
                   properties:
                     host:
-                      description: Host indicates the external service's host
                       type: string
                     path:
-                      description: Path indicates the external service's path
                       type: string
                     port:
-                      description: Port indicates the external service's port
                       format: int32
                       type: integer
                     tlsSecret:
-                      description: SecretRef indicates to secret ref
                       properties:
                         name:
                           type: string
@@ -5725,22 +5718,15 @@ spec:
             tikv:
               properties:
                 externalEndpoint:
-                  description: ExternalEndpoint describes the external service endpoint
-                    which provides the ability to get the tikv/tidb auto-scaling recommended
-                    replicas
                   properties:
                     host:
-                      description: Host indicates the external service's host
                       type: string
                     path:
-                      description: Path indicates the external service's path
                       type: string
                     port:
-                      description: Port indicates the external service's port
                       format: int32
                       type: integer
                     tlsSecret:
-                      description: SecretRef indicates to secret ref
                       properties:
                         name:
                           type: string
