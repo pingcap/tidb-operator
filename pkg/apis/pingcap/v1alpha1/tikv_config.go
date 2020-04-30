@@ -751,7 +751,7 @@ type TiKVEncryptionConfig struct {
 	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
 	// Optional: Default to plaintext
 	// optional
-	Method string `json:"method,omitempty" toml:"method,omitempty"`
+	Method string `json:"data-encryption-method,omitempty" toml:"data-encryption-method,omitempty"`
 
 	// The frequency of datakey rotation, It managered by tikv
 	// Optional: default to 7d
