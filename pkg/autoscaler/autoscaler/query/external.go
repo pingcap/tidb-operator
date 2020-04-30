@@ -69,6 +69,7 @@ func sendRequest(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, endpo
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
