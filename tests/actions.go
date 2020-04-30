@@ -296,6 +296,8 @@ type OperatorConfig struct {
 	Cabundle                  string
 	BackupImage               string
 	AutoFailover              *bool
+	// Additional STRING values, set via --set-string flag.
+	StringValues map[string]string
 }
 
 type TidbClusterConfig struct {
@@ -445,6 +447,11 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.AutoFailover != nil {
 		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
+	}
+
+	// merge with additional STRING values
+	for k, v := range oi.StringValues {
+		set[k] = v
 	}
 
 	arr := make([]string, 0, len(set))
@@ -1398,6 +1405,10 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
+	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
+		return false, nil
+	}
+
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
 		return false, nil
 	}
@@ -1475,6 +1486,10 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
+	if tikvSet.Status.CurrentRevision != tikvSet.Status.UpdateRevision {
+		return false, nil
+	}
+
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
 		return false, nil
 	}
@@ -1543,6 +1558,10 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		return false, nil
+	}
+
+	if tidbSet.Status.CurrentRevision != tidbSet.Status.UpdateRevision {
 		return false, nil
 	}
 
