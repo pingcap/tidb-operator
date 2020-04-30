@@ -138,7 +138,7 @@ func NewOperatorActions(cli versioned.Interface,
 }
 
 const (
-	DefaultPollTimeout          time.Duration = 10 * time.Minute
+	DefaultPollTimeout          time.Duration = 20 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
 	grafanaUsername                           = "admin"
@@ -236,6 +236,7 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
+	WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string)
 	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
 }
 
@@ -295,6 +296,8 @@ type OperatorConfig struct {
 	Cabundle                  string
 	BackupImage               string
 	AutoFailover              *bool
+	// Additional STRING values, set via --set-string flag.
+	StringValues map[string]string
 }
 
 type TidbClusterConfig struct {
@@ -444,6 +447,11 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.AutoFailover != nil {
 		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
+	}
+
+	// merge with additional STRING values
+	for k, v := range oi.StringValues {
+		set[k] = v
 	}
 
 	arr := make([]string, 0, len(set))
@@ -1007,7 +1015,8 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 }
 
 func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database string) *corev1.Pod {
-	return &corev1.Pod{
+
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: info.Namespace,
 			Name:      blockWriterPodName(info),
@@ -1037,6 +1046,10 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 			RestartPolicy: corev1.RestartPolicyAlways,
 		},
 	}
+	if info.OperatorTag != "e2e" {
+		pod.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
+	}
+	return pod
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
@@ -1052,6 +1065,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
+	klog.Infof("begin insert Data in pod[%s/%s]", pod.Namespace, pod.Name)
 	return nil
 }
 
@@ -1068,16 +1082,20 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	}
 	oa.EmitEvent(info, "StopInsertData")
 
-	pod := info.blockWriterPod
-	err := oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		pod := info.blockWriterPod
+		err = oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		}
+		return true, nil
+	})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-	err = e2epod.WaitForPodNotFoundInNamespace(oa.kubeCli, pod.Name, pod.Namespace, time.Minute*5)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-
 	info.blockWriterPod = nil
 }
 
@@ -1387,6 +1405,10 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 		return false, nil
 	}
 
+	if pdSet.Status.CurrentRevision != pdSet.Status.UpdateRevision {
+		return false, nil
+	}
+
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
 		return false, nil
 	}
@@ -1464,6 +1486,10 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 		return false, nil
 	}
 
+	if tikvSet.Status.CurrentRevision != tikvSet.Status.UpdateRevision {
+		return false, nil
+	}
+
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
 		return false, nil
 	}
@@ -1532,6 +1558,10 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
+		return false, nil
+	}
+
+	if tidbSet.Status.CurrentRevision != tidbSet.Status.UpdateRevision {
 		return false, nil
 	}
 

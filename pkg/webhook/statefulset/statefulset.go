@@ -63,7 +63,7 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 
 	klog.Infof("admit %s [%s/%s]", setResource, namespace, name)
 
-	stsObjectMeta, stsPartition, err := getStsAttributes(ar.OldObject.Raw, apiVersion)
+	stsObjectMeta, stsPartition, err := getStsAttributes(ar.OldObject.Raw)
 	if err != nil {
 		err = fmt.Errorf("statefulset %s/%s, decode request failed, err: %v", namespace, name, err)
 		klog.Error(err)
@@ -110,27 +110,23 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 		return util.ARFail(err)
 	}
 
-	setPartition := *(stsPartition)
-	if setPartition > 0 && setPartition <= int32(partition) {
-		klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
-		return util.ARFail(errors.New("protect by partition annotation"))
+	if stsPartition != nil {
+		if *stsPartition > 0 && *stsPartition <= int32(partition) {
+			klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
+			return util.ARFail(errors.New("protect by partition annotation"))
+		}
+		klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
 	}
-	klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, setPartition, partition)
 	return util.ARSuccess()
 }
 
-func getStsAttributes(data []byte, apiVersion string) (*metav1.ObjectMeta, *int32, error) {
-	if apiVersion == "v1" {
-		set := apps.StatefulSet{}
-		if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
-			return nil, nil, err
-		}
-		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
-	}
-
+func getStsAttributes(data []byte) (*metav1.ObjectMeta, *int32, error) {
 	set := apps.StatefulSet{}
 	if _, _, err := deserializer.Decode(data, nil, &set); err != nil {
 		return nil, nil, err
 	}
-	return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+	if set.Spec.UpdateStrategy.RollingUpdate != nil {
+		return &(set.ObjectMeta), set.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+	}
+	return &(set.ObjectMeta), nil, nil
 }

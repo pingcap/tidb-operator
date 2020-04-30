@@ -14,12 +14,12 @@ variable "eks_name" {
 
 variable "eks_version" {
   description = "Kubernetes version to use for the EKS cluster."
-  default     = "1.12"
+  default     = "1.15"
 }
 
 variable "operator_version" {
   description = "TiDB operator version"
-  default     = "v1.1.0"
+  default     = "v1.1.0-rc.2"
 }
 
 variable "operator_values" {
@@ -80,7 +80,7 @@ variable "bastion_instance_type" {
 
 # For aws tutorials compatiablity
 variable "default_cluster_version" {
-  default = "v3.0.8"
+  default = "v3.0.13"
 }
 
 variable "default_cluster_pd_count" {

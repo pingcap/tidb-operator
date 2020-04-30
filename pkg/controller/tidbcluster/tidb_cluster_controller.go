@@ -91,6 +91,7 @@ func NewController(
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
@@ -107,8 +108,8 @@ func NewController(
 	tiflashScaler := mm.NewTiFlashScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
 	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
 	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod, recorder)
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, recorder)
-	tiflashFailover := mm.NewTiFlashFailover(tiflashFailoverPeriod)
+	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod, recorder, podInformer.Lister())
+	tiflashFailover := mm.NewTiFlashFailover(tiflashFailoverPeriod, recorder)
 	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tiflashUpgrader := mm.NewTiFlashUpgrader(pdControl, podControl, podInformer.Lister())
@@ -158,6 +159,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				secretInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
 				tidbFailover,

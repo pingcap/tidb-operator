@@ -47,7 +47,7 @@ Usage: hack/e2e.sh [-h] -- [extra test args]
 Environments:
 
     PROVIDER              Kubernetes provider, e.g. kind, gke, eks, defaults: kind
-    DOCKER_REGISTRY       image docker registry
+    DOCKER_REPO           docker image repo
     IMAGE_TAG             image tag
     CLUSTER               the name of e2e cluster, defaults: tidb-operator
     KUBECONFIG            path to the kubeconfig file, defaults: ~/.kube/config
@@ -172,7 +172,7 @@ if [ "${1:-}" == "--" ]; then
 fi
 
 PROVIDER=${PROVIDER:-kind}
-DOCKER_REGISTRY=${DOCKER_REGISTRY:-localhost:5000}
+DOCKER_REPO=${DOCKER_REPO:-localhost:5000/pingcap}
 IMAGE_TAG=${IMAGE_TAG:-latest}
 CLUSTER=${CLUSTER:-tidb-operator}
 KUBECONFIG=${KUBECONFIG:-~/.kube/config}
@@ -204,7 +204,7 @@ SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
 
 echo "PROVIDER: $PROVIDER"
-echo "DOCKER_REGISTRY: $DOCKER_REGISTRY"
+echo "DOCKER_REPO: $DOCKER_REPO"
 echo "IMAGE_TAG: $IMAGE_TAG"
 echo "CLUSTER: $CLUSTER"
 echo "KUBECONFIG: $KUBECONFIG"
@@ -241,15 +241,15 @@ kind_node_images["v1.18.0"]="kindest/node:v1.18.0@sha256:0e20578828edd939d25eb98
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
-        echo "info: skip building images"
+        echo "info: skip building binaries"
         export NO_BUILD=y
     fi
     if [ -n "$SKIP_IMAGE_BUILD" ]; then
         echo "info: skip building and pushing images"
         return
     fi
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make e2e-docker
+    DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make docker
+    DOCKER_REPO=$DOCKER_REPO IMAGE_TAG=$IMAGE_TAG make e2e-docker
 }
 
 function e2e::__restart_docker() {
@@ -364,11 +364,11 @@ hack::ensure_kind
 hack::ensure_kubectl
 hack::ensure_helm
 
-e2e::image_build
-
 if [ -n "$DOCKER_IO_MIRROR" -a -n "${DOCKER_IN_DOCKER_ENABLED:-}" ]; then
     e2e::__configure_docker_mirror_for_dind
 fi
+
+e2e::image_build
 
 kubetest2_args=(
     $PROVIDER
@@ -437,6 +437,9 @@ elif [ "$PROVIDER" == "gke" ]; then
         echo "error: GCP_REGION or GCP_ZONE cannot be both set"
         exit 1
     fi
+    echo "info: activating GCP service account"
+    gcloud auth activate-service-account --key-file "$GCP_CREDENTIALS"
+    gcloud config set project "$GCP_PROJECT"
     echo "info: preparing ssh keypairs for GCP"
     if [ ! -d ~/.ssh ]; then
         mkdir ~/.ssh
@@ -474,18 +477,25 @@ EOF
 elif [ "$PROVIDER" == "eks" ]; then
     export KUBE_SSH_USER=ec2-user
     hack::ensure_aws_k8s_tester
-    if [ -n "$AWS_REGION" ]; then
-        aws configure set default.region "$AWS_REGION"
+    if [ -z "$AWS_REGION" ]; then
+        echo "error: AWS_REGION is required"
+        exit 1
     fi
     if [ -z "$AWS_ZONE" ]; then
         AWS_ZONE=${AWS_REGION}a
     fi
-    if [ -n "$AWS_ACCESS_KEY_ID" ]; then
-        aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+        echo "error: AWS_ACCESS_KEY_ID is required"
+        exit 1
     fi
-    if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
-        aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+        echo "error: AWS_SECRET_ACCESS_KEY is required"
+        exit 1
     fi
+    echo "info: activating AWS credentials"
+    aws configure set default.region "$AWS_REGION"
+    aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
     mngName=$CLUSTER-mng-$RANDOM
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
@@ -523,9 +533,9 @@ export AWS_ZONE
 export IMAGE_TAG
 export SKIP_GINKGO
 export SKIP_IMAGE_LOAD
-export TIDB_OPERATOR_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
-export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
-export E2E_IMAGE=$DOCKER_REGISTRY/pingcap/tidb-operator-e2e:${IMAGE_TAG}
+export TIDB_OPERATOR_IMAGE=$DOCKER_REPO/tidb-operator:${IMAGE_TAG}
+export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REPO/tidb-backup-manager:${IMAGE_TAG}
+export E2E_IMAGE=$DOCKER_REPO/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
 
 # Environments for kubetest2

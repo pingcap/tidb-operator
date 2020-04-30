@@ -58,7 +58,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, _, pvcControl := newFakeTiKVScaler()
 
-		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
+		pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
 		pvc.Name = ordinalPVCName(v1alpha1.TiKVMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
@@ -194,7 +194,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		scaler, pdControl, pvcIndexer, podIndexer, pvcControl := newFakeTiKVScaler()
 
 		if test.hasPVC {
-			pvc := newPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType)
+			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.TiKVMemberType, tc.Name)
 			pvcIndexer.Add(pvc)
 		}
 

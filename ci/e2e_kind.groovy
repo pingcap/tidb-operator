@@ -7,10 +7,7 @@
 // Note that parameters of the job is configured in this script.
 //
 
-import groovy.transform.Field
-
-@Field
-def podYAML = '''
+podYAML = '''\
 apiVersion: v1
 kind: Pod
 metadata:
@@ -45,11 +42,11 @@ spec:
       requests:
         memory: "8000Mi"
         cpu: 8000m
-        ephemeral-storage: "50Gi"
+        ephemeral-storage: "70Gi"
       limits:
         memory: "8000Mi"
         cpu: 8000m
-        ephemeral-storage: "50Gi"
+        ephemeral-storage: "70Gi"
     # kind needs /lib/modules and cgroups from the host
     volumeMounts:
     - mountPath: /lib/modules

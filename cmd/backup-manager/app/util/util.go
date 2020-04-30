@@ -19,14 +19,23 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/spf13/pflag"
+	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 )
 
 var (
-	cmdHelpMsg string
+	cmdHelpMsg        string
+	supportedVersions = map[string]struct{}{
+		"3.1": {},
+		"4.0": {},
+	}
+	// DefaultVersion is the default tikv and br version
+	DefaultVersion = "4.0"
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
@@ -159,6 +168,55 @@ func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {
 	}
 	if config.SendCredToTikv != nil {
 		args = append(args, fmt.Sprintf("--send-credentials-to-tikv=%t", *config.SendCredToTikv))
+	}
+	return args
+}
+
+// Suffix parses the major and minor version from the string and return the suffix
+func Suffix(version string) string {
+	numS := strings.Split(DefaultVersion, ".")
+	defaultSuffix := numS[0] + numS[1]
+
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		return defaultSuffix
+	}
+	parsed := fmt.Sprintf("%d.%d", v.Major(), v.Minor())
+	if _, ok := supportedVersions[parsed]; ok {
+		return fmt.Sprintf("%d%d", v.Major(), v.Minor())
+	}
+	return defaultSuffix
+}
+
+// GetOptions gets the rclone options
+func GetOptions(provider v1alpha1.StorageProvider) []string {
+	st := util.GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		return provider.S3.Options
+	default:
+		return nil
+	}
+}
+
+// ConstructArgs constructs the rclone args
+func ConstructArgs(conf string, opts []string, command, source, dest string) []string {
+	var args []string
+	if conf != "" {
+		args = append(args, conf)
+	}
+	if len(opts) > 0 {
+		args = append(args, opts...)
+	}
+	if command != "" {
+		args = append(args, command)
+	}
+	if source != "" {
+		args = append(args, source)
+	}
+	if dest != "" {
+		args = append(args, dest)
 	}
 	return args
 }

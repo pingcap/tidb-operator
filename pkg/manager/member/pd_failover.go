@@ -148,6 +148,8 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		msg := fmt.Sprintf("pd member[%s] is unhealthy", pdMember.ID)
 		pf.recorder.Event(tc, apiv1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "pd", podName, msg))
 
+		// mark a peer member failed and return an error to skip reconciliation
+		// note that status of tidb cluster will be updated always
 		tc.Status.PD.FailureMembers[podName] = v1alpha1.PDFailureMember{
 			PodName:       podName,
 			MemberID:      pdMember.ID,
@@ -161,6 +163,10 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
+// tryToDeleteAFailureMember tries to delete a PD member and associated pod &
+// pvc. If this succeeds, new pod & pvc will be created by Kubernetes.
+// Note that this will fail if the kubelet on the node which failed pod was
+// running on is not responding.
 func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()

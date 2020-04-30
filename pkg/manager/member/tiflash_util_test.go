@@ -120,6 +120,7 @@ var (
 			LogLevel: "info",
 			Server: &v1alpha1.FlashServerConfig{
 				EngineAddr: "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930",
+				StatusAddr: "0.0.0.0:20292",
 			},
 		},
 	}
@@ -217,6 +218,7 @@ var (
 			LogLevel: "info1",
 			Server: &v1alpha1.FlashServerConfig{
 				EngineAddr: "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930",
+				StatusAddr: "0.0.0.0:20292",
 			},
 		},
 	}

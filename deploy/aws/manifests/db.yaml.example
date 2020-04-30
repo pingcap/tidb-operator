@@ -37,6 +37,8 @@ spec:
   schedulerName: tidb-scheduler
   tidb:
     affinity: {}
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
     baseImage: pingcap/tidb
     config:
       log:
@@ -104,5 +106,5 @@ spec:
       operator: Equal
       value: CLUSTER_NAME-tikv
   timezone: UTC
-  version: v3.0.12
+  version: v3.0.13
 

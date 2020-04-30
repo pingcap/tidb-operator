@@ -19,6 +19,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/klog"
 )
@@ -78,6 +79,19 @@ func ServiceEqual(newSvc, oldSvc *corev1.Service) (bool, error) {
 			return false, err
 		}
 		return apiequality.Semantic.DeepEqual(oldSpec, newSvc.Spec), nil
+	}
+	return false, nil
+}
+
+func IngressEqual(newIngress, oldIngres *extensionsv1beta1.Ingress) (bool, error) {
+	oldIngressSpec := extensionsv1beta1.IngressSpec{}
+	if lastAppliedConfig, ok := oldIngres.Annotations[LastAppliedConfigAnnotation]; ok {
+		err := json.Unmarshal([]byte(lastAppliedConfig), &oldIngressSpec)
+		if err != nil {
+			klog.Errorf("unmarshal IngressSpec: [%s/%s]'s applied config failed,error: %v", oldIngres.GetNamespace(), oldIngres.GetName(), err)
+			return false, err
+		}
+		return apiequality.Semantic.DeepEqual(oldIngressSpec, newIngress.Spec), nil
 	}
 	return false, nil
 }
