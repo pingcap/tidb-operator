@@ -3667,6 +3667,9 @@ spec:
                           description: Whether enable the syntax like `auto_random(3)`
                             on the primary key column. imported from TiDB v3.1.0
                           type: boolean
+                        allow-expression-index:
+                          description: Whether enable creating expression index.
+                          type: boolean
                       type: object
                     isolation-read:
                       description: IsolationRead is the config for isolation read.
@@ -3765,6 +3768,8 @@ spec:
                     oom-action:
                       description: 'Optional: Defaults to log'
                       type: string
+                    oom-use-tmp-storage:
+                      type: boolean
                     opentracing:
                       description: OpenTracing is the opentracing section of the config.
                       properties:
@@ -3973,6 +3978,9 @@ spec:
                         enable:
                           description: Enable statement summary or not.
                           type: boolean
+                        enable-internal-query:
+                          description: Enable summary internal query.
+                          type: boolean
                         history-size:
                           description: The maximum history size of statement summary.
                           format: int32
@@ -4061,6 +4069,8 @@ spec:
                           format: int64
                           type: integer
                       type: object
+                    tmp-storage-path:
+                      type: string
                     token-limit:
                       description: 'Optional: Defaults to 1000'
                       format: int32
@@ -6277,6 +6287,8 @@ spec:
                     log-level:
                       description: 'Optional: Defaults to info'
                       type: string
+                    log-rotation-size:
+                      type: string
                     log-rotation-timespan:
                       description: 'Optional: Defaults to 24h'
                       type: string
@@ -6311,6 +6323,19 @@ spec:
 
                             Default is isize::MAX, represented by -1. Optional: Defaults to -1
                           format: int64
+                          type: integer
+                      type: object
+                    pessimistic-txn:
+                      properties:
+                        enabled:
+                          type: boolean
+                        pipelined:
+                          type: boolean
+                        wait-for-lock-timeout:
+                          format: int32
+                          type: integer
+                        wake-up-delay-duration:
+                          format: int32
                           type: integer
                       type: object
                     raftdb:
@@ -6713,7 +6738,23 @@ spec:
                               description: 'Optional: Defaults to 10MB'
                               type: string
                           type: object
+                        unified:
+                          properties:
+                            max-tasks-per-worker:
+                              format: int32
+                              type: integer
+                            max-thread-count:
+                              format: int32
+                              type: integer
+                            min-thread-count:
+                              format: int32
+                              type: integer
+                            stack-size:
+                              type: string
+                          type: object
                       type: object
+                    refresh-config-interval:
+                      type: string
                     rocksdb:
                       description: TiKVDbConfig is the rocksdb config.
                       properties:
@@ -7260,6 +7301,8 @@ spec:
                           description: 'Optional: Defaults to 32'
                           format: int32
                           type: integer
+                        enable-request-batch:
+                          type: boolean
                         end-point-batch-row-limit:
                           format: int32
                           type: integer
@@ -7313,6 +7356,10 @@ spec:
                           type: string
                         labels:
                           type: object
+                        request-batch-enable-cross-command:
+                          type: boolean
+                        request-batch-wait-duration:
+                          type: string
                         snap-max-total-size:
                           type: string
                         snap-max-write-bytes-per-sec:
@@ -7325,6 +7372,10 @@ spec:
                           description: 'Optional: Defaults to 1'
                           type: string
                       type: object
+                    slow-log-file:
+                      type: string
+                    slow-log-threshold:
+                      type: string
                     storage:
                       description: TiKVStorageConfig is the config of storage
                       properties:
