@@ -1,3 +1,35 @@
+# TiDB Operator v1.1.0-rc.3 Release Notes
+
+This is the third release candidate of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
+
+## Action Required
+
+- TiKV encryption configuration field `method` is changed to `data-encryption-method` ([#2334](https://github.com/pingcap/tidb-operator/pull/2334), [@shuijing198799](https://github.com/shuijing198799))
+
+## Other Notable Changes
+
+- Skip auto-failover when pods are not scheduled and perform recovery operation no matter what state failover pods are in ([#2300](https://github.com/pingcap/tidb-operator/pull/2300), [@cofyc](https://github.com/cofyc))
+- Support `TiFlash` metrics in `TidbMonitor` ([#2341](https://github.com/pingcap/tidb-operator/pull/2341), [@Yisaer](https://github.com/Yisaer))
+- Do not print `rclone` config in the Pod logs ([#2343](https://github.com/pingcap/tidb-operator/pull/2343), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Using `Patch` in `periodicity` controller to avoid `StatefulSet` be updated to wrong state ([#2332](https://github.com/pingcap/tidb-operator/pull/2332), [@Yisaer](https://github.com/Yisaer))
+- Set `enable-placement-rules` to `true` for PD if TiFlash is enabled in the cluster ([#2328](https://github.com/pingcap/tidb-operator/pull/2328), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Support `rclone` options in Backup and Restore CR ([#2318](https://github.com/pingcap/tidb-operator/pull/2318), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Fix the issue that statefulsets are updated during each sync even if no changes to the config ([#2308](https://github.com/pingcap/tidb-operator/pull/2308), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Support `TidbMonitor` to configure `Ingress` ([#2314](https://github.com/pingcap/tidb-operator/pull/2314), [@Yisaer](https://github.com/Yisaer))
+- Fix a bug that auto-created failover pods can't be deleted if they are in failed state ([#2300](https://github.com/pingcap/tidb-operator/pull/2300), [@cofyc](https://github.com/cofyc))
+- Add useful `Event` in `TidbCluster` during upgrading and scaling when `admissionWebhook.validation.pods` in operator configuration is enabled ([#2305](https://github.com/pingcap/tidb-operator/pull/2305), [@Yisaer](https://github.com/Yisaer))
+- Fix the issue that services are updated during each sync even if no changes to the service configuration ([#2299](https://github.com/pingcap/tidb-operator/pull/2299), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Fix a bug which would cause panic in statefulset webhook when update strategy of `StatefulSet` is not `RollingUpdate` ([#2291](https://github.com/pingcap/tidb-operator/pull/2291), [@Yisaer](https://github.com/Yisaer))
+- Fix a panic in syncing `TidbClusterAutoScaler` status when the target `TidbCluster` does not exist ([#2289](https://github.com/pingcap/tidb-operator/pull/2289), [@Yisaer](https://github.com/Yisaer))
+- Fix `pdapi` cache issue while cluster TLS is enabled ([#2275](https://github.com/pingcap/tidb-operator/pull/2275), [@weekface](https://github.com/weekface))
+- Fix the config error in restore ([#2250](https://github.com/pingcap/tidb-operator/pull/2250), [@Yisaer](https://github.com/Yisaer))
+- Support failover for TiFlash ([#2249](https://github.com/pingcap/tidb-operator/pull/2249), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Update the default `eks` version in terraform scripts to 1.15 ([#2238](https://github.com/pingcap/tidb-operator/pull/2238), [@Yisaer](https://github.com/Yisaer))
+- Support upgrading for TiFlash ([#2246](https://github.com/pingcap/tidb-operator/pull/2246), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Add stderr logs from BR to the backup-manager logs ([#2213](https://github.com/pingcap/tidb-operator/pull/2213), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Add field `TiKVEncryptionConfig` in `TiKVConfig`, it defines how to encrypt data key and raw data in TiKV, and how backup store the master key. See the description for details in `tikv_config.go` ([#2151](https://github.com/pingcap/tidb-operator/pull/2151), [@shuijing198799](https://github.com/shuijing198799))
+
+
 # TiDB Operator v1.1.0-rc.2 Release Notes
 
 This is the second release candidate of `v1.1.0`, which focuses on the usability, extensibility and security of TiDB Operator. While we encourage usage in non-critical environments, it is **NOT** recommended to use this version in critical environments.
