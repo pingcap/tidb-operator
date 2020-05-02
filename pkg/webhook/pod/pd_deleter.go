@@ -21,6 +21,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -93,6 +94,10 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 		return pc.transferPDLeader(payload)
 	}
 
+	if isUpgrading {
+		pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdUpgradeReason, podDeleteEventMessage(name))
+	}
+
 	klog.Infof("pod[%s/%s] is not pd-leader,admit to delete", namespace, name)
 	return util.ARSuccess()
 }
@@ -127,6 +132,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 			pvc, err := pc.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, meta.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
+					pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdScaleInReason, podDeleteEventMessage(name))
 					return util.ARSuccess()
 				}
 				return util.ARFail(err)
@@ -136,10 +142,10 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 				klog.Infof("tc[%s/%s]'s pod[%s/%s] failed to update pvc,%v", namespace, tcName, namespace, name, err)
 				return util.ARFail(err)
 			}
+			pc.recorder.Event(payload.tc, corev1.EventTypeNormal, pdScaleInReason, podDeleteEventMessage(name))
 		}
 		klog.Infof("pd pod[%s/%s] is not member of tc[%s/%s],admit to delete", namespace, name, namespace, tcName)
 		return util.ARSuccess()
-
 	}
 	err = payload.pdClient.DeleteMember(name)
 	if err != nil {

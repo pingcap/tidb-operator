@@ -25,6 +25,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 )
 
 var (
@@ -186,4 +187,36 @@ func Suffix(version string) string {
 		return fmt.Sprintf("%d%d", v.Major(), v.Minor())
 	}
 	return defaultSuffix
+}
+
+// GetOptions gets the rclone options
+func GetOptions(provider v1alpha1.StorageProvider) []string {
+	st := util.GetStorageType(provider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		return provider.S3.Options
+	default:
+		return nil
+	}
+}
+
+// ConstructArgs constructs the rclone args
+func ConstructArgs(conf string, opts []string, command, source, dest string) []string {
+	var args []string
+	if conf != "" {
+		args = append(args, conf)
+	}
+	if len(opts) > 0 {
+		args = append(args, opts...)
+	}
+	if command != "" {
+		args = append(args, command)
+	}
+	if source != "" {
+		args = append(args, source)
+	}
+	if dest != "" {
+		args = append(args, dest)
+	}
+	return args
 }

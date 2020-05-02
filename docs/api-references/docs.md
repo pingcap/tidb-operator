@@ -3094,6 +3094,18 @@ bool
 imported from TiDB v3.1.0</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>allow-expression-index</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable creating expression index.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="filelogconfig">FileLogConfig</h3>
@@ -3463,6 +3475,19 @@ map[string]string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="helperspec">HelperSpec</h3>
@@ -3507,6 +3532,66 @@ Kubernetes core/v1.PullPolicy
 <em>(Optional)</em>
 <p>ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 Optional: Defaults to the cluster-level setting</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ingressspec">IngressSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
+<p>IngressSpec describe the ingress desired state for the target component</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>hosts</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Hosts describe the hosts for the ingress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Annotations describe the desired annotations for the ingress</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tls</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ingresstls-v1beta1-extensions">
+[]Kubernetes extensions/v1beta1.IngressTLS
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLS configuration. Currently the Ingress only supports a single TLS
+port, 443. If multiple members of this list specify different hosts, they
+will be multiplexed on the same port according to the hostname specified
+through the SNI TLS extension, if the ingress controller fulfilling the
+ingress supports SNI.</p>
 </td>
 </tr>
 </tbody>
@@ -6503,6 +6588,19 @@ int
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#ingressspec">
+IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyprotocol">ProxyProtocol</h3>
@@ -7191,6 +7289,17 @@ string
 <p>SSE Sever-Side Encryption.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options Rclone options for backup and restore with mydumper and lightning.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="s3storageprovidertype">S3StorageProviderType</h3>
@@ -7521,6 +7630,18 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Enable statement summary or not.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-internal-query</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enable summary internal query.</p>
 </td>
 </tr>
 <tr>
@@ -7873,6 +7994,28 @@ uint
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 1000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>oom-use-tmp-storage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>tmp-storage-path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -9703,6 +9846,28 @@ string
 </tr>
 <tr>
 <td>
+<code>slow-log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>slow-log-threshold</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>log-rotation-timespan</code></br>
 <em>
 string
@@ -9711,6 +9876,28 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 24h</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-rotation-size</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>refresh-config-interval</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -9873,6 +10060,19 @@ TiKVSecurityConfig
 <em>
 <a href="#tikvencryptionconfig">
 TiKVEncryptionConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pessimistic-txn</code></br>
+<em>
+<a href="#tikvpessimistictxn">
+TiKVPessimisticTxn
 </a>
 </em>
 </td>
@@ -10463,7 +10663,7 @@ TiKVTitanDBConfig
 <tbody>
 <tr>
 <td>
-<code>method</code></br>
+<code>data-encryption-method</code></br>
 <em>
 string
 </em>
@@ -10856,6 +11056,67 @@ int64
 every <code>n</code> times.</p>
 <p>Default is 10. Set to 1 to disable this feature.
 Optional: Defaults to 10</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvpessimistictxn">TiKVPessimisticTxn</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvconfig">TiKVConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>wait-for-lock-timeout</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>wake-up-delay-duration</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelined</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -11749,6 +12010,19 @@ bool
 <tbody>
 <tr>
 <td>
+<code>unified</code></br>
+<em>
+<a href="#tikvunifiedreadpoolconfig">
+TiKVUnifiedReadPoolConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>coprocessor</code></br>
 <em>
 <a href="#tikvcoprocessorreadpoolconfig">
@@ -12136,6 +12410,39 @@ string
 <code>labels</code></br>
 <em>
 map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-request-batch</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>request-batch-enable-cross-command</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>request-batch-wait-duration</code></br>
+<em>
+string
 </em>
 </td>
 <td>
@@ -12850,6 +13157,67 @@ string
 <td>
 <em>(Optional)</em>
 <p>The value of this field will be truncated to seconds.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvunifiedreadpoolconfig">TiKVUnifiedReadPoolConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvreadpoolconfig">TiKVReadPoolConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>min-thread-count</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-thread-count</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>stack-size</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-tasks-per-worker</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
