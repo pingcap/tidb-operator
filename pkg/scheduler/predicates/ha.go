@@ -120,32 +120,42 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	replicas := getReplicasFrom(tc, component)
 	klog.Infof("ha: tidbcluster %s/%s component %s replicas %d", ns, tcName, component, replicas)
 
-	allNodes := make(sets.String)
-	nodeMap := make(map[string][]string)
+	var topologyKey string
+	if tc.Annotations["topologyKey"] != "" {
+		topologyKey = tc.Annotations["topologyKey"]
+	} else {
+		topologyKey = "kubernetes.io/hostname"
+	}
+	klog.Infof("current topology key: %s", topologyKey)
+
+	allTopologies := make(sets.String)
+	topologyMap := make(map[string]sets.String)
+
 	for _, node := range nodes {
-		nodeMap[node.GetName()] = make([]string, 0)
+		topologyMap[node.Labels[topologyKey]] = make(sets.String)
 	}
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
-		if nodeName != "" {
-			allNodes.Insert(nodeName)
-		}
-		if nodeName == "" || nodeMap[nodeName] == nil {
-			continue
-		}
 
-		nodeMap[nodeName] = append(nodeMap[nodeName], pName)
+		topology := getTopologyFromNode(topologyKey, nodeName, nodes)
+		if topology != "" {
+			allTopologies.Insert(topology)
+			topologyMap[topology] = topologyMap[topology].Insert(pName)
+		}
+		if topology == "" || topologyMap[topology] == nil {
+			klog.Infof("pod %s is not bind", pName)
+		}
 	}
-	klog.V(4).Infof("nodeMap: %+v", nodeMap)
+	klog.V(4).Infof("topologyMap: %+v", topologyMap)
 
 	min := -1
-	minNodeNames := make([]string, 0)
-	maxPodsPerNode := 0
+	minTopologies := make([]string, 0)
+	maxPodsPerTopology := 0
 
 	if component == label.PDLabelVal {
 		/**
-		 * replicas     maxPodsPerNode
+		 * replicas     maxPodsPerTopology
 		 * ---------------------------
 		 * 1            1
 		 * 2            1
@@ -154,20 +164,20 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		 * 5            2
 		 * ...
 		 */
-		maxPodsPerNode = int((replicas+1)/2) - 1
-		if maxPodsPerNode <= 0 {
-			maxPodsPerNode = 1
+		maxPodsPerTopology = int((replicas+1)/2) - 1
+		if maxPodsPerTopology <= 0 {
+			maxPodsPerTopology = 1
 		}
 	} else {
-		// 1. TiKV instances must run on at least 3 nodes, otherwise HA is not possible
-		if allNodes.Len() < 3 {
-			maxPodsPerNode = 1
+		// 1. TiKV instances must run on at least 3 nodes(topologies), otherwise HA is not possible
+		if allTopologies.Len() < 3 {
+			maxPodsPerTopology = 1
 		} else {
 			/**
-			 * 2. we requires TiKV instances to run on at least 3 nodes, so max
-			 * allowed pods on each node is ceil(replicas / 3)
+			 * 2. we requires TiKV instances to run on at least 3 nodes(topologies), so max
+			 * allowed pods on each topology is ceil(replicas / 3)
 			 *
-			 * replicas     maxPodsPerNode   best HA on three nodes
+			 * replicas     maxPodsPerTopology   best HA on three topologies
 			 * ---------------------------------------------------
 			 * 3            1                1, 1, 1
 			 * 4            2                1, 1, 2
@@ -177,57 +187,57 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 			 * 8            3                2, 3, 3
 			 * ...
 			 */
-			maxPodsPerNode = int(math.Ceil(float64(replicas) / 3))
+			maxPodsPerTopology = int(math.Ceil(float64(replicas) / 3))
 		}
 	}
 
-	for nodeName, podNames := range nodeMap {
+	for topology, podNames := range topologyMap {
 		podsCount := len(podNames)
 
 		// tikv replicas less than 3 cannot achieve high availability
 		if component == label.TiKVLabelVal && replicas < 3 {
-			minNodeNames = append(minNodeNames, nodeName)
-			klog.Infof("replicas is %d, add node %s to minNodeNames", replicas, nodeName)
+			minTopologies = append(minTopologies, topology)
+			klog.Infof("replicas is %d, add topology %s to minTopologies", replicas, topology)
 			continue
 		}
 
-		if podsCount+1 > maxPodsPerNode {
-			// pods on this node exceeds the limit, skip
-			klog.Infof("node %s has %d instances of component %s, max allowed is %d, skipping",
-				nodeName, podsCount, component, maxPodsPerNode)
+		if podsCount+1 > maxPodsPerTopology {
+			// pods on this topology exceeds the limit, skip
+			klog.Infof("topology %s has %d instances of component %s, max allowed is %d, skipping",
+				topology, podsCount, component, maxPodsPerTopology)
 			continue
 		}
 
-		// Choose nodes which has minimum count of the component
+		// Choose topology which has minimum count of the component
 		if min == -1 {
 			min = podsCount
 		}
 		if podsCount > min {
-			klog.Infof("node %s podsCount %d > min %d, skipping", nodeName, podsCount, min)
+			klog.Infof("topology %s podsCount %d > min %d, skipping", topology, podsCount, min)
 			continue
 		}
 		if podsCount < min {
 			min = podsCount
-			minNodeNames = make([]string, 0)
+			minTopologies = make([]string, 0)
 		}
-		minNodeNames = append(minNodeNames, nodeName)
+		minTopologies = append(minTopologies, topology)
 	}
 
-	if len(minNodeNames) == 0 {
-		nodesStrArr := []string{}
-		for nodeName, podNameArr := range nodeMap {
-			s := fmt.Sprintf("%s (%d %s pods)",
-				nodeName, len(podNameArr), strings.ToLower(component))
-			nodesStrArr = append(nodesStrArr, s)
+	if len(minTopologies) == 0 {
+		topologyStrArr := []string{}
+		for topology, podNames := range topologyMap {
+			s := fmt.Sprintf("%s (%d %s pods)", topology, podNames.Len(), strings.ToLower(component))
+			topologyStrArr = append(topologyStrArr, s)
 		}
-		sort.Strings(nodesStrArr)
+		sort.Strings(topologyStrArr)
 
-		// example: unable to schedule to nodes: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per node: 1
-		errMsg := fmt.Sprintf("unable to schedule to nodes: %s, max pods per node: %d",
-			strings.Join(nodesStrArr, ", "), maxPodsPerNode)
+		// example: unable to schedule to topologies: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per topology: 1
+		errMsg := fmt.Sprintf("unable to schedule to topology: %s, max pods per topology: %d",
+			strings.Join(topologyStrArr, ", "), maxPodsPerTopology)
 		return nil, errors.New(errMsg)
 	}
-	return getNodeFromNames(nodes, minNodeNames), nil
+
+	return getNodeFromTopologies(nodes, topologyKey, minTopologies), nil
 }
 
 // kubernetes scheduling is parallel, to achieve HA, we must ensure the scheduling is serial,
@@ -391,4 +401,18 @@ func GetNodeNames(nodes []apiv1.Node) []string {
 
 func getPodNameFromPVC(pvc *apiv1.PersistentVolumeClaim) string {
 	return strings.TrimPrefix(pvc.Name, fmt.Sprintf("%s-", pvc.Labels[label.ComponentLabelKey]))
+}
+
+func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node) string {
+	var topology string
+	for _, node := range nodes {
+		if _, ok := node.Labels[topologyKey]; !ok {
+			continue
+		}
+		if node.Name == nodeName {
+			topology = node.Labels[topologyKey]
+			break
+		}
+	}
+	return topology
 }

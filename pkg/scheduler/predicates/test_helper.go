@@ -22,15 +22,33 @@ func fakeThreeNodes() []apiv1.Node {
 	return []apiv1.Node{
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-1",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-1",
+					"zone":                   "zone1",
+				},
+			},
 		},
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-2"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-2",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-2",
+					"zone":                   "zone2",
+				},
+			},
 		},
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-3"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-3",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-3",
+					"zone":                   "zone3",
+				},
+			},
 		},
 	}
 }
@@ -39,19 +57,88 @@ func fakeFourNodes() []apiv1.Node {
 	return []apiv1.Node{
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-1",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-1",
+					"zone":                   "zone1",
+				},
+			},
 		},
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-2"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-2",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-2",
+					"zone":                   "zone2",
+				},
+			},
 		},
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-3"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-3",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-3",
+					"zone":                   "zone3",
+				},
+			},
 		},
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-4"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-4",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-4",
+					"zone":                   "zone4",
+				},
+			},
+		},
+	}
+}
+
+func fakeFourNodesWithThreeTopologies() []apiv1.Node {
+	return []apiv1.Node{
+		{
+			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-1",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-1",
+					"zone":                   "zone1",
+				},
+			},
+		},
+		{
+			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-2",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-2",
+					"zone":                   "zone2",
+				},
+			},
+		},
+		{
+			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-3",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-3",
+					"zone":                   "zone3",
+				},
+			},
+		},
+		{
+			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-4",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-4",
+					"zone":                   "zone3",
+				},
+			},
 		},
 	}
 }
@@ -60,11 +147,23 @@ func fakeTwoNodes() []apiv1.Node {
 	return []apiv1.Node{
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-1",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-1",
+					"zone":                   "zone1",
+				},
+			},
 		},
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-2"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-2",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-2",
+					"zone":                   "zone2",
+				},
+			},
 		},
 	}
 }
@@ -73,7 +172,13 @@ func fakeOneNode() []apiv1.Node {
 	return []apiv1.Node{
 		{
 			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
-			ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "kube-node-1",
+				Labels: map[string]string{
+					"kubernetes.io/hostname": "kube-node-1",
+					"zone":                   "zone1",
+				},
+			},
 		},
 	}
 }

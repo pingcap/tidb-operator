@@ -64,6 +64,10 @@ discovery:
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
 
+# The scheduler achieves HA scheduling based on the topologyKey.
+# You can modify it to other label of node
+topologyKey: kubernetes.io/hostname
+
 # Whether enable the TLS connection between TiDB server components
 tlsCluster:
   # The steps to enable this feature:
