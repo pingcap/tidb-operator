@@ -4957,6 +4957,13 @@ spec:
                 tableRegex:
                   type: string
               type: object
+            resources:
+              properties:
+                limits:
+                  type: object
+                requests:
+                  type: object
+              type: object
             s3:
               properties:
                 acl:
@@ -5360,6 +5367,13 @@ spec:
               required:
               - projectId
               - secretName
+              type: object
+            resources:
+              properties:
+                limits:
+                  type: object
+                requests:
+                  type: object
               type: object
             s3:
               properties:
@@ -5819,6 +5833,13 @@ spec:
                       type: array
                     tableRegex:
                       type: string
+                  type: object
+                resources:
+                  properties:
+                    limits:
+                      type: object
+                    requests:
+                      type: object
                   type: object
                 s3:
                   properties:
