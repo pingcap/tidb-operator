@@ -6073,6 +6073,30 @@ spec:
               type: object
             tidb:
               properties:
+                externalEndpoint:
+                  properties:
+                    host:
+                      type: string
+                    path:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    tlsSecret:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - host
+                  - port
+                  - path
+                  type: object
                 maxReplicas:
                   format: int32
                   type: integer
@@ -6101,6 +6125,30 @@ spec:
               type: object
             tikv:
               properties:
+                externalEndpoint:
+                  properties:
+                    host:
+                      type: string
+                    path:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    tlsSecret:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - host
+                  - port
+                  - path
+                  type: object
                 maxReplicas:
                   format: int32
                   type: integer
