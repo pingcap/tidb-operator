@@ -10671,6 +10671,30 @@ spec:
             tidb:
               description: TidbAutoScalerSpec describes the spec for tidb auto-scaling
               properties:
+                externalEndpoint:
+                  properties:
+                    host:
+                      type: string
+                    path:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    tlsSecret:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - host
+                  - port
+                  - path
+                  type: object
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
@@ -10731,6 +10755,30 @@ spec:
             tikv:
               description: TikvAutoScalerSpec describes the spec for tikv auto-scaling
               properties:
+                externalEndpoint:
+                  properties:
+                    host:
+                      type: string
+                    path:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    tlsSecret:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  required:
+                  - host
+                  - port
+                  - path
+                  type: object
                 maxReplicas:
                   description: maxReplicas is the upper limit for the number of replicas
                     to which the autoscaler can scale out. It cannot be less than
