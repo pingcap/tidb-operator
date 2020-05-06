@@ -21,7 +21,7 @@ import (
 func fakeThreeNodes() []apiv1.Node {
 	return []apiv1.Node{
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-1",
 				Labels: map[string]string{
@@ -31,7 +31,7 @@ func fakeThreeNodes() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-2",
 				Labels: map[string]string{
@@ -41,7 +41,7 @@ func fakeThreeNodes() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-3",
 				Labels: map[string]string{
@@ -56,7 +56,7 @@ func fakeThreeNodes() []apiv1.Node {
 func fakeFourNodes() []apiv1.Node {
 	return []apiv1.Node{
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-1",
 				Labels: map[string]string{
@@ -66,7 +66,7 @@ func fakeFourNodes() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-2",
 				Labels: map[string]string{
@@ -76,7 +76,7 @@ func fakeFourNodes() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-3",
 				Labels: map[string]string{
@@ -86,7 +86,7 @@ func fakeFourNodes() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-4",
 				Labels: map[string]string{
@@ -101,7 +101,7 @@ func fakeFourNodes() []apiv1.Node {
 func fakeFourNodesWithThreeTopologies() []apiv1.Node {
 	return []apiv1.Node{
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-1",
 				Labels: map[string]string{
@@ -111,7 +111,7 @@ func fakeFourNodesWithThreeTopologies() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-2",
 				Labels: map[string]string{
@@ -121,7 +121,7 @@ func fakeFourNodesWithThreeTopologies() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-3",
 				Labels: map[string]string{
@@ -131,7 +131,7 @@ func fakeFourNodesWithThreeTopologies() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-4",
 				Labels: map[string]string{
@@ -146,7 +146,7 @@ func fakeFourNodesWithThreeTopologies() []apiv1.Node {
 func fakeTwoNodes() []apiv1.Node {
 	return []apiv1.Node{
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-1",
 				Labels: map[string]string{
@@ -156,7 +156,7 @@ func fakeTwoNodes() []apiv1.Node {
 			},
 		},
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-2",
 				Labels: map[string]string{
@@ -171,7 +171,7 @@ func fakeTwoNodes() []apiv1.Node {
 func fakeOneNode() []apiv1.Node {
 	return []apiv1.Node{
 		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "kube-node-1",
 				Labels: map[string]string{
