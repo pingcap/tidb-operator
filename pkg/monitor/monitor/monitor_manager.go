@@ -15,6 +15,8 @@ package monitor
 
 import (
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/monitor"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -36,6 +38,7 @@ import (
 )
 
 type MonitorManager struct {
+	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
 	typedControl       controller.TypedControlInterface
 	deploymentLister   appslisters.DeploymentLister
@@ -59,7 +62,12 @@ func NewMonitorManager(
 	recorder record.EventRecorder) *MonitorManager {
 	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
 	return &MonitorManager{
+		pvManager: meta.NewReclaimPolicyMonitorManager(
+			pvcLister,
+			pvLister,
+			pvControl),
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(kubeCli.Discovery()),
 		typedControl:       typedControl,
 		deploymentLister:   kubeInformerFactory.Apps().V1().Deployments().Lister(),
@@ -71,10 +79,15 @@ func NewMonitorManager(
 	}
 }
 
-func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
+func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
 		return nil
+	}
+
+	// syncing all PVs managed by operator's reclaim policy to Retain
+	if err := mm.pvManager.SyncMonitor(monitor); err != nil {
+		return err
 	}
 
 	// Sync Service
