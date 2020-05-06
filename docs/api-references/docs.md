@@ -1437,19 +1437,6 @@ Kubernetes core/v1.PersistentVolumeReclaimPolicy
 </tr>
 <tr>
 <td>
-<code>enablePVReclaim</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
-Optional: Defaults to false</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>imagePullPolicy</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#pullpolicy-v1-core">
@@ -14300,19 +14287,6 @@ Kubernetes core/v1.PersistentVolumeReclaimPolicy
 </td>
 <td>
 <p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enablePVReclaim</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
-Optional: Defaults to false</p>
 </td>
 </tr>
 <tr>

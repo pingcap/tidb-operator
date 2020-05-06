@@ -5492,8 +5492,6 @@ spec:
                 - name
                 type: object
               type: array
-            enablePVReclaim:
-              type: boolean
             grafana: {}
             imagePullPolicy:
               type: string
