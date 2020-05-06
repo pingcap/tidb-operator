@@ -85,11 +85,6 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return nil
 	}
 
-	// syncing all PVs managed by operator's reclaim policy to Retain
-	if err := mm.pvManager.SyncMonitor(monitor); err != nil {
-		return err
-	}
-
 	// Sync Service
 	if err := mm.syncTidbMonitorService(monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Service failed, err: %v", monitor.Namespace, monitor.Name, err)
@@ -108,6 +103,12 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 			return err
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
+
+		// syncing all PVs managed by operator's reclaim policy to Retain
+		if err := mm.pvManager.SyncMonitor(monitor); err != nil {
+			return err
+		}
+		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
 
 	// Sync Deployment
