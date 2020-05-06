@@ -760,16 +760,19 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
 		if err != nil {
+			klog.Errorf("err: %v", err)
 			return err
 		}
 		klog.V(4).Infof("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
+			klog.Errorf("err: %v", err)
 			return err
 		}
 		klog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
+			klog.Errorf("err: %v", err)
 			return err
 		}
 		klog.V(4).Infof("all clusters is available")
@@ -820,7 +823,8 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			for _, condition := range node.Status.Conditions {
 				if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
-					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+					klog.Infof("node: [%s] is not in running", node.GetName())
+					return false, nil
 				}
 			}
 		}
@@ -835,7 +839,8 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			podState := GetPodStatus(&pod)
 			if podState != string(corev1.PodRunning) {
-				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetNamespace(), pod.GetName(), podState)
+				klog.Infof("pod:[%s/%s] is unavailable,state is %s", pod.GetNamespace(), pod.GetName(), podState)
+				return false, nil
 			}
 		}
 		return true, nil
