@@ -5492,6 +5492,8 @@ spec:
                 - name
                 type: object
               type: array
+            enablePVReclaim:
+              type: boolean
             grafana: {}
             imagePullPolicy:
               type: string
@@ -5503,6 +5505,8 @@ spec:
             persistent:
               type: boolean
             prometheus: {}
+            pvReclaimPolicy:
+              type: string
             reloader: {}
             storage:
               type: string
