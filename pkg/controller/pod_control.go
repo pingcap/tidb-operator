@@ -137,7 +137,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 				}
 			}
 		}
-	case label.TiKVLabelVal:
+	case label.TiKVLabelVal, label.TiFlashLabelVal:
 		if labels[label.StoreIDLabelKey] == "" {
 			// get store id
 			stores, err := pdClient.GetStores()
@@ -305,7 +305,6 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 	}
 
 	setIfNotEmpty(pod.Labels, label.NameLabelKey, TestName)
-	setIfNotEmpty(pod.Labels, label.ComponentLabelKey, TestComponentName)
 	setIfNotEmpty(pod.Labels, label.ManagedByLabelKey, TestManagedByName)
 	setIfNotEmpty(pod.Labels, label.InstanceLabelKey, TestClusterName)
 	setIfNotEmpty(pod.Labels, label.ClusterIDLabelKey, TestClusterID)

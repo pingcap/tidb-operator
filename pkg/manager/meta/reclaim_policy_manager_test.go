@@ -47,8 +47,8 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForMeta()
-		pv1 := newPV()
-		pvc1 := newPVC(tc)
+		pv1 := newPV("1")
+		pvc1 := newPVC(tc, "1")
 
 		if !test.pvcHasLabels {
 			pvc1.Labels = nil
@@ -182,14 +182,14 @@ func newTidbClusterForMeta() *v1alpha1.TidbCluster {
 	}
 }
 
-func newPV() *corev1.PersistentVolume {
+func newPV(index string) *corev1.PersistentVolume {
 	return &corev1.PersistentVolume{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolume",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pv-1",
+			Name:      "pv-" + index,
 			Namespace: "",
 			UID:       types.UID("test"),
 		},
@@ -198,24 +198,24 @@ func newPV() *corev1.PersistentVolume {
 			ClaimRef: &corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "PersistentVolumeClaim",
-				Name:       "pvc-1",
+				Name:       "pvc-" + index,
 				Namespace:  corev1.NamespaceDefault,
-				UID:        types.UID("test"),
+				UID:        types.UID("pv" + index),
 			},
 		},
 	}
 }
 
-func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
+func newPVC(tc *v1alpha1.TidbCluster, index string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pvc-1",
+			Name:      "pvc-" + index,
 			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
+			UID:       types.UID("pvc" + index),
 			Labels: map[string]string{
 				label.NameLabelKey:      controller.TestName,
 				label.ComponentLabelKey: controller.TestComponentName,
@@ -224,7 +224,7 @@ func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			VolumeName: "pv-1",
+			VolumeName: "pv-" + index,
 		},
 	}
 }
