@@ -50,12 +50,12 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 		control := NewRealGenericControl(withTracker, recorder)
 		controller := newTidbCluster()
 		if tt.existing != nil {
-			_, err := control.CreateOrUpdate(controller, tt.existing, tt.mergeFn)
+			_, err := control.CreateOrUpdate(controller, tt.existing, tt.mergeFn, true)
 			g.Expect(err).To(Succeed())
 		}
 		withTracker.UpdateTracker.SetRequests(0)
 		withTracker.CreateTracker.SetRequests(0)
-		result, err := control.CreateOrUpdate(controller, tt.desired, tt.mergeFn)
+		result, err := control.CreateOrUpdate(controller, tt.desired, tt.mergeFn, true)
 		tt.expectFn(g, withTracker, result.(*appsv1.Deployment), err)
 	}
 	mergeFn := func(existing, desired runtime.Object) error {
