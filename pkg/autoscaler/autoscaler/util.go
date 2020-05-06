@@ -132,23 +132,20 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		if tac.Spec.TiKV.MinReplicas == nil {
 			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(1)
 		}
-		if len(tac.Spec.TiKV.Metrics) == 0 {
-			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
-		}
-		if tac.Spec.TiKV.ScaleInThreshold == nil {
-			tac.Spec.TiKV.ScaleInThreshold = pointer.Int32Ptr(5)
-		}
-		if tac.Spec.TiKV.ScaleOutThreshold == nil {
-			tac.Spec.TiKV.ScaleOutThreshold = pointer.Int32Ptr(3)
-		}
-		if tac.Spec.TiKV.MetricsTimeDuration == nil {
-			tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
-		}
 		if tac.Spec.TiKV.ScaleOutIntervalSeconds == nil {
 			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
 		}
 		if tac.Spec.TiKV.ScaleInIntervalSeconds == nil {
 			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+		}
+		// If ExternalEndpoint is not provided, we would set default metrics
+		if tac.Spec.TiKV.ExternalEndpoint == nil {
+			if len(tac.Spec.TiKV.Metrics) == 0 {
+				tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
+			}
+			if tac.Spec.TiKV.MetricsTimeDuration == nil {
+				tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
+			}
 		}
 	}
 
@@ -156,23 +153,19 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		if tac.Spec.TiDB.MinReplicas == nil {
 			tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(1)
 		}
-		if len(tac.Spec.TiDB.Metrics) == 0 {
-			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
-		}
-		if tac.Spec.TiDB.ScaleInThreshold == nil {
-			tac.Spec.TiDB.ScaleInThreshold = pointer.Int32Ptr(5)
-		}
-		if tac.Spec.TiDB.ScaleOutThreshold == nil {
-			tac.Spec.TiDB.ScaleOutThreshold = pointer.Int32Ptr(3)
-		}
-		if tac.Spec.TiDB.MetricsTimeDuration == nil {
-			tac.Spec.TiDB.MetricsTimeDuration = pointer.StringPtr("3m")
-		}
 		if tac.Spec.TiDB.ScaleOutIntervalSeconds == nil {
 			tac.Spec.TiDB.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
 		}
 		if tac.Spec.TiDB.ScaleInIntervalSeconds == nil {
 			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+		}
+		if tac.Spec.TiDB.ExternalEndpoint == nil {
+			if len(tac.Spec.TiDB.Metrics) == 0 {
+				tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
+			}
+			if tac.Spec.TiDB.MetricsTimeDuration == nil {
+				tac.Spec.TiDB.MetricsTimeDuration = pointer.StringPtr("3m")
+			}
 		}
 	}
 
