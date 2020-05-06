@@ -707,6 +707,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
+			tac.Spec.TiKV.Metrics = []autoscalingv2beta2.MetricSpec{}
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
 
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
@@ -866,6 +867,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
+			tac.Spec.TiDB.Metrics = []autoscalingv2beta2.MetricSpec{}
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
