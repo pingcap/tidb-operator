@@ -2329,6 +2329,21 @@ the auto-scaling would be performed.
 If not set, the default value is 5.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>externalEndpoint</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.ExternalEndpoint">
+ExternalEndpoint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalEndpoint makes the auto-scaler controller able to query the external service
+to fetch the recommended replicas for TiKV/TiDB</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus</h3>
@@ -3104,6 +3119,62 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable creating expression index.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pingcap.com/v1alpha1.ExternalEndpoint">ExternalEndpoint</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.BasicAutoScalerSpec">BasicAutoScalerSpec</a>)
+</p>
+<p>
+<p>ExternalEndpoint describes the external service endpoint
+which provides the ability to get the tikv/tidb auto-scaling recommended replicas</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>host</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Host indicates the external service&rsquo;s host</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Port indicates the external service&rsquo;s port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsSecret</code></br>
+<em>
+<a href="#pingcap.com/v1alpha1.SecretRef">
+SecretRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https
+to communicate to the external service</p>
 </td>
 </tr>
 </tbody>
@@ -7321,6 +7392,44 @@ string
 <p>
 <p>S3StorageProviderType represents the specific storage provider that implements the S3 interface</p>
 </p>
+<h3 id="pingcap.com/v1alpha1.SecretRef">SecretRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pingcap.com/v1alpha1.ExternalEndpoint">ExternalEndpoint</a>)
+</p>
+<p>
+<p>SecretRef indicates to secret ref</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="pingcap.com/v1alpha1.Security">Security</h3>
 <p>
 (<em>Appears on:</em>
