@@ -34,15 +34,4 @@ jobs:
           printf "%s\n" ${{ secrets.AWS_ACCESS_KEY }} ${{ secrets.AWS_SECRET_KEY }} ${{ secrets.AWS_REGION }} "json" | aws configure
       - name: Upload
         run: |
-          CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
-          if [ "$CURRENT_BRANCH" = "master" ]
-          then
-            CURRENT_BRANCH=dev
-          elif [ "$CURRENT_BRANCH" = "release-1.0" ]
-          then
-            CURRENT_BRANCH=stable
-          elif [ "$CURRENT_BRANCH" = "release-1.1" ]
-          then
-            CURRENT_BRANCH=v1.1
-          fi
-          cloud-assets-utils verify-and-sync -qiniu true -qiniu-bucket ${{ secrets.QINIU_BUCKET_NAME }} -aws true -aws-bucket ${{ secrets.AWS_BUCKET_NAME }} media -replace-first-path-to images/tidb-in-kubernetes/${CURRENT_BRANCH}
+          cloud-assets-utils verify-and-sync -qiniu true -qiniu-bucket ${{ secrets.QINIU_BUCKET_NAME }} -aws true -aws-bucket ${{ secrets.AWS_BUCKET_NAME }} media -replace-first-path-to images/tidb-in-kubernetes
