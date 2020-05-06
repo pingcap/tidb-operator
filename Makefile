@@ -84,6 +84,7 @@ endif
 	cp -r charts/tidb-operator tests/images/e2e
 	cp -r charts/tidb-cluster tests/images/e2e
 	cp -r charts/tidb-backup tests/images/e2e
+	cp -r charts/tidb-drainer tests/images/e2e
 	cp -r manifests tests/images/e2e
 	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
 

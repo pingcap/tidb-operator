@@ -143,13 +143,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name:    "basic-v3",
 			},
 			{
-				Version: utilimage.TiDBV2Version,
-				Name:    "basic-v2",
-				Values: map[string]string{
-					// verify v2.1.x configuration compatibility
-					// https://github.com/pingcap/tidb-operator/pull/950
-					"tikv.resources.limits.storage": "1G",
-				},
+				Version: utilimage.TiDBV4Version,
+				Name:    "basic-v4",
 			},
 		}
 
@@ -213,7 +208,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			ginkgo.By("Testing HostNetwork feature with Advanced StatefulSet")
 		}
 
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "host-network", "", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
@@ -231,7 +226,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Upgrading TiDB Cluster", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "3"
 
 		ginkgo.By("Creating webhook certs and self signing it")
@@ -250,10 +245,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckTidbClusterStatusOrDie(&cluster)
 		oa.CheckDisasterToleranceOrDie(&cluster)
 
-		upgradeVersions := cfg.GetUpgradeTidbVersionsOrDie()
-		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, upgradeVersions[0]))
+		ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", cluster.ClusterVersion, utilimage.TiDBV3UpgradeVersion))
 		ctx, cancel := context.WithCancel(context.Background())
-		cluster.UpgradeAll(upgradeVersions[0])
+		cluster.UpgradeAll(utilimage.TiDBV3UpgradeVersion)
 		oa.UpgradeTidbClusterOrDie(&cluster)
 		oa.CheckUpgradeOrDie(ctx, &cluster)
 		oa.CheckTidbClusterStatusOrDie(&cluster)
@@ -273,8 +267,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Backup and restore TiDB Cluster", func() {
-		clusterA := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster3", "admin", "")
-		clusterB := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster4", "admin", "")
+		clusterA := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster3", "admin", utilimage.TiDBV3Version)
+		clusterB := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster4", "admin", utilimage.TiDBV3Version)
 		oa.DeployTidbClusterOrDie(&clusterA)
 		oa.DeployTidbClusterOrDie(&clusterB)
 		oa.CheckTidbClusterStatusOrDie(&clusterA)
@@ -311,7 +305,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 		err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err)
-		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", "")
+		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV3Version)
 
 		// create restore cluster
 		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
@@ -322,7 +316,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 		err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err)
-		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", "")
+		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV3Version)
 
 		// import some data to sql with blockwriter
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
@@ -447,7 +441,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Service: Sync TiDB service", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "service-it", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
@@ -540,7 +534,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	// Basic IT for managed in TidbCluster CR
 	// TODO: deploy pump through CR in backup and restore IT
 	ginkgo.It("Pump: Test managing Pump in TidbCluster CRD", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "pump-it", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
@@ -675,7 +669,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("API: Migrate from helm to CRD", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "helm-migration", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
@@ -787,7 +781,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Restarter: Testing restarting by annotations", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "restarter", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "restarter", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
@@ -885,7 +879,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", "")
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
@@ -1087,8 +1081,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 	})
 
-	ginkgo.It("tidb-scale: clear TiDB failureMembers when scale TiDB to zero", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", "")
+	ginkgo.It("[Feature: AutoFailover] clear TiDB failureMembers when scale TiDB to zero", func() {
+		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "tidb-scale", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "3"
 		cluster.Resources["tikv.replicas"] = "1"
 		cluster.Resources["tidb.replicas"] = "1"
@@ -1153,7 +1147,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to delete cert-manager")
 		})
 
-		ginkgo.It("TLS for MySQL Client", func() {
+		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
 			ginkgo.By("Installing tidb issuer")
@@ -1162,7 +1156,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Installing tidb server and client certificate")
 			err = installTiDBCertificates(ns, tcName)
-			framework.ExpectNoError(err, "failed to install tidb server and client certificate template")
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+			ginkgo.By("Installing tidb components certificates")
+			err = installTiDBComponentsCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
@@ -1170,9 +1168,59 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+			tc.Spec.Pump = &v1alpha1.PumpSpec{
+				Replicas:             2,
+				BaseImage:            "pingcap/tidb-binlog",
+				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
+				GenericConfig:        tcconfig.New(map[string]interface{}{}),
+			}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			source := &tests.TidbClusterConfig{
+				Namespace:      ns,
+				ClusterName:    tcName,
+				OperatorTag:    cfg.OperatorTag,
+				ClusterVersion: utilimage.TiDBV4Version,
+			}
+			targetTcName := "tls-target"
+			targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBV4Version)
+			targetTc.Spec.PD.Replicas = 1
+			targetTc.Spec.TiKV.Replicas = 1
+			targetTc.Spec.TiDB.Replicas = 1
+			err = genericCli.Create(context.TODO(), targetTc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			drainerConfig := &tests.DrainerConfig{
+				DrainerName:       "tls-drainer",
+				OperatorTag:       cfg.OperatorTag,
+				SourceClusterName: tcName,
+				Namespace:         ns,
+				DbType:            tests.DbTypeTiDB,
+				Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
+				Port:              "4000",
+				TLSCluster:        true,
+				User:              "root",
+				Password:          "",
+			}
+
+			ginkgo.By("Deploying tidb drainer")
+			err = oa.DeployDrainer(drainerConfig, source)
+			framework.ExpectNoError(err)
+			err = oa.CheckDrainer(drainerConfig, source)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Inserting data into source db")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, ""))
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Checking tidb-binlog works as expected")
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, binlogWorksWhileTLSIsEnabled(fw, c, ns, targetTcName, ""))
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
@@ -1203,7 +1251,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Upgrading tidb cluster")
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.Version = "nightly"
+				tc.Spec.Version = utilimage.TiDBV4UpgradeVersion
 				return nil
 			})
 			framework.ExpectNoError(err)
@@ -1214,10 +1262,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
-	if tidbVersion == "" {
-		tidbVersion = cfg.GetTiDBVersionOrDie()
-	}
-	topologyKey := "rack"
 	return tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
@@ -1257,7 +1301,7 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 			BatchSize:   1,
 			RawSize:     1,
 		},
-		TopologyKey:            topologyKey,
+		TopologyKey:            "rack",
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tidbVersion,
 	}

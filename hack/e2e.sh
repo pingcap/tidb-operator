@@ -437,6 +437,9 @@ elif [ "$PROVIDER" == "gke" ]; then
         echo "error: GCP_REGION or GCP_ZONE cannot be both set"
         exit 1
     fi
+    echo "info: activating GCP service account"
+    gcloud auth activate-service-account --key-file "$GCP_CREDENTIALS"
+    gcloud config set project "$GCP_PROJECT"
     echo "info: preparing ssh keypairs for GCP"
     if [ ! -d ~/.ssh ]; then
         mkdir ~/.ssh
@@ -474,18 +477,25 @@ EOF
 elif [ "$PROVIDER" == "eks" ]; then
     export KUBE_SSH_USER=ec2-user
     hack::ensure_aws_k8s_tester
-    if [ -n "$AWS_REGION" ]; then
-        aws configure set default.region "$AWS_REGION"
+    if [ -z "$AWS_REGION" ]; then
+        echo "error: AWS_REGION is required"
+        exit 1
     fi
     if [ -z "$AWS_ZONE" ]; then
         AWS_ZONE=${AWS_REGION}a
     fi
-    if [ -n "$AWS_ACCESS_KEY_ID" ]; then
-        aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+        echo "error: AWS_ACCESS_KEY_ID is required"
+        exit 1
     fi
-    if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
-        aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+        echo "error: AWS_SECRET_ACCESS_KEY is required"
+        exit 1
     fi
+    echo "info: activating AWS credentials"
+    aws configure set default.region "$AWS_REGION"
+    aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
     mngName=$CLUSTER-mng-$RANDOM
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER

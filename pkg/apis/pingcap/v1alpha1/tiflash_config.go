@@ -32,7 +32,9 @@ type TiFlashConfig struct {
 // +k8s:openapi-gen=false
 type FlashServerConfig struct {
 	// +optional
-	EngineAddr       string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
+	EngineAddr string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
+	// +optional
+	StatusAddr       string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
 	TiKVServerConfig `json:",inline"`
 }
 
@@ -129,7 +131,7 @@ type CommonConfig struct {
 	// +optional
 	Flash *Flash `json:"flash,omitempty" toml:"flash,omitempty"`
 	// +optional
-	FlashLogger *FlashLogger `json:"loger,omitempty" toml:"logger,omitempty"`
+	FlashLogger *FlashLogger `json:"logger,omitempty" toml:"logger,omitempty"`
 	// +optional
 	// +k8s:openapi-gen=false
 	FlashApplication *FlashApplication `json:"application,omitempty" toml:"application,omitempty"`

@@ -140,7 +140,11 @@ func setTiFlashProxyConfigDefault(config *v1alpha1.ProxyConfig, clusterName, ns 
 	if config.Server.EngineAddr == "" {
 		config.Server.EngineAddr = fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns)
 	}
+	if config.Server.StatusAddr == "" {
+		config.Server.StatusAddr = "0.0.0.0:20292"
+	}
 }
+
 func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, ns string) {
 	if config.TmpPath == "" {
 		config.TmpPath = "/data0/tmp"

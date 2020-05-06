@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	skipReasonPVCCleanerIsNotPDOrTiKV            = "pvc cleaner: member type is not pd or tikv"
+	skipReasonPVCCleanerIsNotTarget              = "pvc cleaner: member type is not pd, tikv or tiflash"
 	skipReasonPVCCleanerDeferDeletePVCNotHasLock = "pvc cleaner: defer delete PVC not has schedule lock"
 	skipReasonPVCCleanerPVCNotHasLock            = "pvc cleaner: pvc not has schedule lock"
 	skipReasonPVCCleanerPodWaitingForScheduling  = "pvc cleaner: waiting for pod scheduling"
@@ -102,8 +102,8 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 	for _, pvc := range pvcs {
 		pvcName := pvc.GetName()
 		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV()) {
-			skipReason[pvcName] = skipReasonPVCCleanerIsNotPDOrTiKV
+		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash()) {
+			skipReason[pvcName] = skipReasonPVCCleanerIsNotTarget
 			continue
 		}
 
@@ -154,7 +154,7 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 			return skipReason, fmt.Errorf("cluster %s/%s get pvc %s pod %s from apiserver failed, err: %v", ns, tcName, pvcName, podName, err)
 		}
 
-		// Without pd or tikv pod reference this defer delete PVC, start to reclaim PV
+		// Without pod reference this defer delete PVC, start to reclaim PV
 		pvName := pvc.Spec.VolumeName
 		pv, err := rpc.pvLister.Get(pvName)
 		if err != nil {
@@ -209,8 +209,8 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 	for _, pvc := range pvcs {
 		pvcName := pvc.GetName()
 		l := label.Label(pvc.Labels)
-		if !(l.IsPD() || l.IsTiKV()) {
-			skipReason[pvcName] = skipReasonPVCCleanerIsNotPDOrTiKV
+		if !(l.IsPD() || l.IsTiKV() || l.IsTiFlash()) {
+			skipReason[pvcName] = skipReasonPVCCleanerIsNotTarget
 			continue
 		}
 

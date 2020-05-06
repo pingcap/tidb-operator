@@ -15,6 +15,7 @@ package _import
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the restore command
@@ -36,18 +38,41 @@ func (ro *Options) getRestoreDataPath() string {
 	return filepath.Join(constants.BackupRootPath, bucketName, backupName)
 }
 
-func (ro *Options) downloadBackupData(localPath string) error {
+func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	if err := util.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
 		return err
 	}
 
 	remoteBucket := util.NormalizeBucketURI(ro.BackupPath)
-	rcCopy := exec.Command("rclone", constants.RcloneConfigArg, "copyto", remoteBucket, localPath)
+	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath)
+	rcCopy := exec.Command("rclone", args...)
+
+	stdOut, err := rcCopy.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
+	}
+	stdErr, err := rcCopy.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
+	}
+
 	if err := rcCopy.Start(); err != nil {
 		return fmt.Errorf("cluster %s, start rclone copyto command for download backup data %s falied, err: %v", ro, ro.BackupPath, err)
 	}
+
+	var errMsg string
+	tmpOut, _ := ioutil.ReadAll(stdOut)
+	if len(tmpOut) > 0 {
+		klog.Infof(string(tmpOut))
+	}
+	tmpErr, _ := ioutil.ReadAll(stdErr)
+	if len(tmpErr) > 0 {
+		klog.Infof(string(tmpErr))
+		errMsg = string(tmpErr)
+	}
+
 	if err := rcCopy.Wait(); err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copyto command for download backup data %s failed, err: %v", ro, ro.BackupPath, err)
+		return fmt.Errorf("cluster %s, execute rclone copyto command for download backup data %s failed, errMsg: %v, err: %v", ro, ro.BackupPath, errMsg, err)
 	}
 
 	return nil
@@ -57,15 +82,17 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 	if exist := util.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
+	// args for restore
 	args := []string{
 		"--status-addr=0.0.0.0:8289",
 		"--backend=tidb",
 		"--server-mode=false",
-		"–-log-file=",
+		"--log-file=",
 		fmt.Sprintf("--tidb-user=%s", ro.User),
 		fmt.Sprintf("--tidb-password=%s", ro.Password),
 		fmt.Sprintf("--tidb-host=%s", ro.Host),
 		fmt.Sprintf("--d=%s", restorePath),
+		fmt.Sprintf("--tidb-port=%d", ro.Port),
 	}
 
 	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()

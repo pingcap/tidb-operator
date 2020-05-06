@@ -35,6 +35,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -234,11 +235,8 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		}
 	}
 
-	if tmm.autoFailover && tc.Spec.TiDB.MaxFailoverCount != nil {
-		if tc.Spec.TiDB.Replicas == int32(0) && tc.Status.TiDB.FailureMembers != nil {
-			tmm.tidbFailover.Recover(tc)
-		}
-		if tc.TiDBAllPodsStarted() && tc.TiDBAllMembersReady() && tc.Status.TiDB.FailureMembers != nil {
+	if tmm.autoFailover {
+		if tmm.shouldRecover(tc) {
 			tmm.tidbFailover.Recover(tc)
 		} else if tc.TiDBAllPodsStarted() && !tc.TiDBAllMembersReady() {
 			if err := tmm.tidbFailover.Failover(tc); err != nil {
@@ -248,6 +246,32 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 	}
 
 	return updateStatefulSet(tmm.setControl, tc, newTiDBSet, oldTiDBSet)
+}
+
+func (tmm *tidbMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
+	if tc.Status.TiDB.FailureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of tidb cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range tc.TiDBStsDesiredOrdinals(true) {
+		name := fmt.Sprintf("%s-%d", controller.TiDBMemberName(tc.GetName()), ordinal)
+		pod, err := tmm.podLister.Pods(tc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		status, ok := tc.Status.TiDB.Members[pod.Name]
+		if !ok || !status.Health {
+			return false
+		}
+	}
+	return true
 }
 
 func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
@@ -287,11 +311,11 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 	if !equal || !annoEqual || isOrphan {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		// apply change of annotations if any
 		for k, v := range newSvc.Annotations {
 			svc.Annotations[k] = v
