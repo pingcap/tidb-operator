@@ -496,13 +496,22 @@ elif [ "$PROVIDER" == "eks" ]; then
     aws configure set default.region "$AWS_REGION"
     aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
     aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
-    mngName=$CLUSTER-mng-$RANDOM
+    echo "info: removing $HOME/.ssh/kube_aws_rsa if present"
+    # aws-k8s-tester tries to create or update ~/.ssh/kube_aws_rsa with new key
+    # pair every time, however previous created file is read-only and can't be
+    # updated, so we remove it if present
+    if test -f $HOME/.ssh/kube_aws_rsa; then
+        rm -f $HOME/.ssh/kube_aws_rsa
+    fi
+    echo "info: exporting AWS_K8S_TESTER config environments"
+    mngName=$CLUSTER-mng
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
     export AWS_K8S_TESTER_EKS_PARAMETERS_VERSION="1.15"
     export AWS_K8S_TESTER_EKS_PARAMETERS_ENCRYPTION_CMK_CREATE="false"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_ENABLE="true"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":%d,"asg-max-size":%d,"asg-desired-capacity":%d,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName" "$KUBE_WORKERS" "$KUBE_WORKERS" "$KUBE_WORKERS")
+    env | grep ^AWS_K8S_TESTER --color=never
     # override KUBECONFIG
     KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
 else
