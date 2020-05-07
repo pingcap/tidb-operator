@@ -4523,6 +4523,8 @@ spec:
                   type: string
                 path:
                   type: string
+                prefix:
+                  type: string
                 projectId:
                   type: string
                 secretName:
@@ -4924,6 +4926,8 @@ spec:
                 objectAcl:
                   type: string
                 path:
+                  type: string
+                prefix:
                   type: string
                 projectId:
                   type: string
@@ -5370,6 +5374,8 @@ spec:
                     objectAcl:
                       type: string
                     path:
+                      type: string
+                    prefix:
                       type: string
                     projectId:
                       type: string
