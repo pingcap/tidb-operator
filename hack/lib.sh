@@ -33,7 +33,7 @@ DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
 HELM_VERSION=${HELM_VERSION:-2.9.1}
-KIND_VERSION=${KIND_VERSION:-0.7.0}
+KIND_VERSION=${KIND_VERSION:-0.8.1}
 DOCS_VERSION=${DOCS_VERSION:-0.2.1}
 KIND_BIN=$OUTPUT_BIN/kind
 KUBETEST2_VERSION=v0.0.8
