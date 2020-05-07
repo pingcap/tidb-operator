@@ -7,6 +7,7 @@ category: how-to
 # Deploy TiDB on GCP GKE
 
 <!-- markdownlint-disable MD029 -->
+<!-- markdownlint-disable MD037 -->
 
 This document describes how to deploy a TiDB cluster on GCP GKE with your laptop (Linux or macOS) for development or testing.
 

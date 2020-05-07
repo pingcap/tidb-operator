@@ -34,8 +34,8 @@ category: how-to
     chmod +x ~/bin/{cfssl,cfssljson}
     export PATH=$PATH:~/bin
 
-    mkdir -p ~/cfssl
-    cd ~/cfssl
+    mkdir -p cfssl
+    cd cfssl
     cfssl print-defaults config > ca-config.json
     cfssl print-defaults csr > ca-csr.json
     ```
@@ -49,7 +49,7 @@ category: how-to
                 "expiry": "8760h"
             },
             "profiles": {
-                "server": {
+                "internal": {
                     "expiry": "8760h",
                     "usages": [
                         "signing",
@@ -73,7 +73,7 @@ category: how-to
 
     > **注意：**
     >
-    > 这里的 `profile server` 的 `usages` 必须添加上 `"client auth"`。因为这套 Server 端证书同时也会作为 Client 端证书使用。
+    > 这里的 `profiles internal` 的 `usages` 必须添加上 `"client auth"`。因为这套证书会同时作为 Server 和 Client 端证书使用。
 
 3. 您还可以修改 `ca-csr.json` 证书签名请求 (CSR)：
 
@@ -146,7 +146,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server pd-server.json | cfssljson -bare pd-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal pd-server.json | cfssljson -bare pd-server
         ```
 
     - TiKV Server 端证书
@@ -187,7 +187,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server tikv-server.json | cfssljson -bare tikv-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal tikv-server.json | cfssljson -bare tikv-server
         ```
 
     - TiDB Server 端证书
@@ -228,7 +228,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server tidb-server.json | cfssljson -bare tidb-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal tidb-server.json | cfssljson -bare tidb-server
         ```
 
     - Pump Server 端证书
@@ -263,7 +263,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server pump-server.json | cfssljson -bare pump-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal pump-server.json | cfssljson -bare pump-server
         ```
 
     - Drainer Server 端证书
@@ -339,7 +339,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server drainer-server.json | cfssljson -bare drainer-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal drainer-server.json | cfssljson -bare drainer-server
         ```
 
 6. 生成 Client 端证书。
@@ -376,7 +376,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pd-server.pem --from-file=tls.key=~/cfssl/pd-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=pd-server.pem --from-file=tls.key=pd-server-key.pem --from-file=ca.crt=ca.pem
     ```
 
     TiKV 集群证书 Secret：
@@ -384,7 +384,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tikv-server.pem --from-file=tls.key=~/cfssl/tikv-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=tikv-server.pem --from-file=tls.key=tikv-server-key.pem --from-file=ca.crt=ca.pem
     ```
 
     TiDB 集群证书 Secret：
@@ -392,7 +392,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tidb-server.pem --from-file=tls.key=~/cfssl/tidb-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=tidb-server.pem --from-file=tls.key=tidb-server-key.pem --from-file=ca.crt=ca.pem
     ```
 
     Pump 集群证书 Secret：
@@ -400,7 +400,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pump-server.pem --from-file=tls.key=~/cfssl/pump-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=pump-server.pem --from-file=tls.key=pump-server-key.pem --from-file=ca.crt=ca.pem
     ```
 
     Drainer 集群证书 Secret：
@@ -408,7 +408,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/drainer-server.pem --from-file=tls.key=~/cfssl/drainer-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=drainer-server.pem --from-file=tls.key=drainer-server-key.pem --from-file=ca.crt=ca.pem
     ```
 
     Client 证书 Secret：
@@ -416,7 +416,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
     ```
 
     这里给 PD/TiKV/TiDB/Pump/Drainer 的 Server 端证书分别创建了一个 Secret 供他们启动时加载使用，另外一套 Client 端证书供他们的客户端连接使用。
@@ -436,8 +436,8 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/cert-manager
-    cd ~/cert-manager
+    mkdir -p cert-manager
+    cd cert-manager
     ```
 
     然后创建一个 `tidb-cluster-issuer.yaml` 文件，输入以下内容：
@@ -485,7 +485,7 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f ~/cert-manager/tidb-cluster-issuer.yaml
+    kubectl apply -f tidb-cluster-issuer.yaml
     ```
 
 3. 创建 Server 端证书。
@@ -839,17 +839,7 @@ category: how-to
         - `issuerRef` 请填写上面创建的 Issuer；
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
-        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-cluster-client-secret` 的 Secret 对象供 TiDB 组件的 Client 使用。获取 Client 证书的方式是：
-
-        {{< copyable "shell-regular" >}}
-
-        ``` shell
-        mkdir -p ~/${cluster_name}-cluster-client-tls
-        cd ~/${cluster_name}-cluster-client-tls
-        kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-        kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-        kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
-        ```
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-cluster-client-secret` 的 Secret 对象供 TiDB 组件的 Client 使用。
 
 ## 第二步：部署 TiDB 集群
 
@@ -965,7 +955,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
+        helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${helm_version} -f values.yaml
         ```
 
     - 第二种方式：创建 Drainer 的时候不设置 `drainerName`：
@@ -986,7 +976,7 @@ category: how-to
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
+        helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${helm_version} -f values.yaml
         ```
 
 3. 创建 Backup/Restore 资源对象。
@@ -1075,11 +1065,9 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/${cluster_name}-cluster-client-tls
-    cd ~/${cluster_name}-cluster-client-tls
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > client-tls.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > client-tls.key
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}'  | base64 --decode > client-ca.crt
     ```
 
 3. 使用 pd-ctl 连接 PD 集群。
@@ -1089,5 +1077,5 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    pd-ctl --cacert=~/${cluster_name}-cluster-client-tls/ca.crt --cert=~/${cluster_name}-cluster-client-tls/tls.crt --key=~/${cluster_name}-cluster-client-tls/tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
+    pd-ctl --cacert=client-ca.crt --cert=client-tls.crt --key=client-tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
     ```

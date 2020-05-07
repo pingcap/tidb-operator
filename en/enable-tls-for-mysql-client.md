@@ -38,8 +38,8 @@ This section describe how to issue certificates for the TiDB cluster using two m
     chmod +x ~/bin/{cfssl,cfssljson}
     export PATH=$PATH:~/bin
 
-    mkdir -p ~/cfssl
-    cd ~/cfssl
+    mkdir -p cfssl
+    cd cfssl
     cfssl print-defaults config > ca-config.json
     cfssl print-defaults csr > ca-csr.json
     ```
@@ -178,8 +178,8 @@ This section describe how to issue certificates for the TiDB cluster using two m
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl create secret generic ${cluster_name}-tidb-server-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/server.pem --from-file=tls.key=~/cfssl/server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
-    kubectl create secret generic ${cluster_name}-tidb-client-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+    kubectl create secret generic ${cluster_name}-tidb-server-secret --namespace=${namespace} --from-file=tls.crt=server.pem --from-file=tls.key=server-key.pem --from-file=ca.crt=ca.pem
+    kubectl create secret generic ${cluster_name}-tidb-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
     ```
 
     You have created two Secret objects for the server-side and client-side certificates:
@@ -204,8 +204,8 @@ You can generate multiple sets of client-side certificates. At least one set of 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/cert-manager
-    cd ~/cert-manager
+    mkdir -p cert-manager
+    cd cert-manager
     ```
 
     Then, create a `tidb-server-issuer.yaml` file with the following content:
@@ -253,7 +253,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f ~/cert-manager/tidb-server-issuer.yaml
+    kubectl apply -f tidb-server-issuer.yaml
     ```
 
 3. Generate the server-side certificate.
@@ -321,7 +321,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f ~/cert-manager/tidb-server-cert.yaml
+    kubectl apply -f tidb-server-cert.yaml
     ```
 
     After the object is created, cert-manager generates a `${cluster_name}-tidb-server-secret` Secret object to be used by the TiDB server.
@@ -364,7 +364,7 @@ You can generate multiple sets of client-side certificates. At least one set of 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f ~/cert-manager/tidb-client-cert.yaml
+    kubectl apply -f tidb-client-cert.yaml
     ```
 
     After the object is created, cert-manager generates a `${cluster_name}-tidb-client-secret` Secret object to be used by the TiDB client.
@@ -436,28 +436,20 @@ In this step, you create a TiDB cluster using two CR object, enable TLS for the 
 
 To connect the MySQL client with the TiDB cluster, use the client-side certificate created above and take the following methods. For details, refer to [Configure the MySQL client to use encrypted connections](https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/#configure-the-mysql-client-to-use-encrypted-connections).
 
-1. If you issue certificates using `cfssl`, execute the following command to connect with the TiDB server:
+Execute the following command to acquire the client-side certificate and connect to the TiDB server:
 
-    {{< copyable "shell-regular" >}}
+{{< copyable "shell-regular" >}}
 
-    ``` shell
-    mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=~/cfssl/client.pem --ssl-key=~/cfssl/client-key.pem --ssl-ca=~/cfssl/ca.pe
-    ```
+``` shell
+kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > client-tls.crt
+kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > client-tls.key
+kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.ca\.crt}'  | base64 --decode > client-ca.crt
+```
 
-2. If you issue certificates using `cert-manager`, execute the following command to acquire the client-side certificate and connect to the TiDB server:
+{{< copyable "shell-regular" >}}
 
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > ~/cert-manager/client-tls.crt
-    kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > ~/cert-manager/client-tls.key
-    kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode >  ~/cert-manager/client-ca.crt
-    ```
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=~/cert-manager/client-tls.crt --ssl-key=~/cert-manager/client-tls.key --ssl-ca=~/cert-manager/client-ca.crt
-    ```
+``` shell
+mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=client-tls.crt --ssl-key=client-tls.key --ssl-ca=client-ca.crt
+```
 
 Finally, to verify whether TLS is successfully enabled, refer to [checking the current connection](https://pingcap.com/docs/v3.1/how-to/secure/enable-tls-clients/#check-whether-the-current-connection-uses-encryption).

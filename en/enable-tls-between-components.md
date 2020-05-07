@@ -39,8 +39,9 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     curl -s -L -o ~/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
     chmod +x ~/bin/{cfssl,cfssljson}
     export PATH=$PATH:~/bin
-    mkdir -p ~/cfssl
-    cd ~/cfssl
+
+    mkdir -p cfssl
+    cd cfssl
     cfssl print-defaults config > ca-config.json
     cfssl print-defaults csr > ca-csr.json
     ```
@@ -54,7 +55,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
                 "expiry": "8760h"
             },
             "profiles": {
-                "server": {
+                "internal": {
                     "expiry": "8760h",
                     "usages": [
                         "signing",
@@ -78,7 +79,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     > **Note:**
     >
-    > Add `"client auth"` in `profiles` - `server` - `usages`, because this server-side certificate is also used as the client-side certificate.
+    > Add `"client auth"` in `profiles` - `internal` - `usages`, because this server-side certificate is also used as the client-side certificate.
 
 3. Change the certificate signing request (CSR) of `ca-csr.json`:
 
@@ -151,7 +152,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server pd-server.json | cfssljson -bare pd-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal pd-server.json | cfssljson -bare pd-server
         ```
 
     - TiKV
@@ -192,7 +193,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server tikv-server.json | cfssljson -bare tikv-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal tikv-server.json | cfssljson -bare tikv-server
         ```
 
     - TiDB
@@ -233,7 +234,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server tidb-server.json | cfssljson -bare tidb-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal tidb-server.json | cfssljson -bare tidb-server
         ```
 
     - Pump
@@ -268,7 +269,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server pump-server.json | cfssljson -bare pump-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal pump-server.json | cfssljson -bare pump-server
         ```
 
     - Drainer
@@ -344,7 +345,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server drainer-server.json | cfssljson -bare drainer-server
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal drainer-server.json | cfssljson -bare drainer-server
         ```
 
 6. Generate the client-side certificate:
@@ -381,7 +382,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pd-server.pem --from-file=tls.key=~/cfssl/pd-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-pd-cluster-secret --namespace=${namespace} --from-file=tls.crt=pd-server.pem --from-file=tls.key=pd-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
     - The TiKV cluster certificate Secret:
@@ -389,7 +390,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tikv-server.pem --from-file=tls.key=~/cfssl/tikv-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-tikv-cluster-secret --namespace=${namespace} --from-file=tls.crt=tikv-server.pem --from-file=tls.key=tikv-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
     - The TiDB cluster certificate Secret:
@@ -397,7 +398,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/tidb-server.pem --from-file=tls.key=~/cfssl/tidb-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-tidb-cluster-secret --namespace=${namespace} --from-file=tls.crt=tidb-server.pem --from-file=tls.key=tidb-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
     - The Pump cluster certificate Secret:
@@ -405,7 +406,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/pump-server.pem --from-file=tls.key=~/cfssl/pump-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-pump-cluster-secret --namespace=${namespace} --from-file=tls.crt=pump-server.pem --from-file=tls.key=pump-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
     - The Drainer cluster certificate Secret:
@@ -413,7 +414,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/drainer-server.pem --from-file=tls.key=~/cfssl/drainer-server-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-drainer-cluster-secret --namespace=${namespace} --from-file=tls.crt=drainer-server.pem --from-file=tls.key=drainer-server-key.pem --from-file=ca.crt=ca.pem
         ```
 
     - The client certificate Secret:
@@ -421,7 +422,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         {{< copyable "shell-regular" >}}
 
         ```shell
-        kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=~/cfssl/client.pem --from-file=tls.key=~/cfssl/client-key.pem --from-file=ca.crt=~/cfssl/ca.pem
+        kubectl create secret generic ${cluster_name}-cluster-client-secret --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
         ```
 
     You have created two Secret objects:
@@ -444,8 +445,8 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p ~/cert-manager
-    cd ~/cert-manager
+    mkdir -p cert-manager
+    cd cert-manager
     ```
 
     Then, create a `tidb-cluster-issuer.yaml` file with the following content:
@@ -493,7 +494,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f ~/cert-manager/tidb-cluster-issuer.yaml
+    kubectl apply -f tidb-cluster-issuer.yaml
     ```
 
 3. Generate the server-side certificate.
@@ -855,18 +856,6 @@ This section describes how to issue certificates using two methods: `cfssl` and 
 
     After the object is created, `cert-manager` generates a `${cluster_name}-cluster-client-secret` Secret object to be used by the clients of the TiDB components.
 
-    To obtain the client certificate, run the following commands:
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    mkdir -p ~/${cluster_name}-cluster-client-tls
-    cd ~/${cluster_name}-cluster-client-tls
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
-    ```
-
 ## Step 2: Deploy the TiDB cluster
 
 When you deploy a TiDB cluster, you can enable TLS between TiDB components, and set the `cert-allowed-cn` configuration item (for TiDB, the configuration item is `cluster-verify-cn`) to verify the CN (Common Name) of each component's certificate.
@@ -983,7 +972,7 @@ In this step, you need to perform the following operations:
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
+        helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${helm_version} -f values.yaml
         ```
 
     - Method 2: Do not set `drainerName` when you create Drainer.
@@ -1004,7 +993,7 @@ In this step, you need to perform the following operations:
         {{< copyable "shell-regular" >}}
 
         ``` shell
-        helm install charts/tidb-drainer --name=${release_name} --namespace=${namespace}
+        helm install pingcap/tidb-drainer --name=${release_name} --namespace=${namespace} --version=${helm_version} -f values.yaml
         ```
 
 3. Create the Backup/Restore resource object:
@@ -1092,11 +1081,9 @@ In this step, you need to perform the following operations:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    mkdir -p ~/${cluster_name}-cluster-client-tls
-    cd ~/${cluster_name}-cluster-client-tls
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > tls.crt
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > tls.key
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}' | base64 --decode > ca.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > client-tls.crt
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > client-tls.key
+    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}'  | base64 --decode > client-ca.crt
     ```
 
 3. Connect to the PD cluster by `pd-ctl`:
@@ -1106,5 +1093,5 @@ In this step, you need to perform the following operations:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    pd-ctl --cacert=~/${cluster_name}-cluster-client-tls/ca.crt --cert=~/${cluster_name}-cluster-client-tls/tls.crt --key=~/${cluster_name}-cluster-client-tls/tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
+    pd-ctl --cacert=client-ca.crt --cert=client-tls.crt --key=client-tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
     ```
