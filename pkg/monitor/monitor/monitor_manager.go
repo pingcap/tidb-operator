@@ -104,7 +104,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
 
-		// syncing all PVs managed by operator's reclaim policy to Retain
+		// syncing all PVs managed by this tidbmonitor
 		if err := mm.pvManager.SyncMonitor(monitor); err != nil {
 			return err
 		}
