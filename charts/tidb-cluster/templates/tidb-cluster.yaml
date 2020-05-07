@@ -7,7 +7,7 @@ metadata:
     pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ include "pd-configmap.data-digest" . | quote }}
     pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ include "tikv-configmap.data-digest" . | quote }}
     pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ include "tidb-configmap.data-digest" . | quote }}
-    topologyKey: {{ .Values.topologyKey }}
+    pingcap.com/ha-topology-key: {{ .Values.haTopologyKey | default "kubernetes.io/hostname" }}
 {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}

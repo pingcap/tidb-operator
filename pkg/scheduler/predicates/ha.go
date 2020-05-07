@@ -121,8 +121,8 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	klog.Infof("ha: tidbcluster %s/%s component %s replicas %d", ns, tcName, component, replicas)
 
 	var topologyKey string
-	if tc.Annotations["topologyKey"] != "" {
-		topologyKey = tc.Annotations["topologyKey"]
+	if tc.Annotations[label.AnnHATopologyKey] != "" {
+		topologyKey = tc.Annotations[label.AnnHATopologyKey]
 	} else {
 		topologyKey = "kubernetes.io/hostname"
 	}
@@ -141,11 +141,13 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 		topology := getTopologyFromNode(topologyKey, nodeName, nodes)
 		if topology != "" {
 			allTopologies.Insert(topology)
-			topologyMap[topology] = topologyMap[topology].Insert(pName)
 		}
 		if topology == "" || topologyMap[topology] == nil {
 			klog.Infof("pod %s is not bind", pName)
+			continue
 		}
+
+		topologyMap[topology] = topologyMap[topology].Insert(pName)
 	}
 	klog.V(4).Infof("topologyMap: %+v", topologyMap)
 

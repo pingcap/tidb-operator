@@ -1070,7 +1070,7 @@ func tcGetFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        tcName,
 			Namespace:   ns,
-			Annotations: map[string]string{"topologyKey": "zone"},
+			Annotations: map[string]string{"pingcap.com/ha-topology-key": "zone"},
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{Replicas: 3},
