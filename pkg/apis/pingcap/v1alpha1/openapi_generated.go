@@ -1380,7 +1380,14 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 					},
 					"secretName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SecretName is the name of secret which stores the gcs service account credentials JSON .",
+							Description: "SecretName is the name of secret which stores the gcs service account credentials JSON.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"prefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Prefix of the data path.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3524,7 +3531,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Prefix for the keys.",
+							Description: "Prefix of the data path.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
