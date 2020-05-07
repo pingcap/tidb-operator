@@ -175,7 +175,7 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	if _, ok := requests[corev1.ResourceStorage]; !ok {
-		allErrs = append(allErrs, field.Required(fldPath.Child("requests.storage").Key((string(corev1.ResourceStorage))), "PD or TiKV request storage must not be empty"))
+		allErrs = append(allErrs, field.Required(fldPath.Child("requests.storage").Key((string(corev1.ResourceStorage))), "storage request must not be empty"))
 	}
 	return allErrs
 }
