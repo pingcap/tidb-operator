@@ -230,7 +230,7 @@ func checkS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Query {
 	return &sqs
 }
 
-// checkS3Config constructs s3Query parameters
+// checkGcsConfig constructs s3Query parameters
 func checkGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsQuery {
 	gqs := gcsQuery{}
 

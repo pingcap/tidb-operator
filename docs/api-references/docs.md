@@ -3457,7 +3457,7 @@ string
 </td>
 <td>
 <p>SecretName is the name of secret which stores the
-gcs service account credentials JSON .</p>
+gcs service account credentials JSON.</p>
 </td>
 </tr>
 <tr>
@@ -3468,7 +3468,7 @@ string
 </em>
 </td>
 <td>
-<p>Prefix for the keys.</p>
+<p>Folder of the bucket.</p>
 </td>
 </tr>
 </tbody>
@@ -7357,7 +7357,7 @@ string
 </em>
 </td>
 <td>
-<p>Prefix for the keys.</p>
+<p>Folder of the bucket.</p>
 </td>
 </tr>
 <tr>
