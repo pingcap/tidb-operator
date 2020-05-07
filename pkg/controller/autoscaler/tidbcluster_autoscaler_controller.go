@@ -55,7 +55,7 @@ func NewController(
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidbclusterautoscaler"})
 	autoScalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
-	asm := autoscaler.NewAutoScalerManager(cli, informerFactory, kubeInformerFactory, recorder)
+	asm := autoscaler.NewAutoScalerManager(kubeCli, cli, informerFactory, kubeInformerFactory, recorder)
 
 	tac := &Controller{
 		control:  NewDefaultAutoScalerControl(recorder, asm),

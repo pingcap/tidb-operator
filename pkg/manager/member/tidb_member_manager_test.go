@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -1794,5 +1795,200 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 
 	for i := range tests {
 		testFn(&tests[i], t)
+	}
+}
+
+func TestTiDBShouldRecover(t *testing.T) {
+	pods := []*v1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tidb-0",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tidb-1",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+	}
+	podsWithFailover := append(pods, &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "failover-tidb-2",
+			Namespace: v1.NamespaceDefault,
+		},
+		Status: v1.PodStatus{
+			Conditions: []v1.PodCondition{
+				{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionFalse,
+				},
+			},
+		},
+	})
+	tests := []struct {
+		name string
+		tc   *v1alpha1.TidbCluster
+		pods []*v1.Pod
+		want bool
+	}{
+		{
+			name: "should not recover if no failure members",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Status: v1alpha1.TidbClusterStatus{},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "should not recover if a member is not healthy",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiDB: v1alpha1.TiDBStatus{
+						Members: map[string]v1alpha1.TiDBMember{
+							"failover-tidb-0": {
+								Name:   "failover-tidb-0",
+								Health: false,
+							},
+							"failover-tidb-1": {
+								Name:   "failover-tidb-1",
+								Health: true,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.TiDBFailureMember{
+							"failover-tidb-0": {
+								PodName: "failover-tidb-0",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "should recover if all members are ready and healthy",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiDB: v1alpha1.TiDBStatus{
+						Members: map[string]v1alpha1.TiDBMember{
+							"failover-tidb-0": {
+								Name:   "failover-tidb-0",
+								Health: true,
+							},
+							"failover-tidb-1": {
+								Name:   "failover-tidb-1",
+								Health: true,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.TiDBFailureMember{
+							"failover-tidb-0": {
+								PodName: "failover-tidb-0",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: true,
+		},
+		{
+			name: "should recover if all members are ready and healthy (ignore auto-created failover pods)",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiDB: v1alpha1.TiDBStatus{
+						Members: map[string]v1alpha1.TiDBMember{
+							"failover-tidb-0": {
+								Name:   "failover-tidb-0",
+								Health: true,
+							},
+							"failover-tidb-1": {
+								Name:   "failover-tidb-1",
+								Health: true,
+							},
+							"failover-tidb-2": {
+								Name:   "failover-tidb-1",
+								Health: false,
+							},
+						},
+						FailureMembers: map[string]v1alpha1.TiDBFailureMember{
+							"failover-tidb-0": {
+								PodName: "failover-tidb-0",
+							},
+						},
+					},
+				},
+			},
+			pods: podsWithFailover,
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client := kubefake.NewSimpleClientset()
+			for _, pod := range tt.pods {
+				client.CoreV1().Pods(pod.Namespace).Create(pod)
+			}
+			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
+			podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+			kubeInformerFactory.Start(ctx.Done())
+			kubeInformerFactory.WaitForCacheSync(ctx.Done())
+			tidbMemberManager := &tidbMemberManager{podLister: podLister}
+			got := tidbMemberManager.shouldRecover(tt.tc)
+			if got != tt.want {
+				t.Fatalf("wants %v, got %v", tt.want, got)
+			}
+		})
 	}
 }
