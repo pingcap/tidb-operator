@@ -538,7 +538,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		pdConfigMap = cm.Name
 	}
 
-	clusterVersionGT4, err := clusterVersionGreaterThan4(tc.PDVersion())
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
 	if err != nil {
 		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
@@ -555,7 +555,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGT4 {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -593,7 +593,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGT4 {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -730,7 +730,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 
-	clusterVersionGT4, err := clusterVersionGreaterThan4(tc.PDVersion())
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
 	if err != nil {
 		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
@@ -745,7 +745,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
 	// Versions below v4.0 do not support Dashboard
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGT4 {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		if config.Dashboard == nil {
 			config.Dashboard = &v1alpha1.DashboardConfig{}
 		}
@@ -785,10 +785,10 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	return cm, nil
 }
 
-func clusterVersionGreaterThan4(version string) (bool, error) {
+func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 	v, err := semver.NewVersion(version)
 	if err != nil {
-		return false, err
+		return true, err
 	}
 
 	return v.Major() >= 4, nil
