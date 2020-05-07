@@ -1447,7 +1447,7 @@ func schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref common.ReferenceCal
 					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Folder of the bucket.",
+							Description: "Prefix of the data path.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3591,7 +3591,7 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Folder of the bucket.",
+							Description: "Prefix of the data path.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

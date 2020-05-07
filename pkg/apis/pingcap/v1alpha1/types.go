@@ -840,7 +840,7 @@ type S3StorageProvider struct {
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
 	SecretName string `json:"secretName,omitempty"`
-	// Folder of the bucket.
+	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
 	SSE string `json:"sse,omitempty"`
@@ -869,7 +869,7 @@ type GcsStorageProvider struct {
 	// SecretName is the name of secret which stores the
 	// gcs service account credentials JSON.
 	SecretName string `json:"secretName"`
-	// Folder of the bucket.
+	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }
 

@@ -3468,7 +3468,7 @@ string
 </em>
 </td>
 <td>
-<p>Folder of the bucket.</p>
+<p>Prefix of the data path.</p>
 </td>
 </tr>
 </tbody>
@@ -7357,7 +7357,7 @@ string
 </em>
 </td>
 <td>
-<p>Folder of the bucket.</p>
+<p>Prefix of the data path.</p>
 </td>
 </tr>
 <tr>
