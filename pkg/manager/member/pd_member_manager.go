@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -537,6 +538,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		pdConfigMap = cm.Name
 	}
 
+	clusterVersionGT4, err := clusterVersionGreaterThan4(tc.PDVersion())
+	if err != nil {
+		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+	}
+
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
@@ -549,7 +555,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGT4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -587,7 +593,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGT4 {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -724,6 +730,11 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 
+	clusterVersionGT4, err := clusterVersionGreaterThan4(tc.PDVersion())
+	if err != nil {
+		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+	}
+
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		if config.Security == nil {
@@ -733,7 +744,8 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	// Versions below v4.0 do not support Dashboard
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGT4 {
 		if config.Dashboard == nil {
 			config.Dashboard = &v1alpha1.DashboardConfig{}
 		}
@@ -771,6 +783,15 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 	}
 	return cm, nil
+}
+
+func clusterVersionGreaterThan4(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, err
+	}
+
+	return v.Major() >= 4, nil
 }
 
 func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {

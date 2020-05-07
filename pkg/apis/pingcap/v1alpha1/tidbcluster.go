@@ -55,6 +55,15 @@ func (tc *TidbCluster) PDImage() string {
 	return image
 }
 
+func (tc *TidbCluster) PDVersion() string {
+	version := tc.Spec.PD.Version
+	if version == nil {
+		version = &tc.Spec.Version
+	}
+
+	return *version
+}
+
 func (tc *TidbCluster) TiKVImage() string {
 	image := tc.Spec.TiKV.Image
 	baseImage := tc.Spec.TiKV.BaseImage
