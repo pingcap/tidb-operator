@@ -496,12 +496,14 @@ elif [ "$PROVIDER" == "eks" ]; then
     aws configure set default.region "$AWS_REGION"
     aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
     aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
-    echo "info: removing $HOME/.ssh/kube_aws_rsa if present"
-    # aws-k8s-tester tries to create or update ~/.ssh/kube_aws_rsa with new key
-    # pair every time, however previous created file is read-only and can't be
-    # updated, so we remove it if present
-    if test -f $HOME/.ssh/kube_aws_rsa; then
-        rm -f $HOME/.ssh/kube_aws_rsa
+    if [ -z "$SKIP_UP" ]; then
+        echo "info: make $HOME/.ssh/kube_aws_rsa writable if we're going to start the cluster"
+        # aws-k8s-tester tries to create or update ~/.ssh/kube_aws_rsa with new key
+        # pair every time, however previous created file is read-only and can't be
+        # updated
+        if test -f $HOME/.ssh/kube_aws_rsa; then
+            chmod 0600 $HOME/.ssh/kube_aws_rsa
+        fi
     fi
     echo "info: exporting AWS_K8S_TESTER config environments"
     mngName=$CLUSTER-mng
