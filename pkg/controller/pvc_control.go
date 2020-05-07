@@ -127,6 +127,7 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 	if pvc.Labels[label.ClusterIDLabelKey] == clusterID &&
 		pvc.Labels[label.MemberIDLabelKey] == memberID &&
 		pvc.Labels[label.StoreIDLabelKey] == storeID &&
+		pvc.Labels[label.AnnPodNameKey] == podName &&
 		pvc.Annotations[label.AnnPodNameKey] == podName {
 		klog.V(4).Infof("pvc %s/%s already has labels and annotations synced, skipping, TidbCluster: %s", ns, pvcName, tcName)
 		return pvc, nil
@@ -135,6 +136,7 @@ func (rpc *realPVCControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pvc *corev1.
 	setIfNotEmpty(pvc.Labels, label.ClusterIDLabelKey, clusterID)
 	setIfNotEmpty(pvc.Labels, label.MemberIDLabelKey, memberID)
 	setIfNotEmpty(pvc.Labels, label.StoreIDLabelKey, storeID)
+	setIfNotEmpty(pvc.Labels, label.AnnPodNameKey, podName)
 	setIfNotEmpty(pvc.Annotations, label.AnnPodNameKey, podName)
 
 	labels := pvc.GetLabels()
@@ -244,6 +246,7 @@ func (fpc *FakePVCControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pvc *corev1.P
 	setIfNotEmpty(pvc.Labels, label.ClusterIDLabelKey, pod.Labels[label.ClusterIDLabelKey])
 	setIfNotEmpty(pvc.Labels, label.MemberIDLabelKey, pod.Labels[label.MemberIDLabelKey])
 	setIfNotEmpty(pvc.Labels, label.StoreIDLabelKey, pod.Labels[label.StoreIDLabelKey])
+	setIfNotEmpty(pvc.Labels, label.AnnPodNameKey, pod.GetName())
 	setIfNotEmpty(pvc.Annotations, label.AnnPodNameKey, pod.GetName())
 	return nil, fpc.PVCIndexer.Update(pvc)
 }
