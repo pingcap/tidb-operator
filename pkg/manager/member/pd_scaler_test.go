@@ -63,7 +63,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
 
-		pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
+		pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
 		pvc.Name = ordinalPVCName(v1alpha1.PDMemberType, oldSet.GetName(), *oldSet.Spec.Replicas)
 		if !test.annoIsNil {
 			pvc.Annotations = map[string]string{}
@@ -137,7 +137,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			name:             "pvc annotation is not nil but doesn't contain defer deletion annotation",
 			update:           normalPDMember,
 			pdUpgrading:      false,
-			hasPVC:           false,
+			hasPVC:           true,
 			hasDeferAnn:      false,
 			annoIsNil:        false,
 			pvcDeleteErr:     false,
@@ -259,7 +259,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
 
 		if test.hasPVC {
-			pvc := newPVCForStatefulSet(oldSet, v1alpha1.PDMemberType)
+			pvc := newScaleInPVCForStatefulSet(oldSet, v1alpha1.PDMemberType, tc.Name)
 			pvcIndexer.Add(pvc)
 		}
 
@@ -407,11 +407,28 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 	return set
 }
 
-func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType) *corev1.PersistentVolumeClaim {
+func newPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
+	podName := ordinalPodName(memberType, name, *set.Spec.Replicas)
+	l := label.New().Instance(name)
+	l[label.AnnPodNameKey] = podName
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas),
+			Namespace: metav1.NamespaceDefault,
+			Labels:    l,
+		},
+	}
+}
+
+func newScaleInPVCForStatefulSet(set *apps.StatefulSet, memberType v1alpha1.MemberType, name string) *corev1.PersistentVolumeClaim {
+	podName := ordinalPodName(memberType, name, *set.Spec.Replicas-1)
+	l := label.New().Instance(name)
+	l[label.AnnPodNameKey] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ordinalPVCName(memberType, set.GetName(), *set.Spec.Replicas-1),
 			Namespace: metav1.NamespaceDefault,
+			Labels:    l,
 		},
 	}
 }
