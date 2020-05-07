@@ -724,13 +724,13 @@ TiFlashSpec
 <code>ticdc</code></br>
 <em>
 <a href="#ticdcspec">
-TiCdcSpec
+TiCDCSpec
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>TiCdc cluster spec</p>
+<p>TiCDC cluster spec</p>
 </td>
 </tr>
 <tr>
@@ -2571,7 +2571,7 @@ and component-level overrides</p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
-<a href="#ticdcspec">TiCdcSpec</a>, 
+<a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
@@ -7846,13 +7846,13 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="ticdcspec">TiCdcSpec</h3>
+<h3 id="ticdcspec">TiCDCSpec</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
-<p>TiCdcpec contains details of TiCdc members</p>
+<p>TiCDCpec contains details of TiCDC members</p>
 </p>
 <table>
 <thead>
@@ -7900,7 +7900,7 @@ string
 </em>
 </td>
 <td>
-<p>Specify a Service Account for TiCdc</p>
+<p>Specify a Service Account for TiCDC</p>
 </td>
 </tr>
 <tr>
@@ -13636,13 +13636,13 @@ TiFlashSpec
 <code>ticdc</code></br>
 <em>
 <a href="#ticdcspec">
-TiCdcSpec
+TiCDCSpec
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>TiCdc cluster spec</p>
+<p>TiCDC cluster spec</p>
 </td>
 </tr>
 <tr>

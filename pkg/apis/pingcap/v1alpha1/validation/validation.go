@@ -61,8 +61,8 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiFlash != nil {
 		allErrs = append(allErrs, validateTiFlashSpec(spec.TiFlash, fldPath.Child("tiflash"))...)
 	}
-	if spec.TiCdc != nil {
-		allErrs = append(allErrs, validateTiCdcSpec(spec.TiCdc, fldPath.Child("ticdc"))...)
+	if spec.TiCDC != nil {
+		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
 	}
 	return allErrs
 }
@@ -90,7 +90,7 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 	return allErrs
 }
 
-func validateTiCdcSpec(spec *v1alpha1.TiCdcSpec, fldPath *field.Path) field.ErrorList {
+func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	return allErrs

@@ -118,9 +118,9 @@ type TidbClusterSpec struct {
 	// +optional
 	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
 
-	// TiCdc cluster spec
+	// TiCDC cluster spec
 	// +optional
-	TiCdc *TiCdcSpec `json:"ticdc,omitempty"`
+	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
 
 	// Pump cluster spec
 	// +optional
@@ -339,13 +339,13 @@ type TiFlashSpec struct {
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
 }
 
-// TiCdcpec contains details of TiCdc members
+// TiCDCpec contains details of TiCDC members
 // +k8s:openapi-gen=true
-type TiCdcSpec struct {
+type TiCDCSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
-	// Specify a Service Account for TiCdc
+	// Specify a Service Account for TiCDC
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
