@@ -10,10 +10,12 @@ from __future__ import print_function, unicode_literals
 
 import re
 import os
+import sys
 
 followups = []
 in_toc = False
 contents = []
+lang = sys.argv[1]
 
 hyper_link_pattern = re.compile(r'\[(.*?)\]\((.*?)(#.*?)?\)')
 toc_line_pattern = re.compile(r'([\-\+]+)\s\[(.*?)\]\((.*?)(#.*?)?\)')
@@ -22,7 +24,7 @@ level_pattern = re.compile(r'(\s*[\-\+]+)\s')
 # match all headings
 heading_patthern = re.compile(r'(^#+|\n#+)\s')
 
-entry_file = "TOC.md"
+entry_file = lang + "TOC.md"
 
 # stage 1, parse toc
 with open(entry_file) as fp:
@@ -31,7 +33,6 @@ with open(entry_file) as fp:
     for line in fp:
         if not in_toc and line.startswith("## "):
             in_toc = True
-            print("in toc")
         elif in_toc and line.startswith('## '):
             in_toc = False
             # yes, toc processing done
@@ -73,7 +74,7 @@ for tp, lv, f in followups:
     if tp != 'FILE':
         continue
     try:
-        for line in open(f).readlines():
+        for line in open(lang + f).readlines():
             if line.startswith("#"):
                 tag = line.strip()
                 break
@@ -142,7 +143,7 @@ for type_, level, name in followups:
         contents.append(name)
     elif type_ == 'FILE':
         try:
-            with open(name) as fp:
+            with open(lang + name) as fp:
                 chapter = fp.read()
                 chapter = replace_link_wrap(chapter, name)
                 # chapter = image_link_pattern.sub(replace_img_link, chapter)
@@ -159,7 +160,7 @@ for type_, level, name in followups:
             print("generate file error: ignore!")
 
 # stage 4, generage final doc.md
-target_doc_file = 'doc.md'
+target_doc_file = lang + 'doc.md'
 with open(target_doc_file, 'w') as fp:
     fp.write('\n'.join(contents))
     contents = []
