@@ -811,7 +811,7 @@ func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string
 }
 
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error {
-	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+	return wait.Poll(3*time.Second, 10*time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
 			klog.Errorf("failed to list nodes,error:%v", err)
