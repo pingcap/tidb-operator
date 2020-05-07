@@ -16,12 +16,15 @@ package crypto
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"net"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
@@ -102,4 +105,30 @@ func ReadCACerts() (*x509.CertPool, error) {
 		klog.Warningf("fail to append CA file to pool, using system CAs only")
 	}
 	return rootCAs, nil
+}
+
+func LoadTlsConfigFromSecret(secret *corev1.Secret, caCert []byte) (*tls.Config, error) {
+	rootCAs := x509.NewCertPool()
+	var tlsCert tls.Certificate
+
+	if len(caCert) > 0 {
+		rootCAs.AppendCertsFromPEM(caCert)
+	} else {
+		rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey])
+	}
+
+	clientCert, certExists := secret.Data[corev1.TLSCertKey]
+	clientKey, keyExists := secret.Data[corev1.TLSPrivateKeyKey]
+	if !certExists || !keyExists {
+		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", secret.Namespace, secret.Name)
+	}
+	tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", secret.Namespace, secret.Name, err)
+	}
+
+	return &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{tlsCert},
+	}, nil
 }
