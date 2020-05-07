@@ -56,7 +56,7 @@ type TypedControlInterface interface {
 	// CreateOrUpdateDeployment create the desired deployment or update the current one to desired state if already existed
 	CreateOrUpdateDeployment(controller runtime.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error)
 	// CreateOrUpdatePVC create the desired pvc or update the current one to desired state if already existed
-	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
+	CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error)
 	// CreateOrUpdateIngress create the desired ingress or update the current one to desired state if already existed
 	CreateOrUpdateIngress(controller runtime.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error)
 	// UpdateStatus update the /status subresource of the object
@@ -77,14 +77,14 @@ func NewTypedControl(control GenericControlInterface) TypedControlInterface {
 	return &typedWrapper{control}
 }
 
-func (w *typedWrapper) CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error) {
+func (w *typedWrapper) CreateOrUpdatePVC(controller runtime.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error) {
 	result, err := w.GenericControlInterface.CreateOrUpdate(controller, pvc, func(existing, desired runtime.Object) error {
 		existingPVC := existing.(*corev1.PersistentVolumeClaim)
 		desiredPVC := desired.(*corev1.PersistentVolumeClaim)
 
 		existingPVC.Spec.Resources.Requests = desiredPVC.Spec.Resources.Requests
 		return nil
-	})
+	}, setOwnerFlag)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller runtime.Objec
 		existingCRB.RoleRef = desiredCRB.RoleRef
 		existingCRB.Subjects = desiredCRB.Subjects
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (w *typedWrapper) CreateOrUpdateClusterRole(controller runtime.Object, clus
 		existingCRole.Labels = desiredCRole.Labels
 		existingCRole.Rules = desiredCRole.Rules
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (w *typedWrapper) CreateOrUpdateSecret(controller runtime.Object, secret *c
 			existingSecret.Annotations[k] = v
 		}
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller runtime.Object, deplo
 			existingDep.Spec.Template.Spec = desiredDep.Spec.Template.Spec
 		}
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (w *typedWrapper) CreateOrUpdateRole(controller runtime.Object, role *rbacv
 		existingRole.Labels = desiredCRole.Labels
 		existingRole.Rules = desiredCRole.Rules
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (w *typedWrapper) CreateOrUpdateRoleBinding(controller runtime.Object, rb *
 		existingRB.RoleRef = desiredRB.RoleRef
 		existingRB.Subjects = desiredRB.Subjects
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (w *typedWrapper) CreateOrUpdateServiceAccount(controller runtime.Object, s
 
 		existingSA.Labels = desiredSA.Labels
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *co
 			existingCm.Annotations[k] = v
 		}
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func (w *typedWrapper) CreateOrUpdateService(controller runtime.Object, svc *cor
 			}
 		}
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress 
 			existingIngress.Spec = desiredIngress.Spec
 		}
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +338,7 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller runtime.Object, ingress 
 }
 
 func (w *typedWrapper) Create(controller, obj runtime.Object) error {
-	return w.GenericControlInterface.Create(controller, obj)
+	return w.GenericControlInterface.Create(controller, obj, true)
 }
 func (w *typedWrapper) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
 	return w.GenericControlInterface.Exist(key, obj)
@@ -346,8 +346,8 @@ func (w *typedWrapper) Exist(key client.ObjectKey, obj runtime.Object) (bool, er
 
 // GenericControlInterface manages generic object that managed by an arbitrary controller
 type GenericControlInterface interface {
-	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn) (runtime.Object, error)
-	Create(controller, obj runtime.Object) error
+	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error)
+	Create(controller, obj runtime.Object, setOwnerFlag bool) error
 	UpdateStatus(obj runtime.Object) error
 	Exist(key client.ObjectKey, obj runtime.Object) (bool, error)
 	Delete(controller, obj runtime.Object) error
@@ -399,14 +399,16 @@ func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj runtime.Ob
 // CreateOrUpdate create an object to the Kubernetes cluster for controller, if the object to create is existed,
 // call mergeFn to merge the change in new object to the existing object, then update the existing object.
 // The object will also be adopted by the given controller.
-func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn) (runtime.Object, error) {
+func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
 
 	// controller-runtime/client will mutate the object pointer in-place,
 	// to be consistent with other methods in our controller, we copy the object
 	// to avoid the in-place mutation here and hereafter.
 	desired := obj.DeepCopyObject()
-	if err := setControllerReference(controller, desired); err != nil {
-		return desired, err
+	if setOwnerFlag {
+		if err := setControllerReference(controller, desired); err != nil {
+			return desired, err
+		}
 	}
 
 	// 1. try to create and see if there is any conflicts
@@ -427,9 +429,11 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 			return nil, err
 		}
 
-		// 3. try to adopt the existing object
-		if err := setControllerReference(controller, existing); err != nil {
-			return nil, err
+		if setOwnerFlag {
+			// 3. try to adopt the existing object
+			if err := setControllerReference(controller, existing); err != nil {
+				return nil, err
+			}
 		}
 
 		mutated := existing.DeepCopyObject()
@@ -455,13 +459,15 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 }
 
 // Create create an object to the Kubernetes cluster for controller
-func (c *realGenericControlInterface) Create(controller, obj runtime.Object) error {
+func (c *realGenericControlInterface) Create(controller, obj runtime.Object, setOwnerFlag bool) error {
 	// controller-runtime/client will mutate the object pointer in-place,
 	// to be consistent with other methods in our controller, we copy the object
 	// to avoid the in-place mutation here and hereafter.
 	desired := obj.DeepCopyObject()
-	if err := setControllerReference(controller, desired); err != nil {
-		return err
+	if setOwnerFlag {
+		if err := setControllerReference(controller, desired); err != nil {
+			return err
+		}
 	}
 
 	err := c.client.Create(context.TODO(), desired)
@@ -548,14 +554,14 @@ func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
 		RequestTracker{},
 	}
 }
-func (gc *FakeGenericControl) Create(controller, obj runtime.Object) error {
+func (gc *FakeGenericControl) Create(controller, obj runtime.Object, setOwnerFlag bool) error {
 	defer gc.createTracker.Inc()
 	if gc.createTracker.ErrorReady() {
 		defer gc.createTracker.Reset()
 		return gc.createTracker.GetError()
 	}
 
-	return gc.control.Create(controller, obj)
+	return gc.control.Create(controller, obj, setOwnerFlag)
 }
 
 func (gc *FakeGenericControl) Exist(key client.ObjectKey, obj runtime.Object) (bool, error) {
@@ -602,14 +608,14 @@ func (gc *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
 	return gc.FakeCli.Status().Update(context.TODO(), obj)
 }
 
-func (gc *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn) (runtime.Object, error) {
+func (gc *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
 	defer gc.createOrUpdateTracker.Inc()
 	if gc.createOrUpdateTracker.ErrorReady() {
 		defer gc.createOrUpdateTracker.Reset()
 		return nil, gc.createOrUpdateTracker.GetError()
 	}
 
-	return gc.control.CreateOrUpdate(controller, obj, fn)
+	return gc.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag)
 }
 
 func (gc *FakeGenericControl) Delete(controller, obj runtime.Object) error {
