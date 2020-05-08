@@ -167,7 +167,7 @@ kubectl get tc test -n test -o='go-template={{.status.clusterID}}{{"\n"}}'
     kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379
     ```
 
-3. 打开一个**新**终端标签或窗口，通过如下命令确认 Cluster ID 为设置的 ID：
+3. 打开一个**新**终端标签或窗口，通过如下命令确认 Cluster ID 为[获取 Cluster ID](#获取-cluster-id) 步骤中获取的 Cluster ID：
 
     {{< copyable "shell-regular" >}}
 
