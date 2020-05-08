@@ -135,6 +135,37 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 	return args, remotePath, nil
 }
 
+// ConstructMydumperOptionsForBackup constructs mydumper options for backup
+func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
+	var args []string
+	defaultOptions := []string{
+		"--long-query-guard=3600",
+		"--tidb-force-priority=LOW_PRIORITY",
+		"--verbose=3",
+		"--compress-protocol",
+		"--threads=16",
+		"--rows=10000",
+		"--skip-tz-utc",
+	}
+	defaultTableRegexOptions := []string{
+		"--regex",
+		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))",
+	}
+	config := backup.Spec.Mydumper
+	if config == nil {
+		args = append(args, defaultOptions...)
+		args = append(args, defaultTableRegexOptions...)
+		return args
+	}
+	if len(config.Options) != 0 {
+		args = append(args, config.Options...)
+	}
+	if config.TableRegex != nil {
+		args = append(args, "--regex", *config.TableRegex)
+	}
+	return args
+}
+
 // ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
 func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
 	var args []string
