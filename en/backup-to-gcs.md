@@ -1,10 +1,10 @@
 ---
-title: Back up TiDB Cluster Data to GCS
+title: Back up Data to GCS
 summary: Learn how to back up the TiDB cluster to GCS.
 category: how-to
 ---
 
-# Back up TiDB Cluster Data to GCS
+# Back up Data to GCS
 
 This document describes how to back up the data of the TiDB cluster in Kubernetes to [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/). "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). [`mydumper`](https://pingcap.com/docs/v3.0/reference/tools/mydumper) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the remote GCS.
 

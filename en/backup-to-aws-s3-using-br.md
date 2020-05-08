@@ -1,12 +1,12 @@
 ---
-title: Back up TiDB Cluster Data to AWS S3 using BR
+title: Back up Data to S3-Compatible Storage Using BR
 summary: Learn how to back up data to AWS S3 using BR.
 category: how-to
 ---
 
 <!-- markdownlint-disable MD007 -->
 
-# Back up TiDB Cluster Data to AWS S3 using BR
+# Back up Data to S3-Compatible Storage Using BR
 
 This document describes how to back up the data of a TiDB cluster in AWS Kubernetes to the AWS storage using Helm charts. "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). [BR](https://pingcap.com/docs/v3.1/reference/tools/br/br) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the AWS storage.
 

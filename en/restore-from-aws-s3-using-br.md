@@ -1,10 +1,10 @@
 ---
-title: Restore Data from AWS S3 using BR
+title: Restore Data from S3-Compatible Storage Using BR
 summary: Learn how to restore data from AWS S3 using BR.
 category: how-to
 ---
 
-# Restore Data from AWS S3 using BR
+# Restore Data from S3-Compatible Storage Using BR
 
 This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. [BR](https://pingcap.com/docs/v3.1/reference/tools/br/br) is used to perform the restoration.
 

@@ -1,10 +1,10 @@
 ---
-title: Back up TiDB Cluster Data to S3-Compatible Storage
+title: Back up Data to S3-Compatible Storage Using Mydumper
 summary: Learn how to back up the TiDB cluster to the S3-compatible storage.
 category: how-to
 ---
 
-# Back up TiDB Cluster Data to S3-Compatible Storage
+# Back up Data to S3-Compatible Storage Using Mydumper
 
 This document describes how to back up the data of the TiDB cluster in Kubernetes to the S3-compatible storage. "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). For the underlying implementation, [`mydumper`](https://pingcap.com/docs/v3.0/reference/tools/mydumper) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the S3-compatible storage.
 

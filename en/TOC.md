@@ -25,7 +25,7 @@
   - [Configure Storage Class](configure-storage-class.md)
   - [Configure Resource and Disaster Recovery](configure-a-tidb-cluster.md)
   - [Initialize a Cluster](initialize-a-cluster.md)
-  - [Configure a TiDB Cluster using TidbCluster](configure-cluster-using-tidbcluster.md)
+  - [Configure a TiDB Cluster Using TidbCluster](configure-cluster-using-tidbcluster.md)
   - [Configure tidb-drainer Chart](configure-tidb-binlog-drainer.md)
   - [Configure tidb-cluster Chart](tidb-cluster-chart-config.md)
   - [Configure tidb-backup Chart](configure-backup.md)
