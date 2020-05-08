@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # This name uniquely identifies the PVC. This is used in deployment.
+  name: minio-pv-claim
+spec:
+  # Read more about access modes here: http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes
+  accessModes:
+    # The volume is mounted as read-write by a single node
+    - ReadWriteOnce
+  resources:
+    # This is the request for storage. Should be available in the cluster.
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: minio
+  labels:
+    app: minio
+spec:
+  volumes:
+    - name: data
+      # This volume is based on PVC
+      persistentVolumeClaim:
+        # Name of the PVC created earlier
+        claimName: minio-pv-claim
+  containers:
+    - name: minio
+      image: minio/minio:RELEASE.2020-05-08T02-40-49Z
+      imagePullPolicy: IfNotPresent
+      args:
+      - server
+      - /data
+      volumeMounts:
+          # Volume 'data' is mounted to path '/data'
+      - name: data
+        mountPath: "/data"
+      env:
+      - name: MINIO_ACCESS_KEY
+        value: "12345678"
+      - name: MINIO_SECRET_KEY
+        value: "12345678"
+      readinessProbe:
+        httpGet:
+          path: /minio/health/ready
+          port: 9000
+        initialDelaySeconds: 120
+        periodSeconds: 20
+      livenessProbe:
+        httpGet:
+          path: /minio/health/live
+          port: 9000
+        initialDelaySeconds: 120
+        periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # This name uniquely identifies the service
+  name: minio-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+    # Looks for labels `app:minio` in the namespace and applies the spec
+    app: minio
