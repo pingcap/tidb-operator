@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -56,12 +57,13 @@ func (tc *TidbCluster) PDImage() string {
 }
 
 func (tc *TidbCluster) PDVersion() string {
-	version := tc.Spec.PD.Version
-	if version == nil {
-		version = &tc.Spec.Version
+	image := tc.PDImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
 	}
 
-	return *version
+	return "latest"
 }
 
 func (tc *TidbCluster) TiKVImage() string {
