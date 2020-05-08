@@ -158,6 +158,13 @@ pipeline {
                 junit testResults: "*.xml", allowEmptyResults: true
             }
         }
+        failure {
+            sh """
+            export CLUSTER=${params.CLUSTER}
+            echo "info: cleaning eks cluster \$CLUSTER"
+            ./ci/aws-clean-eks.sh \$CLUSTER
+            """
+        }
     }
 }
 
