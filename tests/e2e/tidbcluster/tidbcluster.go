@@ -1417,7 +1417,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		_, err = c.CoreV1().Secrets(ns).Create(backupS3Secret)
 		framework.ExpectNoError(err)
 
-		s3Client, cancel, err := createMinioClient(fw, "12345678", "12345678", "12345678", false)
+		s3Client, cancel, err := createMinioClient(fw, ns, "12345678", "12345678", false)
 		framework.ExpectNoError(err)
 		defer cancel()
 		bucketName := "test"
