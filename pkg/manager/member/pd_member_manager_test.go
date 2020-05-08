@@ -1123,7 +1123,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Version: pointer.StringPtr("v3.1.0"),
+							Image: "pingcap/pd:v3.1.0",
 						},
 					},
 					TiDB: v1alpha1.TiDBSpec{
@@ -1149,7 +1149,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Version: pointer.StringPtr("v4.0.0-rc.1"),
+							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
 					},
 					TiDB: v1alpha1.TiDBSpec{
@@ -1270,7 +1270,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Version: pointer.StringPtr("v3.1.0"),
+							Image: "pingcap/pd:v3.1.0",
 						},
 						Config: &v1alpha1.PDConfig{},
 					},
@@ -1322,7 +1322,7 @@ func TestGetPDConfigMap(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
-							Version: pointer.StringPtr("v4.0.0-rc.1"),
+							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
 						Config: &v1alpha1.PDConfig{},
 					},
