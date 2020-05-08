@@ -61,6 +61,9 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// High availability is realized based on the topology
+	AnnHATopologyKey = "pingcap.com/ha-topology-key"
+
 	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
 	// A pod with this annotation will produce an error when scheduled.
 	AnnFailTiDBScheduler string = "tidb.pingcap.com/fail-scheduler"
