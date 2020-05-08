@@ -1,12 +1,12 @@
 ---
-title: Restore Data from S3-Compatible Storage Using Loader
+title: Restore Data from S3-Compatible Storage Using TiDB Lightning
 summary: Learn how to restore data from the S3-compatible storage.
 category: how-to
 ---
 
-# Restore Data from S3-Compatible Storage Using Loader
+# Restore Data from S3-Compatible Storage Using TiDB Lightning
 
-This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [`loader`](https://pingcap.com/docs/v3.0/reference/tools/loader) is used to perform the restoration.
+This document describes how to restore the TiDB cluster data backed up using TiDB Operator in Kubernetes. For the underlying implementation, [`Lightning`](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) is used to perform the restoration.
 
 The restoration method described in this document is implemented based on CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the restoration method implemented based on Helm Charts, refer to [Back up and Restore TiDB Cluster Data Based on Helm Charts](backup-and-restore-using-helm-charts.md).
 
@@ -22,6 +22,21 @@ This document shows an example in which the backup data stored in the specified 
 Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-hoc-full-backup).
 
 ## Restoration process
+
+> **Note:**
+>
+> Because of the `rclone` [issue](https://rclone.org/s3/#key-management-system-kms), if the backup data is stored in Amazon S3 and the `AWS-KMS` encryption is enabled, you need to add the following `spec.s3.options` configuration to the YAML file in the examples of this section:
+>
+> ```yaml
+> spec:
+>   ...
+>   s3:
+>     ...
+>     options:
+>     - --ignore-checksum
+> ```
+
+**Examples:**
 
 + Create the `Restore` CR, and restore the cluster data from Ceph by importing AccessKey and SecretKey to grant permissions:
 
@@ -49,7 +64,7 @@ Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-ho
         secretName: restore-demo2-tidb-secret
       s3:
         provider: ceph
-        endpoint: http://10.233.2.161
+        endpoint: ${endpoint}
         secretName: s3-secret
         path: s3://${backup_path}
       storageClassName: local-storage
@@ -82,14 +97,14 @@ Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-ho
         secretName: restore-demo2-tidb-secret
       s3:
         provider: aws
-        region: us-west-1
+        region: ${region}
         secretName: s3-secret
         path: s3://${backup_path}
       storageClassName: local-storage
       storageSize: 1Gi
     ```
 
-+ Create the `Restore` CR, and restore the cluster data by binding IAM with Pod to grant permissions:
++ Create the `Restore` CR, and restore the cluster data from Amazon S3 by binding IAM with Pod to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
@@ -117,13 +132,13 @@ Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-ho
           secretName: restore-demo2-tidb-secret
         s3:
           provider: aws
-          region: us-west-1
+          region: ${region}
           path: s3://${backup_path}
         storageClassName: local-storage
         storageSize: 1Gi
     ```
 
-+ Create the `Restore` CR, and restore the cluster data by binding IAM with ServiceAccount to grant permissions:
++ Create the `Restore` CR, and restore the cluster data from Amazon S3 by binding IAM with ServiceAccount to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
@@ -150,7 +165,7 @@ Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-ho
           secretName: restore-demo2-tidb-secret
         s3:
           provider: aws
-          region: us-west-1
+          region: ${region}
           path: s3://${backup_path}
         storageClassName: local-storage
         storageSize: 1Gi
@@ -164,7 +179,7 @@ After creating the `Restore` CR, execute the following command to check the rest
 kubectl get rt -n test2 -owide
 ```
 
-In the above example, the backup data stored in the `spec.s3.path` path on the S3-compatible storage is restored to the `spec.to.host` TiDB cluster. For the configuration of the S3-compatible storage, refer to [backup-s3.yaml](backup-to-s3.md#ad-hoc-backup-process).
+In the examples above, the backup data stored in the `spec.s3.path` path on the S3-compatible storage is restored to the `spec.to.host` TiDB cluster. For the configuration of the S3-compatible storage, refer to [backup-s3.yaml](backup-to-s3.md#ad-hoc-backup-process).
 
 More `Restore` CRs are described as follows:
 
@@ -172,6 +187,6 @@ More `Restore` CRs are described as follows:
 * `.spec.to.host`: the address of the TiDB cluster to be restored.
 * `.spec.to.port`: the port of the TiDB cluster to be restored.
 * `.spec.to.user`: the accessing user of the TiDB cluster to be restored.
-* `.spec.to.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be restored.
-* `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration. If this item is not specified, the value of the `default-backup-storage-class-name` parameter (`standard` by default, specified when TiDB Operator is started) is used by default.
-* `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than the size of the backed up TiDB cluster.
+* `.spec.to.secretName`: the secret contains the password of the `.spec.to.user`.
+* `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration.
+* `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than the backup data size of the TiDB cluster.

@@ -1,12 +1,12 @@
 ---
-title: 使用 BR 工具恢复 AWS 上的备份数据
-summary: 介绍如何使用 BR 工具恢复 AWS 上的备份数据。
+title: 使用 BR 工具恢复 S3 兼容存储上的备份数据
+summary: 介绍如何使用 BR 工具恢复 Amazon S3 兼容存储上的备份数据。
 category: how-to
 ---
 
-# 使用 BR 工具恢复 AWS 上的备份数据
+# 使用 BR 工具恢复 S3 兼容存储上的备份数据
 
-本文详细描述了如何将存储在 Amazon S3 存储的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群，底层通过使用 [`BR`](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 进行数据恢复。
+本文详细描述了如何将存储在 Amazon S3 存储的备份数据恢复到 AWS Kubernetes 环境中的 TiDB 集群，底层通过使用 [BR](https://pingcap.com/docs-cn/v3.1/reference/tools/br/br) 进行数据恢复。
 
 本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 Custom Resource Definition (CRD) 实现。
 

@@ -1,6 +1,6 @@
 ---
 title: Restore Data from S3-Compatible Storage Using BR
-summary: Learn how to restore data from AWS S3 using BR.
+summary: Learn how to restore data from Amazon S3 using BR.
 category: how-to
 ---
 
@@ -10,15 +10,15 @@ This document describes how to restore the TiDB cluster data backed up using TiD
 
 The restoration method described in this document is implemented based on Custom Resource Definition (CRD) in TiDB Operator v1.1 or later versions.
 
-This document shows an example in which the backup data stored in the specified path on the AWS S3 storage is restored to the TiDB cluster.
+This document shows an example in which the backup data stored in the specified path on the Amazon S3 storage is restored to the TiDB cluster.
 
 ## Three methods to grant AWS account permissions
 
-Refer to [Back up Data to AWS S3 using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
+Refer to [Back up Data to Amazon S3 using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
 
 ## Prerequisites
 
-Before you restore data from AWS S3 storage, you need to grant AWS account permissions. This section describes three methods to grant AWS account permissions.
+Before you restore data from Amazon S3 storage, you need to grant AWS account permissions. This section describes three methods to grant AWS account permissions.
 
 ### Grant permissions by importing AccessKey and SecretKey
 
@@ -67,7 +67,7 @@ Before you restore data from AWS S3 storage, you need to grant AWS account permi
 3. Create the IAM role:
 
     - To create an IAM role for the account, refer to [Create an IAM User](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html).
-    - Give the required permission to the IAM role you have created  (refer to [access policies manage](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) for details). Because `Restore` needs to access the AWS S3 storage, the IAM here is given the `AmazonS3FullAccess` permission.
+    - Give the required permission to the IAM role you have created  (refer to [access policies manage](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) for details). Because `Restore` needs to access the Amazon S3 storage, the IAM here is given the `AmazonS3FullAccess` permission.
 
 4. Associate IAM with TiKV Pod:
 

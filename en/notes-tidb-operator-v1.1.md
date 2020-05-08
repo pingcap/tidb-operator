@@ -130,9 +130,9 @@ After TiDB Operator is upgraded to v1.1, you can perform full backup using the B
 
 After the TiDB Operator is upgraded to v1.1, you can restore data using the Restore CR.
 
-- If the TiDB cluster version < v3.1, refer to [Restore data using Loader](restore-from-s3.md).
-- If the TiDB cluster version >= v3.1, refer to [Restore data using BR](restore-from-aws-s3-using-br.md).
+- If the TiDB cluster version < v3.1, refer to [Restore Data from S3-Compatible Storage Using TiDB Lightning](restore-from-s3.md).
+- If the TiDB cluster version >= v3.1, refer to [Restore Data from S3-Compatible Storage Using BR](restore-from-aws-s3-using-br.md).
 
 > **Note:**
 >
-> Currently, with Backup CR, you can restore data only from S3 and GCS using Loader, and restore data from S3 using BR. If you need to restore the backup data from local Persistent Volume Claim (PVC), you cannot switch to the CR management.
+> Currently, with Restore CR, you can use TiDB Lightning to restore data from S3 and GCS, and use BR to restore data only from S3. If you need to restore the backup data from local Persistent Volume Claim (PVC), you cannot switch to the CR management.

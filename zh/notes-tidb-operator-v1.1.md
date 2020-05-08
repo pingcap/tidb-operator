@@ -117,15 +117,15 @@ spec
 
 > **注意：**
 >
-> * Backup CR mydumper 方式目前只支持备份到 s3、gcs，BR 方式只支持备份到 s3，如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
+> Backup CR mydumper 方式目前只支持备份到 S3、GCS，BR 方式只支持备份到 S3。如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
 
 ### 备份恢复
 
 升级到 TiDB Operator v1.1 之后，可以通过 Restore CR 进行备份恢复：
 
-- 如果 TiDB 集群版本 < v3.1，可以参考 [loader 备份恢复](restore-from-s3.md)
-- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR 备份恢复](restore-from-aws-s3-using-br.md)
+- 如果 TiDB 集群版本 < v3.1，可以参考 [使用 TiDB Lightning 恢复 S3 兼容存储上的备份数据](restore-from-s3.md)。
+- 如果 TiDB 集群版本 >= v3.1，可以参考 [使用 BR 工具恢复 S3 兼容存储上的备份数据](restore-from-aws-s3-using-br.md)。
 
 > **注意：**
 >
-> * Restore CR loader 方式目前只支持从 s3、gcs 获取备份数据进行恢复，BR 方式只支持从 s3 获取备份数据进行恢复，如果需要从本地 PVC 获取备份数据进行恢复，则不能切换到 CR 方式管理。
+> Restore CR Lightning 方式目前只支持从 S3、GCS 获取备份数据进行恢复，BR 方式只支持从 S3 获取备份数据进行恢复。如果需要从本地 PVC 获取备份数据进行恢复，则不能切换到 CR 方式管理。

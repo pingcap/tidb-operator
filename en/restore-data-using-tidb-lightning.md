@@ -90,17 +90,17 @@ TiDB Lightning Helm chart supports both local and remote data sources.
 
 * Remote
 
-    Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download Mydumper backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [AWS S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
+    Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download Mydumper backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [Amazon S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
 
     To restore backup data from the remote source, take the following steps:
 
     1. Make sure that `dataSource.local.nodeName` and `dataSource.local.hostPath` in `values.yaml` are commented out.
 
-    2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, refer to [rclone documentation](https://rclone.org/). Using AWS S3 as the storage is the same as restoring data using BR and Mydumper.
+    2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, refer to [rclone documentation](https://rclone.org/). Using Amazon S3 as the storage is the same as restoring data using BR and Mydumper.
 
         There are three methods to grant permissions. The configuration varies with different methods. For details, see [Backup the TiDB Cluster on AWS using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
 
-        * If you grant permissions by importing AWS S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, use the following configuration:
+        * If you grant permissions by importing Amazon S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, use the following configuration:
 
             {{< copyable "" >}}
 
@@ -136,7 +136,7 @@ TiDB Lightning Helm chart supports both local and remote data sources.
               service_account_credentials = ${service_account_json_file_content}
             ```
 
-        * If you grant permissions by associating AWS S3 IAM with Pod or with ServiceAccount, you can ignore `s3.access_key_id` and `s3.secret_access_key`:
+        * If you grant permissions by associating Amazon S3 IAM with Pod or with ServiceAccount, you can ignore `s3.access_key_id` and `s3.secret_access_key`:
 
             {{< copyable "" >}}
     
@@ -165,7 +165,7 @@ TiDB Lightning Helm chart supports both local and remote data sources.
 
 The method of deploying TiDB Lightning varies with different methods of granting permissions and with different storages.
 
-* If you grant permissions by importing AWS S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, run the following command to deploy TiDB Lightning:
+* If you grant permissions by importing Amazon S3 AccessKey and SecretKey, or if you use Ceph or GCS as the storage, run the following command to deploy TiDB Lightning:
 
     {{< copyable "shell-regular" >}}
 
@@ -173,11 +173,11 @@ The method of deploying TiDB Lightning varies with different methods of granting
     helm install pingcap/tidb-lightning --name=${release_name} --namespace=${namespace} --set failFast=true -f tidb-lightning-values.yaml --version=${chart_version}
     ```
 
-* If you grant permissions by associating AWS S3 IAM with Pod, take the following steps:
+* If you grant permissions by associating Amazon S3 IAM with Pod, take the following steps:
 
     1. Create the IAM role:
 
-        [Create an IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) for the account, and [grant the required permission](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) to the role. The IAM role requires the `AmazonS3FullAccess` permission because TiDB Lightning needs to access AWS S3 storage.
+        [Create an IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) for the account, and [grant the required permission](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html) to the role. The IAM role requires the `AmazonS3FullAccess` permission because TiDB Lightning needs to access Amazon S3 storage.
 
     2. Modify `tidb-lightning-values.yaml`, and add the `iam.amazonaws.com/role: arn:aws:iam::123456789012:role/user` annotation in the `annotations` field.
 
@@ -193,7 +193,7 @@ The method of deploying TiDB Lightning varies with different methods of granting
         >
         > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 1.
 
-* If you grant permissions by associating AWS S3 with ServiceAccount, take the following steps:
+* If you grant permissions by associating Amazon S3 with ServiceAccount, take the following steps:
 
     1. Enable the IAM role for the service account on the cluster:
 

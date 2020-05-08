@@ -27,7 +27,22 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
 
 ### Ad-hoc backup process
 
-+ Create the `Backup` CR, and back up cluster data to AWS S3 by importing AccessKey and SecretKey to grant permissions:
+> **Note:**
+>
+> Because of the `rclone` [issue](https://rclone.org/s3/#key-management-system-kms), if the backup data is stored in Amazon S3 and the `AWS-KMS` encryption is enabled, you need to add the following `spec.s3.options` configuration to the YAML file in the examples of this section:
+>
+> ```yaml
+> spec:
+>   ...
+>   s3:
+>     ...
+>     options:
+>     - --ignore-checksum
+> ```
+
+**Examples:**
+
++ Create the `Backup` CR, and back up cluster data to Amazon S3 by importing AccessKey and SecretKey to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
@@ -55,7 +70,8 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
       s3:
         provider: aws
         secretName: s3-secret
-        # region: us-east-1
+        region: ${region}
+        bucket: ${bucket}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
@@ -89,12 +105,13 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
       s3:
         provider: ceph
         secretName: s3-secret
-        endpoint: http://10.0.0.1:30074
+        endpoint: ${endpoint}
+        bucket: ${bucket}
       storageClassName: local-storage
       storageSize: 10Gi
     ```
 
-+ Create the `Backup` CR, and back up data by binding IAM with Pod to grant permissions:
++ Create the `Backup` CR, and back up data to Amazon S3 by binding IAM with Pod to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
@@ -122,7 +139,8 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
         secretName: backup-demo1-tidb-secret
     s3:
         provider: aws
-        # region: us-east-1
+        region: ${region}
+        bucket: ${bucket}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
@@ -130,7 +148,7 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     storageSize: 10Gi
     ```
 
-+ Create the `Backup` CR, and back up data by binding IAM with ServiceAccount to grant permissions:
++ Create the `Backup` CR, and back up data to Amazon S3 by binding IAM with ServiceAccount to grant permissions:
 
     {{< copyable "shell-regular" >}}
 
@@ -157,7 +175,8 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
         secretName: backup-demo1-tidb-secret
     s3:
         provider: aws
-        # region: us-east-1
+        region: ${region}
+        bucket: ${bucket}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
@@ -165,7 +184,7 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     storageSize: 10Gi
     ```
 
-In the above two examples, all data of the TiDB cluster is exported and backed up to Amazon S3 and Ceph respectively. You can ignore the `region`, `acl`, `endpoint`, and `storageClass` configuration items in the Amazon S3 configuration. S3-compatible storage types other than Amazon S3 can also use configuration similar to that of Amazon S3. You can also leave the configuration item fields empty if you do not need to configure these items as shown in the above Ceph configuration.
+In the examples above, all data of the TiDB cluster is exported and backed up to Amazon S3 and Ceph respectively. You can ignore the `acl`, `endpoint`, and `storageClass` configuration items in the Amazon S3 configuration. S3-compatible storage types other than Amazon S3 can also use configuration similar to that of Amazon S3. You can also leave the configuration item fields empty if you do not need to configure these items as shown in the above Ceph configuration.
 
 Amazon S3 supports the following access-control list (ACL) polices:
 
@@ -203,9 +222,11 @@ More `Backup` CRs are described as follows:
 * `.spec.from.host`: the address of the TiDB cluster to be backed up.
 * `.spec.from.port`: the port of the TiDB cluster to be backed up.
 * `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
-* `.spec.from.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be backed up.
-* `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation. If this item is not specified, the value of the `default-backup-storage-class-name` parameter (`standard` by default, specified when TiDB Operator is started) is used by default.
-* `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than the size of the TiDB cluster to be backed up.
+* `.spec.from.secretName`：the secret contains the password of the `.spec.from.user`.
+* `.spec.s3.region`: the region of Amazon S3.
+* `.spec.s3.bucket`: the bucket name of S3.
+* `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation.
+* `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than the backup data size of the TiDB cluster.
 
 More S3-compatible `provider`s are described as follows:
 
@@ -227,6 +248,23 @@ You can set a backup policy to perform scheduled backups of the TiDB cluster, an
 The prerequisites for the scheduled backup is the same as the [prerequisites for ad-hoc backup](#prerequisites-for-ad-hoc-backup).
 
 ### Scheduled backup process
+
+> **Note:**
+>
+> Because of the `rclone` [issue](https://rclone.org/s3/#key-management-system-kms), if the backup data is stored in Amazon S3 and the `AWS-KMS` encryption is enabled, you need to add the following `spec.backupTemplate.s3.options` configuration to the YAML file in the examples of this section:
+>
+> ```yaml
+> spec:
+>   ...
+>   backupTemplate:
+>     ...
+>     s3:
+>       ...
+>       options:
+>       - --ignore-checksum
+> ```
+
+**Examples:**
 
 + Create the `BackupSchedule` CR to enable the scheduled full backup to Amazon S3 by importing AccessKey and SecretKey to grant permissions:
 
@@ -259,7 +297,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
         s3:
         provider: aws
         secretName: s3-secret
-        # region: us-east-1
+        region: ${region}
+        bucket: ${bucket}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
@@ -298,7 +337,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
         s3:
         provider: ceph
         secretName: s3-secret
-        endpoint: http://10.0.0.1:30074
+        endpoint: ${endpoint}
+        bucket: ${bucket}
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -335,7 +375,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
-          # region: us-east-1
+          region: ${region}
+          bucket: ${bucket}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
@@ -374,7 +415,8 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
           secretName: backup-demo1-tidb-secret
         s3:
           provider: aws
-          # region: us-east-1
+          region: ${region}
+          bucket: ${bucket}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
@@ -398,7 +440,7 @@ You can use the following command to check all the backup items:
 kubectl get bk -l tidb.pingcap.com/backup-schedule=demo1-backup-schedule-s3 -n test1
 ```
 
-From the above two examples, you can see that the `backupSchedule` configuration consists of two parts. One is the unique configuration of `backupSchedule`, and the other is `backupTemplate`. `backupTemple` specifies the configuration related to the S3-compatible storage, which is the same as the configuration of the ad-hoc full backup to the S3-compatible storage (refer to [Ad-hoc backup process](#ad-hoc-backup-process) for details). The following are the unique configuration items of `backupSchedule`:
+From the examples above, you can see that the `backupSchedule` configuration consists of two parts. One is the unique configuration of `backupSchedule`, and the other is `backupTemplate`. `backupTemple` specifies the configuration related to the S3-compatible storage, which is the same as the configuration of the ad-hoc full backup to the S3-compatible storage (refer to [Ad-hoc backup process](#ad-hoc-backup-process) for details). The following are the unique configuration items of `backupSchedule`:
 
 + `.spec.maxBackups`: A backup retention policy, which determines the maximum number of backup items to be retained. When this value is exceeded, the outdated backup items will be deleted. If you set this configuration item to `0`, all backup items are retained.
 + `.spec.maxReservedTime`: A backup retention policy based on time. For example, if you set the value of this configuration to `24h`, only backup items within the recent 24 hours are retained. All backup items out of this time are deleted. For the time format, refer to [`func ParseDuration`](https://golang.org/pkg/time/#ParseDuration). If you have set the maximum number of backup items and the longest retention time of backup items at the same time, the latter setting takes effect.

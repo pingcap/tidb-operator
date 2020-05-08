@@ -1,12 +1,12 @@
 ---
-title: 恢复 S3 兼容存储上的备份数据
-summary: 介绍如何将兼容 S3 存储的备份数据恢复到 TiDB 集群。
+title: 使用 TiDB Lightning 恢复 S3 兼容存储上的备份数据
+summary: 了解如何使用 TiDB Lightning 将兼容 S3 存储上的备份数据恢复到 TiDB 集群。
 category: how-to
 ---
 
-# 恢复 S3 兼容存储上的备份数据
+# 使用 TiDB Lightning 恢复 S3 兼容存储上的备份数据
 
-本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [`loader`](https://pingcap.com/docs-cn/v3.0/reference/tools/loader) 来恢复数据。
+本文描述了将 Kubernetes 上通过 TiDB Operator 备份的数据恢复到 TiDB 集群的操作过程。底层通过使用 [TiDB Lightning](https://pingcap.com/docs/stable/how-to/get-started/tidb-lightning/#tidb-lightning-tutorial) 来恢复数据。
 
 本文使用的恢复方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。基于 Helm Charts 实现的备份和恢复方式可参考[基于 Helm Charts 实现的 TiDB 集群备份恢复](backup-and-restore-using-helm-charts.md)。
 
@@ -21,6 +21,19 @@ category: how-to
 参考[环境准备](restore-from-aws-s3-using-br.md#环境准备)
 
 ## 将指定备份数据恢复到 TiDB 集群
+
+> **注意：**
+>
+> 由于 `rclone` 存在[问题](https://rclone.org/s3/#key-management-system-kms)，如果使用 Amazon S3 存储备份，并且 Amazon S3 开启了 `AWS-KMS` 加密，需要在本节示例中的 yaml 文件里添加如下 `spec.s3.options` 配置以保证备份恢复成功：
+>
+> ```yaml
+> spec:
+>   ...
+>   s3:
+>     ...
+>     options:
+>     - --ignore-checksum
+> ```
 
 1. 创建 Restore customer resource (CR)，将制定备份数据恢复至 TiDB 集群
 
@@ -50,7 +63,7 @@ category: how-to
             secretName: restore-demo2-tidb-secret
           s3:
             provider: ceph
-            endpoint: http://10.233.2.161
+            endpoint: ${endpoint}
             secretName: s3-secret
             path: s3://${backup_path}
           storageClassName: local-storage
@@ -83,7 +96,7 @@ category: how-to
             secretName: restore-demo2-tidb-secret
           s3:
             provider: aws
-            region: us-west-1
+            region: ${region}
             secretName: s3-secret
             path: s3://${backup_path}
           storageClassName: local-storage
@@ -118,7 +131,7 @@ category: how-to
               secretName: restore-demo2-tidb-secret
             s3:
               provider: aws
-              region: us-west-1
+              region: ${region}
               path: s3://${backup_path}
             storageClassName: local-storage
             storageSize: 1Gi
@@ -151,7 +164,7 @@ category: how-to
               secretName: restore-demo2-tidb-secret
             s3:
               provider: aws
-              region: us-west-1
+              region: ${region}
               path: s3://${backup_path}
             storageClassName: local-storage
             storageSize: 1Gi
@@ -173,6 +186,6 @@ category: how-to
 * `.spec.to.host`：待恢复 TiDB 集群的访问地址。
 * `.spec.to.port`：待恢复 TiDB 集群的访问端口。
 * `.spec.to.user`：待恢复 TiDB 集群的访问用户。
-* `.spec.to.tidbSecretName`：待恢复 TiDB 集群所需凭证的 secret。
-* `.spec.storageClassName`：指定恢复时所需的 PV 类型。如果不指定该项，则默认使用 TiDB Operator 启动参数中 `default-backup-storage-class-name` 指定的值（默认为 `standard`）。
-* `.spec.storageSize`：指定恢复集群时所需的 PV 大小。该值应大于备份 TiDB 集群的数据大小。
+* `.spec.to.secretName`：存储 `.spec.to.user` 用户的密码的 secret。
+* `.spec.storageClassName`：指定恢复时所需的 PV 类型。
+* `.spec.storageSize`：指定恢复集群时所需的 PV 大小。该值应大于 TiDB 集群备份的数据大小。

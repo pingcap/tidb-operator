@@ -45,10 +45,10 @@
 + Backup and Restore
   - [Use Helm Charts](backup-and-restore-using-helm-charts.md)
   + Use CRDs
-    - [Back up Data to GCS](backup-to-gcs.md)
-    - [Restore Data from GCS](restore-from-gcs.md)
+    - [Back up Data to GCS Using Mydumper](backup-to-gcs.md)
+    - [Restore Data from GCS Using TiDB Lightning](restore-from-gcs.md)
     - [Back up Data to S3-Compatible Storage Using Mydumper](backup-to-s3.md)
-    - [Restore Data from S3-Compatible Storage Using Loader](restore-from-s3.md)
+    - [Restore Data from S3-Compatible Storage Using TiDB Lightning](restore-from-s3.md)
     - [Back up Data to S3-Compatible Storage Using BR](backup-to-aws-s3-using-br.md)
     - [Restore Data from S3-Compatible Storage Using BR](restore-from-aws-s3-using-br.md)
   - [Restore Data Using TiDB Lightning](restore-data-using-tidb-lightning.md)
