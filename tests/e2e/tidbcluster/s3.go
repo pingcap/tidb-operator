@@ -45,7 +45,7 @@ func cleanMinio(ns string) error {
 }
 
 func createMinioClient(fw portforward.PortForward, ns, accessKey, secretKey string, ssl bool) (*minio.Client, context.CancelFunc, error) {
-	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, "minio-service", 9000)
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, "svc/minio-service", 9000)
 	if err != nil {
 		return nil, nil, err
 	}
