@@ -19,6 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -490,9 +491,19 @@ func newTidbCluster() *TidbCluster {
 		Spec: TidbClusterSpec{
 			PD: PDSpec{
 				Replicas: 3,
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
 			},
 			TiKV: TiKVSpec{
 				Replicas: 3,
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
 			},
 			TiDB: TiDBSpec{
 				Replicas: 1,

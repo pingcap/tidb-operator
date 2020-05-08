@@ -1259,6 +1259,100 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 		})
 	})
+
+	ginkgo.It("Ensure Service NodePort Not Change", func() {
+		// Create TidbCluster with NodePort to check whether node port would change
+		nodeTc := fixture.GetTidbCluster(ns, "nodeport", utilimage.TiDBV3Version)
+		nodeTc.Spec.PD.Replicas = 1
+		nodeTc.Spec.TiKV.Replicas = 1
+		nodeTc.Spec.TiDB.Replicas = 1
+		nodeTc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+			ServiceSpec: v1alpha1.ServiceSpec{
+				Type: corev1.ServiceTypeNodePort,
+			},
+		}
+		err := genericCli.Create(context.TODO(), nodeTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(nodeTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		// expect tidb service type is Nodeport
+		var s *corev1.Service
+		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+			s, err = c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
+			if err != nil {
+				framework.Logf(err.Error())
+				return false, nil
+			}
+			if s.Spec.Type != corev1.ServiceTypeNodePort {
+				return false, fmt.Errorf("nodePort tidbcluster tidb service type isn't NodePort")
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+		ports := s.Spec.Ports
+
+		// f is the function to check whether service nodeport have changed for 1 min
+		f := func() error {
+			return wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+				s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if s.Spec.Type != corev1.ServiceTypeNodePort {
+					return false, err
+				}
+				for _, dport := range s.Spec.Ports {
+					for _, eport := range ports {
+						if dport.Port == eport.Port && dport.NodePort != eport.NodePort {
+							return false, fmt.Errorf("nodePort tidbcluster tidb service NodePort changed")
+						}
+					}
+				}
+				return false, nil
+			})
+		}
+		// check whether nodeport have changed for 1 min
+		err = f()
+		framework.ExpectEqual(err, wait.ErrWaitTimeout)
+		framework.Logf("tidbcluster tidb service NodePort haven't changed")
+
+		nodeTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get("nodeport", metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		err = controller.GuaranteedUpdate(genericCli, nodeTc, func() error {
+			nodeTc.Spec.TiDB.Service.Annotations = map[string]string{
+				"foo": "bar",
+			}
+			return nil
+		})
+		framework.ExpectNoError(err)
+
+		// check whether the tidb svc have updated
+		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+			s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if s.Annotations == nil {
+				return false, nil
+			}
+			v, ok := s.Annotations["foo"]
+			if !ok {
+				return false, nil
+			}
+			if v != "bar" {
+				return false, fmt.Errorf("tidb svc annotation foo not equal bar")
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+		framework.Logf("tidb nodeport svc updated")
+
+		// check whether nodeport have changed for 1 min
+		err = f()
+		framework.ExpectEqual(err, wait.ErrWaitTimeout)
+		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
