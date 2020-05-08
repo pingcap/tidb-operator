@@ -1165,6 +1165,32 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(hasTLSVolMount(sts)).To(BeTrue())
 			},
 		},
+		{
+			name: "tidb version nightly, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(hasTLSVol(sts)).To(BeTrue())
+				g.Expect(hasTLSVolMount(sts)).To(BeTrue())
+			},
+		},
 		// TODO add more tests
 	}
 
