@@ -226,3 +226,19 @@ func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
 	}
 	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
 }
+
+// RemainNodeport is to make service nodeport unchanged during each reconciliation
+func RemainNodeport(desiredSvc, existedSvc *corev1.Service) {
+	if desiredSvc.Spec.Type != corev1.ServiceTypeNodePort && desiredSvc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		return
+	}
+	for id, dport := range desiredSvc.Spec.Ports {
+		for _, eport := range existedSvc.Spec.Ports {
+			if dport.Port == eport.Port && dport.Protocol == eport.Protocol {
+				dport.NodePort = eport.NodePort
+				desiredSvc.Spec.Ports[id] = dport
+				break
+			}
+		}
+	}
+}
