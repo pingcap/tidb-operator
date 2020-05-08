@@ -1425,7 +1425,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = s3Client.MakeBucket(bucketName, "")
 		framework.ExpectNoError(err)
 		backupFolder := time.Now().Format(time.RFC3339)
-		
+
 		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
 		s3config := &v1alpha1.S3StorageProvider{
@@ -1461,7 +1461,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
-		restore := fixture.GetRestoreCRDForBRWithS3(tcTo, backupFolder, s3config)
+		restore := fixture.GetRestoreCRDForBRWithS3(tcTo, restoreSecret.Name, s3config)
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
 		framework.ExpectNoError(err)
 
