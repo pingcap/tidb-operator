@@ -291,18 +291,18 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
 		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH}"
 		def builds = [:]
-// 		builds["E2E v1.12"] = {
-// 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
-// 		}
+		builds["E2E v1.12"] = {
+			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='BackupAndRestoreInKind' --operator-killer", artifacts)
+		}
 // 		builds["E2E v1.12 AdvancedStatefulSet"] = {
 // 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer", artifacts)
 // 		}
 // 		builds["E2E v1.18"] = {
 // 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 GINKGO_NODES=6 KUBE_VERSION=v1.18 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
 // 		}
-		builds["E2E v1.12 Serial"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-serial KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='BackupAndRestoreInKind' --install-operator=false", artifacts, e2eSerialResources)
-		}
+// 		builds["E2E v1.12 Serial"] = {
+// 			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-serial KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='BackupAndRestoreInKind' --install-operator=false", artifacts, e2eSerialResources)
+// 		}
 		builds.failFast = false
 		parallel builds
 
