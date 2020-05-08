@@ -52,6 +52,8 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 							chartPrefixName=\$chartItem-${RELEASE_TAG}
 							echo "======= release \$chartItem chart ======"
 							sed -i "s/version:.*/version: ${RELEASE_TAG}/g" charts/\$chartItem/Chart.yaml
+                            # update image tag to current release
+                            sed -r -i "s#pingcap/(tidb-operator|tidb-backup-manager):.*#pingcap/\\1:${RELEASE_TAG}#g" charts/\$chartItem/values.yaml
 							tar -zcf \${chartPrefixName}.tgz -C charts \$chartItem
 							sha256sum \${chartPrefixName}.tgz > \${chartPrefixName}.sha256
 							./upload.py \${chartPrefixName}.tgz \${chartPrefixName}.tgz

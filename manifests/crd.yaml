@@ -1670,6 +1670,8 @@ spec:
                       properties:
                         allow-auto-random:
                           type: boolean
+                        allow-expression-index:
+                          type: boolean
                       type: object
                     isolation-read:
                       properties:
@@ -1738,6 +1740,8 @@ spec:
                       type: boolean
                     oom-action:
                       type: string
+                    oom-use-tmp-storage:
+                      type: boolean
                     opentracing:
                       properties:
                         enable:
@@ -1895,6 +1899,8 @@ spec:
                       properties:
                         enable:
                           type: boolean
+                        enable-internal-query:
+                          type: boolean
                         history-size:
                           format: int32
                           type: integer
@@ -1944,6 +1950,8 @@ spec:
                           format: int64
                           type: integer
                       type: object
+                    tmp-storage-path:
+                      type: string
                     token-limit:
                       format: int32
                       type: integer
@@ -2977,6 +2985,8 @@ spec:
                       type: string
                     log-level:
                       type: string
+                    log-rotation-size:
+                      type: string
                     log-rotation-timespan:
                       type: string
                     panic-when-unexpected-key-or-data:
@@ -2994,6 +3004,19 @@ spec:
                           type: integer
                         retry-max-count:
                           format: int64
+                          type: integer
+                      type: object
+                    pessimistic-txn:
+                      properties:
+                        enabled:
+                          type: boolean
+                        pipelined:
+                          type: boolean
+                        wait-for-lock-timeout:
+                          format: int32
+                          type: integer
+                        wake-up-delay-duration:
+                          format: int32
                           type: integer
                       type: object
                     raftdb:
@@ -3317,7 +3340,23 @@ spec:
                             stack-size:
                               type: string
                           type: object
+                        unified:
+                          properties:
+                            max-tasks-per-worker:
+                              format: int32
+                              type: integer
+                            max-thread-count:
+                              format: int32
+                              type: integer
+                            min-thread-count:
+                              format: int32
+                              type: integer
+                            stack-size:
+                              type: string
+                          type: object
                       type: object
+                    refresh-config-interval:
+                      type: string
                     rocksdb:
                       properties:
                         auto-tuned:
@@ -3839,6 +3878,8 @@ spec:
                         concurrent-send-snap-limit:
                           format: int32
                           type: integer
+                        enable-request-batch:
+                          type: boolean
                         end-point-batch-row-limit:
                           format: int32
                           type: integer
@@ -3882,6 +3923,10 @@ spec:
                           type: string
                         labels:
                           type: object
+                        request-batch-enable-cross-command:
+                          type: boolean
+                        request-batch-wait-duration:
+                          type: string
                         snap-max-total-size:
                           type: string
                         snap-max-write-bytes-per-sec:
@@ -3892,6 +3937,10 @@ spec:
                         status-thread-pool-size:
                           type: string
                       type: object
+                    slow-log-file:
+                      type: string
+                    slow-log-threshold:
+                      type: string
                     storage:
                       properties:
                         block-cache:
