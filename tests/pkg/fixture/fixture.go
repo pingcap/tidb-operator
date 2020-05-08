@@ -415,7 +415,7 @@ func GetRestoreCRDForBRWithS3(tc *v1alpha1.TidbCluster, toSecretName string, s3c
 				S3: s3config,
 			},
 			To: v1alpha1.TiDBAccessConfig{
-				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
+				Host:       util.GetTidbServiceName(tc.Name),
 				SecretName: toSecretName,
 				Port:       4000,
 				User:       "root",

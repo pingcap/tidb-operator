@@ -1393,9 +1393,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.StopInsertDataTo(&clusterFrom)
-
+		framework.Logf("finish inserting data")
 		err = installAndWaitMinio(ns, c)
 		framework.ExpectNoError(err, "failed to install minio")
+		framework.Logf("minio installed success")
 
 		// prepare for create backup/restore secret
 		backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
@@ -1424,6 +1425,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = s3Client.MakeBucket(bucketName, "")
 		framework.ExpectNoError(err)
 		backupFolder := time.Now().Format(time.RFC3339)
+		
 		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
 		s3config := &v1alpha1.S3StorageProvider{
