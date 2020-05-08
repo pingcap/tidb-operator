@@ -40,6 +40,7 @@
   - [收集日志](collect-tidb-logs.md)
   - [集群故障自动转移](use-auto-failover.md)
   - [开启 TiDB Operator 准入控制器](enable-admission-webhook.md)
+  - [使用 PD Recover 恢复 PD 集群](pd-recover.md)
 + TiDB 集群伸缩
   - [扩缩容](scale-a-tidb-cluster.md)
   - [开启弹性伸缩](enable-tidb-cluster-auto-scaling.md)
