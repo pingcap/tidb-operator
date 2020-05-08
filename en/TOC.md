@@ -33,12 +33,13 @@
   - [Monitor TiDB Using Helm](monitor-a-tidb-cluster.md)
   - [Monitor TiDB Using TidbMonitor](monitor-using-tidbmonitor.md)
 + Maintain
-  - [Destroy a TiDB cluster](destroy-a-tidb-cluster.md)
+  - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
   - [Maintain a Hosting Kubernetes Node](maintain-a-kubernetes-node.md)
   - [Collect TiDB Logs](collect-tidb-logs.md)
   - [Enable Automatic Failover](use-auto-failover.md)
   - [Enable Admission Controller](enable-admission-webhook.md)
+  - [Use PD Recover to Recover the PD Cluster](pd-recover.md)
 + Scale
   - [Scale](scale-a-tidb-cluster.md)
   - [Enable Auto-scaling](enable-tidb-cluster-auto-scaling.md)
