@@ -297,6 +297,41 @@ function e2e::create_kindconfig() {
     cat <<EOF > $tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta1
+  apiServer:
+    extraArgs:
+      v: "4"
+  scheduler:
+    extraArgs:
+      v: "4"
+  controllerManager:
+    extraArgs:
+      v: "4"
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta2
+  apiServer:
+    extraArgs:
+      v: "4"
+  scheduler:
+    extraArgs:
+      v: "4"
+  controllerManager:
+    extraArgs:
+      v: "4"
+- |
+  # backward compatibility for Kubernetes 1.12 and prior versions
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1alpha3
+  apiServerExtraArgs:
+    v: "4"
+  schedulerExtraArgs:
+    v: "4"
+  controllerManagerExtraArgs:
+    v: "4"
 EOF
     if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
