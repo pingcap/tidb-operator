@@ -69,28 +69,13 @@ function fix_eks_mng_deletion_issues() {
 
 function clean_eks() {
     local CLUSTER="$1"
-    echo "info: searching mng stack"
-    local regex='^'$CLUSTER'-mng-[0-9]+$'
-    local mngStack=
-    for stackName in $(get_stacks); do
-        if [[ ! "$stackName" =~ $regex ]]; then
-            continue
-        fi
-        mngStack=$stackName
-        break
-    done
-    if [ -n "$mngStack" ]; then
-        echo "info: mng stack found '$mngStack'"
-    else
-        echo "info: mng stack not found"
-    fi
-
-    echo "info: deleting mng/cluster/cluster-role/mng-role/vpc stacks"
+    echo "info: deleting mng-sg/mng/cluster/cluster-role/mng-role/vpc stacks"
     local stacks=(
-        $mngStack
+        $CLUSTER-mng-mng-sg
+        $CLUSTER-mng
+        $CLUSTER-role-mng
         $CLUSTER-cluster
         $CLUSTER-role-cluster
-        $CLUSTER-role-mng
         $CLUSTER-vpc
     )
     for stack in ${stacks[@]}; do
@@ -99,7 +84,7 @@ function clean_eks() {
         aws cloudformation wait stack-delete-complete --stack-name $stack
         if [ $? -ne 0 ]; then
             echo "error: failed to delete stack '$stack'"
-            if [ "$stack" == "$mngStack" ]; then
+            if [ "$stack" == "$CLUSTER-mng" ]; then
                 echo "info: try to fix mng stack '$stack'"
                 for mngName in $(aws eks list-nodegroups --cluster-name "$CLUSTER" --query 'nodegroups[*]' --output text); do
                     fix_eks_mng_deletion_issues "$CLUSTER" $mngName
@@ -125,6 +110,9 @@ function clean_eks() {
             fi
         fi
     done
+    local keyPairName=$CLUSTER-key-nodes
+    echo "info: deleting key pair $keyPairName"
+    aws ec2 delete-key-pair --key-name $keyPairName
 }
 
 # https://github.com/aws/aws-cli#other-configurable-variables
