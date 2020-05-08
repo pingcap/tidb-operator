@@ -1671,7 +1671,6 @@ spec:
                         allow-auto-random:
                           type: boolean
                         allow-expression-index:
-                          description: Whether enable creating expression index.
                           type: boolean
                       type: object
                     isolation-read:
@@ -1901,7 +1900,6 @@ spec:
                         enable:
                           type: boolean
                         enable-internal-query:
-                          description: Enable summary internal query.
                           type: boolean
                         history-size:
                           format: int32
