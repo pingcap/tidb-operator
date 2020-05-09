@@ -319,7 +319,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			storage = s3Storage
 		default:
-			framework.Failf("unknown provider ", provider)
+			framework.Failf("unknown provider: %s", provider)
 		}
 		if storage == nil {
 			framework.Failf("storage generate failed")
