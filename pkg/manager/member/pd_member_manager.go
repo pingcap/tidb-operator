@@ -594,10 +594,14 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
+		if tc.Spec.PD.TLSClientSecretName != nil {
+			clientSecretName = *tc.Spec.PD.TLSClientSecretName
+		}
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(tc.Name),
+					SecretName: clientSecretName,
 				},
 			},
 		})

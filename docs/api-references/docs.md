@@ -1286,6 +1286,19 @@ string
 <p>Time zone of TiDB initializer Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+Optional: Defaults to nil</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -6040,6 +6053,19 @@ PDConfig
 <p>Config is the Configuration of pd-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+which used by Dashboard.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -8027,16 +8053,14 @@ string
 </tr>
 <tr>
 <td>
-<code>tlsClient</code></br>
+<code>tlsClientSecretName</code></br>
 <em>
-<a href="#tidbtlsclient">
-TiDBTLSClient
-</a>
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether enable the TLS connection between the SQL client and TiDB server
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 Optional: Defaults to nil</p>
 </td>
 </tr>
@@ -9040,7 +9064,6 @@ string
 <h3 id="tidbtlsclient">TiDBTLSClient</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbaccessconfig">TiDBAccessConfig</a>, 
 <a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
@@ -9077,21 +9100,6 @@ kubectl create secret generic <clusterName>-tidb-server-secret &ndash;namespace=
 The name of this Secret must be: <clusterName>-tidb-client-secret.
 kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 4. Set Enabled to <code>true</code>.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tlsSecret</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Specify a secret of client cert for backup/restore
-Optional: Defaults to <cluster>-tidb-client-secret
-If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
-this field only work in backup/restore process</p>
 </td>
 </tr>
 </tbody>
@@ -14236,6 +14244,19 @@ string
 <td>
 <em>(Optional)</em>
 <p>Time zone of TiDB initializer Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+Optional: Defaults to nil</p>
 </td>
 </tr>
 </tbody>
