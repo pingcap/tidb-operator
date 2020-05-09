@@ -20,6 +20,8 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/monitor"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -36,6 +38,7 @@ import (
 )
 
 type MonitorManager struct {
+	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
 	typedControl       controller.TypedControlInterface
 	deploymentLister   appslisters.DeploymentLister
@@ -59,7 +62,12 @@ func NewMonitorManager(
 	recorder record.EventRecorder) *MonitorManager {
 	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
 	return &MonitorManager{
+		pvManager: meta.NewReclaimPolicyMonitorManager(
+			pvcLister,
+			pvLister,
+			pvControl),
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(kubeCli.Discovery()),
 		typedControl:       typedControl,
 		deploymentLister:   kubeInformerFactory.Apps().V1().Deployments().Lister(),
@@ -71,7 +79,7 @@ func NewMonitorManager(
 	}
 }
 
-func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
+func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
 		return nil
@@ -95,6 +103,12 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 			return err
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
+
+		// syncing all PVs managed by this tidbmonitor
+		if err := mm.pvManager.SyncMonitor(monitor); err != nil {
+			return err
+		}
+		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
 
 	// Sync Deployment
