@@ -57,7 +57,7 @@ func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (rpm *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
-	return rpm.sync(tm.GetNamespace(), tm.GetName(), true, tm.Spec.PVReclaimPolicy, tm)
+	return rpm.sync(tm.GetNamespace(), tm.GetName(), false, tm.Spec.PVReclaimPolicy, tm)
 }
 
 func (rpm *reclaimPolicyManager) sync(ns, instanceName string, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy, obj runtime.Object) error {
