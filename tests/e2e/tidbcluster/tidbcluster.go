@@ -1492,8 +1492,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 		}
 		framework.Logf("cluster[%s/%s] restored success", tcTo.Namespace, tcTo.Name)
-		err = cleanMinio(ns)
-		framework.ExpectNoError(err, "clean minio failed")
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			framework.Failf("delete backup failed, err: %v", err)

@@ -36,14 +36,6 @@ func installAndWaitMinio(ns string, cli clientset.Interface) error {
 	return e2epod.WaitTimeoutForPodReadyInNamespace(cli, minioPodName, ns, 5*time.Minute)
 }
 
-func cleanMinio(ns string) error {
-	cmd := fmt.Sprintf(`kubectl delete -f /minio/minio.yaml -n %s`, ns)
-	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to clean minio %s %v", string(data), err)
-	}
-	return nil
-}
-
 func createMinioClient(fw portforward.PortForward, ns, accessKey, secretKey string, ssl bool) (*minio.Client, context.CancelFunc, error) {
 	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, "svc/minio-service", 9000)
 	if err != nil {
