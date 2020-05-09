@@ -946,7 +946,7 @@ type MydumperConfig struct {
 	// Options means options for backup data to remote storage with mydumper.
 	Options []string `json:"options,omitempty"`
 	// TableRegex means Regular expression for 'db.table' matching
-	TableRegex *string `json:"option,omitempty"`
+	TableRegex *string `json:"tableRegex,omitempty"`
 }
 
 // +k8s:openapi-gen=true
