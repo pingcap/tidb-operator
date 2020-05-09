@@ -1508,7 +1508,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		framework.ExpectNoError(err, "clean backup data success")
+		framework.ExpectNoError(err, "clean backup data failed")
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err, "clean backup failed")
+		framework.Logf("clean backup success")
 	})
 })
 
