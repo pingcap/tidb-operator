@@ -26,15 +26,19 @@ type Predicate interface {
 	Filter(string, *apiv1.Pod, []apiv1.Node) ([]apiv1.Node, error)
 }
 
-func getNodeFromNames(nodes []apiv1.Node, nodeNames []string) []apiv1.Node {
+func getNodeFromTopologies(nodes []apiv1.Node, topologyKey string, topologies []string) []apiv1.Node {
 	var retNodes []apiv1.Node
 	for _, node := range nodes {
-		for _, nodeName := range nodeNames {
-			if node.GetName() == nodeName {
+		if _, ok := node.Labels[topologyKey]; !ok {
+			continue
+		}
+		for _, topology := range topologies {
+			if node.Labels[topologyKey] == topology {
 				retNodes = append(retNodes, node)
 				break
 			}
 		}
 	}
+
 	return retNodes
 }
