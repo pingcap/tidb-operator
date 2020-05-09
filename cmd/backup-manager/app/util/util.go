@@ -20,12 +20,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/util"
 )
 
 var (
@@ -36,6 +36,19 @@ var (
 	}
 	// DefaultVersion is the default tikv and br version
 	DefaultVersion = "4.0"
+	defaultOptions = []string{
+		"--long-query-guard=3600",
+		"--tidb-force-priority=LOW_PRIORITY",
+		"--verbose=3",
+		"--compress-protocol",
+		"--threads=16",
+		"--rows=10000",
+		"--skip-tz-utc",
+	}
+	defaultTableRegexOptions = []string{
+		"--regex",
+		constants.DefaultTableRegex,
+	}
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
@@ -138,30 +151,23 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 // ConstructMydumperOptionsForBackup constructs mydumper options for backup
 func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
-	defaultOptions := []string{
-		"--long-query-guard=3600",
-		"--tidb-force-priority=LOW_PRIORITY",
-		"--verbose=3",
-		"--compress-protocol",
-		"--threads=16",
-		"--rows=10000",
-		"--skip-tz-utc",
-	}
-	defaultTableRegexOptions := []string{
-		"--regex",
-		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))",
-	}
 	config := backup.Spec.Mydumper
 	if config == nil {
 		args = append(args, defaultOptions...)
 		args = append(args, defaultTableRegexOptions...)
 		return args
 	}
+
 	if len(config.Options) != 0 {
 		args = append(args, config.Options...)
+	} else {
+		args = append(args, defaultOptions...)
 	}
+
 	if config.TableRegex != nil {
 		args = append(args, "--regex", *config.TableRegex)
+	} else {
+		args = append(args, defaultTableRegexOptions...)
 	}
 	return args
 }
