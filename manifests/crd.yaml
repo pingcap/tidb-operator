@@ -5527,6 +5527,8 @@ spec:
             persistent:
               type: boolean
             prometheus: {}
+            pvReclaimPolicy:
+              type: string
             reloader: {}
             storage:
               type: string
