@@ -274,11 +274,11 @@ func GetBackupSecret(tc *v1alpha1.TidbCluster, password string) *corev1.Secret {
 	}
 }
 
-func GetS3Secret(tc *v1alpha1.TidbCluster, accessKey, secretKey string) *corev1.Secret {
+func GetS3Secret(namespace, accessKey, secretKey string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      S3Secret,
-			Namespace: tc.GetNamespace(),
+			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			"access_key": []byte(accessKey),
@@ -288,71 +288,71 @@ func GetS3Secret(tc *v1alpha1.TidbCluster, accessKey, secretKey string) *corev1.
 	}
 }
 
-func GetBackupCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1.Backup {
-	sendCredToTikv := true
-	return &v1alpha1.Backup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-backup", tc.GetName()),
-			Namespace: tc.GetNamespace(),
-		},
-		Spec: v1alpha1.BackupSpec{
-			Type: v1alpha1.BackupTypeFull,
-			StorageProvider: v1alpha1.StorageProvider{
-				S3: &v1alpha1.S3StorageProvider{
-					Provider:   v1alpha1.S3StorageProviderTypeAWS,
-					Region:     AWSRegion,
-					Bucket:     Bucket,
-					Prefix:     backupFolder,
-					SecretName: S3Secret,
-				},
-			},
-			From: v1alpha1.TiDBAccessConfig{
-				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
-				SecretName: fmt.Sprintf("%s-backup-secret", tc.GetName()),
-				Port:       4000,
-				User:       "root",
-			},
-			BR: &v1alpha1.BRConfig{
-				Cluster:          tc.GetName(),
-				ClusterNamespace: tc.GetNamespace(),
-				SendCredToTikv:   &sendCredToTikv,
-			},
-		},
-	}
-}
-
-func GetRestoreCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1.Restore {
-	sendCredToTikv := true
-	return &v1alpha1.Restore{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-restore", tc.GetName()),
-			Namespace: tc.GetNamespace(),
-		},
-		Spec: v1alpha1.RestoreSpec{
-			Type: v1alpha1.BackupTypeFull,
-			StorageProvider: v1alpha1.StorageProvider{
-				S3: &v1alpha1.S3StorageProvider{
-					Provider:   v1alpha1.S3StorageProviderTypeAWS,
-					Region:     AWSRegion,
-					Bucket:     Bucket,
-					Prefix:     backupFolder,
-					SecretName: S3Secret,
-				},
-			},
-			To: v1alpha1.TiDBAccessConfig{
-				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
-				SecretName: fmt.Sprintf("%s-backup-secret", tc.GetName()),
-				Port:       4000,
-				User:       "root",
-			},
-			BR: &v1alpha1.BRConfig{
-				Cluster:          tc.GetName(),
-				ClusterNamespace: tc.GetNamespace(),
-				SendCredToTikv:   &sendCredToTikv,
-			},
-		},
-	}
-}
+//func GetBackupCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1.Backup {
+//	sendCredToTikv := true
+//	return &v1alpha1.Backup{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name:      fmt.Sprintf("%s-backup", tc.GetName()),
+//			Namespace: tc.GetNamespace(),
+//		},
+//		Spec: v1alpha1.BackupSpec{
+//			Type: v1alpha1.BackupTypeFull,
+//			StorageProvider: v1alpha1.StorageProvider{
+//				S3: &v1alpha1.S3StorageProvider{
+//					Provider:   v1alpha1.S3StorageProviderTypeAWS,
+//					Region:     AWSRegion,
+//					Bucket:     Bucket,
+//					Prefix:     backupFolder,
+//					SecretName: S3Secret,
+//				},
+//			},
+//			From: v1alpha1.TiDBAccessConfig{
+//				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
+//				SecretName: fmt.Sprintf("%s-backup-secret", tc.GetName()),
+//				Port:       4000,
+//				User:       "root",
+//			},
+//			BR: &v1alpha1.BRConfig{
+//				Cluster:          tc.GetName(),
+//				ClusterNamespace: tc.GetNamespace(),
+//				SendCredToTikv:   &sendCredToTikv,
+//			},
+//		},
+//	}
+//}
+//
+//func GetRestoreCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1.Restore {
+//	sendCredToTikv := true
+//	return &v1alpha1.Restore{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name:      fmt.Sprintf("%s-restore", tc.GetName()),
+//			Namespace: tc.GetNamespace(),
+//		},
+//		Spec: v1alpha1.RestoreSpec{
+//			Type: v1alpha1.BackupTypeFull,
+//			StorageProvider: v1alpha1.StorageProvider{
+//				S3: &v1alpha1.S3StorageProvider{
+//					Provider:   v1alpha1.S3StorageProviderTypeAWS,
+//					Region:     AWSRegion,
+//					Bucket:     Bucket,
+//					Prefix:     backupFolder,
+//					SecretName: S3Secret,
+//				},
+//			},
+//			To: v1alpha1.TiDBAccessConfig{
+//				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
+//				SecretName: fmt.Sprintf("%s-backup-secret", tc.GetName()),
+//				Port:       4000,
+//				User:       "root",
+//			},
+//			BR: &v1alpha1.BRConfig{
+//				Cluster:          tc.GetName(),
+//				ClusterNamespace: tc.GetNamespace(),
+//				SendCredToTikv:   &sendCredToTikv,
+//			},
+//		},
+//	}
+//}
 
 func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) *v1alpha1.TidbClusterAutoScaler {
 	return &v1alpha1.TidbClusterAutoScaler{
