@@ -136,16 +136,17 @@ e2eSerialResources = [
 		],
 	]
 
-def build(String SHELL_CODE, String ARTIFACTS = "", Map resources = e2ePodResources) {
+def build(String name, String code, Map resources = e2ePodResources) {
 	podTemplate(yaml: buildPodYAML(resources: resources)) {
 		node(POD_LABEL) {
 			container('main') {
 				def WORKSPACE = pwd()
+				def ARTIFACTS = "${WORKSPACE}/go/src/github.com/pingcap/tidb-operator/_artifacts"
 				try {
 					dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
 						unstash 'tidb-operator'
 						stage("Debug Info") {
-							println "debug host: 172.16.5.5"
+							println "debug host: 172.16.5.15"
 							println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
 							sh """
 							echo "====== shell env ======"
@@ -160,16 +161,28 @@ def build(String SHELL_CODE, String ARTIFACTS = "", Map resources = e2ePodResour
 						stage('Run') {
 							sh """#!/bin/bash
 							export GOPATH=${WORKSPACE}/go
-							${SHELL_CODE}
+							export ARTIFACTS=${ARTIFACTS}
+							export RUNNER_SUITE_NAME=${name}
+							${code}
 							"""
 						}
 					}
 				} finally {
-					if (ARTIFACTS != "") {
-						dir(ARTIFACTS) {
-							archiveArtifacts artifacts: "**", allowEmptyArchive: true
-							junit testResults: "*.xml", allowEmptyResults: true
-						}
+					dir(ARTIFACTS) {
+						sh """#!/bin/bash
+						echo "info: change ownerships for jenkins"
+						chown -R 1000:1000 .
+						echo "info: print total size of artifacts"
+						du -sh .
+						echo "info: moving all artifacts into a sub-directory"
+						shopt -s extglob
+						mkdir ${name}
+						mv !(${name}) ${name}/
+						echo "info: list all files"
+						find .
+						"""
+						archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
+						junit testResults: "${name}/*.xml", allowEmptyResults: true
 					}
 				}
 			}
@@ -288,7 +301,6 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		}
 		}
 
-		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
 		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH}"
 		def builds = [:]
 		builds["E2E v1.12"] = {

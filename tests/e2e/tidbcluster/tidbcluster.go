@@ -913,6 +913,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
+		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, c, fw)
@@ -942,6 +943,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if !existed || value != label.TiDBOperator {
 				return false, nil
 			}
+			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+				return false, fmt.Errorf("pv[%s] 's policy is not Delete", pv.Name)
+			}
 			return true, nil
 		})
 		framework.ExpectNoError(err, "monitor pv label error")
@@ -950,6 +954,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
 		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
+		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimRetain
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service type error")
 
@@ -977,6 +982,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service portName error")
 
+		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
+		pvName = pvc.Spec.VolumeName
+		pv, err = c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
+
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
 			if err != nil {
@@ -993,6 +1004,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			if prometheusSvc.Spec.Ports[0].NodePort != targetPort {
 				return false, nil
+			}
+			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
+				return false, fmt.Errorf("pv[%s] 's policy is not Retain", pv.Name)
 			}
 			return true, nil
 		})

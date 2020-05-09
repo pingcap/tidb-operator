@@ -179,7 +179,7 @@ func newGcsStorage(qs *gcsQuery) (*blob.Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bucket, nil
+	return blob.PrefixedBucket(bucket, qs.prefix), nil
 }
 
 // newGcsStorageOption constructs the arg for --storage option and the remote path for br
