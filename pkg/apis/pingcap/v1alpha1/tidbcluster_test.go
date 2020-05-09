@@ -19,6 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -435,6 +436,47 @@ func TestHelperImagePullPolicy(t *testing.T) {
 	}
 }
 
+func TestPDVersion(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name     string
+		update   func(*TidbCluster)
+		expectFn func(*GomegaWithT, *TidbCluster)
+	}
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+
+		tc := newTidbCluster()
+		test.update(tc)
+		test.expectFn(g, tc)
+	}
+	tests := []testcase{
+		{
+			name: "has tag",
+			update: func(tc *TidbCluster) {
+				tc.Spec.PD.Image = "pingcap/pd:v3.1.0"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.PDVersion()).To(Equal("v3.1.0"))
+			},
+		},
+		{
+			name: "don't have tag",
+			update: func(tc *TidbCluster) {
+				tc.Spec.PD.Image = "pingcap/pd"
+			},
+			expectFn: func(g *GomegaWithT, tc *TidbCluster) {
+				g.Expect(tc.PDVersion()).To(Equal("latest"))
+			},
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func newTidbCluster() *TidbCluster {
 	return &TidbCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -449,9 +491,19 @@ func newTidbCluster() *TidbCluster {
 		Spec: TidbClusterSpec{
 			PD: PDSpec{
 				Replicas: 3,
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
 			},
 			TiKV: TiKVSpec{
 				Replicas: 3,
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
 			},
 			TiDB: TiDBSpec{
 				Replicas: 1,

@@ -17,8 +17,11 @@ import (
 	"strings"
 	"testing"
 
+	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -178,4 +181,52 @@ func TestValidateAnnotations(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestValidateRequestsStorage(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name                 string
+		haveRequest          bool
+		resourceRequirements corev1.ResourceRequirements
+		expectedErrors       int
+	}{
+		{
+			name:        "has request storage",
+			haveRequest: true,
+			resourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("10G"),
+				},
+			},
+			expectedErrors: 0,
+		},
+		{
+			name:        "Empty request storage",
+			haveRequest: false,
+			resourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{},
+			},
+			expectedErrors: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := newTidbCluster()
+			if tt.haveRequest {
+				tc.Spec.PD.ResourceRequirements = tt.resourceRequirements
+				tc.Spec.TiKV.ResourceRequirements = tt.resourceRequirements
+			}
+			err := ValidateTidbCluster(tc)
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
+func newTidbCluster() *v1alpha1.TidbCluster {
+	tc := &v1alpha1.TidbCluster{}
+	tc.Name = "test-validate-requests-storage"
+	tc.Namespace = "default"
+	return tc
 }

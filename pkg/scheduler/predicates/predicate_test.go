@@ -20,18 +20,21 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 )
 
-func TestGetNodeFromNames(t *testing.T) {
+func TestGetNodeFromTopologies(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		nodes     []apiv1.Node
-		nodeNames []string
-		expected  []string
+		name        string
+		nodes       []apiv1.Node
+		topologyKey string
+		topologies  []string
+		expected    []string
 	}
 
 	testFn := func(i int, test *testcase, t *testing.T) {
 		t.Log(i)
-		arr := getNodeFromNames(test.nodes, test.nodeNames)
+		t.Logf("name: %s, topologies: %s, expected: %s", test.name, test.topologies, test.expected)
+		arr := getNodeFromTopologies(test.nodes, test.topologyKey, test.topologies)
 		g.Expect(len(arr)).To(Equal(len(test.expected)))
 		for idx, node := range arr {
 			g.Expect(node.GetName()).To(Equal(test.expected[idx]))
@@ -40,84 +43,116 @@ func TestGetNodeFromNames(t *testing.T) {
 
 	tests := []testcase{
 		{
-			nodes:     fakeThreeNodes(),
-			nodeNames: []string{},
-			expected:  []string{},
+			name:        "topologyKey: kubernetes.io/hostname, three nodes, return zero node",
+			nodes:       fakeThreeNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{},
+			expected:    []string{},
 		},
 		{
-			nodes:     fakeThreeNodes(),
-			nodeNames: []string{"kube-node-1"},
-			expected:  []string{"kube-node-1"},
+			name:        "topologyKey: kubernetes.io/hostname, three nodes, return one node",
+			nodes:       fakeThreeNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1"},
+			expected:    []string{"kube-node-1"},
 		},
 		{
-			nodes:     fakeThreeNodes(),
-			nodeNames: []string{"kube-node-1", "kube-node-2"},
-			expected:  []string{"kube-node-1", "kube-node-2"},
+			name:        "topologyKey: kubernetes.io/hostname, three nodes, return two nodes",
+			nodes:       fakeThreeNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-2"},
+			expected:    []string{"kube-node-1", "kube-node-2"},
 		},
 		{
-			nodes:     fakeThreeNodes(),
-			nodeNames: []string{"kube-node-1", "kube-node-2", "kube-node-3"},
-			expected:  []string{"kube-node-1", "kube-node-2", "kube-node-3"},
+			name:        "topologyKey: kubernetes.io/hostname, three nodes, return three nodes",
+			nodes:       fakeThreeNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-2", "kube-node-3"},
+			expected:    []string{"kube-node-1", "kube-node-2", "kube-node-3"},
 		},
 		{
-			nodes:     fakeTwoNodes(),
-			nodeNames: []string{"kube-node-1", "kube-node-2", "kube-node-3"},
-			expected:  []string{"kube-node-1", "kube-node-2"},
+			name:        "topologyKey: kubernetes.io/hostname, two nodes, return two nodes",
+			nodes:       fakeTwoNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-2", "kube-node-3"},
+			expected:    []string{"kube-node-1", "kube-node-2"},
 		},
 		{
-			nodes:     fakeTwoNodes(),
-			nodeNames: []string{"kube-node-1", "kube-node-3"},
-			expected:  []string{"kube-node-1"},
+			name:        "topologyKey: kubernetes.io/hostname, two nodes, return one node",
+			nodes:       fakeTwoNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-3"},
+			expected:    []string{"kube-node-1"},
 		},
 		{
-			nodes:     fakeTwoNodes(),
-			nodeNames: []string{"kube-node-1"},
-			expected:  []string{"kube-node-1"},
+			name:        "topologyKey: kubernetes.io/hostname, one node, return one node",
+			nodes:       fakeTwoNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1"},
+			expected:    []string{"kube-node-1"},
 		},
 		{
-			nodes:     fakeTwoNodes(),
-			nodeNames: []string{"kube-node-3"},
-			expected:  []string{},
+			name:        "topologyKey: kubernetes.io/hostname, one nodes, return zero node",
+			nodes:       fakeTwoNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-3"},
+			expected:    []string{},
 		},
 		{
-			nodes:     fakeTwoNodes(),
-			nodeNames: []string{"kube-node-2"},
-			expected:  []string{"kube-node-2"},
+			name:        "topologyKey: kubernetes.io/hostname, one node, return one node",
+			nodes:       fakeTwoNodes(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-2"},
+			expected:    []string{"kube-node-2"},
 		},
 		{
-			nodes:     fakeOneNode(),
-			nodeNames: []string{"kube-node-1", "kube-node-2", "kube-node-3"},
-			expected:  []string{"kube-node-1"},
+			name:        "topologyKey: kubernetes.io/hostname, three nodes, return one node",
+			nodes:       fakeOneNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-2", "kube-node-3"},
+			expected:    []string{"kube-node-1"},
 		},
 		{
-			nodes:     fakeOneNode(),
-			nodeNames: []string{"kube-node-2", "kube-node-3"},
-			expected:  []string{},
+			name:        "topologyKey: kubernetes.io/hostname, two nodes, return zero node",
+			nodes:       fakeOneNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-2", "kube-node-3"},
+			expected:    []string{},
 		},
 		{
-			nodes:     fakeOneNode(),
-			nodeNames: []string{"kube-node-1", "kube-node-3"},
-			expected:  []string{"kube-node-1"},
+			name:        "topologyKey: kubernetes.io/hostname, two nodes, return one node",
+			nodes:       fakeOneNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-3"},
+			expected:    []string{"kube-node-1"},
 		},
 		{
-			nodes:     fakeOneNode(),
-			nodeNames: []string{"kube-node-1", "kube-node-2"},
-			expected:  []string{"kube-node-1"},
+			name:        "topologyKey: kubernetes.io/hostname, two node, return one node",
+			nodes:       fakeOneNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-2"},
+			expected:    []string{"kube-node-1"},
 		},
 		{
-			nodes:     fakeZeroNode(),
-			nodeNames: []string{"kube-node-1", "kube-node-2", "kube-node-3"},
-			expected:  []string{},
+			name:        "topologyKey: kubernetes.io/hostname, three nodes, return zero node",
+			nodes:       fakeZeroNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-1", "kube-node-2", "kube-node-3"},
+			expected:    []string{},
 		},
 		{
-			nodes:     fakeZeroNode(),
-			nodeNames: []string{"kube-node-2", "kube-node-3"},
-			expected:  []string{},
+			name:        "topologyKey: kubernetes.io/hostname, two nodes, return zero node",
+			nodes:       fakeZeroNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-2", "kube-node-3"},
+			expected:    []string{},
 		},
 		{
-			nodes:     fakeZeroNode(),
-			nodeNames: []string{"kube-node-3"},
-			expected:  []string{},
+			name:        "topologyKey: kubernetes.io/hostname, one node, return zero node",
+			nodes:       fakeZeroNode(),
+			topologyKey: "kubernetes.io/hostname",
+			topologies:  []string{"kube-node-3"},
+			expected:    []string{},
 		},
 	}
 
