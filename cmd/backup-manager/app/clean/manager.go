@@ -16,13 +16,13 @@ package clean
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
-
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	corev1 "k8s.io/api/core/v1"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/klog"
 )
 
 // Manager mainly used to manage backup related work
@@ -65,6 +65,7 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 		})
 	}
 
+	var errs []error
 	var err error
 	if backup.Spec.BR != nil {
 		err = bm.cleanBRRemoteBackupData(backup)
@@ -74,13 +75,18 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 	}
 
 	if err != nil {
+		errs = append(errs, err)
 		klog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
-		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "CleanBackupDataFailed",
 			Message: err.Error(),
 		})
+		if uerr != nil {
+			errs = append(errs, uerr)
+		}
+		return errorutils.NewAggregate(errs)
 	}
 
 	klog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
