@@ -58,6 +58,9 @@ func newMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string
 		return nil, nil, fmt.Errorf("failed to install minio %s %v", string(data), err)
 	}
 	err := e2epod.WaitTimeoutForPodReadyInNamespace(cli, minioPodName, ns, 5*time.Minute)
+	if err != nil {
+		return nil, nil, err
+	}
 	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, "svc/minio-service", 9000)
 	if err != nil {
 		return nil, nil, err
