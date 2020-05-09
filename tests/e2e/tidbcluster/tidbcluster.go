@@ -284,7 +284,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	ginkgo.It("BackupAndRestoreWithBR", func() {
+	ginkgo.It("Backup and restore with BR", func() {
 		provider := framework.TestContext.Provider
 		if provider != "aws" && provider != "kind" {
 			framework.Skipf("provider is not aws or kind, skipping")
