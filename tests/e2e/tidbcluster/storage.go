@@ -161,24 +161,3 @@ func (s *s3Storage) checkDataCleaned() error {
 		return true, nil
 	})
 }
-
-func installAndWaitMinio(ns string, cli clientset.Interface) error {
-	cmd := fmt.Sprintf(`kubectl apply -f /minio/minio.yaml -n %s`, ns)
-	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to install minio %s %v", string(data), err)
-	}
-	return e2epod.WaitTimeoutForPodReadyInNamespace(cli, minioPodName, ns, 5*time.Minute)
-}
-
-func createMinioClient(fw portforward.PortForward, ns, accessKey, secretKey string, ssl bool) (*minio.Client, context.CancelFunc, error) {
-	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, "svc/minio-service", 9000)
-	if err != nil {
-		return nil, nil, err
-	}
-	ep := fmt.Sprintf("%s:%d", localHost, localPort)
-	client, err := minio.New(ep, accessKey, secretKey, ssl)
-	if err != nil {
-		return nil, nil, err
-	}
-	return client, cancel, nil
-}
