@@ -1498,6 +1498,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		if err != nil && !errors.IsNotFound(err) {
 			framework.Failf("delete backup failed, err: %v", err)
 		}
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			doneCh := make(chan struct{})
+			defer close(doneCh)
+			objs := s3Client.ListObjects(bucketName, s3config.Prefix, true, doneCh)
+			if len(objs) == 0 {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err, "clean backup data success")
 	})
 })
 
