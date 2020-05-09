@@ -38,7 +38,6 @@ const (
 )
 
 type storage interface {
-	deployStorage(ns string) error
 	provideCredential(ns string) *corev1.Secret
 	provideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret) *v1alpha1.Backup
 	provideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret) *v1alpha1.Restore
@@ -54,6 +53,11 @@ type minioStorage struct {
 }
 
 func newMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string, cli clientset.Interface, s3config *v1alpha1.S3StorageProvider) (*minioStorage, context.CancelFunc, error) {
+	cmd := fmt.Sprintf(`kubectl apply -f /minio/minio.yaml -n %s`, ns)
+	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
+		return nil, nil, fmt.Errorf("failed to install minio %s %v", string(data), err)
+	}
+	err := e2epod.WaitTimeoutForPodReadyInNamespace(cli, minioPodName, ns, 5*time.Minute)
 	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, "svc/minio-service", 9000)
 	if err != nil {
 		return nil, nil, err
@@ -70,20 +74,12 @@ func newMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string
 		secretKey:   secretKey,
 		s3config:    s3config,
 	}
-	return m, cancel, nil
-}
-
-func (m *minioStorage) deployStorage(ns string) error {
-	cmd := fmt.Sprintf(`kubectl apply -f /minio/minio.yaml -n %s`, ns)
-	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to install minio %s %v", string(data), err)
-	}
-	err := e2epod.WaitTimeoutForPodReadyInNamespace(m.kubecli, minioPodName, ns, 5*time.Minute)
-	if err != nil {
-		return err
-	}
 	bucketName := m.s3config.Bucket
-	return m.minioClient.MakeBucket(bucketName, "")
+	err = m.minioClient.MakeBucket(bucketName, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	return m, cancel, nil
 }
 
 func (m *minioStorage) provideCredential(ns string) *corev1.Secret {
@@ -128,10 +124,6 @@ func newS3Storage(cred *credentials.Credentials, s3config *v1alpha1.S3StoragePro
 		accessKey: val.AccessKeyID,
 		secretKey: val.SecretAccessKey,
 	}, nil
-}
-
-func (s *s3Storage) deployStorage(ns string) error {
-	return nil
 }
 
 func (s *s3Storage) provideCredential(ns string) *corev1.Secret {
