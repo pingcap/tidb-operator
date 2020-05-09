@@ -174,7 +174,7 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>mydumper, omitempty</code></br>
+<code>mydumper</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.MydumperConfig">
 MydumperConfig
@@ -2058,7 +2058,7 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>mydumper, omitempty</code></br>
+<code>mydumper</code></br>
 <em>
 <a href="#pingcap.com/v1alpha1.MydumperConfig">
 MydumperConfig
