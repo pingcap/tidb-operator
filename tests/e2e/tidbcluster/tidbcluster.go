@@ -359,10 +359,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.StopInsertDataTo(&clusterFrom)
 
-		// deploy storage if needed
-		err = storage.deployStorage(ns)
-		framework.ExpectNoError(err)
-
 		// prepare for create backup/restore CRD
 		backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
 		_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
