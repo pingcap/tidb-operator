@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package storage
 
 import (
 	"context"
@@ -19,10 +19,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/minio/minio-go/v6"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -37,13 +33,6 @@ const (
 	minioPodName = "minio"
 )
 
-type storage interface {
-	provideCredential(ns string) *corev1.Secret
-	provideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret) *v1alpha1.Backup
-	provideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret) *v1alpha1.Restore
-	checkDataCleaned() error
-}
-
 type minioStorage struct {
 	kubecli     clientset.Interface
 	minioClient *minio.Client
@@ -52,7 +41,7 @@ type minioStorage struct {
 	s3config    *v1alpha1.S3StorageProvider
 }
 
-func newMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string, cli clientset.Interface, s3config *v1alpha1.S3StorageProvider) (*minioStorage, context.CancelFunc, error) {
+func NewMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string, cli clientset.Interface, s3config *v1alpha1.S3StorageProvider) (*minioStorage, context.CancelFunc, error) {
 	cmd := fmt.Sprintf(`kubectl apply -f /minio/minio.yaml -n %s`, ns)
 	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
 		return nil, nil, fmt.Errorf("failed to install minio %s %v", string(data), err)
@@ -85,19 +74,19 @@ func newMinioStorage(fw portforward.PortForward, ns, accessKey, secretKey string
 	return m, cancel, nil
 }
 
-func (m *minioStorage) provideCredential(ns string) *corev1.Secret {
+func (m *minioStorage) ProvideCredential(ns string) *corev1.Secret {
 	return fixture.GetS3Secret(ns, m.accessKey, m.secretKey)
 }
 
-func (m *minioStorage) provideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret) *v1alpha1.Backup {
+func (m *minioStorage) ProvideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret) *v1alpha1.Backup {
 	return fixture.GetBackupCRDForBRWithS3(tc, fromSecret.Name, m.s3config)
 }
 
-func (m *minioStorage) provideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret) *v1alpha1.Restore {
+func (m *minioStorage) ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret) *v1alpha1.Restore {
 	return fixture.GetRestoreCRDForBRWithS3(tc, toSecret.Name, m.s3config)
 }
 
-func (m *minioStorage) checkDataCleaned() error {
+func (m *minioStorage) CheckDataCleaned() error {
 	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 		doneCh := make(chan struct{})
 		defer close(doneCh)
@@ -106,58 +95,5 @@ func (m *minioStorage) checkDataCleaned() error {
 			return true, nil
 		}
 		return false, nil
-	})
-}
-
-type s3Storage struct {
-	cred      *credentials.Credentials
-	s3config  *v1alpha1.S3StorageProvider
-	accessKey string
-	secretKey string
-}
-
-func newS3Storage(cred *credentials.Credentials, s3config *v1alpha1.S3StorageProvider) (*s3Storage, error) {
-	val, err := cred.Get()
-	if err != nil {
-		return nil, err
-	}
-	return &s3Storage{
-		cred:      cred,
-		s3config:  s3config,
-		accessKey: val.AccessKeyID,
-		secretKey: val.SecretAccessKey,
-	}, nil
-}
-
-func (s *s3Storage) provideCredential(ns string) *corev1.Secret {
-	return fixture.GetS3Secret(ns, s.accessKey, s.secretKey)
-}
-
-func (s *s3Storage) provideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret) *v1alpha1.Backup {
-	return fixture.GetBackupCRDForBRWithS3(tc, fromSecret.Name, s.s3config)
-}
-
-func (s *s3Storage) provideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret) *v1alpha1.Restore {
-	return fixture.GetRestoreCRDForBRWithS3(tc, toSecret.Name, s.s3config)
-}
-
-func (s *s3Storage) checkDataCleaned() error {
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		awsConfig := aws.NewConfig().
-			WithRegion(s.s3config.Region).
-			WithCredentials(s.cred)
-		svc := s3.New(session.Must(session.NewSession(awsConfig)))
-		input := &s3.ListObjectsV2Input{
-			Bucket: aws.String(s.s3config.Bucket),
-			Prefix: aws.String(s.s3config.Prefix),
-		}
-		result, err := svc.ListObjectsV2(input)
-		if err != nil {
-			return false, err
-		}
-		if *result.KeyCount != 0 {
-			return false, nil
-		}
-		return true, nil
 	})
 }

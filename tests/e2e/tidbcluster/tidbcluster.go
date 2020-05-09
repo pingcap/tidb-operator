@@ -42,6 +42,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	teststorage "github.com/pingcap/tidb-operator/tests/e2e/util/storage"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
@@ -291,7 +292,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 
 		backupFolder := time.Now().Format(time.RFC3339)
-		var storage storage
+		var storage teststorage.TestStorage
 		switch provider {
 		case "kind":
 			s3config := &v1alpha1.S3StorageProvider{
@@ -302,7 +303,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Endpoint:   "http://minio-service:9000",
 			}
 			key := "12345678"
-			minio, cancel, err := newMinioStorage(fw, ns, key, key, c, s3config)
+			minio, cancel, err := teststorage.NewMinioStorage(fw, ns, key, key, c, s3config)
 			framework.ExpectNoError(err)
 			storage = minio
 			defer cancel()
@@ -315,7 +316,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Prefix:     backupFolder,
 				SecretName: fixture.S3Secret,
 			}
-			s3Storage, err := newS3Storage(cred, s3config)
+			s3Storage, err := teststorage.NewS3Storage(cred, s3config)
 			framework.ExpectNoError(err)
 			storage = s3Storage
 		default:
@@ -375,13 +376,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		restoreSecret := fixture.GetBackupSecret(tcTo, "")
 		_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
 		framework.ExpectNoError(err)
-		storageSecret := storage.provideCredential(ns)
+		storageSecret := storage.ProvideCredential(ns)
 		_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
 		framework.ExpectNoError(err)
 
 		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
-		backup := storage.provideBackup(tcFrom, backupSecret)
+		backup := storage.ProvideBackup(tcFrom, backupSecret)
 		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
 		framework.ExpectNoError(err)
 
@@ -406,7 +407,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
-		restore := storage.provideRestore(tcTo, restoreSecret)
+		restore := storage.ProvideRestore(tcTo, restoreSecret)
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
 		framework.ExpectNoError(err)
 
@@ -440,7 +441,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
 
-		err = storage.checkDataCleaned()
+		err = storage.CheckDataCleaned()
 		framework.ExpectNoError(err)
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
