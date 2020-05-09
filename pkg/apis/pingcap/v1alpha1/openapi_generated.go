@@ -1909,7 +1909,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MydumperConfig(ref common.ReferenceCallbac
 							},
 						},
 					},
-					"option": {
+					"tableRegex": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TableRegex means Regular expression for 'db.table' matching",
 							Type:        []string{"string"},

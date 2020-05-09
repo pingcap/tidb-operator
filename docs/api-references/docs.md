@@ -4350,7 +4350,7 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<code>option</code></br>
+<code>tableRegex</code></br>
 <em>
 string
 </em>
