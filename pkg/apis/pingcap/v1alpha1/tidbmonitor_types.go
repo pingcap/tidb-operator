@@ -47,6 +47,10 @@ type TidbMonitorSpec struct {
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
 
+	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
+	// +kubebuilder:default=Recycle
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// +optional
 	Persistent bool `json:"persistent,omitempty"`
