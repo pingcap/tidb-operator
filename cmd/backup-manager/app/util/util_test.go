@@ -33,7 +33,6 @@ func TestConstructMydumperOptionsForBackup(t *testing.T) {
 		name       string
 		hasRegex   bool
 		hasOptions bool
-		expectFn   func(g *GomegaWithT, backup *v1alpha1.Backup, generateArgs []string, expectArgs []string)
 	}
 
 	tests := []*testcase{
@@ -41,33 +40,21 @@ func TestConstructMydumperOptionsForBackup(t *testing.T) {
 			name:       "mydumper config is empty",
 			hasOptions: false,
 			hasRegex:   false,
-			expectFn: func(g *GomegaWithT, backup *v1alpha1.Backup, generateArgs []string, expectArgs []string) {
-				g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
-			},
 		},
 		{
 			name:       "customize mydumper options but not set table regex",
 			hasOptions: true,
 			hasRegex:   false,
-			expectFn: func(g *GomegaWithT, backup *v1alpha1.Backup, generateArgs []string, expectArgs []string) {
-				g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
-			},
 		},
 		{
 			name:       "customize mydumper table regex but not customize options",
 			hasOptions: false,
 			hasRegex:   true,
-			expectFn: func(g *GomegaWithT, backup *v1alpha1.Backup, generateArgs []string, expectArgs []string) {
-				g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
-			},
 		},
 		{
 			name:       "customize mydumper table regex and customize options",
 			hasOptions: true,
 			hasRegex:   true,
-			expectFn: func(g *GomegaWithT, backup *v1alpha1.Backup, generateArgs []string, expectArgs []string) {
-				g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
-			},
 		},
 	}
 
@@ -99,7 +86,7 @@ func TestConstructMydumperOptionsForBackup(t *testing.T) {
 			}
 
 			generateArgs := ConstructMydumperOptionsForBackup(backup)
-			tt.expectFn(g, backup, generateArgs, expectArgs)
+			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}
 }
