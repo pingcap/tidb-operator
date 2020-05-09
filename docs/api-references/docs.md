@@ -10,21 +10,21 @@ category: how-to
 </p>
 Resource Types:
 <ul><li>
-<a href="#pingcap.com/v1alpha1.Backup">Backup</a>
+<a href="#backup">Backup</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.BackupSchedule">BackupSchedule</a>
+<a href="#backupschedule">BackupSchedule</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.Restore">Restore</a>
+<a href="#restore">Restore</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.TidbCluster">TidbCluster</a>
+<a href="#tidbcluster">TidbCluster</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScaler">TidbClusterAutoScaler</a>
+<a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.TidbInitializer">TidbInitializer</a>
+<a href="#tidbinitializer">TidbInitializer</a>
 </li><li>
-<a href="#pingcap.com/v1alpha1.TidbMonitor">TidbMonitor</a>
+<a href="#tidbmonitor">TidbMonitor</a>
 </li></ul>
-<h3 id="pingcap.com/v1alpha1.Backup">Backup</h3>
+<h3 id="backup">Backup</h3>
 <p>
 <p>Backup is a backup of tidb cluster.</p>
 </p>
@@ -71,7 +71,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">
+<a href="#backupspec">
 BackupSpec
 </a>
 </em>
@@ -84,7 +84,7 @@ BackupSpec
 <td>
 <code>from</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">
+<a href="#tidbaccessconfig">
 TiDBAccessConfig
 </a>
 </em>
@@ -97,7 +97,7 @@ TiDBAccessConfig
 <td>
 <code>backupType</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupType">
+<a href="#backuptype">
 BackupType
 </a>
 </em>
@@ -123,7 +123,7 @@ When a GC happens, the current time minus this value is the safe point.</p>
 <td>
 <code>StorageProvider</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StorageProvider">
+<a href="#storageprovider">
 StorageProvider
 </a>
 </em>
@@ -163,7 +163,7 @@ string
 <td>
 <code>br</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BRConfig">
+<a href="#brconfig">
 BRConfig
 </a>
 </em>
@@ -176,7 +176,7 @@ BRConfig
 <td>
 <code>mydumper</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MydumperConfig">
+<a href="#mydumperconfig">
 MydumperConfig
 </a>
 </em>
@@ -242,7 +242,7 @@ string
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupStatus">
+<a href="#backupstatus">
 BackupStatus
 </a>
 </em>
@@ -252,7 +252,7 @@ BackupStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupSchedule">BackupSchedule</h3>
+<h3 id="backupschedule">BackupSchedule</h3>
 <p>
 <p>BackupSchedule is a backup schedule of tidb cluster.</p>
 </p>
@@ -299,7 +299,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupScheduleSpec">
+<a href="#backupschedulespec">
 BackupScheduleSpec
 </a>
 </em>
@@ -357,7 +357,7 @@ string
 <td>
 <code>backupTemplate</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">
+<a href="#backupspec">
 BackupSpec
 </a>
 </em>
@@ -397,7 +397,7 @@ string
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupScheduleStatus">
+<a href="#backupschedulestatus">
 BackupScheduleStatus
 </a>
 </em>
@@ -407,7 +407,7 @@ BackupScheduleStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Restore">Restore</h3>
+<h3 id="restore">Restore</h3>
 <p>
 <p>Restore represents the restoration of backup of a tidb cluster.</p>
 </p>
@@ -454,7 +454,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.RestoreSpec">
+<a href="#restorespec">
 RestoreSpec
 </a>
 </em>
@@ -467,7 +467,7 @@ RestoreSpec
 <td>
 <code>to</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">
+<a href="#tidbaccessconfig">
 TiDBAccessConfig
 </a>
 </em>
@@ -480,7 +480,7 @@ TiDBAccessConfig
 <td>
 <code>backupType</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupType">
+<a href="#backuptype">
 BackupType
 </a>
 </em>
@@ -506,7 +506,7 @@ When a GC happens, the current time minus this value is the safe point.</p>
 <td>
 <code>StorageProvider</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StorageProvider">
+<a href="#storageprovider">
 StorageProvider
 </a>
 </em>
@@ -546,7 +546,7 @@ string
 <td>
 <code>br</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BRConfig">
+<a href="#brconfig">
 BRConfig
 </a>
 </em>
@@ -612,7 +612,7 @@ string
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.RestoreStatus">
+<a href="#restorestatus">
 RestoreStatus
 </a>
 </em>
@@ -622,7 +622,7 @@ RestoreStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbCluster">TidbCluster</h3>
+<h3 id="tidbcluster">TidbCluster</h3>
 <p>
 <p>TidbCluster is the control script&rsquo;s spec</p>
 </p>
@@ -669,7 +669,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">
+<a href="#tidbclusterspec">
 TidbClusterSpec
 </a>
 </em>
@@ -683,7 +683,7 @@ TidbClusterSpec
 <td>
 <code>pd</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDSpec">
+<a href="#pdspec">
 PDSpec
 </a>
 </em>
@@ -696,7 +696,7 @@ PDSpec
 <td>
 <code>tidb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBSpec">
+<a href="#tidbspec">
 TiDBSpec
 </a>
 </em>
@@ -709,7 +709,7 @@ TiDBSpec
 <td>
 <code>tikv</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVSpec">
+<a href="#tikvspec">
 TiKVSpec
 </a>
 </em>
@@ -722,7 +722,7 @@ TiKVSpec
 <td>
 <code>tiflash</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiFlashSpec">
+<a href="#tiflashspec">
 TiFlashSpec
 </a>
 </em>
@@ -736,7 +736,7 @@ TiFlashSpec
 <td>
 <code>pump</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PumpSpec">
+<a href="#pumpspec">
 PumpSpec
 </a>
 </em>
@@ -750,7 +750,7 @@ PumpSpec
 <td>
 <code>helper</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.HelperSpec">
+<a href="#helperspec">
 HelperSpec
 </a>
 </em>
@@ -827,7 +827,7 @@ Kubernetes core/v1.PullPolicy
 <td>
 <code>configUpdateStrategy</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ConfigUpdateStrategy">
+<a href="#configupdatestrategy">
 ConfigUpdateStrategy
 </a>
 </em>
@@ -857,7 +857,7 @@ Optional: Defaults to false</p>
 <td>
 <code>tlsCluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TLSCluster">
+<a href="#tlscluster">
 TLSCluster
 </a>
 </em>
@@ -963,7 +963,7 @@ Optional: Defaults to UTC</p>
 <td>
 <code>services</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Service">
+<a href="#service">
 []Service
 </a>
 </em>
@@ -980,7 +980,7 @@ Deprecated</p>
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterStatus">
+<a href="#tidbclusterstatus">
 TidbClusterStatus
 </a>
 </em>
@@ -991,7 +991,7 @@ TidbClusterStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbClusterAutoScaler">TidbClusterAutoScaler</h3>
+<h3 id="tidbclusterautoscaler">TidbClusterAutoScaler</h3>
 <p>
 <p>TidbClusterAutoScaler is the control script&rsquo;s spec</p>
 </p>
@@ -1038,7 +1038,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">
+<a href="#tidbclusterautoscalerspec">
 TidbClusterAutoScalerSpec
 </a>
 </em>
@@ -1052,7 +1052,7 @@ TidbClusterAutoScalerSpec
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterRef">
+<a href="#tidbclusterref">
 TidbClusterRef
 </a>
 </em>
@@ -1078,7 +1078,7 @@ MetricsUrl represents the url to fetch the metrics info</p>
 <td>
 <code>monitor</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorRef">
+<a href="#tidbmonitorref">
 TidbMonitorRef
 </a>
 </em>
@@ -1093,7 +1093,7 @@ Operator will use MetricsUrl</p>
 <td>
 <code>tikv</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TikvAutoScalerSpec">
+<a href="#tikvautoscalerspec">
 TikvAutoScalerSpec
 </a>
 </em>
@@ -1107,7 +1107,7 @@ TikvAutoScalerSpec
 <td>
 <code>tidb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbAutoScalerSpec">
+<a href="#tidbautoscalerspec">
 TidbAutoScalerSpec
 </a>
 </em>
@@ -1124,7 +1124,7 @@ TidbAutoScalerSpec
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">
+<a href="#tidbclusterautosclaerstatus">
 TidbClusterAutoSclaerStatus
 </a>
 </em>
@@ -1135,7 +1135,7 @@ TidbClusterAutoSclaerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbInitializer">TidbInitializer</h3>
+<h3 id="tidbinitializer">TidbInitializer</h3>
 <p>
 <p>TidbInitializer is a TiDB cluster initializing job</p>
 </p>
@@ -1182,7 +1182,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbInitializerSpec">
+<a href="#tidbinitializerspec">
 TidbInitializerSpec
 </a>
 </em>
@@ -1206,7 +1206,7 @@ string
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterRef">
+<a href="#tidbclusterref">
 TidbClusterRef
 </a>
 </em>
@@ -1306,7 +1306,7 @@ string
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbInitializerStatus">
+<a href="#tidbinitializerstatus">
 TidbInitializerStatus
 </a>
 </em>
@@ -1317,7 +1317,7 @@ TidbInitializerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbMonitor">TidbMonitor</h3>
+<h3 id="tidbmonitor">TidbMonitor</h3>
 <p>
 <p>TidbMonitor encode the spec and status of the monitoring component of a TiDB cluster</p>
 </p>
@@ -1364,7 +1364,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorSpec">
+<a href="#tidbmonitorspec">
 TidbMonitorSpec
 </a>
 </em>
@@ -1378,7 +1378,7 @@ TidbMonitorSpec
 <td>
 <code>clusters</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterRef">
+<a href="#tidbclusterref">
 []TidbClusterRef
 </a>
 </em>
@@ -1390,7 +1390,7 @@ TidbMonitorSpec
 <td>
 <code>prometheus</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PrometheusSpec">
+<a href="#prometheusspec">
 PrometheusSpec
 </a>
 </em>
@@ -1402,7 +1402,7 @@ PrometheusSpec
 <td>
 <code>grafana</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.GrafanaSpec">
+<a href="#grafanaspec">
 GrafanaSpec
 </a>
 </em>
@@ -1415,7 +1415,7 @@ GrafanaSpec
 <td>
 <code>reloader</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ReloaderSpec">
+<a href="#reloaderspec">
 ReloaderSpec
 </a>
 </em>
@@ -1427,7 +1427,7 @@ ReloaderSpec
 <td>
 <code>initializer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.InitializerSpec">
+<a href="#initializerspec">
 InitializerSpec
 </a>
 </em>
@@ -1548,7 +1548,7 @@ Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometh
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorStatus">
+<a href="#tidbmonitorstatus">
 TidbMonitorStatus
 </a>
 </em>
@@ -1559,11 +1559,11 @@ TidbMonitorStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BRConfig">BRConfig</h3>
+<h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">BackupSpec</a>, 
-<a href="#pingcap.com/v1alpha1.RestoreSpec">RestoreSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
 <p>BRConfig contains config for BR</p>
@@ -1710,10 +1710,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupCondition">BackupCondition</h3>
+<h3 id="backupcondition">BackupCondition</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupStatus">BackupStatus</a>)
+<a href="#backupstatus">BackupStatus</a>)
 </p>
 <p>
 <p>BackupCondition describes the observed state of a Backup at a certain point.</p>
@@ -1730,7 +1730,7 @@ bool
 <td>
 <code>type</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupConditionType">
+<a href="#backupconditiontype">
 BackupConditionType
 </a>
 </em>
@@ -1784,18 +1784,18 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupConditionType">BackupConditionType</h3>
+<h3 id="backupconditiontype">BackupConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupCondition">BackupCondition</a>)
+<a href="#backupcondition">BackupCondition</a>)
 </p>
 <p>
 <p>BackupConditionType represents a valid condition of a Backup.</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.BackupScheduleSpec">BackupScheduleSpec</h3>
+<h3 id="backupschedulespec">BackupScheduleSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSchedule">BackupSchedule</a>)
+<a href="#backupschedule">BackupSchedule</a>)
 </p>
 <p>
 <p>BackupScheduleSpec contains the backup schedule specification for a tidb cluster.</p>
@@ -1857,7 +1857,7 @@ string
 <td>
 <code>backupTemplate</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">
+<a href="#backupspec">
 BackupSpec
 </a>
 </em>
@@ -1892,10 +1892,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupScheduleStatus">BackupScheduleStatus</h3>
+<h3 id="backupschedulestatus">BackupScheduleStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSchedule">BackupSchedule</a>)
+<a href="#backupschedule">BackupSchedule</a>)
 </p>
 <p>
 <p>BackupScheduleStatus represents the current state of a BackupSchedule.</p>
@@ -1947,11 +1947,11 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupSpec">BackupSpec</h3>
+<h3 id="backupspec">BackupSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Backup">Backup</a>, 
-<a href="#pingcap.com/v1alpha1.BackupScheduleSpec">BackupScheduleSpec</a>)
+<a href="#backup">Backup</a>, 
+<a href="#backupschedulespec">BackupScheduleSpec</a>)
 </p>
 <p>
 <p>BackupSpec contains the backup specification for a tidb cluster.</p>
@@ -1968,7 +1968,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>from</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">
+<a href="#tidbaccessconfig">
 TiDBAccessConfig
 </a>
 </em>
@@ -1981,7 +1981,7 @@ TiDBAccessConfig
 <td>
 <code>backupType</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupType">
+<a href="#backuptype">
 BackupType
 </a>
 </em>
@@ -2007,7 +2007,7 @@ When a GC happens, the current time minus this value is the safe point.</p>
 <td>
 <code>StorageProvider</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StorageProvider">
+<a href="#storageprovider">
 StorageProvider
 </a>
 </em>
@@ -2047,7 +2047,7 @@ string
 <td>
 <code>br</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BRConfig">
+<a href="#brconfig">
 BRConfig
 </a>
 </em>
@@ -2060,7 +2060,7 @@ BRConfig
 <td>
 <code>mydumper</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MydumperConfig">
+<a href="#mydumperconfig">
 MydumperConfig
 </a>
 </em>
@@ -2121,10 +2121,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupStatus">BackupStatus</h3>
+<h3 id="backupstatus">BackupStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Backup">Backup</a>)
+<a href="#backup">Backup</a>)
 </p>
 <p>
 <p>BackupStatus represents the current status of a backup.</p>
@@ -2200,7 +2200,7 @@ string
 <td>
 <code>conditions</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupCondition">
+<a href="#backupcondition">
 []BackupCondition
 </a>
 </em>
@@ -2210,24 +2210,24 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BackupStorageType">BackupStorageType</h3>
+<h3 id="backupstoragetype">BackupStorageType</h3>
 <p>
 <p>BackupStorageType represents the backend storage type of backup.</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.BackupType">BackupType</h3>
+<h3 id="backuptype">BackupType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">BackupSpec</a>, 
-<a href="#pingcap.com/v1alpha1.RestoreSpec">RestoreSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
 <p>BackupType represents the backup type.</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.BasicAutoScalerSpec">BasicAutoScalerSpec</h3>
+<h3 id="basicautoscalerspec">BasicAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbAutoScalerSpec">TidbAutoScalerSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TikvAutoScalerSpec">TikvAutoScalerSpec</a>)
+<a href="#tidbautoscalerspec">TidbAutoScalerSpec</a>, 
+<a href="#tikvautoscalerspec">TikvAutoScalerSpec</a>)
 </p>
 <p>
 <p>BasicAutoScalerSpec describes the basic spec for auto-scaling</p>
@@ -2359,7 +2359,7 @@ If not set, the default value is 5.</p>
 <td>
 <code>externalEndpoint</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ExternalEndpoint">
+<a href="#externalendpoint">
 ExternalEndpoint
 </a>
 </em>
@@ -2372,11 +2372,11 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus</h3>
+<h3 id="basicautoscalerstatus">BasicAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbAutoScalerStatus">TidbAutoScalerStatus</a>, 
-<a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus</a>)
+<a href="#tidbautoscalerstatus">TidbAutoScalerStatus</a>, 
+<a href="#tikvautoscalerstatus">TikvAutoScalerStatus</a>)
 </p>
 <p>
 <p>BasicAutoScalerStatus describe the basic auto-scaling status</p>
@@ -2393,7 +2393,7 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 <td>
 <code>metrics</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MetricsStatus">
+<a href="#metricsstatus">
 []MetricsStatus
 </a>
 </em>
@@ -2442,10 +2442,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Binlog">Binlog</h3>
+<h3 id="binlog">Binlog</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Binlog is the config for binlog.</p>
@@ -2521,10 +2521,10 @@ Optional: Defaults to range</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.CommonConfig">CommonConfig</h3>
+<h3 id="commonconfig">CommonConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiFlashConfig">TiFlashConfig</a>)
+<a href="#tiflashconfig">TiFlashConfig</a>)
 </p>
 <p>
 <p>CommonConfig is the configuration of TiFlash process.</p>
@@ -2577,7 +2577,7 @@ int64
 <td>
 <code>logger</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.FlashLogger">
+<a href="#flashlogger">
 FlashLogger
 </a>
 </em>
@@ -2588,19 +2588,19 @@ FlashLogger
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ComponentAccessor">ComponentAccessor</h3>
+<h3 id="componentaccessor">ComponentAccessor</h3>
 <p>
 <p>ComponentAccessor is the interface to access component details, which respects the cluster-level properties
 and component-level overrides</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.ComponentSpec">ComponentSpec</h3>
+<h3 id="componentspec">ComponentSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDSpec">PDSpec</a>, 
-<a href="#pingcap.com/v1alpha1.PumpSpec">PumpSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TiKVSpec">TiKVSpec</a>)
+<a href="#pdspec">PDSpec</a>, 
+<a href="#pumpspec">PumpSpec</a>, 
+<a href="#tidbspec">TiDBSpec</a>, 
+<a href="#tiflashspec">TiFlashSpec</a>, 
+<a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
 <p>ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties</p>
@@ -2766,7 +2766,7 @@ Kubernetes core/v1.PodSecurityContext
 <td>
 <code>configUpdateStrategy</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ConfigUpdateStrategy">
+<a href="#configupdatestrategy">
 ConfigUpdateStrategy
 </a>
 </em>
@@ -2807,19 +2807,19 @@ tidb-operator built envs.
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ConfigUpdateStrategy">ConfigUpdateStrategy</h3>
+<h3 id="configupdatestrategy">ConfigUpdateStrategy</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ComponentSpec">ComponentSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.CoprocessorCache">CoprocessorCache</h3>
+<h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVClient">TiKVClient</a>)
+<a href="#tikvclient">TiKVClient</a>)
 </p>
 <p>
 <p>CoprocessorCache is the config for coprocessor cache.</p>
@@ -2883,10 +2883,10 @@ uint64
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.CrdKind">CrdKind</h3>
+<h3 id="crdkind">CrdKind</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CrdKinds">CrdKinds</a>)
+<a href="#crdkinds">CrdKinds</a>)
 </p>
 <p>
 </p>
@@ -2950,7 +2950,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.CrdKinds">CrdKinds</h3>
+<h3 id="crdkinds">CrdKinds</h3>
 <p>
 </p>
 <table>
@@ -2975,7 +2975,7 @@ string
 <td>
 <code>TiDBCluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -2987,7 +2987,7 @@ CrdKind
 <td>
 <code>Backup</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -2999,7 +2999,7 @@ CrdKind
 <td>
 <code>Restore</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -3011,7 +3011,7 @@ CrdKind
 <td>
 <code>BackupSchedule</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -3023,7 +3023,7 @@ CrdKind
 <td>
 <code>TiDBMonitor</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -3035,7 +3035,7 @@ CrdKind
 <td>
 <code>TiDBInitializer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -3047,7 +3047,7 @@ CrdKind
 <td>
 <code>TidbClusterAutoScaler</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CrdKind">
+<a href="#crdkind">
 CrdKind
 </a>
 </em>
@@ -3057,10 +3057,10 @@ CrdKind
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.DashboardConfig">DashboardConfig</h3>
+<h3 id="dashboardconfig">DashboardConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>DashboardConfig is the configuration for tidb-dashboard.</p>
@@ -3105,10 +3105,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Experimental">Experimental</h3>
+<h3 id="experimental">Experimental</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Experimental controls the features that are still experimental: their semantics, interfaces are subject to change.
@@ -3149,10 +3149,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ExternalEndpoint">ExternalEndpoint</h3>
+<h3 id="externalendpoint">ExternalEndpoint</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BasicAutoScalerSpec">BasicAutoScalerSpec</a>)
+<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
 </p>
 <p>
 <p>ExternalEndpoint describes the external service endpoint
@@ -3192,7 +3192,7 @@ int32
 <td>
 <code>tlsSecret</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.SecretRef">
+<a href="#secretref">
 SecretRef
 </a>
 </em>
@@ -3205,11 +3205,11 @@ to communicate to the external service</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.FileLogConfig">FileLogConfig</h3>
+<h3 id="filelogconfig">FileLogConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Log">Log</a>, 
-<a href="#pingcap.com/v1alpha1.PDLogConfig">PDLogConfig</a>)
+<a href="#log">Log</a>, 
+<a href="#pdlogconfig">PDLogConfig</a>)
 </p>
 <p>
 </p>
@@ -3283,10 +3283,10 @@ int
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Flash">Flash</h3>
+<h3 id="flash">Flash</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+<a href="#commonconfig">CommonConfig</a>)
 </p>
 <p>
 <p>Flash is the configuration of [flash] section.</p>
@@ -3327,7 +3327,7 @@ int32
 <td>
 <code>flash_cluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.FlashCluster">
+<a href="#flashcluster">
 FlashCluster
 </a>
 </em>
@@ -3338,10 +3338,10 @@ FlashCluster
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.FlashLogger">FlashLogger</h3>
+<h3 id="flashlogger">FlashLogger</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">CommonConfig</a>)
+<a href="#commonconfig">CommonConfig</a>)
 </p>
 <p>
 <p>FlashLogger is the configuration of [logger] section.</p>
@@ -3392,10 +3392,10 @@ int32
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.GcsStorageProvider">GcsStorageProvider</h3>
+<h3 id="gcsstorageprovider">GcsStorageProvider</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.StorageProvider">StorageProvider</a>)
+<a href="#storageprovider">StorageProvider</a>)
 </p>
 <p>
 <p>GcsStorageProvider represents the google cloud storage for storing backups.</p>
@@ -3499,10 +3499,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.GrafanaSpec">GrafanaSpec</h3>
+<h3 id="grafanaspec">GrafanaSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorSpec">TidbMonitorSpec</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
 <p>GrafanaSpec is the desired state of grafana</p>
@@ -3519,7 +3519,7 @@ string
 <td>
 <code>MonitorContainer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MonitorContainer">
+<a href="#monitorcontainer">
 MonitorContainer
 </a>
 </em>
@@ -3544,7 +3544,7 @@ string
 <td>
 <code>service</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ServiceSpec">
+<a href="#servicespec">
 ServiceSpec
 </a>
 </em>
@@ -3587,7 +3587,7 @@ map[string]string
 <td>
 <code>ingress</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.IngressSpec">
+<a href="#ingressspec">
 IngressSpec
 </a>
 </em>
@@ -3598,10 +3598,10 @@ IngressSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.HelperSpec">HelperSpec</h3>
+<h3 id="helperspec">HelperSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>HelperSpec contains details of helper component</p>
@@ -3644,11 +3644,11 @@ Optional: Defaults to the cluster-level setting</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.IngressSpec">IngressSpec</h3>
+<h3 id="ingressspec">IngressSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.GrafanaSpec">GrafanaSpec</a>, 
-<a href="#pingcap.com/v1alpha1.PrometheusSpec">PrometheusSpec</a>)
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>)
 </p>
 <p>
 <p>IngressSpec describe the ingress desired state for the target component</p>
@@ -3704,17 +3704,17 @@ ingress supports SNI.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.InitializePhase">InitializePhase</h3>
+<h3 id="initializephase">InitializePhase</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbInitializerStatus">TidbInitializerStatus</a>)
+<a href="#tidbinitializerstatus">TidbInitializerStatus</a>)
 </p>
 <p>
 </p>
-<h3 id="pingcap.com/v1alpha1.InitializerSpec">InitializerSpec</h3>
+<h3 id="initializerspec">InitializerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorSpec">TidbMonitorSpec</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
 <p>InitializerSpec is the desired state of initializer</p>
@@ -3731,7 +3731,7 @@ ingress supports SNI.</p>
 <td>
 <code>MonitorContainer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MonitorContainer">
+<a href="#monitorcontainer">
 MonitorContainer
 </a>
 </em>
@@ -3755,10 +3755,10 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Interval">Interval</h3>
+<h3 id="interval">Interval</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Quota">Quota</a>)
+<a href="#quota">Quota</a>)
 </p>
 <p>
 <p>Interval is the configuration of [quotas.default.interval] section.</p>
@@ -3845,10 +3845,10 @@ int32
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.IsolationRead">IsolationRead</h3>
+<h3 id="isolationread">IsolationRead</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>IsolationRead is the config for isolation read.</p>
@@ -3876,10 +3876,10 @@ imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Log">Log</h3>
+<h3 id="log">Log</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Log is the log section of config.</p>
@@ -3959,7 +3959,7 @@ message.</p>
 <td>
 <code>file</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.FileLogConfig">
+<a href="#filelogconfig">
 FileLogConfig
 </a>
 </em>
@@ -4041,10 +4041,10 @@ uint32
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.LogTailerSpec">LogTailerSpec</h3>
+<h3 id="logtailerspec">LogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>)
+<a href="#tiflashspec">TiFlashSpec</a>)
 </p>
 <p>
 <p>LogTailerSpec represents an optional log tailer sidecar container</p>
@@ -4074,10 +4074,10 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.MasterKeyFileConfig">MasterKeyFileConfig</h3>
+<h3 id="masterkeyfileconfig">MasterKeyFileConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
 </p>
 <p>
 </p>
@@ -4105,10 +4105,10 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.MasterKeyKMSConfig">MasterKeyKMSConfig</h3>
+<h3 id="masterkeykmsconfig">MasterKeyKMSConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</a>)
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
 </p>
 <p>
 </p>
@@ -4183,25 +4183,25 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.MemberPhase">MemberPhase</h3>
+<h3 id="memberphase">MemberPhase</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDStatus">PDStatus</a>, 
-<a href="#pingcap.com/v1alpha1.PumpStatus">PumpStatus</a>, 
-<a href="#pingcap.com/v1alpha1.TiDBStatus">TiDBStatus</a>, 
-<a href="#pingcap.com/v1alpha1.TiKVStatus">TiKVStatus</a>)
+<a href="#pdstatus">PDStatus</a>, 
+<a href="#pumpstatus">PumpStatus</a>, 
+<a href="#tidbstatus">TiDBStatus</a>, 
+<a href="#tikvstatus">TiKVStatus</a>)
 </p>
 <p>
 <p>MemberPhase is the current state of member</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.MemberType">MemberType</h3>
+<h3 id="membertype">MemberType</h3>
 <p>
 <p>MemberType represents member type</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.MetricsStatus">MetricsStatus</h3>
+<h3 id="metricsstatus">MetricsStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">BasicAutoScalerStatus</a>)
+<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
 </p>
 <p>
 <p>MetricsStatus describe the basic metrics status in the last auto-scaling reconciliation</p>
@@ -4249,16 +4249,16 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.MonitorComponentAccessor">MonitorComponentAccessor</h3>
+<h3 id="monitorcomponentaccessor">MonitorComponentAccessor</h3>
 <p>
 </p>
-<h3 id="pingcap.com/v1alpha1.MonitorContainer">MonitorContainer</h3>
+<h3 id="monitorcontainer">MonitorContainer</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.GrafanaSpec">GrafanaSpec</a>, 
-<a href="#pingcap.com/v1alpha1.InitializerSpec">InitializerSpec</a>, 
-<a href="#pingcap.com/v1alpha1.PrometheusSpec">PrometheusSpec</a>, 
-<a href="#pingcap.com/v1alpha1.ReloaderSpec">ReloaderSpec</a>)
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#initializerspec">InitializerSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>, 
+<a href="#reloaderspec">ReloaderSpec</a>)
 </p>
 <p>
 <p>MonitorContainer is the common attributes of the container of monitoring</p>
@@ -4321,10 +4321,10 @@ Kubernetes core/v1.PullPolicy
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.MydumperConfig">MydumperConfig</h3>
+<h3 id="mydumperconfig">MydumperConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>MydumperConfig contains config for mydumper</p>
@@ -4361,10 +4361,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Networks">Networks</h3>
+<h3 id="networks">Networks</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.User">User</a>)
+<a href="#user">User</a>)
 </p>
 <p>
 <p>Networks is the configuration of [users.readonly.networks] section.</p>
@@ -4390,10 +4390,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.OpenTracing">OpenTracing</h3>
+<h3 id="opentracing">OpenTracing</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>OpenTracing is the opentracing section of the config.</p>
@@ -4422,7 +4422,7 @@ bool
 <td>
 <code>sampler</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.OpenTracingSampler">
+<a href="#opentracingsampler">
 OpenTracingSampler
 </a>
 </em>
@@ -4435,7 +4435,7 @@ OpenTracingSampler
 <td>
 <code>reporter</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.OpenTracingReporter">
+<a href="#opentracingreporter">
 OpenTracingReporter
 </a>
 </em>
@@ -4457,10 +4457,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.OpenTracingReporter">OpenTracingReporter</h3>
+<h3 id="opentracingreporter">OpenTracingReporter</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.OpenTracing">OpenTracing</a>)
+<a href="#opentracing">OpenTracing</a>)
 </p>
 <p>
 <p>OpenTracingReporter is the config for opentracing reporter.
@@ -4520,10 +4520,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.OpenTracingSampler">OpenTracingSampler</h3>
+<h3 id="opentracingsampler">OpenTracingSampler</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.OpenTracing">OpenTracing</a>)
+<a href="#opentracing">OpenTracing</a>)
 </p>
 <p>
 <p>OpenTracingSampler is the config for opentracing sampler.
@@ -4594,10 +4594,10 @@ time.Duration
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDConfig">PDConfig</h3>
+<h3 id="pdconfig">PDConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDSpec">PDSpec</a>)
+<a href="#pdspec">PDSpec</a>)
 </p>
 <p>
 <p>PDConfig is the configuration of pd-server</p>
@@ -4653,7 +4653,7 @@ Optional: Defaults to 3</p>
 <td>
 <code>log</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDLogConfig">
+<a href="#pdlogconfig">
 PDLogConfig
 </a>
 </em>
@@ -4703,7 +4703,7 @@ Optional: Defaults to 3s</p>
 <td>
 <code>metric</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDMetricConfig">
+<a href="#pdmetricconfig">
 PDMetricConfig
 </a>
 </em>
@@ -4716,7 +4716,7 @@ PDMetricConfig
 <td>
 <code>schedule</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDScheduleConfig">
+<a href="#pdscheduleconfig">
 PDScheduleConfig
 </a>
 </em>
@@ -4730,7 +4730,7 @@ PDScheduleConfig
 <td>
 <code>replication</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDReplicationConfig">
+<a href="#pdreplicationconfig">
 PDReplicationConfig
 </a>
 </em>
@@ -4744,7 +4744,7 @@ PDReplicationConfig
 <td>
 <code>namespace</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDNamespaceConfig">
+<a href="#pdnamespaceconfig">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespaceConfig
 </a>
 </em>
@@ -4757,7 +4757,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDNamespac
 <td>
 <code>pd-server</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDServerConfig">
+<a href="#pdserverconfig">
 PDServerConfig
 </a>
 </em>
@@ -4863,7 +4863,7 @@ Optional: Defaults to true</p>
 <td>
 <code>security</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDSecurityConfig">
+<a href="#pdsecurityconfig">
 PDSecurityConfig
 </a>
 </em>
@@ -4876,7 +4876,7 @@ PDSecurityConfig
 <td>
 <code>label-property</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDLabelPropertyConfig">
+<a href="#pdlabelpropertyconfig">
 PDLabelPropertyConfig
 </a>
 </em>
@@ -4903,7 +4903,7 @@ Optional: Defaults to true</p>
 <td>
 <code>dashboard</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.DashboardConfig">
+<a href="#dashboardconfig">
 DashboardConfig
 </a>
 </em>
@@ -4914,10 +4914,10 @@ DashboardConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDFailureMember">PDFailureMember</h3>
+<h3 id="pdfailuremember">PDFailureMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDStatus">PDStatus</a>)
+<a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
 <p>PDFailureMember is the pd failure member information</p>
@@ -4984,17 +4984,17 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDLabelPropertyConfig">PDLabelPropertyConfig</h3>
+<h3 id="pdlabelpropertyconfig">PDLabelPropertyConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 </p>
-<h3 id="pingcap.com/v1alpha1.PDLogConfig">PDLogConfig</h3>
+<h3 id="pdlogconfig">PDLogConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>PDLogConfig serializes log related config in toml/json.</p>
@@ -5048,7 +5048,7 @@ bool
 <td>
 <code>file</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.FileLogConfig">
+<a href="#filelogconfig">
 FileLogConfig
 </a>
 </em>
@@ -5113,10 +5113,10 @@ message.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDMember">PDMember</h3>
+<h3 id="pdmember">PDMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDStatus">PDStatus</a>)
+<a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
 <p>PDMember is PD member</p>
@@ -5186,10 +5186,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDMetricConfig">PDMetricConfig</h3>
+<h3 id="pdmetricconfig">PDMetricConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 </p>
@@ -5236,10 +5236,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDNamespaceConfig">PDNamespaceConfig</h3>
+<h3 id="pdnamespaceconfig">PDNamespaceConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>PDNamespaceConfig is to overwrite the global setting for specific namespace</p>
@@ -5326,10 +5326,10 @@ uint64
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDReplicationConfig">PDReplicationConfig</h3>
+<h3 id="pdreplicationconfig">PDReplicationConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>PDReplicationConfig is the replication configuration.</p>
@@ -5400,10 +5400,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDScheduleConfig">PDScheduleConfig</h3>
+<h3 id="pdscheduleconfig">PDScheduleConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>ScheduleConfig is the schedule configuration.</p>
@@ -5749,7 +5749,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 <td>
 <code>schedulers-v2</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDSchedulerConfigs">
+<a href="#pdschedulerconfigs">
 PDSchedulerConfigs
 </a>
 </em>
@@ -5801,7 +5801,7 @@ Imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDSchedulerConfig">PDSchedulerConfig</h3>
+<h3 id="pdschedulerconfig">PDSchedulerConfig</h3>
 <p>
 <p>PDSchedulerConfig is customized scheduler configuration</p>
 </p>
@@ -5851,17 +5851,17 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDSchedulerConfigs">PDSchedulerConfigs</h3>
+<h3 id="pdschedulerconfigs">PDSchedulerConfigs</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDScheduleConfig">PDScheduleConfig</a>)
+<a href="#pdscheduleconfig">PDScheduleConfig</a>)
 </p>
 <p>
 </p>
-<h3 id="pingcap.com/v1alpha1.PDSecurityConfig">PDSecurityConfig</h3>
+<h3 id="pdsecurityconfig">PDSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>PDSecurityConfig is the configuration for supporting tls.</p>
@@ -5924,10 +5924,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDServerConfig">PDServerConfig</h3>
+<h3 id="pdserverconfig">PDServerConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDConfig">PDConfig</a>)
+<a href="#pdconfig">PDConfig</a>)
 </p>
 <p>
 <p>PDServerConfig is the configuration for pd server.</p>
@@ -5968,10 +5968,10 @@ Imported from v3.1.0</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDSpec">PDSpec</h3>
+<h3 id="pdspec">PDSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>PDSpec contains details of PD members</p>
@@ -5988,7 +5988,7 @@ Imported from v3.1.0</p>
 <td>
 <code>ComponentSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ComponentSpec">
+<a href="#componentspec">
 ComponentSpec
 </a>
 </em>
@@ -6042,7 +6042,7 @@ Base image of the component, image tag is now allowed during validation</p>
 <td>
 <code>service</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ServiceSpec">
+<a href="#servicespec">
 ServiceSpec
 </a>
 </em>
@@ -6083,7 +6083,7 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDConfig">
+<a href="#pdconfig">
 PDConfig
 </a>
 </em>
@@ -6095,10 +6095,10 @@ PDConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDStatus">PDStatus</h3>
+<h3 id="pdstatus">PDStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterStatus">TidbClusterStatus</a>)
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
 <p>PDStatus is PD status</p>
@@ -6125,7 +6125,7 @@ bool
 <td>
 <code>phase</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MemberPhase">
+<a href="#memberphase">
 MemberPhase
 </a>
 </em>
@@ -6149,7 +6149,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDMember">
+<a href="#pdmember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 </a>
 </em>
@@ -6161,7 +6161,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDMember
 <td>
 <code>leader</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDMember">
+<a href="#pdmember">
 PDMember
 </a>
 </em>
@@ -6173,7 +6173,7 @@ PDMember
 <td>
 <code>failureMembers</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDFailureMember">
+<a href="#pdfailuremember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureMember
 </a>
 </em>
@@ -6185,7 +6185,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureM
 <td>
 <code>unjoinedMembers</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.UnjoinedMember">
+<a href="#unjoinedmember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.UnjoinedMember
 </a>
 </em>
@@ -6205,7 +6205,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDStoreLabel">PDStoreLabel</h3>
+<h3 id="pdstorelabel">PDStoreLabel</h3>
 <p>
 <p>PDStoreLabel is the config item of LabelPropertyConfig.</p>
 </p>
@@ -6241,13 +6241,13 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PDStoreLabels">PDStoreLabels</h3>
+<h3 id="pdstorelabels">PDStoreLabels</h3>
 <p>
 </p>
-<h3 id="pingcap.com/v1alpha1.Performance">Performance</h3>
+<h3 id="performance">Performance</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Performance is the performance section of the config.</p>
@@ -6429,10 +6429,10 @@ uint64
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PessimisticTxn">PessimisticTxn</h3>
+<h3 id="pessimistictxn">PessimisticTxn</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>PessimisticTxn is the config for pessimistic transaction.</p>
@@ -6473,7 +6473,7 @@ Optional: Defaults to 256</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PlanCache">PlanCache</h3>
+<h3 id="plancache">PlanCache</h3>
 <p>
 <p>PlanCache is the PlanCache section of the config.</p>
 </p>
@@ -6520,10 +6520,10 @@ uint
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Plugin">Plugin</h3>
+<h3 id="plugin">Plugin</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Plugin is the config for plugin</p>
@@ -6560,10 +6560,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PreparedPlanCache">PreparedPlanCache</h3>
+<h3 id="preparedplancache">PreparedPlanCache</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>PreparedPlanCache is the PreparedPlanCache section of the config.</p>
@@ -6614,7 +6614,7 @@ float64
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Profile">Profile</h3>
+<h3 id="profile">Profile</h3>
 <p>
 <p>Profile is the configuration profiles.</p>
 </p>
@@ -6672,10 +6672,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PrometheusSpec">PrometheusSpec</h3>
+<h3 id="prometheusspec">PrometheusSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorSpec">TidbMonitorSpec</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
 <p>PrometheusSpec is the desired state of prometheus</p>
@@ -6692,7 +6692,7 @@ string
 <td>
 <code>MonitorContainer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MonitorContainer">
+<a href="#monitorcontainer">
 MonitorContainer
 </a>
 </em>
@@ -6717,7 +6717,7 @@ string
 <td>
 <code>service</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ServiceSpec">
+<a href="#servicespec">
 ServiceSpec
 </a>
 </em>
@@ -6740,7 +6740,7 @@ int
 <td>
 <code>ingress</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.IngressSpec">
+<a href="#ingressspec">
 IngressSpec
 </a>
 </em>
@@ -6751,10 +6751,10 @@ IngressSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ProxyProtocol">ProxyProtocol</h3>
+<h3 id="proxyprotocol">ProxyProtocol</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>ProxyProtocol is the PROXY protocol section of the config.</p>
@@ -6795,10 +6795,10 @@ uint
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PumpSpec">PumpSpec</h3>
+<h3 id="pumpspec">PumpSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>PumpSpec contains details of Pump members</p>
@@ -6815,7 +6815,7 @@ uint
 <td>
 <code>ComponentSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ComponentSpec">
+<a href="#componentspec">
 ComponentSpec
 </a>
 </em>
@@ -6907,10 +6907,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.PumpStatus">PumpStatus</h3>
+<h3 id="pumpstatus">PumpStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterStatus">TidbClusterStatus</a>)
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
 <p>PumpStatus is Pump status</p>
@@ -6927,7 +6927,7 @@ bool
 <td>
 <code>phase</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MemberPhase">
+<a href="#memberphase">
 MemberPhase
 </a>
 </em>
@@ -6949,7 +6949,7 @@ Kubernetes apps/v1.StatefulSetStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Quota">Quota</h3>
+<h3 id="quota">Quota</h3>
 <p>
 <p>Quota is the configuration of [quotas.default] section.</p>
 </p>
@@ -6965,7 +6965,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>interval</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Interval">
+<a href="#interval">
 Interval
 </a>
 </em>
@@ -6976,10 +6976,10 @@ Interval
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ReloaderSpec">ReloaderSpec</h3>
+<h3 id="reloaderspec">ReloaderSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorSpec">TidbMonitorSpec</a>)
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
 <p>ReloaderSpec is the desired state of reloader</p>
@@ -6996,7 +6996,7 @@ Interval
 <td>
 <code>MonitorContainer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MonitorContainer">
+<a href="#monitorcontainer">
 MonitorContainer
 </a>
 </em>
@@ -7011,7 +7011,7 @@ MonitorContainer
 <td>
 <code>service</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ServiceSpec">
+<a href="#servicespec">
 ServiceSpec
 </a>
 </em>
@@ -7021,10 +7021,10 @@ ServiceSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.RestoreCondition">RestoreCondition</h3>
+<h3 id="restorecondition">RestoreCondition</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.RestoreStatus">RestoreStatus</a>)
+<a href="#restorestatus">RestoreStatus</a>)
 </p>
 <p>
 <p>RestoreCondition describes the observed state of a Restore at a certain point.</p>
@@ -7041,7 +7041,7 @@ ServiceSpec
 <td>
 <code>type</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.RestoreConditionType">
+<a href="#restoreconditiontype">
 RestoreConditionType
 </a>
 </em>
@@ -7095,18 +7095,18 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.RestoreConditionType">RestoreConditionType</h3>
+<h3 id="restoreconditiontype">RestoreConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.RestoreCondition">RestoreCondition</a>)
+<a href="#restorecondition">RestoreCondition</a>)
 </p>
 <p>
 <p>RestoreConditionType represents a valid condition of a Restore.</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.RestoreSpec">RestoreSpec</h3>
+<h3 id="restorespec">RestoreSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Restore">Restore</a>)
+<a href="#restore">Restore</a>)
 </p>
 <p>
 <p>RestoreSpec contains the specification for a restore of a tidb cluster backup.</p>
@@ -7123,7 +7123,7 @@ string
 <td>
 <code>to</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">
+<a href="#tidbaccessconfig">
 TiDBAccessConfig
 </a>
 </em>
@@ -7136,7 +7136,7 @@ TiDBAccessConfig
 <td>
 <code>backupType</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BackupType">
+<a href="#backuptype">
 BackupType
 </a>
 </em>
@@ -7162,7 +7162,7 @@ When a GC happens, the current time minus this value is the safe point.</p>
 <td>
 <code>StorageProvider</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StorageProvider">
+<a href="#storageprovider">
 StorageProvider
 </a>
 </em>
@@ -7202,7 +7202,7 @@ string
 <td>
 <code>br</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BRConfig">
+<a href="#brconfig">
 BRConfig
 </a>
 </em>
@@ -7263,10 +7263,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.RestoreStatus">RestoreStatus</h3>
+<h3 id="restorestatus">RestoreStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.Restore">Restore</a>)
+<a href="#restore">Restore</a>)
 </p>
 <p>
 <p>RestoreStatus represents the current status of a tidb cluster restore.</p>
@@ -7309,7 +7309,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>conditions</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.RestoreCondition">
+<a href="#restorecondition">
 []RestoreCondition
 </a>
 </em>
@@ -7319,10 +7319,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.S3StorageProvider">S3StorageProvider</h3>
+<h3 id="s3storageprovider">S3StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.StorageProvider">StorageProvider</a>)
+<a href="#storageprovider">StorageProvider</a>)
 </p>
 <p>
 <p>S3StorageProvider represents a S3 compliant storage for storing backups.</p>
@@ -7339,7 +7339,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>provider</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.S3StorageProviderType">
+<a href="#s3storageprovidertype">
 S3StorageProviderType
 </a>
 </em>
@@ -7450,18 +7450,18 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.S3StorageProviderType">S3StorageProviderType</h3>
+<h3 id="s3storageprovidertype">S3StorageProviderType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.S3StorageProvider">S3StorageProvider</a>)
+<a href="#s3storageprovider">S3StorageProvider</a>)
 </p>
 <p>
 <p>S3StorageProviderType represents the specific storage provider that implements the S3 interface</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.SecretRef">SecretRef</h3>
+<h3 id="secretref">SecretRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.ExternalEndpoint">ExternalEndpoint</a>)
+<a href="#externalendpoint">ExternalEndpoint</a>)
 </p>
 <p>
 <p>SecretRef indicates to secret ref</p>
@@ -7496,10 +7496,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Security">Security</h3>
+<h3 id="security">Security</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Security is the security section of the config.</p>
@@ -7603,10 +7603,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Service">Service</h3>
+<h3 id="service">Service</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>Deprecated
@@ -7642,14 +7642,14 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.ServiceSpec">ServiceSpec</h3>
+<h3 id="servicespec">ServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.GrafanaSpec">GrafanaSpec</a>, 
-<a href="#pingcap.com/v1alpha1.PDSpec">PDSpec</a>, 
-<a href="#pingcap.com/v1alpha1.PrometheusSpec">PrometheusSpec</a>, 
-<a href="#pingcap.com/v1alpha1.ReloaderSpec">ReloaderSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TiDBServiceSpec">TiDBServiceSpec</a>)
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#pdspec">PDSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>, 
+<a href="#reloaderspec">ReloaderSpec</a>, 
+<a href="#tidbservicespec">TiDBServiceSpec</a>)
 </p>
 <p>
 </p>
@@ -7725,10 +7725,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.Status">Status</h3>
+<h3 id="status">Status</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>Status is the status section of the config.</p>
@@ -7790,10 +7790,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.StmtSummary">StmtSummary</h3>
+<h3 id="stmtsummary">StmtSummary</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>StmtSummary is the config for statement summary.</p>
@@ -7882,10 +7882,10 @@ int
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.StorageClaim">StorageClaim</h3>
+<h3 id="storageclaim">StorageClaim</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>)
+<a href="#tiflashspec">TiFlashSpec</a>)
 </p>
 <p>
 <p>StorageClaim contains details of TiFlash storages</p>
@@ -7928,11 +7928,11 @@ More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volum
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.StorageProvider">StorageProvider</h3>
+<h3 id="storageprovider">StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">BackupSpec</a>, 
-<a href="#pingcap.com/v1alpha1.RestoreSpec">RestoreSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
 <p>StorageProvider defines the configuration for storing a backup in backend storage.</p>
@@ -7949,7 +7949,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volum
 <td>
 <code>s3</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.S3StorageProvider">
+<a href="#s3storageprovider">
 S3StorageProvider
 </a>
 </em>
@@ -7961,7 +7961,7 @@ S3StorageProvider
 <td>
 <code>gcs</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.GcsStorageProvider">
+<a href="#gcsstorageprovider">
 GcsStorageProvider
 </a>
 </em>
@@ -7971,10 +7971,10 @@ GcsStorageProvider
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TLSCluster">TLSCluster</h3>
+<h3 id="tlscluster">TLSCluster</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>TLSCluster can enable TLS connection between TiDB server components
@@ -8017,11 +8017,11 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBAccessConfig">TiDBAccessConfig</h3>
+<h3 id="tidbaccessconfig">TiDBAccessConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.BackupSpec">BackupSpec</a>, 
-<a href="#pingcap.com/v1alpha1.RestoreSpec">RestoreSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
 <p>TiDBAccessConfig defines the configuration for access tidb cluster</p>
@@ -8082,7 +8082,7 @@ string
 <td>
 <code>tlsClient</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBTLSClient">
+<a href="#tidbtlsclient">
 TiDBTLSClient
 </a>
 </em>
@@ -8095,10 +8095,10 @@ Optional: Defaults to nil</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</h3>
+<h3 id="tidbconfig">TiDBConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
+<a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
 <p>TiDBConfig is the configuration of tidb-server
@@ -8256,7 +8256,7 @@ bool
 <td>
 <code>txn-local-latches</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TxnLocalLatches">
+<a href="#txnlocallatches">
 TxnLocalLatches
 </a>
 </em>
@@ -8280,7 +8280,7 @@ int
 <td>
 <code>log</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Log">
+<a href="#log">
 Log
 </a>
 </em>
@@ -8293,7 +8293,7 @@ Log
 <td>
 <code>security</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Security">
+<a href="#security">
 Security
 </a>
 </em>
@@ -8306,7 +8306,7 @@ Security
 <td>
 <code>status</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Status">
+<a href="#status">
 Status
 </a>
 </em>
@@ -8319,7 +8319,7 @@ Status
 <td>
 <code>performance</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Performance">
+<a href="#performance">
 Performance
 </a>
 </em>
@@ -8332,7 +8332,7 @@ Performance
 <td>
 <code>prepared-plan-cache</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PreparedPlanCache">
+<a href="#preparedplancache">
 PreparedPlanCache
 </a>
 </em>
@@ -8345,7 +8345,7 @@ PreparedPlanCache
 <td>
 <code>opentracing</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.OpenTracing">
+<a href="#opentracing">
 OpenTracing
 </a>
 </em>
@@ -8358,7 +8358,7 @@ OpenTracing
 <td>
 <code>proxy-protocol</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ProxyProtocol">
+<a href="#proxyprotocol">
 ProxyProtocol
 </a>
 </em>
@@ -8371,7 +8371,7 @@ ProxyProtocol
 <td>
 <code>tikv-client</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVClient">
+<a href="#tikvclient">
 TiKVClient
 </a>
 </em>
@@ -8384,7 +8384,7 @@ TiKVClient
 <td>
 <code>binlog</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Binlog">
+<a href="#binlog">
 Binlog
 </a>
 </em>
@@ -8408,7 +8408,7 @@ bool
 <td>
 <code>plugin</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Plugin">
+<a href="#plugin">
 Plugin
 </a>
 </em>
@@ -8421,7 +8421,7 @@ Plugin
 <td>
 <code>pessimistic-txn</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PessimisticTxn">
+<a href="#pessimistictxn">
 PessimisticTxn
 </a>
 </em>
@@ -8482,7 +8482,7 @@ uint64
 <td>
 <code>stmt-summary</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StmtSummary">
+<a href="#stmtsummary">
 StmtSummary
 </a>
 </em>
@@ -8518,7 +8518,7 @@ bool
 <td>
 <code>isolation-read</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.IsolationRead">
+<a href="#isolationread">
 IsolationRead
 </a>
 </em>
@@ -8556,7 +8556,7 @@ bool
 <td>
 <code>experimental</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Experimental">
+<a href="#experimental">
 Experimental
 </a>
 </em>
@@ -8605,10 +8605,10 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBFailureMember">TiDBFailureMember</h3>
+<h3 id="tidbfailuremember">TiDBFailureMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBStatus">TiDBStatus</a>)
+<a href="#tidbstatus">TiDBStatus</a>)
 </p>
 <p>
 <p>TiDBFailureMember is the tidb failure member information</p>
@@ -8645,10 +8645,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBMember">TiDBMember</h3>
+<h3 id="tidbmember">TiDBMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBStatus">TiDBStatus</a>)
+<a href="#tidbstatus">TiDBStatus</a>)
 </p>
 <p>
 <p>TiDBMember is TiDB member</p>
@@ -8707,10 +8707,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBServiceSpec">TiDBServiceSpec</h3>
+<h3 id="tidbservicespec">TiDBServiceSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
+<a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
 </p>
@@ -8726,7 +8726,7 @@ string
 <td>
 <code>ServiceSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ServiceSpec">
+<a href="#servicespec">
 ServiceSpec
 </a>
 </em>
@@ -8764,10 +8764,10 @@ Optional: Defaults to true</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBSlowLogTailerSpec">TiDBSlowLogTailerSpec</h3>
+<h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
+<a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
 <p>TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB</p>
@@ -8823,10 +8823,10 @@ Deprecated, use TidbCluster.HelperImagePullPolicy instead</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</h3>
+<h3 id="tidbspec">TiDBSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>TiDBSpec contains details of TiDB members</p>
@@ -8843,7 +8843,7 @@ Deprecated, use TidbCluster.HelperImagePullPolicy instead</p>
 <td>
 <code>ComponentSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ComponentSpec">
+<a href="#componentspec">
 ComponentSpec
 </a>
 </em>
@@ -8897,7 +8897,7 @@ Base image of the component, image tag is now allowed during validation</p>
 <td>
 <code>service</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBServiceSpec">
+<a href="#tidbservicespec">
 TiDBServiceSpec
 </a>
 </em>
@@ -8951,7 +8951,7 @@ Optional: Defaults to true</p>
 <td>
 <code>tlsClient</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBTLSClient">
+<a href="#tidbtlsclient">
 TiDBTLSClient
 </a>
 </em>
@@ -8966,7 +8966,7 @@ Optional: Defaults to nil</p>
 <td>
 <code>slowLogTailer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBSlowLogTailerSpec">
+<a href="#tidbslowlogtailerspec">
 TiDBSlowLogTailerSpec
 </a>
 </em>
@@ -8992,7 +8992,7 @@ TiDBSlowLogTailerSpec
 <td>
 <code>config</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">
+<a href="#tidbconfig">
 TiDBConfig
 </a>
 </em>
@@ -9004,10 +9004,10 @@ TiDBConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBStatus">TiDBStatus</h3>
+<h3 id="tidbstatus">TiDBStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterStatus">TidbClusterStatus</a>)
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
 <p>TiDBStatus is TiDB status</p>
@@ -9024,7 +9024,7 @@ TiDBConfig
 <td>
 <code>phase</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MemberPhase">
+<a href="#memberphase">
 MemberPhase
 </a>
 </em>
@@ -9048,7 +9048,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>members</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBMember">
+<a href="#tidbmember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBMember
 </a>
 </em>
@@ -9060,7 +9060,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBMember
 <td>
 <code>failureMembers</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBFailureMember">
+<a href="#tidbfailuremember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBFailureMember
 </a>
 </em>
@@ -9090,11 +9090,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiDBTLSClient">TiDBTLSClient</h3>
+<h3 id="tidbtlsclient">TiDBTLSClient</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBAccessConfig">TiDBAccessConfig</a>, 
-<a href="#pingcap.com/v1alpha1.TiDBSpec">TiDBSpec</a>)
+<a href="#tidbaccessconfig">TiDBAccessConfig</a>, 
+<a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
 <p>TiDBTLSClient can enable TLS connection between TiDB server and MySQL client</p>
@@ -9149,10 +9149,10 @@ this field only work in backup/restore process</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiFlashConfig">TiFlashConfig</h3>
+<h3 id="tiflashconfig">TiFlashConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</a>)
+<a href="#tiflashspec">TiFlashSpec</a>)
 </p>
 <p>
 <p>TiFlashConfig is the configuration of TiFlash.</p>
@@ -9169,7 +9169,7 @@ this field only work in backup/restore process</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CommonConfig">
+<a href="#commonconfig">
 CommonConfig
 </a>
 </em>
@@ -9181,10 +9181,10 @@ CommonConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiFlashSpec">TiFlashSpec</h3>
+<h3 id="tiflashspec">TiFlashSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>TiFlashSpec contains details of TiFlash members</p>
@@ -9201,7 +9201,7 @@ CommonConfig
 <td>
 <code>ComponentSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ComponentSpec">
+<a href="#componentspec">
 ComponentSpec
 </a>
 </em>
@@ -9292,7 +9292,7 @@ Optional: Defaults to 3</p>
 <td>
 <code>storageClaims</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.StorageClaim">
+<a href="#storageclaim">
 []StorageClaim
 </a>
 </em>
@@ -9306,7 +9306,7 @@ TiFlash supports multiple disks.</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiFlashConfig">
+<a href="#tiflashconfig">
 TiFlashConfig
 </a>
 </em>
@@ -9320,7 +9320,7 @@ TiFlashConfig
 <td>
 <code>logTailer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.LogTailerSpec">
+<a href="#logtailerspec">
 LogTailerSpec
 </a>
 </em>
@@ -9332,10 +9332,10 @@ LogTailerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVBlockCacheConfig">TiKVBlockCacheConfig</h3>
+<h3 id="tikvblockcacheconfig">TiKVBlockCacheConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVStorageConfig">TiKVStorageConfig</a>)
+<a href="#tikvstorageconfig">TiKVStorageConfig</a>)
 </p>
 <p>
 <p>TiKVBlockCacheConfig is the config of a block cache</p>
@@ -9417,11 +9417,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVCfConfig">TiKVCfConfig</h3>
+<h3 id="tikvcfconfig">TiKVCfConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVDbConfig">TiKVDbConfig</a>, 
-<a href="#pingcap.com/v1alpha1.TiKVRaftDBConfig">TiKVRaftDBConfig</a>)
+<a href="#tikvdbconfig">TiKVDbConfig</a>, 
+<a href="#tikvraftdbconfig">TiKVRaftDBConfig</a>)
 </p>
 <p>
 <p>TiKVCfConfig is the config of a cf</p>
@@ -9801,7 +9801,7 @@ bool
 <td>
 <code>titan</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVTitanCfConfig">
+<a href="#tikvtitancfconfig">
 TiKVTitanCfConfig
 </a>
 </em>
@@ -9812,10 +9812,10 @@ TiKVTitanCfConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVClient">TiKVClient</h3>
+<h3 id="tikvclient">TiKVClient</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>TiKVClient is the config for tikv client.</p>
@@ -9980,7 +9980,7 @@ Optional: Defaults to 0</p>
 <td>
 <code>copr-cache</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.CoprocessorCache">
+<a href="#coprocessorcache">
 CoprocessorCache
 </a>
 </em>
@@ -9991,10 +9991,10 @@ CoprocessorCache
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</h3>
+<h3 id="tikvconfig">TiKVConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVSpec">TiKVSpec</a>)
+<a href="#tikvspec">TiKVSpec</a>)
 </p>
 <p>
 <p>TiKVConfig is the configuration of TiKV.</p>
@@ -10101,7 +10101,7 @@ bool
 <td>
 <code>server</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVServerConfig">
+<a href="#tikvserverconfig">
 TiKVServerConfig
 </a>
 </em>
@@ -10114,7 +10114,7 @@ TiKVServerConfig
 <td>
 <code>storage</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVStorageConfig">
+<a href="#tikvstorageconfig">
 TiKVStorageConfig
 </a>
 </em>
@@ -10127,7 +10127,7 @@ TiKVStorageConfig
 <td>
 <code>raftstore</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVRaftstoreConfig">
+<a href="#tikvraftstoreconfig">
 TiKVRaftstoreConfig
 </a>
 </em>
@@ -10140,7 +10140,7 @@ TiKVRaftstoreConfig
 <td>
 <code>rocksdb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVDbConfig">
+<a href="#tikvdbconfig">
 TiKVDbConfig
 </a>
 </em>
@@ -10153,7 +10153,7 @@ TiKVDbConfig
 <td>
 <code>coprocessor</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCoprocessorConfig">
+<a href="#tikvcoprocessorconfig">
 TiKVCoprocessorConfig
 </a>
 </em>
@@ -10166,7 +10166,7 @@ TiKVCoprocessorConfig
 <td>
 <code>readpool</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVReadPoolConfig">
+<a href="#tikvreadpoolconfig">
 TiKVReadPoolConfig
 </a>
 </em>
@@ -10179,7 +10179,7 @@ TiKVReadPoolConfig
 <td>
 <code>raftdb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVRaftDBConfig">
+<a href="#tikvraftdbconfig">
 TiKVRaftDBConfig
 </a>
 </em>
@@ -10192,7 +10192,7 @@ TiKVRaftDBConfig
 <td>
 <code>import</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVImportConfig">
+<a href="#tikvimportconfig">
 TiKVImportConfig
 </a>
 </em>
@@ -10205,7 +10205,7 @@ TiKVImportConfig
 <td>
 <code>gc</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVGCConfig">
+<a href="#tikvgcconfig">
 TiKVGCConfig
 </a>
 </em>
@@ -10218,7 +10218,7 @@ TiKVGCConfig
 <td>
 <code>pd</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVPDConfig">
+<a href="#tikvpdconfig">
 TiKVPDConfig
 </a>
 </em>
@@ -10231,7 +10231,7 @@ TiKVPDConfig
 <td>
 <code>security</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVSecurityConfig">
+<a href="#tikvsecurityconfig">
 TiKVSecurityConfig
 </a>
 </em>
@@ -10244,7 +10244,7 @@ TiKVSecurityConfig
 <td>
 <code>encryption</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVEncryptionConfig">
+<a href="#tikvencryptionconfig">
 TiKVEncryptionConfig
 </a>
 </em>
@@ -10257,7 +10257,7 @@ TiKVEncryptionConfig
 <td>
 <code>pessimistic-txn</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVPessimisticTxn">
+<a href="#tikvpessimistictxn">
 TiKVPessimisticTxn
 </a>
 </em>
@@ -10268,10 +10268,10 @@ TiKVPessimisticTxn
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVCoprocessorConfig">TiKVCoprocessorConfig</h3>
+<h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 <p>TiKVCoprocessorConfig is the configuration of TiKV Coprocessor component.</p>
@@ -10374,10 +10374,10 @@ optional</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVCoprocessorReadPoolConfig">TiKVCoprocessorReadPoolConfig</h3>
+<h3 id="tikvcoprocessorreadpoolconfig">TiKVCoprocessorReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVReadPoolConfig">TiKVReadPoolConfig</a>)
+<a href="#tikvreadpoolconfig">TiKVReadPoolConfig</a>)
 </p>
 <p>
 </p>
@@ -10475,10 +10475,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVDbConfig">TiKVDbConfig</h3>
+<h3 id="tikvdbconfig">TiKVDbConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 <p>TiKVDbConfig is the rocksdb config.</p>
@@ -10769,7 +10769,7 @@ bool
 <td>
 <code>defaultcf</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCfConfig">
+<a href="#tikvcfconfig">
 TiKVCfConfig
 </a>
 </em>
@@ -10782,7 +10782,7 @@ TiKVCfConfig
 <td>
 <code>writecf</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCfConfig">
+<a href="#tikvcfconfig">
 TiKVCfConfig
 </a>
 </em>
@@ -10795,7 +10795,7 @@ TiKVCfConfig
 <td>
 <code>lockcf</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCfConfig">
+<a href="#tikvcfconfig">
 TiKVCfConfig
 </a>
 </em>
@@ -10808,7 +10808,7 @@ TiKVCfConfig
 <td>
 <code>raftcf</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCfConfig">
+<a href="#tikvcfconfig">
 TiKVCfConfig
 </a>
 </em>
@@ -10821,7 +10821,7 @@ TiKVCfConfig
 <td>
 <code>titan</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVTitanDBConfig">
+<a href="#tikvtitandbconfig">
 TiKVTitanDBConfig
 </a>
 </em>
@@ -10832,10 +10832,10 @@ TiKVTitanDBConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVEncryptionConfig">TiKVEncryptionConfig</h3>
+<h3 id="tikvencryptionconfig">TiKVEncryptionConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -10878,7 +10878,7 @@ optional</p>
 <td>
 <code>master-key</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">
+<a href="#tikvmasterkeyconfig">
 TiKVMasterKeyConfig
 </a>
 </em>
@@ -10891,7 +10891,7 @@ TiKVMasterKeyConfig
 <td>
 <code>previous-master-key</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVMasterKeyConfig">
+<a href="#tikvmasterkeyconfig">
 TiKVMasterKeyConfig
 </a>
 </em>
@@ -10903,10 +10903,10 @@ It used in master key rotation, the data key should decryption by previous maste
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVFailureStore">TiKVFailureStore</h3>
+<h3 id="tikvfailurestore">TiKVFailureStore</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVStatus">TiKVStatus</a>)
+<a href="#tikvstatus">TiKVStatus</a>)
 </p>
 <p>
 <p>TiKVFailureStore is the tikv failure store information</p>
@@ -10953,10 +10953,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVGCConfig">TiKVGCConfig</h3>
+<h3 id="tikvgcconfig">TiKVGCConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -10993,10 +10993,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVImportConfig">TiKVImportConfig</h3>
+<h3 id="tikvimportconfig">TiKVImportConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -11109,10 +11109,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVMasterKeyConfig">TiKVMasterKeyConfig</h3>
+<h3 id="tikvmasterkeyconfig">TiKVMasterKeyConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVEncryptionConfig">TiKVEncryptionConfig</a>)
+<a href="#tikvencryptionconfig">TiKVEncryptionConfig</a>)
 </p>
 <p>
 </p>
@@ -11141,7 +11141,7 @@ optional</p>
 <td>
 <code>MasterKeyFileConfig</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MasterKeyFileConfig">
+<a href="#masterkeyfileconfig">
 MasterKeyFileConfig
 </a>
 </em>
@@ -11158,7 +11158,7 @@ If the type set to file, this config should be filled</p>
 <td>
 <code>MasterKeyKMSConfig</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MasterKeyKMSConfig">
+<a href="#masterkeykmsconfig">
 MasterKeyKMSConfig
 </a>
 </em>
@@ -11173,10 +11173,10 @@ If the type set to kms, this config should be filled</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVPDConfig">TiKVPDConfig</h3>
+<h3 id="tikvpdconfig">TiKVPDConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -11246,10 +11246,10 @@ Optional: Defaults to 10</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVPessimisticTxn">TiKVPessimisticTxn</h3>
+<h3 id="tikvpessimistictxn">TiKVPessimisticTxn</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -11307,10 +11307,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVRaftDBConfig">TiKVRaftDBConfig</h3>
+<h3 id="tikvraftdbconfig">TiKVRaftDBConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -11579,7 +11579,7 @@ string
 <td>
 <code>defaultcf</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCfConfig">
+<a href="#tikvcfconfig">
 TiKVCfConfig
 </a>
 </em>
@@ -11590,10 +11590,10 @@ TiKVCfConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVRaftstoreConfig">TiKVRaftstoreConfig</h3>
+<h3 id="tikvraftstoreconfig">TiKVRaftstoreConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 <p>TiKVRaftstoreConfig is the configuration of TiKV raftstore component.</p>
@@ -12179,10 +12179,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVReadPoolConfig">TiKVReadPoolConfig</h3>
+<h3 id="tikvreadpoolconfig">TiKVReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -12198,7 +12198,7 @@ bool
 <td>
 <code>unified</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVUnifiedReadPoolConfig">
+<a href="#tikvunifiedreadpoolconfig">
 TiKVUnifiedReadPoolConfig
 </a>
 </em>
@@ -12211,7 +12211,7 @@ TiKVUnifiedReadPoolConfig
 <td>
 <code>coprocessor</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVCoprocessorReadPoolConfig">
+<a href="#tikvcoprocessorreadpoolconfig">
 TiKVCoprocessorReadPoolConfig
 </a>
 </em>
@@ -12224,7 +12224,7 @@ TiKVCoprocessorReadPoolConfig
 <td>
 <code>storage</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVStorageReadPoolConfig">
+<a href="#tikvstoragereadpoolconfig">
 TiKVStorageReadPoolConfig
 </a>
 </em>
@@ -12235,10 +12235,10 @@ TiKVStorageReadPoolConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVSecurityConfig">TiKVSecurityConfig</h3>
+<h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 </p>
@@ -12319,10 +12319,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVServerConfig">TiKVServerConfig</h3>
+<h3 id="tikvserverconfig">TiKVServerConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 <p>TiKVServerConfig is the configuration of TiKV server.</p>
@@ -12637,10 +12637,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVSpec">TiKVSpec</h3>
+<h3 id="tikvspec">TiKVSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</a>)
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
 <p>TiKVSpec contains details of TiKV members</p>
@@ -12657,7 +12657,7 @@ string
 <td>
 <code>ComponentSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ComponentSpec">
+<a href="#componentspec">
 ComponentSpec
 </a>
 </em>
@@ -12762,7 +12762,7 @@ Defaults to Kubernetes default storage class.</p>
 <td>
 <code>config</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">
+<a href="#tikvconfig">
 TiKVConfig
 </a>
 </em>
@@ -12774,10 +12774,10 @@ TiKVConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVStatus">TiKVStatus</h3>
+<h3 id="tikvstatus">TiKVStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterStatus">TidbClusterStatus</a>)
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
 <p>TiKVStatus is TiKV status</p>
@@ -12804,7 +12804,7 @@ bool
 <td>
 <code>phase</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.MemberPhase">
+<a href="#memberphase">
 MemberPhase
 </a>
 </em>
@@ -12828,7 +12828,7 @@ Kubernetes apps/v1.StatefulSetStatus
 <td>
 <code>stores</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVStore">
+<a href="#tikvstore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 </a>
 </em>
@@ -12840,7 +12840,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 <td>
 <code>tombstoneStores</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVStore">
+<a href="#tikvstore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 </a>
 </em>
@@ -12852,7 +12852,7 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStore
 <td>
 <code>failureStores</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVFailureStore">
+<a href="#tikvfailurestore">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVFailureStore
 </a>
 </em>
@@ -12872,10 +12872,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVStorageConfig">TiKVStorageConfig</h3>
+<h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVConfig">TiKVConfig</a>)
+<a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
 <p>TiKVStorageConfig is the config of storage</p>
@@ -12950,7 +12950,7 @@ string
 <td>
 <code>block-cache</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVBlockCacheConfig">
+<a href="#tikvblockcacheconfig">
 TiKVBlockCacheConfig
 </a>
 </em>
@@ -12961,10 +12961,10 @@ TiKVBlockCacheConfig
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVStorageReadPoolConfig">TiKVStorageReadPoolConfig</h3>
+<h3 id="tikvstoragereadpoolconfig">TiKVStorageReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVReadPoolConfig">TiKVReadPoolConfig</a>)
+<a href="#tikvreadpoolconfig">TiKVReadPoolConfig</a>)
 </p>
 <p>
 </p>
@@ -13062,10 +13062,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVStore">TiKVStore</h3>
+<h3 id="tikvstore">TiKVStore</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVStatus">TiKVStatus</a>)
+<a href="#tikvstatus">TiKVStatus</a>)
 </p>
 <p>
 <p>TiKVStores is either Up/Down/Offline/Tombstone</p>
@@ -13156,10 +13156,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVTitanCfConfig">TiKVTitanCfConfig</h3>
+<h3 id="tikvtitancfconfig">TiKVTitanCfConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVCfConfig">TiKVCfConfig</a>)
+<a href="#tikvcfconfig">TiKVCfConfig</a>)
 </p>
 <p>
 <p>TiKVTitanCfConfig is the titian config.</p>
@@ -13273,10 +13273,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVTitanDBConfig">TiKVTitanDBConfig</h3>
+<h3 id="tikvtitandbconfig">TiKVTitanDBConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVDbConfig">TiKVDbConfig</a>)
+<a href="#tikvdbconfig">TiKVDbConfig</a>)
 </p>
 <p>
 <p>TiKVTitanDBConfig is the config a titian db.</p>
@@ -13347,10 +13347,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TiKVUnifiedReadPoolConfig">TiKVUnifiedReadPoolConfig</h3>
+<h3 id="tikvunifiedreadpoolconfig">TiKVUnifiedReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiKVReadPoolConfig">TiKVReadPoolConfig</a>)
+<a href="#tikvreadpoolconfig">TiKVReadPoolConfig</a>)
 </p>
 <p>
 </p>
@@ -13408,10 +13408,10 @@ int32
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbAutoScalerSpec">TidbAutoScalerSpec</h3>
+<h3 id="tidbautoscalerspec">TidbAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec</a>)
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
 </p>
 <p>
 <p>TidbAutoScalerSpec describes the spec for tidb auto-scaling</p>
@@ -13428,7 +13428,7 @@ int32
 <td>
 <code>BasicAutoScalerSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BasicAutoScalerSpec">
+<a href="#basicautoscalerspec">
 BasicAutoScalerSpec
 </a>
 </em>
@@ -13441,10 +13441,10 @@ BasicAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbAutoScalerStatus">TidbAutoScalerStatus</h3>
+<h3 id="tidbautoscalerstatus">TidbAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
 </p>
 <p>
 <p>TidbAutoScalerStatus describe the auto-scaling status of tidb</p>
@@ -13461,7 +13461,7 @@ BasicAutoScalerSpec
 <td>
 <code>BasicAutoScalerStatus</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">
+<a href="#basicautoscalerstatus">
 BasicAutoScalerStatus
 </a>
 </em>
@@ -13474,10 +13474,10 @@ BasicAutoScalerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec</h3>
+<h3 id="tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScaler">TidbClusterAutoScaler</a>)
+<a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
 <p>TidbAutoScalerSpec describes the state of the TidbClusterAutoScaler</p>
@@ -13494,7 +13494,7 @@ BasicAutoScalerStatus
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterRef">
+<a href="#tidbclusterref">
 TidbClusterRef
 </a>
 </em>
@@ -13520,7 +13520,7 @@ MetricsUrl represents the url to fetch the metrics info</p>
 <td>
 <code>monitor</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbMonitorRef">
+<a href="#tidbmonitorref">
 TidbMonitorRef
 </a>
 </em>
@@ -13535,7 +13535,7 @@ Operator will use MetricsUrl</p>
 <td>
 <code>tikv</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TikvAutoScalerSpec">
+<a href="#tikvautoscalerspec">
 TikvAutoScalerSpec
 </a>
 </em>
@@ -13549,7 +13549,7 @@ TikvAutoScalerSpec
 <td>
 <code>tidb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbAutoScalerSpec">
+<a href="#tidbautoscalerspec">
 TidbAutoScalerSpec
 </a>
 </em>
@@ -13561,10 +13561,10 @@ TidbAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</h3>
+<h3 id="tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScaler">TidbClusterAutoScaler</a>)
+<a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>)
 </p>
 <p>
 <p>TidbClusterAutoSclaerStatus describe the whole status</p>
@@ -13581,7 +13581,7 @@ TidbAutoScalerSpec
 <td>
 <code>tikv</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TikvAutoScalerStatus">
+<a href="#tikvautoscalerstatus">
 TikvAutoScalerStatus
 </a>
 </em>
@@ -13595,7 +13595,7 @@ TikvAutoScalerStatus
 <td>
 <code>tidb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbAutoScalerStatus">
+<a href="#tidbautoscalerstatus">
 TidbAutoScalerStatus
 </a>
 </em>
@@ -13607,12 +13607,12 @@ TidbAutoScalerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbClusterRef">TidbClusterRef</h3>
+<h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TidbInitializerSpec">TidbInitializerSpec</a>, 
-<a href="#pingcap.com/v1alpha1.TidbMonitorSpec">TidbMonitorSpec</a>)
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
+<a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
+<a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
 <p>
 <p>TidbClusterRef reference to a TidbCluster</p>
@@ -13651,10 +13651,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbClusterSpec">TidbClusterSpec</h3>
+<h3 id="tidbclusterspec">TidbClusterSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbCluster">TidbCluster</a>)
+<a href="#tidbcluster">TidbCluster</a>)
 </p>
 <p>
 <p>TidbClusterSpec describes the attributes that a user creates on a tidb cluster</p>
@@ -13671,7 +13671,7 @@ string
 <td>
 <code>pd</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDSpec">
+<a href="#pdspec">
 PDSpec
 </a>
 </em>
@@ -13684,7 +13684,7 @@ PDSpec
 <td>
 <code>tidb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBSpec">
+<a href="#tidbspec">
 TiDBSpec
 </a>
 </em>
@@ -13697,7 +13697,7 @@ TiDBSpec
 <td>
 <code>tikv</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVSpec">
+<a href="#tikvspec">
 TiKVSpec
 </a>
 </em>
@@ -13710,7 +13710,7 @@ TiKVSpec
 <td>
 <code>tiflash</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiFlashSpec">
+<a href="#tiflashspec">
 TiFlashSpec
 </a>
 </em>
@@ -13724,7 +13724,7 @@ TiFlashSpec
 <td>
 <code>pump</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PumpSpec">
+<a href="#pumpspec">
 PumpSpec
 </a>
 </em>
@@ -13738,7 +13738,7 @@ PumpSpec
 <td>
 <code>helper</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.HelperSpec">
+<a href="#helperspec">
 HelperSpec
 </a>
 </em>
@@ -13815,7 +13815,7 @@ Kubernetes core/v1.PullPolicy
 <td>
 <code>configUpdateStrategy</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ConfigUpdateStrategy">
+<a href="#configupdatestrategy">
 ConfigUpdateStrategy
 </a>
 </em>
@@ -13845,7 +13845,7 @@ Optional: Defaults to false</p>
 <td>
 <code>tlsCluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TLSCluster">
+<a href="#tlscluster">
 TLSCluster
 </a>
 </em>
@@ -13951,7 +13951,7 @@ Optional: Defaults to UTC</p>
 <td>
 <code>services</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Service">
+<a href="#service">
 []Service
 </a>
 </em>
@@ -13963,10 +13963,10 @@ Deprecated</p>
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbClusterStatus">TidbClusterStatus</h3>
+<h3 id="tidbclusterstatus">TidbClusterStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbCluster">TidbCluster</a>)
+<a href="#tidbcluster">TidbCluster</a>)
 </p>
 <p>
 <p>TidbClusterStatus represents the current status of a tidb cluster.</p>
@@ -13993,7 +13993,7 @@ string
 <td>
 <code>pd</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PDStatus">
+<a href="#pdstatus">
 PDStatus
 </a>
 </em>
@@ -14005,7 +14005,7 @@ PDStatus
 <td>
 <code>tikv</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiKVStatus">
+<a href="#tikvstatus">
 TiKVStatus
 </a>
 </em>
@@ -14017,7 +14017,7 @@ TiKVStatus
 <td>
 <code>tidb</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiDBStatus">
+<a href="#tidbstatus">
 TiDBStatus
 </a>
 </em>
@@ -14029,7 +14029,7 @@ TiDBStatus
 <td>
 <code>Pump</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PumpStatus">
+<a href="#pumpstatus">
 PumpStatus
 </a>
 </em>
@@ -14041,7 +14041,7 @@ PumpStatus
 <td>
 <code>tiflash</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TiFlashStatus">
+<a href="#tiflashstatus">
 TiFlashStatus
 </a>
 </em>
@@ -14051,10 +14051,10 @@ TiFlashStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbInitializerSpec">TidbInitializerSpec</h3>
+<h3 id="tidbinitializerspec">TidbInitializerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbInitializer">TidbInitializer</a>)
+<a href="#tidbinitializer">TidbInitializer</a>)
 </p>
 <p>
 <p>TidbInitializer spec encode the desired state of tidb initializer Job</p>
@@ -14081,7 +14081,7 @@ string
 <td>
 <code>cluster</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterRef">
+<a href="#tidbclusterref">
 TidbClusterRef
 </a>
 </em>
@@ -14176,10 +14176,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbInitializerStatus">TidbInitializerStatus</h3>
+<h3 id="tidbinitializerstatus">TidbInitializerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbInitializer">TidbInitializer</a>)
+<a href="#tidbinitializer">TidbInitializer</a>)
 </p>
 <p>
 </p>
@@ -14210,7 +14210,7 @@ Kubernetes batch/v1.JobStatus
 <td>
 <code>phase</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.InitializePhase">
+<a href="#initializephase">
 InitializePhase
 </a>
 </em>
@@ -14221,10 +14221,10 @@ InitializePhase
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbMonitorRef">TidbMonitorRef</h3>
+<h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec</a>)
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
 </p>
 <p>
 <p>TidbMonitorRef reference to a TidbMonitor</p>
@@ -14263,10 +14263,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbMonitorSpec">TidbMonitorSpec</h3>
+<h3 id="tidbmonitorspec">TidbMonitorSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbMonitor">TidbMonitor</a>)
+<a href="#tidbmonitor">TidbMonitor</a>)
 </p>
 <p>
 <p>TidbMonitor spec encode the desired state of tidb monitoring component</p>
@@ -14283,7 +14283,7 @@ string
 <td>
 <code>clusters</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.TidbClusterRef">
+<a href="#tidbclusterref">
 []TidbClusterRef
 </a>
 </em>
@@ -14295,7 +14295,7 @@ string
 <td>
 <code>prometheus</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.PrometheusSpec">
+<a href="#prometheusspec">
 PrometheusSpec
 </a>
 </em>
@@ -14307,7 +14307,7 @@ PrometheusSpec
 <td>
 <code>grafana</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.GrafanaSpec">
+<a href="#grafanaspec">
 GrafanaSpec
 </a>
 </em>
@@ -14320,7 +14320,7 @@ GrafanaSpec
 <td>
 <code>reloader</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.ReloaderSpec">
+<a href="#reloaderspec">
 ReloaderSpec
 </a>
 </em>
@@ -14332,7 +14332,7 @@ ReloaderSpec
 <td>
 <code>initializer</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.InitializerSpec">
+<a href="#initializerspec">
 InitializerSpec
 </a>
 </em>
@@ -14448,18 +14448,18 @@ Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometh
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TidbMonitorStatus">TidbMonitorStatus</h3>
+<h3 id="tidbmonitorstatus">TidbMonitorStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbMonitor">TidbMonitor</a>)
+<a href="#tidbmonitor">TidbMonitor</a>)
 </p>
 <p>
 <p>TODO: sync status</p>
 </p>
-<h3 id="pingcap.com/v1alpha1.TikvAutoScalerSpec">TikvAutoScalerSpec</h3>
+<h3 id="tikvautoscalerspec">TikvAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoScalerSpec">TidbClusterAutoScalerSpec</a>)
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
 </p>
 <p>
 <p>TikvAutoScalerSpec describes the spec for tikv auto-scaling</p>
@@ -14476,7 +14476,7 @@ Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometh
 <td>
 <code>BasicAutoScalerSpec</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BasicAutoScalerSpec">
+<a href="#basicautoscalerspec">
 BasicAutoScalerSpec
 </a>
 </em>
@@ -14489,10 +14489,10 @@ BasicAutoScalerSpec
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TikvAutoScalerStatus">TikvAutoScalerStatus</h3>
+<h3 id="tikvautoscalerstatus">TikvAutoScalerStatus</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TidbClusterAutoSclaerStatus">TidbClusterAutoSclaerStatus</a>)
+<a href="#tidbclusterautosclaerstatus">TidbClusterAutoSclaerStatus</a>)
 </p>
 <p>
 <p>TikvAutoScalerStatus describe the auto-scaling status of tikv</p>
@@ -14509,7 +14509,7 @@ BasicAutoScalerSpec
 <td>
 <code>BasicAutoScalerStatus</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.BasicAutoScalerStatus">
+<a href="#basicautoscalerstatus">
 BasicAutoScalerStatus
 </a>
 </em>
@@ -14522,10 +14522,10 @@ BasicAutoScalerStatus
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.TxnLocalLatches">TxnLocalLatches</h3>
+<h3 id="txnlocallatches">TxnLocalLatches</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.TiDBConfig">TiDBConfig</a>)
+<a href="#tidbconfig">TiDBConfig</a>)
 </p>
 <p>
 <p>TxnLocalLatches is the TxnLocalLatches section of the config.</p>
@@ -14562,10 +14562,10 @@ uint
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.UnjoinedMember">UnjoinedMember</h3>
+<h3 id="unjoinedmember">UnjoinedMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#pingcap.com/v1alpha1.PDStatus">PDStatus</a>)
+<a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
 <p>UnjoinedMember is the pd unjoin cluster member information</p>
@@ -14612,7 +14612,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="pingcap.com/v1alpha1.User">User</h3>
+<h3 id="user">User</h3>
 <p>
 <p>User is the configuration of users.</p>
 </p>
@@ -14661,7 +14661,7 @@ string
 <td>
 <code>networks</code></br>
 <em>
-<a href="#pingcap.com/v1alpha1.Networks">
+<a href="#networks">
 Networks
 </a>
 </em>
