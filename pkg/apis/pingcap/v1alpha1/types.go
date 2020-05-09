@@ -927,7 +927,7 @@ type BackupSpec struct {
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
 	// MydumperConfig is the configs for mydumper
-	Mydumper *MydumperConfig `json:"mydumper, omitempty"`
+	Mydumper *MydumperConfig `json:"mydumper,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
