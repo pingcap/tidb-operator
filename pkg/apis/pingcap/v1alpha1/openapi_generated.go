@@ -8014,6 +8014,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec"),
 						},
 					},
+					"pvReclaimPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"imagePullPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
