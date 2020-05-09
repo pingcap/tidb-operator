@@ -148,6 +148,7 @@ func run() {
 			oa.BeginInsertDataToOrDie(cluster)
 		}
 		klog.Infof("clusters deployed and checked")
+		slack.NotifyAndCompletedf("clusters deployed and checked, ready to run stability test")
 		// scale out
 		//for _, cluster := range clusters {
 		//	cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -246,15 +247,17 @@ func run() {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 		klog.Infof("clusters node stopped and restarted, checked")
+		slack.NotifyAndCompletedf("stability clusters node stopped and restarted, checked")
 
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("clusters truncate sst file and checked failover")
+		slack.NotifyAndCompletedf("stability clusters truncate sst file and checked failover,checked")
 
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
-
+		slack.NotifyAndCompletedf("stability DeletePDDataThenCheckFailoverOrDie success,checked")
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
 		fta.StopETCDOrDie(faultEtcd)
@@ -263,6 +266,7 @@ func run() {
 		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
 		fta.StartETCDOrDie(faultEtcd)
 		klog.Infof("clusters stop on etcd and restart")
+		slack.NotifyAndCompletedf("stability clusters stop on etcd and restart,checked")
 
 		// stop all etcds
 		fta.StopETCDOrDie()
@@ -270,6 +274,7 @@ func run() {
 		fta.StartETCDOrDie()
 		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
 		klog.Infof("clusters stop all etcd and restart")
+		slack.NotifyAndCompletedf("stability clusters stop all etcd and restart,checked")
 
 		// stop all kubelets
 		fta.StopKubeletOrDie()
@@ -277,12 +282,14 @@ func run() {
 		fta.StartKubeletOrDie()
 		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
 		klog.Infof("clusters stop all kubelets and restart")
+		slack.NotifyAndCompletedf("stability clusters stop all kubelets and restart,checked")
 
 		// stop all kube-proxy and k8s/operator/tidbcluster is available
 		fta.StopKubeProxyOrDie()
 		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
 		fta.StartKubeProxyOrDie()
 		klog.Infof("clusters stop all kube-proxy and restart")
+		slack.NotifyAndCompletedf("stability clusters stop all kube-proxy and restart,checked")
 
 		// stop all kube-scheduler pods
 		for _, physicalNode := range cfg.APIServers {
@@ -297,6 +304,7 @@ func run() {
 			}
 		}
 		klog.Infof("clusters stop all kube-scheduler and restart")
+		slack.NotifyAndCompletedf("stability clusters stop all kube-scheduler and restart,checked")
 
 		// stop all kube-controller-manager pods
 		for _, physicalNode := range cfg.APIServers {
@@ -311,6 +319,7 @@ func run() {
 			}
 		}
 		klog.Infof("clusters stop all kube-controller and restart")
+		slack.NotifyAndCompletedf("stability clusters stop all kube-controller and restart,checked")
 
 		// stop one kube-apiserver pod
 		faultApiServer := tests.SelectNode(cfg.APIServers)
@@ -321,6 +330,7 @@ func run() {
 		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
 		fta.StartKubeAPIServerOrDie(faultApiServer)
 		klog.Infof("clusters stop one kube-apiserver and restart")
+		slack.NotifyAndCompletedf("stability clusters stop one kube-apiserver and restart,checked")
 
 		time.Sleep(time.Minute)
 		// stop all kube-apiserver pods
@@ -336,6 +346,7 @@ func run() {
 			}
 		}
 		klog.Infof("clusters stop all kube-apiserver and restart")
+		slack.NotifyAndCompletedf("stability clusters stop all kube-apiserver and restart,checked")
 		time.Sleep(time.Minute)
 	}
 
@@ -398,7 +409,7 @@ func run() {
 	}
 
 	slack.SuccessCount++
-	slack.NotifyAndCompletedf("Succeed stability onetime", slack.SuccessCount)
+	slack.NotifyAndCompletedf("Succeed stability onetime")
 	klog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
 
