@@ -56,6 +56,7 @@ Environments:
     SKIP_IMAGE_LOAD       skip load images
     SKIP_UP               skip starting the cluster
     SKIP_DOWN             skip shutting down the cluster
+    SKIP_DUMP             skip dump cluster logs
     SKIP_TEST             skip running the test
     KUBE_VERSION          the version of Kubernetes to test against
     KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
@@ -183,6 +184,7 @@ SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
 SKIP_TEST=${SKIP_TEST:-}
+SKIP_DUMP=${SKIP_DUMP:-}
 REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 GCP_PROJECT=${GCP_PROJECT:-}
@@ -214,6 +216,8 @@ echo "SKIP_BUILD: $SKIP_BUILD"
 echo "SKIP_IMAGE_BUILD: $SKIP_IMAGE_BUILD"
 echo "SKIP_UP: $SKIP_UP"
 echo "SKIP_DOWN: $SKIP_DOWN"
+echo "SKIP_TEST: $SKIP_TEST"
+echo "SKIP_DUMP: $SKIP_DUMP"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "GCP_PROJECT: $GCP_PROJECT"
 echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
@@ -589,6 +593,9 @@ export PATH=$OUTPUT_BIN:$PATH
 
 if [ -n "${ARTIFACTS}" ]; then
     export REPORT_DIR=${ARTIFACTS}
+fi
+
+if [ -n "${ARTIFACTS}" -a -z "$SKIP_DUMP" ]; then
     kubetest2_args+=(--dump)
 fi
 
