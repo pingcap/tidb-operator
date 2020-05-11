@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
+	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ func NewBackupManager(
 	}
 }
 
-func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) {
+func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 	bm.Options.Host = backup.Spec.From.Host
 
 	if backup.Spec.From.Port != 0 {
@@ -63,8 +64,14 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) {
 	} else {
 		bm.Options.User = bkconstants.DefaultTidbUser
 	}
-
 	bm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+
+	prefix, reason, err := backuputil.GetBackupPrefixName(backup)
+	if err != nil {
+		return reason, err
+	}
+	bm.Options.Prefix = prefix
+	return "", nil
 }
 
 // ProcessBackup used to process the backup logic
@@ -80,7 +87,16 @@ func (bm *BackupManager) ProcessBackup() error {
 		})
 	}
 
-	bm.setOptions(backup)
+	reason, err := bm.setOptions(backup)
+	if err != nil {
+		klog.Errorf("set mydumper backup %s option for cluster %s failed, err: %v", bm.ResourceName, bm, err)
+		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  reason,
+			Message: err.Error(),
+		})
+	}
 
 	var db *sql.DB
 	var dsn string
