@@ -122,3 +122,29 @@ variable "tidb_cluster_name" {
   description = "The TiDB cluster name"
   default     = "my-cluster"
 }
+
+variable "create_tiflash_node_pool" {
+  description = "whether creating node pool for tiflash"
+  default     = false
+}
+
+variable "create_cdc_node_pool" {
+  description = "whether creating node pool for cdc"
+  default     = false
+}
+
+variable "tiflash_count" {
+  default = 2
+}
+
+variable "cdc_count" {
+  default = 3
+}
+
+variable "cdc_instance_type" {
+  default = "ecs.c5.2xlarge"
+}
+
+variable "tiflash_instance_type" {
+  default = "ecs.i2.2xlarge"
+}
