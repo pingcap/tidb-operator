@@ -49,6 +49,7 @@ func NewDefaultTidbClusterControl(
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
+	tidbClusterStatusManager manager.Manager,
 	podRestarter member.PodRestarter,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
@@ -63,25 +64,27 @@ func NewDefaultTidbClusterControl(
 		pumpMemberManager,
 		tiflashMemberManager,
 		discoveryManager,
+		tidbClusterStatusManager,
 		podRestarter,
 		recorder,
 	}
 }
 
 type defaultTidbClusterControl struct {
-	tcControl            controller.TidbClusterControlInterface
-	pdMemberManager      manager.Manager
-	tikvMemberManager    manager.Manager
-	tidbMemberManager    manager.Manager
-	reclaimPolicyManager manager.Manager
-	metaManager          manager.Manager
-	orphanPodsCleaner    member.OrphanPodsCleaner
-	pvcCleaner           member.PVCCleanerInterface
-	pumpMemberManager    manager.Manager
-	tiflashMemberManager manager.Manager
-	discoveryManager     member.TidbDiscoveryManager
-	podRestarter         member.PodRestarter
-	recorder             record.EventRecorder
+	tcControl                controller.TidbClusterControlInterface
+	pdMemberManager          manager.Manager
+	tikvMemberManager        manager.Manager
+	tidbMemberManager        manager.Manager
+	reclaimPolicyManager     manager.Manager
+	metaManager              manager.Manager
+	orphanPodsCleaner        member.OrphanPodsCleaner
+	pvcCleaner               member.PVCCleanerInterface
+	pumpMemberManager        manager.Manager
+	tiflashMemberManager     manager.Manager
+	discoveryManager         member.TidbDiscoveryManager
+	tidbClusterStatusManager manager.Manager
+	podRestarter             member.PodRestarter
+	recorder                 record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -210,7 +213,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// syncing the pump cluster
-	return tcc.pumpMemberManager.Sync(tc)
+	if err := tcc.pumpMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
+	// syncing the some tidbcluster status attributes
+	// 	- sync tidbmonitor reference
+	return tcc.tidbClusterStatusManager.Sync(tc)
 }
 
 var _ ControlInterface = &defaultTidbClusterControl{}

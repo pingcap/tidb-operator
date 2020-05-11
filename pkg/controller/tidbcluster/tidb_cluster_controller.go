@@ -215,6 +215,7 @@ func NewController(
 				tiflashUpgrader,
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
+			mm.NewTidbClusterStatusManager(cli),
 			podRestarter,
 			recorder,
 		),

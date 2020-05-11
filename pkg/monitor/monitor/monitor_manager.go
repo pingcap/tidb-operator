@@ -28,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
@@ -88,13 +89,16 @@ func NewMonitorManager(
 func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
-		return nil
+		return mm.patchTidbClusterStatus(nil, monitor)
 	}
 	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
 		err := fmt.Errorf("tm[%s/%s] haven't point the target tidbcluster", monitor.Namespace, monitor.Name)
 		return err
 	}
 	tcRef := monitor.Spec.Clusters[0]
+	if len(tcRef.Namespace) < 1 {
+		tcRef.Namespace = monitor.Namespace
+	}
 	tc, err := mm.tcLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
 	if err != nil {
 		rerr := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] checked failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
@@ -150,7 +154,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
 
-	if err := mm.patchTidbClusterStatus(tc, monitor); err != nil {
+	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster status failed, err:%v", err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -347,16 +351,28 @@ func (mm *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, na
 	return mm.typedControl.Delete(monitor, ingress)
 }
 
-func (mm *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
+func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, monitor *v1alpha1.TidbMonitor) error {
+	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
 	var mergePatch []byte
-	mergePatch, err := json.Marshal(map[string]interface{}{
-		"status": map[string]interface{}{
-			"monitor": map[string]interface{}{
-				"name":      monitor.Name,
-				"namespace": monitor.Namespace,
+	if tcRef != nil {
+		mergePatch, err = json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"monitor": map[string]interface{}{
+					"name":      monitor.Name,
+					"namespace": monitor.Namespace,
+				},
 			},
-		},
-	})
+		})
+	} else {
+		mergePatch, err = json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"monitor": nil,
+			},
+		})
+	}
 	if err != nil {
 		return err
 	}

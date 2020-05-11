@@ -893,7 +893,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
-		err = tests.CheckTidbMonitor(tm, c, fw)
+		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
@@ -988,6 +988,20 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
+
+		err = cli.PingcapV1alpha1().TidbClusters(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if tc.Status.Monitor != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
