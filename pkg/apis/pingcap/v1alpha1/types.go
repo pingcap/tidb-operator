@@ -249,6 +249,11 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// which used by Dashboard.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -730,12 +735,6 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
-	// Specify a secret of client cert for backup/restore
-	// Optional: Defaults to <cluster>-tidb-client-secret
-	// +optional
-	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
-	// this field only work in backup/restore process
-	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // TLSCluster can enable TLS connection between TiDB server components
@@ -899,10 +898,10 @@ type TiDBAccessConfig struct {
 	User string `json:"user,omitempty"`
 	// SecretName is the name of secret which stores tidb cluster's password.
 	SecretName string `json:"secretName"`
-	// Whether enable the TLS connection between the SQL client and TiDB server
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// Optional: Defaults to nil
 	// +optional
-	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -927,7 +926,7 @@ type BackupSpec struct {
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
 	// MydumperConfig is the configs for mydumper
-	Mydumper *MydumperConfig `json:"mydumper, omitempty"`
+	Mydumper *MydumperConfig `json:"mydumper,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -946,7 +945,7 @@ type MydumperConfig struct {
 	// Options means options for backup data to remote storage with mydumper.
 	Options []string `json:"options,omitempty"`
 	// TableRegex means Regular expression for 'db.table' matching
-	TableRegex *string `json:"option,omitempty"`
+	TableRegex *string `json:"tableRegex,omitempty"`
 }
 
 // +k8s:openapi-gen=true

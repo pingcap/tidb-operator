@@ -1909,7 +1909,7 @@ func schema_pkg_apis_pingcap_v1alpha1_MydumperConfig(ref common.ReferenceCallbac
 							},
 						},
 					},
-					"option": {
+					"tableRegex": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TableRegex means Regular expression for 'db.table' matching",
 							Type:        []string{"string"},
@@ -2913,6 +2913,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of pd-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig"),
+						},
+					},
+					"tlsClientSecretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate which used by Dashboard.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -3984,18 +3991,17 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBAccessConfig(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
-					"tlsClient": {
+					"tlsClientSecretName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether enable the TLS connection between the SQL client and TiDB server Optional: Defaults to nil",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"),
+							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate Optional: Defaults to nil",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
 				Required: []string{"host", "secretName"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBTLSClient"},
 	}
 }
 
@@ -7815,6 +7821,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 							Format:      "",
 						},
 					},
+					"tlsClientSecretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate Optional: Defaults to nil",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"image", "cluster"},
 			},
@@ -8040,6 +8053,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					"initializer": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.InitializerSpec"),
+						},
+					},
+					"pvReclaimPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"imagePullPolicy": {
