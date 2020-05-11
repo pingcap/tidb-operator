@@ -20,7 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
@@ -47,7 +46,6 @@ type MonitorManager struct {
 	discoveryInterface discovery.CachedDiscoveryInterface
 	typedControl       controller.TypedControlInterface
 	deploymentLister   appslisters.DeploymentLister
-	tcLister           v1alpha1listers.TidbClusterLister
 	pvLister           corelisters.PersistentVolumeLister
 	ingressLister      extensionslister.IngressLister
 	pvControl          controller.PVControlInterface
@@ -78,7 +76,6 @@ func NewMonitorManager(
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(kubeCli.Discovery()),
 		typedControl:       typedControl,
 		deploymentLister:   kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		tcLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:           pvLister,
 		ingressLister:      kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
@@ -99,10 +96,16 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if len(tcRef.Namespace) < 1 {
 		tcRef.Namespace = monitor.Namespace
 	}
-	tc, err := mm.tcLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 	if err != nil {
 		rerr := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] checked failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 		return rerr
+	}
+	if tc.Status.Monitor != nil {
+		if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
+			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor yet", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name)
+			return err
+		}
 	}
 
 	// Sync Service
