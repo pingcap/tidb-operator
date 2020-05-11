@@ -940,6 +940,8 @@ spec:
                   type: object
                 storageClassName:
                   type: string
+                tlsClientSecretName:
+                  type: string
                 tolerations:
                   items:
                     properties:
@@ -4511,7 +4513,8 @@ spec:
                   type: integer
                 secretName:
                   type: string
-                tlsClient: {}
+                tlsClientSecretName:
+                  type: string
                 user:
                   type: string
               required:
@@ -4541,6 +4544,15 @@ spec:
               required:
               - projectId
               - secretName
+              type: object
+            mydumper:
+              properties:
+                options:
+                  items:
+                    type: string
+                  type: array
+                tableRegex:
+                  type: string
               type: object
             s3:
               properties:
@@ -4992,7 +5004,8 @@ spec:
                   type: integer
                 secretName:
                   type: string
-                tlsClient: {}
+                tlsClientSecretName:
+                  type: string
                 user:
                   type: string
               required:
@@ -5363,7 +5376,8 @@ spec:
                       type: integer
                     secretName:
                       type: string
-                    tlsClient: {}
+                    tlsClientSecretName:
+                      type: string
                     user:
                       type: string
                   required:
@@ -5393,6 +5407,15 @@ spec:
                   required:
                   - projectId
                   - secretName
+                  type: object
+                mydumper:
+                  properties:
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    tableRegex:
+                      type: string
                   type: object
                 s3:
                   properties:
@@ -5608,6 +5631,8 @@ spec:
                   type: object
               type: object
             timezone:
+              type: string
+            tlsClientSecretName:
               type: string
           required:
           - image

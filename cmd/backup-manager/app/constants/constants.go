@@ -62,4 +62,7 @@ const (
 
 	// ServiceAccountCAPath is where is CABundle of serviceaccount locates
 	ServiceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+	// DefaultTableRegex is the default regular expression for 'db.table' matching
+	DefaultTableRegex = "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
 )
