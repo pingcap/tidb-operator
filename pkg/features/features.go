@@ -31,6 +31,7 @@ var (
 		StableScheduling:    true,
 		AdvancedStatefulSet: false,
 		AutoScaling:         false,
+		CanaryRelease:       false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
 	DefaultFeatureGate FeatureGate = NewFeatureGate()
@@ -45,6 +46,9 @@ const (
 
 	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
 	AutoScaling string = "AutoScaling"
+
+	// CanaryRelease controls whether to use StatefulSet webhook to canary release statefulsets
+	CanaryRelease string = "CanaryRelease"
 )
 
 type FeatureGate interface {
