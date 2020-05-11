@@ -29,4 +29,3 @@ type TestStorage interface {
 	// CheckDataCleaned check whether TestStorage Clean
 	CheckDataCleaned() error
 }
-
