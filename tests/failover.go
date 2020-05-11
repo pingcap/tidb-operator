@@ -760,19 +760,19 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
 		if err != nil {
-			klog.Errorf("err: %v", err)
+			klog.Errorf("CheckK8sAvailable Failed, err: %v", err)
 			return err
 		}
 		klog.V(4).Infof("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
-			klog.Errorf("err: %v", err)
+			klog.Errorf("CheckOperatorAvailable Failed, err: %v", err)
 			return err
 		}
 		klog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
-			klog.Errorf("err: %v", err)
+			klog.Errorf("CheckTidbClustersAvailable Failed, err: %v", err)
 			return err
 		}
 		klog.V(4).Infof("all clusters is available")
