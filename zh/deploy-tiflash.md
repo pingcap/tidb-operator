@@ -23,7 +23,7 @@ category: how-to
 {{< copyable "shell-regular" >}}
 
 ``` shell
-kubectl eidt tc ${cluster_name} -n ${namespace}
+kubectl edit tc ${cluster_name} -n ${namespace}
 ```
 
 按照如下示例增加 TiFlash 配置：
