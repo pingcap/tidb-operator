@@ -2,7 +2,7 @@ FROM pingcap/tidb-enterprise-tools:latest
 ARG VERSION=v1.51.0
 ARG SHUSH_VERSION=v1.4.0
 ARG TOOLKIT_VERSION=v3.0.13
-ARG TOOLKIT_V31=v3.1.0
+ARG TOOLKIT_V31=v3.1.1
 ARG TOOLKIT_V40=v4.0.0-rc
 RUN apk update && apk add ca-certificates
 
