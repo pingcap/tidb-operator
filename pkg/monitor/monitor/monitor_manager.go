@@ -86,7 +86,7 @@ func NewMonitorManager(
 func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
-		return mm.patchTidbClusterStatus(nil, monitor)
+		return nil
 	}
 	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
 		err := fmt.Errorf("tm[%s/%s] haven't point the target tidbcluster", monitor.Namespace, monitor.Name)
@@ -104,8 +104,16 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	if tc.Status.Monitor != nil {
 		if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
 			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor yet", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name)
+			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 			return err
 		}
+	}
+
+	// Patch tidbcluster status first in order to avoiding let multi tidbmonitor monitor the same tidbcluster
+	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster status failed, err:%v", err)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		return err
 	}
 
 	// Sync Service
@@ -156,12 +164,6 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
-
-	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
-		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster status failed, err:%v", err)
-		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
-		return err
-	}
 
 	return nil
 }
