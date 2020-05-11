@@ -14004,6 +14004,18 @@ TiFlashStatus
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>monitor</code></br>
+<em>
+<a href="#tidbmonitorref">
+TidbMonitorRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbinitializerspec">TidbInitializerSpec</h3>
@@ -14192,7 +14204,8 @@ InitializePhase
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
 <p>TidbMonitorRef reference to a TidbMonitor</p>

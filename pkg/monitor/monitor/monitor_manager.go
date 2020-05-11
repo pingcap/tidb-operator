@@ -14,9 +14,11 @@
 package monitor
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -26,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
 	kubeinformers "k8s.io/client-go/informers"
@@ -38,6 +41,7 @@ import (
 )
 
 type MonitorManager struct {
+	cli                versioned.Interface
 	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
 	typedControl       controller.TypedControlInterface
@@ -56,6 +60,7 @@ const (
 
 func NewMonitorManager(
 	kubeCli kubernetes.Interface,
+	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	typedControl controller.TypedControlInterface,
@@ -64,6 +69,7 @@ func NewMonitorManager(
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
 	return &MonitorManager{
+		cli: cli,
 		pvManager: meta.NewReclaimPolicyMonitorManager(
 			pvcLister,
 			pvLister,
@@ -83,6 +89,16 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
 		return nil
+	}
+	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
+		err := fmt.Errorf("tm[%s/%s] haven't point the target tidbcluster", monitor.Namespace, monitor.Name)
+		return err
+	}
+	tcRef := monitor.Spec.Clusters[0]
+	tc, err := mm.tcLister.TidbClusters(tcRef.Namespace).Get(tcRef.Name)
+	if err != nil {
+		rerr := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] checked failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+		return rerr
 	}
 
 	// Sync Service
@@ -112,7 +128,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 
 	// Sync Deployment
-	if err := mm.syncTidbMonitorDeployment(monitor); err != nil {
+	if err := mm.syncTidbMonitorDeployment(tc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -133,6 +149,12 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
+
+	if err := mm.patchTidbClusterStatus(tc, monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster status failed, err:%v", err)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		return err
+	}
 
 	return nil
 }
@@ -173,21 +195,7 @@ func (mm *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonitor) error {
-
-	if len(monitor.Spec.Clusters) < 1 {
-		return fmt.Errorf("tm[%s/%s] failed to sync,empty cluster", monitor.Namespace, monitor.Name)
-	}
-
-	targetTcRef := monitor.Spec.Clusters[0]
-	if len(targetTcRef.Namespace) < 1 {
-		targetTcRef.Namespace = monitor.Namespace
-	}
-
-	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
-	if err != nil {
-		return err
-	}
+func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
 
 	cm, err := mm.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
@@ -337,4 +345,21 @@ func (mm *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, na
 		return err
 	}
 	return mm.typedControl.Delete(monitor, ingress)
+}
+
+func (mm *MonitorManager) patchTidbClusterStatus(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
+	var mergePatch []byte
+	mergePatch, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"monitor": map[string]interface{}{
+				"name":      monitor.Name,
+				"namespace": monitor.Namespace,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	_, err = mm.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	return err
 }

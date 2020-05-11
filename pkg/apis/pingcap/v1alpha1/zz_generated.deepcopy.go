@@ -5332,6 +5332,11 @@ func (in *TidbClusterStatus) DeepCopyInto(out *TidbClusterStatus) {
 	in.TiDB.DeepCopyInto(&out.TiDB)
 	in.Pump.DeepCopyInto(&out.Pump)
 	in.TiFlash.DeepCopyInto(&out.TiFlash)
+	if in.Monitor != nil {
+		in, out := &in.Monitor, &out.Monitor
+		*out = new(TidbMonitorRef)
+		**out = **in
+	}
 	return
 }
 
