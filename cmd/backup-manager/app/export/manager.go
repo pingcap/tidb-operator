@@ -190,7 +190,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 	}
 
-	backupFullPath, backupErr := bm.dumpTidbClusterData()
+	backupFullPath, backupErr := bm.dumpTidbClusterData(backup)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
