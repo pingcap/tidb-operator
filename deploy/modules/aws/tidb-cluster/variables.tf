@@ -162,3 +162,29 @@ variable "group_kubelet_extra_args" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_tiflash_node_pool" {
+  description = "whether creating node pool for tiflash"
+  default     = false
+}
+
+variable "create_cdc_node_pool" {
+  description = "whether creating node pool for cdc"
+  default     = false
+}
+
+variable "tiflash_count" {
+  default = 2
+}
+
+variable "cdc_count" {
+  default = 3
+}
+
+variable "cdc_instance_type" {
+  default = "c5.2xlarge"
+}
+
+variable "tiflash_instance_type" {
+  default = "i3.4xlarge"
+}
