@@ -38,7 +38,7 @@ provider "helm" {
 
 module "default-cluster" {
   providers = {
-    helm = "helm.eks"
+    helm = helm.eks
   }
   source  = "../modules/aws/tidb-cluster"
   eks     = local.eks
@@ -56,4 +56,10 @@ module "default-cluster" {
   tidb_instance_type          = var.default_cluster_tidb_instance_type
   monitor_instance_type       = var.default_cluster_monitor_instance_type
   create_tidb_cluster_release = var.create_tidb_cluster_release
+  create_tiflash_node_pool    = var.create_tiflash_node_pool
+  create_cdc_node_pool        = var.create_cdc_node_pool
+  tiflash_count               = var.cluster_tiflash_count
+  cdc_count                   = var.cluster_cdc_count
+  cdc_instance_type           = var.cluster_cdc_instance_type
+  tiflash_instance_type       = var.cluster_tiflash_instance_type
 }
