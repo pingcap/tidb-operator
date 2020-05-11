@@ -81,9 +81,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			Reason:  "GetBackupCRFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 
@@ -116,9 +114,7 @@ func (bm *BackupManager) ProcessBackup() error {
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 
@@ -148,9 +144,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "GetTikvGCLifeTimeFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
@@ -165,9 +159,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "ParseOldTikvGCLifeTimeFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 
@@ -185,9 +177,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 	} else {
@@ -202,9 +192,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 	}
@@ -220,15 +208,12 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Reason:  "SetTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, constants.TikvGCLifeTime)
 	}
 
-	backupFullPath, backupErr := bm.dumpTidbClusterData(backup)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
@@ -240,15 +225,15 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
 	}
+
+	backupFullPath, backupErr := bm.dumpTidbClusterData(backup)
 	if backupErr != nil {
-		errs = append(errs, err)
+		errs = append(errs, backupErr)
 		klog.Errorf("dump cluster %s data failed, err: %s", bm, backupErr)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
@@ -256,9 +241,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "DumpTidbClusterFailed",
 			Message: backupErr.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
@@ -275,9 +258,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "ArchiveBackupDataFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
@@ -293,9 +274,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "GetBackupSizeFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
@@ -310,9 +289,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "GetCommitTsFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
@@ -329,9 +306,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Reason:  "BackupDataToRemoteFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)

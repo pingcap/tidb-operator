@@ -83,9 +83,7 @@ func (bm *Manager) performCleanBackup(backup *v1alpha1.Backup) error {
 			Reason:  "CleanBackupDataFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 

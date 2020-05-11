@@ -82,9 +82,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Reason:  "GetRestoreCRFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		errorutils.NewAggregate(errs)
 	}
 
@@ -117,9 +115,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		errorutils.NewAggregate(errs)
 	}
 
@@ -150,9 +146,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Reason:  "DownloadBackupDataFailed",
 			Message: fmt.Sprintf("download backup %s data failed, err: %v", rm.BackupPath, err),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		errorutils.NewAggregate(errs)
 	}
 	klog.Infof("download cluster %s backup %s data success", rm, rm.BackupPath)
@@ -168,9 +162,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Reason:  "UnarchiveBackupDataFailed",
 			Message: fmt.Sprintf("unarchive backup %s data failed, err: %v", restoreDataPath, err),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		errorutils.NewAggregate(errs)
 	}
 	klog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
@@ -185,9 +177,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Reason:  "LoaderBackupDataFailed",
 			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		errorutils.NewAggregate(errs)
 	}
 	klog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)

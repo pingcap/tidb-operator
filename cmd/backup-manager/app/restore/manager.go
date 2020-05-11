@@ -80,9 +80,7 @@ func (rm *Manager) ProcessRestore() error {
 			Reason:  "GetRestoreCRFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	if restore.Spec.BR == nil {
@@ -117,9 +115,7 @@ func (rm *Manager) ProcessRestore() error {
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 
@@ -149,9 +145,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 			Reason:  "GetTikvGCLifeTimeFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("cluster %s %s is %s", rm, constants.TikvGCVariable, oldTikvGCTime)
@@ -166,9 +160,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 			Reason:  "ParseOldTikvGCLifeTimeFailed",
 			Message: err.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 
@@ -186,9 +178,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 	} else {
@@ -203,9 +193,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Reason:  "ParseDefaultTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 	}
@@ -221,9 +209,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Reason:  "SetTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 		klog.Infof("set cluster %s %s to %s success", rm, constants.TikvGCVariable, tikvGCLifeTime)
@@ -241,9 +227,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 				Reason:  "ResetTikvGCLifeTimeFailed",
 				Message: err.Error(),
 			})
-			if uerr != nil {
-				errs = append(errs, uerr)
-			}
+			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
 		}
 		klog.Infof("reset cluster %s %s to %s success", rm, constants.TikvGCVariable, oldTikvGCTime)
@@ -257,9 +241,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 			Reason:  "RestoreDataFromRemoteFailed",
 			Message: restoreErr.Error(),
 		})
-		if uerr != nil {
-			errs = append(errs, uerr)
-		}
+		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
