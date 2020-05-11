@@ -105,6 +105,9 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
+	// Discovery spec
+	Discovery DiscoverySpec `json:discovery`
+
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -215,6 +218,11 @@ type TidbClusterStatus struct {
 }
 
 // +k8s:openapi-gen=true
+// DiscoverySpec contains details of Discovery members
+type DiscoverySpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
+
 // PDSpec contains details of PD members
 type PDSpec struct {
 	ComponentSpec               `json:",inline"`
