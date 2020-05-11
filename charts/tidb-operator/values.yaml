@@ -181,6 +181,7 @@ admissionWebhook:
   create: false
   replicas: 1
   serviceAccount: tidb-admission-webhook
+  logLevel: 2
   rbac:
     create: true
   ## jobImage is to indicate the image used in `pre-delete-job.yaml`
