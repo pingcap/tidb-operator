@@ -1206,7 +1206,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
-			pdSts, err := c.AppsV1().StatefulSets(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
+			pdSts, err := stsGetter(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
 			framework.ExpectNoError(err)
 			for _, vol := range pdSts.Spec.Template.Spec.Volumes {
 				if vol.Name == "tidb-client-tls" {
