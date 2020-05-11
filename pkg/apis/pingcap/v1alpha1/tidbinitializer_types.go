@@ -82,6 +82,11 @@ type TidbInitializerSpec struct {
 	// Time zone of TiDB initializer Pods
 	// +optional
 	Timezone string `json:"timezone,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// Optional: Defaults to nil
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
