@@ -89,7 +89,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return nil
 	}
 	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
-		err := fmt.Errorf("tm[%s/%s] haven't point the target tidbcluster", monitor.Namespace, monitor.Name)
+		err := fmt.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return err
 	}
 	tcRef := monitor.Spec.Clusters[0]
@@ -98,12 +98,12 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 	}
 	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
 	if err != nil {
-		rerr := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] checked failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+		rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
 		return rerr
 	}
 	if tc.Status.Monitor != nil {
 		if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
-			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor yet", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name)
+			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
 			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
 			return err
 		}
