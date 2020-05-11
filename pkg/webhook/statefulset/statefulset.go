@@ -16,8 +16,9 @@ package statefulset
 import (
 	"errors"
 	"fmt"
-	"k8s.io/klog"
 	"strconv"
+
+	"k8s.io/klog"
 
 	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -93,29 +94,31 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 		return util.ARFail(err)
 	}
 
-	var partitionStr string
-	partitionStr = tc.Annotations[label.AnnTiDBPartition]
-	if l.IsTiKV() {
-		partitionStr = tc.Annotations[label.AnnTiKVPartition]
-	}
-
-	if len(partitionStr) == 0 {
-		return util.ARSuccess()
-	}
-
-	partition, err := strconv.ParseInt(partitionStr, 10, 32)
-	if err != nil {
-		err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
-		klog.Errorf(err.Error())
-		return util.ARFail(err)
-	}
-
-	if stsPartition != nil {
-		if *stsPartition > 0 && *stsPartition <= int32(partition) {
-			klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
-			return util.ARFail(errors.New("protect by partition annotation"))
+	if features.DefaultFeatureGate.Enabled(features.CanaryRelease) {
+		var partitionStr string
+		partitionStr = tc.Annotations[label.AnnTiDBPartition]
+		if l.IsTiKV() {
+			partitionStr = tc.Annotations[label.AnnTiKVPartition]
 		}
-		klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
+
+		if len(partitionStr) == 0 {
+			return util.ARSuccess()
+		}
+
+		partition, err := strconv.ParseInt(partitionStr, 10, 32)
+		if err != nil {
+			err := fmt.Errorf("statefulset %s/%s, convert partition str %s to int failed, err: %v", namespace, name, partitionStr, err)
+			klog.Errorf(err.Error())
+			return util.ARFail(err)
+		}
+
+		if stsPartition != nil {
+			if *stsPartition > 0 && *stsPartition <= int32(partition) {
+				klog.Infof("statefulset %s/%s has been protect by partition %s annotations", namespace, name, partitionStr)
+				return util.ARFail(errors.New("protect by partition annotation"))
+			}
+			klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
+		}
 	}
 	return util.ARSuccess()
 }

@@ -116,11 +116,6 @@ func (a *AdmissionHook) Admit(ar *admission.AdmissionRequest) *admission.Admissi
 			return a.unknownAdmissionRequest(ar)
 		}
 		return a.podAC.MutatePods(ar)
-	case "StatefulSet":
-		if features.DefaultFeatureGate.Enabled(features.CanaryRelease) {
-			return a.stsAC.AdmitStatefulSets(ar)
-		}
-		return resp
 	default:
 		return resp
 	}
