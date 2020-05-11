@@ -84,4 +84,10 @@ module "tidb-cluster" {
   tidb_count                  = var.tidb_count
   monitor_instance_type       = var.monitor_instance_type
   create_tidb_cluster_release = var.create_tidb_cluster_release
+  create_tiflash_node_pool    = var.create_tiflash_node_pool
+  create_cdc_node_pool        = var.create_cdc_node_pool
+  tiflash_count               = var.tiflash_count
+  cdc_count                   = var.cdc_count
+  cdc_instance_type           = var.cdc_instance_type
+  tiflash_instance_type       = var.tiflash_instance_type
 }
