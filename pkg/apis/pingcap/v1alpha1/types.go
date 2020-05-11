@@ -242,11 +242,11 @@ type TidbClusterConditionType string
 const (
 	// TidbClusterReady indicates that the tidb cluster is ready or not.
 	// This is defined as:
-	// - For each component, actual statefulset equals to desired statefulset.
-	// - For each component，statefulset is up to date (currentRevision == updateRevision).
+	// - All statefulsets are up to date (currentRevision == updateRevision).
 	// - All PD members are healthy.
-	// - All TiDB pods are running.
-	// - All TiKV/TiFlash stores are up.
+	// - All TiDB pods are healthy.
+	// - All TiKV stores are up.
+	// - All TiFlash stores are up.
 	TidbClusterReady TidbClusterConditionType = "Ready"
 )
 
