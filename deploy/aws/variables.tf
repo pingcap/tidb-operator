@@ -119,3 +119,29 @@ variable "create_tidb_cluster_release" {
   description = "whether creating tidb-cluster helm release"
   default     = false
 }
+
+variable "create_tiflash_node_pool" {
+  description = "whether creating node pool for tiflash"
+  default     = false
+}
+
+variable "create_cdc_node_pool" {
+  description = "whether creating node pool for cdc"
+  default     = false
+}
+
+variable "cluster_tiflash_count" {
+  default = 2
+}
+
+variable "cluster_cdc_count" {
+  default = 3
+}
+
+variable "cluster_cdc_instance_type" {
+  default = "c5.2xlarge"
+}
+
+variable "cluster_tiflash_instance_type" {
+  default = "i3.4xlarge"
+}
