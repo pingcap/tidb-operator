@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	etcdclientv3 "github.com/coreos/etcd/clientv3"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/pd/pkg/typeutil"
@@ -45,7 +46,7 @@ type Namespace string
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(Namespace, string, bool) PDClient
+	GetPDClient(Namespace, string, bool) (PDClient, error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -73,7 +74,7 @@ func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName stri
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
+func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) (PDClient, error) {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
@@ -86,7 +87,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return nil, err
 		}
 
 		return NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
@@ -94,9 +95,13 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
+		client, err := NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
+		if err != nil {
+			return nil, err
+		}
+		pdc.pdClients[key] = client
 	}
-	return pdc.pdClients[key]
+	return pdc.pdClients[key], nil
 }
 
 // pdClientKey returns the pd client key
@@ -168,17 +173,27 @@ var (
 type pdClient struct {
 	url        string
 	httpClient *http.Client
+	etcdClient *etcdclientv3.Client
 }
 
 // NewPDClient returns a new PDClient
-func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDClient {
+func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) (PDClient, error) {
+	etcdClient, err := etcdclientv3.New(etcdclientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: timeout,
+		TLS:         tlsConfig,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &pdClient{
 		url: url,
 		httpClient: &http.Client{
 			Timeout:   timeout,
 			Transport: &http.Transport{TLSClientConfig: tlsConfig},
 		},
-	}
+		etcdClient: etcdClient,
+	}, nil
 }
 
 // following struct definitions are copied from github.com/pingcap/pd/server/api/store
