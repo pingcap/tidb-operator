@@ -989,7 +989,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
 
-		err = cli.PingcapV1alpha1().TidbClusters(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
+		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
