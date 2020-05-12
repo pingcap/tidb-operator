@@ -2,10 +2,8 @@
 apiVersion: pingcap.com/v1alpha1
 kind: BackupSchedule
 metadata:
-  name: demo1-backup-schedule-s3
+  name: demo1-backup-schedule-gcs
   namespace: test1
-  # annotations:
-    # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
   #maxBackups: 5
   #pause: true
@@ -13,10 +11,10 @@ spec:
   schedule: "*/2 * * * *"
   backupTemplate:
     #backupType: full
-    # useKMS: false
     # serviceAccount: myServiceAccount
     br:
       cluster: myCluster
+      sendCredToTikv: true
       # clusterNamespce: backupNamespace
       # logLevel: info
       # statusAddr: <status-addr>
@@ -24,16 +22,15 @@ spec:
       # rateLimit: 0
       # timeAgo: <time>
       # checksum: true
-      # sendCredToTikv: true
     from:
       host:         172.30.6.56
       secretName:   mysecret
       # port:         4000
       # user:         root
       # tlsClientSecretName: <backup-tls-secretname>
-    s3:
-      provider: ceph
-      endpoint: http://10.233.57.220
-      secretName: ceph-secret
+    gcs:
+      provider: gcp
+      region: us-west-2
       bucket: backup
       prefix: test1-demo1
+      secretName: gcp-secret
