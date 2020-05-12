@@ -22,8 +22,7 @@ spec:
     secretName: my-secret
     # port: 4000
     # user: root
-    # tlsClient:
-    #   tlsSecret: <backup-tls-secretname>
+    # tlsClientSecretName: <backup-tls-secretname>
   gcs:
     projectId: gcp
     location: us-west2
