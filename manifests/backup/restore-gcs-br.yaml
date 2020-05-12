@@ -1,0 +1,34 @@
+apiVersion: pingcap.com/v1alpha1
+kind: Restore
+metadata:
+  name: demo-restore-gcs-br
+  namespace: test1
+spec:
+  # backupType: full
+  # useKMS: false
+  # serviceAccount: myServiceAccount
+  br:
+    cluster: myCluster
+    sendCredToTikv: true
+    # clusterNamespce: <restore-namespace>
+    # db: <db-name>
+    # table: <table-name>
+    # logLevel: info
+    # statusAddr: <status-addr>
+    # concurrency: 4
+    # rateLimit: 0
+    # timeAgo: <time>
+    # checksum: true
+  to:
+    host: 172.30.6.56
+    secretName: mySecret
+    # port: 4000
+    # user: root
+    # tlsClient:
+    #   tlsSecret: <restore-tls-secretname>
+  gcs:
+    projectId: gcp
+    location: us-west2
+    bucket: backup
+    prefix: test-demo1
+    secretName: gcp-secret

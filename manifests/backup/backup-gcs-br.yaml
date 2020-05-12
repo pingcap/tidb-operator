@@ -1,0 +1,33 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: demo-backup-gcp
+  namespace: test1
+spec:
+  # backupType: full
+  # useKMS: false
+  # serviceAccount: myServiceAccount
+  br:
+    cluster: mycluster
+    sendCredToTikv: true
+    # clusterNamespce: <backup-namespace>
+    # logLevel: info
+    # statusAddr: <status-addr>
+    # concurrency: 4
+    # rateLimit: 0
+    # timeAgo: <time>
+    # checksum: true
+  from:
+    host: 172.30.6.56
+    secretName: my-secret
+    # port: 4000
+    # user: root
+    # tlsClient:
+    #   tlsSecret: <backup-tls-secretname>
+  gcs:
+    projectId: gcp
+    location: us-west2
+    bucket: backup
+    prefix: test1-demo1
+    secretName: gcp-secret
