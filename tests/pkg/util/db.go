@@ -42,10 +42,10 @@ func ShowMasterCommitTS(dsn string) (int64, error) {
 	defer db.Close()
 
 	rows, err := db.Query("SHOW MASTER STATUS")
-	defer rows.Close()
 	if err != nil {
 		return 0, err
 	}
+	defer rows.Close()
 	cols, err := rows.Columns()
 	if err != nil {
 		return 0, err
