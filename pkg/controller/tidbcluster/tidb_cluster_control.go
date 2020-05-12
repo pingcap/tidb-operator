@@ -51,6 +51,7 @@ func NewDefaultTidbClusterControl(
 	discoveryManager member.TidbDiscoveryManager,
 	tidbClusterStatusManager manager.Manager,
 	podRestarter member.PodRestarter,
+	conditionUpdater TidbClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -66,25 +67,26 @@ func NewDefaultTidbClusterControl(
 		discoveryManager,
 		tidbClusterStatusManager,
 		podRestarter,
+		conditionUpdater,
 		recorder,
 	}
 }
 
 type defaultTidbClusterControl struct {
-	tcControl                controller.TidbClusterControlInterface
-	pdMemberManager          manager.Manager
-	tikvMemberManager        manager.Manager
-	tidbMemberManager        manager.Manager
-	reclaimPolicyManager     manager.Manager
-	metaManager              manager.Manager
-	orphanPodsCleaner        member.OrphanPodsCleaner
-	pvcCleaner               member.PVCCleanerInterface
-	pumpMemberManager        manager.Manager
-	tiflashMemberManager     manager.Manager
-	discoveryManager         member.TidbDiscoveryManager
-	tidbClusterStatusManager manager.Manager
-	podRestarter             member.PodRestarter
-	recorder                 record.EventRecorder
+	tcControl            controller.TidbClusterControlInterface
+	pdMemberManager      manager.Manager
+	tikvMemberManager    manager.Manager
+	tidbMemberManager    manager.Manager
+	reclaimPolicyManager manager.Manager
+	metaManager          manager.Manager
+	orphanPodsCleaner    member.OrphanPodsCleaner
+	pvcCleaner           member.PVCCleanerInterface
+	pumpMemberManager    manager.Manager
+	tiflashMemberManager manager.Manager
+	discoveryManager     member.TidbDiscoveryManager
+	podRestarter         member.PodRestarter
+	conditionUpdater     TidbClusterConditionUpdater
+	recorder             record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -100,6 +102,11 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 	if err := tcc.updateTidbCluster(tc); err != nil {
 		errs = append(errs, err)
 	}
+
+	if err := tcc.conditionUpdater.Update(tc); err != nil {
+		errs = append(errs, err)
+	}
+
 	if apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}

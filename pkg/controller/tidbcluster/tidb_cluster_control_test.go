@@ -335,6 +335,7 @@ func newFakeTidbClusterControl() (
 		discoveryManager,
 		statusManager,
 		podRestarter,
+		&tidbClusterConditionUpdater{},
 		recorder,
 	)
 

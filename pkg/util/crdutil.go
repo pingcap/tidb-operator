@@ -24,7 +24,18 @@ import (
 
 var (
 	tidbClusteradditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	tidbClusterPDColumn                 = extensionsobj.CustomResourceColumnDefinition{
+	tidbClusterReadyColumn              = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Ready",
+		Type:     "string",
+		JSONPath: `.status.conditions[?(@.type=="Ready")].status`,
+	}
+	tidbClusterStatusMessageColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Status",
+		Type:     "string",
+		JSONPath: `.status.conditions[?(@.type=="Ready")].message`,
+		Priority: 1,
+	}
+	tidbClusterPDColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "PD",
 		Type:        "string",
 		Description: "The image for PD cluster",
@@ -207,9 +218,10 @@ var (
 
 func init() {
 	tidbClusteradditionalPrinterColumns = append(tidbClusteradditionalPrinterColumns,
+		tidbClusterReadyColumn,
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
-		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, ageColumn)
+		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, tidbClusterStatusMessageColumn, ageColumn)
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, ageColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
