@@ -92,7 +92,7 @@ pipeline {
         string(name: 'CLUSTER', defaultValue: env.DEFAULT_CLUSTER, description: 'the name of the cluster')
         string(name: 'GCP_PROJECT', defaultValue: env.DEFAULT_GCP_PROJECT, description: 'the GCP project ID')
         string(name: 'GCP_ZONE', defaultValue: env.DEFAULT_GCP_ZONE, description: 'the GCP zone')
-        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: false, description: 'delete namespace on failure or not')
+        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: true, description: 'delete namespace on failure or not')
     }
 
     environment {

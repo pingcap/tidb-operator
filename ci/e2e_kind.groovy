@@ -147,7 +147,7 @@ pipeline {
         string(name: 'DOCKER_IO_MIRROR', defaultValue: env.DEFAULT_DOCKER_IO_MIRROR, description: "docker mirror for docker.io")
         string(name: 'QUAY_IO_MIRROR', defaultValue: env.DEFAULT_QUAY_IO_MIRROR, description: "mirror for quay.io")
         string(name: 'GCR_IO_MIRROR', defaultValue: env.DEFAULT_GCR_IO_MIRROR, description: "mirror for gcr.io")
-        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: false, description: 'delete namespace on failure or not')
+        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: true, description: 'delete namespace on failure or not')
     }
 
     environment {

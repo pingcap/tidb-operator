@@ -87,7 +87,7 @@ pipeline {
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'")
         string(name: 'CLUSTER', defaultValue: env.DEFAULT_CLUSTER, description: 'the name of the cluster')
         string(name: 'AWS_REGION', defaultValue: env.DEFAULT_AWS_REGION, description: 'the AWS region')
-        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: false, description: 'delete namespace on failure or not')
+        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: true, description: 'delete namespace on failure or not')
     }
 
     environment {
