@@ -58,19 +58,19 @@ func (u *tidbClusterConditionUpdater) updateReadyCondition(tc *v1alpha1.TidbClus
 	switch {
 	case !allStatefulSetsAreUpToDate(tc):
 		reason = utiltidbcluster.StatfulSetNotUpToDate
-		message = "Statefulset(s) were in progress"
+		message = "Statefulset(s) are in progress"
 	case !tc.PDAllMembersReady():
 		reason = utiltidbcluster.PDUnhealthy
-		message = "PD(s) were not healthy"
+		message = "PD(s) are not healthy"
 	case !tc.TiKVAllStoresReady():
 		reason = utiltidbcluster.TiKVStoreNotUp
-		message = "TiKV store(s) were not up"
+		message = "TiKV store(s) are not up"
 	case !tc.TiDBAllMembersReady():
 		reason = utiltidbcluster.TiDBUnhealthy
-		message = "TiDB(s) were not healthy"
+		message = "TiDB(s) are not healthy"
 	case !tc.TiFlashAllStoresReady():
 		reason = utiltidbcluster.TiFlashStoreNotUp
-		message = "TiFlash store(s) were not up"
+		message = "TiFlash store(s) are not up"
 	default:
 		status = v1.ConditionTrue
 		reason = utiltidbcluster.Ready
