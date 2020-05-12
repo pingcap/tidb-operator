@@ -206,12 +206,12 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string         `json:"clusterID,omitempty"`
-	PD        PDStatus       `json:"pd,omitempty"`
-	TiKV      TiKVStatus     `json:"tikv,omitempty"`
-	TiDB      TiDBStatus     `json:"tidb,omitempty"`
-	Pump      PumpStatus     `josn:"pump,omitempty"`
-	TiFlash   TiFlashStatus  `json:"tiflash,omitempty"`
+	ClusterID string          `json:"clusterID,omitempty"`
+	PD        PDStatus        `json:"pd,omitempty"`
+	TiKV      TiKVStatus      `json:"tikv,omitempty"`
+	TiDB      TiDBStatus      `json:"tidb,omitempty"`
+	Pump      PumpStatus      `josn:"pump,omitempty"`
+	TiFlash   TiFlashStatus   `json:"tiflash,omitempty"`
 	Monitor   *TidbMonitorRef `json:"monitor,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
