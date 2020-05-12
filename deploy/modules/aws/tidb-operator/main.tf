@@ -38,19 +38,19 @@ resource "local_file" "kubeconfig" {
 }
 
 locals {
-  kubeconfig      = "${var.config_output_path}kubeconfig"
+  kubeconfig = "${var.config_output_path}kubeconfig"
 }
 
 resource "null_resource" "kubeconfig" {
   provisioner "local-exec" {
-    command     = <<EOS
+    command = <<EOS
 echo "${local_file.kubeconfig.sensitive_content}" > "${local.kubeconfig}"
 EOS
   }
 }
 
 provider "helm" {
-  alias    = "initial"
+  alias = "initial"
   insecure = true
   # service_account = "tiller"
   install_tiller = false # currently this doesn't work, so we install tiller in the local-exec provisioner. See https://github.com/terraform-providers/terraform-provider-helm/issues/148
@@ -66,7 +66,7 @@ resource "null_resource" "setup-env" {
 
   provisioner "local-exec" {
     working_dir = path.cwd
-    command     = <<EOS
+    command = <<EOS
 echo "${local_file.kubeconfig.sensitive_content}" > kube_config.yaml
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/crd.yaml
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/${var.operator_version}/manifests/tiller-rbac.yaml
@@ -86,14 +86,14 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider   = "helm.initial"
-  depends_on = ["null_resource.setup-env"]
+  provider   = helm.initial
+  depends_on = [null_resource.setup-env]
   name       = "pingcap"
   url        = "http://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
-  provider   = "helm.initial"
+  provider   = helm.initial
   depends_on = [null_resource.setup-env, local_file.kubeconfig]
 
   repository = data.helm_repository.pingcap.name
