@@ -950,3 +950,11 @@ func (pc *FakePDClient) TransferPDLeader(memberName string) error {
 	}
 	return nil
 }
+
+func (pc *FakePDClient) PutKey(key, value string) error {
+	return nil
+}
+
+func (pc *FakePDClient) DeleteKey(key string) error {
+	return nil
+}
