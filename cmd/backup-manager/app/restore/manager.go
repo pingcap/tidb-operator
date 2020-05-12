@@ -198,7 +198,6 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 		}
 	}
 
-	restoreErr := rm.restoreData(restore)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = rm.SetTikvGCLifeTime(db, tikvGCLifeTime)
 		if err != nil {
@@ -216,6 +215,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 		klog.Infof("set cluster %s %s to %s success", rm, constants.TikvGCVariable, tikvGCLifeTime)
 	}
 
+	restoreErr := rm.restoreData(restore)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = rm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
