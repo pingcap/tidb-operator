@@ -285,7 +285,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	backTest := func(ns, backupType string) {
+	backupCRDTest := func(ns, backupType string) {
 		provider := framework.TestContext.Provider
 		if provider != "aws" && provider != "kind" {
 			framework.Skipf("provider is not aws or kind, skipping")
@@ -456,11 +456,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	}
 
 	ginkgo.It("Backup and restore with BR", func() {
-		backTest(ns, fixture.BRType)
+		backupCRDTest(ns, fixture.BRType)
 	})
 
 	ginkgo.It("Backup and restore with Dumper", func() {
-		backTest(ns, fixture.DumperType)
+		backupCRDTest(ns, fixture.DumperType)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
