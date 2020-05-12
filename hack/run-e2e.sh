@@ -46,6 +46,8 @@ GINKGO_PARALLEL=${GINKGO_PARALLEL:-n} # set to 'y' to run tests in parallel
 GINKGO_NO_COLOR=${GINKGO_NO_COLOR:-n}
 GINKGO_STREAM=${GINKGO_STREAM:-y}
 SKIP_GINKGO=${SKIP_GINKGO:-}
+# We don't delete namespace on failure by default for easier debugging in local development.
+DELETE_NAMESPACE_ON_FAILURE=${DELETE_NAMESPACE_ON_FAILURE:-false}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -64,6 +66,7 @@ echo "GINKGO_NODES: $GINKGO_NODES"
 echo "GINKGO_PARALLEL: $GINKGO_PARALLEL"
 echo "GINKGO_NO_COLOR: $GINKGO_NO_COLOR"
 echo "GINKGO_STREAM: $GINKGO_STREAM"
+echo "DELETE_NAMESPACE_ON_FAILURE: $DELETE_NAMESPACE_ON_FAILURE"
 
 function e2e::__wait_for_ds() {
     local ns="$1"
@@ -323,8 +326,8 @@ e2e_args=(
     /usr/local/bin/e2e.test
     --
     --clean-start=true
-    --delete-namespace-on-failure=false
-    --repo-root="$ROOT"
+    --delete-namespace-on-failure="${DELETE_NAMESPACE_ON_FAILURE}"
+    --repo-root="${ROOT}"
     # tidb-operator e2e flags
     --operator-tag=e2e
     --operator-image="${TIDB_OPERATOR_IMAGE}"
