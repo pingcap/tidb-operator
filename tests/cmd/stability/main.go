@@ -236,6 +236,84 @@ func run() {
 		klog.Infof("clusters operator deleted and redeployed, checked")
 
 		//stop node
+		physicalNode, node, faultTime := fta.StopNodeOrDie()
+		oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
+		oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
+		oa.CheckFailoverOrDie(deployedClusters, node)
+		time.Sleep(3 * time.Minute)
+		fta.StartNodeOrDie(physicalNode, node)
+		oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
+		oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
+		oa.CheckRecoverOrDie(deployedClusters)
+		for _, cluster := range deployedClusters {
+			oa.CheckTidbClusterStatusOrDie(cluster)
+		}
+		klog.Infof("clusters node stopped and restarted, checked")
+
+		// truncate tikv sst file
+		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		klog.Infof("clusters truncate sst file and checked failover")
+
+		// delete pd data
+		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
+
+		// stop one etcd
+		faultEtcd := tests.SelectNode(cfg.ETCDs)
+		fta.StopETCDOrDie(faultEtcd)
+		defer fta.StartETCDOrDie(faultEtcd)
+		time.Sleep(3 * time.Minute)
+		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
+		fta.StartETCDOrDie(faultEtcd)
+		klog.Infof("clusters stop on etcd and restart")
+
+		// stop all etcds
+		fta.StopETCDOrDie()
+		time.Sleep(10 * time.Minute)
+		fta.StartETCDOrDie()
+		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
+		klog.Infof("clusters stop all etcd and restart")
+
+		// stop all kubelets
+		fta.StopKubeletOrDie()
+		time.Sleep(10 * time.Minute)
+		fta.StartKubeletOrDie()
+		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
+		klog.Infof("clusters stop all kubelets and restart")
+
+		// stop all kube-proxy and k8s/operator/tidbcluster is available
+		fta.StopKubeProxyOrDie()
+		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
+		fta.StartKubeProxyOrDie()
+		klog.Infof("clusters stop all kube-proxy and restart")
+
+		// stop all kube-scheduler pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeSchedulerOrDie(vNode.IP)
+			}
+		}
+		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeSchedulerOrDie(vNode.IP)
+			}
+		}
+		klog.Infof("clusters stop all kube-scheduler and restart")
+
+		// stop all kube-controller-manager pods
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StopKubeControllerManagerOrDie(vNode.IP)
+			}
+		}
+		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
+		for _, physicalNode := range cfg.APIServers {
+			for _, vNode := range physicalNode.Nodes {
+				fta.StartKubeControllerManagerOrDie(vNode.IP)
+			}
+		}
+		klog.Infof("clusters stop all kube-controller and restart")
 
 		// stop one kube-apiserver pod
 		faultApiServer := tests.SelectNode(cfg.APIServers)
