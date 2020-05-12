@@ -69,6 +69,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSchedulerConfig":             schema_pkg_apis_pingcap_v1alpha1_PDSchedulerConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSecurityConfig":              schema_pkg_apis_pingcap_v1alpha1_PDSecurityConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDServerConfig":                schema_pkg_apis_pingcap_v1alpha1_PDServerConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec":                        schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDStoreLabel":                  schema_pkg_apis_pingcap_v1alpha1_PDStoreLabel(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Performance":                   schema_pkg_apis_pingcap_v1alpha1_Performance(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PessimisticTxn":                schema_pkg_apis_pingcap_v1alpha1_PessimisticTxn(ref),
@@ -2770,6 +2771,207 @@ func schema_pkg_apis_pingcap_v1alpha1_PDServerConfig(ref common.ReferenceCallbac
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PDSpec contains details of PD members",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version of the component. Override the cluster-level version if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imagePullPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"hostNetwork": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether Hostnetwork of the component is enabled. Override the cluster-level setting if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PriorityClassName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"schedulerName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SchedulerName of the component. Override the cluster-level one if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"nodeSelector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NodeSelector of the component. Merged into the cluster-level nodeSelector if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"annotations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Annotations of the component. Merged into the cluster-level annotations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tolerations of the component. Override the cluster-level tolerations if non-empty Optional: Defaults to cluster-level setting",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.Toleration"),
+									},
+								},
+							},
+						},
+					},
+					"podSecurityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodSecurityContext of the component",
+							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
+						},
+					},
+					"configUpdateStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigUpdateStrategy of the component. Override the cluster-level updateStrategy if present Optional: Defaults to cluster-level setting",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"env": {
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that following env names cannot be used and may be overrided by tidb-operator built envs. - NAMESPACE - TZ - SERVICE_NAME - PEER_SERVICE_NAME - HEADLESS_SERVICE_NAME - SET_NAME - HOSTNAME - CLUSTER_NAME - POD_NAME - BINLOG_ENABLED - SLOW_LOG_FILE",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"replicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The desired ready replicas",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"baseImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Base image of the component, image tag is now allowed during validation",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"service": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Service defines a Kubernetes service of PD cluster. Optional: Defaults to `.spec.services` in favor of backward compatibility",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
+						},
+					},
+					"maxFailoverCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover. Optional: Defaults to 3",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"storageClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The storageClassName of the persistent volume for PD data storage. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"config": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Config is the Configuration of pd-servers",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig"),
+						},
+					},
+					"tlsClientSecretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate which used by Dashboard.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"replicas"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -7353,7 +7555,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 				Description: "TidbClusterSpec describes the attributes that a user creates on a tidb cluster",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"Discovery": {
+					"discovery": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Discovery spec",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec"),
@@ -7521,7 +7723,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"Discovery", "pd", "tidb", "tikv"},
+				Required: []string{"pd", "tidb", "tikv"},
 			},
 		},
 		Dependencies: []string{
