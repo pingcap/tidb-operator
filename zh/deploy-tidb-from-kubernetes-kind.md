@@ -26,7 +26,7 @@ kind 通过使用 Docker 容器作为集群节点模拟出一个本地的 Kubern
     > 对于 macOS 系统，需要给 Docker 分配 2 核+ CPU 和 4G+ 内存。详情请参考 [Mac 上配置 Docker](https://docs.docker.com/docker-for-mac/#advanced)。
 
 - [Docker](https://docs.docker.com/install/)：版本 >= 17.03
-- [Helm Client](https://helm.sh/docs/intro/install/)：版本 >= 2.11.0 并且 < 2.16.4
+- [Helm Client](https://helm.sh/docs/intro/install/)：版本 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl)：版本 >= 1.12，建议 1.13 或更高版本
 
     > **注意：**

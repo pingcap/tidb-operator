@@ -37,7 +37,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
 
 * [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) >= 0.12
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
-* [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 and < 2.16.4
+* [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
 * [jq](https://stedolan.github.io/jq/download/)
 * [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
 

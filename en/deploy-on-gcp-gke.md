@@ -23,7 +23,7 @@ First of all, make sure the following items are installed on your machine:
 * [Google Cloud SDK](https://cloud.google.com/sdk/install)
 * [Terraform](https://www.terraform.io/downloads.html) >= 0.12
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
-* [Helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 and < 2.16.4
+* [Helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
 * [jq](https://stedolan.github.io/jq/download/)
 
 ## Configure

@@ -138,7 +138,7 @@ tidb-ctl schema in mysql
 
 ## Use Helm
 
-[Helm](https://helm.sh/) is a package management tool for Kubernetes. Make sure your Helm version >= 2.11.0 and < 2.16.4. The installation steps are as follows:
+[Helm](https://helm.sh/) is a package management tool for Kubernetes. Make sure your Helm version >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797). The installation steps are as follows:
 
 1. Refer to [Helm official documentation](https://v2.helm.sh/docs/using_helm/#installing-helm) to install Helm client.
 
@@ -196,10 +196,20 @@ helm repo add pingcap https://charts.pingcap.org/
 
 After adding, use `helm search` to search for the charts provided by PingCAP:
 
+If the Helm version < 2.16.0:
+
 {{< copyable "shell-regular" >}}
 
 ```shell
 helm search pingcap -l
+```
+
+If the Helm version >= 2.16.0:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+helm search pingcap -l --devel
 ```
 
 ```
@@ -207,6 +217,7 @@ NAME                    CHART VERSION   APP VERSION DESCRIPTION
 pingcap/tidb-backup     v1.0.0                      A Helm chart for TiDB Backup or Restore
 pingcap/tidb-cluster    v1.0.0                      A Helm chart for TiDB Cluster
 pingcap/tidb-operator   v1.0.0                      tidb-operator Helm chart for Kubernetes
+...
 ```
 
 When a new version of chart has been released, you can use `helm repo update` to update the repository cached locally:

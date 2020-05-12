@@ -16,7 +16,7 @@ TiDB Operator 部署前，请确认以下软件需求：
 * [DNS 插件](https://kubernetes.io/docs/tasks/access-application-cluster/configure-dns-cluster/)
 * [PersistentVolume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) 启用（可选）
-* [Helm](https://helm.sh) 版本 >= 2.11.0 && < 2.16.4
+* [Helm](https://helm.sh) 版本 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
 
 ## 部署 Kubernetes 集群
 

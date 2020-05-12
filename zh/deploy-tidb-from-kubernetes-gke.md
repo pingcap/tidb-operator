@@ -81,7 +81,7 @@ kubectl get nodes
 
 ## 安装 Helm
 
-[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 2.11.0 ≤ Helm < 2.16.4。安装步骤如下：
+[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)。安装步骤如下：
 
 1. 参考[官方文档](https://v2.helm.sh/docs/using_helm/#installing-helm)安装 Helm 客户端
 2. 安装 Helm 服务端

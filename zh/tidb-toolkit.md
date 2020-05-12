@@ -136,7 +136,7 @@ tidb-ctl schema in mysql
 
 ## 使用 Helm
 
-[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 2.11.0 ≤ Helm < 2.16.4。安装步骤如下：
+[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)。安装步骤如下：
 
 1. 参考[官方文档](https://v2.helm.sh/docs/using_helm/#installing-helm)安装 Helm 客户端
 2. 安装 Helm 服务端
@@ -193,10 +193,20 @@ helm repo add pingcap https://charts.pingcap.org/
 
 添加完成后，可以使用 `helm search` 搜索 PingCAP 提供的 chart：
 
+如果 Helm 版本 < 2.16.0:
+
 {{< copyable "shell-regular" >}}
 
 ```shell
 helm search pingcap -l
+```
+
+如果 Helm 版本 >= 2.16.0:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+helm search pingcap -l --devel
 ```
 
 ```
@@ -204,6 +214,7 @@ NAME                    CHART VERSION   APP VERSION DESCRIPTION
 pingcap/tidb-backup     v1.0.0                      A Helm chart for TiDB Backup or Restore
 pingcap/tidb-cluster    v1.0.0                      A Helm chart for TiDB Cluster
 pingcap/tidb-operator   v1.0.0                      tidb-operator Helm chart for Kubernetes
+...
 ```
 
 当新版本的 chart 发布后，你可以使用 `helm repo update` 命令更新本地对于仓库的缓存：
