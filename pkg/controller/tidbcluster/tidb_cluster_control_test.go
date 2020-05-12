@@ -333,6 +333,7 @@ func newFakeTidbClusterControl() (
 		tiflashMemberManager,
 		discoveryManager,
 		podRestarter,
+		&tidbClusterConditionUpdater{},
 		recorder,
 	)
 
