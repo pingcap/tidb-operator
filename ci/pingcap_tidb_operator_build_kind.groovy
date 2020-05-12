@@ -136,16 +136,17 @@ e2eSerialResources = [
 		],
 	]
 
-def build(String SHELL_CODE, String ARTIFACTS = "", Map resources = e2ePodResources) {
+def build(String name, String code, Map resources = e2ePodResources) {
 	podTemplate(yaml: buildPodYAML(resources: resources)) {
 		node(POD_LABEL) {
 			container('main') {
 				def WORKSPACE = pwd()
+				def ARTIFACTS = "${WORKSPACE}/go/src/github.com/pingcap/tidb-operator/_artifacts"
 				try {
 					dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
 						unstash 'tidb-operator'
 						stage("Debug Info") {
-							println "debug host: 172.16.5.5"
+							println "debug host: 172.16.5.15"
 							println "debug command: kubectl -n jenkins-ci exec -ti ${NODE_NAME} bash"
 							sh """
 							echo "====== shell env ======"
@@ -160,16 +161,28 @@ def build(String SHELL_CODE, String ARTIFACTS = "", Map resources = e2ePodResour
 						stage('Run') {
 							sh """#!/bin/bash
 							export GOPATH=${WORKSPACE}/go
-							${SHELL_CODE}
+							export ARTIFACTS=${ARTIFACTS}
+							export RUNNER_SUITE_NAME=${name}
+							${code}
 							"""
 						}
 					}
 				} finally {
-					if (ARTIFACTS != "") {
-						dir(ARTIFACTS) {
-							archiveArtifacts artifacts: "**", allowEmptyArchive: true
-							junit testResults: "*.xml", allowEmptyResults: true
-						}
+					dir(ARTIFACTS) {
+						sh """#!/bin/bash
+						echo "info: change ownerships for jenkins"
+						chown -R 1000:1000 .
+						echo "info: print total size of artifacts"
+						du -sh .
+						echo "info: list all files"
+						find .
+						echo "info: moving all artifacts into a sub-directory"
+						shopt -s extglob
+						mkdir ${name}
+						mv !(${name}) ${name}/
+						"""
+						archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
+						junit testResults: "${name}/*.xml", allowEmptyResults: true
 					}
 				}
 			}
@@ -288,20 +301,19 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		}
 		}
 
-		def artifacts = "go/src/github.com/pingcap/tidb-operator/artifacts"
 		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH}"
 		def builds = [:]
 		builds["E2E v1.12"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12 GINKGO_NODES=6 KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_ ./hack/e2e.sh -- --preload-images --operator-killer", artifacts)
+			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --operator-killer")
 		}
 		builds["E2E v1.12 AdvancedStatefulSet"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-advanced-statefulset GINKGO_NODES=6 KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_advanced_statefulset ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer", artifacts)
+			build("v1.12-advanced-statefulset", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer")
 		}
 		builds["E2E v1.18"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.18 GINKGO_NODES=6 KUBE_VERSION=v1.18 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.18_ ./hack/e2e.sh -- -preload-images --operator-killer", artifacts)
+			build("v1.18", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- -preload-images --operator-killer")
 		}
 		builds["E2E v1.12 Serial"] = {
-			build("${GLOBALS} RUNNER_SUITE_NAME=e2e-v1.12-serial KUBE_VERSION=v1.12 REPORT_DIR=\$(pwd)/artifacts REPORT_PREFIX=v1.12_serial_ ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", artifacts, e2eSerialResources)
+			build("v1.12-serial", "${GLOBALS} KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", e2eSerialResources)
 		}
 		builds.failFast = false
 		parallel builds

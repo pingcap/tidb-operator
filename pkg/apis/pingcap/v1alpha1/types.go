@@ -253,6 +253,11 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// which used by Dashboard.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -753,12 +758,6 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
-	// Specify a secret of client cert for backup/restore
-	// Optional: Defaults to <cluster>-tidb-client-secret
-	// +optional
-	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
-	// this field only work in backup/restore process
-	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // TLSCluster can enable TLS connection between TiDB server components
@@ -863,7 +862,7 @@ type S3StorageProvider struct {
 	// SecretName is the name of secret which stores
 	// S3 compliant storage access key and secret key.
 	SecretName string `json:"secretName,omitempty"`
-	// Prefix for the keys.
+	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 	// SSE Sever-Side Encryption.
 	SSE string `json:"sse,omitempty"`
@@ -890,8 +889,10 @@ type GcsStorageProvider struct {
 	// BucketAcl represents the access control list for new buckets
 	BucketAcl string `json:"bucketAcl,omitempty"`
 	// SecretName is the name of secret which stores the
-	// gcs service account credentials JSON .
+	// gcs service account credentials JSON.
 	SecretName string `json:"secretName"`
+	// Prefix of the data path.
+	Prefix string `json:"prefix,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -920,10 +921,10 @@ type TiDBAccessConfig struct {
 	User string `json:"user,omitempty"`
 	// SecretName is the name of secret which stores tidb cluster's password.
 	SecretName string `json:"secretName"`
-	// Whether enable the TLS connection between the SQL client and TiDB server
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// Optional: Defaults to nil
 	// +optional
-	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -947,6 +948,8 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// MydumperConfig is the configs for mydumper
+	Mydumper *MydumperConfig `json:"mydumper,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -957,6 +960,15 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// MydumperConfig contains config for mydumper
+type MydumperConfig struct {
+	// Options means options for backup data to remote storage with mydumper.
+	Options []string `json:"options,omitempty"`
+	// TableRegex means Regular expression for 'db.table' matching
+	TableRegex *string `json:"tableRegex,omitempty"`
 }
 
 // +k8s:openapi-gen=true

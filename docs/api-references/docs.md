@@ -174,6 +174,19 @@ BRConfig
 </tr>
 <tr>
 <td>
+<code>mydumper</code></br>
+<em>
+<a href="#mydumperconfig">
+MydumperConfig
+</a>
+</em>
+</td>
+<td>
+<p>MydumperConfig is the configs for mydumper</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tolerations</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#toleration-v1-core">
@@ -1300,6 +1313,19 @@ string
 <p>Time zone of TiDB initializer Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+Optional: Defaults to nil</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -1434,6 +1460,19 @@ InitializerSpec
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
 </td>
 </tr>
 <tr>
@@ -2055,6 +2094,19 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mydumper</code></br>
+<em>
+<a href="#mydumperconfig">
+MydumperConfig
+</a>
+</em>
+</td>
+<td>
+<p>MydumperConfig is the configs for mydumper</p>
 </td>
 </tr>
 <tr>
@@ -3472,7 +3524,18 @@ string
 </td>
 <td>
 <p>SecretName is the name of secret which stores the
-gcs service account credentials JSON .</p>
+gcs service account credentials JSON.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prefix of the data path.</p>
 </td>
 </tr>
 </tbody>
@@ -4295,6 +4358,46 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mydumperconfig">MydumperConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>MydumperConfig contains config for mydumper</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options means options for backup data to remote storage with mydumper.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableRegex</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TableRegex means Regular expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -6031,6 +6134,19 @@ PDConfig
 <p>Config is the Configuration of pd-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+which used by Dashboard.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -7361,7 +7477,7 @@ string
 </em>
 </td>
 <td>
-<p>Prefix for the keys.</p>
+<p>Prefix of the data path.</p>
 </td>
 </tr>
 <tr>
@@ -8100,16 +8216,14 @@ string
 </tr>
 <tr>
 <td>
-<code>tlsClient</code></br>
+<code>tlsClientSecretName</code></br>
 <em>
-<a href="#tidbtlsclient">
-TiDBTLSClient
-</a>
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether enable the TLS connection between the SQL client and TiDB server
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 Optional: Defaults to nil</p>
 </td>
 </tr>
@@ -9113,7 +9227,6 @@ string
 <h3 id="tidbtlsclient">TiDBTLSClient</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbaccessconfig">TiDBAccessConfig</a>, 
 <a href="#tidbspec">TiDBSpec</a>)
 </p>
 <p>
@@ -9150,21 +9263,6 @@ kubectl create secret generic <clusterName>-tidb-server-secret &ndash;namespace=
 The name of this Secret must be: <clusterName>-tidb-client-secret.
 kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 4. Set Enabled to <code>true</code>.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tlsSecret</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Specify a secret of client cert for backup/restore
-Optional: Defaults to <cluster>-tidb-client-secret
-If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
-this field only work in backup/restore process</p>
 </td>
 </tr>
 </tbody>
@@ -14208,6 +14306,19 @@ string
 <p>Time zone of TiDB initializer Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+Optional: Defaults to nil</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbinitializerstatus">TidbInitializerStatus</h3>
@@ -14372,6 +14483,19 @@ InitializerSpec
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
 </td>
 </tr>
 <tr>
