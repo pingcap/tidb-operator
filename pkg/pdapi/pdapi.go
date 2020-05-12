@@ -15,6 +15,7 @@ package pdapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -154,6 +155,10 @@ type PDClient interface {
 	GetPDLeader() (*pdpb.Member, error)
 	// TransferPDLeader transfers pd leader to specified member
 	TransferPDLeader(name string) error
+	// PutKey put key value into pd etcd
+	PutKey(key, value string) error
+	// DeleteKey delete key value from pd etcd
+	DeleteKey(key string) error
 }
 
 var (
@@ -171,6 +176,7 @@ var (
 
 // pdClient is default implementation of PDClient
 type pdClient struct {
+	timeout    time.Duration
 	url        string
 	httpClient *http.Client
 	etcdClient *etcdclientv3.Client
@@ -183,7 +189,8 @@ func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) (PDCl
 
 func newPDClient(url string, timeout time.Duration, tlsConfig *tls.Config, enableEtcdClient bool) (PDClient, error) {
 	pdClient := &pdClient{
-		url: url,
+		timeout: timeout,
+		url:     url,
 		httpClient: &http.Client{
 			Timeout:   timeout,
 			Transport: &http.Transport{TLSClientConfig: tlsConfig},
@@ -659,6 +666,20 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 	}
 	err2 := httputil.ReadErrorBody(res.Body)
 	return fmt.Errorf("failed %v to transfer pd leader to %s,error: %v", res.StatusCode, memberName, err2)
+}
+
+func (pc *pdClient) PutKey(key, value string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), pc.timeout)
+	defer cancel()
+	_, err := pc.etcdClient.Put(ctx, key, value)
+	return err
+}
+
+func (pc *pdClient) DeleteKey(key string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), pc.timeout)
+	defer cancel()
+	_, err := pc.etcdClient.Delete(ctx, key)
+	return err
 }
 
 func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {
