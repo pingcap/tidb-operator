@@ -50,6 +50,7 @@ func NewDefaultTidbClusterControl(
 	tiflashMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	podRestarter member.PodRestarter,
+	conditionUpdater TidbClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 		tiflashMemberManager,
 		discoveryManager,
 		podRestarter,
+		conditionUpdater,
 		recorder,
 	}
 }
@@ -81,6 +83,7 @@ type defaultTidbClusterControl struct {
 	tiflashMemberManager manager.Manager
 	discoveryManager     member.TidbDiscoveryManager
 	podRestarter         member.PodRestarter
+	conditionUpdater     TidbClusterConditionUpdater
 	recorder             record.EventRecorder
 }
 
@@ -97,6 +100,11 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 	if err := tcc.updateTidbCluster(tc); err != nil {
 		errs = append(errs, err)
 	}
+
+	if err := tcc.conditionUpdater.Update(tc); err != nil {
+		errs = append(errs, err)
+	}
+
 	if apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
