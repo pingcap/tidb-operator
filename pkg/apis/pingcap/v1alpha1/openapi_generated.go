@@ -3906,7 +3906,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TiCDCpec contains details of TiCDC members",
+				Description: "TiCDCSpec contains details of TiCDC members",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {

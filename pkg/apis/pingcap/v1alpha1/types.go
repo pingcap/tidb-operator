@@ -339,7 +339,7 @@ type TiFlashSpec struct {
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
 }
 
-// TiCDCpec contains details of TiCDC members
+// TiCDCSpec contains details of TiCDC members
 // +k8s:openapi-gen=true
 type TiCDCSpec struct {
 	ComponentSpec               `json:",inline"`
