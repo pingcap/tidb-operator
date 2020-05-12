@@ -193,11 +193,21 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		return util.ARSuccess()
 	}
 
+	if !l.IsPD() && !l.IsTiKV() {
+		klog.Infof("[%s/%s] is admit to be deleted", namespace, name)
+		return util.ARSuccess()
+	}
+
+	pdClient, err := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+	if err != nil {
+		return util.ARFail(err)
+	}
+
 	payload := &admitPayload{
 		pod:              pod,
 		tc:               tc,
 		ownerStatefulSet: ownerStatefulSet,
-		pdClient:         pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled()),
+		pdClient:         pdClient,
 	}
 
 	if l.IsPD() {
@@ -257,7 +267,10 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 	}
 
 	if l.IsTiKV() {
-		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+		pdClient, err := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+		if err != nil {
+			return util.ARFail(err)
+		}
 		return pc.admitCreateTiKVPod(pod, tc, pdClient)
 	}
 

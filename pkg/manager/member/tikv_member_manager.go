@@ -581,7 +581,11 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	stores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
-	pdCli := controller.GetPDClient(tkmm.pdControl, tc)
+	pdCli, err := controller.GetPDClient(tkmm.pdControl, tc)
+	if err != nil {
+		tc.Status.TiKV.Synced = false
+		return err
+	}
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
@@ -669,7 +673,10 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 	// for unit test
 	setCount := 0
 
-	pdCli := controller.GetPDClient(tkmm.pdControl, tc)
+	pdCli, err := controller.GetPDClient(tkmm.pdControl, tc)
+	if err != nil {
+		return setCount, err
+	}
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		return setCount, err

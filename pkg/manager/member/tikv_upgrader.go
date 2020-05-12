@@ -184,7 +184,11 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
 	ns := tc.GetNamespace()
 	podName := pod.GetName()
-	err := controller.GetPDClient(tku.pdControl, tc).BeginEvictLeader(storeID)
+	pdClient, err := controller.GetPDClient(tku.pdControl, tc)
+	if err != nil {
+		return err
+	}
+	err = pdClient.BeginEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
 			storeID, ns, podName, err)
@@ -217,8 +221,11 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if err != nil {
 		return err
 	}
-
-	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+	pdClient, err := tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	if err != nil {
+		return err
+	}
+	err = pdClient.EndEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
 		return err

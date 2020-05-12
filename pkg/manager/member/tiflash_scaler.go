@@ -104,7 +104,11 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(tfs.pdControl, tc).DeleteStore(id); err != nil {
+				pdClient, err := controller.GetPDClient(tfs.pdControl, tc)
+				if err != nil {
+					return err
+				}
+				if err := pdClient.DeleteStore(id); err != nil {
 					klog.Errorf("tiflash scale in: failed to delete store %d, %v", id, err)
 					return err
 				}

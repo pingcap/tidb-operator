@@ -121,7 +121,10 @@ func (tfmm *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (tfmm *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {
-	pdCli := controller.GetPDClient(tfmm.pdControl, tc)
+	pdCli, err := controller.GetPDClient(tfmm.pdControl, tc)
+	if err != nil {
+		return err
+	}
 	config, err := pdCli.GetConfig()
 	if err != nil {
 		return err
@@ -639,7 +642,10 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 	stores := map[string]v1alpha1.TiKVStore{}
 	tombstoneStores := map[string]v1alpha1.TiKVStore{}
 
-	pdCli := controller.GetPDClient(tfmm.pdControl, tc)
+	pdCli, err := controller.GetPDClient(tfmm.pdControl, tc)
+	if err != nil {
+		return err
+	}
 	// This only returns Up/Down/Offline stores
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
@@ -727,7 +733,10 @@ func (tfmm *tiflashMemberManager) setStoreLabelsForTiFlash(tc *v1alpha1.TidbClus
 	// for unit test
 	setCount := 0
 
-	pdCli := controller.GetPDClient(tfmm.pdControl, tc)
+	pdCli, err := controller.GetPDClient(tfmm.pdControl, tc)
+	if err != nil {
+		return setCount, err
+	}
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		return setCount, err

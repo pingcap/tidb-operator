@@ -117,7 +117,10 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return nil
 	}
 
-	pdClient := controller.GetPDClient(psd.pdControl, tc)
+	pdClient, err := controller.GetPDClient(psd.pdControl, tc)
+	if err != nil {
+		return err
+	}
 	// If the pd pod was pd leader during scale-in, we would transfer pd leader to pd-0 directly
 	// If the pd statefulSet would be scale-in to zero and the pd-0 was going to be deleted,
 	// we would directly deleted the pd-0 without pd leader transferring
@@ -135,7 +138,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		}
 	}
 
-	err := pdClient.DeleteMember(memberName)
+	err = pdClient.DeleteMember(memberName)
 	if err != nil {
 		klog.Errorf("pd scale in: failed to delete member %s, %v", memberName, err)
 		return err

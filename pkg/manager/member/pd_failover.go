@@ -189,7 +189,11 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 		return err
 	}
 	// invoke deleteMember api to delete a member from the pd cluster
-	err = controller.GetPDClient(pf.pdControl, tc).DeleteMemberByID(memberID)
+	pdClient, err := controller.GetPDClient(pf.pdControl, tc)
+	if err != nil {
+		return err
+	}
+	err = pdClient.DeleteMemberByID(memberID)
 	if err != nil {
 		klog.Errorf("pd failover: failed to delete member: %d, %v", memberID, err)
 		return err

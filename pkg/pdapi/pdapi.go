@@ -178,22 +178,30 @@ type pdClient struct {
 
 // NewPDClient returns a new PDClient
 func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) (PDClient, error) {
-	etcdClient, err := etcdclientv3.New(etcdclientv3.Config{
-		Endpoints:   []string{url},
-		DialTimeout: timeout,
-		TLS:         tlsConfig,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &pdClient{
+	return newPDClient(url, timeout, tlsConfig, true)
+}
+
+func newPDClient(url string, timeout time.Duration, tlsConfig *tls.Config, enableEtcdClient bool) (PDClient, error) {
+	pdClient := &pdClient{
 		url: url,
 		httpClient: &http.Client{
 			Timeout:   timeout,
 			Transport: &http.Transport{TLSClientConfig: tlsConfig},
 		},
-		etcdClient: etcdClient,
-	}, nil
+		etcdClient: nil,
+	}
+	if enableEtcdClient {
+		etcdClient, err := etcdclientv3.New(etcdclientv3.Config{
+			Endpoints:   []string{url},
+			DialTimeout: timeout,
+			TLS:         tlsConfig,
+		})
+		if err != nil {
+			return nil, err
+		}
+		pdClient.etcdClient = etcdClient
+	}
+	return pdClient, nil
 }
 
 // following struct definitions are copied from github.com/pingcap/pd/server/api/store

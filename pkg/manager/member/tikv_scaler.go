@@ -107,7 +107,11 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(tsd.pdControl, tc).DeleteStore(id); err != nil {
+				pdClient, err := controller.GetPDClient(tsd.pdControl, tc)
+				if err != nil {
+					return err
+				}
+				if err := pdClient.DeleteStore(id); err != nil {
 					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
 					return err
 				}

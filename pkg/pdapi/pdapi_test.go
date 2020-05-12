@@ -71,7 +71,8 @@ func TestHealth(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, err := pdClient.GetHealth()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(&HealthInfo{healths}))
@@ -112,7 +113,8 @@ func TestGetConfig(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, err := pdClient.GetConfig()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(config))
@@ -150,7 +152,8 @@ func TestGetCluster(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, err := pdClient.GetCluster()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(cluster))
@@ -202,7 +205,8 @@ func TestGetMembers(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, err := pdClient.GetMembers()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(members))
@@ -254,7 +258,8 @@ func TestGetStores(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, err := pdClient.GetStores()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(stores))
@@ -299,7 +304,8 @@ func TestGetStore(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, err := pdClient.GetStore(tc.id)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(result).To(Equal(store))
@@ -348,7 +354,8 @@ func TestSetStoreLabels(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
 		result, _ := pdClient.SetStoreLabels(id, labels)
 		g.Expect(result).To(Equal(tc.want))
 	}
@@ -438,8 +445,9 @@ func TestDeleteMember(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
-		err := pdClient.DeleteMember(name)
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
+		err = pdClient.DeleteMember(name)
 		if tc.want {
 			g.Expect(err).NotTo(HaveOccurred(), "check result")
 		} else {
@@ -532,8 +540,9 @@ func TestDeleteMemberByID(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
-		err := pdClient.DeleteMemberByID(id)
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
+		err = pdClient.DeleteMemberByID(id)
 		if tc.want {
 			g.Expect(err).NotTo(HaveOccurred(), "check result")
 		} else {
@@ -624,8 +633,9 @@ func TestDeleteStore(t *testing.T) {
 		})
 		defer svc.Close()
 
-		pdClient := NewPDClient(svc.URL, DefaultTimeout, &tls.Config{})
-		err := pdClient.DeleteStore(storeID)
+		pdClient, err := newPDClient(svc.URL, DefaultTimeout, &tls.Config{}, false)
+		g.Expect(err).NotTo(HaveOccurred())
+		err = pdClient.DeleteStore(storeID)
 		if tc.want {
 			g.Expect(err).NotTo(HaveOccurred(), "check result")
 		} else {

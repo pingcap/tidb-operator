@@ -131,7 +131,11 @@ func (pu *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newS
 }
 
 func (pu *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {
-	return controller.GetPDClient(pu.pdControl, tc).TransferPDLeader(targetName)
+	c, err := controller.GetPDClient(pu.pdControl, tc)
+	if err != nil {
+		return err
+	}
+	return c.TransferPDLeader(targetName)
 }
 
 type fakePDUpgrader struct{}

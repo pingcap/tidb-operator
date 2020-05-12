@@ -19,7 +19,7 @@ import (
 )
 
 // GetPDClient gets the pd client from the TidbCluster
-func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
+func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) (pdapi.PDClient, error) {
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
 }
 

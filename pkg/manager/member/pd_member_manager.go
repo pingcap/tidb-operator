@@ -314,7 +314,10 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
 
-	pdClient := controller.GetPDClient(pmm.pdControl, tc)
+	pdClient, err := controller.GetPDClient(pmm.pdControl, tc)
+	if err != nil {
+		return err
+	}
 
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
