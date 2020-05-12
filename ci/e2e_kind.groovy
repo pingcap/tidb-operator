@@ -197,6 +197,7 @@ pipeline {
                 export DOCKER_IO_MIRROR=${params.DOCKER_IO_MIRROR}
                 export QUAY_IO_MIRROR=${params.QUAY_IO_MIRROR}
                 export GCR_IO_MIRROR=${params.GCR_IO_MIRROR}
+                export DELETE_NAMESPACE_ON_FAILURE=true
                 echo "info: begin to run e2e"
                 ./hack/e2e.sh -- ${params.E2E_ARGS}
                 """

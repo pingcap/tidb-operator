@@ -141,6 +141,7 @@ pipeline {
                     export AWS_REGION=${params.AWS_REGION}
                     export GINKGO_NODES=${params.GINKGO_NODES}
                     export REPORT_DIR=${ARTIFACTS}
+                    export DELETE_NAMESPACE_ON_FAILURE=true
                     echo "info: try to clean the cluster created previously"
                     ./ci/aws-clean-eks.sh \$CLUSTER
                     echo "info: begin to run e2e"

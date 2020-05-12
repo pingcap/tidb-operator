@@ -148,6 +148,7 @@ pipeline {
                     export GCP_PROJECT=${params.GCP_PROJECT}
                     export GINKGO_NODES=${params.GINKGO_NODES}
                     export REPORT_DIR=${ARTIFACTS}
+                    export DELETE_NAMESPACE_ON_FAILURE=true
                     echo "info: try to clean the cluster created previously"
                     SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y ./hack/e2e.sh
                     echo "info: begin to run e2e"
