@@ -5,7 +5,6 @@ metadata:
   namespace: test1
 spec:
   # backupType: full
-  # useKMS: false
   # serviceAccount: myServiceAccount
   br:
     cluster: myCluster
