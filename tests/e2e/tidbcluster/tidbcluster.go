@@ -457,11 +457,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("clean backup success")
 	}
 
-	ginkgo.It("Backup and restore with BR", func() {
+	ginkgo.It("CRD:Backup and restore with BR", func() {
 		backupCRDTest(ns, fixture.BRType)
 	})
 
-	ginkgo.It("Backup and restore with Dumper", func() {
+	ginkgo.It("CRD:Backup and restore with Dumper", func() {
 		backupCRDTest(ns, fixture.DumperType)
 	})
 
