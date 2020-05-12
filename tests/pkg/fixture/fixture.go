@@ -309,9 +309,14 @@ func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1a
 	}
 }
 
-func GetBackupCRDForBRWithS3(tc *v1alpha1.TidbCluster, fromSecretName string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
+const (
+	BRType     = "br"
+	DumperType = "dumper"
+)
+
+func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
 	sendCredToTikv := true
-	return &v1alpha1.Backup{
+	br := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-backup", tc.Name),
 			Namespace: tc.Namespace,
@@ -334,11 +339,19 @@ func GetBackupCRDForBRWithS3(tc *v1alpha1.TidbCluster, fromSecretName string, s3
 			},
 		},
 	}
+	if brType == BRType {
+
+	} else if brType == DumperType {
+		br.Spec.BR = nil
+	} else {
+		return nil
+	}
+	return br
 }
 
-func GetRestoreCRDForBRWithS3(tc *v1alpha1.TidbCluster, toSecretName string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Restore {
+func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Restore {
 	sendCredToTikv := true
-	return &v1alpha1.Restore{
+	restore := &v1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-restore", tc.GetName()),
 			Namespace: tc.GetNamespace(),
@@ -361,4 +374,12 @@ func GetRestoreCRDForBRWithS3(tc *v1alpha1.TidbCluster, toSecretName string, s3c
 			},
 		},
 	}
+	if restoreType == BRType {
+
+	} else if restoreType == DumperType {
+		restore.Spec.BR = nil
+	} else {
+		return nil
+	}
+	return restore
 }

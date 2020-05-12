@@ -78,12 +78,12 @@ func (m *minioStorage) ProvideCredential(ns string) *corev1.Secret {
 	return fixture.GetS3Secret(ns, m.accessKey, m.secretKey)
 }
 
-func (m *minioStorage) ProvideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret) *v1alpha1.Backup {
-	return fixture.GetBackupCRDForBRWithS3(tc, fromSecret.Name, m.s3config)
+func (m *minioStorage) ProvideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret, brType string) *v1alpha1.Backup {
+	return fixture.GetBackupCRDWithS3(tc, fromSecret.Name, brType, m.s3config)
 }
 
-func (m *minioStorage) ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret) *v1alpha1.Restore {
-	return fixture.GetRestoreCRDForBRWithS3(tc, toSecret.Name, m.s3config)
+func (m *minioStorage) ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret, restoreType string) *v1alpha1.Restore {
+	return fixture.GetRestoreCRDWithS3(tc, toSecret.Name, restoreType, m.s3config)
 }
 
 func (m *minioStorage) CheckDataCleaned() error {

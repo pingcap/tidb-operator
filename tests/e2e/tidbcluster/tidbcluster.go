@@ -285,7 +285,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	ginkgo.It("Backup and restore with BR", func() {
+	backTest := func(ns, backupType string) {
 		provider := framework.TestContext.Provider
 		if provider != "aws" && provider != "kind" {
 			framework.Skipf("provider is not aws or kind, skipping")
@@ -382,7 +382,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
-		backup := storage.ProvideBackup(tcFrom, backupSecret)
+		backup := storage.ProvideBackup(tcFrom, backupSecret, backupType)
 		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
 		framework.ExpectNoError(err)
 
@@ -407,7 +407,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
-		restore := storage.ProvideRestore(tcTo, restoreSecret)
+		restore := storage.ProvideRestore(tcTo, restoreSecret, backupType)
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
 		framework.ExpectNoError(err)
 
@@ -453,6 +453,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "clean backup failed")
 		framework.Logf("clean backup success")
+	}
+
+	ginkgo.It("Backup and restore with BR", func() {
+		backTest(ns, fixture.BRType)
+	})
+
+	ginkgo.It("Backup and restore with Dumper", func() {
+		backTest(ns, fixture.DumperType)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
