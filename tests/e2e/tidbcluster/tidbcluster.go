@@ -285,11 +285,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	backupCRDTest := func(ns, backupType string) {
-		provider := framework.TestContext.Provider
+	backupCRDTest := func(provider, ns, backupType string, fw portforward.PortForward, genericCli client.Client, c clientset.Interface, cli versioned.Interface) (skip bool, err error) {
+		err = nil
 		if provider != "aws" && provider != "kind" {
-			framework.Skipf("provider is not aws or kind, skipping")
+			skip = true
+			return
 		}
+		skip = false
 
 		backupFolder := time.Now().Format(time.RFC3339)
 		var storage teststorage.TestStorage
@@ -320,10 +322,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			storage = s3Storage
 		default:
-			framework.Failf("unknown provider: %s", provider)
+			err = fmt.Errorf("unknown provider: %s", provider)
+			return
 		}
 		if storage == nil {
-			framework.Failf("storage generate failed")
+			err = fmt.Errorf("storage generate failed")
+			return
 		}
 
 		tcNameFrom := "backup"
@@ -335,58 +339,82 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tcFrom.Spec.PD.Replicas = 1
 		tcFrom.Spec.TiKV.Replicas = 1
 		tcFrom.Spec.TiDB.Replicas = 1
-		err := genericCli.Create(context.TODO(), tcFrom)
-		framework.ExpectNoError(err)
+		err = genericCli.Create(context.TODO(), tcFrom)
+		if err != nil {
+			return
+		}
 		// create restore cluster
 		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
 		tcTo.Spec.PD.Replicas = 1
 		tcTo.Spec.TiKV.Replicas = 1
 		tcTo.Spec.TiDB.Replicas = 1
 		err = genericCli.Create(context.TODO(), tcTo)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		// wait cluster ready
 		err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV3Version)
 
 		err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV3Version)
 
 		// import some data to sql with blockwriter
 		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.BeginInsertDataToOrDie(&clusterFrom)
 		err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
 		oa.StopInsertDataTo(&clusterFrom)
 
 		// prepare for create backup/restore CRD
 		backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
 		_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
 		_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		backupRoleBinding := fixture.GetBackupRoleBinding(tcFrom, serviceAccountName)
 		_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		backupSecret := fixture.GetBackupSecret(tcFrom, "")
 		_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		restoreSecret := fixture.GetBackupSecret(tcTo, "")
 		_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		storageSecret := storage.ProvideCredential(ns)
 		_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
 		backup := storage.ProvideBackup(tcFrom, backupSecret, backupType)
 		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		// check backup is successed
 		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -405,13 +433,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
 		restore := storage.ProvideRestore(tcTo, restoreSecret, backupType)
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		// check restore is successed
 		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -430,21 +462,29 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
 		isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 		if !isSame {
 			framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 		}
 
 		// delete backup data in S3
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		err = storage.CheckDataCleaned()
-		framework.ExpectNoError(err)
+		if err != nil {
+			return
+		}
 
 		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
@@ -453,16 +493,29 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return false, nil
 		})
-		framework.ExpectNoError(err, "clean backup failed")
+		if err != nil {
+			return
+		}
 		framework.Logf("clean backup success")
+		return true, nil
 	}
 
 	ginkgo.It("CRD:Backup and restore with BR", func() {
-		backupCRDTest(ns, fixture.BRType)
+		provider := framework.TestContext.Provider
+		skip, err := backupCRDTest(provider, ns, fixture.BRType, fw, genericCli, c, cli)
+		if skip {
+			framework.Skipf("skip")
+		}
+		framework.ExpectNoError(err)
 	})
 
 	ginkgo.It("CRD:Backup and restore with Dumper", func() {
-		backupCRDTest(ns, fixture.DumperType)
+		provider := framework.TestContext.Provider
+		skip, err := backupCRDTest(provider, ns, fixture.DumperType, fw, genericCli, c, cli)
+		if skip {
+			framework.Skipf("skip")
+		}
+		framework.ExpectNoError(err)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
