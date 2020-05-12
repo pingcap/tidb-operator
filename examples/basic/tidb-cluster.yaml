@@ -17,7 +17,7 @@ spec:
   tikv:
     baseImage: pingcap/tikv
     replicas: 3
-    # if storageClassName does not set, storageClassName will be chosen what kubernetes cluster support automatically
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
       storage: "1Gi"
