@@ -41,25 +41,25 @@ EOS
 }
 
 data "helm_repository" "pingcap" {
-  provider   = "helm.initial"
-  depends_on = ["null_resource.setup-env"]
-  name       = "pingcap"
-  url        = "http://charts.pingcap.org/"
+  provider = helm.initial
+  depends_on = [null_resource.setup-env]
+  name = "pingcap"
+  url = "http://charts.pingcap.org/"
 }
 
 resource "helm_release" "tidb-operator" {
-  provider   = "helm.initial"
-  depends_on = ["null_resource.setup-env"]
+  provider = helm.initial
+  depends_on = [null_resource.setup-env]
 
   repository = data.helm_repository.pingcap.name
-  chart      = "tidb-operator"
-  version    = var.operator_version
-  namespace  = "tidb-admin"
-  name       = "tidb-operator"
-  values     = [var.operator_helm_values]
+  chart = "tidb-operator"
+  version = var.operator_version
+  namespace = "tidb-admin"
+  name = "tidb-operator"
+  values = [var.operator_helm_values]
 
   set {
-    name  = "scheduler.kubeSchedulerImageName"
+    name = "scheduler.kubeSchedulerImageName"
     value = "registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler-amd64"
   }
 }
