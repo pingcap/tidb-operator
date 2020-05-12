@@ -109,9 +109,10 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 	}
 
+	// TODO: support Validating hook for updating tidbcluster that forbid update monitorRef with a different reference
 	// Patch tidbcluster status first in order to avoiding let multi tidbmonitor monitor the same tidbcluster
 	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
-		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster status failed, err:%v", err)
+		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
 	}
