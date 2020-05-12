@@ -324,7 +324,6 @@ func run() {
 		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
 		fta.StartKubeAPIServerOrDie(faultApiServer)
 		klog.Infof("clusters stop one kube-apiserver and restart")
-		slack.NotifyAndCompletedf("stability clusters stop one kube-apiserver and restart,checked")
 
 		time.Sleep(time.Minute)
 		// stop all kube-apiserver pods
@@ -340,7 +339,6 @@ func run() {
 			}
 		}
 		klog.Infof("clusters stop all kube-apiserver and restart")
-		slack.NotifyAndCompletedf("stability clusters stop all kube-apiserver and restart,checked")
 		time.Sleep(time.Minute)
 	}
 
