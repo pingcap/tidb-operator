@@ -22,10 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
@@ -45,6 +42,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	teststorage "github.com/pingcap/tidb-operator/tests/e2e/util/storage"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/util/tidb"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
@@ -287,14 +285,50 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	ginkgo.It("Adhoc backup and restore with BR CRD", func() {
-		if framework.TestContext.Provider != "aws" {
-			framework.Skipf("provider is not aws, skipping")
+	ginkgo.It("Backup and restore with BR", func() {
+		provider := framework.TestContext.Provider
+		if provider != "aws" && provider != "kind" {
+			framework.Skipf("provider is not aws or kind, skipping")
 		}
+
+		backupFolder := time.Now().Format(time.RFC3339)
+		var storage teststorage.TestStorage
+		switch provider {
+		case "kind":
+			s3config := &v1alpha1.S3StorageProvider{
+				Provider:   v1alpha1.S3StorageProviderTypeCeph,
+				Prefix:     backupFolder,
+				SecretName: fixture.S3Secret,
+				Bucket:     "local",
+				Endpoint:   "http://minio-service:9000",
+			}
+			key := "12345678"
+			minio, cancel, err := teststorage.NewMinioStorage(fw, ns, key, key, c, s3config)
+			framework.ExpectNoError(err)
+			storage = minio
+			defer cancel()
+		case "aws":
+			cred := credentials.NewSharedCredentials("", "default")
+			s3config := &v1alpha1.S3StorageProvider{
+				Provider:   v1alpha1.S3StorageProviderTypeAWS,
+				Region:     fixture.AWSRegion,
+				Bucket:     fixture.Bucket,
+				Prefix:     backupFolder,
+				SecretName: fixture.S3Secret,
+			}
+			s3Storage, err := teststorage.NewS3Storage(cred, s3config)
+			framework.ExpectNoError(err)
+			storage = s3Storage
+		default:
+			framework.Failf("unknown provider: %s", provider)
+		}
+		if storage == nil {
+			framework.Failf("storage generate failed")
+		}
+
 		tcNameFrom := "backup"
 		tcNameTo := "restore"
 		serviceAccountName := "tidb-backup-manager"
-		backupFolder := time.Now().Format(time.RFC3339)
 
 		// create backup cluster
 		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
@@ -333,7 +367,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
 		_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
 		framework.ExpectNoError(err)
-		backupRoleBinding := fixture.GetBackupRoleBing(tcFrom, serviceAccountName)
+		backupRoleBinding := fixture.GetBackupRoleBinding(tcFrom, serviceAccountName)
 		_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
 		framework.ExpectNoError(err)
 		backupSecret := fixture.GetBackupSecret(tcFrom, "")
@@ -342,16 +376,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		restoreSecret := fixture.GetBackupSecret(tcTo, "")
 		_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
 		framework.ExpectNoError(err)
-		cred := credentials.NewSharedCredentials("", "default")
-		val, err := cred.Get()
-		framework.ExpectNoError(err)
-		backupS3Secret := fixture.GetS3Secret(tcFrom, val.AccessKeyID, val.SecretAccessKey)
-		_, err = c.CoreV1().Secrets(ns).Create(backupS3Secret)
+		storageSecret := storage.ProvideCredential(ns)
+		_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
 		framework.ExpectNoError(err)
 
 		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 		// create backup CRD to process backup
-		backup := fixture.GetBackupCRDWithBR(tcFrom, backupFolder)
+		backup := storage.ProvideBackup(tcFrom, backupSecret)
 		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
 		framework.ExpectNoError(err)
 
@@ -376,7 +407,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
-		restore := fixture.GetRestoreCRDWithBR(tcTo, backupFolder)
+		restore := storage.ProvideRestore(tcTo, restoreSecret)
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
 		framework.ExpectNoError(err)
 
@@ -410,25 +441,18 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
 
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			awsConfig := aws.NewConfig().
-				WithRegion(backup.Spec.S3.Region).
-				WithCredentials(cred)
-			svc := s3.New(session.Must(session.NewSession(awsConfig)))
-			input := &s3.ListObjectsV2Input{
-				Bucket: aws.String(backup.Spec.S3.Bucket),
-				Prefix: aws.String(backup.Spec.S3.Prefix),
-			}
-			result, err := svc.ListObjectsV2(input)
-			if err != nil {
-				return false, err
-			}
-			if *result.KeyCount != 0 {
-				return false, nil
-			}
-			return true, nil
-		})
+		err = storage.CheckDataCleaned()
 		framework.ExpectNoError(err)
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err, "clean backup failed")
+		framework.Logf("clean backup success")
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
