@@ -577,6 +577,7 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 			test.expectFn(g, syncErr, svc)
 		}
 	}
+	policyLocal := corev1.ServiceExternalTrafficPolicyTypeLocal
 	tests := []*testcase{
 		{
 			name: "Create service",
@@ -740,6 +741,33 @@ func TestTiDBMemberManagerSyncTidbService(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(svc).NotTo(BeNil())
 				g.Expect(svc.Spec.Ports[0].Name).To(Equal("mysql-tidb"))
+			},
+		},
+		{
+			name: "Update service should remain healthcheck node port",
+			prepare: func(tc *v1alpha1.TidbCluster, indexers *fakeIndexers) {
+				tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeLoadBalancer,
+					},
+					ExternalTrafficPolicy: &policyLocal,
+				}
+				_ = indexers.svc.Add(&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
+						Name:            controller.TiDBMemberName(tc.Name),
+						Namespace:       corev1.NamespaceDefault,
+					},
+					Spec: corev1.ServiceSpec{
+						Type:                  corev1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: policyLocal,
+						HealthCheckNodePort:   8888,
+					},
+				})
+			},
+			expectFn: func(g *GomegaWithT, err error, svc *corev1.Service) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(svc.Spec.HealthCheckNodePort).To(Equal(int32(8888)))
 			},
 		},
 	}
