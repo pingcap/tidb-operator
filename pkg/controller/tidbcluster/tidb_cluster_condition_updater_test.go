@@ -57,7 +57,7 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			},
 			wantStatus:  v1.ConditionFalse,
 			wantReason:  utiltidbcluster.StatfulSetNotUpToDate,
-			wantMessage: "Statefulset(s) were in progress",
+			wantMessage: "Statefulset(s) are in progress",
 		},
 		{
 			name: "pd(s) not healthy",
@@ -95,7 +95,7 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			},
 			wantStatus:  v1.ConditionFalse,
 			wantReason:  utiltidbcluster.PDUnhealthy,
-			wantMessage: "PD(s) were not healthy",
+			wantMessage: "PD(s) are not healthy",
 		},
 		{
 			name: "tikv(s) not healthy",
@@ -141,7 +141,7 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			},
 			wantStatus:  v1.ConditionFalse,
 			wantReason:  utiltidbcluster.TiKVStoreNotUp,
-			wantMessage: "TiKV store(s) were not up",
+			wantMessage: "TiKV store(s) are not up",
 		},
 		{
 			name: "tidb(s) not healthy",
@@ -195,7 +195,7 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			},
 			wantStatus:  v1.ConditionFalse,
 			wantReason:  utiltidbcluster.TiDBUnhealthy,
-			wantMessage: "TiDB(s) were not healthy",
+			wantMessage: "TiDB(s) are not healthy",
 		},
 		{
 			name: "tiflash(s) not healthy",
@@ -263,7 +263,7 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			},
 			wantStatus:  v1.ConditionFalse,
 			wantReason:  utiltidbcluster.TiFlashStoreNotUp,
-			wantMessage: "TiFlash store(s) were not up",
+			wantMessage: "TiFlash store(s) are not up",
 		},
 		{
 			name: "all ready",
