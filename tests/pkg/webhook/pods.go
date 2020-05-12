@@ -70,7 +70,10 @@ func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionRespo
 		return &reviewResponse
 	}
 
-	pdClient := pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	pdClient, err := pdapi.NewDefaultPDControl(kubeCli).GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	if err != nil {
+		return &reviewResponse
+	}
 
 	// if pod is already deleting, return Allowed
 	if pod.DeletionTimestamp != nil {

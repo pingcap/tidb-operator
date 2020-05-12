@@ -3452,7 +3452,11 @@ func (oa *operatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient
 		framework.ExpectNoError(err)
 		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc, cfg.TLSClientConfig.CAData)
 	}
-	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
+	pdClient, err := controller.GetPDClient(oa.pdControl, tc)
+	if err != nil {
+		return nil, nil, err
+	}
+	return pdClient, dummyCancel, nil
 }
 
 func (oa *operatorActions) getTiDBDSN(ns, tcName, databaseName, password string) (string, context.CancelFunc, error) {

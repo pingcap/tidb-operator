@@ -57,7 +57,11 @@ func NewProxiedPDClient(kubeCli kubernetes.Interface, fw utilportforward.PortFor
 		Scheme: scheme,
 		Host:   fmt.Sprintf("%s:%d", localHost, localPort),
 	}
-	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
+	pdclient, err := pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	return pdclient, cancel, nil
 }
 
 func NewProxiedPDClientFromTidbCluster(kubeCli kubernetes.Interface, fw utilportforward.PortForward, tc *v1alpha1.TidbCluster, caCert []byte) (pdapi.PDClient, context.CancelFunc, error) {
