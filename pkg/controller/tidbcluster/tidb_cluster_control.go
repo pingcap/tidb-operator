@@ -73,20 +73,21 @@ func NewDefaultTidbClusterControl(
 }
 
 type defaultTidbClusterControl struct {
-	tcControl            controller.TidbClusterControlInterface
-	pdMemberManager      manager.Manager
-	tikvMemberManager    manager.Manager
-	tidbMemberManager    manager.Manager
-	reclaimPolicyManager manager.Manager
-	metaManager          manager.Manager
-	orphanPodsCleaner    member.OrphanPodsCleaner
-	pvcCleaner           member.PVCCleanerInterface
-	pumpMemberManager    manager.Manager
-	tiflashMemberManager manager.Manager
-	discoveryManager     member.TidbDiscoveryManager
-	podRestarter         member.PodRestarter
-	conditionUpdater     TidbClusterConditionUpdater
-	recorder             record.EventRecorder
+	tcControl                controller.TidbClusterControlInterface
+	pdMemberManager          manager.Manager
+	tikvMemberManager        manager.Manager
+	tidbMemberManager        manager.Manager
+	reclaimPolicyManager     manager.Manager
+	metaManager              manager.Manager
+	orphanPodsCleaner        member.OrphanPodsCleaner
+	pvcCleaner               member.PVCCleanerInterface
+	pumpMemberManager        manager.Manager
+	tiflashMemberManager     manager.Manager
+	discoveryManager         member.TidbDiscoveryManager
+	tidbClusterStatusManager manager.Manager
+	podRestarter             member.PodRestarter
+	conditionUpdater         TidbClusterConditionUpdater
+	recorder                 record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.

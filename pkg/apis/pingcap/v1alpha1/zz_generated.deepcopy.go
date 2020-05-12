@@ -5381,6 +5381,7 @@ func (in *TidbClusterStatus) DeepCopyInto(out *TidbClusterStatus) {
 	in.TiDB.DeepCopyInto(&out.TiDB)
 	in.Pump.DeepCopyInto(&out.Pump)
 	in.TiFlash.DeepCopyInto(&out.TiFlash)
+	out.Monitor = in.Monitor
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]TidbClusterCondition, len(*in))
