@@ -156,6 +156,14 @@ pipeline {
     post {
         always {
             dir(ARTIFACTS) {
+                sh """#!/bin/bash
+                echo "info: change ownerships for jenkins"
+                chown -R 1000:1000 .
+                echo "info: print total size of artifacts"
+                du -sh .
+                echo "info: list all files"
+                find .
+                """
                 archiveArtifacts artifacts: "**", allowEmptyArchive: true
                 junit testResults: "*.xml", allowEmptyResults: true
             }

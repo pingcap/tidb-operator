@@ -174,12 +174,12 @@ def build(String name, String code, Map resources = e2ePodResources) {
 						chown -R 1000:1000 .
 						echo "info: print total size of artifacts"
 						du -sh .
+						echo "info: list all files"
+						find .
 						echo "info: moving all artifacts into a sub-directory"
 						shopt -s extglob
 						mkdir ${name}
 						mv !(${name}) ${name}/
-						echo "info: list all files"
-						find .
 						"""
 						archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
 						junit testResults: "${name}/*.xml", allowEmptyResults: true
