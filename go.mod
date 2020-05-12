@@ -72,7 +72,6 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	github.com/yisaer/crd-validation v0.0.3
-	go.etcd.io/etcd v3.3.20+incompatible // indirect
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gomodules.xyz/jsonpatch/v2 v2.0.1

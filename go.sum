@@ -790,8 +790,6 @@ github.com/xlab/handysort v0.0.0-20150421192137-fb3537ed64a1/go.mod h1:QcJo0QPSf
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yisaer/crd-validation v0.0.3 h1:PmhrjDQbdkZOYz/1iVnK1UlY8q8Uw7hn1rlGm575sL8=
 github.com/yisaer/crd-validation v0.0.3/go.mod h1:aWBclg0rUEvCnOnRZGDF6oC9Ljni2s17G/YVdYuTTww=
-go.etcd.io/etcd v3.3.20+incompatible h1:EyOVslCepyFB2JcbYXvqcYdBTh7cyBKU2NYdKfgTSC0=
-go.etcd.io/etcd v3.3.20+incompatible/go.mod h1:yaeTdrJi5lOmYerz05bd8+V7KubZs8YSFZfzsF9A6aI=
 go.mongodb.org/mongo-driver v1.0.3/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.1.1 h1:Sq1fR+0c58RME5EoqKdjkiQAmPjmfHlZOoRI6fTUOcs=
 go.mongodb.org/mongo-driver v1.1.1/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
