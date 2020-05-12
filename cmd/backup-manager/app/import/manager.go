@@ -83,7 +83,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Message: err.Error(),
 		})
 		errs = append(errs, uerr)
-		errorutils.NewAggregate(errs)
+		return errorutils.NewAggregate(errs)
 	}
 
 	rm.setOptions(restore)
@@ -116,7 +116,7 @@ func (rm *RestoreManager) ProcessRestore() error {
 			Message: err.Error(),
 		})
 		errs = append(errs, uerr)
-		errorutils.NewAggregate(errs)
+		return errorutils.NewAggregate(errs)
 	}
 
 	defer db.Close()
@@ -147,7 +147,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Message: fmt.Sprintf("download backup %s data failed, err: %v", rm.BackupPath, err),
 		})
 		errs = append(errs, uerr)
-		errorutils.NewAggregate(errs)
+		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("download cluster %s backup %s data success", rm, rm.BackupPath)
 
@@ -163,7 +163,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Message: fmt.Sprintf("unarchive backup %s data failed, err: %v", restoreDataPath, err),
 		})
 		errs = append(errs, uerr)
-		errorutils.NewAggregate(errs)
+		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
 
@@ -178,7 +178,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
 		})
 		errs = append(errs, uerr)
-		errorutils.NewAggregate(errs)
+		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
 
