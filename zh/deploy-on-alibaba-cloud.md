@@ -90,6 +90,8 @@ category: how-to
     operator_version = "v1.1.0-rc.1"
     ```
 
+    如果需要在集群中部署 TiFlash，需要在 `terraform.tfvars` 中设置 `create_tiflash_node_pool = true`，也可以设置 `tiflash_count` 和 `tiflash_instance_type` 来配置 TiFlash 节点池的节点数量和实例类型，`tiflash_count` 默认为 `2`，`tiflash_instance_type` 默认为 `ecs.i2.2xlarge`。
+
     > **注意：**
     >
     > 请通过 `variables.tf` 文件中的 `operator_version` 确认当前版本脚本中默认的 TiDB Operator 版本，如果默认版本不是想要使用的版本，请在 `terraform.tfvars` 中配置 `operator_version`。
@@ -162,10 +164,35 @@ category: how-to
 
     参考 [API 文档](api-references.md)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
 
+    如果要部署 TiFlash，可以在 db.yaml 中配置 `spec.tiflash`，例如：
+
+    ```yaml
+    spec
+      ...
+      tiflash:
+        baseImage: pingcap/tiflash
+        maxFailoverCount: 3
+        nodeSelector:
+          dedicated: TIDB_CLUSTER_NAME-tiflash
+        replicas: 1
+        storageClaims:
+        - resources:
+            requests:
+              storage: 100Gi
+          storageClassName: local-volume
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: TIDB_CLUSTER_NAME-tiflash
+    ```
+
+    根据实际情况修改 `replicas`、`storageClaims[].resources.requests.storage`、`storageClassName`。
+
     > **注意：**
     >
     > * 请使用 ACK 部署过程中配置的 `tidb_cluster_name` 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `TIDB_CLUSTER_NAME`。
-    > * 请确保 ACK 部署过程中 PD、TiKV 或者 TiDB 节点的数量的值，与 `db.yaml` 中对应组件的 `replicas` 字段值一致。
+    > * 请确保 ACK 部署过程中 PD、TiKV、TiFlash 或者 TiDB 节点的数量的值大于等于 `db.yaml` 中对应组件的 `replicas`。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
 
 2. 创建 `Namespace`：
@@ -234,9 +261,14 @@ mysql -h ${tidb_lb_ip} -P 4000 -u root
 kubectl get pods --namespace ${namespace} -o wide --watch
 ```
 
-## TiDB 集群水平伸缩
+## TiDB 集群扩容
 
-若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `tikv_count` 或者 `tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}` 修改对应组件的 `replicas`。
+若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `tikv_count`、`tiflash_count` 或者 `tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}` 修改对应组件的 `replicas`。
+
+> **注意：**
+>
+> - 由于缩容过程中无法确定会缩掉哪个节点，目前还不支持 TiDB 集群的缩容。
+> - 扩容过程会持续几分钟，你可以通过 `kubectl --kubeconfig credentials/kubeconfig get po -n ${namespace} --watch` 命令持续观察进度。
 
 ## 销毁集群
 
@@ -340,6 +372,8 @@ module "tidb-cluster-staging" {
 | `pd_instance_type` | PD 实例类型 | `ecs.g5.large` |
 | `tikv_count` | TiKV 节点数 | 3 |
 | `tikv_instance_type` | TiKV 实例类型 | `ecs.i2.2xlarge` |
+| `tiflash_count` | TiFlash 节点数 | 2 |
+| `tiflash_instance_type` | TiFlash 实例类型 | `ecs.i2.2xlarge` |
 | `tidb_count` | TiDB 节点数 | 2 |
 | `tidb_instance_type` | TiDB 实例类型 | `ecs.c5.4xlarge` |
 | `monitor_instance_type` | 监控组件的实例类型 | `ecs.c5.xlarge` |
