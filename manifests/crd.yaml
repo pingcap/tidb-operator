@@ -6,6 +6,9 @@ metadata:
   name: tidbclusters.pingcap.com
 spec:
   additionalPrinterColumns:
+  - JSONPath: .status.conditions[?(@.type=="Ready")].status
+    name: Ready
+    type: string
   - JSONPath: .status.pd.image
     description: The image for PD cluster
     name: PD
@@ -50,6 +53,10 @@ spec:
     description: The desired replicas number of TiDB cluster
     name: Desire
     type: integer
+  - JSONPath: .status.conditions[?(@.type=="Ready")].message
+    name: Status
+    priority: 1
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date

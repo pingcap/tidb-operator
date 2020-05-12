@@ -216,6 +216,7 @@ func NewController(
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
 			podRestarter,
+			&tidbClusterConditionUpdater{},
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
