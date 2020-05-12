@@ -65,7 +65,6 @@ func TestTidbDiscoveryManager_Reconcile(t *testing.T) {
 			name: "Setting discovery resource",
 			prepare: func(tc *v1alpha1.TidbCluster, ctrl *controller.FakeGenericControl) {
 				tc.Spec.Discovery.ResourceRequirements = corev1.ResourceRequirements{
-
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("1"),
 						corev1.ResourceMemory:           resource.MustParse("2Gi"),
@@ -81,6 +80,18 @@ func TestTidbDiscoveryManager_Reconcile(t *testing.T) {
 			expect: func(deploys []appsv1.Deployment, tc *v1alpha1.TidbCluster, err error) {
 				g.Expect(err).To(Succeed())
 				g.Expect(deploys).To(HaveLen(1))
+				g.Expect(deploys[0].Spec.Template.Spec.Containers[0].Resources).To(Equal(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("2Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
+					},
+				}))
 				g.Expect(deploys[0].Name).To((Equal("test-discovery")))
 			},
 			errOnCreateOrUpdate: false,
