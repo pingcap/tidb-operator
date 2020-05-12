@@ -28,7 +28,7 @@ spec:
       # port:         4000
       # user:         root
       # tlsClientSecretName: <backup-tls-secretname>
-    s3:
+    gcs:
       provider: gcp
       region: us-west-2
       bucket: backup
