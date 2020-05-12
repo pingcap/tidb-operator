@@ -315,6 +315,9 @@ const (
 )
 
 func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
+	if brType != BRType && brType != DumperType {
+		return nil
+	}
 	sendCredToTikv := true
 	br := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -339,17 +342,19 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 			},
 		},
 	}
-	if brType == BRType {
-
-	} else if brType == DumperType {
+	if brType == DumperType {
+		storage := "local-storage"
 		br.Spec.BR = nil
-	} else {
-		return nil
+		br.Spec.StorageClassName = &storage
+		br.Spec.StorageSize = "1Gi"
 	}
 	return br
 }
 
 func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Restore {
+	if restoreType != BRType && restoreType != DumperType {
+		return nil
+	}
 	sendCredToTikv := true
 	restore := &v1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{
@@ -374,12 +379,11 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 			},
 		},
 	}
-	if restoreType == BRType {
-
-	} else if restoreType == DumperType {
+	if restoreType == DumperType {
+		storage := "local-storage"
 		restore.Spec.BR = nil
-	} else {
-		return nil
+		restore.Spec.StorageClassName = &storage
+		restore.Spec.StorageSize = "1Gi"
 	}
 	return restore
 }

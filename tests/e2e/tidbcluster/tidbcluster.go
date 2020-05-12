@@ -337,10 +337,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tcFrom.Spec.TiDB.Replicas = 1
 		err := genericCli.Create(context.TODO(), tcFrom)
 		framework.ExpectNoError(err)
-		err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err)
-		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV3Version)
-
 		// create restore cluster
 		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
 		tcTo.Spec.PD.Replicas = 1
@@ -348,6 +344,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tcTo.Spec.TiDB.Replicas = 1
 		err = genericCli.Create(context.TODO(), tcTo)
 		framework.ExpectNoError(err)
+
+		// wait cluster ready
+		err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV3Version)
+
 		err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err)
 		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV3Version)
