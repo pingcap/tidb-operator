@@ -94,13 +94,16 @@ func (bm *BackupManager) ProcessBackup() error {
 
 	reason, err := bm.setOptions(backup)
 	if err != nil {
+		errs = append(errs, err)
 		klog.Errorf("set mydumper backup %s option for cluster %s failed, err: %v", bm.ResourceName, bm, err)
-		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  reason,
 			Message: err.Error(),
 		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
 	}
 
 	var db *sql.DB
