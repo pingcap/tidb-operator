@@ -50,7 +50,9 @@ func NewBackupCommand() *cobra.Command {
 
 func runBackup(backupOpts backup.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
-	cmdutil.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	options := []informers.SharedInformerOption{
 		informers.WithNamespace(backupOpts.Namespace),
 	}
