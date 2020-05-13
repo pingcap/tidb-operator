@@ -33,9 +33,9 @@ type Options struct {
 }
 
 func (ro *Options) getRestoreDataPath() string {
-	backupName := filepath.Base(ro.BackupPath)
-	bucketName := filepath.Base(filepath.Dir(ro.BackupPath))
-	return filepath.Join(constants.BackupRootPath, bucketName, backupName)
+	// The backupPath format must be like this storageType://backup/to/path, so the split array must have two elements
+	backupSuffix := strings.Split(ro.BackupPath, "://")[1]
+	return filepath.Join(constants.BackupRootPath, backupSuffix)
 }
 
 func (ro *Options) downloadBackupData(localPath string, opts []string) error {
