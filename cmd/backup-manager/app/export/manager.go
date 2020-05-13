@@ -70,7 +70,7 @@ func (bm *BackupManager) setOptions(backup *v1alpha1.Backup) (string, error) {
 	if err != nil {
 		return reason, err
 	}
-	bm.Options.Prefix = prefix
+	bm.Options.Prefix = strings.Trim(prefix, "/")
 	return "", nil
 }
 
