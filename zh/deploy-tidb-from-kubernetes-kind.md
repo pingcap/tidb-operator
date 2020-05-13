@@ -17,111 +17,38 @@ kind 通过使用 Docker 容器作为集群节点模拟出一个本地的 Kubern
 
 ## 环境准备
 
-部署前，请确认软件、资源等满足如下需求：
-
-- 资源需求：CPU 2 核+、内存 4G+
-
-    > **注意：**
-    >
-    > 对于 macOS 系统，需要给 Docker 分配 2 核+ CPU 和 4G+ 内存。详情请参考 [Mac 上配置 Docker](https://docs.docker.com/docker-for-mac/#advanced)。
-
-- [Docker](https://docs.docker.com/install/)：版本 >= 17.03
-- [Helm Client](https://helm.sh/docs/intro/install/)：版本 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl)：版本 >= 1.12，建议 1.13 或更高版本
-
-    > **注意：**
-    >
-    > 不同 kubectl 版本，输出可能略有不同。
-
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)：版本 >= 0.4.0
+- [docker](https://docs.docker.com/install/)：版本 >= 17.03
+- [helm](https://helm.sh/docs/intro/install/)：helm 2 或 helm 3 最新稳定版
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl)：版本 >= 1.12
+- [kind](https://kind.sigs.k8s.io/)：版本 >= 0.7.0 建议最新版
 - [net.ipv4.ip_forward](https://linuxconfig.org/how-to-turn-on-off-ip-forwarding-in-linux) 需要被设置为 `1`
 
 ## 第 1 步：通过 kind 部署 Kubernetes 集群
 
-首先确认 Docker 进程正常运行，然后你可以通过脚本命令快速启动一个本地的 Kubernetes 集群。
+参考 `kind` [快速使用文档](https://kind.sigs.k8s.io/docs/user/quick-start)安装 `kind` 并创建一个集群。
 
-1. Clone 官方提供的代码：
+以下以 0.8.1 版本为例：
 
-    {{< copyable "shell-regular" >}}
+```
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.8.1/kind-$(uname)-amd64
+chmod +x ./kind
+./kind create cluster
+```
 
-    ``` shell
-    git clone --depth=1 https://github.com/pingcap/tidb-operator && \
-    cd tidb-operator
-    ```
+测试集群是否创建成功：
 
-2. 运行脚本，在本地创建一个 Kubernetes 集群：
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    hack/kind-cluster-build.sh
-    ```
-
-    > **注意：**
-    >
-    > 通过该脚本启动的 Kubernetes 集群默认有 6 个节点，Kubernetes 版本默认为 v1.12.8，每个节点默认挂载数为 9。你可以通过启动参数去修改这些参数：
-    >
-    > {{< copyable "shell-regular" >}}
-    >
-    > ```shell
-    > hack/kind-cluster-build.sh --nodeNum 2 --k8sVersion v1.14.6 --volumeNum 3
-    > ```
-
-3. 集群创建完毕后，执行下列命令将 kubectl 的默认配置文件切换到 `kube-config`，从而连接到该本地 Kubernetes 集群：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    export KUBECONFIG="$(kind get kubeconfig-path)"
-    ```
-
-4. 查看该 kubernetes 集群信息：
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl cluster-info
-    ```
-
-    输出如下类似信息：
-
-    ``` shell
-    Kubernetes master is running at https://127.0.0.1:50295
-    KubeDNS is running at https://127.0.0.1:50295/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
-    ```
-
-5. 查看该 Kubernetes 集群的 `storageClass`：
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl get storageClass
-    ```
-
-    输出如下类似信息：
-
-    ``` shell
-    NAME                 PROVISIONER                    AGE
-    local-storage        kubernetes.io/no-provisioner   7m50s
-    standard (default)   kubernetes.io/host-path        8m29s
-    ```
+```
+kubectl cluster-info 
+```
 
 ## 第 2 步：部署 TiDB Operator
 
-配置 PingCAP 官方 chart 仓库:
+参考 [Helm 安装文档](https://helm.sh/docs/intro/install/) 安装 Helm 或使用以下命令安装最新 Helm 3 稳定版：
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-helm repo add pingcap https://charts.pingcap.org/
-```
-
-添加完成后，可以使用 `helm search` 搜索 PingCAP 提供的 chart：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm search pingcap -l
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 ```
 
 TiDB Operator 使用 [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) 扩展 Kubernetes，所以要使用 TiDB Operator，必须先创建 `TidbCluster` 等各种自定义资源类型：
@@ -129,31 +56,36 @@ TiDB Operator 使用 [CRD (Custom Resource Definition)](https://kubernetes.io/do
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0-rc.3/manifests/crd.yaml && \
 kubectl get crd tidbclusters.pingcap.com
 ```
 
-创建 `TidbCluster` 自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator。
+安装 TiDB Operator，以下使用 Helm 3 为例：
 
-1. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
+{{< copyable "shell-regular" >}}
 
-    {{< copyable "shell-regular" >}}
+```shell
+helm repo add pingcap https://charts.pingcap.org/
+kubectl create ns pingcap
+helm install --namespace pingcap tidb-operator pingcap/tidb-operator --version v1.1.0-rc.3
+```
 
-    ```shell
-    mkdir -p /home/tidb/tidb-operator && \
-    helm inspect values pingcap/tidb-operator --version=v1.1.0-rc.1 > /home/tidb/tidb-operator/values-tidb-operator.yaml
-    ```
+若是使用 Helm 2，参考[安装 Helm](tidb-toolkit.md#使用-helm) 初始化 Helm 后，使用以下命令部署 TiDB Operator：
 
-    按需修改 `values.yaml` 文件中的配置。
+{{< copyable "shell-regular" >}}
 
-2. 安装 TiDB Operator
+```shell
+helm repo add pingcap https://charts.pingcap.org/
+helm install --namespace pingcap --name tidb-operator pingcap/tidb-operator --version v1.1.0-rc.3
+```
 
-    {{< copyable "shell-regular" >}}
+查看 TiDB Operator 运行状态：
 
-    ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0-rc.1 -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
-    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
-    ```
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl -n pingcap get pods
+```
 
 ## 第 3 步：部署 TiDB 集群
 
