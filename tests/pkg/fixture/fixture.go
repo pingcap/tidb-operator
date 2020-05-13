@@ -127,6 +127,23 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	}
 }
 
+func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string) *v1alpha1.TidbInitializer {
+	return &v1alpha1.TidbInitializer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      initName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbInitializerSpec{
+			Image: "tnir/mysqlclient",
+			Clusters: v1alpha1.TidbClusterRef{
+				Name: tcName,
+			},
+			PasswordSecret:      &initPassWDName,
+			TLSClientSecretName: &initTLSName,
+		},
+	}
+}
+
 func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {
 	imagePullPolicy := corev1.PullIfNotPresent
 	monitor := &v1alpha1.TidbMonitor{
@@ -269,6 +286,19 @@ func GetBackupSecret(tc *v1alpha1.TidbCluster, password string) *corev1.Secret {
 		},
 		Data: map[string][]byte{
 			"password": []byte(password),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+}
+
+func GetInitializerSecret(tc *v1alpha1.TidbCluster, initPassWDName, password string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      initPassWDName,
+			Namespace: tc.GetNamespace(),
+		},
+		Data: map[string][]byte{
+			"root": []byte(password),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
