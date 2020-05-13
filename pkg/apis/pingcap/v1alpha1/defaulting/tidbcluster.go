@@ -25,6 +25,7 @@ const (
 	defaultPDImage      = "pingcap/pd"
 	defaultBinlogImage  = "pingcap/tidb-binlog"
 	defaultTiFlashImage = "pingcap/tiflash"
+	defaultTiCDCImage   = "pingcap/ticdc"
 )
 
 var (
@@ -41,6 +42,9 @@ func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.TiFlash != nil {
 		setTiFlashSpecDefault(tc)
+	}
+	if tc.Spec.TiCDC != nil {
+		setTiCDCSpecDefault(tc)
 	}
 }
 
@@ -128,5 +132,13 @@ func setTiFlashSpecDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.TiFlash.MaxFailoverCount == nil {
 		tc.Spec.TiFlash.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
+}
+
+func setTiCDCSpecDefault(tc *v1alpha1.TidbCluster) {
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiCDC.Version != nil {
+		if tc.Spec.TiCDC.BaseImage == "" {
+			tc.Spec.TiCDC.BaseImage = defaultTiCDCImage
+		}
 	}
 }

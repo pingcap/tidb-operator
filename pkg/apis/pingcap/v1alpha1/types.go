@@ -118,6 +118,10 @@ type TidbClusterSpec struct {
 	// +optional
 	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
 
+	// TiCDC cluster spec
+	// +optional
+	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
+
 	// Pump cluster spec
 	// +optional
 	Pump *PumpSpec `json:"pump,omitempty"`
@@ -212,7 +216,43 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus    `json:"tidb,omitempty"`
 	Pump      PumpStatus    `josn:"pump,omitempty"`
 	TiFlash   TiFlashStatus `json:"tiflash,omitempty"`
+	// Represents the latest available observations of a tidb cluster's state.
+	// +optional
+	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
 }
+
+// TidbClusterCondition describes the state of a tidb cluster at a certain point.
+type TidbClusterCondition struct {
+	// Type of the condition.
+	Type TidbClusterConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// The reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// A human readable message indicating details about the transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+// TidbClusterConditionType represents a tidb cluster condition value.
+type TidbClusterConditionType string
+
+const (
+	// TidbClusterReady indicates that the tidb cluster is ready or not.
+	// This is defined as:
+	// - All statefulsets are up to date (currentRevision == updateRevision).
+	// - All PD members are healthy.
+	// - All TiDB pods are healthy.
+	// - All TiKV stores are up.
+	// - All TiFlash stores are up.
+	TidbClusterReady TidbClusterConditionType = "Ready"
+)
 
 // +k8s:openapi-gen=true
 // PDSpec contains details of PD members
@@ -338,6 +378,25 @@ type TiFlashSpec struct {
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+}
+
+// TiCDCSpec contains details of TiCDC members
+// +k8s:openapi-gen=true
+type TiCDCSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCDC
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/ticdc
+	// +optional
+	BaseImage string `json:"baseImage"`
 }
 
 // +k8s:openapi-gen=true
