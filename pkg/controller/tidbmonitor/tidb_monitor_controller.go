@@ -19,6 +19,7 @@ import (
 
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -51,6 +52,7 @@ type Controller struct {
 func NewController(
 	kubeCli kubernetes.Interface,
 	genericCli client.Client,
+	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 ) *Controller {
@@ -63,7 +65,7 @@ func NewController(
 	tidbMonitorInformer := informerFactory.Pingcap().V1alpha1().TidbMonitors()
 	deploymentInformer := kubeInformerFactory.Apps().V1().Deployments()
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
-	monitorManager := monitor.NewMonitorManager(kubeCli, informerFactory, kubeInformerFactory, typedControl, recorder)
+	monitorManager := monitor.NewMonitorManager(kubeCli, cli, informerFactory, kubeInformerFactory, typedControl, recorder)
 
 	tmc := &Controller{
 		cli:      genericCli,
