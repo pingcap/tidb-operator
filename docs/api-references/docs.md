@@ -734,6 +734,20 @@ TiFlashSpec
 </tr>
 <tr>
 <td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcspec">
+TiCDCSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCDC cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pump</code></br>
 <em>
 <a href="#pumpspec">
@@ -2624,6 +2638,7 @@ and component-level overrides</p>
 (<em>Appears on:</em>
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
+<a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>)
@@ -8052,6 +8067,88 @@ For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret &ndash
 For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 For Client: kubectl create secret generic <clusterName>-cluster-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
 Same for other components.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcspec">TiCDCSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TiCDCSpec contains details of TiCDC members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiCDC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 </tbody>
@@ -13628,6 +13725,109 @@ TidbAutoScalerStatus
 </tr>
 </tbody>
 </table>
+<h3 id="tidbclustercondition">TidbClusterCondition</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TidbClusterCondition describes the state of a tidb cluster at a certain point.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+<a href="#tidbclusterconditiontype">
+TidbClusterConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Type of the condition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#conditionstatus-v1-core">
+Kubernetes core/v1.ConditionStatus
+</a>
+</em>
+</td>
+<td>
+<p>Status of the condition, one of True, False, Unknown.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastUpdateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>The last time this condition was updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Last time the condition transitioned from one status to another.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The reason for the condition&rsquo;s last transition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>A human readable message indicating details about the transition.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbclusterconditiontype">TidbClusterConditionType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclustercondition">TidbClusterCondition</a>)
+</p>
+<p>
+<p>TidbClusterConditionType represents a tidb cluster condition value.</p>
+</p>
 <h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
@@ -13739,6 +13939,20 @@ TiFlashSpec
 <td>
 <em>(Optional)</em>
 <p>TiFlash cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcspec">
+TiCDCSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCDC cluster spec</p>
 </td>
 </tr>
 <tr>
@@ -14068,6 +14282,20 @@ TiFlashStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#tidbclustercondition">
+[]TidbClusterCondition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a tidb cluster&rsquo;s state.</p>
 </td>
 </tr>
 </tbody>
