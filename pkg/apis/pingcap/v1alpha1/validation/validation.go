@@ -62,6 +62,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiFlash != nil {
 		allErrs = append(allErrs, validateTiFlashSpec(spec.TiFlash, fldPath.Child("tiflash"))...)
 	}
+	if spec.TiCDC != nil {
+		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
+	}
 	return allErrs
 }
 
@@ -87,6 +90,12 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims"),
 			spec.StorageClaims, "storageClaims should be configured at least one item."))
 	}
+	return allErrs
+}
+
+func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	return allErrs
 }
 
