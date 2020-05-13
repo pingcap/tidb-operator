@@ -1,17 +1,14 @@
----
 apiVersion: pingcap.com/v1alpha1
 kind: Restore
 metadata:
-  name: demo1-restore-s3-br
+  name: demo-restore-gcs-br
   namespace: test1
-  # annotations:
-    # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
 spec:
   # backupType: full
-  # useKMS: false
   # serviceAccount: myServiceAccount
   br:
     cluster: myCluster
+    sendCredToTikv: true
     # clusterNamespce: <restore-namespace>
     # db: <db-name>
     # table: <table-name>
@@ -21,16 +18,15 @@ spec:
     # rateLimit: 0
     # timeAgo: <time>
     # checksum: true
-    # sendCredToTikv: true
   to:
     host: 172.30.6.56
     secretName: mySecret
     # port: 4000
     # user: root
     # tlsClientSecretName: <restore-tls-secretname>
-  s3:
-    provider: ceph
-    endpoint: http://10.233.57.220
-    secretName: ceph-secret
+  gcs:
+    projectId: gcp
+    location: us-west2
     bucket: backup
-    prefix: test1-demo1
+    prefix: test-demo1
+    secretName: gcp-secret
