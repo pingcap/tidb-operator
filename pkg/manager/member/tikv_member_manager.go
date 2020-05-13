@@ -435,6 +435,11 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				ContainerPort: int32(20160),
 				Protocol:      corev1.ProtocolTCP,
 			},
+			{
+				Name:          "status",
+				ContainerPort: int32(20180),
+				Protocol:      corev1.ProtocolTCP,
+			},
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
