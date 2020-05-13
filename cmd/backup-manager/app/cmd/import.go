@@ -19,7 +19,7 @@ import (
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/import"
+	_import "github.com/pingcap/tidb-operator/cmd/backup-manager/app/import"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -50,7 +50,9 @@ func NewImportCommand() *cobra.Command {
 
 func runImport(restoreOpts _import.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
-	cmdutil.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	options := []informers.SharedInformerOption{
 		informers.WithNamespace(restoreOpts.Namespace),
 	}

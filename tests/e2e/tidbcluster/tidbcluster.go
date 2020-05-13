@@ -980,7 +980,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimDelete
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
-		err = tests.CheckTidbMonitor(tm, c, fw)
+		err = tests.CheckTidbMonitor(tm, cli, c, fw)
 		framework.ExpectNoError(err, "Expected tidbmonitor checked success")
 
 		pvc, err := c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
@@ -1075,6 +1075,20 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
+
+		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if tc.Status.Monitor != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
 	})
 
 	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
@@ -1259,13 +1273,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = installTiDBCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
+			ginkgo.By("Installing separate tidbInitializer client certificate")
+			err = installTiDBInitializerCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install separate tidbInitializer client certificate")
+
+			ginkgo.By("Installing separate dashboard client certificate")
+			err = installPDDashboardCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install separate dashboard client certificate")
+
 			ginkgo.By("Installing tidb components certificates")
 			err = installTiDBComponentsCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
+			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
 			tc.Spec.PD.Replicas = 3
+			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
@@ -1279,6 +1303,31 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Ensure Dashboard use custom secret")
+			foundSecretName := false
+			pdSts, err := stsGetter(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			for _, vol := range pdSts.Spec.Template.Spec.Volumes {
+				if vol.Name == "tidb-client-tls" {
+					foundSecretName = true
+					framework.ExpectEqual(vol.Secret.SecretName, dashTLSName)
+				}
+			}
+			framework.ExpectEqual(foundSecretName, true)
+
+			ginkgo.By("Creating tidb initializer")
+			passwd := "admin"
+			initName := fmt.Sprintf("%s-initializer", tcName)
+			initPassWDName := fmt.Sprintf("%s-initializer-passwd", tcName)
+			initTLSName := fmt.Sprintf("%s-initializer-tls", tcName)
+			initSecret := fixture.GetInitializerSecret(tc, initPassWDName, passwd)
+			_, err = c.CoreV1().Secrets(ns).Create(initSecret)
+			framework.ExpectNoError(err)
+
+			ti := fixture.GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName)
+			err = genericCli.Create(context.TODO(), ti)
 			framework.ExpectNoError(err)
 
 			source := &tests.TidbClusterConfig{
@@ -1317,15 +1366,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Inserting data into source db")
-			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, ""))
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, passwd))
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Checking tidb-binlog works as expected")
-			err = wait.PollImmediate(time.Second*5, time.Minute*5, binlogWorksWhileTLSIsEnabled(fw, c, ns, targetTcName, ""))
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, targetTcName, "", false))
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
-			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, ""))
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Scaling out tidb cluster")
