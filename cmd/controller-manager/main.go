@@ -186,7 +186,7 @@ func main() {
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
-		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, informerFactory, kubeInformerFactory)
+		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, cli, informerFactory, kubeInformerFactory)
 
 		var periodicityController *periodicity.Controller
 		if controller.PodWebhookEnabled {

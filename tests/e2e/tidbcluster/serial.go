@@ -702,7 +702,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
 			framework.ExpectNoError(err, "Create TidbMonitor error")
-			err = tests.CheckTidbMonitor(monitor, c, fw)
+			err = tests.CheckTidbMonitor(monitor, cli, c, fw)
 			framework.ExpectNoError(err, "Check TidbMonitor error")
 			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
 
