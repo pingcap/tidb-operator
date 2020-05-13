@@ -47,7 +47,9 @@ func NewCleanCommand() *cobra.Command {
 
 func runClean(backupOpts clean.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
-	cmdutil.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	options := []informers.SharedInformerOption{
 		informers.WithNamespace(backupOpts.Namespace),
 	}
