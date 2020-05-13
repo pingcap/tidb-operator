@@ -33,6 +33,7 @@ import (
 type Options struct {
 	util.GenericOptions
 	Bucket      string
+	Prefix      string
 	StorageType string
 }
 
@@ -41,8 +42,14 @@ func (bo *Options) getBackupFullPath() string {
 }
 
 func (bo *Options) getBackupRelativePath() string {
+	var backupRelativePath string
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
-	return fmt.Sprintf("%s/%s", bo.Bucket, backupName)
+	if len(bo.Prefix) == 0 {
+		backupRelativePath = fmt.Sprintf("%s/%s", bo.Bucket, backupName)
+	} else {
+		backupRelativePath = fmt.Sprintf("%s/%s/%s", bo.Bucket, bo.Prefix, backupName)
+	}
+	return backupRelativePath
 }
 
 func (bo *Options) getDestBucketURI(remotePath string) string {
