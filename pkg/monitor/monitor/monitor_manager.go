@@ -109,7 +109,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		}
 	}
 
-	// TODO: support Validating hook for updating tidbmonitor that forbidding update clusterRef whose monitorRef has already
+	// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
 	// been occupied by other TidbMonitor.
 	// Patch tidbcluster status first in order to avoiding let multi tidbmonitor monitor the same tidbcluster
 	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
