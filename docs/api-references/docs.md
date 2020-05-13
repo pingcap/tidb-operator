@@ -174,6 +174,19 @@ BRConfig
 </tr>
 <tr>
 <td>
+<code>mydumper</code></br>
+<em>
+<a href="#mydumperconfig">
+MydumperConfig
+</a>
+</em>
+</td>
+<td>
+<p>MydumperConfig is the configs for mydumper</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tolerations</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#toleration-v1-core">
@@ -2081,6 +2094,19 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mydumper</code></br>
+<em>
+<a href="#mydumperconfig">
+MydumperConfig
+</a>
+</em>
+</td>
+<td>
+<p>MydumperConfig is the configs for mydumper</p>
 </td>
 </tr>
 <tr>
@@ -4332,6 +4358,46 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mydumperconfig">MydumperConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>MydumperConfig contains config for mydumper</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options means options for backup data to remote storage with mydumper.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableRegex</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TableRegex means Regular expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>

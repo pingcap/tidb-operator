@@ -4953,6 +4953,15 @@ spec:
               - projectId
               - secretName
               type: object
+            mydumper:
+              properties:
+                options:
+                  items:
+                    type: string
+                  type: array
+                tableRegex:
+                  type: string
+              type: object
             s3:
               properties:
                 acl:
@@ -5806,6 +5815,15 @@ spec:
                   required:
                   - projectId
                   - secretName
+                  type: object
+                mydumper:
+                  properties:
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    tableRegex:
+                      type: string
                   type: object
                 s3:
                   properties:

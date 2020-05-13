@@ -984,6 +984,8 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// MydumperConfig is the configs for mydumper
+	Mydumper *MydumperConfig `json:"mydumper,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -994,6 +996,15 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// MydumperConfig contains config for mydumper
+type MydumperConfig struct {
+	// Options means options for backup data to remote storage with mydumper.
+	Options []string `json:"options,omitempty"`
+	// TableRegex means Regular expression for 'db.table' matching
+	TableRegex *string `json:"tableRegex,omitempty"`
 }
 
 // +k8s:openapi-gen=true

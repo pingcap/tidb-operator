@@ -25,6 +25,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/klog"
 )
 
@@ -48,7 +49,7 @@ func (bo *Options) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
-func (bo *Options) dumpTidbClusterData() (string, error) {
+func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) {
 	bfPath := bo.getBackupFullPath()
 	err := util.EnsureDirectoryExist(bfPath)
 	if err != nil {
@@ -60,12 +61,8 @@ func (bo *Options) dumpTidbClusterData() (string, error) {
 		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
-		"--long-query-guard=3600",
-		"--tidb-force-priority=LOW_PRIORITY",
-		"--verbose=3",
-		"--regex",
-		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))",
 	}
+	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
 
 	output, err := exec.Command("/mydumper", args...).CombinedOutput()
 	if err != nil {
