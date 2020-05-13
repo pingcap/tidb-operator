@@ -304,7 +304,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
 		def builds = [:]
 		builds["E2E v1.12"] = {
-			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --ginkgo.focus='CRD:Backup' --operator-killer")
+			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --ginkgo.focus='Dumper' --operator-killer")
 		}
 // 		builds["E2E v1.12 AdvancedStatefulSet"] = {
 // 			build("v1.12-advanced-statefulset", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer")
