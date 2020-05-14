@@ -25,7 +25,7 @@ type TestStorage interface {
 	// ProvideBackup provide the Backup to save data in the TestStorage
 	ProvideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.Secret, brType string) *v1alpha1.Backup
 	// ProvideRestore provide the Restore to restore data from the Test Storage
-	ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret, restoreType string) (*v1alpha1.Restore,error)
+	ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret, restoreType string) (*v1alpha1.Restore, error)
 	// CheckDataCleaned check whether TestStorage Clean
 	CheckDataCleaned() error
 }
