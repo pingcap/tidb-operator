@@ -300,7 +300,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
-	util.RemainNodeport(newSvc, oldSvc)
+	util.RetainManagedFields(newSvc, oldSvc)
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
