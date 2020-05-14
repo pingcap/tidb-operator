@@ -2857,6 +2857,34 @@ tidb-operator built envs.
 <p>
 <p>ConfigUpdateStrategy represents the strategy to update configuration</p>
 </p>
+<h3 id="configuration">Configuration</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
+<p>Config  is the the desired state of Prometheus Configuration</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>externalConfigMap</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="coprocessorcache">CoprocessorCache</h3>
 <p>
 (<em>Appears on:</em>
@@ -6796,6 +6824,31 @@ int
 <em>
 <a href="#ingressspec">
 IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>container</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#configuration">
+Configuration
 </a>
 </em>
 </td>
