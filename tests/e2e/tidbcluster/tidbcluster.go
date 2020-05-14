@@ -497,7 +497,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return
 		}
 		framework.Logf("clean backup success")
-		return true, nil
+		time.Sleep(10 * time.Minute)
+		return false, nil
 	}
 
 	ginkgo.It("CRD:Backup and restore with BR", func() {
