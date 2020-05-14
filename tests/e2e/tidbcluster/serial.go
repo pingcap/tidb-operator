@@ -164,6 +164,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 5
 			tc.Spec.TiDB.Replicas = 5
+			tc.Spec.TiFlash.Replicas = 5
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
@@ -171,7 +172,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			scalingTests := []struct {
 				name        string
-				component   string // tikv,pd,tidb
+				component   string // tikv,pd,tidb,tiflash
 				replicas    int32
 				deleteSlots sets.Int32
 			}{
@@ -190,6 +191,24 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				{
 					name:        "Scaling tikv by adding pod 1 and deleting pod 2",
 					component:   "tikv",
+					replicas:    4,
+					deleteSlots: sets.NewInt32(2),
+				},
+				{
+					name:        "Scaling in tiflash from 5 to 3 by deleting pods 1 and 3",
+					component:   "tiflash",
+					replicas:    3,
+					deleteSlots: sets.NewInt32(1, 3),
+				},
+				{
+					name:        "Scaling out tiflash from 3 to 4 by adding pod 3",
+					component:   "tiflash",
+					replicas:    4,
+					deleteSlots: sets.NewInt32(1),
+				},
+				{
+					name:        "Scaling tiflash by adding pod 1 and deleting pod 2",
+					component:   "tiflash",
 					replicas:    4,
 					deleteSlots: sets.NewInt32(2),
 				},
@@ -257,6 +276,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					if st.component == "tikv" {
 						tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.TiKV.Replicas = replicas
+					} else if st.component == "tiflash" {
+						tc.Annotations[label.AnnTiFlashDeleteSlots] = mustToString(st.deleteSlots)
+						tc.Spec.TiFlash.Replicas = replicas
 					} else if st.component == "pd" {
 						tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.PD.Replicas = replicas

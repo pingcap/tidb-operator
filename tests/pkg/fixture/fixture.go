@@ -123,6 +123,16 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					},
 				},
 			},
+			TiFlash: &v1alpha1.TiFlashSpec{
+				Replicas:         1,
+				BaseImage:        "pingcap/tiflash",
+				MaxFailoverCount: pointer.Int32Ptr(3),
+				StorageClaims: []v1alpha1.StorageClaim{
+					v1alpha1.StorageClaim{
+						Resources: WithStorage(BurstbleMedium, "10Gi"),
+					},
+				},
+			},
 		},
 	}
 }

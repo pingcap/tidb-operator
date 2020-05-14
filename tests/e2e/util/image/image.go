@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	TiDBV3Version                 = "v3.0.8"
-	TiDBV3UpgradeVersion          = "v3.0.9"
+	TiDBV3Version                 = "v3.1.0"
+	TiDBV3UpgradeVersion          = "v3.1.1"
 	TiDBV4Version                 = "v4.0.0-rc"
 	TiDBV4UpgradeVersion          = "v4.0.0-rc.2"
 	PrometheusImage               = "prom/prometheus"
@@ -36,7 +36,7 @@ const (
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
 	TiDBMonitorReloaderVersion    = "v1.0.1"
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
-	TiDBMonitorInitializerVersion = "v3.0.8"
+	TiDBMonitorInitializerVersion = "v3.1.0"
 	GrafanaImage                  = "grafana/grafana"
 	GrafanaVersion                = "6.0.1"
 )
