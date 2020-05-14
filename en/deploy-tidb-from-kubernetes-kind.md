@@ -19,142 +19,78 @@ kind is a tool for running local Kubernetes clusters using Docker containers as 
 
 Before deployment, make sure the following requirements are satisfied:
 
-- Resources requirement: 2 CPU cores+, Memory 4G+
-
-    > **Note:**
-    >
-    > For macOS, you need to allocate at least 2 CPU cores and 4G Memory to Docker. For details, see [Docker configuration for Mac](https://docs.docker.com/docker-for-mac/#advanced).
-
 - [Docker](https://docs.docker.com/install/): version >= 17.03
-
-- [Helm Client](https://helm.sh/docs/intro/install/): version >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
-
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): version >= 1.12 (1.13 or later recommended)
-
-    > **Note:**
-    >
-    > The output might vary slightly among different versions of kubectl.
-
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/): version >= 0.4.0
+- [Helm](https://helm.sh/docs/intro/install/): Helm 2 or the latest stable version of Helm 3
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): version >= 1.12
+- [kind]: version >= 0.7.0 (the latest version recommended)
 - The value of [net.ipv4.ip_forward](https://linuxconfig.org/how-to-turn-on-off-ip-forwarding-in-linux) should be set to `1`
 
 ## Step 1: Create a Kubernetes cluster using kind
 
-First, make sure that Docker is running. Then, you can create a local Kubernetes cluster with a script in our repository. Follow the steps below:
+Refer to [`kind` Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start) to install `kind` and create a cluster.
 
-1. Clone the code:
+The following is an example of using `kind` v0.8.1:
 
-    {{< copyable "shell-regular" >}}
+```
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.8.1/kind-$(uname)-amd64
+chmod +x ./kind
+./kind create cluster
+```
 
-    ``` shell
-    git clone --depth=1 https://github.com/pingcap/tidb-operator && \
-    cd tidb-operator
-    ```
+Check whether the cluster is successfully created:
 
-2. Run the script and create a local Kubernetes cluster:
+{{< copyable "shell-regular" >}}
 
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    hack/kind-cluster-build.sh
-    ```
-
-    > **Note:**
-    >
-    > By default, this script starts a Kubernetes cluster of the 1.12.8 version, with six nodes in the cluster and for each node the number of mount points is 9. You can configure these items by startup options.
-    >
-    > {{< copyable "shell-regular" >}}
-    >
-    > ```shell
-    > hack/kind-cluster-build.sh --nodeNum 2 --k8sVersion v1.14.6 --volumeNum 3
-    > ```
-
-3. To connect the local Kubernetes cluster, set the default configuration file path of kubectl to `kube-config`.
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    export KUBECONFIG="$(kind get kubeconfig-path)"
-    ```
-
-4. Verify whether the Kubernetes cluster is on and running:
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl cluster-info
-    ```
-
-    The output is like this:
-
-    ``` shell
-    Kubernetes master is running at https://127.0.0.1:50295
-    KubeDNS is running at https://127.0.0.1:50295/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
-    ```
-
-5. Check the `storageClass` of the cluster:
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl get storageClass
-    ```
-
-    The output is like this:
-
-    ``` shell
-    NAME                 PROVISIONER                    AGE
-    local-storage        kubernetes.io/no-provisioner   7m50s
-    standard (default)   kubernetes.io/host-path        8m29s
-    ```
+```
+kubectl cluster-info
+```
 
 ## Step 2: Deploy TiDB Operator
 
-Add the official chart repository provided by PingCAP:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm repo add pingcap https://charts.pingcap.org/
-```
-
-Use `helm search` to search the chart provided by PingCAP:
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm search pingcap -l
-```
-
-TiDB Operator uses [CRD (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` CRD.
-
-{{< copyable "shell-regular" >}}
-
-```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
-kubectl get crd tidbclusters.pingcap.com
-```
-
-After `TidbCluster` CRD is created, install TiDB Operator in your Kubernetes cluster:
-
-1. Get the `values.yaml` file of the `tidb-operator` chart you want to install:
+1. Install Helm. You can either refer to [Installing Helm](https://helm.sh/docs/intro/install/) or install the latest stable version of Helm 3:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p /home/tidb/tidb-operator && \
-    helm inspect values pingcap/tidb-operator --version=v1.1.0-rc.1 > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
     ```
 
-    Modify the configuration in `values.yaml` according to your needs.
-
-2. Install TiDB Operator:
+2. Create [CRDs (Custom Resource Definition)](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/). TiDB Operator uses CRDs to extend Kubernetes. Therefore, to use TiDB Operator, you must first create CRDs, such as `TidbCluster`:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0-rc.1 -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
-    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0-rc.3/manifests/crd.yaml && \
+    kubectl get crd tidbclusters.pingcap.com
+    ```
+
+3. Install TiDB Operator.
+
+    - The following is an example of installing TiDB Operator using Helm 3:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        helm repo add pingcap https://charts.pingcap.org/
+        kubectl create ns pingcap
+        helm install --namespace pingcap tidb-operator pingcap/tidb-operator --version v1.1.0-rc.3
+        ```
+
+    - If you use Helm 2, refer to [Install Helm](tidb-toolkit.md#use-helm) to initialize Helm. After that, deploy TiDB Operator by running the following command:
+
+        {{< copyable "shell-regular" >}}
+
+        ```shell
+        helm repo add pingcap https://charts.pingcap.org/
+        helm install --namespace pingcap --name tidb-operator pingcap/tidb-operator --version v1.1.0-rc.3
+        ```
+
+4. Check the status of TiDB Operator:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl -n pingcap get pods
     ```
 
 ## Step 3: Deploy the TiDB cluster
