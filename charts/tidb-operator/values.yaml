@@ -150,7 +150,7 @@ apiserver:
 #   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml      # k8s version >= 1.16.0
 advancedStatefulset:
   create: false
-  image: pingcap/advanced-statefulset:v0.3.1
+  image: pingcap/advanced-statefulset:v0.3.3
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
   logLevel: 2
