@@ -209,6 +209,22 @@ func run() {
 			// wait upgrade complete
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
+
+			// scale have failed member tidb to zero replica
+			cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+			oa.UpgradeTidbClusterOrDie(cluster)
+			time.Sleep(30 * time.Second)
+			// wait check fail members
+			oa.CheckTidbClusterHaveFailedMemberOrDie(cluster)
+			//scale tidb member to zero replica
+			cluster.ScaleTiDB(0)
+			oa.ScaleTidbClusterOrDie(cluster)
+			oa.CheckScaleTidbClusterToZeroReplicaOrDie(cluster)
+			//rollback conf
+			cluster.TiDBPreStartScript = strconv.Quote("")
+			cluster.ScaleTiDB(2)
+			oa.ScaleTidbClusterOrDie(cluster)
+
 		}
 		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)

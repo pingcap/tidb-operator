@@ -45,12 +45,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
-	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	e2eutil "github.com/pingcap/tidb-operator/tests/e2e/util"
+	utildiscovery "github.com/pingcap/tidb-operator/tests/e2e/util/discovery"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedtidbclient"
-	utilstatefulset "github.com/pingcap/tidb-operator/tests/e2e/util/statefulset"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
@@ -69,7 +68,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"k8s.io/klog"
+	glog "k8s.io/klog"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -124,7 +123,7 @@ func NewOperatorActions(cli versioned.Interface,
 		framework.ExpectNoError(err)
 		oa.tidbControl = proxiedtidbclient.NewProxiedTiDBClient(fw, kubeCfg.TLSClientConfig.CAData)
 	} else {
-		oa.tidbControl = controller.NewDefaultTiDBControl(kubeCli)
+		oa.tidbControl = controller.NewDefaultTiDBControl()
 	}
 	oa.clusterEvents = make(map[string]*clusterEvent)
 	for _, c := range clusters {
@@ -138,7 +137,7 @@ func NewOperatorActions(cli versioned.Interface,
 }
 
 const (
-	DefaultPollTimeout          time.Duration = 20 * time.Minute
+	DefaultPollTimeout          time.Duration = 10 * time.Minute
 	DefaultPollInterval         time.Duration = 1 * time.Minute
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
 	grafanaUsername                           = "admin"
@@ -152,7 +151,7 @@ const (
 
 type OperatorActions interface {
 	CleanCRDOrDie()
-	InstallCRDOrDie(info *OperatorConfig)
+	InstallCRDOrDie()
 	DeployOperator(info *OperatorConfig) error
 	DeployOperatorOrDie(info *OperatorConfig)
 	CleanOperator(info *OperatorConfig) error
@@ -230,14 +229,20 @@ type OperatorActions interface {
 	LabelNodesOrDie()
 	CheckDisasterTolerance(info *TidbClusterConfig) error
 	CheckDisasterToleranceOrDie(info *TidbClusterConfig)
+	GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error)
+	GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string
+	CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error
+	CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string)
 	CheckUpgradeComplete(info *TidbClusterConfig) error
 	CheckUpgradeCompleteOrDie(info *TidbClusterConfig)
 	CheckInitSQL(info *TidbClusterConfig) error
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
-	WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string)
-	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
+	CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig)
+	CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
+	CheckScaleTidbClusterToZeroReplicaOrDie(info *TidbClusterConfig)
+	CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error
 }
 
 type operatorActions struct {
@@ -294,8 +299,6 @@ type OperatorConfig struct {
 	DefaultingEnabled         bool
 	ValidatingEnabled         bool
 	Cabundle                  string
-	BackupImage               string
-	AutoFailover              *bool
 }
 
 type TidbClusterConfig struct {
@@ -408,25 +411,19 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                                oi.Image,
-		"tidbBackupManagerImage":                       oi.BackupImage,
-		"scheduler.logLevel":                           "4",
-		"testMode":                                     strconv.FormatBool(oi.TestMode),
-		"admissionWebhook.cabundle":                    oi.Cabundle,
-		"admissionWebhook.create":                      strconv.FormatBool(oi.WebhookEnabled),
-		"admissionWebhook.validation.pods":             strconv.FormatBool(oi.PodWebhookEnabled),
-		"admissionWebhook.validation.statefulSets":     strconv.FormatBool(oi.StsWebhookEnabled),
-		"admissionWebhook.mutation.pingcapResources":   strconv.FormatBool(oi.DefaultingEnabled),
-		"admissionWebhook.validation.pingcapResources": strconv.FormatBool(oi.ValidatingEnabled),
-	}
-	if oi.LogLevel != "" {
-		set["controllerManager.logLevel"] = oi.LogLevel
-	}
-	if oi.SchedulerImage != "" {
-		set["scheduler.kubeSchedulerImageName"] = oi.SchedulerImage
-	}
-	if string(oi.ImagePullPolicy) != "" {
-		set["imagePullPolicy"] = string(oi.ImagePullPolicy)
+		"operatorImage":                              oi.Image,
+		"controllerManager.autoFailover":             "true",
+		"scheduler.kubeSchedulerImageName":           oi.SchedulerImage,
+		"controllerManager.logLevel":                 oi.LogLevel,
+		"scheduler.logLevel":                         "4",
+		"imagePullPolicy":                            string(oi.ImagePullPolicy),
+		"testMode":                                   strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle":                  oi.Cabundle,
+		"admissionWebhook.create":                    strconv.FormatBool(oi.WebhookEnabled),
+		"admissionWebhook.hooksEnabled.pods":         strconv.FormatBool(oi.PodWebhookEnabled),
+		"admissionWebhook.hooksEnabled.statefulSets": strconv.FormatBool(oi.StsWebhookEnabled),
+		"admissionWebhook.hooksEnabled.defaulting":   strconv.FormatBool(oi.DefaultingEnabled),
+		"admissionWebhook.hooksEnabled.validating":   strconv.FormatBool(oi.ValidatingEnabled),
 	}
 	if oi.ControllerManagerReplicas != nil {
 		set["controllerManager.replicas"] = strconv.Itoa(*oi.ControllerManagerReplicas)
@@ -442,9 +439,6 @@ func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	}
 	if oi.Enabled(features.AdvancedStatefulSet) {
 		set["advancedStatefulset.create"] = "true"
-	}
-	if oi.AutoFailover != nil {
-		set["controllerManager.autoFailover"] = strconv.FormatBool(*oi.AutoFailover)
 	}
 
 	arr := make([]string, 0, len(set))
@@ -466,55 +460,44 @@ func (oi *OperatorConfig) Enabled(feature string) bool {
 
 func (oa *operatorActions) runKubectlOrDie(args ...string) string {
 	cmd := "kubectl"
-	klog.Infof("Running '%s %s'", cmd, strings.Join(args, " "))
+	glog.Infof("Running '%s %s'", cmd, strings.Join(args, " "))
 	out, err := exec.Command(cmd, args...).CombinedOutput()
 	if err != nil {
-		klog.Fatalf("Failed to run '%s %s'\nCombined output: %q\nError: %v", cmd, strings.Join(args, " "), string(out), err)
+		glog.Fatalf("Failed to run '%s %s'\nCombined output: %q\nError: %v", cmd, strings.Join(args, " "), string(out), err)
 	}
-	klog.Infof("Combined output: %q", string(out))
+	glog.Infof("Combined output: %q", string(out))
 	return string(out)
 }
 
 func (oa *operatorActions) CleanCRDOrDie() {
-	crdList, err := oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().List(metav1.ListOptions{})
-	framework.ExpectNoError(err)
-	for _, crd := range crdList.Items {
-		if !strings.HasSuffix(crd.Name, ".pingcap.com") {
-			framework.Logf("CRD %q ignored", crd.Name)
-			continue
-		}
-		framework.Logf("Deleting CRD %q", crd.Name)
-		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err)
-	}
+	oa.runKubectlOrDie("delete", "crds", "--all")
 }
 
 // InstallCRDOrDie install CRDs and wait for them to be established in Kubernetes.
-func (oa *operatorActions) InstallCRDOrDie(info *OperatorConfig) {
-	if info.Enabled(features.AdvancedStatefulSet) {
-		if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
-			klog.Fatal(err)
-		} else if isSupported {
-			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
-		} else {
-			oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
-		}
+func (oa *operatorActions) InstallCRDOrDie() {
+	if isSupported, err := utildiscovery.IsAPIGroupVersionSupported(oa.kubeCli.Discovery(), "apiextensions.k8s.io/v1"); err != nil {
+		glog.Fatal(err)
+	} else if isSupported {
+		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1.yaml"))
+	} else {
+		oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/advanced-statefulset-crd.v1beta1.yaml"))
 	}
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/crd.yaml"))
 	oa.runKubectlOrDie("apply", "-f", oa.manifestPath("e2e/data-resource-crd.yaml"))
-	klog.Infof("Wait for all CRDs are established")
+	glog.Infof("Wait for all CRDs are established")
 	e2eutil.WaitForCRDsEstablished(oa.apiExtCli, labels.Everything())
 	// workaround for https://github.com/kubernetes/kubernetes/issues/65517
-	klog.Infof("force sync kubectl cache")
+	glog.Infof("force sync kubectl cache")
 	cmdArgs := []string{"sh", "-c", "rm -rf ~/.kube/cache ~/.kube/http-cache"}
 	_, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
 	if err != nil {
-		klog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
+		glog.Fatalf("Failed to run '%s': %v", strings.Join(cmdArgs, " "), err)
 	}
+	oa.runKubectlOrDie("api-resources")
 }
 
 func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
-	klog.Infof("deploying tidb-operator %s", info.ReleaseName)
+	glog.Infof("deploying tidb-operator %s", info.ReleaseName)
 
 	if info.Tag != "e2e" {
 		if err := oa.cloneOperatorRepo(); err != nil {
@@ -537,14 +520,14 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		info.ReleaseName,
 		info.Namespace,
 		info.OperatorHelmSetString(nil))
-	klog.Info(cmd)
+	glog.Info(cmd)
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
 
-	klog.Infof("Wait for all apiesrvices are available")
+	glog.Infof("Wait for all apiesrvices are available")
 	return e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
 }
 
@@ -555,7 +538,7 @@ func (oa *operatorActions) DeployOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) CleanOperator(info *OperatorConfig) error {
-	klog.Infof("cleaning tidb-operator %s", info.ReleaseName)
+	glog.Infof("cleaning tidb-operator %s", info.ReleaseName)
 
 	res, err := exec.Command("helm", "del", "--purge", info.ReleaseName).CombinedOutput()
 
@@ -573,7 +556,7 @@ func (oa *operatorActions) CleanOperatorOrDie(info *OperatorConfig) {
 }
 
 func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
-	klog.Infof("upgrading tidb-operator %s", info.ReleaseName)
+	glog.Infof("upgrading tidb-operator %s", info.ReleaseName)
 
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(
@@ -599,7 +582,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		return fmt.Errorf("failed to upgrade operator to: %s, %v, %s", info.Image, err, string(res))
 	}
 
-	klog.Infof("Wait for all apiesrvices are available")
+	glog.Infof("Wait for all apiesrvices are available")
 	err = e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
 	if err != nil {
 		return err
@@ -613,7 +596,7 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 	waitFn := func() (done bool, err error) {
 		pods2, err := oa.kubeCli.CoreV1().Pods(metav1.NamespaceAll).List(listOptions)
 		if err != nil {
-			klog.Error(err)
+			glog.Error(err)
 			return false, nil
 		}
 
@@ -644,18 +627,18 @@ func ensurePodsUnchanged(pods1, pods2 *corev1.PodList) error {
 		return err
 	}
 	if reflect.DeepEqual(pods1UIDs, pods2UIDs) {
-		klog.V(4).Infof("%s", string(pods1Yaml))
-		klog.V(4).Infof("%s", string(pods2Yaml))
-		klog.V(4).Infof("%v", pods1UIDs)
-		klog.V(4).Infof("%v", pods2UIDs)
-		klog.V(4).Infof("pods unchanged after operator upgraded")
+		glog.V(4).Infof("%s", string(pods1Yaml))
+		glog.V(4).Infof("%s", string(pods2Yaml))
+		glog.V(4).Infof("%v", pods1UIDs)
+		glog.V(4).Infof("%v", pods2UIDs)
+		glog.V(4).Infof("pods unchanged after operator upgraded")
 		return nil
 	}
 
-	klog.Infof("%s", string(pods1Yaml))
-	klog.Infof("%s", string(pods2Yaml))
-	klog.Infof("%v", pods1UIDs)
-	klog.Infof("%v", pods2UIDs)
+	glog.Infof("%s", string(pods1Yaml))
+	glog.Infof("%s", string(pods2Yaml))
+	glog.Infof("%v", pods1UIDs)
+	glog.Infof("%v", pods2UIDs)
 	return fmt.Errorf("some pods changed after operator upgraded")
 }
 
@@ -684,7 +667,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return nil
 	}
 
-	klog.Infof("deploying tidb cluster [%s/%s]", info.Namespace, info.ClusterName)
+	glog.Infof("deploying tidb cluster [%s/%s]", info.Namespace, info.ClusterName)
 	oa.EmitEvent(info, "DeployTidbCluster")
 
 	namespace := &corev1.Namespace{
@@ -710,7 +693,7 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return err
 	}
 	cmd = fmt.Sprintf(" %s --values %s", cmd, svFilePath)
-	klog.Info(cmd)
+	glog.Info(cmd)
 
 	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
@@ -727,7 +710,7 @@ func (oa *operatorActions) DeployTidbClusterOrDie(info *TidbClusterConfig) {
 }
 
 func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
-	klog.Infof("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
+	glog.Infof("cleaning tidbcluster %s/%s", info.Namespace, info.ClusterName)
 	oa.EmitEvent(info, "CleanTidbCluster")
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -757,7 +740,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	for _, pvc := range pvcList.Items {
 		beforePVCNames = append(beforePVCNames, pvc.GetName())
 	}
-	klog.V(4).Info(beforePVCNames)
+	glog.V(4).Info(beforePVCNames)
 
 	pvList, err := oa.kubeCli.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
@@ -766,10 +749,10 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	var beforePVNames []string
 	for _, pv := range pvList.Items {
 		beforePVNames = append(beforePVNames, pv.GetName())
-		klog.V(4).Infof("%s, %s, %v", pv.Name, pv.Spec.PersistentVolumeReclaimPolicy, pv.Labels)
-		klog.V(4).Info(pv.Spec.ClaimRef)
+		glog.V(4).Infof("%s, %s, %v", pv.Name, pv.Spec.PersistentVolumeReclaimPolicy, pv.Labels)
+		glog.V(4).Info(pv.Spec.ClaimRef)
 	}
-	klog.V(4).Info(beforePVNames)
+	glog.V(4).Info(beforePVNames)
 
 	charts := []string{
 		info.ClusterName,
@@ -798,7 +781,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	for _, pvc := range pvcList.Items {
 		afterPVCNames = append(afterPVCNames, pvc.GetName())
 	}
-	klog.V(4).Info(afterPVCNames)
+	glog.V(4).Info(afterPVCNames)
 	if !reflect.DeepEqual(beforePVCNames, afterPVCNames) {
 		return fmt.Errorf("pvc changed when we delete cluster: %s/%s, before: %v, after: %v",
 			ns, tcName, beforePVCNames, afterPVCNames)
@@ -813,10 +796,10 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		for _, pv := range pvList.Items {
 			afterPVNames = append(afterPVNames, pv.GetName())
 		}
-		klog.V(4).Info(afterPVNames)
+		glog.V(4).Info(afterPVNames)
 
 		if !reflect.DeepEqual(beforePVNames, afterPVNames) {
-			klog.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
+			glog.Errorf("pv changed when we delete cluster: %s/%s, before: %v, after: %v",
 				ns, tcName, beforePVNames, afterPVNames)
 			return false, nil
 		}
@@ -832,11 +815,6 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(info.GenerateBackupDirPodName(), &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete dir pod %v", err)
-	}
-
-	err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(blockWriterPodName(info), nil)
-	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("failed to delete blockwriter pod %v", err)
 	}
 
 	err = oa.kubeCli.CoreV1().Secrets(info.Namespace).Delete(info.InitSecretName, &metav1.DeleteOptions{})
@@ -878,7 +856,7 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		label.ManagedByLabelKey, "tidb-operator",
 		label.NamespaceLabelKey, info.Namespace,
 		label.InstanceLabelKey, info.ClusterName)
-	klog.V(4).Info(patchPVCmd)
+	glog.V(4).Info(patchPVCmd)
 	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
 	}
@@ -886,18 +864,18 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 	pollFn := func() (bool, error) {
 		if res, err := exec.Command("kubectl", "get", "po", "--output=name", "-n", info.Namespace, "-l", setStr).
 			CombinedOutput(); err != nil || len(res) != 0 {
-			klog.V(4).Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pods deleting, %v, [%s]",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
 
 		pvCmd := fmt.Sprintf("kubectl get pv | grep %s | grep %s 2>/dev/null|grep Released",
 			info.Namespace, info.ClusterName)
-		klog.V(4).Info(pvCmd)
+		glog.V(4).Info(pvCmd)
 		if res, err := exec.Command("/bin/sh", "-c", pvCmd).CombinedOutput(); len(res) == 0 {
 			return true, nil
 		} else if err != nil {
-			klog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
+			glog.V(4).Infof("waiting for tidbcluster: %s/%s pv deleting, %v, %s",
 				info.Namespace, info.ClusterName, err, string(res))
 			return false, nil
 		}
@@ -912,8 +890,56 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 	}
 }
 
+func (oa *operatorActions) GetTidbMemberAssignedNodes(info *TidbClusterConfig) (map[string]string, error) {
+	assignedNodes := make(map[string]string)
+	ns := info.Namespace
+	tcName := info.ClusterName
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(
+			label.New().Instance(tcName).Component(label.TiDBLabelVal).Labels()).String(),
+	}
+	podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
+	if err != nil {
+		glog.Errorf("failed to get tidb pods: %s/%s, %v", ns, tcName, err)
+		return nil, err
+	}
+	for _, pod := range podList.Items {
+		assignedNodes[pod.Name] = pod.Spec.NodeName
+	}
+	return assignedNodes, nil
+}
+
+func (oa *operatorActions) GetTidbMemberAssignedNodesOrDie(info *TidbClusterConfig) map[string]string {
+	result, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+	return result
+}
+
+func (oa *operatorActions) CheckTidbMemberAssignedNodes(info *TidbClusterConfig, oldAssignedNodes map[string]string) error {
+	glog.Infof("checking tidb member [%s/%s] assigned nodes", info.Namespace, info.ClusterName)
+	assignedNodes, err := oa.GetTidbMemberAssignedNodes(info)
+	if err != nil {
+		return err
+	}
+	for member, node := range oldAssignedNodes {
+		newNode, ok := assignedNodes[member]
+		if !ok || newNode != node {
+			return fmt.Errorf("tidb member %s is not scheduled to %s, new node: %s", member, node, newNode)
+		}
+	}
+	return nil
+}
+
+func (oa *operatorActions) CheckTidbMemberAssignedNodesOrDie(info *TidbClusterConfig, oldAssignedNodes map[string]string) {
+	if err := oa.CheckTidbMemberAssignedNodes(info, oldAssignedNodes); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
-	klog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
+	glog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
 
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -921,7 +947,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 
@@ -932,69 +958,69 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 			return false, nil
 		}
 
-		klog.V(4).Infof("check tidb cluster begin tidbMembersReadyFn")
+		glog.V(4).Infof("check tidb cluster begin tidbMembersReadyFn")
 		if b, err := oa.tidbMembersReadyFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		klog.V(4).Infof("check tidb cluster begin reclaimPolicySyncFn")
+		glog.V(4).Infof("check tidb cluster begin reclaimPolicySyncFn")
 		if b, err := oa.reclaimPolicySyncFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		klog.V(4).Infof("check tidb cluster begin metaSyncFn")
+		glog.V(4).Infof("check tidb cluster begin metaSyncFn")
 		if b, err := oa.metaSyncFn(tc); !b && err == nil {
 			return false, nil
 		} else if err != nil {
-			klog.Error(err)
+			glog.Error(err)
 			return false, nil
 		}
 
-		klog.V(4).Infof("check tidb cluster begin schedulerHAFn")
+		glog.V(4).Infof("check tidb cluster begin schedulerHAFn")
 		if b, err := oa.schedulerHAFn(tc); !b && err == nil {
 			return false, nil
 		}
 
-		klog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
+		glog.V(4).Infof("check all pd and tikv instances have not pod scheduling annotation")
 		if info.OperatorTag != "v1.0.0" {
 			if b, err := oa.podsScheduleAnnHaveDeleted(tc); !b && err == nil {
 				return false, nil
 			}
 		}
 
-		klog.V(4).Infof("check store labels")
+		glog.V(4).Infof("check store labels")
 		if b, err := oa.storeLabelsIsSet(tc, info.TopologyKey); !b && err == nil {
 			return false, nil
 		} else if err != nil {
 			return false, err
 		}
 
-		klog.V(4).Infof("check tidb cluster begin passwordIsSet")
+		glog.V(4).Infof("check tidb cluster begin passwordIsSet")
 		if b, err := oa.passwordIsSet(info); !b && err == nil {
 			return false, nil
 		}
 
 		if info.Monitor {
-			klog.V(4).Infof("check tidb monitor normal")
+			glog.V(4).Infof("check tidb monitor normal")
 			if b, err := oa.monitorNormal(info); !b && err == nil {
 				return false, nil
 			}
 		}
 		if info.EnableConfigMapRollout {
-			klog.V(4).Info("check tidb cluster configuration synced")
+			glog.V(4).Info("check tidb cluster configuration synced")
 			if b, err := oa.checkTidbClusterConfigUpdated(tc, info); !b && err == nil {
 				return false, nil
 			}
 		}
 		if info.EnablePVReclaim {
-			klog.V(4).Infof("check reclaim pvs success when scale in pd or tikv")
+			glog.V(4).Infof("check reclaim pvs success when scale in pd or tikv")
 			if b, err := oa.checkReclaimPVSuccess(tc); !b && err == nil {
 				return false, nil
 			}
 		}
 		return true, nil
 	}); err != nil {
-		klog.Errorf("check tidb cluster status failed: %s", err.Error())
+		glog.Errorf("check tidb cluster status failed: %s", err.Error())
 		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 120 minutes", ns, tcName)
 	}
 
@@ -1008,11 +1034,10 @@ func (oa *operatorActions) CheckTidbClusterStatusOrDie(info *TidbClusterConfig) 
 }
 
 func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database string) *corev1.Pod {
-
-	pod := &corev1.Pod{
+	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: info.Namespace,
-			Name:      blockWriterPodName(info),
+			Name:      "blockwriter",
 			Labels: map[string]string{
 				"app": "blockwriter",
 			},
@@ -1039,10 +1064,6 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 			RestartPolicy: corev1.RestartPolicyAlways,
 		},
 	}
-	if info.OperatorTag != "e2e" {
-		pod.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
-	}
-	return pod
 }
 
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
@@ -1058,7 +1079,6 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	klog.Infof("begin insert Data in pod[%s/%s]", pod.Namespace, pod.Name)
 	return nil
 }
 
@@ -1075,20 +1095,16 @@ func (oa *operatorActions) StopInsertDataTo(info *TidbClusterConfig) {
 	}
 	oa.EmitEvent(info, "StopInsertData")
 
-	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		pod := info.blockWriterPod
-		err = oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, nil
-		}
-		return true, nil
-	})
+	pod := info.blockWriterPod
+	err := oa.kubeCli.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
+	err = e2epod.WaitForPodNotFoundInNamespace(oa.kubeCli, pod.Name, pod.Namespace, time.Minute*5)
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
+
 	info.blockWriterPod = nil
 }
 
@@ -1124,7 +1140,7 @@ func (oa *operatorActions) ScaleTidbCluster(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	klog.Info("[SCALE] " + cmd)
+	glog.Info("[SCALE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return pingcapErrors.Wrapf(err, "failed to scale tidb cluster: %s", string(res))
@@ -1142,32 +1158,32 @@ func (oa *operatorActions) CheckScaleInSafely(info *TidbClusterConfig) error {
 	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 		if err != nil {
-			klog.Infof("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
+			glog.Infof("failed to get tidbcluster when scale in tidbcluster, error: %v", err)
 			return false, nil
 		}
 
 		tikvSetName := controller.TiKVMemberName(info.ClusterName)
 		tikvSet, err := oa.tcStsGetter.StatefulSets(info.Namespace).Get(tikvSetName, metav1.GetOptions{})
 		if err != nil {
-			klog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
+			glog.Infof("failed to get tikvSet statefulset: [%s], error: %v", tikvSetName, err)
 			return false, nil
 		}
 
 		pdClient, cancel, err := oa.getPDClient(tc)
 		if err != nil {
-			klog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+			glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 			return false, nil
 		}
 		defer cancel()
 
 		stores, err := pdClient.GetStores()
 		if err != nil {
-			klog.Infof("pdClient.GetStores failed,error: %v", err)
+			glog.Infof("pdClient.GetStores failed,error: %v", err)
 			return false, nil
 		}
 		if len(stores.Stores) > int(*tikvSet.Spec.Replicas) {
-			klog.Infof("stores.Stores: %v", stores.Stores)
-			klog.Infof("tikvSet.Spec.Replicas: %d", *tikvSet.Spec.Replicas)
+			glog.Infof("stores.Stores: %v", stores.Stores)
+			glog.Infof("tikvSet.Spec.Replicas: %d", *tikvSet.Spec.Replicas)
 			return false, fmt.Errorf("the tikvSet.Spec.Replicas may reduce before tikv complete offline")
 		}
 
@@ -1183,7 +1199,7 @@ func (oa *operatorActions) CheckScaledCorrectly(info *TidbClusterConfig, podUIDs
 	return wait.Poll(oa.pollInterval, DefaultPollTimeout, func() (done bool, err error) {
 		podUIDs, err := oa.GetPodUIDMap(info)
 		if err != nil {
-			klog.Infof("failed to get pd pods's uid, error: %v", err)
+			glog.Infof("failed to get pd pods's uid, error: %v", err)
 			return false, nil
 		}
 
@@ -1205,7 +1221,7 @@ func (oa *operatorActions) setPartitionAnnotation(namespace, tcName, component s
 	// add annotation to pause statefulset upgrade process
 	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/%s-partition=%d --overwrite",
 		tcName, namespace, component, ordinal)
-	klog.Infof("%s", cmd)
+	glog.Infof("%s", cmd)
 	output, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, string(output))
@@ -1220,7 +1236,7 @@ func (oa *operatorActions) UpgradeTidbCluster(info *TidbClusterConfig) error {
 	if err != nil {
 		return err
 	}
-	klog.Info("[UPGRADE] " + cmd)
+	glog.Info("[UPGRADE] " + cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return pingcapErrors.Wrapf(err, "failed to upgrade tidb cluster: %s", string(res))
@@ -1271,21 +1287,21 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 			scheduler := fmt.Sprintf("evict-leader-scheduler-%s", findStoreFn(tc, podName))
 			pdClient, cancel, err := oa.getPDClient(tc)
 			if err != nil {
-				klog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+				glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 				return false, nil
 			}
 			defer cancel()
 			schedulers, err := pdClient.GetEvictLeaderSchedulers()
 			if err != nil {
-				klog.Errorf("failed to get evict leader schedulers, %v", err)
+				glog.Errorf("failed to get evict leader schedulers, %v", err)
 				return false, nil
 			}
-			klog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
+			glog.V(4).Infof("index:%d,schedulers:%v,error:%v", i, schedulers, err)
 			if len(schedulers) > 1 {
-				klog.Errorf("there are too many evict leader schedulers: %v", schedulers)
+				glog.Errorf("there are too many evict leader schedulers: %v", schedulers)
 				for _, s := range schedulers {
 					if s == scheduler {
-						klog.Infof("found scheudler: %s", scheduler)
+						glog.Infof("found scheudler: %s", scheduler)
 						return true, nil
 					}
 				}
@@ -1295,14 +1311,14 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 				return false, nil
 			}
 			if schedulers[0] == scheduler {
-				klog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
+				glog.Infof("index: %d,the schedulers: %s = %s", i, schedulers[0], scheduler)
 				return true, nil
 			}
-			klog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
+			glog.Errorf("index: %d,the scheduler: %s != %s", i, schedulers[0], scheduler)
 			return false, nil
 		})
 		if err != nil {
-			klog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
+			glog.Errorf("failed to check upgrade %s/%s, %v", ns, tcName, err)
 			return err
 		}
 	}
@@ -1326,19 +1342,19 @@ func (oa *operatorActions) CheckUpgrade(ctx context.Context, info *TidbClusterCo
 	return wait.PollImmediate(1*time.Second, 6*time.Minute, func() (done bool, err error) {
 		pdClient, cancel, err := oa.getPDClient(tc)
 		if err != nil {
-			klog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+			glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 			return false, nil
 		}
 		defer cancel()
 		schedulers, err := pdClient.GetEvictLeaderSchedulers()
 		if err != nil {
-			klog.Errorf("failed to get evict leader schedulers, %v", err)
+			glog.Errorf("failed to get evict leader schedulers, %v", err)
 			return false, nil
 		}
 		if len(schedulers) == 0 {
 			return true, nil
 		}
-		klog.Errorf("schedulers: %v is not empty", schedulers)
+		glog.Errorf("schedulers: %v is not empty", schedulers)
 		return false, nil
 	})
 }
@@ -1356,7 +1372,7 @@ func (oa *operatorActions) CleanMonitor(info *TidbClusterConfig) error  { return
 func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.StatefulSetsGetter, namespace, tcName, component string) (*corev1.Container, bool) {
 	sts, err := stsGetter.StatefulSets(namespace).Get(fmt.Sprintf("%s-%s", tcName, component), metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get sts for component %s of cluster %s/%s", component, namespace, tcName)
+		glog.Errorf("failed to get sts for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 	listOption := metav1.ListOptions{
@@ -1364,16 +1380,16 @@ func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.Stat
 	}
 	podList, err := kubeCli.CoreV1().Pods(namespace).List(listOption)
 	if err != nil {
-		klog.Errorf("fail to get pods for component %s of cluster %s/%s", component, namespace, tcName)
+		glog.Errorf("fail to get pods for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 	if len(podList.Items) == 0 {
-		klog.Errorf("no pods found for component %s of cluster %s/%s", component, namespace, tcName)
+		glog.Errorf("no pods found for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 	pod := podList.Items[0]
 	if len(pod.Spec.Containers) == 0 {
-		klog.Errorf("no containers found for component %s of cluster %s/%s", component, namespace, tcName)
+		glog.Errorf("no containers found for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
 
@@ -1394,57 +1410,53 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 
 	pdSet, err := oa.tcStsGetter.StatefulSets(ns).Get(pdSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
-		return false, nil
-	}
-
-	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), pdSet) {
+		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, pdSetName, err)
 		return false, nil
 	}
 
 	if tc.Status.PD.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.PD.StatefulSet is nil", ns, tcName)
+		glog.Infof("tidbcluster: %s/%s .status.PD.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.PD.FailureMembers)
 	replicas := tc.Spec.PD.Replicas + int32(failureCount)
 	if *pdSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		glog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, pdSetName, *pdSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != tc.Spec.PD.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, pdSetName, pdSet.Status.ReadyReplicas, tc.Spec.PD.Replicas)
 		return false, nil
 	}
 	if len(tc.Status.PD.Members) != int(tc.Spec.PD.Replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.PD.Members count(%d) != %d",
+		glog.Infof("tidbcluster: %s/%s .status.PD.Members count(%d) != %d",
 			ns, tcName, len(tc.Status.PD.Members), tc.Spec.PD.Replicas)
 		return false, nil
 	}
 	if pdSet.Status.ReadyReplicas != pdSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, pdSetName, pdSet.Status.ReadyReplicas, pdSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.PDLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
+		glog.Infof("statefulset: %s/%s not found containers[name=pd] or pod %s-0",
 			ns, pdSetName, pdSetName)
 		return false, nil
 	}
 
 	if tc.PDImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=pd].image(%s) != %s",
 			ns, pdSetName, c.Image, tc.PDImage())
 		return false, nil
 	}
 
 	for _, member := range tc.Status.PD.Members {
 		if !member.Health {
-			klog.Infof("tidbcluster: %s/%s pd member(%s/%s) is not health",
+			glog.Infof("tidbcluster: %s/%s pd member(%s/%s) is not health",
 				ns, tcName, member.ID, member.Name)
 			return false, nil
 		}
@@ -1453,11 +1465,11 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 	pdServiceName := controller.PDMemberName(tcName)
 	pdPeerServiceName := controller.PDPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get service: %s/%s", ns, pdServiceName)
+		glog.Errorf("failed to get service: %s/%s", ns, pdServiceName)
 		return false, nil
 	}
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(pdPeerServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, pdPeerServiceName)
+		glog.Errorf("failed to get peer service: %s/%s", ns, pdPeerServiceName)
 		return false, nil
 	}
 
@@ -1471,64 +1483,60 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tikvSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
-		return false, nil
-	}
-
-	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tikvSet) {
+		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tikvSetName, err)
 		return false, nil
 	}
 
 	if tc.Status.TiKV.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
+		glog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.TiKV.FailureStores)
 	replicas := tc.Spec.TiKV.Replicas + int32(failureCount)
 	if *tikvSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		glog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tikvSetName, *tikvSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiKV.Stores) != int(replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
+		glog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
 			ns, tcName, len(tc.Status.TiKV.Stores), replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, tikvSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiKVLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
+		glog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tikvSetName, tikvSetName)
 		return false, nil
 	}
 
 	if tc.TiKVImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
 			ns, tikvSetName, c.Image, tc.TiKVImage())
 		return false, nil
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
-			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			glog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
 
 	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
+		glog.Errorf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
 	}
 
@@ -1542,62 +1550,58 @@ func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 
 	tidbSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
-		return false, nil
-	}
-
-	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tidbSet) {
+		glog.Errorf("failed to get statefulset: %s/%s, %v", ns, tidbSetName, err)
 		return false, nil
 	}
 
 	if tc.Status.TiDB.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiDB.StatefulSet is nil", ns, tcName)
+		glog.Infof("tidbcluster: %s/%s .status.TiDB.StatefulSet is nil", ns, tcName)
 		return false, nil
 	}
 	failureCount := len(tc.Status.TiDB.FailureMembers)
 	replicas := tc.Spec.TiDB.Replicas + int32(failureCount)
 	if *tidbSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		glog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tidbSetName, *tidbSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if tidbSet.Status.ReadyReplicas != tc.Spec.TiDB.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tc.Spec.TiDB.Replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiDB.Members) != int(tc.Spec.TiDB.Replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiDB.Members count(%d) != %d",
+		glog.Infof("tidbcluster: %s/%s .status.TiDB.Members count(%d) != %d",
 			ns, tcName, len(tc.Status.TiDB.Members), tc.Spec.TiDB.Replicas)
 		return false, nil
 	}
 	if tidbSet.Status.ReadyReplicas != tidbSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		glog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tidbSetName, tidbSet.Status.ReadyReplicas, tidbSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiDBLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
+		glog.Infof("statefulset: %s/%s not found containers[name=tidb] or pod %s-0",
 			ns, tidbSetName, tidbSetName)
 		return false, nil
 	}
 
 	if tc.TiDBImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
+		glog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tidb].image(%s) != %s",
 			ns, tidbSetName, c.Image, tc.TiDBImage())
 		return false, nil
 	}
 
 	_, err = oa.kubeCli.CoreV1().Services(ns).Get(tidbSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get service: %s/%s", ns, tidbSetName)
+		glog.Errorf("failed to get service: %s/%s", ns, tidbSetName)
 		return false, nil
 	}
 	_, err = oa.kubeCli.CoreV1().Services(ns).Get(controller.TiDBPeerMemberName(tcName), metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
+		glog.Errorf("failed to get peer service: %s/%s", ns, controller.TiDBPeerMemberName(tcName))
 		return false, nil
 	}
 
@@ -1615,17 +1619,17 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 	var pvcList *corev1.PersistentVolumeClaimList
 	var err error
 	if pvcList, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions); err != nil {
-		klog.Errorf("failed to list pvs for tidbcluster %s/%s, %v", ns, tcName, err)
+		glog.Errorf("failed to list pvs for tidbcluster %s/%s, %v", ns, tcName, err)
 		return false, nil
 	}
 
 	for _, pvc := range pvcList.Items {
 		pvName := pvc.Spec.VolumeName
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get pv: %s, error: %v", pvName, err)
+			glog.Errorf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
 		} else if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
-			klog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
+			glog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
 			return false, nil
 		}
 	}
@@ -1639,13 +1643,13 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 
 	pdClient, cancel, err := oa.getPDClient(tc)
 	if err != nil {
-		klog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 		return false, nil
 	}
 	defer cancel()
 	var cluster *metapb.Cluster
 	if cluster, err = pdClient.GetCluster(); err != nil {
-		klog.Errorf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
+		glog.Errorf("failed to get cluster from pdControl: %s/%s, error: %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -1658,7 +1662,7 @@ func (oa *operatorActions) metaSyncFn(tc *v1alpha1.TidbCluster) (bool, error) {
 
 	var podList *corev1.PodList
 	if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(listOptions); err != nil {
-		klog.Errorf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
+		glog.Errorf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -1666,7 +1670,7 @@ outerLoop:
 	for _, pod := range podList.Items {
 		podName := pod.GetName()
 		if pod.Labels[label.ClusterIDLabelKey] != clusterID {
-			klog.Infof("tidbcluster %s/%s's pod %s's label %s not equals %s ",
+			glog.Infof("tidbcluster %s/%s's pod %s's label %s not equals %s ",
 				ns, tcName, podName, label.ClusterIDLabelKey, clusterID)
 			return false, nil
 		}
@@ -1677,7 +1681,7 @@ outerLoop:
 			var memberID string
 			members, err := pdClient.GetMembers()
 			if err != nil {
-				klog.Errorf("failed to get members for tidbcluster %s/%s, %v", ns, tcName, err)
+				glog.Errorf("failed to get members for tidbcluster %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			for _, member := range members.Members {
@@ -1687,7 +1691,7 @@ outerLoop:
 				}
 			}
 			if memberID == "" {
-				klog.Errorf("tidbcluster: %s/%s's pod %s label [%s] is empty",
+				glog.Errorf("tidbcluster: %s/%s's pod %s label [%s] is empty",
 					ns, tcName, podName, label.MemberIDLabelKey)
 				return false, nil
 			}
@@ -1699,7 +1703,7 @@ outerLoop:
 			var storeID string
 			stores, err := pdClient.GetStores()
 			if err != nil {
-				klog.Errorf("failed to get stores for tidbcluster %s/%s, %v", ns, tcName, err)
+				glog.Errorf("failed to get stores for tidbcluster %s/%s, %v", ns, tcName, err)
 				return false, nil
 			}
 			for _, store := range stores.Stores {
@@ -1710,7 +1714,7 @@ outerLoop:
 				}
 			}
 			if storeID == "" {
-				klog.Errorf("tidbcluster: %s/%s's pod %s label [%s] is empty",
+				glog.Errorf("tidbcluster: %s/%s's pod %s label [%s] is empty",
 					tc.GetNamespace(), tc.GetName(), podName, label.StoreIDLabelKey)
 				return false, nil
 			}
@@ -1737,7 +1741,7 @@ outerLoop:
 
 		var pvc *corev1.PersistentVolumeClaim
 		if pvc, err = oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get pvc %s/%s for pod %s/%s", ns, pvcName, ns, podName)
+			glog.Errorf("failed to get pvc %s/%s for pod %s/%s", ns, pvcName, ns, podName)
 			return false, nil
 		}
 		if pvc.Labels[label.ClusterIDLabelKey] != clusterID {
@@ -1764,7 +1768,7 @@ outerLoop:
 		pvName := pvc.Spec.VolumeName
 		var pv *corev1.PersistentVolume
 		if pv, err = oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get pv for pvc %s/%s, %v", ns, pvcName, err)
+			glog.Errorf("failed to get pv for pvc %s/%s, %v", ns, pvcName, err)
 			return false, nil
 		}
 		if pv.Labels[label.NamespaceLabelKey] != ns {
@@ -1833,7 +1837,7 @@ func (oa *operatorActions) schedulerHAFn(tc *v1alpha1.TidbCluster) (bool, error)
 		var podList *corev1.PodList
 		var err error
 		if podList, err = oa.kubeCli.CoreV1().Pods(ns).List(listOptions); err != nil {
-			klog.Errorf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
+			glog.Errorf("failed to list pods for tidbcluster %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
 
@@ -1875,7 +1879,7 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 
 	pvcList, err := oa.kubeCli.CoreV1().PersistentVolumeClaims(ns).List(listOptions)
 	if err != nil {
-		klog.Errorf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
+		glog.Errorf("failed to list pvcs for tidb cluster %s/%s, err: %v", ns, tcName, err)
 		return false, nil
 	}
 
@@ -1887,7 +1891,7 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 		}
 
 		if _, exist := pvc.Annotations[label.AnnPVCPodScheduling]; exist {
-			klog.Errorf("tidb cluster %s/%s pvc %s has pod scheduling annotation", ns, tcName, pvcName)
+			glog.Errorf("tidb cluster %s/%s pvc %s has pod scheduling annotation", ns, tcName, pvcName)
 			return false, nil
 		}
 	}
@@ -1898,13 +1902,13 @@ func (oa *operatorActions) podsScheduleAnnHaveDeleted(tc *v1alpha1.TidbCluster) 
 func (oa *operatorActions) checkReclaimPVSuccess(tc *v1alpha1.TidbCluster) (bool, error) {
 	// check pv reclaim	for pd
 	if err := oa.checkComponentReclaimPVSuccess(tc, label.PDLabelVal); err != nil {
-		klog.Errorf(err.Error())
+		glog.Errorf(err.Error())
 		return false, nil
 	}
 
 	// check pv reclaim for tikv
 	if err := oa.checkComponentReclaimPVSuccess(tc, label.TiKVLabelVal); err != nil {
-		klog.Errorf(err.Error())
+		glog.Errorf(err.Error())
 		return false, nil
 	}
 	return true, nil
@@ -1982,7 +1986,7 @@ func (oa *operatorActions) getComponentPVList(tc *v1alpha1.TidbCluster, componen
 func (oa *operatorActions) storeLabelsIsSet(tc *v1alpha1.TidbCluster, topologyKey string) (bool, error) {
 	pdClient, cancel, err := oa.getPDClient(tc)
 	if err != nil {
-		klog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 		return false, nil
 	}
 	defer cancel()
@@ -2015,28 +2019,28 @@ func (oa *operatorActions) passwordIsSet(clusterInfo *TidbClusterConfig) (bool, 
 	var job *batchv1.Job
 	var err error
 	if job, err = oa.kubeCli.BatchV1().Jobs(ns).Get(jobName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get job %s/%s, %v", ns, jobName, err)
+		glog.Errorf("failed to get job %s/%s, %v", ns, jobName, err)
 		return false, nil
 	}
 	if job.Status.Succeeded < 1 {
-		klog.Errorf("tidbcluster: %s/%s password setter job not finished", ns, tcName)
+		glog.Errorf("tidbcluster: %s/%s password setter job not finished", ns, tcName)
 		return false, nil
 	}
 
 	var db *sql.DB
 	dsn, cancel, err := oa.getTiDBDSN(ns, tcName, "test", clusterInfo.Password)
 	if err != nil {
-		klog.Errorf("failed to get TiDB DSN: %v", err)
+		glog.Errorf("failed to get TiDB DSN: %v", err)
 		return false, nil
 	}
 	defer cancel()
 	if db, err = sql.Open("mysql", dsn); err != nil {
-		klog.Errorf("can't open connection to mysql: %s, %v", dsn, err)
+		glog.Errorf("can't open connection to mysql: %s, %v", dsn, err)
 		return false, nil
 	}
 	defer db.Close()
 	if err := db.Ping(); err != nil {
-		klog.Errorf("can't connect to mysql: %s with password %s, %v", dsn, clusterInfo.Password, err)
+		glog.Errorf("can't connect to mysql: %s with password %s, %v", dsn, clusterInfo.Password, err)
 		return false, nil
 	}
 
@@ -2049,20 +2053,20 @@ func (oa *operatorActions) monitorNormal(clusterInfo *TidbClusterConfig) (bool, 
 	monitorDeploymentName := fmt.Sprintf("%s-monitor", tcName)
 	monitorDeployment, err := oa.kubeCli.AppsV1().Deployments(ns).Get(monitorDeploymentName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("get monitor deployment: [%s/%s] failed", ns, monitorDeploymentName)
+		glog.Errorf("get monitor deployment: [%s/%s] failed", ns, monitorDeploymentName)
 		return false, nil
 	}
 	if monitorDeployment.Status.ReadyReplicas < 1 {
-		klog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
+		glog.Infof("monitor ready replicas %d < 1", monitorDeployment.Status.ReadyReplicas)
 		return false, nil
 	}
 	if err := oa.checkPrometheus(clusterInfo); err != nil {
-		klog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
+		glog.Infof("check [%s/%s]'s prometheus data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
 	}
 
 	if err := oa.checkGrafanaData(clusterInfo); err != nil {
-		klog.Infof("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
+		glog.Infof("check [%s/%s]'s grafana data failed: %v", ns, monitorDeploymentName, err)
 		return false, nil
 	}
 	return true, nil
@@ -2084,17 +2088,17 @@ func (oa *operatorActions) checkTidbClusterConfigUpdated(tc *v1alpha1.TidbCluste
 func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
 	pdClient, cancel, err := oa.getPDClient(tc)
 	if err != nil {
-		klog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
+		glog.Errorf("Failed to create external PD client for tidb cluster %q: %v", tc.GetName(), err)
 		return false
 	}
 	defer cancel()
 	config, err := pdClient.GetConfig()
 	if err != nil {
-		klog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
+		glog.Errorf("failed to get PD configuraion from tidb cluster [%s/%s]", tc.Namespace, tc.Name)
 		return false
 	}
 	if len(clusterInfo.PDLogLevel) > 0 && clusterInfo.PDLogLevel != config.Log.Level {
-		klog.Errorf("check [%s/%s] PD logLevel configuration updated failed: desired [%s], actual [%s] not equal",
+		glog.Errorf("check [%s/%s] PD logLevel configuration updated failed: desired [%s], actual [%s] not equal",
 			tc.Namespace,
 			tc.Name,
 			clusterInfo.PDLogLevel,
@@ -2103,7 +2107,7 @@ func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, cluste
 	}
 	// TODO: fix #487 PD configuration update for persisted configurations
 	//if clusterInfo.PDMaxReplicas > 0 && config.Replication.MaxReplicas != uint64(clusterInfo.PDMaxReplicas) {
-	//	klog.Errorf("check [%s/%s] PD maxReplicas configuration updated failed: desired [%d], actual [%d] not equal",
+	//	glog.Errorf("check [%s/%s] PD maxReplicas configuration updated failed: desired [%d], actual [%d] not equal",
 	//		tc.Namespace,
 	//		tc.Name,
 	//		clusterInfo.PDMaxReplicas,
@@ -2116,17 +2120,17 @@ func (oa *operatorActions) checkPdConfigUpdated(tc *v1alpha1.TidbCluster, cluste
 func (oa *operatorActions) checkTiDBConfigUpdated(tc *v1alpha1.TidbCluster, clusterInfo *TidbClusterConfig) bool {
 	ordinals, err := util.GetPodOrdinals(tc, v1alpha1.TiDBMemberType)
 	if err != nil {
-		klog.Errorf("failed to get pod ordinals for tidb cluster %s/%s (member: %v)", tc.Namespace, tc.Name, v1alpha1.TiDBMemberType)
+		glog.Errorf("failed to get pod ordinals for tidb cluster %s/%s (member: %v)", tc.Namespace, tc.Name, v1alpha1.TiDBMemberType)
 		return false
 	}
 	for i := range ordinals {
 		config, err := oa.tidbControl.GetSettings(tc, int32(i))
 		if err != nil {
-			klog.Errorf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
+			glog.Errorf("failed to get TiDB configuration from cluster [%s/%s], ordinal: %d, error: %v", tc.Namespace, tc.Name, i, err)
 			return false
 		}
 		if clusterInfo.TiDBTokenLimit > 0 && uint(clusterInfo.TiDBTokenLimit) != config.TokenLimit {
-			klog.Errorf("check [%s/%s] TiDB instance [%d] configuration updated failed: desired [%d], actual [%d] not equal",
+			glog.Errorf("check [%s/%s] TiDB instance [%d] configuration updated failed: desired [%d], actual [%d] not equal",
 				tc.Namespace, tc.Name, i, clusterInfo.TiDBTokenLimit, config.TokenLimit)
 			return false
 		}
@@ -2174,7 +2178,7 @@ func getDatasourceID(addr string) (int, error) {
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			klog.Warningf("close response failed, err: %v", err)
+			glog.Warningf("close response failed, err: %v", err)
 		}
 	}()
 
@@ -2215,7 +2219,7 @@ func notFound(res string) bool {
 
 func (oa *operatorActions) cloneOperatorRepo() error {
 	cmd := fmt.Sprintf("git clone %s %s", oa.cfg.OperatorRepoUrl, oa.cfg.OperatorRepoDir)
-	klog.Info(cmd)
+	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil && !strings.Contains(string(res), "already exists") {
 		return fmt.Errorf("failed to clone tidb-operator repository: %v, %s", err, string(res))
@@ -2236,7 +2240,7 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 	if tagName != "v1.0.0" {
 		cmd = cmd + fmt.Sprintf(" && cp -rf charts/tidb-drainer %s", oa.drainerChartPath(tagName))
 	}
-	klog.Info(cmd)
+	glog.Info(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to check tag: %s, %v, %s", tagName, err, string(res))
@@ -2247,7 +2251,7 @@ func (oa *operatorActions) checkoutTag(tagName string) error {
 
 func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "DeployAdHocBackup")
-	klog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	glog.Infof("begin to deploy adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	var tsStr string
 	getTSFn := func() (bool, error) {
@@ -2256,7 +2260,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 		if oa.fw != nil {
 			localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("svc/%s-tidb", info.ClusterName), 4000)
 			if err != nil {
-				klog.Errorf("failed to forward port %d for %s/%s", 4000, info.Namespace, info.ClusterName)
+				glog.Errorf("failed to forward port %d for %s/%s", 4000, info.Namespace, info.ClusterName)
 				return false, nil
 			}
 			defer cancel()
@@ -2276,11 +2280,11 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 			mysqlHost,
 			mysqlPort,
 		)
-		klog.Info(getTSCmd)
+		glog.Info(getTSCmd)
 
-		res, err := exec.Command("/bin/bash", "-c", getTSCmd).CombinedOutput()
+		res, err := exec.Command("/bin/sh", "-c", getTSCmd).CombinedOutput()
 		if err != nil {
-			klog.Errorf("failed to get ts %v, %s", err, string(res))
+			glog.Errorf("failed to get ts %v, %s", err, string(res))
 			return false, nil
 		}
 		tsStr = string(res)
@@ -2306,7 +2310,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 	fullbackupName := fmt.Sprintf("%s-backup", info.ClusterName)
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
 		fullbackupName, info.Namespace, oa.backupChartPath(info.OperatorTag), setString)
-	klog.Infof("install adhoc deployment [%s]", cmd)
+	glog.Infof("install adhoc deployment [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch adhoc backup job: %v, %s", err, string(res))
@@ -2316,7 +2320,7 @@ func (oa *operatorActions) DeployAdHocBackup(info *TidbClusterConfig) error {
 }
 
 func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, error) {
-	klog.Infof("checking adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	glog.Infof("checking adhoc backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	ns := info.Namespace
 	var ts string
@@ -2324,11 +2328,11 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("failed to get jobs %s ,%v", jobName, err)
+			glog.Errorf("failed to get jobs %s ,%v", jobName, err)
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			klog.Errorf("cluster [%s] back up job is not completed, please wait! ", info.ClusterName)
+			glog.Errorf("cluster [%s] back up job is not completed, please wait! ", info.ClusterName)
 			return false, nil
 		}
 
@@ -2337,7 +2341,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 		}
 		podList, err := oa.kubeCli.CoreV1().Pods(ns).List(listOptions)
 		if err != nil {
-			klog.Errorf("failed to list pods: %v", err)
+			glog.Errorf("failed to list pods: %v", err)
 			return false, nil
 		}
 
@@ -2350,23 +2354,23 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 			}
 		}
 		if podName == "" {
-			klog.Errorf("failed to find the ad-hoc backup: %s podName", jobName)
+			glog.Errorf("failed to find the ad-hoc backup: %s podName", jobName)
 			return false, nil
 		}
 
 		getTsCmd := fmt.Sprintf("kubectl logs -n %s %s | grep 'commitTS = ' | cut -d '=' -f2 | sed 's/ *//g'", ns, podName)
 		tsData, err := exec.Command("/bin/sh", "-c", getTsCmd).CombinedOutput()
 		if err != nil {
-			klog.Errorf("failed to get ts of pod %s, %v", podName, err)
+			glog.Errorf("failed to get ts of pod %s, %v", podName, err)
 			return false, nil
 		}
 		if string(tsData) == "" {
-			klog.Errorf("ts is empty pod %s", podName)
+			glog.Errorf("ts is empty pod %s", podName)
 			return false, nil
 		}
 
 		ts = strings.TrimSpace(string(tsData))
-		klog.Infof("ad-hoc backup ts: %s", ts)
+		glog.Infof("ad-hoc backup ts: %s", ts)
 
 		return true, nil
 	}
@@ -2382,7 +2386,7 @@ func (oa *operatorActions) CheckAdHocBackup(info *TidbClusterConfig) (string, er
 func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfig) error {
 	oa.EmitEvent(from, fmt.Sprintf("RestoreBackup: target: %s", to.ClusterName))
 	oa.EmitEvent(to, fmt.Sprintf("RestoreBackup: source: %s", from.ClusterName))
-	klog.Infof("deploying restore, the data is from cluster[%s/%s] to cluster[%s/%s]",
+	glog.Infof("deploying restore, the data is from cluster[%s/%s] to cluster[%s/%s]",
 		from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
 
 	sets := map[string]string{
@@ -2398,7 +2402,7 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 	restoreName := fmt.Sprintf("%s-restore", to.ClusterName)
 	cmd := fmt.Sprintf("helm install -n %s --namespace %s %s --set-string %s",
 		restoreName, to.Namespace, oa.backupChartPath(to.OperatorTag), setString)
-	klog.Infof("install restore [%s]", cmd)
+	glog.Infof("install restore [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch restore job: %v, %s", err, string(res))
@@ -2408,23 +2412,23 @@ func (oa *operatorActions) Restore(from *TidbClusterConfig, to *TidbClusterConfi
 }
 
 func (oa *operatorActions) CheckRestore(from *TidbClusterConfig, to *TidbClusterConfig) error {
-	klog.Infof("begin to check restore backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
+	glog.Infof("begin to check restore backup cluster[%s] namespace[%s]", from.ClusterName, from.Namespace)
 	jobName := fmt.Sprintf("%s-restore-%s", to.ClusterName, from.BackupName)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1().Jobs(to.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("failed to get jobs %s ,%v", jobName, err)
+			glog.Errorf("failed to get jobs %s ,%v", jobName, err)
 			return false, nil
 		}
 		if job.Status.Succeeded == 0 {
-			klog.Errorf("cluster [%s] restore job is not completed, please wait! ", to.ClusterName)
+			glog.Errorf("cluster [%s] restore job is not completed, please wait! ", to.ClusterName)
 			return false, nil
 		}
 
 		_, err = oa.DataIsTheSameAs(to, from)
 		if err != nil {
 			// ad-hoc restore don't check the data really, just logging
-			klog.Infof("check restore: %v", err)
+			glog.Infof("check restore: %v", err)
 		}
 
 		return true, nil
@@ -2508,7 +2512,7 @@ func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bo
 				otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 			return false, err
 		}
-		klog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
+		glog.Infof("cluster %s/%s's table %s count(*) = %d and cluster %s/%s's table %s count(*) = %d",
 			tc.Namespace, tc.ClusterName, tableName, cnt,
 			otherInfo.Namespace, otherInfo.ClusterName, tableName, otherCnt)
 	}
@@ -2559,7 +2563,7 @@ func releaseIsExist(err error) bool {
 
 func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, "DeploySchedulerBackup")
-	klog.Infof("begin to deploy scheduled backup")
+	glog.Infof("begin to deploy scheduled backup")
 
 	cron := fmt.Sprintf("'*/1 * * * *'")
 	sets := map[string]string{
@@ -2577,7 +2581,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 		return err
 	}
 
-	klog.Infof("scheduled-backup deploy [%s]", cmd)
+	glog.Infof("scheduled-backup deploy [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch scheduler backup job: %v, %s", err, string(res))
@@ -2586,7 +2590,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 }
 
 func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error {
-	klog.Infof("disabling scheduled backup")
+	glog.Infof("disabling scheduled backup")
 
 	sets := map[string]string{
 		"clusterName":            info.ClusterName,
@@ -2598,7 +2602,7 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 		return err
 	}
 
-	klog.Infof("scheduled-backup disable [%s]", cmd)
+	glog.Infof("scheduled-backup disable [%s]", cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to disable scheduler backup job: %v, %s", err, string(res))
@@ -2607,19 +2611,19 @@ func (oa *operatorActions) disableScheduledBackup(info *TidbClusterConfig) error
 }
 
 func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
-	klog.Infof("checking scheduler backup for tidb cluster[%s/%s]", info.Namespace, info.ClusterName)
+	glog.Infof("checking scheduler backup for tidb cluster[%s/%s]", info.Namespace, info.ClusterName)
 
 	jobName := fmt.Sprintf("%s-scheduled-backup", info.ClusterName)
 	fn := func() (bool, error) {
 		job, err := oa.kubeCli.BatchV1beta1().CronJobs(info.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("failed to get cronjobs %s ,%v", jobName, err)
+			glog.Errorf("failed to get cronjobs %s ,%v", jobName, err)
 			return false, nil
 		}
 
 		jobs, err := oa.kubeCli.BatchV1().Jobs(info.Namespace).List(metav1.ListOptions{})
 		if err != nil {
-			klog.Errorf("failed to list jobs %s ,%v", info.Namespace, err)
+			glog.Errorf("failed to list jobs %s ,%v", info.Namespace, err)
 			return false, nil
 		}
 
@@ -2631,7 +2635,7 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		}
 
 		if len(backupJobs) == 0 {
-			klog.Errorf("cluster [%s] scheduler jobs is creating, please wait!", info.ClusterName)
+			glog.Errorf("cluster [%s] scheduler jobs is creating, please wait!", info.ClusterName)
 			return false, nil
 		}
 
@@ -2647,12 +2651,12 @@ func (oa *operatorActions) CheckScheduledBackup(info *TidbClusterConfig) error {
 		}
 
 		if succededJobCount >= 3 {
-			klog.Infof("cluster [%s/%s] scheduled back up job completed count: %d",
+			glog.Infof("cluster [%s/%s] scheduled back up job completed count: %d",
 				info.Namespace, info.ClusterName, succededJobCount)
 			return true, nil
 		}
 
-		klog.Infof("cluster [%s/%s] scheduled back up job is not completed, please wait! ",
+		glog.Infof("cluster [%s/%s] scheduled back up job is not completed, please wait! ",
 			info.Namespace, info.ClusterName)
 		return false, nil
 	}
@@ -2685,7 +2689,7 @@ func getParentUIDFromJob(j batchv1.Job) (types.UID, bool) {
 	}
 
 	if controllerRef.Kind != "CronJob" {
-		klog.Infof("Job with non-CronJob parent, name %s namespace %s", j.Name, j.Namespace)
+		glog.Infof("Job with non-CronJob parent, name %s namespace %s", j.Name, j.Namespace)
 		return types.UID(""), false
 	}
 
@@ -2743,7 +2747,7 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 
 	_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil && !errors.IsAlreadyExists(err) {
-		klog.Errorf("cluster: [%s/%s] create get backup dir pod failed, error :%v", info.Namespace, info.ClusterName, err)
+		glog.Errorf("cluster: [%s/%s] create get backup dir pod failed, error :%v", info.Namespace, info.ClusterName, err)
 		return nil, err
 	}
 
@@ -2766,12 +2770,12 @@ func (oa *operatorActions) getBackupDir(info *TidbClusterConfig) ([]string, erro
 	cmd := fmt.Sprintf("kubectl exec %s -n %s ls /data", backupDirPodName, info.Namespace)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
-		klog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
+		glog.Errorf("cluster:[%s/%s] exec :%s failed,error:%v,result:%s", info.Namespace, info.ClusterName, cmd, err, string(res))
 		return nil, err
 	}
 
 	dirs := strings.Split(string(res), "\n")
-	klog.Infof("dirs in pod info name [%s] dir name [%s]", scheduledPvcName, strings.Join(dirs, ","))
+	glog.Infof("dirs in pod info name [%s] dir name [%s]", scheduledPvcName, strings.Join(dirs, ","))
 	return dirs, nil
 }
 
@@ -2786,11 +2790,11 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	}
 	if withDrainer {
 		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
-		klog.Infof("begin to deploy incremental backup, source cluster[%s/%s], target cluster [%s/%s]",
+		glog.Infof("begin to deploy incremental backup, source cluster[%s/%s], target cluster [%s/%s]",
 			from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
 	} else {
 		oa.EmitEvent(from, "Enable pump cluster")
-		klog.Infof("begin to enable pump for cluster[%s/%s]",
+		glog.Infof("begin to enable pump for cluster[%s/%s]",
 			from.Namespace, from.ClusterName)
 	}
 
@@ -2841,7 +2845,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	if err != nil {
 		return err
 	}
-	klog.Infof(cmd)
+	glog.Infof(cmd)
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to launch incremental backup job: %v, %s", err, string(res))
@@ -2850,17 +2854,17 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 }
 
 func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withDrainer bool) error {
-	klog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
+	glog.Infof("begin to check incremental backup cluster[%s] namespace[%s]", info.ClusterName, info.Namespace)
 
 	pumpStatefulSetName := fmt.Sprintf("%s-pump", info.ClusterName)
 	fn := func() (bool, error) {
 		pumpStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(pumpStatefulSetName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
+			glog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
 			return false, nil
 		}
 		if pumpStatefulSet.Status.Replicas != pumpStatefulSet.Status.ReadyReplicas {
-			klog.Errorf("pump replicas is not ready, please wait ! %s ", pumpStatefulSetName)
+			glog.Errorf("pump replicas is not ready, please wait ! %s ", pumpStatefulSetName)
 			return false, nil
 		}
 
@@ -2876,7 +2880,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(listOps)
 		if err != nil {
-			klog.Errorf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
+			glog.Errorf("failed to get pods via pump labels %s ,%v", pumpStatefulSetName, err)
 			return false, nil
 		}
 
@@ -2886,7 +2890,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 
 		for _, pod := range pods.Items {
 			if !oa.pumpHealth(info, pod.Name) {
-				klog.Errorf("some pods is not health %s", pumpStatefulSetName)
+				glog.Errorf("some pods is not health %s", pumpStatefulSetName)
 				return false, nil
 			}
 
@@ -2894,11 +2898,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 				continue
 			}
 
-			klog.Info(pod.Spec.Affinity)
+			glog.Info(pod.Spec.Affinity)
 			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("pump pod %s/%s should have affinity set", pod.Namespace, pod.Name)
 			}
-			klog.Info(pod.Spec.Tolerations)
+			glog.Info(pod.Spec.Tolerations)
 			foundKey := false
 			for _, tor := range pod.Spec.Tolerations {
 				if tor.Key == "node-role" {
@@ -2918,11 +2922,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		drainerStatefulSetName := fmt.Sprintf("%s-drainer", info.ClusterName)
 		drainerStatefulSet, err := oa.kubeCli.AppsV1().StatefulSets(info.Namespace).Get(drainerStatefulSetName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
+			glog.Errorf("failed to get jobs %s ,%v", pumpStatefulSetName, err)
 			return false, nil
 		}
 		if drainerStatefulSet.Status.Replicas != drainerStatefulSet.Status.ReadyReplicas {
-			klog.Errorf("drainer replicas is not ready, please wait ! %s ", pumpStatefulSetName)
+			glog.Errorf("drainer replicas is not ready, please wait ! %s ", pumpStatefulSetName)
 			return false, nil
 		}
 
@@ -2942,7 +2946,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		}
 		for _, pod := range pods.Items {
 			if !oa.drainerHealth(info, pod.Name) {
-				klog.Errorf("some pods is not health %s", drainerStatefulSetName)
+				glog.Errorf("some pods is not health %s", drainerStatefulSetName)
 				return false, nil
 			}
 
@@ -2950,11 +2954,11 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 				continue
 			}
 
-			klog.Info(pod.Spec.Affinity)
+			glog.Info(pod.Spec.Affinity)
 			if pod.Spec.Affinity == nil || pod.Spec.Affinity.PodAntiAffinity == nil || len(pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution) != 1 {
 				return true, fmt.Errorf("drainer pod %s/%s should have spec.affinity set", pod.Namespace, pod.Name)
 			}
-			klog.Info(pod.Spec.Tolerations)
+			glog.Info(pod.Spec.Tolerations)
 			foundKey := false
 			for _, tor := range pod.Spec.Tolerations {
 				if tor.Key == "node-role" {
@@ -2988,7 +2992,7 @@ func (oa *operatorActions) RegisterWebHookAndServiceOrDie(configName, namespace,
 
 func (oa *operatorActions) RegisterWebHookAndService(configName, namespace, service string, context *apimachinery.CertContext) error {
 	client := oa.kubeCli
-	klog.Infof("Registering the webhook via the AdmissionRegistration API")
+	glog.Infof("Registering the webhook via the AdmissionRegistration API")
 
 	failurePolicy := admissionV1beta1.Fail
 
@@ -3021,7 +3025,7 @@ func (oa *operatorActions) RegisterWebHookAndService(configName, namespace, serv
 	})
 
 	if err != nil {
-		klog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
+		glog.Errorf("registering webhook config %s with namespace %s error %v", configName, namespace, err)
 		return err
 	}
 
@@ -3060,7 +3064,7 @@ func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, podName string) b
 	if oa.fw != nil {
 		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("pod/%s", podName), 8250)
 		if err != nil {
-			klog.Errorf("failed to forward port %d for %s/%s", 8250, info.Namespace, podName)
+			glog.Errorf("failed to forward port %d for %s/%s", 8250, info.Namespace, podName)
 			return false
 		}
 		defer cancel()
@@ -3071,27 +3075,27 @@ func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, podName string) b
 	pumpHealthURL := fmt.Sprintf("http://%s/status", addr)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
-		klog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
+		glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
-		klog.Errorf("Error response %v", res.StatusCode)
+		glog.Errorf("Error response %v", res.StatusCode)
 		return false
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		klog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+		glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
 		return false
 	}
 	healths := pumpStatus{}
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
-		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
+		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
 		return false
 	}
 	for _, status := range healths.StatusMap {
 		if status.State != "online" {
-			klog.Errorf("cluster:[%s] pump's state is not online", info.ClusterName)
+			glog.Errorf("cluster:[%s] pump's state is not online", info.ClusterName)
 			return false
 		}
 	}
@@ -3126,30 +3130,30 @@ func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, podName string
 			PreserveWhitespace: false,
 		})
 		if err != nil {
-			klog.Errorf("failed to run command '%s' in pod %s/%q", cmd, info.Namespace, podName)
+			glog.Errorf("failed to run command '%s' in pod %s/%q", cmd, info.Namespace, podName)
 			return false
 		}
 		body = []byte(stdout)
 	} else {
 		res, err := http.Get(drainerHealthURL)
 		if err != nil {
-			klog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
+			glog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
 			return false
 		}
 		if res.StatusCode >= 400 {
-			klog.Errorf("Error response %v", res.StatusCode)
+			glog.Errorf("Error response %v", res.StatusCode)
 			return false
 		}
 		body, err = ioutil.ReadAll(res.Body)
 		if err != nil {
-			klog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+			glog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
 			return false
 		}
 	}
 	healths := drainerStatus{}
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
-		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
+		glog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
 		return false
 	}
 	return len(healths.PumpPos) > 0
@@ -3159,7 +3163,7 @@ func (oa *operatorActions) EmitEvent(info *TidbClusterConfig, message string) {
 	oa.lock.Lock()
 	defer oa.lock.Unlock()
 
-	klog.Infof("Event: %s", message)
+	glog.Infof("Event: %s", message)
 
 	if !oa.eventWorkerRunning {
 		return
@@ -3196,7 +3200,7 @@ func (oa *operatorActions) RunEventWorker() {
 	oa.lock.Lock()
 	oa.eventWorkerRunning = true
 	oa.lock.Unlock()
-	klog.Infof("Event worker started")
+	glog.Infof("Event worker started")
 	wait.Forever(oa.eventWorker, 10*time.Second)
 }
 
@@ -3226,12 +3230,12 @@ func (oa *operatorActions) eventWorker() {
 				},
 			}
 			if err := client.AddAnnotation(anno); err != nil {
-				klog.V(4).Infof("cluster:[%s/%s] error recording event: %s, reason: %v",
+				glog.V(4).Infof("cluster:[%s/%s] error recording event: %s, reason: %v",
 					ns, clusterName, ev.message, err)
 				retryEvents = append(retryEvents, ev)
 				continue
 			}
-			klog.Infof("cluster: [%s/%s] recoding event: %s", ns, clusterName, ev.message)
+			glog.Infof("cluster: [%s/%s] recoding event: %s", ns, clusterName, ev.message)
 		}
 
 		ce := oa.clusterEvents[key]
@@ -3260,7 +3264,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 	fn := func() (bool, error) {
 
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(info.ClusterName, metav1.GetOptions{}); err != nil {
-			klog.Infof("failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
+			glog.Infof("failed to get tidbcluster: [%s/%s], %v", ns, info.ClusterName, err)
 			return false, nil
 		}
 
@@ -3270,19 +3274,19 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			setName = controller.TiDBMemberName(info.ClusterName)
 			tidbPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
-				klog.Infof("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
+				glog.Infof("fail to get pod in CheckManualPauseCompoent tidb [%s/%s]", ns, podName)
 				return false, nil
 			}
 
 			if tidbPod.Labels[v1.ControllerRevisionHashLabelKey] == tc.Status.TiDB.StatefulSet.UpdateRevision &&
 				tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
 				if member, ok := tc.Status.TiDB.Members[tidbPod.Name]; !ok || !member.Health {
-					klog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
+					glog.Infof("wait for tidb pod [%s/%s] ready member health %t ok %t", ns, podName, member.Health, ok)
 				} else {
 					return true, nil
 				}
 			} else {
-				klog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
+				glog.Infof("tidbset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
 			}
 
 			return false, nil
@@ -3291,7 +3295,7 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 			setName = controller.TiKVMemberName(info.ClusterName)
 			tikvPod, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 			if err != nil {
-				klog.Infof("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
+				glog.Infof("fail to get pod in CheckManualPauseCompoent tikv [%s/%s]", ns, podName)
 				return false, nil
 			}
 
@@ -3305,12 +3309,12 @@ func (oa *operatorActions) checkManualPauseComponent(info *TidbClusterConfig, co
 					}
 				}
 				if tikvStore == nil || tikvStore.State != v1alpha1.TiKVStateUp {
-					klog.Infof("wait for tikv pod [%s/%s] ready store state %s", ns, podName, tikvStore.State)
+					glog.Infof("wait for tikv pod [%s/%s] ready store state %s", ns, podName, tikvStore.State)
 				} else {
 					return true, nil
 				}
 			} else {
-				klog.Infof("tikvset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
+				glog.Infof("tikvset is not in upgrade phase or pod is not upgrade done [%s/%s]", ns, podName)
 			}
 
 			return false, nil
@@ -3343,24 +3347,24 @@ func (oa *operatorActions) CheckUpgradeComplete(info *TidbClusterConfig) error {
 	if err := wait.PollImmediate(15*time.Second, 30*time.Minute, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("checkUpgradeComplete, [%s/%s] cannot get tidbcluster, %v", ns, tcName, err)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] cannot get tidbcluster, %v", ns, tcName, err)
 			return false, nil
 		}
 		if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-			klog.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading", ns, tcName)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] PD is still upgrading", ns, tcName)
 			return false, nil
 		}
 		if tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
-			klog.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading", ns, tcName)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] TiKV is still upgrading", ns, tcName)
 			return false, nil
 		}
 		if tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-			klog.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading", ns, tcName)
+			glog.Errorf("checkUpgradeComplete, [%s/%s] TiDB is still upgrading", ns, tcName)
 			return false, nil
 		}
 		return true, nil
 	}); err != nil {
-		klog.Errorf("failed to wait upgrade complete [%s/%s], %v", ns, tcName, err)
+		glog.Errorf("failed to wait upgrade complete [%s/%s], %v", ns, tcName, err)
 		return err
 	}
 	return nil
@@ -3388,7 +3392,7 @@ func (oa *operatorActions) CheckInitSQL(info *TidbClusterConfig) error {
 
 		return true, nil
 	}); err != nil {
-		klog.Errorf("failed to check init sql complete [%s/%s], %v", ns, tcName, err)
+		glog.Errorf("failed to check init sql complete [%s/%s], %v", ns, tcName, err)
 		return err
 	}
 	return nil
@@ -3408,7 +3412,7 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		var local *v1alpha1.TidbCluster
 		var err error
 		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
 			return false, nil
 		}
 
@@ -3423,6 +3427,52 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 		return true, nil
 	})
+}
+func (oa *operatorActions) CheckTidbClusterHaveFailedMember(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var tc *v1alpha1.TidbCluster
+		var err error
+		ns := info.Namespace
+		tcName := info.ClusterName
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
+		if len(tc.Status.TiDB.FailureMembers) == 0 {
+			glog.Infof("the number of failed member is zero")
+			return false, nil
+		} else {
+			return true, nil
+		}
+	})
+}
+func (oa *operatorActions) CheckScaleTidbClusterToZeroReplica(info *TidbClusterConfig, timeout, pollInterval time.Duration) error {
+	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var tc *v1alpha1.TidbCluster
+		var err error
+		ns := info.Namespace
+		tcName := info.ClusterName
+		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
+			glog.Errorf("failed to get tidbcluster: %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
+		if tc.Status.TiDB.StatefulSet.Replicas != 0 {
+			glog.Infof("failed to scale tidb member to zero")
+			return false, nil
+		} else {
+			return true, nil
+		}
+	})
+}
+func (oa *operatorActions) CheckTidbClusterHaveFailedMemberOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckTidbClusterHaveFailedMember(info, 10*time.Minute, 15*time.Second); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
+func (oa *operatorActions) CheckScaleTidbClusterToZeroReplicaOrDie(info *TidbClusterConfig) {
+	if err := oa.CheckScaleTidbClusterToZeroReplica(info, 5*time.Minute, 15*time.Second); err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
 
 var dummyCancel = func() {}
@@ -3465,12 +3515,8 @@ func StartValidatingAdmissionWebhookServerOrDie(context *apimachinery.CertContex
 	if err := server.ListenAndServeTLS("", ""); err != nil {
 		sendErr := slack.SendErrMsg(err.Error())
 		if sendErr != nil {
-			klog.Error(sendErr)
+			glog.Error(sendErr)
 		}
 		panic(fmt.Sprintf("failed to start webhook server %v", err))
 	}
-}
-
-func blockWriterPodName(info *TidbClusterConfig) string {
-	return fmt.Sprintf("%s-blockwriter", info.ClusterName)
 }
