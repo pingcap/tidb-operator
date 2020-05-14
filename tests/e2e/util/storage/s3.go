@@ -54,8 +54,9 @@ func (s *s3Storage) ProvideBackup(tc *v1alpha1.TidbCluster, fromSecret *corev1.S
 	return fixture.GetBackupCRDWithS3(tc, fromSecret.Name, t, s.s3config)
 }
 
-func (s *s3Storage) ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret, t string) *v1alpha1.Restore {
-	return fixture.GetRestoreCRDWithS3(tc, toSecret.Name, t, s.s3config)
+// TODO: support Dumper Restore for Aws
+func (s *s3Storage) ProvideRestore(tc *v1alpha1.TidbCluster, toSecret *corev1.Secret, t string) (*v1alpha1.Restore, error) {
+	return fixture.GetRestoreCRDWithS3(tc, toSecret.Name, t, s.s3config), nil
 }
 
 func (s *s3Storage) CheckDataCleaned() error {

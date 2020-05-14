@@ -414,6 +414,7 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		restore.Spec.BR = nil
 		restore.Spec.StorageClassName = &storage
 		restore.Spec.StorageSize = "1Gi"
+		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
 	return restore
 }

@@ -415,6 +415,31 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		if err != nil {
 			return
 		}
+		cleanFunc := func() {
+			// delete backup data in S3
+			err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
+			if err != nil {
+				return
+			}
+
+			err = storage.CheckDataCleaned()
+			if err != nil {
+				return
+			}
+
+			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+				_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+				if err != nil && errors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, nil
+			})
+			if err != nil {
+				return
+			}
+			framework.Logf("clean backup success")
+		}
+		defer cleanFunc()
 
 		// check backup is successed
 		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -439,7 +464,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 		// create restore CRD to process restore
-		restore := storage.ProvideRestore(tcTo, restoreSecret, backupType)
+		restore, err := storage.ProvideRestore(tcTo, restoreSecret, backupType)
+		if err != nil {
+			return
+		}
 		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
 		if err != nil {
 			return
@@ -474,30 +502,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		if !isSame {
 			framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 		}
-
-		// delete backup data in S3
-		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return
-		}
-
-		err = storage.CheckDataCleaned()
-		if err != nil {
-			return
-		}
-
-		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
-			if err != nil && errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, nil
-		})
-		if err != nil {
-			return
-		}
-		framework.Logf("clean backup success")
-		time.Sleep(10 * time.Minute)
 		return false, nil
 	}
 
