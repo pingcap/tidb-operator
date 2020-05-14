@@ -275,6 +275,24 @@ func GetBackupBucketName(backup *v1alpha1.Backup) (string, string, error) {
 	return bucketName, "", nil
 }
 
+// GetBackupPrefixName return the prefix for remote storage
+func GetBackupPrefixName(backup *v1alpha1.Backup) (string, string, error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	storageType := GetStorageType(backup.Spec.StorageProvider)
+	var prefix string
+
+	switch storageType {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = backup.Spec.S3.Prefix
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = backup.Spec.Gcs.Prefix
+	default:
+		return prefix, "UnsupportedStorageType", fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
+	}
+	return prefix, "", nil
+}
+
 // GetStorageType return the backup storage type according to the specified StorageProvider
 func GetStorageType(provider v1alpha1.StorageProvider) v1alpha1.BackupStorageType {
 	// If there are multiple storages in the StorageProvider, the first one found is returned in the following order
