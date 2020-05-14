@@ -160,14 +160,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 		ginkgo.It("Scaling tidb cluster with advanced statefulset", func() {
 			clusterName := "scaling-with-asts"
-			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
+			tc := fixture.GetFullTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 5
 			tc.Spec.TiDB.Replicas = 5
 			tc.Spec.TiFlash.Replicas = 5
 			err := genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForFullTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
 
 			scalingTests := []struct {
@@ -325,7 +325,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 			}
 
-			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			err = oa.WaitForFullTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
 		})
 	})

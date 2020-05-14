@@ -123,12 +123,73 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					},
 				},
 			},
+		},
+	}
+}
+
+func GetFullTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			Version:         version,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			PVReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
+			SchedulerName:   "tidb-scheduler",
+			Timezone:        "Asia/Shanghai",
+
+			PD: v1alpha1.PDSpec{
+				Replicas:             3,
+				BaseImage:            "pingcap/pd",
+				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
+				Config: &v1alpha1.PDConfig{
+					Log: &v1alpha1.PDLogConfig{
+						Level: "info",
+					},
+					// accelerate failover
+					Schedule: &v1alpha1.PDScheduleConfig{
+						MaxStoreDownTime: "5m",
+					},
+				},
+			},
+
+			TiKV: v1alpha1.TiKVSpec{
+				Replicas:             3,
+				BaseImage:            "pingcap/tikv",
+				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
+				MaxFailoverCount:     pointer.Int32Ptr(3),
+				Config: &v1alpha1.TiKVConfig{
+					LogLevel: "info",
+					Server:   &v1alpha1.TiKVServerConfig{},
+				},
+			},
+
+			TiDB: v1alpha1.TiDBSpec{
+				Replicas:             2,
+				BaseImage:            "pingcap/tidb",
+				ResourceRequirements: BurstbleMedium,
+				Service: &v1alpha1.TiDBServiceSpec{
+					ServiceSpec: v1alpha1.ServiceSpec{
+						Type: corev1.ServiceTypeClusterIP,
+					},
+					ExposeStatus: pointer.BoolPtr(true),
+				},
+				SeparateSlowLog:  pointer.BoolPtr(true),
+				MaxFailoverCount: pointer.Int32Ptr(3),
+				Config: &v1alpha1.TiDBConfig{
+					Log: &v1alpha1.Log{
+						Level: pointer.StringPtr("info"),
+					},
+				},
+			},
 			TiFlash: &v1alpha1.TiFlashSpec{
 				Replicas:         1,
 				BaseImage:        "pingcap/tiflash",
 				MaxFailoverCount: pointer.Int32Ptr(3),
 				StorageClaims: []v1alpha1.StorageClaim{
-					v1alpha1.StorageClaim{
+					{
 						Resources: WithStorage(BurstbleMedium, "10Gi"),
 					},
 				},
