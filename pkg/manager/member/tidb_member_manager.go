@@ -460,7 +460,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Name:            svcName,
 			Namespace:       ns,
 			Labels:          tidbLabels,
-			Annotations:     svcSpec.Annotations,
+			Annotations:     copyAnnotations(svcSpec.Annotations),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
