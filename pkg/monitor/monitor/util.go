@@ -16,10 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strconv"
-	"strings"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -32,6 +28,8 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	"sort"
+	"strconv"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -359,24 +357,19 @@ chmod 777 /data/prometheus /data/grafana
 	return container
 }
 
-func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, config *core.ConfigMap) core.Container {
-	command := []string{
-		"/bin/prometheus",
-		"--web.enable-admin-api",
-		"--web.enable-lifecycle",
-		"--config.file=/etc/prometheus/prometheus.yml",
-		"--storage.tsdb.path=/data/prometheus",
-		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
-	}
-
-	if startCommand, ok := config.Data["start-command"]; ok {
-		command = strings.Split(startCommand, "\n")
-	}
+func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.Resources),
-		Command:   command,
+		Command: []string{
+			"/bin/prometheus",
+			"--web.enable-admin-api",
+			"--web.enable-lifecycle",
+			"--config.file=/etc/prometheus/prometheus.yml",
+			"--storage.tsdb.path=/data/prometheus",
+			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
+		},
 		Ports: []core.ContainerPort{
 			{
 				Name:          "prometheus",
@@ -406,6 +399,11 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 				ReadOnly:  false,
 			},
 		},
+	}
+	if monitor.Spec.Prometheus.Container != nil {
+		if len(monitor.Spec.Prometheus.Container.Command) > 0 {
+			c.Command = monitor.Spec.Prometheus.Container.Command
+		}
 	}
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
 		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))

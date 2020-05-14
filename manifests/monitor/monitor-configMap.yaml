@@ -178,13 +178,4 @@ data:
             }
         ]
     }
-  start-command: |-
-    /bin/prometheus
-    --web.enable-admin-api
-    --web.enable-lifecycle
-    --log.level=info
-    --config.file=/etc/prometheus/prometheus.yml
-    --storage.tsdb.path=/data/prometheus
-    --storage.tsdb.retention=12d
-
 

@@ -79,6 +79,8 @@ type PrometheusSpec struct {
 	Service  ServiceSpec `json:"service,omitempty"`
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
+
+	Container *corev1.Container `json:"container,omitempty"`
 	// +optional
 	Config *Configuration `json:"config,omitempty"`
 }

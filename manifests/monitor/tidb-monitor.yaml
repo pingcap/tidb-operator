@@ -8,6 +8,15 @@ spec:
   prometheus:
     config:
       externalConfigMap: external-config
+    container:
+      command:
+        - /bin/prometheus
+        - --web.enable-admin-api
+        - --web.enable-lifecycle
+        - --log.level=info
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/data/prometheus
+        - --storage.tsdb.retention=12d
     baseImage: prom/prometheus
     version: v2.11.1
     resources: {}

@@ -226,10 +226,6 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 		if externalContent, ok := externalCM.Data["dashboard-config"]; ok {
 			newCM.Data["dashboard-config"] = externalContent
 		}
-
-		if externalContent, ok := externalCM.Data["start-command"]; ok {
-			newCM.Data["start-command"] = externalContent
-		}
 	}
 	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
