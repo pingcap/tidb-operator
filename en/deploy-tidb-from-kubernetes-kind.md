@@ -22,7 +22,7 @@ Before deployment, make sure the following requirements are satisfied:
 - [Docker](https://docs.docker.com/install/): version >= 17.03
 - [Helm](https://helm.sh/docs/intro/install/): Helm 2 or the latest stable version of Helm 3
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): version >= 1.12
-- [kind]: version >= 0.7.0 (the latest version recommended)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/): version >= 0.7.0 (the latest version recommended)
 - The value of [net.ipv4.ip_forward](https://linuxconfig.org/how-to-turn-on-off-ip-forwarding-in-linux) should be set to `1`
 
 ## Step 1: Create a Kubernetes cluster using kind
