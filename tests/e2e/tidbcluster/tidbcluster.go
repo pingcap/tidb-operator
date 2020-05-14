@@ -285,14 +285,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	backupCRDTest := func(provider, ns, backupType string, fw portforward.PortForward, genericCli client.Client, c clientset.Interface, cli versioned.Interface) (skip bool, err error) {
+	backupCRDTest := func(provider, ns, backupType string, fw portforward.PortForward, genericCli client.Client, c clientset.Interface, cli versioned.Interface) (err error) {
 		err = nil
-		if provider != "aws" && provider != "kind" {
-			skip = true
-			return
-		}
-		skip = false
-
 		backupFolder := time.Now().Format(time.RFC3339)
 		var storage teststorage.TestStorage
 		switch provider {
@@ -502,24 +496,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		if !isSame {
 			framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 		}
-		return false, nil
+		return nil
 	}
 
 	ginkgo.It("CRD:Backup and restore with BR", func() {
 		provider := framework.TestContext.Provider
-		skip, err := backupCRDTest(provider, ns, fixture.BRType, fw, genericCli, c, cli)
-		if skip {
-			framework.Skipf("skip")
+		if provider != "aws" && provider != "kind" {
+			framework.Skipf("CRD:Backup and restore with BR only test in aws/kind")
 		}
+		err := backupCRDTest(provider, ns, fixture.BRType, fw, genericCli, c, cli)
 		framework.ExpectNoError(err)
 	})
 
 	ginkgo.It("CRD:Backup and restore with Dumper", func() {
 		provider := framework.TestContext.Provider
-		skip, err := backupCRDTest(provider, ns, fixture.DumperType, fw, genericCli, c, cli)
-		if skip {
-			framework.Skipf("skip")
+		if provider != "kind" {
+			framework.Skipf("CRD:Backup and restore with Dumper only test in kind")
 		}
+		err := backupCRDTest(provider, ns, fixture.DumperType, fw, genericCli, c, cli)
 		framework.ExpectNoError(err)
 	})
 
