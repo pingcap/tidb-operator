@@ -17,14 +17,25 @@ import (
 	"errors"
 	"strings"
 
-	crdutils "github.com/ant31/crd-validation/pkg"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	crdutils "github.com/yisaer/crd-validation/pkg"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 )
 
 var (
 	tidbClusteradditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
-	tidbClusterPDColumn                 = extensionsobj.CustomResourceColumnDefinition{
+	tidbClusterReadyColumn              = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Ready",
+		Type:     "string",
+		JSONPath: `.status.conditions[?(@.type=="Ready")].status`,
+	}
+	tidbClusterStatusMessageColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Status",
+		Type:     "string",
+		JSONPath: `.status.conditions[?(@.type=="Ready")].message`,
+		Priority: 1,
+	}
+	tidbClusterPDColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "PD",
 		Type:        "string",
 		Description: "The image for PD cluster",
@@ -207,9 +218,10 @@ var (
 
 func init() {
 	tidbClusteradditionalPrinterColumns = append(tidbClusteradditionalPrinterColumns,
+		tidbClusterReadyColumn,
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
-		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, ageColumn)
+		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, tidbClusterStatusMessageColumn, ageColumn)
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, ageColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)

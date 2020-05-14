@@ -24,10 +24,12 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install && \
     rm -r aws awscliv2.zip
 RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v0.11.1/cert-manager.yaml" -o "/cert-manager.yaml"
+ADD minio /minio
 
 ADD tidb-operator /charts/e2e/tidb-operator
 ADD tidb-cluster /charts/e2e/tidb-cluster
 ADD tidb-backup /charts/e2e/tidb-backup
+ADD tidb-drainer /charts/e2e/tidb-drainer
 ADD manifests /manifests/e2e
 
 ADD bin/ginkgo /usr/local/bin/

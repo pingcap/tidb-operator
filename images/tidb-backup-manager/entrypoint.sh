@@ -15,6 +15,7 @@
 
 set -e
 
+export GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json
 echo "Create rclone.conf file."
 cat <<EOF > /tmp/rclone.conf
 [s3]
@@ -30,7 +31,7 @@ storage_class = ${AWS_STORAGE_CLASS}
 [gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
-service_account_file = /tmp/google-credentials.json
+service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}
 object_acl = ${GCS_OBJECT_ACL}
 bucket_acl = ${GCS_BUCKET_ACL}
 location =  ${GCS_LOCATION}
@@ -43,11 +44,11 @@ EOF
 
 if [[ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]]; then
     echo "Create google-credentials.json file."
-    cat <<EOF > /tmp/google-credentials.json
+    cat <<EOF > ${GOOGLE_APPLICATION_CREDENTIALS}
     ${GCS_SERVICE_ACCOUNT_JSON_KEY}
 EOF
 else
-    touch /tmp/google-credentials.json
+    touch ${GOOGLE_APPLICATION_CREDENTIALS}
 fi
 
 BACKUP_BIN=/tidb-backup-manager
@@ -56,8 +57,6 @@ if [[ -n "${AWS_DEFAULT_REGION}"]]; then
 else
 	EXEC_COMMAND="/usr/local/bin/shush exec --"
 fi
-
-cat /tmp/rclone.conf
 
 # exec command
 case "$1" in

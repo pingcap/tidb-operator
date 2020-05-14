@@ -52,7 +52,9 @@ func NewRestoreCommand() *cobra.Command {
 
 func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
-	cmdutil.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	options := []informers.SharedInformerOption{
 		informers.WithNamespace(restoreOpts.Namespace),
 	}

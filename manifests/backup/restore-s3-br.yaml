@@ -27,8 +27,7 @@ spec:
     secretName: mySecret
     # port: 4000
     # user: root
-    # tlsClient:
-    #   tlsSecret: <restore-tls-secretname>
+    # tlsClientSecretName: <restore-tls-secretname>
   s3:
     provider: ceph
     endpoint: http://10.233.57.220

@@ -45,6 +45,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -510,11 +511,21 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
 						},
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
+						},
 					},
 					PD: v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
+						},
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
 						},
 					},
 				},
@@ -560,10 +571,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
 						},
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
+						},
 					},
 					PD: v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
+						},
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
 						},
 					},
 				},
@@ -585,9 +606,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					},
 					TiKV: v1alpha1.TiKVSpec{
 						Replicas: 1,
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
+						},
 					},
 					PD: v1alpha1.PDSpec{
 						Replicas: 1,
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("10G"),
+							},
+						},
 					},
 				},
 			}
@@ -671,7 +702,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			_, err = cli.PingcapV1alpha1().TidbMonitors(ns).Create(monitor)
 			framework.ExpectNoError(err, "Create TidbMonitor error")
-			err = tests.CheckTidbMonitor(monitor, c, fw)
+			err = tests.CheckTidbMonitor(monitor, cli, c, fw)
 			framework.ExpectNoError(err, "Check TidbMonitor error")
 			tac := fixture.GetTidbClusterAutoScaler("auto-scaler", ns, tc, monitor)
 
@@ -707,6 +738,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
+			tac.Spec.TiKV.Metrics = []autoscalingv2beta2.MetricSpec{}
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
 
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
@@ -866,6 +898,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
+			tac.Spec.TiDB.Metrics = []autoscalingv2beta2.MetricSpec{}
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")

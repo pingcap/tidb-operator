@@ -56,6 +56,7 @@ Environments:
     SKIP_IMAGE_LOAD       skip load images
     SKIP_UP               skip starting the cluster
     SKIP_DOWN             skip shutting down the cluster
+    SKIP_DUMP             skip dump cluster logs
     SKIP_TEST             skip running the test
     KUBE_VERSION          the version of Kubernetes to test against
     KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
@@ -79,6 +80,7 @@ Environments:
     GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
     RUNNER_SUITE_NAME     the suite name of runner
     SKIP_GINKGO           if set to `y`, skip ginkgo
+    ARTIFACTS             directory to put artifacts
 
 Examples:
 
@@ -182,6 +184,7 @@ SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
 SKIP_TEST=${SKIP_TEST:-}
+SKIP_DUMP=${SKIP_DUMP:-}
 REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 GCP_PROJECT=${GCP_PROJECT:-}
@@ -202,6 +205,7 @@ GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
+ARTIFACTS=${ARTIFACTS:-}
 
 echo "PROVIDER: $PROVIDER"
 echo "DOCKER_REPO: $DOCKER_REPO"
@@ -212,6 +216,8 @@ echo "SKIP_BUILD: $SKIP_BUILD"
 echo "SKIP_IMAGE_BUILD: $SKIP_IMAGE_BUILD"
 echo "SKIP_UP: $SKIP_UP"
 echo "SKIP_DOWN: $SKIP_DOWN"
+echo "SKIP_TEST: $SKIP_TEST"
+echo "SKIP_DUMP: $SKIP_DUMP"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "GCP_PROJECT: $GCP_PROJECT"
 echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
@@ -227,17 +233,18 @@ echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
+echo "ARTIFACTS: $ARTIFACTS"
 
-# https://github.com/kubernetes-sigs/kind/releases/tag/v0.6.1
+# https://github.com/kubernetes-sigs/kind/releases/tag/v0.8.1
 declare -A kind_node_images
-kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:e6f3dade95b7cb74081c5b9f3291aaaa6026a90a977e0b990778b6adc9ea6248"
-kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:68a6581f64b54994b824708286fafc37f1227b7b54cbb8865182ce1e036ed1cc"
-kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:5e8ae1a4e39f3d151d420ef912e18368745a2ede6d20ea87506920cd947a7e3a"
-kind_node_images["v1.14.10"]="kindest/node:v1.14.10@sha256:81ae5a3237c779efc4dda43cc81c696f88a194abcc4f8fa34f86cf674aa14977"
-kind_node_images["v1.15.7"]="kindest/node:v1.15.7@sha256:e2df133f80ef633c53c0200114fce2ed5e1f6947477dbc83261a6a921169488d"
-kind_node_images["v1.16.4"]="kindest/node:v1.16.4@sha256:b91a2c2317a000f3a783489dfb755064177dbc3a0b2f4147d50f04825d016f55"
-kind_node_images["v1.17.2"]="kindest/node:v1.17.2@sha256:59df31fc61d1da5f46e8a61ef612fa53d3f9140f82419d1ef1a6b9656c6b737c"
-kind_node_images["v1.18.0"]="kindest/node:v1.18.0@sha256:0e20578828edd939d25eb98496a685c76c98d54084932f76069f886ec315d694"
+kind_node_images["v1.11.10"]="kindest/node:v1.11.10@sha256:74c8740710649a3abb169e7f348312deff88fc97d74cfb874c5095ab3866bb42"
+kind_node_images["v1.12.10"]="kindest/node:v1.12.10@sha256:faeb82453af2f9373447bb63f50bae02b8020968e0889c7fa308e19b348916cb"
+kind_node_images["v1.13.12"]="kindest/node:v1.13.12@sha256:214476f1514e47fe3f6f54d0f9e24cfb1e4cda449529791286c7161b7f9c08e7"
+kind_node_images["v1.14.10"]="kindest/node:v1.14.10@sha256:6cd43ff41ae9f02bb46c8f455d5323819aec858b99534a290517ebc181b443c6"
+kind_node_images["v1.15.11"]="kindest/node:v1.15.11@sha256:6cc31f3533deb138792db2c7d1ffc36f7456a06f1db5556ad3b6927641016f50"
+kind_node_images["v1.16.9"]="kindest/node:v1.16.9@sha256:7175872357bc85847ec4b1aba46ed1d12fa054c83ac7a8a11f5c268957fd5765"
+kind_node_images["v1.17.5"]="kindest/node:v1.17.5@sha256:ab3f9e6ec5ad8840eeb1f76c89bb7948c77bbf76bcebe1a8b59790b8ae9a283a"
+kind_node_images["v1.18.2"]="kindest/node:v1.18.2@sha256:7b27a6d0f2517ff88ba444025beae41491b016bc6af573ba467b70c5e8e0d85f"
 
 function e2e::image_build() {
     if [ -n "$SKIP_BUILD" ]; then
@@ -294,6 +301,41 @@ function e2e::create_kindconfig() {
     cat <<EOF > $tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta1
+  apiServer:
+    extraArgs:
+      v: "4"
+  scheduler:
+    extraArgs:
+      v: "4"
+  controllerManager:
+    extraArgs:
+      v: "4"
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta2
+  apiServer:
+    extraArgs:
+      v: "4"
+  scheduler:
+    extraArgs:
+      v: "4"
+  controllerManager:
+    extraArgs:
+      v: "4"
+- |
+  # backward compatibility for Kubernetes 1.12 and prior versions
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1alpha3
+  apiServerExtraArgs:
+    v: "4"
+  schedulerExtraArgs:
+    v: "4"
+  controllerManagerExtraArgs:
+    v: "4"
 EOF
     if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
@@ -437,6 +479,9 @@ elif [ "$PROVIDER" == "gke" ]; then
         echo "error: GCP_REGION or GCP_ZONE cannot be both set"
         exit 1
     fi
+    echo "info: activating GCP service account"
+    gcloud auth activate-service-account --key-file "$GCP_CREDENTIALS"
+    gcloud config set project "$GCP_PROJECT"
     echo "info: preparing ssh keypairs for GCP"
     if [ ! -d ~/.ssh ]; then
         mkdir ~/.ssh
@@ -474,25 +519,43 @@ EOF
 elif [ "$PROVIDER" == "eks" ]; then
     export KUBE_SSH_USER=ec2-user
     hack::ensure_aws_k8s_tester
-    if [ -n "$AWS_REGION" ]; then
-        aws configure set default.region "$AWS_REGION"
+    if [ -z "$AWS_REGION" ]; then
+        echo "error: AWS_REGION is required"
+        exit 1
     fi
     if [ -z "$AWS_ZONE" ]; then
         AWS_ZONE=${AWS_REGION}a
     fi
-    if [ -n "$AWS_ACCESS_KEY_ID" ]; then
-        aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+        echo "error: AWS_ACCESS_KEY_ID is required"
+        exit 1
     fi
-    if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
-        aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+        echo "error: AWS_SECRET_ACCESS_KEY is required"
+        exit 1
     fi
-    mngName=$CLUSTER-mng-$RANDOM
+    echo "info: activating AWS credentials"
+    aws configure set default.region "$AWS_REGION"
+    aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    if [ -z "$SKIP_UP" ]; then
+        echo "info: make $HOME/.ssh/kube_aws_rsa writable if we're going to start the cluster"
+        # aws-k8s-tester tries to create or update ~/.ssh/kube_aws_rsa with new key
+        # pair every time, however previous created file is read-only and can't be
+        # updated
+        if test -f $HOME/.ssh/kube_aws_rsa; then
+            chmod 0600 $HOME/.ssh/kube_aws_rsa
+        fi
+    fi
+    echo "info: exporting AWS_K8S_TESTER config environments"
+    mngName=$CLUSTER-mng
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
     export AWS_K8S_TESTER_EKS_PARAMETERS_VERSION="1.15"
     export AWS_K8S_TESTER_EKS_PARAMETERS_ENCRYPTION_CMK_CREATE="false"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_ENABLE="true"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":%d,"asg-max-size":%d,"asg-desired-capacity":%d,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName" "$KUBE_WORKERS" "$KUBE_WORKERS" "$KUBE_WORKERS")
+    env | grep ^AWS_K8S_TESTER --color=never
     # override KUBECONFIG
     KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
 else
@@ -528,9 +591,12 @@ export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REPO/tidb-backup-manager:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REPO/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
 
-# Environments for kubetest2
-if [ -n "${REPORT_DIR:-}" ]; then
-    export ARTIFACTS=${REPORT_DIR:-}
+if [ -n "${ARTIFACTS}" ]; then
+    export REPORT_DIR=${ARTIFACTS}
+fi
+
+if [ -n "${ARTIFACTS}" -a -z "$SKIP_DUMP" ]; then
+    kubetest2_args+=(--dump)
 fi
 
 hack::ensure_kubetest2

@@ -19,25 +19,12 @@ cd $ROOT
 function t::tc_is_ready() {
     local ns="$1"
     local name="$2"
-    local pdDesiredReplicas=$(kubectl -n $ns get tc $name -ojsonpath='{.spec.pd.replicas}')
-    local tikvDesiredReplicas=$(kubectl -n $ns get tc $name -ojsonpath='{.spec.tikv.replicas}')
-    local tidbDesiredReplicas=$(kubectl -n $ns get tc $name -ojsonpath='{.spec.tidb.replicas}')
-    local pdReplicas=$(kubectl -n $ns get tc $name -ojsonpath='{.status.pd.statefulSet.readyReplicas}')
-    if [[ "$pdReplicas" != "$pdDesiredReplicas" ]]; then
-        echo "info: [tc/$name] got pd replicas $pdReplicas, expects $pdDesiredReplicas"
+    kubectl -n $ns wait --for=condition=Ready --timeout 10s tc/$name
+    if [ $? -ne 0 ]; then
+        echo "info: cluster $ns/$name is not ready, status: "
+        kubectl -n $ns get tc/$name -o wide
         return 1
     fi
-    local tikvReplicas=$(kubectl -n $ns get tc $name -ojsonpath='{.status.tikv.statefulSet.readyReplicas}')
-    if [[ "$tikvReplicas" != "$tikvDesiredReplicas" ]]; then
-        echo "info: [tc/$name] got tikv replicas $tikvReplicas, expects $tikvDesiredReplicas"
-        return 1
-    fi
-    local tidbReplicas=$(kubectl -n $ns get tc $name -ojsonpath='{.status.tidb.statefulSet.readyReplicas}')
-    if [[ "$tidbReplicas" != "$tidbDesiredReplicas" ]]; then
-        echo "info: [tc/$name] got tidb replicas $tidbReplicas, expects $tidbDesiredReplicas"
-        return 1
-    fi
-    echo "info: [tc/$name] pd replicas $pdReplicas, tikv replicas $tikvReplicas, tidb replicas $tidbReplicas"
     return 0
 }
 

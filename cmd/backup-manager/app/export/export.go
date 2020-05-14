@@ -25,6 +25,7 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/klog"
 )
 
@@ -32,6 +33,7 @@ import (
 type Options struct {
 	util.GenericOptions
 	Bucket      string
+	Prefix      string
 	StorageType string
 }
 
@@ -40,15 +42,21 @@ func (bo *Options) getBackupFullPath() string {
 }
 
 func (bo *Options) getBackupRelativePath() string {
+	var backupRelativePath string
 	backupName := fmt.Sprintf("backup-%s", time.Now().UTC().Format(time.RFC3339))
-	return fmt.Sprintf("%s/%s", bo.Bucket, backupName)
+	if len(bo.Prefix) == 0 {
+		backupRelativePath = fmt.Sprintf("%s/%s", bo.Bucket, backupName)
+	} else {
+		backupRelativePath = fmt.Sprintf("%s/%s/%s", bo.Bucket, bo.Prefix, backupName)
+	}
+	return backupRelativePath
 }
 
 func (bo *Options) getDestBucketURI(remotePath string) string {
 	return fmt.Sprintf("%s://%s", bo.StorageType, remotePath)
 }
 
-func (bo *Options) dumpTidbClusterData() (string, error) {
+func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) {
 	bfPath := bo.getBackupFullPath()
 	err := util.EnsureDirectoryExist(bfPath)
 	if err != nil {
@@ -60,12 +68,8 @@ func (bo *Options) dumpTidbClusterData() (string, error) {
 		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
-		"--long-query-guard=3600",
-		"--tidb-force-priority=LOW_PRIORITY",
-		"--verbose=3",
-		"--regex",
-		"^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))",
 	}
+	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
 
 	output, err := exec.Command("/mydumper", args...).CombinedOutput()
 	if err != nil {
@@ -74,11 +78,12 @@ func (bo *Options) dumpTidbClusterData() (string, error) {
 	return bfPath, nil
 }
 
-func (bo *Options) backupDataToRemote(source, bucketURI string) error {
+func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
+	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
-	output, err := exec.Command("rclone", constants.RcloneConfigArg, "copyto", source, tmpDestBucket).CombinedOutput()
+	output, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone copyto command for upload backup data %s failed, output: %s, err: %v", bo, bucketURI, string(output), err)
 	}
@@ -87,7 +92,8 @@ func (bo *Options) backupDataToRemote(source, bucketURI string) error {
 
 	// the backup was a success
 	// remove .tmp extension
-	output, err = exec.Command("rclone", constants.RcloneConfigArg, "moveto", tmpDestBucket, destBucket).CombinedOutput()
+	args = util.ConstructArgs(constants.RcloneConfigArg, opts, "moveto", tmpDestBucket, destBucket)
+	output, err = exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
@@ -134,12 +140,13 @@ func getCommitTsFromMetadata(backupPath string) (string, error) {
 }
 
 // getBackupSize get the backup data size
-func getBackupSize(backupPath string) (int64, error) {
+func getBackupSize(backupPath string, opts []string) (int64, error) {
 	var size int64
 	if exist := util.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
 	}
-	out, err := exec.Command("rclone", constants.RcloneConfigArg, "ls", backupPath).CombinedOutput()
+	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "ls", backupPath, "")
+	out, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return size, fmt.Errorf("failed to get backup %s size, err: %v", backupPath, err)
 	}

@@ -61,6 +61,9 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// High availability is realized based on the topology
+	AnnHATopologyKey = "pingcap.com/ha-topology-key"
+
 	// AnnFailTiDBScheduler is for injecting a failure into the TiDB custom scheduler
 	// A pod with this annotation will produce an error when scheduled.
 	AnnFailTiDBScheduler string = "tidb.pingcap.com/fail-scheduler"
@@ -98,6 +101,8 @@ const (
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
 	// TiKVDeleteSlots is annotation key of tikv delete slots.
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
+	// TiFlashDeleteSlots is annotation key of tiflash delete slots.
+	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
 
 	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"

@@ -14,14 +14,20 @@
 package monitor
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/monitor"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
@@ -29,16 +35,19 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	extensionslister "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type MonitorManager struct {
+	cli                versioned.Interface
+	pvManager          monitor.MonitorManager
 	discoveryInterface discovery.CachedDiscoveryInterface
 	typedControl       controller.TypedControlInterface
 	deploymentLister   appslisters.DeploymentLister
-	tcLister           v1alpha1listers.TidbClusterLister
 	pvLister           corelisters.PersistentVolumeLister
+	ingressLister      extensionslister.IngressLister
 	pvControl          controller.PVControlInterface
 	recorder           record.EventRecorder
 	cmControl          controller.ConfigMapControlInterface
@@ -51,27 +60,64 @@ const (
 
 func NewMonitorManager(
 	kubeCli kubernetes.Interface,
+	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	typedControl controller.TypedControlInterface,
 	recorder record.EventRecorder) *MonitorManager {
 	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
 	return &MonitorManager{
+		cli: cli,
+		pvManager: meta.NewReclaimPolicyMonitorManager(
+			pvcLister,
+			pvLister,
+			pvControl),
 		discoveryInterface: discoverycachedmemory.NewMemCacheClient(kubeCli.Discovery()),
 		typedControl:       typedControl,
 		deploymentLister:   kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		tcLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:           pvLister,
+		ingressLister:      kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
 		recorder:           recorder,
 	}
 }
 
-func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
+func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 
 	if monitor.DeletionTimestamp != nil {
 		return nil
+	}
+	if monitor.Spec.Clusters == nil || len(monitor.Spec.Clusters) < 1 {
+		err := fmt.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
+		return err
+	}
+	tcRef := monitor.Spec.Clusters[0]
+	if len(tcRef.Namespace) < 1 {
+		tcRef.Namespace = monitor.Namespace
+	}
+	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+	if err != nil {
+		rerr := fmt.Errorf("get tm[%s/%s]'s target tc[%s/%s] failed, err: %v", monitor.Namespace, monitor.Name, tcRef.Namespace, tcRef.Name, err)
+		return rerr
+	}
+	if tc.Status.Monitor != nil {
+		if tc.Status.Monitor.Name != monitor.Name || tc.Status.Monitor.Namespace != monitor.Namespace {
+			err := fmt.Errorf("tm[%s/%s]'s target tc[%s/%s] already referenced by TidbMonitor [%s/%s]", monitor.Namespace, monitor.Name, tc.Namespace, tc.Name, tc.Status.Monitor.Namespace, tc.Status.Monitor.Name)
+			mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+			return err
+		}
+	}
+
+	// TODO: Support validating webhook that forbids the tidbmonitor to update the monitorRef for the tidbcluster whose monitorRef has already
+	// been set by another TidbMonitor.
+	// Patch tidbcluster status first to avoid multi tidbmonitor monitoring the same tidbcluster
+	if err := mm.patchTidbClusterStatus(&tcRef, monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitorRef into targetCluster[%s/%s] status failed, err:%v", tc.Namespace, tc.Name, err)
+		klog.Error(message)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, err.Error())
+		return err
 	}
 
 	// Sync Service
@@ -92,10 +138,16 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 			return err
 		}
 		klog.V(4).Infof("tm[%s/%s]'s pvc synced", monitor.Namespace, monitor.Name)
+
+		// syncing all PVs managed by this tidbmonitor
+		if err := mm.pvManager.SyncMonitor(monitor); err != nil {
+			return err
+		}
+		klog.V(4).Infof("tm[%s/%s]'s pv synced", monitor.Namespace, monitor.Name)
 	}
 
 	// Sync Deployment
-	if err := mm.syncTidbMonitorDeployment(monitor); err != nil {
+	if err := mm.syncTidbMonitorDeployment(tc, monitor); err != nil {
 		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Deployment failed,err:%v", monitor.Namespace, monitor.Name, err)
 		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
 		return err
@@ -108,6 +160,15 @@ func (mm *MonitorManager) Sync(monitor *v1alpha1.TidbMonitor) error {
 		}
 	}
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
+
+	// Sync Ingress
+	if err := mm.syncIngress(monitor); err != nil {
+		message := fmt.Sprintf("Sync TidbMonitor[%s/%s] Ingress failed,err:%v", monitor.Namespace, monitor.Name, err)
+		mm.recorder.Event(monitor, corev1.EventTypeWarning, FailedSync, message)
+		return err
+	}
+	klog.V(4).Infof("tm[%s/%s]'s ingress synced", monitor.Namespace, monitor.Name)
+
 	return nil
 }
 
@@ -126,7 +187,7 @@ func (mm *MonitorManager) syncTidbMonitorService(monitor *v1alpha1.TidbMonitor) 
 func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*corev1.PersistentVolumeClaim, error) {
 
 	pvc := getMonitorPVC(monitor)
-	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc)
+	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc, false)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
 		return nil, err
@@ -147,21 +208,7 @@ func (mm *MonitorManager) syncTidbMonitorPV(monitor *v1alpha1.TidbMonitor, pvc *
 	return nil
 }
 
-func (mm *MonitorManager) syncTidbMonitorDeployment(monitor *v1alpha1.TidbMonitor) error {
-
-	if len(monitor.Spec.Clusters) < 1 {
-		return fmt.Errorf("tm[%s/%s] failed to sync,empty cluster", monitor.Namespace, monitor.Name)
-	}
-
-	targetTcRef := monitor.Spec.Clusters[0]
-	if len(targetTcRef.Namespace) < 1 {
-		targetTcRef.Namespace = monitor.Namespace
-	}
-
-	tc, err := mm.tcLister.TidbClusters(targetTcRef.Namespace).Get(targetTcRef.Name)
-	if err != nil {
-		return err
-	}
+func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) error {
 
 	cm, err := mm.syncTidbMonitorConfig(tc, monitor)
 	if err != nil {
@@ -291,4 +338,72 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	}
 
 	return sa, nil
+}
+
+func (mm *MonitorManager) syncIngress(monitor *v1alpha1.TidbMonitor) error {
+	if err := mm.syncPrometheusIngress(monitor); err != nil {
+		return err
+	}
+
+	return mm.syncGrafanaIngress(monitor)
+}
+
+func (mm *MonitorManager) syncPrometheusIngress(monitor *v1alpha1.TidbMonitor) error {
+	if monitor.Spec.Prometheus.Ingress == nil {
+		return mm.removeIngressIfExist(monitor, prometheusName(monitor))
+	}
+
+	ingress := getPrometheusIngress(monitor)
+	_, err := mm.typedControl.CreateOrUpdateIngress(monitor, ingress)
+	return err
+}
+
+func (mm *MonitorManager) syncGrafanaIngress(monitor *v1alpha1.TidbMonitor) error {
+	if monitor.Spec.Grafana == nil || monitor.Spec.Grafana.Ingress == nil {
+		return mm.removeIngressIfExist(monitor, grafanaName(monitor))
+	}
+	ingress := getGrafanaIngress(monitor)
+	_, err := mm.typedControl.CreateOrUpdateIngress(monitor, ingress)
+	return err
+}
+
+// removeIngressIfExist removes Ingress if it exists
+func (mm *MonitorManager) removeIngressIfExist(monitor *v1alpha1.TidbMonitor, name string) error {
+	ingress, err := mm.ingressLister.Ingresses(monitor.Namespace).Get(name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return mm.typedControl.Delete(monitor, ingress)
+}
+
+func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef, monitor *v1alpha1.TidbMonitor) error {
+	tc, err := mm.cli.PingcapV1alpha1().TidbClusters(tcRef.Namespace).Get(tcRef.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	var mergePatch []byte
+	if tcRef != nil {
+		mergePatch, err = json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"monitor": map[string]interface{}{
+					"name":      monitor.Name,
+					"namespace": monitor.Namespace,
+				},
+			},
+		})
+	} else {
+		mergePatch, err = json.Marshal(map[string]interface{}{
+			"status": map[string]interface{}{
+				"monitor": nil,
+			},
+		})
+	}
+	if err != nil {
+		return err
+	}
+	_, err = mm.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	return err
 }

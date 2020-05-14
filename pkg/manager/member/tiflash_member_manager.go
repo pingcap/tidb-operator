@@ -107,12 +107,34 @@ func (tfmm *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
+	err := tfmm.enablePlacementRules(tc)
+	if err != nil {
+		klog.Errorf("Enable placement rules failed, error: %v", err)
+		// No need to return err here, just continue to sync tiflash
+	}
 	// Sync TiFlash Headless Service
-	if err := tfmm.syncHeadlessService(tc); err != nil {
+	if err = tfmm.syncHeadlessService(tc); err != nil {
 		return err
 	}
 
 	return tfmm.syncStatefulSet(tc)
+}
+
+func (tfmm *tiflashMemberManager) enablePlacementRules(tc *v1alpha1.TidbCluster) error {
+	pdCli := controller.GetPDClient(tfmm.pdControl, tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return err
+	}
+	if config.Replication.EnablePlacementRules != nil && (!*config.Replication.EnablePlacementRules) {
+		klog.Infof("Cluster %s/%s enable-placement-rules is %v, set it to true", tc.Namespace, tc.Name, *config.Replication.EnablePlacementRules)
+		enable := true
+		rep := pdapi.PDReplicationConfig{
+			EnablePlacementRules: &enable,
+		}
+		return pdCli.UpdateReplicationConfig(rep)
+	}
+	return nil
 }
 
 func (tfmm *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) error {
@@ -146,7 +168,7 @@ func (tfmm *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) 
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
@@ -398,6 +420,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	tiflashLabel := labelTiFlash(tc)
 	setName := controller.TiFlashMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
+	podAnnotations = CombineAnnotations(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
 	stsAnnotations := getStsAnnotations(tc, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)

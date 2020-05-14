@@ -16,5 +16,5 @@ package monitor
 import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 type MonitorManager interface {
-	Sync(monitor *v1alpha1.TidbMonitor) error
+	SyncMonitor(monitor *v1alpha1.TidbMonitor) error
 }

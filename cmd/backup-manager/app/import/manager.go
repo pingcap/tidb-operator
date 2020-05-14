@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
@@ -70,15 +71,19 @@ func (rm *RestoreManager) setOptions(restore *v1alpha1.Restore) {
 
 // ProcessRestore used to process the restore logic
 func (rm *RestoreManager) ProcessRestore() error {
+	var errs []error
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)
 	if err != nil {
+		errs = append(errs, err)
 		klog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.ResourceName, err)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "GetRestoreCRFailed",
 			Message: err.Error(),
 		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
 	}
 
 	rm.setOptions(restore)
@@ -102,13 +107,16 @@ func (rm *RestoreManager) ProcessRestore() error {
 	})
 
 	if err != nil {
+		errs = append(errs, err)
 		klog.Errorf("cluster %s connect failed, err: %s", rm, err)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "ConnectTidbFailed",
 			Message: err.Error(),
 		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
 	}
 
 	defer db.Close()
@@ -126,40 +134,51 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 		return err
 	}
 
+	var errs []error
 	restoreDataPath := rm.getRestoreDataPath()
-	if err := rm.downloadBackupData(restoreDataPath); err != nil {
+	opts := util.GetOptions(restore.Spec.StorageProvider)
+	if err := rm.downloadBackupData(restoreDataPath, opts); err != nil {
+		errs = append(errs, err)
 		klog.Errorf("download cluster %s backup %s data failed, err: %s", rm, rm.BackupPath, err)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "DownloadBackupDataFailed",
 			Message: fmt.Sprintf("download backup %s data failed, err: %v", rm.BackupPath, err),
 		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("download cluster %s backup %s data success", rm, rm.BackupPath)
 
 	restoreDataDir := filepath.Dir(restoreDataPath)
 	unarchiveDataPath, err := unarchiveBackupData(restoreDataPath, restoreDataDir)
 	if err != nil {
+		errs = append(errs, err)
 		klog.Errorf("unarchive cluster %s backup %s data failed, err: %s", rm, restoreDataPath, err)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "UnarchiveBackupDataFailed",
 			Message: fmt.Sprintf("unarchive backup %s data failed, err: %v", restoreDataPath, err),
 		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
 
 	err = rm.loadTidbClusterData(unarchiveDataPath)
 	if err != nil {
+		errs = append(errs, err)
 		klog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
-		return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestoreFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LoaderBackupDataFailed",
 			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
 		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
 

@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.1.0-rc.2
+  image: pingcap/tidb-operator:v1.1.0-rc.3
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -63,6 +63,10 @@ discovery:
 # Note: Switch this variable against an existing cluster will cause an rolling-update of each component even
 # if the ConfigMap was not changed.
 enableConfigMapRollout: true
+
+# The scheduler achieves HA scheduling based on the topologyKey.
+# You can modify it to other label of node
+haTopologyKey: kubernetes.io/hostname
 
 # Whether enable the TLS connection between TiDB server components
 tlsCluster:

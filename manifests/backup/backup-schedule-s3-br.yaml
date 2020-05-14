@@ -30,8 +30,7 @@ spec:
       secretName:   mysecret
       # port:         4000
       # user:         root
-      # tlsClient:
-      #   tlsSecret: <backup-tls-secretname>
+      # tlsClientSecretName: <backup-tls-secretname>
     s3:
       provider: ceph
       endpoint: http://10.233.57.220

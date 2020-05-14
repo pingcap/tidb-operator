@@ -14,10 +14,14 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -50,6 +54,16 @@ func (tc *TidbCluster) PDImage() string {
 		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
 	return image
+}
+
+func (tc *TidbCluster) PDVersion() string {
+	image := tc.PDImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
 }
 
 func (tc *TidbCluster) TiKVImage() string {
@@ -178,6 +192,37 @@ func (tc *TidbCluster) TiFlashUpgrading() bool {
 	return tc.Status.TiFlash.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
+	deleteSlots = sets.NewInt32()
+	annotations := tc.GetAnnotations()
+	if annotations == nil {
+		return deleteSlots
+	}
+	var key string
+	if component == label.PDLabelVal {
+		key = label.AnnPDDeleteSlots
+	} else if component == label.TiDBLabelVal {
+		key = label.AnnTiDBDeleteSlots
+	} else if component == label.TiKVLabelVal {
+		key = label.AnnTiKVDeleteSlots
+	} else if component == label.TiFlashLabelVal {
+		key = label.AnnTiFlashDeleteSlots
+	} else {
+		return
+	}
+	value, ok := annotations[key]
+	if !ok {
+		return
+	}
+	var slice []int32
+	err := json.Unmarshal([]byte(value), &slice)
+	if err != nil {
+		return
+	}
+	deleteSlots.Insert(slice...)
+	return
+}
+
 func (tc *TidbCluster) PDAllPodsStarted() bool {
 	return tc.PDStsDesiredReplicas() == tc.PDStsActualReplicas()
 }
@@ -220,6 +265,14 @@ func (tc *TidbCluster) PDStsActualReplicas() int32 {
 	return stsStatus.Replicas
 }
 
+func (tc *TidbCluster) PDStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	replicas := tc.Spec.PD.Replicas
+	if !excludeFailover {
+		replicas = tc.PDStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.PDLabelVal))
+}
+
 func (tc *TidbCluster) TiKVAllPodsStarted() bool {
 	return tc.TiKVStsDesiredReplicas() == tc.TiKVStsActualReplicas()
 }
@@ -250,6 +303,14 @@ func (tc *TidbCluster) TiKVStsActualReplicas() int32 {
 	return stsStatus.Replicas
 }
 
+func (tc *TidbCluster) TiKVStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	replicas := tc.Spec.TiKV.Replicas
+	if !excludeFailover {
+		replicas = tc.TiKVStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiKVLabelVal))
+}
+
 func (tc *TidbCluster) TiFlashAllPodsStarted() bool {
 	return tc.TiFlashStsDesiredReplicas() == tc.TiFlashStsActualReplicas()
 }
@@ -269,6 +330,9 @@ func (tc *TidbCluster) TiFlashAllStoresReady() bool {
 }
 
 func (tc *TidbCluster) TiFlashStsDesiredReplicas() int32 {
+	if tc.Spec.TiFlash == nil {
+		return 0
+	}
 	return tc.Spec.TiFlash.Replicas + int32(len(tc.Status.TiFlash.FailureStores))
 }
 
@@ -278,6 +342,17 @@ func (tc *TidbCluster) TiFlashStsActualReplicas() int32 {
 		return 0
 	}
 	return stsStatus.Replicas
+}
+
+func (tc *TidbCluster) TiFlashStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	if tc.Spec.TiFlash == nil {
+		return sets.Int32{}
+	}
+	replicas := tc.Spec.TiFlash.Replicas
+	if !excludeFailover {
+		replicas = tc.TiFlashStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiFlashLabelVal))
 }
 
 func (tc *TidbCluster) TiDBAllPodsStarted() bool {
@@ -308,6 +383,14 @@ func (tc *TidbCluster) TiDBStsActualReplicas() int32 {
 		return 0
 	}
 	return stsStatus.Replicas
+}
+
+func (tc *TidbCluster) TiDBStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	replicas := tc.Spec.TiDB.Replicas
+	if !excludeFailover {
+		replicas = tc.TiDBStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, tc.getDeleteSlots(label.TiDBLabelVal))
 }
 
 func (tc *TidbCluster) PDIsAvailable() bool {

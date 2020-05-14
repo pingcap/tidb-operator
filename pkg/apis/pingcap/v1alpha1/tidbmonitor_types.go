@@ -47,6 +47,10 @@ type TidbMonitorSpec struct {
 	Reloader    ReloaderSpec    `json:"reloader"`
 	Initializer InitializerSpec `json:"initializer"`
 
+	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
+	// +kubebuilder:default=Recycle
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// +optional
 	Persistent bool `json:"persistent,omitempty"`
@@ -80,6 +84,9 @@ type PrometheusSpec struct {
 	// +optional
 	ReserveDays int `json:"reserveDays,omitempty"`
 
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
+
 	Container *corev1.Container `json:"container,omitempty"`
 	// +optional
 	Config *Configuration `json:"config,omitempty"`
@@ -100,6 +107,9 @@ type GrafanaSpec struct {
 	Password string      `json:"password,omitempty"`
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
+
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
 }
 
 // ReloaderSpec is the desired state of reloader

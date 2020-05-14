@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -119,9 +120,209 @@ spec:
     group: cert-manager.io
 `
 
-type tidbClusterTmplMeta struct {
+var tidbComponentsCertificatesTmpl = `
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-pd-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-pd-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-pd"
+  - "{{ .ClusterName }}-pd.{{ .Namespace }}"
+  - "{{ .ClusterName }}-pd.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-pd-peer"
+  - "{{ .ClusterName }}-pd-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-pd-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-pd-peer"
+  - "*.{{ .ClusterName }}-pd-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-pd-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-tikv-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-tikv-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-tikv"
+  - "{{ .ClusterName }}-tikv.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tikv.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tikv-peer"
+  - "{{ .ClusterName }}-tikv-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tikv-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tikv-peer"
+  - "*.{{ .ClusterName }}-tikv-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-tikv-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-tidb-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-tidb-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-tidb"
+  - "{{ .ClusterName }}-tidb.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tidb.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tidb-peer"
+  - "{{ .ClusterName }}-tidb-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tidb-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tidb-peer"
+  - "*.{{ .ClusterName }}-tidb-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-tidb-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-cluster-client-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-cluster-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - client auth
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-pump-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-pump-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "*.{{ .ClusterName }}-pump"
+  - "*.{{ .ClusterName }}-pump.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-pump.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-drainer-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-drainer-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer"
+  - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+`
+
+var tidbClientCertificateTmpl = `
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-{{ .Component }}-tls
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-{{ .Component }}-tls
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+    - PingCAP
+  commonName: "TiDB Client"
+  usages:
+    - client auth
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+`
+
+type tcTmplMeta struct {
 	Namespace   string
 	ClusterName string
+}
+
+type tcCliTmplMeta struct {
+	tcTmplMeta
+	Component string
 }
 
 func installCertManager(cli clientset.Interface) error {
@@ -141,7 +342,7 @@ func installCertManager(cli clientset.Interface) error {
 }
 
 func deleteCertManager(cli clientset.Interface) error {
-	cmd := "kubectl delete -f /cert-manager.yaml"
+	cmd := "kubectl delete -f /cert-manager.yaml --ignore-not-found"
 	if data, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to delete cert-manager %s %v", string(data), err)
 	}
@@ -164,20 +365,32 @@ func deleteCertManager(cli clientset.Interface) error {
 }
 
 func installTiDBIssuer(ns, tcName string) error {
-	return installCert(tidbIssuerTmpl, ns, tcName)
+	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName})
 }
 
 func installTiDBCertificates(ns, tcName string) error {
-	return installCert(tidbCertificatesTmpl, ns, tcName)
+	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName})
 }
 
-func installCert(tmplStr, ns, tcName string) error {
+func installTiDBComponentsCertificates(ns, tcName string) error {
+	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName})
+}
+
+func installTiDBInitializerCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "initializer"})
+}
+
+func installPDDashboardCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "dashboard"})
+}
+
+func installCert(tmplStr string, tp interface{}) error {
 	var buf bytes.Buffer
 	tmpl, err := template.New("template").Parse(tmplStr)
 	if err != nil {
 		return fmt.Errorf("error when parsing template: %v", err)
 	}
-	err = tmpl.Execute(&buf, tidbClusterTmplMeta{ns, tcName})
+	err = tmpl.Execute(&buf, tp)
 	if err != nil {
 		return fmt.Errorf("error when executing template: %v", err)
 	}
@@ -200,50 +413,12 @@ func installCert(tmplStr, ns, tcName string) error {
 
 func tidbIsTLSEnabled(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string) wait.ConditionFunc {
 	return func() (bool, error) {
-		secretName := util.TiDBClientTLSSecretName(tcName)
-		secret, err := c.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, true)
 		if err != nil {
-			return false, err
+			return false, nil
 		}
-
-		rootCAs := x509.NewCertPool()
-		rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
-
-		clientCert, certExists := secret.Data[v1.TLSCertKey]
-		clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
-		if !certExists || !keyExists {
-			return false, fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
-		}
-
-		tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
-		if err != nil {
-			return false, fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
-		}
-		err = mysql.RegisterTLSConfig("tidb-server-tls", &tls.Config{
-			RootCAs:            rootCAs,
-			Certificates:       []tls.Certificate{tlsCert},
-			InsecureSkipVerify: true,
-		})
-		if err != nil {
-			return false, err
-		}
-
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
-		if err != nil {
-			return false, err
-		}
-		defer cancel()
-
-		db, err := sql.Open("mysql",
-			fmt.Sprintf("root:%s@(%s:%d)/test?tls=tidb-server-tls", passwd, localHost, localPort))
-		if err != nil {
-			return false, err
-		}
-
 		defer db.Close()
-		if err := db.Ping(); err != nil {
-			return false, err
-		}
+		defer cancel()
 
 		rows, err := db.Query("SHOW STATUS")
 		if err != nil {
@@ -268,4 +443,118 @@ func tidbIsTLSEnabled(fw portforward.PortForward, c clientset.Interface, ns, tcN
 
 		return true, fmt.Errorf("can't find Ssl_cipher in status %s/%s", ns, tcName)
 	}
+}
+
+func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string) wait.ConditionFunc {
+	return func() (bool, error) {
+		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, true)
+		if err != nil {
+			framework.Logf("failed to connect to source db: %v", err)
+			return false, nil
+		}
+		defer db.Close()
+		defer cancel()
+
+		res, err := db.Exec("CREATE TABLE tls (name VARCHAR(64))")
+		if err != nil {
+			framework.Logf("can't create table in source db: %v, %v", res, err)
+			return false, nil
+		}
+
+		res, err = db.Exec("INSERT INTO tls (name) VALUES (\"tls\")")
+		if err != nil {
+			framework.Logf("can't insert into table tls in source db: %v, %v", res, err)
+			return false, nil
+		}
+
+		return true, nil
+	}
+}
+
+func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string, tlsEnabled bool) wait.ConditionFunc {
+	return func() (bool, error) {
+		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, tlsEnabled)
+		if err != nil {
+			framework.Logf("can't connect to %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
+		defer db.Close()
+		defer cancel()
+
+		rows, err := db.Query("SELECT name from tls limit 1")
+		if err != nil {
+			framework.Logf("can't select from %s/%s, %v", ns, tcName, err)
+			return false, nil
+		}
+		var name string
+		for rows.Next() {
+			err := rows.Scan(&name)
+			if err != nil {
+				framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
+				return false, nil
+			}
+
+			framework.Logf("TABLE test.tls name = %s", name)
+			if name == "tls" {
+				return true, nil
+			}
+
+			break
+		}
+
+		return false, nil
+	}
+}
+
+func connectToTiDBWithTLS(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string, tlsEnabled bool) (*sql.DB, context.CancelFunc, error) {
+	var tlsParams string
+	tlsKey := "tidb-server-tls"
+
+	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if tlsEnabled {
+		secretName := util.TiDBClientTLSSecretName(tcName)
+		secret, err := c.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rootCAs := x509.NewCertPool()
+		rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
+
+		clientCert, certExists := secret.Data[v1.TLSCertKey]
+		clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
+		if !certExists || !keyExists {
+			return nil, nil, fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
+		}
+
+		tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
+		}
+		err = mysql.RegisterTLSConfig(tlsKey, &tls.Config{
+			RootCAs:            rootCAs,
+			Certificates:       []tls.Certificate{tlsCert},
+			InsecureSkipVerify: true,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		tlsParams = fmt.Sprintf("?tls=%s", tlsKey)
+	}
+
+	db, err := sql.Open("mysql",
+		fmt.Sprintf("root:%s@(%s:%d)/test%s", passwd, localHost, localPort, tlsParams))
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := db.Ping(); err != nil {
+		return nil, nil, err
+	}
+
+	return db, cancel, err
 }

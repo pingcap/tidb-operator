@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -34,6 +35,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 const (
@@ -138,11 +140,11 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		// TODO add unit test
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		_, err = pmm.svcControl.UpdateService(tc, &svc)
 		return err
 	}
@@ -179,7 +181,7 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
+		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
@@ -252,7 +254,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if pmm.autoFailover {
-		if tc.PDAllPodsStarted() && tc.PDAllMembersReady() && tc.Status.PD.FailureMembers != nil {
+		if pmm.shouldRecover(tc) {
 			pmm.pdFailover.Recover(tc)
 		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
 			if err := pmm.pdFailover.Failover(tc); err != nil {
@@ -262,6 +264,33 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	return updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func (pmm *pdMemberManager) shouldRecover(tc *v1alpha1.TidbCluster) bool {
+	if tc.Status.PD.FailureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of tidb cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range tc.PDStsDesiredOrdinals(true) {
+		name := fmt.Sprintf("%s-%d", controller.PDMemberName(tc.GetName()), ordinal)
+		pod, err := pmm.podLister.Pods(tc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		status, ok := tc.Status.PD.Members[pod.Name]
+		if !ok || !status.Health {
+			return false
+		}
+	}
+	return true
 }
 
 func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
@@ -509,6 +538,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		pdConfigMap = cm.Name
 	}
 
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	if err != nil {
+		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+	}
+
 	annMount, annVolume := annotationsMountVolume()
 	volMounts := []corev1.VolumeMount{
 		annMount,
@@ -521,7 +555,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
 		})
@@ -559,11 +593,15 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			},
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
+		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)
+		if tc.Spec.PD.TLSClientSecretName != nil {
+			clientSecretName = *tc.Spec.PD.TLSClientSecretName
+		}
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(tc.Name),
+					SecretName: clientSecretName,
 				},
 			},
 		})
@@ -696,6 +734,11 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 
+	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
+	if err != nil {
+		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+	}
+
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		if config.Security == nil {
@@ -705,7 +748,8 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
 		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() {
+	// Versions below v4.0 do not support Dashboard
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		if config.Dashboard == nil {
 			config.Dashboard = &v1alpha1.DashboardConfig{}
 		}
@@ -713,17 +757,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Dashboard.TiDBCertPath = path.Join(tidbClientCertPath, corev1.TLSCertKey)
 		config.Dashboard.TiDBKeyPath = path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey)
 	}
-	// TiFlash requires PD to enable the `replication.enable-placement-rules`
-	// Check detail in https://pingcap.com/docs/stable/reference/tiflash/deploy/
-	if tc.Spec.TiFlash != nil {
-		if config.Replication == nil {
-			config.Replication = &v1alpha1.PDReplicationConfig{}
-		}
-		if config.Replication.EnablePlacementRules == nil {
-			enable := true
-			config.Replication.EnablePlacementRules = &enable
-		}
-	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
@@ -753,6 +787,15 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 	}
 	return cm, nil
+}
+
+func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return true, err
+	}
+
+	return v.Major() >= 4, nil
 }
 
 func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
