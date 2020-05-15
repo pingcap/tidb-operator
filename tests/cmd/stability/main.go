@@ -150,6 +150,7 @@ func run() {
 			oa.BeginInsertDataToOrDie(cluster)
 		}
 		klog.Infof("clusters deployed and checked")
+		slack.NotifyAndCompletedf("clusters deployed and checked, ready to run stability test")
 		// scale out
 		for _, cluster := range clusters {
 			cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
@@ -234,7 +235,7 @@ func run() {
 		oa.DeployOperatorOrDie(ocfg)
 		klog.Infof("clusters operator deleted and redeployed, checked")
 
-		// stop node
+		//stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()
 		oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
 		oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
@@ -400,6 +401,7 @@ func run() {
 	}
 
 	slack.SuccessCount++
+	slack.NotifyAndCompletedf("Succeed stability onetime")
 	klog.Infof("################## Stability test finished at: %v\n\n\n\n", time.Now().Format(time.RFC3339))
 }
 
