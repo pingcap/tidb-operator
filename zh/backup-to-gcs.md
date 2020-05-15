@@ -70,10 +70,21 @@ spec:
   gcs:
     secretName: gcs-secret
     projectId: ${project_id}
+    bucket: ${bucket}
+    # prefix: ${prefix}
     # location: us-east1
     # storageClass: STANDARD_IA
     # objectAcl: private
     # bucketAcl: private
+# mydumper:
+#  options:
+#  - --tidb-force-priority=LOW_PRIORITY
+#  - --long-query-guard=3600
+#  - --threads=16
+#  - --rows=10000
+#  - --skip-tz-utc
+#  - --verbose=3
+#  tableRegex: "^test"
   storageClassName: local-storage
   storageSize: 10Gi
 ```
@@ -128,6 +139,21 @@ GCS 支持以下几种 bucket ACL 策略：
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
 * `.spec.from.tidbSecretName`：待备份 TiDB 集群所需凭证的 secret。
+* `.spec.gcs.bucket`：存储数据的 bucket 名字。
+* `.spec.gcs.prefix`：这个字段可以省略，如果设置了这个字段，则会使用这个字段来拼接在远端存储的存储路径 `s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`。
+* `.spec.mydumper`：Mydumper 相关的配置，主要有两个字段：一个是 [`options`](https://pingcap.com/docs-cn/stable/reference/tools/mydumper/) 字段，里面可以指定 mydumper 需要的一些参数；一个是 `tableRegex` 字段，可以指定让 Mydumper 备份符合这个正则表达式的表。默认情况下 Mydumper 这个字段可以不用配置。当不指定 Mydumper 的配置时，`options` 和 `tableRegex` 字段的默认值如下：
+
+    ```
+    options:
+    --tidb-force-priority=LOW_PRIORITY
+    --long-query-guard=3600
+    --threads=16
+    --rows=10000
+    --skip-tz-utc
+    --verbose=3
+   tableRegex: "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+   ```
+
 * `.spec.storageClassName`：备份时指定所需的 persistent volume (PV) 类型。如果不指定该项，则默认使用 TiDB Operator 启动参数中 `default-backup-storage-class-name` 指定的值，该值默认为 `standard`。
 * `.spec.storageSize`：备份时指定所需的 PV 大小。该值应大于备份 TiDB 集群数据的大小。
 
@@ -172,10 +198,21 @@ spec:
     gcs:
       secretName: gcs-secret
       projectId: ${project_id}
+      bucket: ${bucket}
+      # prefix: ${prefix}
       # location: us-east1
       # storageClass: STANDARD_IA
       # objectAcl: private
       # bucketAcl: private
+  # mydumper:
+  #  options:
+  #  - --tidb-force-priority=LOW_PRIORITY
+  #  - --long-query-guard=3600
+  #  - --threads=16
+  #  - --rows=10000
+  #  - --skip-tz-utc
+  #  - --verbose=3
+  #  tableRegex: "^test"
     storageClassName: local-storage
     storageSize: 10Gi
 ```

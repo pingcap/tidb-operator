@@ -67,9 +67,19 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         secretName: s3-secret
         region: ${region}
         bucket: ${bucket}
+        # prefix: ${prefix}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -101,7 +111,17 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         provider: ceph
         secretName: s3-secret
         endpoint: ${endpoint}
+        # prefix: ${prefix}
         bucket: ${bucket}
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -136,9 +156,19 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         provider: aws
         region: ${region}
         bucket: ${bucket}
+        # prefix: ${prefix}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -172,9 +202,19 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
         provider: aws
         region: ${region}
         bucket: ${bucket}
+        # prefix: ${prefix}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -218,10 +258,24 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
 * `.spec.from.secretName`：存储 `.spec.from.user` 用户的密码的 secret。
-* `.spec.s3.region`: 使用 Amazon S3 存储备份，需要配置 Amazon S3 所在的 region。
-* `.spec.s3.bucket`: 兼容 S3 存储的 bucket 名字。
-* `.spec.storageClassName`: 备份时所需的 persistent volume (PV) 类型。
-* `.spec.storageSize`: 备份时指定所需的 PV 大小。该值须大于 TiDB 集群备份的数据大小。
+* `.spec.s3.region`：使用 Amazon S3 存储备份，需要配置 Amazon S3 所在的 region。
+* `.spec.s3.bucket`：兼容 S3 存储的 bucket 名字。
+* `.spec.s3.prefix`：这个字段可以省略，如果设置了这个字段，则会使用这个字段来拼接在远端存储的存储路径 `s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`。
+* `.spec.mydumper`：Mydumper 相关的配置，主要有两个字段：一个是 [`options`](https://pingcap.com/docs-cn/stable/reference/tools/mydumper/) 字段，里面可以指定 Mydumper 需要的一些参数；一个是 `tableRegex` 字段，可以指定让 Mydumper 备份符合这个正则表达式的表。默认情况下 Mydumper 这个字段可以不用配置。当不指定 Mydumper 的配置时，`options` 和 `tableRegex` 字段的默认值如下：
+
+    ```
+    options:
+    --tidb-force-priority=LOW_PRIORITY
+    --long-query-guard=3600
+    --threads=16
+    --rows=10000
+    --skip-tz-utc
+    --verbose=3
+   tableRegex: "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+   ```
+
+* `.spec.storageClassName`：备份时所需的 persistent volume (PV) 类型。
+* `.spec.storageSize`：备份时指定所需的 PV 大小。该值须大于 TiDB 集群备份的数据大小。
 
 更多支持的兼容 S3 的 `provider` 如下：
 
@@ -292,9 +346,19 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           secretName: s3-secret
           region: ${region}
           bucket: ${bucket}
+          # prefix: ${prefix}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -332,6 +396,16 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           secretName: s3-secret
           endpoint: ${endpoint}
           bucket: ${bucket}
+          # prefix: ${prefix}
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -370,9 +444,19 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           provider: aws
           region: ${region}
           bucket: ${bucket}
+          # prefix: ${prefix}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -410,9 +494,19 @@ Amazon S3 支持以下几种 `storageClass` 类型：
           provider: aws
           region: ${region}
           bucket: ${bucket}
+          # prefix: ${prefix}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
 
