@@ -24,7 +24,7 @@ This is the fourth release candidate of `v1.1.0`, which focuses on the usability
 - Update `TiDBConfig` and `TiKVConfig` to support the `4.0.0-rc` version ([#2322](https://github.com/pingcap/tidb-operator/pull/2322), [@Yisaer](https://github.com/Yisaer))
 - Fix the bug when `TidbCluster` service type is `NodePort`, the value of `NodePort` would change frequently ([#2284](https://github.com/pingcap/tidb-operator/pull/2284), [@Yisaer](https://github.com/Yisaer))
 - Add external strategy ability for `TidbClusterAutoScaler` ([#2279](https://github.com/pingcap/tidb-operator/pull/2279), [@Yisaer](https://github.com/Yisaer))
-- Don't set owner references to keep `PVC` for `TidbMonitor` when it gets deleted ([#2374](https://github.com/pingcap/tidb-operator/pull/2374), [@Yisaer](https://github.com/Yisaer))
+- PVC will not be deleted when `TidbMonitor` gets deleted ([#2374](https://github.com/pingcap/tidb-operator/pull/2374), [@Yisaer](https://github.com/Yisaer))
 - Support scaling for TiFlash ([#2237](https://github.com/pingcap/tidb-operator/pull/2237), [@DanielZhangQD](https://github.com/DanielZhangQD))
 
 
