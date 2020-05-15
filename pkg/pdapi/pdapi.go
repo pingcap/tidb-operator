@@ -46,18 +46,21 @@ type Namespace string
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
 	GetPDClient(Namespace, string, bool) PDClient
+	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
+	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
-	mutex     sync.Mutex
-	kubeCli   kubernetes.Interface
-	pdClients map[string]PDClient
+	mutex         sync.Mutex
+	kubeCli       kubernetes.Interface
+	pdClients     map[string]PDClient
+	pdEtcdClients map[string]PDEtcdClient
 }
 
 // NewDefaultPDControl returns a defaultPDControl instance
 func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
-	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}}
+	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
 // GetTLSConfig returns *tls.Config for given TiDB cluster.
@@ -70,6 +73,32 @@ func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName stri
 	}
 
 	return crypto.LoadTlsConfigFromSecret(secret, caCert)
+}
+
+func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error) {
+	pdc.mutex.Lock()
+	defer pdc.mutex.Unlock()
+
+	var tlsConfig *tls.Config
+	var err error
+
+	if tlsEnabled {
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
+		if err != nil {
+			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
+			return nil, err
+		}
+		return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
+	}
+	key := pdEtcdClientKey(namespace, tcName)
+	if _, ok := pdc.pdEtcdClients[key]; !ok {
+		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
+		if err != nil {
+			return nil, err
+		}
+		pdc.pdEtcdClients[key] = pdetcdClient
+	}
+	return pdc.pdEtcdClients[key], nil
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
@@ -104,9 +133,17 @@ func pdClientKey(scheme string, namespace Namespace, clusterName string) string 
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
 }
 
+func pdEtcdClientKey(namespace Namespace, clusterName string) string {
+	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
+}
+
 // pdClientUrl builds the url of pd client
 func PdClientURL(namespace Namespace, clusterName string, scheme string) string {
 	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
+}
+
+func PDEtcdClientURL(namespace Namespace, clusterName string) string {
+	return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
 }
 
 // PDClient provides pd server's api
