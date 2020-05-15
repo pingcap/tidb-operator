@@ -2854,7 +2854,7 @@ tidb-operator built envs.
 <a href="#prometheusconfiguration">PrometheusConfiguration</a>)
 </p>
 <p>
-<p>ConfigMap Info</p>
+<p>ConfigMapRef is the external configMap</p>
 </p>
 <table>
 <thead>
@@ -6790,6 +6790,8 @@ ConfigMapRef
 </em>
 </td>
 <td>
+<p>user can mount prometheus rule config with external configMap.
+if use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
 </td>
 </tr>
 <tr>
@@ -6800,6 +6802,7 @@ ConfigMapRef
 </em>
 </td>
 <td>
+<p>user can  use it specify prometheus command options</p>
 </td>
 </tr>
 </tbody>
