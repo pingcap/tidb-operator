@@ -2848,6 +2848,44 @@ tidb-operator built envs.
 </tr>
 </tbody>
 </table>
+<h3 id="configmapref">ConfigMapRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusconfiguration">PrometheusConfiguration</a>)
+</p>
+<p>
+<p>ConfigMap Info</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="configupdatestrategy">ConfigUpdateStrategy</h3>
 <p>
 (<em>Appears on:</em>
@@ -6746,7 +6784,19 @@ string
 <td>
 <code>configMapRef</code></br>
 <em>
-string
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>command</code></br>
+<em>
+[]string
 </em>
 </td>
 <td>
@@ -6829,16 +6879,6 @@ IngressSpec
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>command</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
 </td>
 </tr>
 <tr>
