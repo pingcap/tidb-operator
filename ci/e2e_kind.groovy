@@ -147,6 +147,7 @@ pipeline {
         string(name: 'DOCKER_IO_MIRROR', defaultValue: env.DEFAULT_DOCKER_IO_MIRROR, description: "docker mirror for docker.io")
         string(name: 'QUAY_IO_MIRROR', defaultValue: env.DEFAULT_QUAY_IO_MIRROR, description: "mirror for quay.io")
         string(name: 'GCR_IO_MIRROR', defaultValue: env.DEFAULT_GCR_IO_MIRROR, description: "mirror for gcr.io")
+        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: true, description: 'delete namespace on failure or not')
     }
 
     environment {
@@ -191,12 +192,13 @@ pipeline {
         stage("Run") {
             steps {
                 sh """
-                #!/bin/bash
                 export GINKGO_NODES=${params.GINKGO_NODES}
-                export REPORT_DIR=${ARTIFACTS}
                 export DOCKER_IO_MIRROR=${params.DOCKER_IO_MIRROR}
                 export QUAY_IO_MIRROR=${params.QUAY_IO_MIRROR}
                 export GCR_IO_MIRROR=${params.GCR_IO_MIRROR}
+                export DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE}
+                export ARTIFACTS=${ARTIFACTS}
+                export GINKGO_NO_COLOR=y
                 echo "info: begin to run e2e"
                 ./hack/e2e.sh -- ${params.E2E_ARGS}
                 """
@@ -207,6 +209,14 @@ pipeline {
     post {
         always {
             dir(ARTIFACTS) {
+                sh """#!/bin/bash
+                echo "info: change ownerships for jenkins"
+                chown -R 1000:1000 .
+                echo "info: print total size of artifacts"
+                du -sh .
+                echo "info: list all files"
+                find .
+                """
                 archiveArtifacts artifacts: "**", allowEmptyArchive: true
                 junit testResults: "*.xml", allowEmptyResults: true
             }

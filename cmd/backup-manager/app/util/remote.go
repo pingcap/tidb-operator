@@ -21,7 +21,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"gocloud.dev/blob"
+	"gocloud.dev/blob/gcsblob"
 	"gocloud.dev/blob/s3blob"
+	"gocloud.dev/gcp"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -43,6 +45,18 @@ type s3Query struct {
 	forcePathStyle bool
 }
 
+type gcsQuery struct {
+	projectId    string
+	location     string
+	path         string
+	bucket       string
+	storageClass string
+	objectAcl    string
+	bucketAcl    string
+	secretName   string
+	prefix       string
+}
+
 // NewRemoteStorage creates new remote storage
 func NewRemoteStorage(backup *v1alpha1.Backup) (*blob.Bucket, error) {
 	st := util.GetStorageType(backup.Spec.StorageProvider)
@@ -50,6 +64,13 @@ func NewRemoteStorage(backup *v1alpha1.Backup) (*blob.Bucket, error) {
 	case v1alpha1.BackupStorageTypeS3:
 		qs := checkS3Config(backup.Spec.S3, true)
 		bucket, err := newS3Storage(qs)
+		if err != nil {
+			return nil, err
+		}
+		return bucket, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		qs := checkGcsConfig(backup.Spec.Gcs, true)
+		bucket, err := newGcsStorage(qs)
 		if err != nil {
 			return nil, err
 		}
@@ -66,6 +87,10 @@ func getRemoteStorage(provider v1alpha1.StorageProvider) ([]string, string, erro
 	case v1alpha1.BackupStorageTypeS3:
 		qs := checkS3Config(provider.S3, false)
 		s, path := newS3StorageOption(qs)
+		return s, path, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		qs := checkGcsConfig(provider.Gcs, false)
+		s, path := newGcsStorageOption(qs)
 		return s, path, nil
 	default:
 		return nil, "", fmt.Errorf("storage %s not support yet", st)
@@ -131,6 +156,51 @@ func newS3Storage(qs *s3Query) (*blob.Bucket, error) {
 
 }
 
+// newGcsStorage initialize a new gcs storage
+func newGcsStorage(qs *gcsQuery) (*blob.Bucket, error) {
+	ctx := context.Background()
+
+	// Your GCP credentials.
+	creds, err := gcp.DefaultCredentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create an HTTP client.
+	client, err := gcp.NewHTTPClient(
+		gcp.DefaultTransport(),
+		gcp.CredentialsTokenSource(creds))
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a *blob.Bucket.
+	bucket, err := gcsblob.OpenBucket(ctx, client, qs.bucket, nil)
+	if err != nil {
+		return nil, err
+	}
+	return blob.PrefixedBucket(bucket, qs.prefix), nil
+}
+
+// newGcsStorageOption constructs the arg for --storage option and the remote path for br
+func newGcsStorageOption(qs *gcsQuery) ([]string, string) {
+	var gcsoptions []string
+	var path string
+	if qs.prefix == "/" {
+		path = fmt.Sprintf("gcs://%s%s", qs.bucket, qs.prefix)
+	} else {
+		path = fmt.Sprintf("gcs://%s/%s", qs.bucket, qs.prefix)
+	}
+	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
+	if qs.storageClass != "" {
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", qs.storageClass))
+	}
+	if qs.objectAcl != "" {
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.predefined-acl=%s", qs.objectAcl))
+	}
+	return gcsoptions, path
+}
+
 // checkS3Config constructs s3Query parameters
 func checkS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Query {
 	sqs := s3Query{}
@@ -158,4 +228,24 @@ func checkS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Query {
 	sqs.prefix += "/"
 
 	return &sqs
+}
+
+// checkGcsConfig constructs gcsQuery parameters
+func checkGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsQuery {
+	gqs := gcsQuery{}
+
+	gqs.bucket = gcs.Bucket
+	gqs.location = gcs.Location
+	gqs.path = gcs.Path
+	gqs.projectId = gcs.ProjectId
+	gqs.storageClass = gcs.StorageClass
+	gqs.objectAcl = gcs.ObjectAcl
+	gqs.bucketAcl = gcs.BucketAcl
+	gqs.secretName = gcs.SecretName
+	gqs.prefix = gcs.Prefix
+
+	gqs.prefix = strings.Trim(gqs.prefix, "/")
+	gqs.prefix += "/"
+
+	return &gqs
 }

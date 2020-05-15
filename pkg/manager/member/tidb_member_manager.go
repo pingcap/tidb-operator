@@ -300,6 +300,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
+	util.RetainManagedFields(newSvc, oldSvc)
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
@@ -459,7 +460,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Name:            svcName,
 			Namespace:       ns,
 			Labels:          tidbLabels,
-			Annotations:     svcSpec.Annotations,
+			Annotations:     copyAnnotations(svcSpec.Annotations),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{

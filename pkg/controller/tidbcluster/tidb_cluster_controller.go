@@ -215,7 +215,9 @@ func NewController(
 				tiflashUpgrader,
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
+			mm.NewTidbClusterStatusManager(cli),
 			podRestarter,
+			&tidbClusterConditionUpdater{},
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(

@@ -16,6 +16,7 @@ package v1alpha1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -53,6 +54,16 @@ func (tc *TidbCluster) PDImage() string {
 		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
 	return image
+}
+
+func (tc *TidbCluster) PDVersion() string {
+	image := tc.PDImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
 }
 
 func (tc *TidbCluster) TiKVImage() string {
@@ -319,6 +330,9 @@ func (tc *TidbCluster) TiFlashAllStoresReady() bool {
 }
 
 func (tc *TidbCluster) TiFlashStsDesiredReplicas() int32 {
+	if tc.Spec.TiFlash == nil {
+		return 0
+	}
 	return tc.Spec.TiFlash.Replicas + int32(len(tc.Status.TiFlash.FailureStores))
 }
 
@@ -331,6 +345,9 @@ func (tc *TidbCluster) TiFlashStsActualReplicas() int32 {
 }
 
 func (tc *TidbCluster) TiFlashStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	if tc.Spec.TiFlash == nil {
+		return sets.Int32{}
+	}
 	replicas := tc.Spec.TiFlash.Replicas
 	if !excludeFailover {
 		replicas = tc.TiFlashStsDesiredReplicas()
