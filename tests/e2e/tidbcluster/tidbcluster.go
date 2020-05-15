@@ -1415,7 +1415,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 
 		// check whether the tidb svc have updated
-		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
 			s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
 			if err != nil {
 				return false, err
