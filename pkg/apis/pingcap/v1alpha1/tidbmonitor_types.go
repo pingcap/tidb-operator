@@ -87,14 +87,14 @@ type PrometheusSpec struct {
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
 
-	Container *corev1.Container `json:"container,omitempty"`
+	CommandOptions []string `json:"command,omitempty" protobuf:"bytes,3,rep,name=commandOptions"`
 	// +optional
 	Config *Configuration `json:"config,omitempty"`
 }
 
 // Config  is the the desired state of Prometheus Configuration
 type Configuration struct {
-	ConfigMapRef string `json:"externalConfigMap,omitempty"`
+	ConfigMapRef string `json:"configMapRef,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana

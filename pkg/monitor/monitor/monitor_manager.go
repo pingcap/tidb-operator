@@ -269,10 +269,6 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
 			newCM.Data["prometheus-config"] = externalContent
 		}
-
-		if externalContent, ok := externalCM.Data["dashboard-config"]; ok {
-			newCM.Data["dashboard-config"] = externalContent
-		}
 	}
 	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }

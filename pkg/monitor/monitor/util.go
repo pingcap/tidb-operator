@@ -367,11 +367,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.Resources),
 		Command: []string{
 			"/bin/prometheus",
-			"--web.enable-admin-api",
-			"--web.enable-lifecycle",
-			"--config.file=/etc/prometheus/prometheus.yml",
-			"--storage.tsdb.path=/data/prometheus",
-			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -403,11 +398,17 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 	}
-	if monitor.Spec.Prometheus.Container != nil {
-		if len(monitor.Spec.Prometheus.Container.Command) > 0 {
-			c.Command = monitor.Spec.Prometheus.Container.Command
-		}
+	commandOptions := []string{"--web.enable-admin-api",
+		"--web.enable-lifecycle",
+		"--config.file=/etc/prometheus/prometheus.yml",
+		"--storage.tsdb.path=/data/prometheus",
+		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
+
+	if len(monitor.Spec.Prometheus.CommandOptions) > 0 {
+		commandOptions = monitor.Spec.Prometheus.CommandOptions
 	}
+	c.Command = append(c.Command, commandOptions...)
+
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
 		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
 	}

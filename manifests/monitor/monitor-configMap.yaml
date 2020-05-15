@@ -162,20 +162,3 @@ data:
         target_label: cluster
     rule_files:
       - '/prometheus-rules/rules/*.rules.yml'
-
-  dashboard-config: |-
-    {
-        "apiVersion": 1,
-        "providers": [
-            {
-                "folder": "",
-                "name": "0",
-                "options": {
-                    "path": "/grafana-dashboard-definitions/tidb"
-                },
-                "orgId": 1,
-                "type": "file"
-            }
-        ]
-    }
-
