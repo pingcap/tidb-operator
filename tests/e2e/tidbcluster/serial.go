@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -71,7 +72,7 @@ func mustToString(set sets.Int32) string {
 
 // Serial specs describe tests which cannot run in parallel.
 var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
-	f := framework.NewDefaultFramework("serial")
+	f := e2eframework.NewDefaultFramework("serial")
 
 	var ns string
 	var c clientset.Interface
