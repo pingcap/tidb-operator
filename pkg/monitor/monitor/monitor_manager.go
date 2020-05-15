@@ -255,11 +255,15 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	if err != nil {
 		return nil, err
 	}
-	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.ConfigMapRef) > 0 {
+	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.ConfigMapRef != nil && len(monitor.Spec.Prometheus.Config.ConfigMapRef.Name) > 0 {
+		namespace := "default"
+		if len(monitor.Spec.Prometheus.Config.ConfigMapRef.Namespace) > 0 {
+			namespace = monitor.Spec.Prometheus.Config.ConfigMapRef.Namespace
+		}
 		externalCM, err := mm.cmControl.GetConfigMap(monitor, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      monitor.Spec.Prometheus.Config.ConfigMapRef,
-				Namespace: monitor.Namespace,
+				Name:      monitor.Spec.Prometheus.Config.ConfigMapRef.Name,
+				Namespace: namespace,
 			},
 		})
 		if err != nil {

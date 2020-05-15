@@ -558,15 +558,6 @@ monitor:
       type: NodePort
       portName: http-grafana
   prometheus:
-    config:
-      configMapRef: external-config
-    commandOptions:
-      - --web.enable-admin-api
-      - --web.enable-lifecycle
-      - --log.level=info
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/data/prometheus
-      - --storage.tsdb.retention=12d
     image: prom/prometheus:v2.11.1
     imagePullPolicy: IfNotPresent
     logLevel: info

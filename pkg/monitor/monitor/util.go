@@ -404,8 +404,8 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		"--storage.tsdb.path=/data/prometheus",
 		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
 
-	if len(monitor.Spec.Prometheus.CommandOptions) > 0 {
-		commandOptions = monitor.Spec.Prometheus.CommandOptions
+	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
+		commandOptions = monitor.Spec.Prometheus.Config.CommandOptions
 	}
 	c.Command = append(c.Command, commandOptions...)
 
