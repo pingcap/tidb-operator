@@ -89,11 +89,11 @@ type PrometheusSpec struct {
 
 	CommandOptions []string `json:"command,omitempty" protobuf:"bytes,3,rep,name=commandOptions"`
 	// +optional
-	Config *Configuration `json:"config,omitempty"`
+	Config *PrometheusConfiguration `json:"config,omitempty"`
 }
 
 // Config  is the the desired state of Prometheus Configuration
-type Configuration struct {
+type PrometheusConfiguration struct {
 	ConfigMapRef string `json:"configMapRef,omitempty"`
 }
 
