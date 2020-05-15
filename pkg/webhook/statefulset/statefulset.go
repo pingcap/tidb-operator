@@ -19,7 +19,7 @@ import (
 	"k8s.io/klog"
 	"strconv"
 
-	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
+	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"

@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
-	asclientsetfake "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned/fake"
+	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
+	asclientsetfake "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	versionedfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/features"
