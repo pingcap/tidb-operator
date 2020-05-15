@@ -27,6 +27,7 @@ import (
 
 const (
 	prometheusEtcdKey = "/topology/prometheus"
+	grafanaEtcdKey    = "/topology/grafana"
 )
 
 type TidbClusterStatusManager struct {
@@ -112,6 +113,20 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 			return err
 		}
 		klog.Infof("tc[%s/%s]'s pd set tm[%s/%s]'s prometheus key", tc.Namespace, tc.Name, tm.Namespace, tm.Name)
+
+		if tm.Spec.Grafana != nil {
+
+			v, err := buildGrafanaEtcdValue(tm)
+			if err != nil {
+				return err
+			}
+			err = pdEtcdClient.PutKey(grafanaEtcdKey, v)
+			if err != nil {
+				klog.Error(err.Error())
+				return err
+			}
+			klog.Infof("tc[%s/%s]'s pd set tm[%s/%s]'s grafana key", tc.Namespace, tc.Name, tm.Namespace, tm.Name)
+		}
 		return nil
 	}
 
@@ -122,12 +137,31 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 		return err
 	}
 	klog.Infof("tc[%s/%s]'s pd empty prometheus key", tc.Namespace, tc.Name)
+
+	err = pdEtcdClient.DeleteKey(grafanaEtcdKey)
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
+	klog.Infof("tc[%s/%s]'s pd empty grafana key", tc.Namespace, tc.Name)
 	return nil
 }
 
 type componentTopology struct {
 	IP   string `json:"ip"`
 	Port int    `json:"port"`
+}
+
+func buildGrafanaEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
+	topology := componentTopology{
+		IP:   fmt.Sprintf("%s-grafana.%s.svc", tm.Name, tm.Namespace),
+		Port: 9090,
+	}
+	data, err := json.Marshal(topology)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func buildPromethehusEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
