@@ -493,6 +493,10 @@ func (oa *operatorActions) CleanCRDOrDie() {
 		framework.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
+		// Even if DELETE API request succeeds, the CRD object may still exists
+		// in ap server. We should wait for it to be gone.
+		e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
+		framework.ExpectNoError(err)
 	}
 }
 
