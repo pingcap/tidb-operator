@@ -93,15 +93,15 @@ type PrometheusSpec struct {
 
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
-
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	CommandOptions []string `json:"command,omitempty" protobuf:"bytes,3,rep,name=commandOptions"`
 }
+
 // ConfigMap Info
 type ConfigMapRef struct {
-	Name string      `json:"name,omitempty"`
-	Namespace string      `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana
