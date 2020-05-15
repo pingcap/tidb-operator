@@ -267,7 +267,7 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 			},
 		})
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", monitor.Namespace, monitor.Spec.Prometheus.Config.ConfigMapRef, err)
+			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", namespace, monitor.Spec.Prometheus.Config.ConfigMapRef.Name, err)
 			return nil, err
 		}
 		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {

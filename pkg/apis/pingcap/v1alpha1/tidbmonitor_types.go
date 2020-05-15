@@ -94,8 +94,8 @@ type PrometheusSpec struct {
 // +k8s:openapi-gen=true
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
-	// user can mount prometheus rule config with external configMap.
-	// if use this feature, the external configMap must contain `prometheus-config` key in data.
+
+	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	// user can  use it specify prometheus command options
