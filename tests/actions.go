@@ -884,14 +884,21 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
-		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-		label.ManagedByLabelKey, "tidb-operator",
-		label.NamespaceLabelKey, info.Namespace,
-		label.InstanceLabelKey, info.ClusterName)
-	klog.V(4).Info(patchPVCmd)
-	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
+	err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+		patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+			"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
+			label.ManagedByLabelKey, "tidb-operator",
+			label.NamespaceLabelKey, info.Namespace,
+			label.InstanceLabelKey, info.ClusterName)
+		klog.V(4).Info(patchPVCmd)
+		if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
+			klog.Errorf(fmt.Errorf("failed to patch pv: %v, %s", err, string(res)).Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	pollFn := func() (bool, error) {
