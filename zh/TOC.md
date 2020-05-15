@@ -33,6 +33,7 @@
 + 监控
   - [监控 TiDB 集群](monitor-a-tidb-cluster.md)
   - [通过 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)
+  - [访问 TiDB Dashboard](access-dashboard.md)
 + 运维
   - [销毁 TiDB 集群](destroy-a-tidb-cluster.md)
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
