@@ -91,17 +91,21 @@ type PrometheusSpec struct {
 	Config *PrometheusConfiguration `json:"config,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // Config  is the the desired state of Prometheus Configuration
 type PrometheusConfiguration struct {
+	// user can mount prometheus rule config with external configMap.
+	// if use this feature, the external configMap must contain `prometheus-config` key in data.
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
-	CommandOptions []string `json:"command,omitempty" protobuf:"bytes,3,rep,name=commandOptions"`
+	// user can  use it specify prometheus command options
+	CommandOptions []string `json:"command,omitempty"`
 }
 
-// ConfigMap Info
+// ConfigMapRef is the external configMap
 type ConfigMapRef struct {
 	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana
