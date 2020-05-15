@@ -104,7 +104,7 @@ type PrometheusConfiguration struct {
 
 // ConfigMapRef is the external configMap
 type ConfigMapRef struct {
-	Name      string `json:"name,omitempty"`
+	Name      string  `json:"name,omitempty"`
 	Namespace *string `json:"namespace,omitempty"`
 }
 
