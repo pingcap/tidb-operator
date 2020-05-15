@@ -39,6 +39,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
@@ -72,7 +73,7 @@ import (
 )
 
 var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
-	f := framework.NewDefaultFramework("tidb-cluster")
+	f := e2eframework.NewDefaultFramework("tidb-cluster")
 
 	var ns string
 	var c clientset.Interface
