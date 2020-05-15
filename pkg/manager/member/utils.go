@@ -332,3 +332,14 @@ func filterContainer(sts *apps.StatefulSet, containerName string) *corev1.Contai
 	}
 	return nil
 }
+
+func copyAnnotations(src map[string]string) map[string]string {
+	if src == nil {
+		return nil
+	}
+	dst := map[string]string{}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
