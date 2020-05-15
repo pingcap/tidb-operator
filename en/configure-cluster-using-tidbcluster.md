@@ -6,13 +6,13 @@ category: how-to
 
 # Configure a TiDB Cluster Using TidbCluster
 
-This document introduces how to configure the parameters of TiDB/TiKV/PD using TidbCluster.
+This document introduces how to configure the parameters of TiDB/TiKV/PD/TiFlash using TidbCluster.
 
 The current TiDB Operator v1.1 supports all parameters of TiDB v3.1. For parameters of different components, refer to [TiDB documentation](https://pingcap.com/docs/).
 
 ## Configure TiDB parameters
 
-TiDB parameters can be configured by `TidbCluster.Spec.Tidb.Config`.
+TiDB parameters can be configured by `spec.tidb.config` in TidbCluster Custom Resource.
 
 For example:
 
@@ -44,7 +44,7 @@ For all the configurable parameters of TiDB, refer to [TiDB Configuration File](
 
 ## Configure TiKV parameters
 
-TiKV parameters can be configured by `TidbCluster.Spec.Tikv.Config`.
+TiKV parameters can be configured by `spec.tikv.config` in TidbCluster Custom Resource.
 
 For example:
 
@@ -73,7 +73,7 @@ For all the configurable parameters of TiKV, refer to [TiKV Configuration File](
 
 ## Configure PD parameters
 
-PD parameters can be configured by `TidbCluster.Spec.Pd.Config`.
+PD parameters can be configured by `spec.pd.config` in TidbCluster Custom Resource.
 
 For example:
 
@@ -96,3 +96,24 @@ For all the configurable parameters of PD, refer to [PD Configuration File](http
 > **Note:**
 >
 > If you deploy your TiDB cluster using CR, make sure that `Config: {}` is set, no matter you want to modify `config` or not. Otherwise, PD components might not be started successfully. This step is meant to be compatible with `Helm` deployment.
+
+## Configure TiFlash parameters
+
+TiFlash parameters can be configured by `spec.tiflash.config` in TidbCluster Custom Resource.
+
+For example:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  ...
+  tiflash:
+    config:
+      config:
+        logger:
+          count: 5
+          level: information
+```

@@ -16,6 +16,7 @@
   - [Prerequisites](prerequisites.md)
   - [TiDB Operator](deploy-tidb-operator.md)
   - [TiDB in General Kubernetes](deploy-on-general-kubernetes.md)
+  - [Deploy TiFlash](deploy-tiflash.md)
   - [TiDB in AWS EKS](deploy-on-aws-eks.md)
   - [TiDB in GCP GKE](deploy-on-gcp-gke.md)
   - [TiDB in Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)

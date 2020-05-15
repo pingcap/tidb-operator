@@ -32,9 +32,11 @@ controllerManager:
  tikvFailoverPeriod: 5m
  # tidb failover period default(5m)
  tidbFailoverPeriod: 5m
+ # tiflash failover period default(5m)
+ tiflashFailoverPeriod: 5m
 ```
 
-By default, `pdFailoverPeriod`, `tikvFailoverPeriod` and `tidbFailoverPeriod` are set to be 5 minutes, which is the waiting timeout after an instance failure is identified. After this time, TiDB Operator begins the automatic failover process.
+By default, `pdFailoverPeriod`, `tikvFailoverPeriod`, `tiflashFailoverPeriod` and `tidbFailoverPeriod` are set to be 5 minutes, which is the waiting timeout after an instance failure is identified. After this time, TiDB Operator begins the automatic failover process.
 
 ## Automatic failover policies
 
@@ -84,3 +86,38 @@ status
 ### Failover with TiDB
 
 The TiDB automatic failover policy works the same way as `Deployment` does in Kubernetes. Assume that there are 3 nodes in a TiDB cluster. If a TiDB node is down for over 5 minutes (configurable by modifying `tidbFailoverPeriod`), TiDB Operator creates a new TiDB node. At this time, there are 4 nodes in the cluster. When the failed TiDB node gets back online, TiDB Operator deletes the newly created node and the number of nodes gets back to 3.
+
+### Failover with TiFlash
+
+When a TiFlash Pod fails, its store status turns to `Disconnected`. After 30 minutes (configurable by modifying `max-store-down-time = "30m"` in the `[schedule]` section of the `pd.config` file), the store status turns to `Down`. After waiting for 5 minutes (configurable by modifying `tiflashFailoverPeriod`), TiDB Operator creates a new TiFlash Pod if this TiFlash Pod is still down. If the failed TiFlash Pod gets back online, TiDB Operator does not automatically delete the newly created Pod, and you need to manually drop it and restore the original number of Pods. To do this, you can delete the TiFlash Pod from the `status.tiflash.failureStores` field of the `TidbCluster` object.
+
+For example, assume two TiFlash Pods are in abnormal state:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl edit tc -n ${namespace} ${cluster_name}
+```
+
+```
+status
+  tiflash:
+    failureStores:
+      "1":
+        podName: cluster1-tiflash-0
+        storeID: "1"
+      "2":
+        podName: cluster1-tiflash-1
+        storeID: "2"
+```
+
+After the `cluster1-tiflash-0` Pod recovers, delete it manually:
+
+```
+status
+  tiflash:
+    failureStores:
+      "2":
+        podName: cluster1-tiflash-1
+        storeID: "2"
+```

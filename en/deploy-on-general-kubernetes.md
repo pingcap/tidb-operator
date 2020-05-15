@@ -36,6 +36,44 @@ The modified configuration is not automatically applied to the TiDB cluster by d
 
 It is recommended that you set `spec.configUpdateStrategy` to `RollingUpdate` to enable automatic update of configurations. This way, every time the configuration is updated, all components are rolling updated automatically, and the modified configuration is applied to the cluster.
 
+If you want to enable TiFlash in the cluster, configure `spec.pd.config.replication.enable-placement-rules` to `true` and configure `spec.tiflash` in the `${cluster_name}/tidb-cluster.yaml` file as follows:
+
+```yaml
+  pd:
+    config:
+      ...
+      replication:
+        enable-placement-rules: "true"
+        ...
+  tiflash:
+    baseImage: pingcap/tiflash
+    maxFailoverCount: 3
+    replicas: 1
+    storageClaims:
+    - resources:
+        requests:
+          storage: 100Gi
+      storageClassName: local-storage
+```
+
+TiFlash supports mounting multiple Persistent Volumes (PVs). If you want to configure multiple PVs for TiFlash, configure multiple `resources` in `tiflash.storageClaims`, each `resources` with a separate `storage request` and `storageClassName`. For example:
+
+```yaml
+  tiflash:
+    baseImage: pingcap/tiflash
+    maxFailoverCount: 3
+    replicas: 1
+    storageClaims:
+    - resources:
+        requests:
+          storage: 100Gi
+      storageClassName: local-storage
+    - resources:
+        requests:
+          storage: 100Gi
+      storageClassName: local-storage
+```
+
 To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](api-references.md) to complete TidbMonitor CR, and save it to the `${cluster_name}/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
 
 ### Storage class
