@@ -363,18 +363,130 @@ category: how-to
 
     创建这个对象以后，cert-manager 会生成一个名字为 `${cluster_name}-tidb-client-secret` 的 Secret 对象供 TiDB Client 使用。
 
-用户可以生成多套 Client 端证书，并且至少要生成一套 Client 证书供 TiDB Operator 内部组件访问 TiDB Server（目前有 TidbInitializer 会访问 TiDB Server 来设置密码或者一些初始化操作）。
+5. 创建多套 Client 端证书（可选）。
 
-> **注意：**
->
-> TiDB Server 的 TLS 兼容 MySQL 协议。当证书内容发生改变后，需要管理员手动执行 SQL 语句 `alter instance reload tls` 进行刷新。
+    TiDB Operator 集群内部有 4 个组件需要请求 TiDB Server，当开启 TLS 验证后，这些组件可以使用证书来请求 TiDB Server，每个组件都可以使用单独的证书。这些组件有：
+
+    - TidbInitializer
+    - PD Dashboard
+    - Backup
+    - Restore
+
+    下面就来生成这些组件的 Client 证书。
+
+    1. 创建一个 `tidb-components-client-cert.yaml` 文件，并输入以下内容：
+
+        ``` yaml
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-tidb-initializer-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-tidb-initializer-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "TiDB Initializer client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-pd-dashboard-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-pd-dashboard-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "PD Dashboard client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-backup-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-backup-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "Backup client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-restore-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-restore-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "Restore client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ```
+
+        其中 `${cluster_name}` 为集群的名字：
+
+        - `spec.secretName` 请设置为 `${cluster_name}-${component}-client-secret`；
+        - `usages` 请添加上 `client auth`；
+        - `dnsNames` 和 `ipAddresses` 不需要填写；
+        - `issuerRef` 请填写上面创建的 Issuer；
+        - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
+
+    2. 通过执行下面的命令来创建证书：
+
+        {{< copyable "shell-regular" >}}
+
+        ``` shell
+        kubectl apply -f tidb-components-client-cert.yaml
+        ```
+
+    3. 创建这些对象以后，cert-manager 会生成 4 个 Secret 对象供上面四个组件使用。
+
+    > **注意：**
+    >
+    > TiDB Server 的 TLS 兼容 MySQL 协议。当证书内容发生改变后，需要管理员手动执行 SQL 语句 `alter instance reload tls` 进行刷新。
 
 ## 第二步：部署 TiDB 集群
 
-接下来将会通过两个 CR 对象来创建一个 TiDB 集群，并且执行以下步骤：
+接下来将会创建一个 TiDB 集群，并且执行以下步骤：
 
 - 开启 MySQL 客户端 TLS；
-- 对集群进行初始化（这里创建了一个数据库 `app`）。
+- 对集群进行初始化（这里创建了一个数据库 `app`）;
+- 创建一个 Backup 对象对集群进行备份；
+- 创建一个 Restore 对象对进群进行恢复；
+- TidbInitializer，PD Dashboard，Backup 以及 Restore 分别使用单独的 Client 证书（用 `tlsClientSecretName` 指定）。
+
+tidb-cluster.yaml:
 
 ``` yaml
 apiVersion: pingcap.com/v1alpha1
@@ -392,6 +504,7 @@ spec:
    requests:
      storage: "1Gi"
    config: {}
+   tlsClientSecretName: ${cluster_name}-pd-dashboard-client-secret
  tikv:
    baseImage: pingcap/tikv
    replicas: 1
@@ -419,6 +532,63 @@ spec:
    name: ${cluster_name}
  initSql: |-
    create database app;
+ tlsClientSecretName: ${cluster_name}-tidb-initializer-client-secret
+```
+
+backup.yaml:
+
+```
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: ${cluster_name}-backup
+  namespace: ${namespace}
+spec:
+  backupType: full
+  br:
+    cluster: ${cluster_name}
+    clusterNamespace: ${namespace}
+    sendCredToTikv: true
+  from:
+    host: ${host}
+    secretName: ${tidb_secret}
+    port: 4000
+    user: root
+    tlsClientSecretName: ${cluster_name}-backup-client-secret
+  s3:
+    provider: aws
+    region: ${my_region}
+    secretName: ${s3_secret}
+    bucket: ${my_bucket}
+    prefix: ${my_folder}
+```
+
+restore.yaml:
+
+```
+apiVersion: pingcap.com/v1alpha1
+kind: Restore
+metadata:
+  name: ${cluster_name}-restore
+  namespace: ${namespace}
+spec:
+  backupType: full
+  br:
+    cluster: ${cluster_name}
+    clusterNamespace: ${namespace}
+    sendCredToTikv: true
+  to:
+    host: ${host}
+    secretName: ${tidb_secret}
+    port: 4000
+    user: root
+    tlsClientSecretName: ${cluster_name}-restore-client-secret
+  s3:
+    provider: aws
+    region: ${my_region}
+    secretName: ${s3_secret}
+    bucket: ${my_bucket}
+    prefix: ${my_folder}
 ```
 
 其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间。通过设置 `spec.tidb.tlsClient.enabled` 属性为 `true` 来开启 MySQL 客户端 TLS。
