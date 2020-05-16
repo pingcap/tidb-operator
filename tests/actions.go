@@ -34,8 +34,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -493,6 +493,10 @@ func (oa *operatorActions) CleanCRDOrDie() {
 		framework.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
+		// Even if DELETE API request succeeds, the CRD object may still exists
+		// in ap server. We should wait for it to be gone.
+		e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
+		framework.ExpectNoError(err)
 	}
 }
 
@@ -880,14 +884,21 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
-		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-		label.ManagedByLabelKey, "tidb-operator",
-		label.NamespaceLabelKey, info.Namespace,
-		label.InstanceLabelKey, info.ClusterName)
-	klog.V(4).Info(patchPVCmd)
-	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
+	err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+		patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+			"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
+			label.ManagedByLabelKey, "tidb-operator",
+			label.NamespaceLabelKey, info.Namespace,
+			label.InstanceLabelKey, info.ClusterName)
+		klog.V(4).Info(patchPVCmd)
+		if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
+			klog.Errorf(fmt.Errorf("failed to patch pv: %v, %s", err, string(res)).Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	pollFn := func() (bool, error) {

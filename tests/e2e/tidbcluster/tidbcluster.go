@@ -25,8 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -1415,7 +1415,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 
 		// check whether the tidb svc have updated
-		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
 			s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
 			if err != nil {
 				return false, err
