@@ -16,6 +16,7 @@ package member
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -30,7 +31,6 @@ const (
 	grafanaEtcdKey    = "/topology/grafana"
 	//TODO support AlertManager, move to UCP
 	alertManagerEtcdKey = "/topology/alertmanager"
-
 )
 
 type TidbClusterStatusManager struct {
