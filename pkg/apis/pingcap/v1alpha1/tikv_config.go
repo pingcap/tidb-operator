@@ -232,6 +232,73 @@ type TiKVSecurityConfig struct {
 	OverrideSslTarget *string `json:"override-ssl-target,omitempty" toml:"override-ssl-target,omitempty"`
 	// +optional
 	CipherFile *string `json:"cipher-file,omitempty" toml:"cipher-file,omitempty"`
+	// +optional
+	Encryption *TiKVSecurityConfigEncryption `json:"encryption,omitempty" toml:"encryption,omitempty"`
+}
+
+type TiKVSecurityConfigEncryption struct {
+	// Encryption method to use for data files.
+	// Possible values are "plaintext", "aes128-ctr", "aes192-ctr" and "aes256-ctr". Value other than
+	// "plaintext" means encryption is enabled, in which case master key must be specified.
+	// +optional
+	DataEncryptionMethod *string `json:"data-encryption-method,omitempty" toml:"data-encryption-method,omitempty"`
+	// Specifies how often TiKV rotates data encryption key.
+	// +optional
+	DataKeyRotationPeriod *string `json:"data-key-rotation-period,omitempty" toml:"data-key-rotation-period,omitempty"`
+	// Specifies master key if encryption is enabled. There are three types of master key:
+	//
+	//   * "plaintext":
+	//
+	//     Plaintext as master key means no master key is given and only applicable when
+	//     encryption is not enabled, i.e. data-encryption-method = "plaintext". This type doesn't
+	//     have sub-config items. Example:
+	//
+	//     [security.encryption.master-key]
+	//     type = "plaintext"
+	//
+	//   * "kms":
+	//
+	//     Use a KMS service to supply master key. Currently only AWS KMS is supported. This type of
+	//     master key is recommended for production use. Example:
+	//
+	//     [security.encryption.master-key]
+	//     type = "kms"
+	//     ## KMS CMK key id. Must be a valid KMS CMK where the TiKV process has access to.
+	//     ## In production is recommended to grant access of the CMK to TiKV using IAM.
+	//     key-id = "1234abcd-12ab-34cd-56ef-1234567890ab"
+	//     ## AWS region of the KMS CMK.
+	//     region = "us-west-2"
+	//     ## (Optional) AWS KMS service endpoint. Only required when non-default KMS endpoint is
+	//     ## desired.
+	//     endpoint = "https://kms.us-west-2.amazonaws.com"
+	//
+	//   * "file":
+	//
+	//     Supply a custom encryption key stored in a file. It is recommended NOT to use in production,
+	//     as it breaks the purpose of encryption at rest, unless the file is stored in tempfs.
+	//     The file must contain a 256-bits (32 bytes, regardless of key length implied by
+	//     data-encryption-method) key encoded as hex string and end with newline ("\n"). Example:
+	//
+	//     [security.encryption.master-key]
+	//     type = "file"
+	//     path = "/path/to/master/key/file"
+	// +optional
+	MasterKey *TiKVSecurityConfigEncryptionMasterKey `json:"master-key,omitempty" toml:"master-key,omitempty"`
+	// Specifies the old master key when rotating master key. Same config format as master-key.
+	// The key is only access once during TiKV startup, after that TiKV do not need access to the key.
+	// And it is okay to leave the stale previous-master-key config after master key rotation.
+	// +optional
+	PreviousMasterKey *TiKVSecurityConfigEncryptionPreviousMasterKey `json:"previous-master-key,omitempty" toml:"previous-master-key,omitempty"`
+}
+
+type TiKVSecurityConfigEncryptionMasterKey struct {
+	// +optional
+	Type *string `json:"type" toml:"type,omitempty"`
+}
+
+type TiKVSecurityConfigEncryptionPreviousMasterKey struct {
+	// +optional
+	Type *string `json:"type" toml:"type,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -432,6 +499,10 @@ type TiKVTitanCfConfig struct {
 	MergeSmallFileThreshold *string `json:"merge-small-file-threshold,omitempty" toml:"merge-small-file-threshold,omitempty"`
 	// +optional
 	BlobRunMode *string `json:"blob-run-mode,omitempty" toml:"blob-run-mode,omitempty"`
+	// optional
+	LevelMerge *bool `json:"level_merge,omitempty" toml:"level_merge,omitempty"`
+	// optional
+	GcMergeRewrite *bool `json:"gc-merge-rewrite,omitempty" toml:"gc-merge-rewrite,omitempty"`
 }
 
 // TiKVTitanDBConfig is the config a titian db.
@@ -851,10 +922,16 @@ type MasterKeyKMSConfig struct {
 type TiKVPessimisticTxn struct {
 	// +optional
 	Enabled *bool `json:"enabled,omitempty" toml:"enabled,omitempty"`
+	// The default and maximum delay before responding to TiDB when pessimistic
+	// transactions encounter locks
 	// +optional
-	WaitForLockTimeout *int32 `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
+	WaitForLockTimeout *string `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
+	// If more than one transaction is waiting for the same lock, only the one with smallest
+	// start timestamp will be waked up immediately when the lock is released. Others will
+	// be waked up after `wake_up_delay_duration` to reduce contention and make the oldest
+	// one more likely acquires the lock.
 	// +optional
-	WakeUpDelayDuration *int32 `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
+	WakeUpDelayDuration *string `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
 	// +optional
 	Pipelined *bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
 }
