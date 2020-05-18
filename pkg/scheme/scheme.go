@@ -14,7 +14,7 @@
 package scheme
 
 import (
-	astsscheme "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned/scheme"
+	astsscheme "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned/scheme"
 	tidbscheme "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
