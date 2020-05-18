@@ -28,6 +28,7 @@ import (
 const (
 	prometheusEtcdKey = "/topology/prometheus"
 	grafanaEtcdKey    = "/topology/grafana"
+	//TODO support AlertManager, move to UCP
 )
 
 type TidbClusterStatusManager struct {
