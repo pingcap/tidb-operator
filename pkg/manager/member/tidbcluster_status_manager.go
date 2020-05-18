@@ -91,8 +91,8 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
-	prometheusExist := true
-	grafanaExist := true
+	var prometheusExist bool
+	var grafanaExist bool
 	if tc.Status.Monitor != nil {
 		prometheusExist = true
 		if tm.Spec.Grafana == nil {
