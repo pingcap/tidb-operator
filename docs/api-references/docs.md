@@ -6790,8 +6790,7 @@ ConfigMapRef
 </em>
 </td>
 <td>
-<p>user can mount prometheus rule config with external configMap.
-if use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
 </td>
 </tr>
 <tr>
