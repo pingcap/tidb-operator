@@ -46,11 +46,7 @@ func NewTidbClusterStatusManager(kubeCli kubernetes.Interface, cli versioned.Int
 }
 
 func (tcsm *TidbClusterStatusManager) Sync(tc *v1alpha1.TidbCluster) error {
-	if err := tcsm.syncTidbMonitorRefAndKey(tc); err != nil {
-		return err
-	}
-
-	return nil
+	return tcsm.syncTidbMonitorRefAndKey(tc)
 }
 
 func (tcsm *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.TidbCluster) error {
@@ -58,10 +54,7 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.Tidb
 	if err != nil {
 		return err
 	}
-	if err := tcsm.syncDashboardMetricStorage(tc, tm); err != nil {
-		return err
-	}
-	return nil
+	return tcsm.syncDashboardMetricStorage(tc, tm)
 }
 
 func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbMonitor, error) {
@@ -73,10 +66,9 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluste
 	if err != nil {
 		if errors.IsNotFound(err) {
 			tc.Status.Monitor = nil
-			return nil, nil
-		} else {
-			return nil, err
+			err = nil
 		}
+		return nil, err
 	}
 	tcRef := tm.Spec.Clusters
 	if len(tcRef) < 1 {
