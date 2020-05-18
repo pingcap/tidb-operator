@@ -36,6 +36,7 @@ spec:
             - --tls-cert-file=/var/serving-cert/tls.crt
             - --tls-private-key-file=/var/serving-cert/tls.key
             {{- end }}
+            - --v={{ .Values.admissionWebhook.logLevel }}
             {{- if .Values.features }}
             - --features={{ join "," .Values.features }}
             {{- end }}
