@@ -305,9 +305,9 @@ type OpenTracing struct {
 	// +optional
 	Enable *bool `toml:"enable,omitempty" json:"enable,omitempty"`
 	// +optional
-	Sampler OpenTracingSampler `toml:"sampler,omitempty" json:"sampler,omitempty"`
+	Sampler *OpenTracingSampler `toml:"sampler,omitempty" json:"sampler,omitempty"`
 	// +optional
-	Reporter OpenTracingReporter `toml:"reporter,omitempty" json:"reporter,omitempty"`
+	Reporter *OpenTracingReporter `toml:"reporter,omitempty" json:"reporter,omitempty"`
 	// +optional
 	RPCMetrics *bool `toml:"rpc-metrics,omitempty" json:"rpc-metrics,omitempty"`
 }
@@ -325,7 +325,7 @@ type OpenTracingSampler struct {
 	// +optional
 	MaxOperations *int `toml:"max-operations,omitempty" json:"max-operations,omitempty"`
 	// +optional
-	SamplingRefreshInterval time.Duration `toml:"sampling-refresh-interval,omitempty" json:"sampling-refresh-interval,omitempty"`
+	SamplingRefreshInterval *time.Duration `toml:"sampling-refresh-interval,omitempty" json:"sampling-refresh-interval,omitempty"`
 }
 
 // OpenTracingReporter is the config for opentracing reporter.
@@ -335,7 +335,7 @@ type OpenTracingReporter struct {
 	// +optional
 	QueueSize *int `toml:"queue-size,omitempty" json:"queue-size,omitempty"`
 	// +optional
-	BufferFlushInterval time.Duration `toml:"buffer-flush-interval,omitempty" json:"buffer-flush-interval,omitempty"`
+	BufferFlushInterval *time.Duration `toml:"buffer-flush-interval,omitempty" json:"buffer-flush-interval,omitempty"`
 	// +optional
 	LogSpans *bool `toml:"log-spans,omitempty" json:"log-spans,omitempty"`
 	// +optional
@@ -392,7 +392,7 @@ type TiKVClient struct {
 	// MaxBatchWaitTime in nanosecond is the max wait time for batch.
 	// Optional: Defaults to 0
 	// +optional
-	MaxBatchWaitTime time.Duration `toml:"max-batch-wait-time,omitempty" json:"max-batch-wait-time,omitempty"`
+	MaxBatchWaitTime *time.Duration `toml:"max-batch-wait-time,omitempty" json:"max-batch-wait-time,omitempty"`
 	// BatchWaitSize is the max wait size for batch.
 	// Optional: Defaults to 8
 	// +optional
@@ -406,7 +406,7 @@ type TiKVClient struct {
 	// prevent the store occupying too much token in dispatching level.
 	// Optional: Defaults to 0
 	// +optional
-	StoreLimit int64 `toml:"store-limit,omitempty" json:"store-limit,omitempty"`
+	StoreLimit *int64 `toml:"store-limit,omitempty" json:"store-limit,omitempty"`
 	// +optional
 	CoprCache *CoprocessorCache `toml:"copr-cache,omitempty" json:"copr-cache,omitempty"`
 }

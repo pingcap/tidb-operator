@@ -48,14 +48,14 @@ type PDConfig struct {
 
 	// Backward compatibility.
 	// +optional
-	LogFileDeprecated string `toml:"log-file,omitempty" json:"log-file,omitempty"`
+	LogFileDeprecated *string `toml:"log-file,omitempty" json:"log-file,omitempty"`
 	// +optional
-	LogLevelDeprecated string `toml:"log-level,omitempty" json:"log-level,omitempty"`
+	LogLevelDeprecated *string `toml:"log-level,omitempty" json:"log-level,omitempty"`
 
 	// TsoSaveInterval is the interval to save timestamp.
 	// Optional: Defaults to 3s
 	// +optional
-	TsoSaveInterval string `toml:"tso-save-interval,omitempty" json:"tso-save-interval,omitempty"`
+	TsoSaveInterval *string `toml:"tso-save-interval,omitempty" json:"tso-save-interval,omitempty"`
 
 	// +optional
 	Metric *PDMetricConfig `toml:"metric,omitempty" json:"metric,omitempty"`
@@ -75,15 +75,15 @@ type PDConfig struct {
 	PDServerCfg *PDServerConfig `toml:"pd-server,omitempty" json:"pd-server,omitempty"`
 
 	// +optional
-	ClusterVersion string `toml:"cluster-version,omitempty" json:"cluster-version,omitempty"`
+	ClusterVersion *string `toml:"cluster-version,omitempty" json:"cluster-version,omitempty"`
 
 	// QuotaBackendBytes Raise alarms when backend size exceeds the given quota. 0 means use the default quota.
 	// the default size is 2GB, the maximum is 8GB.
 	// +optional
-	QuotaBackendBytes string `toml:"quota-backend-bytes,omitempty" json:"quota-backend-bytes,omitempty"`
+	QuotaBackendBytes *string `toml:"quota-backend-bytes,omitempty" json:"quota-backend-bytes,omitempty"`
 	// AutoCompactionMode is either 'periodic' or 'revision'. The default value is 'periodic'.
 	// +optional
-	AutoCompactionMode string `toml:"auto-compaction-mode,omitempty" json:"auto-compaction-mode,omitempty"`
+	AutoCompactionMode *string `toml:"auto-compaction-mode,omitempty" json:"auto-compaction-mode,omitempty"`
 	// AutoCompactionRetention is either duration string with time unit
 	// (e.g. '5m' for 5-minute), or revision unit (e.g. '5000').
 	// If no time unit is provided and compaction mode is 'periodic',
@@ -91,14 +91,14 @@ type PDConfig struct {
 	// The default retention is 1 hour.
 	// Before etcd v3.3.x, the type of retention is int. We add 'v2' suffix to make it backward compatible.
 	// +optional
-	AutoCompactionRetention string `toml:"auto-compaction-retention,omitempty" json:"auto-compaction-retention-v2,omitempty"`
+	AutoCompactionRetention *string `toml:"auto-compaction-retention,omitempty" json:"auto-compaction-retention-v2,omitempty"`
 
 	// TickInterval is the interval for etcd Raft tick.
 	// +optional
-	TickInterval string `toml:"tick-interval,omitempty" json:"tikv-interval,omitempty"`
+	TickInterval *string `toml:"tick-interval,omitempty" json:"tikv-interval,omitempty"`
 	// ElectionInterval is the interval for etcd Raft election.
 	// +optional
-	ElectionInterval string `toml:"election-interval,omitempty" json:"election-interval,omitempty"`
+	ElectionInterval *string `toml:"election-interval,omitempty" json:"election-interval,omitempty"`
 	// Prevote is true to enable Raft Pre-Vote.
 	// If enabled, Raft runs an additional election phase
 	// to check whether it would get enough votes to win
@@ -117,7 +117,7 @@ type PDConfig struct {
 	// namespaces.
 	// Optional: Defaults to true
 	// +optional
-	NamespaceClassifier string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
+	NamespaceClassifier *string `toml:"namespace-classifier,omitempty" json:"namespace-classifier,omitempty"`
 
 	// +optional
 	Dashboard *DashboardConfig `toml:"dashboard,omitempty" json:"dashboard,omitempty"`
@@ -125,9 +125,12 @@ type PDConfig struct {
 
 // DashboardConfig is the configuration for tidb-dashboard.
 type DashboardConfig struct {
-	TiDBCAPath   string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
-	TiDBCertPath string `toml:"tidb-cert-path,omitempty" json:"tidb_cert_path,omitempty"`
-	TiDBKeyPath  string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
+	// +optional
+	TiDBCAPath   *string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
+	// +optional
+	TiDBCertPath *string `toml:"tidb-cert-path,omitempty" json:"tidb_cert_path,omitempty"`
+	// +optional
+	TiDBKeyPath  *string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
@@ -136,10 +139,10 @@ type PDLogConfig struct {
 	// Log level.
 	// Optional: Defaults to info
 	// +optional
-	Level string `toml:"level,omitempty" json:"level,omitempty"`
+	Level *string `toml:"level,omitempty" json:"level,omitempty"`
 	// Log format. one of json, text, or console.
 	// +optional
-	Format string `toml:"format,omitempty" json:"format,omitempty"`
+	Format *string `toml:"format,omitempty" json:"format,omitempty"`
 	// Disable automatic timestamps in output.
 	// +optional
 	DisableTimestamp *bool `toml:"disable-timestamp,omitempty" json:"disable-timestamp,omitempty"`
@@ -244,17 +247,17 @@ type PDScheduleConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// Optional: Defaults to 1h
 	// +optional
-	SplitMergeInterval string `toml:"split-merge-interval,omitempty" json:"split-merge-interval,omitempty"`
+	SplitMergeInterval *string `toml:"split-merge-interval,omitempty" json:"split-merge-interval,omitempty"`
 	// PatrolRegionInterval is the interval for scanning region during patrol.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	PatrolRegionInterval string `toml:"patrol-region-interval,omitempty" json:"patrol-region-interval,omitempty"`
+	PatrolRegionInterval *string `toml:"patrol-region-interval,omitempty" json:"patrol-region-interval,omitempty"`
 	// MaxStoreDownTime is the max duration after which
 	// a store will be considered to be down if it hasn't reported heartbeats.
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// Optional: Defaults to 30m
 	// +optional
-	MaxStoreDownTime string `toml:"max-store-down-time,omitempty" json:"max-store-down-time,omitempty"`
+	MaxStoreDownTime *string `toml:"max-store-down-time,omitempty" json:"max-store-down-time,omitempty"`
 	// LeaderScheduleLimit is the max coexist leader schedules.
 	// Immutable, change should be made through pd-ctl after cluster creation.
 	// Optional: Defaults to 4.
@@ -371,7 +374,7 @@ type PDSchedulerConfigs []PDSchedulerConfig
 type PDSchedulerConfig struct {
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
-	Type string `toml:"type,omitempty" json:"type,omitempty"`
+	Type *string `toml:"type,omitempty" json:"type,omitempty"`
 	// Immutable, change should be made through pd-ctl after cluster creation
 	// +optional
 	Args []string `toml:"args,omitempty" json:"args,omitempty"`
@@ -384,9 +387,9 @@ type PDSchedulerConfig struct {
 // +k8s:openapi-gen=true
 type PDStoreLabel struct {
 	// +optional
-	Key string `toml:"key,omitempty" json:"key,omitempty"`
+	Key *string `toml:"key,omitempty" json:"key,omitempty"`
 	// +optional
-	Value string `toml:"value,omitempty" json:"value,omitempty"`
+	Value *string `toml:"value,omitempty" json:"value,omitempty"`
 }
 
 type PDStoreLabels []PDStoreLabel
@@ -398,13 +401,13 @@ type PDLabelPropertyConfig map[string]PDStoreLabels
 type PDSecurityConfig struct {
 	// CAPath is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty
 	// +optional
-	CAPath string `toml:"cacert-path,omitempty" json:"cacert-path,omitempty"`
+	CAPath *string `toml:"cacert-path,omitempty" json:"cacert-path,omitempty"`
 	// CertPath is the path of file that contains X509 certificate in PEM format.
 	// +optional
-	CertPath string `toml:"cert-path,omitempty" json:"cert-path,omitempty"`
+	CertPath *string `toml:"cert-path,omitempty" json:"cert-path,omitempty"`
 	// KeyPath is the path of file that contains X509 key in PEM format.
 	// +optional
-	KeyPath string `toml:"key-path,omitempty" json:"key-path,omitempty"`
+	KeyPath *string `toml:"key-path,omitempty" json:"key-path,omitempty"`
 	// CertAllowedCN is the Common Name that allowed
 	// +optional
 	// +k8s:openapi-gen=false

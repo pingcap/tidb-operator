@@ -20,20 +20,20 @@ package v1alpha1
 type TiKVConfig struct {
 	// Optional: Defaults to info
 	// +optional
-	LogLevel string `json:"log-level,omitempty" toml:"log-level,omitempty"`
+	LogLevel *string `json:"log-level,omitempty" toml:"log-level,omitempty"`
 	// +optional
-	LogFile string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 	// +optional
-	SlowLogFile string `json:"slow-log-file,omitempty" toml:"slow-log-file,omitempty"`
+	SlowLogFile *string `json:"slow-log-file,omitempty" toml:"slow-log-file,omitempty"`
 	// +optional
-	SlowLogThreshold string `json:"slow-log-threshold,omitempty" toml:"slow-log-threshold,omitempty"`
+	SlowLogThreshold *string `json:"slow-log-threshold,omitempty" toml:"slow-log-threshold,omitempty"`
 	// Optional: Defaults to 24h
 	// +optional
-	LogRotationTimespan string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
+	LogRotationTimespan *string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
 	// +optional
-	LogRotationSize string `json:"log-rotation-size,omitempty" toml:"log-rotation-size,omitempty"`
+	LogRotationSize *string `json:"log-rotation-size,omitempty" toml:"log-rotation-size,omitempty"`
 	// +optional
-	RefreshConfigInterval string `json:"refresh-config-interval,omitempty" toml:"refresh-config-interval,omitempty"`
+	RefreshConfigInterval *string `json:"refresh-config-interval,omitempty" toml:"refresh-config-interval,omitempty"`
 	// +optional
 	PanicWhenUnexpectedKeyOrData *bool `json:"panic-when-unexpected-key-or-data,omitempty" toml:"panic-when-unexpected-key-or-data,omitempty"`
 	// +optional
@@ -77,13 +77,13 @@ type TiKVReadPoolConfig struct {
 // +k8s:openapi-gen=true
 type TiKVUnifiedReadPoolConfig struct {
 	// +optional
-	MinThreadCount int32 `json:"min-thread-count,omitempty" toml:"min-thread-count,omitempty"`
+	MinThreadCount *int32 `json:"min-thread-count,omitempty" toml:"min-thread-count,omitempty"`
 	// +optional
-	MaxThreadCount int32 `json:"max-thread-count,omitempty" toml:"max-thread-count,omitempty"`
+	MaxThreadCount *int32 `json:"max-thread-count,omitempty" toml:"max-thread-count,omitempty"`
 	// +optional
-	StackSize string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
+	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
 	// +optional
-	MaxTasksPerWorker int32 `json:"max-tasks-per-worker,omitempty" toml:"max-tasks-per-worker,omitempty"`
+	MaxTasksPerWorker *int32 `json:"max-tasks-per-worker,omitempty" toml:"max-tasks-per-worker,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -108,7 +108,7 @@ type TiKVStorageReadPoolConfig struct {
 	MaxTasksPerWorkerLow *int64 `json:"max-tasks-per-worker-low,omitempty" toml:"max-tasks-per-worker-low,omitempty"`
 	// Optional: Defaults to 10MB
 	// +optional
-	StackSize string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
+	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -133,7 +133,7 @@ type TiKVCoprocessorReadPoolConfig struct {
 	MaxTasksPerWorkerLow *int64 `json:"max-tasks-per-worker-low,omitempty" toml:"max-tasks-per-worker-low,omitempty"`
 	// Optional: Defaults to 10MB
 	// +optional
-	StackSize string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
+	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -148,7 +148,7 @@ type TiKVPDConfig struct {
 	// Default is 300ms.
 	// Optional: Defaults to 300ms
 	// +optional
-	RetryInterval string `json:"retry-interval,omitempty" toml:"retry-interval,omitempty"`
+	RetryInterval *string `json:"retry-interval,omitempty" toml:"retry-interval,omitempty"`
 	// The maximum number of times to retry a PD connection initialization.
 	//
 	// Default is isize::MAX, represented by -1.
@@ -167,19 +167,19 @@ type TiKVPDConfig struct {
 // +k8s:openapi-gen=true
 type TiKVRaftDBConfig struct {
 	// +optional
-	WalRecoveryMode string `json:"wal-recovery-mode,omitempty" toml:"wal-recovery-mode,omitempty"`
+	WalRecoveryMode *string `json:"wal-recovery-mode,omitempty" toml:"wal-recovery-mode,omitempty"`
 	// +optional
-	WalDir string `json:"wal-dir,omitempty" toml:"wal-dir,omitempty"`
+	WalDir *string `json:"wal-dir,omitempty" toml:"wal-dir,omitempty"`
 	// +optional
 	WalTtlSeconds *int64 `json:"wal-ttl-seconds,omitempty" toml:"wal-ttl-seconds,omitempty"`
 	// +optional
-	WalSizeLimit string `json:"wal-size-limit,omitempty" toml:"wal-size-limit,omitempty"`
+	WalSizeLimit *string `json:"wal-size-limit,omitempty" toml:"wal-size-limit,omitempty"`
 	// +optional
-	MaxTotalWalSize string `json:"max-total-wal-size,omitempty" toml:"max-total-wal-size,omitempty"`
+	MaxTotalWalSize *string `json:"max-total-wal-size,omitempty" toml:"max-total-wal-size,omitempty"`
 	// +optional
 	MaxBackgroundJobs *int64 `json:"max-background-jobs,omitempty" toml:"max-background-jobs,omitempty"`
 	// +optional
-	MaxManifestFileSize string `json:"max-manifest-file-size,omitempty" toml:"max-manifest-file-size,omitempty"`
+	MaxManifestFileSize *string `json:"max-manifest-file-size,omitempty" toml:"max-manifest-file-size,omitempty"`
 	// +optional
 	CreateIfMissing *bool `json:"create-if-missing,omitempty" toml:"create-if-missing,omitempty"`
 	// +optional
@@ -187,21 +187,21 @@ type TiKVRaftDBConfig struct {
 	// +optional
 	EnableStatistics *bool `json:"enable-statistics,omitempty" toml:"enable-statistics,omitempty"`
 	// +optional
-	StatsDumpPeriod string `json:"stats-dump-period,omitempty" toml:"stats-dump-period,omitempty"`
+	StatsDumpPeriod *string `json:"stats-dump-period,omitempty" toml:"stats-dump-period,omitempty"`
 	// +optional
-	CompactionReadaheadSize string `json:"compaction-readahead-size,omitempty" toml:"compaction-readahead-size,omitempty"`
+	CompactionReadaheadSize *string `json:"compaction-readahead-size,omitempty" toml:"compaction-readahead-size,omitempty"`
 	// +optional
-	InfoLogMaxSize string `json:"info-log-max-size,omitempty" toml:"info-log-max-size,omitempty"`
+	InfoLogMaxSize *string `json:"info-log-max-size,omitempty" toml:"info-log-max-size,omitempty"`
 	// +optional
-	FnfoLogRollTime string `json:"info-log-roll-time,omitempty" toml:"info-log-roll-time,omitempty"`
+	FnfoLogRollTime *string `json:"info-log-roll-time,omitempty" toml:"info-log-roll-time,omitempty"`
 	// +optional
 	InfoLogKeepLogFileNum *int64 `json:"info-log-keep-log-file-num,omitempty" toml:"info-log-keep-log-file-num,omitempty"`
 	// +optional
-	InfoLogDir string `json:"info-log-dir,omitempty" toml:"info-log-dir,omitempty"`
+	InfoLogDir *string `json:"info-log-dir,omitempty" toml:"info-log-dir,omitempty"`
 	// +optional
 	MaxSubCompactions *int64 `json:"max-sub-compactions,omitempty" toml:"max-sub-compactions,omitempty"`
 	// +optional
-	WritableFileMaxBufferSize string `json:"writable-file-max-buffer-size,omitempty" toml:"writable-file-max-buffer-size,omitempty"`
+	WritableFileMaxBufferSize *string `json:"writable-file-max-buffer-size,omitempty" toml:"writable-file-max-buffer-size,omitempty"`
 	// +optional
 	UseDirectIoForFlushAndCompaction *bool `json:"use-direct-io-for-flush-and-compaction,omitempty" toml:"use-direct-io-for-flush-and-compaction,omitempty"`
 	// +optional
@@ -209,9 +209,9 @@ type TiKVRaftDBConfig struct {
 	// +optional
 	AllowConcurrentMemtableWrite *bool `json:"allow-concurrent-memtable-write,omitempty" toml:"allow-concurrent-memtable-write,omitempty"`
 	// +optional
-	BytesPerSync string `json:"bytes-per-sync,omitempty" toml:"bytes-per-sync,omitempty"`
+	BytesPerSync *string `json:"bytes-per-sync,omitempty" toml:"bytes-per-sync,omitempty"`
 	// +optional
-	WalBytesPerSync string `json:"wal-bytes-per-sync,omitempty" toml:"wal-bytes-per-sync,omitempty"`
+	WalBytesPerSync *string `json:"wal-bytes-per-sync,omitempty" toml:"wal-bytes-per-sync,omitempty"`
 	// +optional
 	Defaultcf *TiKVCfConfig `json:"defaultcf,omitempty" toml:"defaultcf,omitempty"`
 }
@@ -219,25 +219,25 @@ type TiKVRaftDBConfig struct {
 // +k8s:openapi-gen=true
 type TiKVSecurityConfig struct {
 	// +optional
-	CAPath string `json:"ca-path,omitempty" toml:"ca-path,omitempty"`
+	CAPath *string `json:"ca-path,omitempty" toml:"ca-path,omitempty"`
 	// +optional
-	CertPath string `json:"cert-path,omitempty" toml:"cert-path,omitempty"`
+	CertPath *string `json:"cert-path,omitempty" toml:"cert-path,omitempty"`
 	// +optional
-	KeyPath string `json:"key-path,omitempty" toml:"key-path,omitempty"`
+	KeyPath *string `json:"key-path,omitempty" toml:"key-path,omitempty"`
 	// CertAllowedCN is the Common Name that allowed
 	// +optional
 	// +k8s:openapi-gen=false
 	CertAllowedCN []string `json:"cert-allowed-cn,omitempty" toml:"cert-allowed-cn,omitempty"`
 	// +optional
-	OverrideSslTarget string `json:"override-ssl-target,omitempty" toml:"override-ssl-target,omitempty"`
+	OverrideSslTarget *string `json:"override-ssl-target,omitempty" toml:"override-ssl-target,omitempty"`
 	// +optional
-	CipherFile string `json:"cipher-file,omitempty" toml:"cipher-file,omitempty"`
+	CipherFile *string `json:"cipher-file,omitempty" toml:"cipher-file,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 type TiKVImportConfig struct {
 	// +optional
-	ImportDir string `json:"import-dir,omitempty" toml:"import-dir,omitempty"`
+	ImportDir *string `json:"import-dir,omitempty" toml:"import-dir,omitempty"`
 	// +optional
 	NumThreads *int64 `json:"num-threads,omitempty" toml:"num-threads,omitempty"`
 	// +optional
@@ -245,15 +245,15 @@ type TiKVImportConfig struct {
 	// +optional
 	NumImportSstJobs *int64 `json:"num-import-sst-jobs,omitempty" toml:"num-import-sst-jobs,omitempty"`
 	// +optional
-	MaxPrepareDuration string `json:"max-prepare-duration,omitempty" toml:"max-prepare-duration,omitempty"`
+	MaxPrepareDuration *string `json:"max-prepare-duration,omitempty" toml:"max-prepare-duration,omitempty"`
 	// +optional
-	RegionSplitSize string `json:"region-split-size,omitempty" toml:"region-split-size,omitempty"`
+	RegionSplitSize *string `json:"region-split-size,omitempty" toml:"region-split-size,omitempty"`
 	// +optional
 	StreamChannelWindow *int64 `json:"stream-channel-window,omitempty" toml:"stream-channel-window,omitempty"`
 	// +optional
 	MaxOpenEngines *int64 `json:"max-open-engines,omitempty" toml:"max-open-engines,omitempty"`
 	// +optional
-	UploadSpeedLimit string `json:"upload-speed-limit,omitempty" toml:"upload-speed-limit,omitempty"`
+	UploadSpeedLimit *string `json:"upload-speed-limit,omitempty" toml:"upload-speed-limit,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -262,7 +262,7 @@ type TiKVGCConfig struct {
 	// Optional: Defaults to 512
 	BatchKeys *int64 `json:"	batch-keys,omitempty" toml:"	batch-keys,omitempty"`
 	// +optional
-	MaxWriteBytesPerSec string `json:"	max-write-bytes-per-sec,omitempty" toml:"	max-write-bytes-per-sec,omitempty"`
+	MaxWriteBytesPerSec *string `json:"	max-write-bytes-per-sec,omitempty" toml:"	max-write-bytes-per-sec,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
@@ -274,16 +274,16 @@ type TiKVDbConfig struct {
 	// +optional
 	WalTTLSeconds *int64 `json:"wal-ttl-seconds,omitempty" toml:"wal-ttl-seconds,omitempty"`
 	// +optional
-	WalSizeLimit string `json:"wal-size-limit,omitempty" toml:"wal-size-limit,omitempty"`
+	WalSizeLimit *string `json:"wal-size-limit,omitempty" toml:"wal-size-limit,omitempty"`
 	// +optional
 	// Optional: Defaults to 4GB
-	MaxTotalWalSize string `json:"max-total-wal-size,omitempty" toml:"max-total-wal-size,omitempty"`
+	MaxTotalWalSize *string `json:"max-total-wal-size,omitempty" toml:"max-total-wal-size,omitempty"`
 	// +optional
 	// Optional: Defaults to 8
 	MaxBackgroundJobs *int64 `json:"max-background-jobs,omitempty" toml:"max-background-jobs,omitempty"`
 	// +optional
 	// Optional: Defaults to 128MB
-	MaxManifestFileSize string `json:"max-manifest-file-size,omitempty" toml:"max-manifest-file-size,omitempty"`
+	MaxManifestFileSize *string `json:"max-manifest-file-size,omitempty" toml:"max-manifest-file-size,omitempty"`
 	// +optional
 	// Optional: Defaults to true
 	CreateIfMissing *bool `json:"create-if-missing,omitempty" toml:"create-if-missing,omitempty"`
@@ -295,33 +295,33 @@ type TiKVDbConfig struct {
 	EnableStatistics *bool `json:"enable-statistics,omitempty" toml:"enable-statistics,omitempty"`
 	// +optional
 	// Optional: Defaults to 10m
-	StatsDumpPeriod string `json:"stats-dump-period,omitempty" toml:"stats-dump-period,omitempty"`
+	StatsDumpPeriod *string `json:"stats-dump-period,omitempty" toml:"stats-dump-period,omitempty"`
 	// Optional: Defaults to 0
 	// +optional
-	CompactionReadaheadSize string `json:"compaction-readahead-size,omitempty" toml:"compaction-readahead-size,omitempty"`
+	CompactionReadaheadSize *string `json:"compaction-readahead-size,omitempty" toml:"compaction-readahead-size,omitempty"`
 	// +optional
-	InfoLogMaxSize string `json:"info-log-max-size,omitempty" toml:"info-log-max-size,omitempty"`
+	InfoLogMaxSize *string `json:"info-log-max-size,omitempty" toml:"info-log-max-size,omitempty"`
 	// +optional
-	InfoLogRollTime string `json:"info-log-roll-time,omitempty" toml:"info-log-roll-time,omitempty"`
+	InfoLogRollTime *string `json:"info-log-roll-time,omitempty" toml:"info-log-roll-time,omitempty"`
 	// +optional
 	InfoLogKeepLogFileNum *int64 `json:"info-log-keep-log-file-num,omitempty" toml:"info-log-keep-log-file-num,omitempty"`
 	// +optional
-	InfoLogDir string `json:"info-log-dir,omitempty" toml:"info-log-dir,omitempty"`
+	InfoLogDir *string `json:"info-log-dir,omitempty" toml:"info-log-dir,omitempty"`
 	// +optional
-	RateBytesPerSec string `json:"rate-bytes-per-sec,omitempty" toml:"rate-bytes-per-sec,omitempty"`
+	RateBytesPerSec *string `json:"rate-bytes-per-sec,omitempty" toml:"rate-bytes-per-sec,omitempty"`
 	// +optional
 	RateLimiterMode *int64 `json:"rate-limiter-mode,omitempty" toml:"rate-limiter-mode,omitempty"`
 	// +optional
 	AutoTuned *bool `json:"auto-tuned,omitempty" toml:"auto-tuned,omitempty"`
 	// +optional
-	BytesPerSync string `json:"bytes-per-sync,omitempty" toml:"bytes-per-sync,omitempty"`
+	BytesPerSync *string `json:"bytes-per-sync,omitempty" toml:"bytes-per-sync,omitempty"`
 	// +optional
-	WalBytesPerSync string `json:"wal-bytes-per-sync,omitempty" toml:"wal-bytes-per-sync,omitempty"`
+	WalBytesPerSync *string `json:"wal-bytes-per-sync,omitempty" toml:"wal-bytes-per-sync,omitempty"`
 	// +optional
 	// Optional: Defaults to 3
 	MaxSubCompactions *int64 `json:"max-sub-compactions,omitempty" toml:"max-sub-compactions,omitempty"`
 	// +optional
-	WritableFileMaxBufferSize string `json:"writable-file-max-buffer-size,omitempty" toml:"writable-file-max-buffer-size,omitempty"`
+	WritableFileMaxBufferSize *string `json:"writable-file-max-buffer-size,omitempty" toml:"writable-file-max-buffer-size,omitempty"`
 	// +optional
 	UseDirectIoForFlushAndCompaction *bool `json:"use-direct-io-for-flush-and-compaction,omitempty" toml:"use-direct-io-for-flush-and-compaction,omitempty"`
 	// +optional
@@ -342,9 +342,9 @@ type TiKVDbConfig struct {
 // +k8s:openapi-gen=true
 type TiKVCfConfig struct {
 	// +optional
-	BlockSize string `json:"block-size,omitempty" toml:"block-size,omitempty"`
+	BlockSize *string `json:"block-size,omitempty" toml:"block-size,omitempty"`
 	// +optional
-	BlockCacheSize string `json:"block-cache-size,omitempty" toml:"block-cache-size,omitempty"`
+	BlockCacheSize *string `json:"block-cache-size,omitempty" toml:"block-cache-size,omitempty"`
 	// +optional
 	DisableBlockCache *bool `json:"disable-block-cache,omitempty" toml:"disable-block-cache,omitempty"`
 	// +optional
@@ -366,15 +366,15 @@ type TiKVCfConfig struct {
 	// +optional
 	CompressionPerLevel []string `json:"compression-per-level,omitempty" toml:"compression-per-level,omitempty"`
 	// +optional
-	WriteBufferSize string `json:"write-buffer-size,omitempty" toml:"write-buffer-size,omitempty"`
+	WriteBufferSize *string `json:"write-buffer-size,omitempty" toml:"write-buffer-size,omitempty"`
 	// +optional
 	MaxWriteBufferNumber *int64 `json:"max-write-buffer-number,omitempty" toml:"max-write-buffer-number,omitempty"`
 	// +optional
 	MinWriteBufferNumberToMerge *int64 `json:"min-write-buffer-number-to-merge,omitempty" toml:"min-write-buffer-number-to-merge,omitempty"`
 	// +optional
-	MaxBytesForLevelBase string `json:"max-bytes-for-level-base,omitempty" toml:"max-bytes-for-level-base,omitempty"`
+	MaxBytesForLevelBase *string `json:"max-bytes-for-level-base,omitempty" toml:"max-bytes-for-level-base,omitempty"`
 	// +optional
-	TargetFileSizeBase string `json:"target-file-size-base,omitempty" toml:"target-file-size-base,omitempty"`
+	TargetFileSizeBase *string `json:"target-file-size-base,omitempty" toml:"target-file-size-base,omitempty"`
 	// +optional
 	Level0FileNumCompactionTrigger *int64 `json:"level0-file-num-compaction-trigger,omitempty" toml:"level0-file-num-compaction-trigger,omitempty"`
 	// +optional
@@ -382,7 +382,7 @@ type TiKVCfConfig struct {
 	// +optional
 	Level0StopWritesTrigger *int64 `json:"level0-stop-writes-trigger,omitempty" toml:"level0-stop-writes-trigger,omitempty"`
 	// +optional
-	MaxCompactionBytes string `json:"max-compaction-bytes,omitempty" toml:"max-compaction-bytes,omitempty"`
+	MaxCompactionBytes *string `json:"max-compaction-bytes,omitempty" toml:"max-compaction-bytes,omitempty"`
 	// +optional
 	CompactionPri *int64 `json:"compaction-pri,omitempty" toml:"compaction-pri,omitempty"`
 	// +optional
@@ -396,9 +396,9 @@ type TiKVCfConfig struct {
 	// +optional
 	DisableAutoCompactions *bool `json:"disable-auto-compactions,omitempty" toml:"disable-auto-compactions,omitempty"`
 	// +optional
-	SoftPendingCompactionBytesLimit string `json:"soft-pending-compaction-bytes-limit,omitempty" toml:"soft-pending-compaction-bytes-limit,omitempty"`
+	SoftPendingCompactionBytesLimit *string `json:"soft-pending-compaction-bytes-limit,omitempty" toml:"soft-pending-compaction-bytes-limit,omitempty"`
 	// +optional
-	HardPendingCompactionBytesLimit string `json:"hard-pending-compaction-bytes-limit,omitempty" toml:"hard-pending-compaction-bytes-limit,omitempty"`
+	HardPendingCompactionBytesLimit *string `json:"hard-pending-compaction-bytes-limit,omitempty" toml:"hard-pending-compaction-bytes-limit,omitempty"`
 	// +optional
 	ForceConsistencyChecks *bool `json:"force-consistency-checks,omitempty" toml:"force-consistency-checks,omitempty"`
 	// +optional
@@ -415,23 +415,23 @@ type TiKVCfConfig struct {
 // +k8s:openapi-gen=true
 type TiKVTitanCfConfig struct {
 	// +optional
-	MinBlobSize string `json:"min-blob-size,omitempty" toml:"min-blob-size,omitempty"`
+	MinBlobSize *string `json:"min-blob-size,omitempty" toml:"min-blob-size,omitempty"`
 	// +optional
-	BlobFileCompression string `json:"blob-file-compression,omitempty" toml:"blob-file-compression,omitempty"`
+	BlobFileCompression *string `json:"blob-file-compression,omitempty" toml:"blob-file-compression,omitempty"`
 	// +optional
-	BlobCacheSize string `json:"blob-cache-size,omitempty" toml:"blob-cache-size,omitempty"`
+	BlobCacheSize *string `json:"blob-cache-size,omitempty" toml:"blob-cache-size,omitempty"`
 	// +optional
-	MinGcBatchSize string `json:"min-gc-batch-size,omitempty" toml:"min-gc-batch-size,omitempty"`
+	MinGcBatchSize *string `json:"min-gc-batch-size,omitempty" toml:"min-gc-batch-size,omitempty"`
 	// +optional
-	MaxGcBatchSize string `json:"max-gc-batch-size,omitempty" toml:"max-gc-batch-size,omitempty"`
+	MaxGcBatchSize *string `json:"max-gc-batch-size,omitempty" toml:"max-gc-batch-size,omitempty"`
 	// +optional
 	DiscardableRatio *float64 `json:"discardable-ratio,omitempty" toml:"discardable-ratio,omitempty"`
 	// +optional
 	SampleRatio *float64 `json:"sample-ratio,omitempty" toml:"sample-ratio,omitempty"`
 	// +optional
-	MergeSmallFileThreshold string `json:"merge-small-file-threshold,omitempty" toml:"merge-small-file-threshold,omitempty"`
+	MergeSmallFileThreshold *string `json:"merge-small-file-threshold,omitempty" toml:"merge-small-file-threshold,omitempty"`
 	// +optional
-	BlobRunMode string `json:"blob-run-mode,omitempty" toml:"blob-run-mode,omitempty"`
+	BlobRunMode *string `json:"blob-run-mode,omitempty" toml:"blob-run-mode,omitempty"`
 }
 
 // TiKVTitanDBConfig is the config a titian db.
@@ -440,14 +440,14 @@ type TiKVTitanDBConfig struct {
 	// +optional
 	Enabled *bool `json:"enabled,omitempty" toml:"enabled,omitempty"`
 	// +optional
-	Dirname string `json:"dirname,omitempty" toml:"dirname,omitempty"`
+	Dirname *string `json:"dirname,omitempty" toml:"dirname,omitempty"`
 	// +optional
 	DisableGc *bool `json:"disable-gc,omitempty" toml:"disable-gc,omitempty"`
 	// +optional
 	MaxBackgroundGc *int64 `json:"max-background-gc,omitempty" toml:"max-background-gc,omitempty"`
 	// The value of this field will be truncated to seconds.
 	// +optional
-	PurgeObsoleteFilesPeriod string `json:"purge-obsolete-files-period,omitempty" toml:"purge-obsolete-files-period,omitempty"`
+	PurgeObsoleteFilesPeriod *string `json:"purge-obsolete-files-period,omitempty" toml:"purge-obsolete-files-period,omitempty"`
 }
 
 // TiKVStorageConfig is the config of storage
@@ -465,7 +465,7 @@ type TiKVStorageConfig struct {
 	SchedulerWorkerPoolSize *int64 `json:"scheduler-worker-pool-size,omitempty" toml:"scheduler-worker-pool-size,omitempty"`
 	// +optional
 	// Optional: Defaults to 100MB
-	SchedulerPendingWriteThreshold string `json:"scheduler-pending-write-threshold,omitempty" toml:"scheduler-pending-write-threshold,omitempty"`
+	SchedulerPendingWriteThreshold *string `json:"scheduler-pending-write-threshold,omitempty" toml:"scheduler-pending-write-threshold,omitempty"`
 	// +optional
 	BlockCache *TiKVBlockCacheConfig `json:"block-cache,omitempty" toml:"block-cache,omitempty"`
 }
@@ -477,7 +477,7 @@ type TiKVBlockCacheConfig struct {
 	// +optional
 	Shared *bool `json:"shared,omitempty" toml:"shared,omitempty"`
 	// +optional
-	Capacity string `json:"capacity,omitempty" toml:"capacity,omitempty"`
+	Capacity *string `json:"capacity,omitempty" toml:"capacity,omitempty"`
 	// +optional
 	NumShardBits *int64 `json:"num-shard-bits,omitempty" toml:"num-shard-bits,omitempty"`
 	// +optional
@@ -485,7 +485,7 @@ type TiKVBlockCacheConfig struct {
 	// +optional
 	HighPriPoolRatio *float64 `json:"high-pri-pool-ratio,omitempty" toml:"high-pri-pool-ratio,omitempty"`
 	// +optional
-	MemoryAllocator string `json:"memory-allocator,omitempty" toml:"memory-allocator,omitempty"`
+	MemoryAllocator *string `json:"memory-allocator,omitempty" toml:"memory-allocator,omitempty"`
 }
 
 // TiKVServerConfig is the configuration of TiKV server.
@@ -493,10 +493,10 @@ type TiKVBlockCacheConfig struct {
 type TiKVServerConfig struct {
 	// Optional: Defaults to 1
 	// +optional
-	StatusThreadPoolSize string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
+	StatusThreadPoolSize *string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
 	// Optional: Defaults to none
 	// +optional
-	GrpcCompressionType string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
+	GrpcCompressionType *string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`
 	// Optional: Defaults to 4
 	// +optional
 	GrpcConcurrency *uint `json:"grpc-concurrency,omitempty" toml:"grpc-concurrency,omitempty"`
@@ -511,13 +511,13 @@ type TiKVServerConfig struct {
 	GrpcRaftConnNum *uint `json:"grpc-raft-conn-num,omitempty" toml:"grpc-raft-conn-num,omitempty"`
 	// Optional: Defaults to 2MB
 	// +optional
-	GrpcStreamInitialWindowSize string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
+	GrpcStreamInitialWindowSize *string `json:"grpc-stream-initial-window-size,omitempty" toml:"grpc-stream-initial-window-size,omitempty"`
 	// Optional: Defaults to 10s
 	// +optional
-	GrpcKeepaliveTime string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
+	GrpcKeepaliveTime *string `json:"grpc-keepalive-time,omitempty" toml:"grpc-keepalive-time,omitempty"`
 	// Optional: Defaults to 3s
 	// +optional
-	GrpcKeepaliveTimeout string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
+	GrpcKeepaliveTimeout *string `json:"grpc-keepalive-timeout,omitempty" toml:"grpc-keepalive-timeout,omitempty"`
 	// Optional: Defaults to 32
 	// +optional
 	ConcurrentSendSnapLimit *uint `json:"concurrent-send-snap-limit,omitempty" toml:"concurrent-send-snap-limit,omitempty"`
@@ -536,27 +536,27 @@ type TiKVServerConfig struct {
 	// +optional
 	EndPointEnableBatchIfPossible *uint `json:"end-point-enable-batch-if-possible,omitempty" toml:"end-point-enable-batch-if-possible,omitempty"`
 	// +optional
-	EndPointRequestMaxHandleDuration string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
+	EndPointRequestMaxHandleDuration *string `json:"end-point-request-max-handle-duration,omitempty" toml:"end-point-request-max-handle-duration,omitempty"`
 	// Optional: Defaults to 100MB
 	// +optional
-	SnapMaxWriteBytesPerSec string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
+	SnapMaxWriteBytesPerSec *string `json:"snap-max-write-bytes-per-sec,omitempty" toml:"snap-max-write-bytes-per-sec,omitempty"`
 	// +optional
-	SnapMaxTotalSize string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
+	SnapMaxTotalSize *string `json:"snap-max-total-size,omitempty" toml:"snap-max-total-size,omitempty"`
 	// +optional
 	StatsConcurrency *uint `json:"stats-concurrency,omitempty" toml:"stats-concurrency,omitempty"`
 	// +optional
 	HeavyLoadThreshold *uint `json:"heavy-load-threshold,omitempty" toml:"heavy-load-threshold,omitempty"`
 	// Optional: Defaults to 60s
 	// +optional
-	HeavyLoadWaitDuration string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
+	HeavyLoadWaitDuration *string `json:"heavy-load-wait-duration,omitempty" toml:"heavy-load-wait-duration,omitempty"`
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 	// +optional
-	EnableRequestBatch bool `json:"enable-request-batch,omitempty" toml:"enable-request-batch,omitempty"`
+	EnableRequestBatch *bool `json:"enable-request-batch,omitempty" toml:"enable-request-batch,omitempty"`
 	// +optional
-	RequestBatchEnableCrossCommand bool `json:"request-batch-enable-cross-command,omitempty" toml:"request-batch-enable-cross-command,omitempty"`
+	RequestBatchEnableCrossCommand *bool `json:"request-batch-enable-cross-command,omitempty" toml:"request-batch-enable-cross-command,omitempty"`
 	// +optional
-	RequestBatchWaitDuration string `json:"request-batch-wait-duration,omitempty" toml:"request-batch-wait-duration,omitempty"`
+	RequestBatchWaitDuration *string `json:"request-batch-wait-duration,omitempty" toml:"request-batch-wait-duration,omitempty"`
 }
 
 // TiKVRaftstoreConfig is the configuration of TiKV raftstore component.
@@ -572,7 +572,7 @@ type TiKVRaftstoreConfig struct {
 	Prevote *bool `json:"prevote,omitempty" toml:"prevote,omitempty"`
 	// raft-base-tick-interval is a base tick interval (ms).
 	// +optional
-	RaftBaseTickInterval string `json:"raft-base-tick-interval,omitempty" toml:"raft-base-tick-interval,omitempty"`
+	RaftBaseTickInterval *string `json:"raft-base-tick-interval,omitempty" toml:"raft-base-tick-interval,omitempty"`
 	// +optional
 	RaftHeartbeatTicks *int64 `json:"raft-heartbeat-ticks,omitempty" toml:"raft-heartbeat-ticks,omitempty"`
 	// +optional
@@ -580,12 +580,12 @@ type TiKVRaftstoreConfig struct {
 	// When the entry exceed the max size, reject to propose it.
 	// Optional: Defaults to 8MB
 	// +optional
-	RaftEntryMaxSize string `json:"raft-entry-max-size,omitempty" toml:"raft-entry-max-size,omitempty"`
+	RaftEntryMaxSize *string `json:"raft-entry-max-size,omitempty" toml:"raft-entry-max-size,omitempty"`
 
 	// Interval to gc unnecessary raft log (ms).
 	// Optional: Defaults to 10s
 	// +optional
-	RaftLogGCTickInterval string `json:"raft-log-gc-tick-interval,omitempty" toml:"raft-log-gc-tick-interval,omitempty"`
+	RaftLogGCTickInterval *string `json:"raft-log-gc-tick-interval,omitempty" toml:"raft-log-gc-tick-interval,omitempty"`
 	// A threshold to gc stale raft log, must >= 1.
 	// Optional: Defaults to 50
 	// +optional
@@ -598,31 +598,31 @@ type TiKVRaftstoreConfig struct {
 	// gc will be forced trigger.
 	// Optional: Defaults to 72MB
 	// +optional
-	RaftLogGCSizeLimit string `json:"raft-log-gc-size-limit,omitempty" toml:"raft-log-gc-size-limit,omitempty"`
+	RaftLogGCSizeLimit *string `json:"raft-log-gc-size-limit,omitempty" toml:"raft-log-gc-size-limit,omitempty"`
 	// When a peer is not responding for this time, leader will not keep entry cache for it.
 	// +optional
-	RaftEntryCacheLifeTime string `json:"raft-entry-cache-life-time,omitempty" toml:"raft-entry-cache-life-time,omitempty"`
+	RaftEntryCacheLifeTime *string `json:"raft-entry-cache-life-time,omitempty" toml:"raft-entry-cache-life-time,omitempty"`
 	// When a peer is newly added, reject transferring leader to the peer for a while.
 	// +optional
-	RaftRejectTransferLeaderDuration string `json:"raft-reject-transfer-leader-duration,omitempty" toml:"raft-reject-transfer-leader-duration,omitempty"`
+	RaftRejectTransferLeaderDuration *string `json:"raft-reject-transfer-leader-duration,omitempty" toml:"raft-reject-transfer-leader-duration,omitempty"`
 
 	// Interval (ms) to check region whether need to be split or not.
 	// Optional: Defaults to 10s
 	// +optional
-	SplitRegionCheckTickInterval string `json:"split-region-check-tick-interval,omitempty" toml:"split-region-check-tick-interval,omitempty"`
+	SplitRegionCheckTickInterval *string `json:"split-region-check-tick-interval,omitempty" toml:"split-region-check-tick-interval,omitempty"`
 	/// When size change of region exceed the diff since last check, it
 	/// will be checked again whether it should be split.
 	// Optional: Defaults to 6MB
 	// +optional
-	RegionSplitCheckDiff string `json:"region-split-check-diff,omitempty" toml:"region-split-check-diff,omitempty"`
+	RegionSplitCheckDiff *string `json:"region-split-check-diff,omitempty" toml:"region-split-check-diff,omitempty"`
 	/// Interval (ms) to check whether start compaction for a region.
 	// Optional: Defaults to 5m
 	// +optional
-	RegionCompactCheckInterval string `json:"region-compact-check-interval,omitempty" toml:"region-compact-check-interval,omitempty"`
+	RegionCompactCheckInterval *string `json:"region-compact-check-interval,omitempty" toml:"region-compact-check-interval,omitempty"`
 	// delay time before deleting a stale peer
 	// Optional: Defaults to 10m
 	// +optional
-	CleanStalePeerDelay string `json:"clean-stale-peer-delay,omitempty" toml:"clean-stale-peer-delay,omitempty"`
+	CleanStalePeerDelay *string `json:"clean-stale-peer-delay,omitempty" toml:"clean-stale-peer-delay,omitempty"`
 	/// Number of regions for each time checking.
 	// Optional: Defaults to 100
 	// +optional
@@ -638,20 +638,20 @@ type TiKVRaftstoreConfig struct {
 	RegionCompactTombstonesPercent *int64 `json:"region-compact-tombstones-percent,omitempty" toml:"region-compact-tombstones-percent,omitempty"`
 	// Optional: Defaults to 60s
 	// +optional
-	PdHeartbeatTickInterval string `json:"pd-heartbeat-tick-interval,omitempty" toml:"pd-heartbeat-tick-interval,omitempty"`
+	PdHeartbeatTickInterval *string `json:"pd-heartbeat-tick-interval,omitempty" toml:"pd-heartbeat-tick-interval,omitempty"`
 	// Optional: Defaults to 10s
 	// +optional
-	PdStoreHeartbeatTickInterval string `json:"pd-store-heartbeat-tick-interval,omitempty" toml:"pd-store-heartbeat-tick-interval,omitempty"`
+	PdStoreHeartbeatTickInterval *string `json:"pd-store-heartbeat-tick-interval,omitempty" toml:"pd-store-heartbeat-tick-interval,omitempty"`
 	// +optional
-	SnapMgrGCTickInterval string `json:"snap-mgr-gc-tick-interval,omitempty" toml:"snap-mgr-gc-tick-interval,omitempty"`
+	SnapMgrGCTickInterval *string `json:"snap-mgr-gc-tick-interval,omitempty" toml:"snap-mgr-gc-tick-interval,omitempty"`
 	// +optional
-	SnapGCTimeout string `json:"snap-gc-timeout,omitempty" toml:"snap-gc-timeout,omitempty"`
+	SnapGCTimeout *string `json:"snap-gc-timeout,omitempty" toml:"snap-gc-timeout,omitempty"`
 	// +optional
 	// Optional: Defaults to 10m
-	LockCfCompactInterval string `json:"lock-cf-compact-interval,omitempty" toml:"lock-cf-compact-interval,omitempty"`
+	LockCfCompactInterval *string `json:"lock-cf-compact-interval,omitempty" toml:"lock-cf-compact-interval,omitempty"`
 	// +optional
 	// Optional: Defaults to 256MB
-	LockCfCompactBytesThreshold string `json:"lock-cf-compact-bytes-threshold,omitempty" toml:"lock-cf-compact-bytes-threshold,omitempty"`
+	LockCfCompactBytesThreshold *string `json:"lock-cf-compact-bytes-threshold,omitempty" toml:"lock-cf-compact-bytes-threshold,omitempty"`
 
 	// +optional
 	NotifyCapacity *int64 `json:"notify-capacity,omitempty" toml:"notify-capacity,omitempty"`
@@ -662,37 +662,37 @@ type TiKVRaftstoreConfig struct {
 	/// the peer is considered to be down and is reported to PD.
 	// Optional: Defaults to 5m
 	// +optional
-	MaxPeerDownDuration string `json:"max-peer-down-duration,omitempty" toml:"max-peer-down-duration,omitempty"`
+	MaxPeerDownDuration *string `json:"max-peer-down-duration,omitempty" toml:"max-peer-down-duration,omitempty"`
 
 	/// If the leader of a peer is missing for longer than max-leader-missing-duration
 	/// the peer would ask pd to confirm whether it is valid in any region.
 	/// If the peer is stale and is not valid in any region, it will destroy itself.
 	// +optional
-	MaxLeaderMissingDuration string `json:"max-leader-missing-duration,omitempty" toml:"max-leader-missing-duration,omitempty"`
+	MaxLeaderMissingDuration *string `json:"max-leader-missing-duration,omitempty" toml:"max-leader-missing-duration,omitempty"`
 	/// Similar to the max-leader-missing-duration, instead it will log warnings and
 	/// try to alert monitoring systems, if there is any.
 	// +optional
-	AbnormalLeaderMissingDuration string `json:"abnormal-leader-missing-duration,omitempty" toml:"abnormal-leader-missing-duration,omitempty"`
+	AbnormalLeaderMissingDuration *string `json:"abnormal-leader-missing-duration,omitempty" toml:"abnormal-leader-missing-duration,omitempty"`
 	// +optional
-	PeerStaleStateCheckInterval string `json:"peer-stale-state-check-interval,omitempty" toml:"peer-stale-state-check-interval,omitempty"`
+	PeerStaleStateCheckInterval *string `json:"peer-stale-state-check-interval,omitempty" toml:"peer-stale-state-check-interval,omitempty"`
 
 	// +optional
 	LeaderTransferMaxLogLag *int64 `json:"leader-transfer-max-log-lag,omitempty" toml:"leader-transfer-max-log-lag,omitempty"`
 
 	// +optional
-	SnapApplyBatchSize string `json:"snap-apply-batch-size,omitempty" toml:"snap-apply-batch-size,omitempty"`
+	SnapApplyBatchSize *string `json:"snap-apply-batch-size,omitempty" toml:"snap-apply-batch-size,omitempty"`
 
 	// Interval (ms) to check region whether the data is consistent.
 	// Optional: Defaults to 0
 	// +optional
-	ConsistencyCheckInterval string `json:"consistency-check-interval,omitempty" toml:"consistency-check-interval,omitempty"`
+	ConsistencyCheckInterval *string `json:"consistency-check-interval,omitempty" toml:"consistency-check-interval,omitempty"`
 
 	// +optional
-	ReportRegionFlowInterval string `json:"report-region-flow-interval,omitempty" toml:"report-region-flow-interval,omitempty"`
+	ReportRegionFlowInterval *string `json:"report-region-flow-interval,omitempty" toml:"report-region-flow-interval,omitempty"`
 
 	// The lease provided by a successfully proposed and applied entry.
 	// +optional
-	RaftStoreMaxLeaderLease string `json:"raft-store-max-leader-lease,omitempty" toml:"raft-store-max-leader-lease,omitempty"`
+	RaftStoreMaxLeaderLease *string `json:"raft-store-max-leader-lease,omitempty" toml:"raft-store-max-leader-lease,omitempty"`
 
 	// Right region derive origin region id when split.
 	// +optional
@@ -706,14 +706,14 @@ type TiKVRaftstoreConfig struct {
 	MergeMaxLogGap *int64 `json:"merge-max-log-gap,omitempty" toml:"merge-max-log-gap,omitempty"`
 	/// Interval to re-propose merge.
 	// +optional
-	MergeCheckTickInterval string `json:"merge-check-tick-interval,omitempty" toml:"merge-check-tick-interval,omitempty"`
+	MergeCheckTickInterval *string `json:"merge-check-tick-interval,omitempty" toml:"merge-check-tick-interval,omitempty"`
 
 	// +optional
 	UseDeleteRange *bool `json:"use-delete-range,omitempty" toml:"use-delete-range,omitempty"`
 
 	// +optional
 	// Optional: Defaults to 10m
-	CleanupImportSstInterval string `json:"cleanup-import-sst-interval,omitempty" toml:"cleanup-import-sst-interval,omitempty"`
+	CleanupImportSstInterval *string `json:"cleanup-import-sst-interval,omitempty" toml:"cleanup-import-sst-interval,omitempty"`
 
 	// +optional
 	ApplyMaxBatchSize *int64 `json:"apply-max-batch-size,omitempty" toml:"apply-max-batch-size,omitempty"`
@@ -750,14 +750,14 @@ type TiKVCoprocessorConfig struct {
 	// little larger). See also: region-split-size
 	// Optional: Defaults to 144MB
 	// optional
-	RegionMaxSize string `json:"region-max-size,omitempty" toml:"region-max-size,omitempty"`
+	RegionMaxSize *string `json:"region-max-size,omitempty" toml:"region-max-size,omitempty"`
 
 	// When Region [a,e) size exceeds `region-max-size`, it will be split into several Regions [a,b),
 	// [b,c), [c,d), [d,e) and the size of [a,b), [b,c), [c,d) will be `region-split-size` (or a
 	// little larger). See also: region-max-size
 	// Optional: Defaults to 96MB
 	// optional
-	RegionSplitSize string `json:"region-split-size,omitempty" toml:"region-split-size,omitempty"`
+	RegionSplitSize *string `json:"region-split-size,omitempty" toml:"region-split-size,omitempty"`
 
 	// When the number of keys in Region [a,e) exceeds the `region-max-keys`, it will be split into
 	// several Regions [a,b), [b,c), [c,d), [d,e) and the number of keys in [a,b), [b,c), [c,d) will be
@@ -780,12 +780,12 @@ type TiKVEncryptionConfig struct {
 	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
 	// Optional: Default to plaintext
 	// optional
-	Method string `json:"data-encryption-method,omitempty" toml:"data-encryption-method,omitempty"`
+	Method *string `json:"data-encryption-method,omitempty" toml:"data-encryption-method,omitempty"`
 
 	// The frequency of datakey rotation, It managered by tikv
 	// Optional: default to 7d
 	// optional
-	DataKeyRotationPeriod string `json:"data-key-rotation-period,omitempty" toml:"data-key-rotation-period,omitempty"`
+	DataKeyRotationPeriod *string `json:"data-key-rotation-period,omitempty" toml:"data-key-rotation-period,omitempty"`
 
 	// Master key config
 	MasterKey *TiKVMasterKeyConfig `json:"master-key,omitempty" toml:"master-key,omitempty"`
@@ -800,7 +800,7 @@ type TiKVMasterKeyConfig struct {
 	// Use KMS encryption or use file encryption, possible values: kms, file
 	// If set to kms, kms MasterKeyKMSConfig should be filled, if set to file MasterKeyFileConfig should be filled
 	// optional
-	Type string `json:"type,omitempty" toml:"type,omitempty"`
+	Type *string `json:"type,omitempty" toml:"type,omitempty"`
 
 	// Master key file config
 	// If the type set to file, this config should be filled
@@ -817,44 +817,44 @@ type MasterKeyFileConfig struct {
 	// Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
 	// Optional: Default to plaintext
 	// optional
-	Method string `json:"method,omitempty" toml:"method,omitempty"`
+	Method *string `json:"method,omitempty" toml:"method,omitempty"`
 
 	// Text file containing the key in hex form, end with '\n'
-	Path string `json:"path" toml:"path"`
+	Path *string `json:"path" toml:"path"`
 }
 
 // +k8s:openapi-gen=true
 type MasterKeyKMSConfig struct {
 	// AWS CMK key-id it can be find in AWS Console or use aws cli
 	// This field is required
-	KeyID string `json:"key-id" toml:"key-id"`
+	KeyID *string `json:"key-id" toml:"key-id"`
 
 	// AccessKey of AWS user, leave empty if using other authrization method
 	// optional
-	AccessKey string `json:"access-key,omitempty" toml:"access-key,omitempty"`
+	AccessKey *string `json:"access-key,omitempty" toml:"access-key,omitempty"`
 
 	// SecretKey of AWS user, leave empty if using other authrization method
 	// optional
-	SecretKey string `json:"secret-access-key,omitempty" toml:"access-key,omitempty"`
+	SecretKey *string `json:"secret-access-key,omitempty" toml:"access-key,omitempty"`
 
 	// Region of this KMS key
 	// Optional: Default to us-east-1
 	// optional
-	Region string `json:"region,omitempty" toml:"region,omitempty"`
+	Region *string `json:"region,omitempty" toml:"region,omitempty"`
 
 	// Used for KMS compatible KMS, such as Ceph, minio, If use AWS, leave empty
 	// optional
-	Endpoint string `json:"endpoint,omitempty" toml:"endpoint,omitempty"`
+	Endpoint *string `json:"endpoint,omitempty" toml:"endpoint,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 type TiKVPessimisticTxn struct {
 	// +optional
-	Enabled bool `json:"enabled,omitempty" toml:"enabled,omitempty"`
+	Enabled *bool `json:"enabled,omitempty" toml:"enabled,omitempty"`
 	// +optional
-	WaitForLockTimeout int32 `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
+	WaitForLockTimeout *int32 `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
 	// +optional
-	WakeUpDelayDuration int32 `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
+	WakeUpDelayDuration *int32 `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
 	// +optional
-	Pipelined bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
+	Pipelined *bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
 }
