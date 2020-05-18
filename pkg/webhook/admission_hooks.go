@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -34,8 +34,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 
-	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/webhook/statefulset"
 )

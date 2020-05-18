@@ -109,6 +109,10 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		PodWebhookEnabled:         false,
 		Cabundle:                  "",
 		BackupImage:               cfg.BackupImage,
+		StringValues: map[string]string{
+			"admissionWebhook.failurePolicy.validation": "Fail",
+			"admissionWebhook.failurePolicy.mutation":   "Fail",
+		},
 	}
 }
 
