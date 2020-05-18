@@ -92,7 +92,7 @@ To add the data disaster recovery feature in Kubernetes:
     > **Note:**
     >
     > * For PD versions < v3.0.9, the `/` in the label name is not supported.
-    > * If you configure `hostname` in the `location-labels`, TiDB Operator will get the value from the `kubernetes.io/hostname` in the node label.
+    > * If you configure `host` in the `location-labels`, TiDB Operator will get the value from the `kubernetes.io/hostname` in the node label.
 
 2. Set the topological information of the Node where the TiKV node is located.
 

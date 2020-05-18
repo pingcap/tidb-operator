@@ -91,7 +91,7 @@ affinity:
     > **注意：**
     >
     > * PD 版本 < v3.0.9 不支持名字中带 `/` 的 Label。
-    > * 如果在 `location-labels` 中配置 `hostname`，TiDB Operator 会从 Node Label 中的 `kubernetes.io/hostname` 获取值。
+    > * 如果在 `location-labels` 中配置 `host`，TiDB Operator 会从 Node Label 中的 `kubernetes.io/hostname` 获取值。
 
 * 为 TiKV 节点设置所在的 Node 节点的拓扑信息
 
