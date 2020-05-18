@@ -60,6 +60,10 @@ type TiDBConfig struct {
 	// Optional: Defaults to 34359738368
 	// +optional
 	MemQuotaQuery *int64 `toml:"mem-quota-query,omitempty" json:"mem-quota-query,omitempty"`
+	// TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
+	// If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error
+	// +optional
+	TempStorageQuota *int64 `toml:"tmp-storage-quota,omitempty" json:"tmp-storage-quota,omitempty"` // Bytes
 	// Optional: Defaults to false
 	// +optional
 	EnableStreaming *bool `toml:"enable-streaming,omitempty" json:"enable-streaming,omitempty"`
@@ -259,6 +263,12 @@ type Performance struct {
 	// Optional: Defaults to true
 	// +optional
 	RunAutoAnalyze *bool `toml:"run-auto-analyze,omitempty" json:"run-auto-analyze,omitempty"`
+	// +optional
+	DistinctAggPushDown *bool `toml:"distinct-agg-push-down,omitempty" json:"agg-push-down-join,omitempty"`
+	// +optional
+	CommitterConcurrency *int `toml:"committer-concurrency,omitempty" json:"committer-concurrency,omitempty"`
+	// +optional
+	MaxTxnTTL *uint64 `toml:"max-txn-ttl,omitempty" json:"max-txn-ttl,omitempty"`
 	// Optional: Defaults to 300000
 	// +optional
 	TxnEntryCountLimit *uint64 `toml:"txn-entry-count-limit,omitempty" json:"txn-entry-count-limit,omitempty"`
@@ -407,6 +417,9 @@ type TiKVClient struct {
 	// Optional: Defaults to 0
 	// +optional
 	StoreLimit *int64 `toml:"store-limit,omitempty" json:"store-limit,omitempty"`
+	// StoreLivenessTimeout is the timeout for store liveness check request.
+	// +optional
+	StoreLivenessTimeout *string `toml:"store-liveness-timeout,omitempty" json:"store-liveness-timeout,omitempty"`
 	// +optional
 	CoprCache *CoprocessorCache `toml:"copr-cache,omitempty" json:"copr-cache,omitempty"`
 }
