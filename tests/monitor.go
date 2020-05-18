@@ -200,7 +200,6 @@ func checkPrometheusCommon(name, namespace string, fw portforward.PortForward) e
 			klog.Error(err.Error())
 			return false, nil
 		}
-		klog.Infof("monitor[%s/%s]'s prometheus targets error", namespace, name)
 		if data.Status != "success" || len(data.Data.ActiveTargets) < 1 {
 			klog.Errorf("monitor[%s/%s]'s prometheus targets error", namespace, name)
 			return false, nil
