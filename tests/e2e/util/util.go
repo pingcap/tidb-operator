@@ -18,12 +18,14 @@ import (
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	aggregatorclientset "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
+	testutils "k8s.io/kubernetes/test/utils"
 )
 
 // WaitForAPIServicesAvaiable waits for apiservices to be available
@@ -89,5 +91,22 @@ func WaitForCRDsEstablished(client apiextensionsclientset.Interface, selector la
 			framework.Logf("CRD %q is established", crd.Name)
 		}
 		return true, nil
+	})
+}
+
+// WaitForCRDNotFound waits for CRD to be not found in apiserver
+func WaitForCRDNotFound(client apiextensionsclientset.Interface, name string) error {
+	return wait.PollImmediate(time.Second, 1*time.Minute, func() (bool, error) {
+		_, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+		if err != nil {
+			if testutils.IsRetryableAPIError(err) {
+				return false, nil
+			}
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err // fatal errors
+		}
+		return false, nil
 	})
 }
