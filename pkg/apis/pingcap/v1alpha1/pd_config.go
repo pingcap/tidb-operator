@@ -126,11 +126,11 @@ type PDConfig struct {
 // DashboardConfig is the configuration for tidb-dashboard.
 type DashboardConfig struct {
 	// +optional
-	TiDBCAPath   *string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
+	TiDBCAPath *string `toml:"tidb-cacert-path,omitempty" json:"tidb_cacert_path,omitempty"`
 	// +optional
 	TiDBCertPath *string `toml:"tidb-cert-path,omitempty" json:"tidb_cert_path,omitempty"`
 	// +optional
-	TiDBKeyPath  *string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
+	TiDBKeyPath *string `toml:"tidb-key-path,omitempty" json:"tidb_key_path,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
