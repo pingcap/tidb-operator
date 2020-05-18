@@ -96,55 +96,76 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
+	prometheusExist := true
+	grafanaExist := true
 	if tc.Status.Monitor != nil {
-		tmRef := tc.Status.Monitor
-		if tm == nil {
-			err := fmt.Errorf("tc[%s/%s] have monitorRef while tm[%s/%s] get nil", tc.Namespace, tc.Name, tmRef.Namespace, tmRef.Name)
-			klog.Errorf(err.Error())
-			return err
+		prometheusExist = true
+		if tm.Spec.Grafana == nil {
+			grafanaExist = false
+		} else {
+			grafanaExist = true
 		}
-		v, err := buildPromethehusEtcdValue(tm)
-		if err != nil {
-			return err
-		}
-		err = pdEtcdClient.PutKey(prometheusEtcdKey, v)
+	} else {
+		prometheusExist = false
+		grafanaExist = false
+	}
+
+	// sync prometheus key
+	if prometheusExist {
+		v, err := buildPrometheusEtcdValue(tm)
 		if err != nil {
 			klog.Error(err.Error())
 			return err
 		}
-		klog.Infof("tc[%s/%s]'s pd set tm[%s/%s]'s prometheus key", tc.Namespace, tc.Name, tm.Namespace, tm.Name)
-
-		if tm.Spec.Grafana != nil {
-
-			v, err := buildGrafanaEtcdValue(tm)
-			if err != nil {
-				return err
-			}
-			err = pdEtcdClient.PutKey(grafanaEtcdKey, v)
-			if err != nil {
-				klog.Error(err.Error())
-				return err
-			}
-			klog.Infof("tc[%s/%s]'s pd set tm[%s/%s]'s grafana key", tc.Namespace, tc.Name, tm.Namespace, tm.Name)
+		err = putPrometheusKey(pdEtcdClient, v)
+		if err != nil {
+			klog.Error(err.Error())
+			return err
 		}
-		return nil
+	} else {
+		err = cleanPrometheusKey(pdEtcdClient)
+		if err != nil {
+			klog.Error(err.Error())
+			return err
+		}
 	}
 
-	// If key doesn't exist, it would return nil
-	err = pdEtcdClient.DeleteKey(prometheusEtcdKey)
-	if err != nil {
-		klog.Error(err.Error())
-		return err
+	// sync grafana key
+	if grafanaExist {
+		v, err := buildGrafanaEtcdValue(tm)
+		if err != nil {
+			klog.Error(err.Error())
+			return err
+		}
+		err = putGrafanaKey(pdEtcdClient, v)
+		if err != nil {
+			klog.Error(err.Error())
+			return err
+		}
+	} else {
+		err = cleanGrafanaKey(pdEtcdClient)
+		if err != nil {
+			klog.Error(err.Error())
+			return err
+		}
 	}
-	klog.Infof("tc[%s/%s]'s pd empty prometheus key", tc.Namespace, tc.Name)
-
-	err = pdEtcdClient.DeleteKey(grafanaEtcdKey)
-	if err != nil {
-		klog.Error(err.Error())
-		return err
-	}
-	klog.Infof("tc[%s/%s]'s pd empty grafana key", tc.Namespace, tc.Name)
 	return nil
+}
+
+func putGrafanaKey(etcdClient pdapi.PDEtcdClient, value string) error {
+	return etcdClient.PutKey(grafanaEtcdKey, value)
+}
+
+func putPrometheusKey(etcdClient pdapi.PDEtcdClient, value string) error {
+	return etcdClient.PutKey(prometheusEtcdKey, value)
+}
+
+func cleanPrometheusKey(etcdClient pdapi.PDEtcdClient) error {
+	return etcdClient.DeleteKey(prometheusEtcdKey)
+}
+
+func cleanGrafanaKey(etcdClient pdapi.PDEtcdClient) error {
+	return etcdClient.DeleteKey(grafanaEtcdKey)
 }
 
 type componentTopology struct {
@@ -153,21 +174,17 @@ type componentTopology struct {
 }
 
 func buildGrafanaEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
-	topology := componentTopology{
-		IP:   fmt.Sprintf("%s-grafana.%s.svc", tm.Name, tm.Namespace),
-		Port: 9090,
-	}
-	data, err := json.Marshal(topology)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+	return buildEtcdValue(fmt.Sprintf("%s-grafana.%s.svc", tm.Name, tm.Namespace), 3000)
 }
 
-func buildPromethehusEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
+func buildPrometheusEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
+	return buildEtcdValue(fmt.Sprintf("%s-prometheus.%s.svc", tm.Name, tm.Namespace), 9090)
+}
+
+func buildEtcdValue(host string, port int) (string, error) {
 	topology := componentTopology{
-		IP:   fmt.Sprintf("%s-prometheus.%s.svc", tm.Name, tm.Namespace),
-		Port: 9090,
+		IP:   host,
+		Port: port,
 	}
 	data, err := json.Marshal(topology)
 	if err != nil {
