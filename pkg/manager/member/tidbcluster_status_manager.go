@@ -16,7 +16,6 @@ package member
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -27,8 +26,10 @@ import (
 )
 
 const (
-	prometheusEtcdKey = "/topology/prometheus"
-	grafanaEtcdKey    = "/topology/grafana"
+	prometheusComponent = "prometheus"
+	grafanaComponent    = "grafana"
+	componentPrefix     = "/topology"
+
 	//TODO support AlertManager, move to UCP
 	alertManagerEtcdKey = "/topology/alertmanager"
 )
@@ -82,6 +83,10 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluste
 		tc.Status.Monitor = nil
 		return nil, nil
 	}
+	tc.Status.Monitor.GrafanaEnabled = true
+	if tm.Spec.Grafana == nil {
+		tc.Status.Monitor.GrafanaEnabled = false
+	}
 
 	return tm, nil
 }
@@ -95,50 +100,41 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	var grafanaExist bool
 	if tc.Status.Monitor != nil {
 		prometheusExist = true
-		if tm.Spec.Grafana == nil {
-			grafanaExist = false
-		} else {
-			grafanaExist = true
-		}
+		grafanaExist = tc.Status.Monitor.GrafanaEnabled
 	} else {
 		prometheusExist = false
 		grafanaExist = false
 	}
 
 	// sync prometheus key
-	if prometheusExist {
-		v, err := buildPrometheusEtcdValue(tm)
-		if err != nil {
-			klog.Error(err.Error())
-			return err
-		}
-		err = putPrometheusKey(pdEtcdClient, v)
-		if err != nil {
-			klog.Error(err.Error())
-			return err
-		}
-	} else {
-		err = cleanPrometheusKey(pdEtcdClient)
-		if err != nil {
-			klog.Error(err.Error())
-			return err
-		}
+	err = syncComponent(prometheusExist, tm, prometheusComponent, 9090, pdEtcdClient)
+	if err != nil {
+		return err
 	}
 
 	// sync grafana key
-	if grafanaExist {
-		v, err := buildGrafanaEtcdValue(tm)
+	err = syncComponent(grafanaExist, tm, grafanaComponent, 3000, pdEtcdClient)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func syncComponent(exist bool, tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {
+	key := buildComponentKey(componentName)
+	if exist {
+		v, err := buildComponentValue(tm, componentPrefix, port)
 		if err != nil {
 			klog.Error(err.Error())
 			return err
 		}
-		err = putGrafanaKey(pdEtcdClient, v)
+		err = etcdClient.PutKey(key, v)
 		if err != nil {
 			klog.Error(err.Error())
 			return err
 		}
 	} else {
-		err = cleanGrafanaKey(pdEtcdClient)
+		err := etcdClient.DeleteKey(key)
 		if err != nil {
 			klog.Error(err.Error())
 			return err
@@ -147,33 +143,17 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	return nil
 }
 
-func putGrafanaKey(etcdClient pdapi.PDEtcdClient, value string) error {
-	return etcdClient.PutKey(grafanaEtcdKey, value)
+func buildComponentKey(component string) string {
+	return fmt.Sprintf("%s/%s", componentPrefix, component)
 }
 
-func putPrometheusKey(etcdClient pdapi.PDEtcdClient, value string) error {
-	return etcdClient.PutKey(prometheusEtcdKey, value)
-}
-
-func cleanPrometheusKey(etcdClient pdapi.PDEtcdClient) error {
-	return etcdClient.DeleteKey(prometheusEtcdKey)
-}
-
-func cleanGrafanaKey(etcdClient pdapi.PDEtcdClient) error {
-	return etcdClient.DeleteKey(grafanaEtcdKey)
+func buildComponentValue(tm *v1alpha1.TidbMonitor, componentName string, port int) (string, error) {
+	return buildEtcdValue(fmt.Sprintf("%s-%s.%s.svc", tm.Name, componentName, tm.Namespace), port)
 }
 
 type componentTopology struct {
 	IP   string `json:"ip"`
 	Port int    `json:"port"`
-}
-
-func buildGrafanaEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
-	return buildEtcdValue(fmt.Sprintf("%s-grafana.%s.svc", tm.Name, tm.Namespace), 3000)
-}
-
-func buildPrometheusEtcdValue(tm *v1alpha1.TidbMonitor) (string, error) {
-	return buildEtcdValue(fmt.Sprintf("%s-prometheus.%s.svc", tm.Name, tm.Namespace), 9090)
 }
 
 func buildEtcdValue(host string, port int) (string, error) {
