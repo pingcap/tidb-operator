@@ -28,10 +28,9 @@ import (
 const (
 	prometheusComponent = "prometheus"
 	grafanaComponent    = "grafana"
-	componentPrefix     = "/topology"
-
 	//TODO support AlertManager, move to UCP
-	alertManagerEtcdKey = "/topology/alertmanager"
+	alertmanager        = "alertmanager"
+	componentPrefix     = "/topology"
 )
 
 type TidbClusterStatusManager struct {

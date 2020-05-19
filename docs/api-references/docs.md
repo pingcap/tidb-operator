@@ -14536,6 +14536,18 @@ string
 <p>Name is the name of TidbMonitor object</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>grafanaEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GrafanaEnabled indicate whether the grafana is enabled for this target tidbmonitor</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbmonitorspec">TidbMonitorSpec</h3>
