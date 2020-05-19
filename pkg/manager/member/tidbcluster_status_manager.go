@@ -29,8 +29,8 @@ const (
 	prometheusComponent = "prometheus"
 	grafanaComponent    = "grafana"
 	//TODO support AlertManager, move to UCP
-	alertmanager        = "alertmanager"
-	componentPrefix     = "/topology"
+	alertmanager    = "alertmanager"
+	componentPrefix = "/topology"
 )
 
 type TidbClusterStatusManager struct {
@@ -122,7 +122,7 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 func syncComponent(exist bool, tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {
 	key := buildComponentKey(componentName)
 	if exist {
-		v, err := buildComponentValue(tm, componentPrefix, port)
+		v, err := buildComponentValue(tm, componentName, port)
 		if err != nil {
 			klog.Error(err.Error())
 			return err
