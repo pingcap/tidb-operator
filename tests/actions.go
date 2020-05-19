@@ -412,6 +412,7 @@ func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 	set := map[string]bool{
 		"admissionWebhook.create":                      oi.WebhookEnabled,
 		"admissionWebhook.validation.pods":             oi.PodWebhookEnabled,
+		"admissionWebhook.mutation.pods":               oi.PodWebhookEnabled,
 		"admissionWebhook.validation.statefulSets":     oi.StsWebhookEnabled,
 		"admissionWebhook.mutation.pingcapResources":   oi.DefaultingEnabled,
 		"admissionWebhook.validation.pingcapResources": oi.ValidatingEnabled,
