@@ -564,6 +564,8 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
+	} else {
+		klog.Infof("deploy operator response: %v\n", string(res))
 	}
 
 	klog.Infof("Wait for all apiesrvices are available")
