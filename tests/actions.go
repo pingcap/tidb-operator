@@ -420,7 +420,7 @@ func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("--set %s=%v", k, v))
 	}
-	return fmt.Sprintf("%s", strings.Join(arr, ","))
+	return fmt.Sprintf("%s", strings.Join(arr, " "))
 }
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
