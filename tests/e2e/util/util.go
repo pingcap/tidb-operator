@@ -41,7 +41,7 @@ func WaitForAPIServicesAvaiable(client aggregatorclientset.Interface, selector l
 		}
 		return false
 	}
-	return wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+	return wait.PollImmediate(5*time.Second, 30*time.Minute, func() (bool, error) {
 		apiServiceList, err := client.ApiregistrationV1().APIServices().List(metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
