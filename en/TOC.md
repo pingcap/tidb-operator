@@ -11,6 +11,7 @@
   - [Minikube](deploy-tidb-from-kubernetes-minikube.md)
 + Introduction
   - [Overview](tidb-operator-overview.md)
+  - [TiDB Operator v1.1 Notice](notes-tidb-operator-v1.1.md)
 + Deploy
   - Deploy TiDB Cluster
     - [On AWS EKS](deploy-on-aws-eks.md)
@@ -30,11 +31,12 @@
   + Deploy Monitoring
     - [Monitor Kubernetes and TiDB Cluster](monitor-a-tidb-cluster.md)
     - [Monitor TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md)
-+ Security
++ Secure
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
   - [Enable TLS between TiDB Components](enable-tls-between-components.md)
-+ Maintain
++ Operate
   - [Upgrade TiDB Cluster](upgrade-a-tidb-cluster.md)
+  - [Upgrade TiDB Operator](upgrade-tidb-operator.md)
   + Scale TiDB Cluster
     - [Manually Scale](scale-a-tidb-cluster.md)
     - [Automatically Scale](enable-tidb-cluster-auto-scaling.md)
@@ -53,9 +55,6 @@
   - [Enable Automatic Failover](use-auto-failover.md)
   - [Recover the PD Cluster](pd-recover.md)
   - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
-+ Maintain TiDB Operator
-  - [Upgrade TiDB Operator](upgrade-tidb-operator.md)
-  - [TiDB Operator v1.1 Notice](notes-tidb-operator-v1.1.md)
 - [Import Data to TiDB Cluster](restore-data-using-tidb-lightning.md)
 - [Troubleshoot](troubleshoot.md)
 - [FAQs](faq.md)

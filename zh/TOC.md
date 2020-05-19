@@ -11,6 +11,7 @@
   - [Minikube](deploy-tidb-from-kubernetes-minikube.md)
 + 关于 TiDB Operator
   - [简介](tidb-operator-overview.md)
+  - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
 + 部署
   - 部署 TiDB 集群
     - [部署到 AWS EKS](deploy-on-aws-eks.md)
@@ -36,6 +37,7 @@
   - [为 TiDB 组件间开启 TLS](enable-tls-between-components.md)
 + 运维
   - [升级 TiDB 集群](upgrade-a-tidb-cluster.md)
+  - [升级 TiDB Operator](upgrade-tidb-operator.md)
   + TiDB 集群伸缩
     - [手动扩缩容](scale-a-tidb-cluster.md)
     - [自动弹性伸缩](enable-tidb-cluster-auto-scaling.md)
@@ -54,9 +56,6 @@
   - [集群故障自动转移](use-auto-failover.md)
   - [恢复 PD 集群](pd-recover.md)
   - [销毁 TiDB 集群](destroy-a-tidb-cluster.md)
-+ TiDB Operator 运维
-  - [升级 TiDB Operator](upgrade-tidb-operator.md)
-  - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
 - [导入集群数据](restore-data-using-tidb-lightning.md)
 - [故障诊断](troubleshoot.md)
 - [常见问题](faq.md)
