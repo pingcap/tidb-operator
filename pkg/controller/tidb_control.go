@@ -18,17 +18,17 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/httputil"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb/config"
-	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"net/http"
-	"sync"
-	"time"
 )
 
 const (
@@ -54,89 +54,41 @@ type TiDBControlInterface interface {
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
 type defaultTiDBControl struct {
-	// Now, all controllers use this single tidbConrol instance,
-	// we should add a mutex to avoid two controllers update the httpClient.Transport at same time.
-	mutex sync.Mutex
-	// TODO use httpClients cache instead, like pkg/pdapi/pdapi.go does.
-	httpClient *http.Client
-	kubeCli    kubernetes.Interface
+	kubeCli kubernetes.Interface
+	// for unit test only
+	testURL string
 }
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance
-func NewDefaultTiDBControl(kubeCli kubernetes.Interface) TiDBControlInterface {
-	return &defaultTiDBControl{httpClient: &http.Client{Timeout: timeout}, kubeCli: kubeCli}
-}
-
-func (tdc *defaultTiDBControl) useTLSHTTPClient(tc *v1alpha1.TidbCluster) error {
-	if !tc.IsTLSClusterEnabled() {
-		return nil
-	}
-
-	tcName := tc.Name
-	ns := tc.Namespace
-	secretName := util.ClusterClientTLSSecretName(tcName)
-	secret, err := tdc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	clientCert, certExists := secret.Data[v1.TLSCertKey]
-	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
-	if !certExists || !keyExists {
-		return fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
-	}
-
-	tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
-	if err != nil {
-		return fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
-	}
-
-	rootCAs := x509.NewCertPool()
-	rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
-	config := &tls.Config{
-		RootCAs:      rootCAs,
-		Certificates: []tls.Certificate{tlsCert},
-	}
-	tdc.httpClient.Transport = &http.Transport{TLSClientConfig: config}
-	return nil
+func NewDefaultTiDBControl(kubeCli kubernetes.Interface) *defaultTiDBControl {
+	return &defaultTiDBControl{kubeCli: kubeCli}
 }
 
 func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
-	tdc.mutex.Lock()
-	defer tdc.mutex.Unlock()
-
-	tcName := tc.GetName()
-	ns := tc.GetNamespace()
-	scheme := tc.Scheme()
-
-	if err := tdc.useTLSHTTPClient(tc); err != nil {
+	httpClient, err := tdc.getHTTPClient(tc)
+	if err != nil {
 		return false, err
 	}
 
-	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("%s://%s.%s.%s:10080/status", scheme, hostName, TiDBPeerMemberName(tcName), ns)
-	_, err := tdc.getBodyOK(url)
+	baseURL := tdc.getBaseURL(tc, ordinal)
+	url := fmt.Sprintf("%s/status", baseURL)
+	_, err = getBodyOK(httpClient, url)
 	return err == nil, nil
 }
 
 func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*DBInfo, error) {
-	tdc.mutex.Lock()
-	defer tdc.mutex.Unlock()
-
-	tcName := tc.GetName()
-	ns := tc.GetNamespace()
-	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc); err != nil {
+	httpClient, err := tdc.getHTTPClient(tc)
+	if err != nil {
 		return nil, err
 	}
 
-	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("%s://%s.%s.%s:10080/info", scheme, hostName, TiDBPeerMemberName(tcName), ns)
+	baseURL := tdc.getBaseURL(tc, ordinal)
+	url := fmt.Sprintf("%s/info", baseURL)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	res, err := tdc.httpClient.Do(req)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -158,23 +110,18 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 }
 
 func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int32) (*config.Config, error) {
-	tdc.mutex.Lock()
-	defer tdc.mutex.Unlock()
-
-	tcName := tc.GetName()
-	ns := tc.GetNamespace()
-	scheme := tc.Scheme()
-	if err := tdc.useTLSHTTPClient(tc); err != nil {
+	httpClient, err := tdc.getHTTPClient(tc)
+	if err != nil {
 		return nil, err
 	}
 
-	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
-	url := fmt.Sprintf("%s://%s.%s.%s:10080/settings", scheme, hostName, TiDBPeerMemberName(tcName), ns)
+	baseURL := tdc.getBaseURL(tc, ordinal)
+	url := fmt.Sprintf("%s/settings", baseURL)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	res, err := tdc.httpClient.Do(req)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +142,8 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 	return &info, nil
 }
 
-func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
-	res, err := tdc.httpClient.Get(apiURL)
+func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
+	res, err := httpClient.Get(apiURL)
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +158,55 @@ func (tdc *defaultTiDBControl) getBodyOK(apiURL string) ([]byte, error) {
 		return nil, err
 	}
 	return body, err
+}
+
+func (tdc *defaultTiDBControl) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, error) {
+	httpClient := &http.Client{Timeout: timeout}
+	if !tc.IsTLSClusterEnabled() {
+		return httpClient, nil
+	}
+
+	tcName := tc.Name
+	ns := tc.Namespace
+	secretName := util.ClusterClientTLSSecretName(tcName)
+	secret, err := tdc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	clientCert, certExists := secret.Data[v1.TLSCertKey]
+	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
+	if !certExists || !keyExists {
+		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
+	}
+
+	tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
+	}
+
+	rootCAs := x509.NewCertPool()
+	rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
+	config := &tls.Config{
+		RootCAs:      rootCAs,
+		Certificates: []tls.Certificate{tlsCert},
+	}
+	httpClient.Transport = &http.Transport{TLSClientConfig: config}
+
+	return httpClient, nil
+}
+
+func (tdc *defaultTiDBControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
+	if tdc.testURL != "" {
+		return tdc.testURL
+	}
+
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+	scheme := tc.Scheme()
+	hostName := fmt.Sprintf("%s-%d", TiDBMemberName(tcName), ordinal)
+
+	return fmt.Sprintf("%s://%s.%s.%s:10080", scheme, hostName, TiDBPeerMemberName(tcName), ns)
 }
 
 // FakeTiDBControl is a fake implementation of TiDBControlInterface.
