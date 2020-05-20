@@ -48,6 +48,7 @@ func NewDefaultTidbClusterControl(
 	pvcCleaner member.PVCCleanerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
+	ticdcMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	tidbClusterStatusManager manager.Manager,
 	podRestarter member.PodRestarter,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 		pvcCleaner,
 		pumpMemberManager,
 		tiflashMemberManager,
+		ticdcMemberManager,
 		discoveryManager,
 		tidbClusterStatusManager,
 		podRestarter,
@@ -83,6 +85,7 @@ type defaultTidbClusterControl struct {
 	pvcCleaner               member.PVCCleanerInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
+	ticdcMemberManager       manager.Manager
 	discoveryManager         member.TidbDiscoveryManager
 	tidbClusterStatusManager manager.Manager
 	podRestarter             member.PodRestarter
@@ -204,6 +207,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	//   - scale out/in the tiflash cluster
 	//   - failover the tiflash cluster
 	if err := tcc.tiflashMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
+	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - create or update ticdc deployment
+	//   - sync ticdc cluster status from pd to TidbCluster object
+	if err := tcc.ticdcMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
