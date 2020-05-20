@@ -16,9 +16,9 @@ package upgrader
 import (
 	"fmt"
 
-	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"

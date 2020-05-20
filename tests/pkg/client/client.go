@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/juju/errors"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
 	exampleagg "github.com/pingcap/tidb-operator/tests/pkg/apiserver/client/clientset/versioned"

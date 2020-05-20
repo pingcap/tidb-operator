@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -94,6 +94,20 @@ func (tc *TidbCluster) TiFlashImage() string {
 	// base image takes higher priority
 	if baseImage != "" {
 		version := tc.Spec.TiFlash.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		image = fmt.Sprintf("%s:%s", baseImage, *version)
+	}
+	return image
+}
+
+func (tc *TidbCluster) TiCDCImage() string {
+	image := tc.Spec.TiCDC.Image
+	baseImage := tc.Spec.TiCDC.BaseImage
+	// base image takes higher priority
+	if baseImage != "" {
+		version := tc.Spec.TiCDC.Version
 		if version == nil {
 			version = &tc.Spec.Version
 		}
@@ -336,6 +350,14 @@ func (tc *TidbCluster) TiFlashStsDesiredReplicas() int32 {
 	return tc.Spec.TiFlash.Replicas + int32(len(tc.Status.TiFlash.FailureStores))
 }
 
+func (tc *TidbCluster) TiCDCDeployDesiredReplicas() int32 {
+	if tc.Spec.TiCDC == nil {
+		return 0
+	}
+
+	return tc.Spec.TiCDC.Replicas
+}
+
 func (tc *TidbCluster) TiFlashStsActualReplicas() int32 {
 	stsStatus := tc.Status.TiFlash.StatefulSet
 	if stsStatus == nil {
@@ -522,4 +544,36 @@ func (tc *TidbCluster) GetInstanceName() string {
 func (tc *TidbCluster) SkipTLSWhenConnectTiDB() bool {
 	_, ok := tc.Annotations[label.AnnSkipTLSWhenConnectTiDB]
 	return ok
+}
+
+func (tc *TidbCluster) TiCDCTimezone() string {
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.Timezone != nil {
+		return *tc.Spec.TiCDC.Config.Timezone
+	}
+
+	return tc.Timezone()
+}
+
+func (tc *TidbCluster) TiCDCGCTTL() int32 {
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.GCTTL != nil {
+		return *tc.Spec.TiCDC.Config.GCTTL
+	}
+
+	return 86400
+}
+
+func (tc *TidbCluster) TiCDCLogFile() string {
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.LogFile != nil {
+		return *tc.Spec.TiCDC.Config.LogFile
+	}
+
+	return "/dev/stderr"
+}
+
+func (tc *TidbCluster) TiCDCLogLevel() string {
+	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.LogLevel != nil {
+		return *tc.Spec.TiCDC.Config.LogLevel
+	}
+
+	return "info"
 }

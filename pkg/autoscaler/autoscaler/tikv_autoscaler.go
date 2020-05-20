@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"

@@ -85,11 +85,11 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
 				Config: &v1alpha1.PDConfig{
 					Log: &v1alpha1.PDLogConfig{
-						Level: "info",
+						Level: pointer.StringPtr("info"),
 					},
 					// accelerate failover
 					Schedule: &v1alpha1.PDScheduleConfig{
-						MaxStoreDownTime: "5m",
+						MaxStoreDownTime: pointer.StringPtr("5m"),
 					},
 				},
 			},
@@ -100,7 +100,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config: &v1alpha1.TiKVConfig{
-					LogLevel: "info",
+					LogLevel: pointer.StringPtr("info"),
 					Server:   &v1alpha1.TiKVServerConfig{},
 				},
 			},

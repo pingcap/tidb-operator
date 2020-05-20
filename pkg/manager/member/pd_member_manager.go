@@ -36,6 +36,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -447,7 +448,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 		if svcSpec.Type != "" {
 			pdService.Spec.Type = svcSpec.Type
 		}
-		pdService.ObjectMeta.Annotations = svcSpec.Annotations
+		pdService.ObjectMeta.Annotations = copyAnnotations(svcSpec.Annotations)
 		if svcSpec.LoadBalancerIP != nil {
 			pdService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
 		}
@@ -744,18 +745,18 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		if config.Security == nil {
 			config.Security = &v1alpha1.PDSecurityConfig{}
 		}
-		config.Security.CAPath = path.Join(pdClusterCertPath, tlsSecretRootCAKey)
-		config.Security.CertPath = path.Join(pdClusterCertPath, corev1.TLSCertKey)
-		config.Security.KeyPath = path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey)
+		config.Security.CAPath = pointer.StringPtr(path.Join(pdClusterCertPath, tlsSecretRootCAKey))
+		config.Security.CertPath = pointer.StringPtr(path.Join(pdClusterCertPath, corev1.TLSCertKey))
+		config.Security.KeyPath = pointer.StringPtr(path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
 	// Versions below v4.0 do not support Dashboard
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		if config.Dashboard == nil {
 			config.Dashboard = &v1alpha1.DashboardConfig{}
 		}
-		config.Dashboard.TiDBCAPath = path.Join(tidbClientCertPath, tlsSecretRootCAKey)
-		config.Dashboard.TiDBCertPath = path.Join(tidbClientCertPath, corev1.TLSCertKey)
-		config.Dashboard.TiDBKeyPath = path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey)
+		config.Dashboard.TiDBCAPath = pointer.StringPtr(path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+		config.Dashboard.TiDBCertPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSCertKey))
+		config.Dashboard.TiDBKeyPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
 	}
 
 	confText, err := MarshalTOML(config)

@@ -34,8 +34,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -408,18 +408,29 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 	return strings.Join(arr, ",")
 }
 
+func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
+	set := map[string]bool{
+		"admissionWebhook.create":                      oi.WebhookEnabled,
+		"admissionWebhook.validation.pods":             oi.PodWebhookEnabled,
+		"admissionWebhook.mutation.pods":               oi.PodWebhookEnabled,
+		"admissionWebhook.validation.statefulSets":     oi.StsWebhookEnabled,
+		"admissionWebhook.mutation.pingcapResources":   oi.DefaultingEnabled,
+		"admissionWebhook.validation.pingcapResources": oi.ValidatingEnabled,
+	}
+	arr := make([]string, 0, len(set))
+	for k, v := range set {
+		arr = append(arr, fmt.Sprintf("--set %s=%v", k, v))
+	}
+	return fmt.Sprintf("%s", strings.Join(arr, " "))
+}
+
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                                oi.Image,
-		"tidbBackupManagerImage":                       oi.BackupImage,
-		"scheduler.logLevel":                           "4",
-		"testMode":                                     strconv.FormatBool(oi.TestMode),
-		"admissionWebhook.cabundle":                    oi.Cabundle,
-		"admissionWebhook.create":                      strconv.FormatBool(oi.WebhookEnabled),
-		"admissionWebhook.validation.pods":             strconv.FormatBool(oi.PodWebhookEnabled),
-		"admissionWebhook.validation.statefulSets":     strconv.FormatBool(oi.StsWebhookEnabled),
-		"admissionWebhook.mutation.pingcapResources":   strconv.FormatBool(oi.DefaultingEnabled),
-		"admissionWebhook.validation.pingcapResources": strconv.FormatBool(oi.ValidatingEnabled),
+		"operatorImage":             oi.Image,
+		"tidbBackupManagerImage":    oi.BackupImage,
+		"scheduler.logLevel":        "4",
+		"testMode":                  strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle": oi.Cabundle,
 	}
 	if oi.LogLevel != "" {
 		set["controllerManager.logLevel"] = oi.LogLevel
@@ -493,6 +504,10 @@ func (oa *operatorActions) CleanCRDOrDie() {
 		framework.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
+		// Even if DELETE API request succeeds, the CRD object may still exists
+		// in ap server. We should wait for it to be gone.
+		e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
+		framework.ExpectNoError(err)
 	}
 }
 
@@ -539,10 +554,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s --set-string %s`,
+	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s %s --set-string %s`,
 		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
 		info.Namespace,
+		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 	klog.Info(cmd)
 
@@ -550,6 +566,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
+	klog.Infof("deploy operator response: %v\n", string(res))
 
 	klog.Infof("Wait for all apiesrvices are available")
 	return e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
@@ -597,8 +614,9 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+	cmd := fmt.Sprintf("helm upgrade %s %s %s --set-string %s",
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
+		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -880,14 +898,21 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
-		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-		label.ManagedByLabelKey, "tidb-operator",
-		label.NamespaceLabelKey, info.Namespace,
-		label.InstanceLabelKey, info.ClusterName)
-	klog.V(4).Info(patchPVCmd)
-	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
+	err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+		patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+			"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
+			label.ManagedByLabelKey, "tidb-operator",
+			label.NamespaceLabelKey, info.Namespace,
+			label.InstanceLabelKey, info.ClusterName)
+		klog.V(4).Info(patchPVCmd)
+		if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
+			klog.Errorf(fmt.Errorf("failed to patch pv: %v, %s", err, string(res)).Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	pollFn := func() (bool, error) {

@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -44,10 +45,10 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) []corev1.Container 
 		config = &v1alpha1.TiFlashConfig{}
 	}
 	setTiFlashLogConfigDefault(config)
-	containers = append(containers, buildSidecarContainer("serverlog", config.CommonConfig.FlashLogger.ServerLog, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("errorlog", config.CommonConfig.FlashLogger.ErrorLog, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("proxylog", config.CommonConfig.Flash.FlashProxy.LogFile, image, pullPolicy, resource))
-	containers = append(containers, buildSidecarContainer("clusterlog", config.CommonConfig.Flash.FlashCluster.ClusterLog, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("serverlog", *config.CommonConfig.FlashLogger.ServerLog, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("errorlog", *config.CommonConfig.FlashLogger.ErrorLog, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("proxylog", *config.CommonConfig.Flash.FlashProxy.LogFile, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("clusterlog", *config.CommonConfig.Flash.FlashCluster.ClusterLog, image, pullPolicy, resource))
 	return containers
 }
 
@@ -97,24 +98,24 @@ func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {
 	if config.CommonConfig.Flash.FlashCluster == nil {
 		config.CommonConfig.Flash.FlashCluster = &v1alpha1.FlashCluster{}
 	}
-	if config.CommonConfig.Flash.FlashCluster.ClusterLog == "" {
-		config.CommonConfig.Flash.FlashCluster.ClusterLog = defaultClusterLog
+	if config.CommonConfig.Flash.FlashCluster.ClusterLog == nil {
+		config.CommonConfig.Flash.FlashCluster.ClusterLog = pointer.StringPtr(defaultClusterLog)
 	}
 	if config.CommonConfig.Flash.FlashProxy == nil {
 		config.CommonConfig.Flash.FlashProxy = &v1alpha1.FlashProxy{}
 	}
-	if config.CommonConfig.Flash.FlashProxy.LogFile == "" {
-		config.CommonConfig.Flash.FlashProxy.LogFile = defaultProxyLog
+	if config.CommonConfig.Flash.FlashProxy.LogFile == nil {
+		config.CommonConfig.Flash.FlashProxy.LogFile = pointer.StringPtr(defaultProxyLog)
 	}
 
 	if config.CommonConfig.FlashLogger == nil {
 		config.CommonConfig.FlashLogger = &v1alpha1.FlashLogger{}
 	}
-	if config.CommonConfig.FlashLogger.ErrorLog == "" {
-		config.CommonConfig.FlashLogger.ErrorLog = defaultErrorLog
+	if config.CommonConfig.FlashLogger.ErrorLog == nil {
+		config.CommonConfig.FlashLogger.ErrorLog = pointer.StringPtr(defaultErrorLog)
 	}
-	if config.CommonConfig.FlashLogger.ServerLog == "" {
-		config.CommonConfig.FlashLogger.ServerLog = defaultServerLog
+	if config.CommonConfig.FlashLogger.ServerLog == nil {
+		config.CommonConfig.FlashLogger.ServerLog = pointer.StringPtr(defaultServerLog)
 	}
 }
 
@@ -131,32 +132,32 @@ func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfig, clusterName, ns str
 }
 
 func setTiFlashProxyConfigDefault(config *v1alpha1.ProxyConfig, clusterName, ns string) {
-	if config.LogLevel == "" {
-		config.LogLevel = "info"
+	if config.LogLevel == nil {
+		config.LogLevel = pointer.StringPtr("info")
 	}
 	if config.Server == nil {
 		config.Server = &v1alpha1.FlashServerConfig{}
 	}
-	if config.Server.EngineAddr == "" {
-		config.Server.EngineAddr = fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns)
+	if config.Server.EngineAddr == nil {
+		config.Server.EngineAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
 	}
-	if config.Server.StatusAddr == "" {
-		config.Server.StatusAddr = "0.0.0.0:20292"
+	if config.Server.StatusAddr == nil {
+		config.Server.StatusAddr = pointer.StringPtr("0.0.0.0:20292")
 	}
 }
 
 func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, ns string) {
-	if config.TmpPath == "" {
-		config.TmpPath = "/data0/tmp"
+	if config.TmpPath == nil {
+		config.TmpPath = pointer.StringPtr("/data0/tmp")
 	}
-	if config.DisplayName == "" {
-		config.DisplayName = "TiFlash"
+	if config.DisplayName == nil {
+		config.DisplayName = pointer.StringPtr("TiFlash")
 	}
-	if config.DefaultProfile == "" {
-		config.DefaultProfile = "default"
+	if config.DefaultProfile == nil {
+		config.DefaultProfile = pointer.StringPtr("default")
 	}
-	if config.Path == "" {
-		config.Path = "/data0/db"
+	if config.Path == nil {
+		config.Path = pointer.StringPtr("/data0/db")
 	}
 	if config.PathRealtimeMode == nil {
 		b := false
@@ -170,8 +171,8 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, n
 		var m int64 = 5368709120
 		config.MinmaxIndexCacheSize = &m
 	}
-	if config.ListenHost == "" {
-		config.ListenHost = "0.0.0.0"
+	if config.ListenHost == nil {
+		config.ListenHost = pointer.StringPtr("0.0.0.0")
 	}
 	if config.TCPPort == nil {
 		var p int32 = 9000
@@ -220,11 +221,11 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, n
 }
 
 func setTiFlashFlashConfigDefault(config *v1alpha1.Flash, clusterName, ns string) {
-	if config.TiDBStatusAddr == "" {
-		config.TiDBStatusAddr = fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns)
+	if config.TiDBStatusAddr == nil {
+		config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns))
 	}
-	if config.ServiceAddr == "" {
-		config.ServiceAddr = fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns)
+	if config.ServiceAddr == nil {
+		config.ServiceAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
 	}
 	if config.OverlapThreshold == nil {
 		o := 0.6
@@ -245,29 +246,29 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.Flash, clusterName, ns string
 }
 
 func setTiFlashFlashProxyConfigDefault(config *v1alpha1.FlashProxy, clusterName, ns string) {
-	if config.Addr == "" {
-		config.Addr = "0.0.0.0:20170"
+	if config.Addr == nil {
+		config.Addr = pointer.StringPtr("0.0.0.0:20170")
 	}
-	if config.AdvertiseAddr == "" {
-		config.AdvertiseAddr = fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns)
+	if config.AdvertiseAddr == nil {
+		config.AdvertiseAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
 	}
-	if config.DataDir == "" {
-		config.DataDir = "/data0/proxy"
+	if config.DataDir == nil {
+		config.DataDir = pointer.StringPtr("/data0/proxy")
 	}
-	if config.Config == "" {
-		config.Config = "/data0/proxy.toml"
+	if config.Config == nil {
+		config.Config = pointer.StringPtr("/data0/proxy.toml")
 	}
-	if config.LogFile == "" {
-		config.LogFile = defaultProxyLog
+	if config.LogFile == nil {
+		config.LogFile = pointer.StringPtr(defaultProxyLog)
 	}
 }
 
 func setTiFlashFlashClusterConfigDefault(config *v1alpha1.FlashCluster) {
-	if config.ClusterManagerPath == "" {
-		config.ClusterManagerPath = "/tiflash/flash_cluster_manager"
+	if config.ClusterManagerPath == nil {
+		config.ClusterManagerPath = pointer.StringPtr("/tiflash/flash_cluster_manager")
 	}
-	if config.ClusterLog == "" {
-		config.ClusterLog = defaultClusterLog
+	if config.ClusterLog == nil {
+		config.ClusterLog = pointer.StringPtr(defaultClusterLog)
 	}
 	if config.RefreshInterval == nil {
 		var r int32 = 20
@@ -284,17 +285,17 @@ func setTiFlashFlashClusterConfigDefault(config *v1alpha1.FlashCluster) {
 }
 
 func setTiFlashLoggerConfigDefault(config *v1alpha1.FlashLogger) {
-	if config.ErrorLog == "" {
-		config.ErrorLog = defaultErrorLog
+	if config.ErrorLog == nil {
+		config.ErrorLog = pointer.StringPtr(defaultErrorLog)
 	}
-	if config.Size == "" {
-		config.Size = "100M"
+	if config.Size == nil {
+		config.Size = pointer.StringPtr("100M")
 	}
-	if config.ServerLog == "" {
-		config.ServerLog = defaultServerLog
+	if config.ServerLog == nil {
+		config.ServerLog = pointer.StringPtr(defaultServerLog)
 	}
-	if config.Level == "" {
-		config.Level = "information"
+	if config.Level == nil {
+		config.Level = pointer.StringPtr("information")
 	}
 	if config.Count == nil {
 		var c int32 = 10
@@ -310,14 +311,14 @@ func setTiFlashApplicationConfigDefault(config *v1alpha1.FlashApplication) {
 }
 
 func setTiFlashRaftConfigDefault(config *v1alpha1.FlashRaft, clusterName, ns string) {
-	if config.PDAddr == "" {
-		config.PDAddr = fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns)
+	if config.PDAddr == nil {
+		config.PDAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
 	}
-	if config.KVStorePath == "" {
-		config.KVStorePath = "/data0/kvstore"
+	if config.KVStorePath == nil {
+		config.KVStorePath = pointer.StringPtr("/data0/kvstore")
 	}
-	if config.StorageEngine == "" {
-		config.StorageEngine = "dt"
+	if config.StorageEngine == nil {
+		config.StorageEngine = pointer.StringPtr("dt")
 	}
 }
 
@@ -362,8 +363,8 @@ func setTiFlashQuotasConfigDefault(config *v1alpha1.FlashQuota) {
 }
 
 func setTiFlashNetworksConfigDefault(config *v1alpha1.Networks) {
-	if config.IP == "" {
-		config.IP = "::/0"
+	if config.IP == nil {
+		config.IP = pointer.StringPtr("::/0")
 	}
 }
 
@@ -371,11 +372,11 @@ func setTiFlashUsersConfigDefault(config *v1alpha1.FlashUser) {
 	if config.Readonly == nil {
 		config.Readonly = &v1alpha1.User{}
 	}
-	if config.Readonly.Profile == "" {
-		config.Readonly.Profile = "readonly"
+	if config.Readonly.Profile == nil {
+		config.Readonly.Profile = pointer.StringPtr("readonly")
 	}
-	if config.Readonly.Quota == "" {
-		config.Readonly.Quota = "default"
+	if config.Readonly.Quota == nil {
+		config.Readonly.Quota = pointer.StringPtr("default")
 	}
 	if config.Readonly.Networks == nil {
 		config.Readonly.Networks = &v1alpha1.Networks{}
@@ -385,11 +386,11 @@ func setTiFlashUsersConfigDefault(config *v1alpha1.FlashUser) {
 	if config.Default == nil {
 		config.Default = &v1alpha1.User{}
 	}
-	if config.Default.Profile == "" {
-		config.Default.Profile = "default"
+	if config.Default.Profile == nil {
+		config.Default.Profile = pointer.StringPtr("default")
 	}
-	if config.Default.Quota == "" {
-		config.Default.Quota = "default"
+	if config.Default.Quota == nil {
+		config.Default.Quota = pointer.StringPtr("default")
 	}
 	if config.Default.Networks == nil {
 		config.Default.Networks = &v1alpha1.Networks{}

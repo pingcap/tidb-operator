@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -300,7 +300,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
-	util.RemainNodeport(newSvc, oldSvc)
+	util.RetainManagedFields(newSvc, oldSvc)
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
@@ -460,7 +460,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Name:            svcName,
 			Namespace:       ns,
 			Labels:          tidbLabels,
-			Annotations:     svcSpec.Annotations,
+			Annotations:     copyAnnotations(svcSpec.Annotations),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{

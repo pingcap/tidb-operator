@@ -25,8 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -285,236 +285,22 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	backupCRDTest := func(provider, ns, backupType string, fw portforward.PortForward, genericCli client.Client, c clientset.Interface, cli versioned.Interface) (err error) {
-		err = nil
-		backupFolder := time.Now().Format(time.RFC3339)
-		var storage teststorage.TestStorage
-		switch provider {
-		case "kind":
-			s3config := &v1alpha1.S3StorageProvider{
-				Provider:   v1alpha1.S3StorageProviderTypeCeph,
-				Prefix:     backupFolder,
-				SecretName: fixture.S3Secret,
-				Bucket:     "local",
-				Endpoint:   "http://minio-service:9000",
-			}
-			key := "12345678"
-			minio, cancel, err := teststorage.NewMinioStorage(fw, ns, key, key, c, s3config)
-			framework.ExpectNoError(err)
-			storage = minio
-			defer cancel()
-		case "aws":
-			cred := credentials.NewSharedCredentials("", "default")
-			s3config := &v1alpha1.S3StorageProvider{
-				Provider:   v1alpha1.S3StorageProviderTypeAWS,
-				Region:     fixture.AWSRegion,
-				Bucket:     fixture.Bucket,
-				Prefix:     backupFolder,
-				SecretName: fixture.S3Secret,
-			}
-			s3Storage, err := teststorage.NewS3Storage(cred, s3config)
-			framework.ExpectNoError(err)
-			storage = s3Storage
-		default:
-			err = fmt.Errorf("unknown provider: %s", provider)
-			return
-		}
-		if storage == nil {
-			err = fmt.Errorf("storage generate failed")
-			return
+	ginkgo.It("CRD:Backup and restore with Dumper", func() {
+		provider := framework.TestContext.Provider
+		if provider != "aws" && provider != "kind" {
+			framework.Skipf("provider is not aws or kind, skipping")
 		}
 
-		tcNameFrom := "backup"
-		tcNameTo := "restore"
-		serviceAccountName := "tidb-backup-manager"
-
-		// create backup cluster
-		tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
-		tcFrom.Spec.PD.Replicas = 1
-		tcFrom.Spec.TiKV.Replicas = 1
-		tcFrom.Spec.TiDB.Replicas = 1
-		err = genericCli.Create(context.TODO(), tcFrom)
-		if err != nil {
-			return
-		}
-		// create restore cluster
-		tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
-		tcTo.Spec.PD.Replicas = 1
-		tcTo.Spec.TiKV.Replicas = 1
-		tcTo.Spec.TiDB.Replicas = 1
-		err = genericCli.Create(context.TODO(), tcTo)
-		if err != nil {
-			return
-		}
-
-		// wait cluster ready
-		err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
-		if err != nil {
-			return
-		}
-		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV3Version)
-
-		err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
-		if err != nil {
-			return
-		}
-		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV3Version)
-
-		// import some data to sql with blockwriter
-		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
-		oa.BeginInsertDataToOrDie(&clusterFrom)
-		err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
-		if err != nil {
-			return
-		}
-		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
-		oa.StopInsertDataTo(&clusterFrom)
-
-		// prepare for create backup/restore CRD
-		backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
-		_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
-		if err != nil {
-			return
-		}
-		backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
-		_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
-		if err != nil {
-			return
-		}
-		backupRoleBinding := fixture.GetBackupRoleBinding(tcFrom, serviceAccountName)
-		_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
-		if err != nil {
-			return
-		}
-		backupSecret := fixture.GetBackupSecret(tcFrom, "")
-		_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
-		if err != nil {
-			return
-		}
-		restoreSecret := fixture.GetBackupSecret(tcTo, "")
-		_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
-		if err != nil {
-			return
-		}
-		storageSecret := storage.ProvideCredential(ns)
-		_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
-		if err != nil {
-			return
-		}
-
-		ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
-		// create backup CRD to process backup
-		backup := storage.ProvideBackup(tcFrom, backupSecret, backupType)
-		_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
-		if err != nil {
-			return
-		}
-		cleanFunc := func() {
-			// delete backup data in S3
-			err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-			if err != nil {
-				return
-			}
-
-			err = storage.CheckDataCleaned()
-			if err != nil {
-				return
-			}
-
-			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-				_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
-				if err != nil && errors.IsNotFound(err) {
-					return true, nil
-				}
-				return false, nil
-			})
-			if err != nil {
-				return
-			}
-			framework.Logf("clean backup success")
-		}
-		defer cleanFunc()
-
-		// check backup is successed
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-			tmpBackup, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			// Check the status in conditions one by one,
-			// if the status other than complete or failed is running
-			for _, condition := range tmpBackup.Status.Conditions {
-				if condition.Type == v1alpha1.BackupComplete {
-					return true, nil
-				} else if condition.Type == v1alpha1.BackupFailed {
-					return false, errors.NewInternalError(nerrors.New(condition.Reason))
-				}
-			}
-			return false, nil
-		})
-		if err != nil {
-			return
-		}
-
-		ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
-		// create restore CRD to process restore
-		restore, err := storage.ProvideRestore(tcTo, restoreSecret, backupType)
-		if err != nil {
-			return
-		}
-		_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
-		if err != nil {
-			return
-		}
-
-		// check restore is successed
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
-			tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(restore.Name, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			// Check the status in conditions one by one,
-			// if the status other than complete or failed is running
-			for _, condition := range tmpRestore.Status.Conditions {
-				if condition.Type == v1alpha1.RestoreComplete {
-					return true, nil
-				} else if condition.Type == v1alpha1.RestoreFailed {
-					return false, errors.NewInternalError(nerrors.New(condition.Reason))
-				}
-			}
-			return false, nil
-		})
-		if err != nil {
-			return
-		}
-
-		ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
-		isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
-		if err != nil {
-			return
-		}
-		if !isSame {
-			framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
-		}
-		return nil
-	}
+		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.DumperType)
+	})
 
 	ginkgo.It("CRD:Backup and restore with BR", func() {
 		provider := framework.TestContext.Provider
 		if provider != "aws" && provider != "kind" {
-			framework.Skipf("CRD:Backup and restore with BR only test in aws/kind")
+			framework.Skipf("provider is not aws or kind, skipping")
 		}
-		err := backupCRDTest(provider, ns, fixture.BRType, fw, genericCli, c, cli)
-		framework.ExpectNoError(err)
-	})
 
-	ginkgo.It("CRD:Backup and restore with Dumper", func() {
-		provider := framework.TestContext.Provider
-		if provider != "kind" {
-			framework.Skipf("CRD:Backup and restore with Dumper only test in kind")
-		}
-		err := backupCRDTest(provider, ns, fixture.DumperType, fw, genericCli, c, cli)
-		framework.ExpectNoError(err)
+		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.BRType)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
@@ -1249,23 +1035,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.BeforeEach(func() {
+		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			ginkgo.By("Installing cert-manager")
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
-		})
 
-		ginkgo.AfterEach(func() {
-			ginkgo.By("Deleting cert-manager")
-			err := deleteCertManager(f.ClientSet)
-			framework.ExpectNoError(err, "failed to delete cert-manager")
-		})
-
-		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
 			ginkgo.By("Installing tidb issuer")
-			err := installTiDBIssuer(ns, tcName)
+			err = installTiDBIssuer(ns, tcName)
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 			ginkgo.By("Installing tidb server and client certificate")
@@ -1406,6 +1184,17 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
+
+			provider := framework.TestContext.Provider
+			if provider != "aws" && provider != "kind" {
+				framework.Skipf("provider is not aws or kind, skipping")
+			}
+
+			testBR(provider, ns, fw, c, genericCli, oa, cli, true, fixture.BRType)
+
+			ginkgo.By("Deleting cert-manager")
+			err = deleteCertManager(f.ClientSet)
+			framework.ExpectNoError(err, "failed to delete cert-manager")
 		})
 	})
 
@@ -1477,7 +1266,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err)
 
 		// check whether the tidb svc have updated
-		err = wait.Poll(5*time.Second, 1*time.Minute, func() (done bool, err error) {
+		err = wait.Poll(5*time.Second, 2*time.Minute, func() (done bool, err error) {
 			s, err := c.CoreV1().Services(ns).Get("nodeport-tidb", metav1.GetOptions{})
 			if err != nil {
 				return false, err
@@ -1548,4 +1337,204 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tidbVersion,
 	}
+}
+
+func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, cli versioned.Interface, tlsEnabled bool, brType string) {
+	backupFolder := time.Now().Format(time.RFC3339)
+	var storage teststorage.TestStorage
+	switch provider {
+	case "kind":
+		s3config := &v1alpha1.S3StorageProvider{
+			Provider:   v1alpha1.S3StorageProviderTypeCeph,
+			Prefix:     backupFolder,
+			SecretName: fixture.S3Secret,
+			Bucket:     "local",
+			Endpoint:   "http://minio-service:9000",
+		}
+		key := "12345678"
+		minio, cancel, err := teststorage.NewMinioStorage(fw, ns, key, key, c, s3config)
+		framework.ExpectNoError(err)
+		storage = minio
+		defer cancel()
+	case "aws":
+		cred := credentials.NewSharedCredentials("", "default")
+		s3config := &v1alpha1.S3StorageProvider{
+			Provider:   v1alpha1.S3StorageProviderTypeAWS,
+			Region:     fixture.AWSRegion,
+			Bucket:     fixture.Bucket,
+			Prefix:     backupFolder,
+			SecretName: fixture.S3Secret,
+		}
+		s3Storage, err := teststorage.NewS3Storage(cred, s3config)
+		framework.ExpectNoError(err)
+		storage = s3Storage
+	default:
+		framework.Failf("unknown provider: %s", provider)
+	}
+	if storage == nil {
+		framework.Failf("storage generate failed")
+	}
+
+	tcNameFrom := "backup"
+	tcNameTo := "restore"
+	serviceAccountName := "tidb-backup-manager"
+
+	if tlsEnabled {
+		ginkgo.By("Installing tidb issuer")
+		err := installTiDBIssuer(ns, tcNameFrom)
+		framework.ExpectNoError(err, "failed to generate tidb issuer template")
+		err = installTiDBIssuer(ns, tcNameTo)
+		framework.ExpectNoError(err, "failed to generate tidb issuer template")
+
+		ginkgo.By("Installing tidb server and client certificate")
+		err = installTiDBCertificates(ns, tcNameFrom)
+		framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+		err = installTiDBCertificates(ns, tcNameTo)
+		framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+		ginkgo.By("Installing backup and restore separate client certificates")
+		err = installBackupCertificates(ns, tcNameFrom)
+		framework.ExpectNoError(err, "failed to install backup client certificate")
+		err = installRestoreCertificates(ns, tcNameTo)
+		framework.ExpectNoError(err, "failed to install restore client certificate")
+	}
+
+	// create backup cluster
+	tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
+	tcFrom.Spec.PD.Replicas = 1
+	tcFrom.Spec.TiKV.Replicas = 1
+	tcFrom.Spec.TiDB.Replicas = 1
+	if tlsEnabled {
+		tcFrom.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+	}
+	err := genericCli.Create(context.TODO(), tcFrom)
+	framework.ExpectNoError(err)
+	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
+	framework.ExpectNoError(err)
+	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
+
+	// create restore cluster
+	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
+	tcTo.Spec.PD.Replicas = 1
+	tcTo.Spec.TiKV.Replicas = 1
+	tcTo.Spec.TiDB.Replicas = 1
+	if tlsEnabled {
+		tcTo.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+	}
+	err = genericCli.Create(context.TODO(), tcTo)
+	framework.ExpectNoError(err)
+	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
+	framework.ExpectNoError(err)
+	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4Version)
+
+	// import some data to sql with blockwriter
+	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
+	oa.BeginInsertDataToOrDie(&clusterFrom)
+	err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
+	framework.ExpectNoError(err)
+	ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
+	oa.StopInsertDataTo(&clusterFrom)
+
+	// prepare for create backup/restore CRD
+	backupRole := fixture.GetBackupRole(tcFrom, serviceAccountName)
+	_, err = c.RbacV1beta1().Roles(ns).Create(backupRole)
+	framework.ExpectNoError(err)
+	backupServiceAccount := fixture.GetBackupServiceAccount(tcFrom, serviceAccountName)
+	_, err = c.CoreV1().ServiceAccounts(ns).Create(backupServiceAccount)
+	framework.ExpectNoError(err)
+	backupRoleBinding := fixture.GetBackupRoleBinding(tcFrom, serviceAccountName)
+	_, err = c.RbacV1beta1().RoleBindings(ns).Create(backupRoleBinding)
+	framework.ExpectNoError(err)
+	backupSecret := fixture.GetBackupSecret(tcFrom, "")
+	_, err = c.CoreV1().Secrets(ns).Create(backupSecret)
+	framework.ExpectNoError(err)
+	restoreSecret := fixture.GetBackupSecret(tcTo, "")
+	_, err = c.CoreV1().Secrets(ns).Create(restoreSecret)
+	framework.ExpectNoError(err)
+	storageSecret := storage.ProvideCredential(ns)
+	_, err = c.CoreV1().Secrets(ns).Create(storageSecret)
+	framework.ExpectNoError(err)
+
+	ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
+	// create backup CRD to process backup
+	backup := storage.ProvideBackup(tcFrom, backupSecret, brType)
+	if tlsEnabled {
+		backupSecretName := fmt.Sprintf("%s-backup-tls", tcNameFrom)
+		backup.Spec.From.TLSClientSecretName = &backupSecretName
+	}
+	_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
+	framework.ExpectNoError(err)
+
+	// check backup is successed
+	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		tmpBackup, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		// Check the status in conditions one by one,
+		// if the status other than complete or failed is running
+		for _, condition := range tmpBackup.Status.Conditions {
+			if condition.Type == v1alpha1.BackupComplete && condition.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if condition.Type == v1alpha1.BackupFailed && condition.Status == corev1.ConditionTrue {
+				return false, errors.NewInternalError(nerrors.New(condition.Reason))
+			}
+		}
+		return false, nil
+	})
+	framework.ExpectNoError(err)
+
+	ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
+	// create restore CRD to process restore
+	restore, err := storage.ProvideRestore(tcTo, restoreSecret, brType)
+	framework.ExpectNoError(err)
+	if tlsEnabled {
+		restoreSecretName := fmt.Sprintf("%s-restore-tls", tcNameTo)
+		restore.Spec.To.TLSClientSecretName = &restoreSecretName
+	}
+	_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
+	framework.ExpectNoError(err)
+
+	// check restore is successed
+	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(restore.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		// Check the status in conditions one by one,
+		// if the status other than complete or failed is running
+		for _, condition := range tmpRestore.Status.Conditions {
+			if condition.Type == v1alpha1.RestoreComplete && condition.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if condition.Type == v1alpha1.RestoreFailed && condition.Status == corev1.ConditionTrue {
+				return false, errors.NewInternalError(nerrors.New(condition.Reason))
+			}
+		}
+		return false, nil
+	})
+	framework.ExpectNoError(err)
+
+	ginkgo.By(fmt.Sprintf("Check the correctness of cluster %q and %q", clusterFrom.ClusterName, clusterTo.ClusterName))
+	isSame, err := oa.DataIsTheSameAs(&clusterFrom, &clusterTo)
+	framework.ExpectNoError(err)
+	if !isSame {
+		framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
+	}
+
+	// delete backup data in S3
+	err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
+	framework.ExpectNoError(err)
+
+	err = storage.CheckDataCleaned()
+	framework.ExpectNoError(err)
+
+	err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, nil
+	})
+	framework.ExpectNoError(err, "clean backup failed")
+	framework.Logf("clean backup success")
 }
