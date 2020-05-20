@@ -70,6 +70,7 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 			framework.Logf("failed to list operator pods: %v", err)
 			return
 		}
+		framework.Logf("Trying to kill tidb-operator pods (%d)", len(pods))
 		for _, pod := range pods {
 			if !podutil.IsPodReady(&pod) || hasBeenRestarted(&pod) {
 				// deleting the pod will recreate it, we should skip if the pod
