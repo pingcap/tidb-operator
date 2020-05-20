@@ -52,6 +52,11 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 		Operation("filterNodes").
 		Writes(schedulerapiv1.ExtenderFilterResult{}))
 
+	ws.Route(ws.POST("/preempt").To(svr.preemptNode).
+		Doc("preempt nodes").
+		Operation("preemptNodes").
+		Writes(schedulerapiv1.ExtenderPreemptionResult{}))
+
 	ws.Route(ws.POST("/prioritize").To(svr.prioritizeNode).
 		Doc("prioritize nodes").
 		Operation("prioritizeNodes").
@@ -80,6 +85,28 @@ func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
 	}
 
 	if err := resp.WriteEntity(filterResult); err != nil {
+		errorResponse(resp, errFailToWrite)
+	}
+}
+
+func (svr *server) preemptNode(req *restful.Request, resp *restful.Response) {
+	svr.lock.Lock()
+	defer svr.lock.Unlock()
+
+	args := &schedulerapiv1.ExtenderPreemptionArgs{}
+	if err := req.ReadEntity(args); err != nil {
+		errorResponse(resp, errFailToRead)
+		return
+	}
+
+	preemptResult, err := svr.scheduler.Preempt(args)
+	if err != nil {
+		errorResponse(resp, restful.NewError(http.StatusInternalServerError,
+			fmt.Sprintf("unable to preempt nodes: %v", err)))
+		return
+	}
+
+	if err := resp.WriteEntity(preemptResult); err != nil {
 		errorResponse(resp, errFailToWrite)
 	}
 }

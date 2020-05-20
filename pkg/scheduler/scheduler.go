@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -37,6 +38,9 @@ type Scheduler interface {
 	// expected to be a subset of the supplied list.
 	Filter(*schedulerapiv1.ExtenderArgs) (*schedulerapiv1.ExtenderFilterResult, error)
 
+	// Preempt implements scheduler extender preempt verb.
+	Preempt(args *schedulerapiv1.ExtenderPreemptionArgs) (*schedulerapiv1.ExtenderPreemptionResult, error)
+
 	// Prioritize based on extender-implemented priority functions. The returned scores & weight
 	// are used to compute the weighted score for an extender. The weighted scores are added to
 	// the scores computed  by kubernetes scheduler. The total scores are used to do the host selection.
@@ -47,6 +51,7 @@ type scheduler struct {
 	// component => predicates
 	predicates map[string][]predicates.Predicate
 
+	kubeCli  kubernetes.Interface
 	recorder record.EventRecorder
 }
 
@@ -72,6 +77,7 @@ func NewScheduler(kubeCli kubernetes.Interface, cli versioned.Interface) Schedul
 	}
 	return &scheduler{
 		predicates: predicatesByComponent,
+		kubeCli:    kubeCli,
 		recorder:   recorder,
 	}
 }
@@ -131,6 +137,94 @@ func (s *scheduler) Filter(args *schedulerapiv1.ExtenderArgs) (*schedulerapiv1.E
 
 	return &schedulerapiv1.ExtenderFilterResult{
 		Nodes: &apiv1.NodeList{Items: kubeNodes},
+	}, nil
+}
+
+// convertToNodeNameToMetaVictims converts from struct type to meta types.
+func convertToNodeNameToMetaVictims(
+	nodeToVictims map[string]*schedulerapiv1.Victims,
+) map[string]*schedulerapiv1.MetaVictims {
+	nodeNameToVictims := map[string]*schedulerapiv1.MetaVictims{}
+	for nodeName, victims := range nodeToVictims {
+		metaVictims := &schedulerapiv1.MetaVictims{
+			Pods: []*schedulerapiv1.MetaPod{},
+		}
+		for _, pod := range victims.Pods {
+			metaPod := &schedulerapiv1.MetaPod{
+				UID: string(pod.UID),
+			}
+			metaVictims.Pods = append(metaVictims.Pods, metaPod)
+		}
+		nodeNameToVictims[nodeName] = metaVictims
+	}
+	return nodeNameToVictims
+}
+
+func (s *scheduler) Preempt(args *schedulerapiv1.ExtenderPreemptionArgs) (*schedulerapiv1.ExtenderPreemptionResult, error) {
+	pod := args.Pod
+	ns := pod.GetNamespace()
+	podName := pod.GetName()
+
+	var instanceName string
+	var exist bool
+	if instanceName, exist = pod.Labels[label.InstanceLabelKey]; !exist {
+		klog.Warningf("can't find instanceName in pod labels: %s/%s", ns, podName)
+		return &schedulerapiv1.ExtenderPreemptionResult{
+			NodeNameToMetaVictims: convertToNodeNameToMetaVictims(args.NodeNameToVictims),
+		}, nil
+	}
+
+	component, ok := pod.Labels[label.ComponentLabelKey]
+	if !ok {
+		klog.Warningf("can't find component label in pod labels: %s/%s", ns, podName)
+		return &schedulerapiv1.ExtenderPreemptionResult{
+			NodeNameToMetaVictims: convertToNodeNameToMetaVictims(args.NodeNameToVictims),
+		}, nil
+	}
+
+	predicatesByComponent, ok := s.predicates[component]
+	if !ok {
+		klog.Warningf("no predicate for component %q, ignored", component)
+		return &schedulerapiv1.ExtenderPreemptionResult{
+			NodeNameToMetaVictims: convertToNodeNameToMetaVictims(args.NodeNameToVictims),
+		}, nil
+	}
+
+	klog.Infof("preempting for pod %s/%s", ns, podName)
+
+	// extender Filter can't report the failed nodes are unresolvable or not,
+	// see https://github.com/kubernetes/kubernetes/issues/91281
+	// we need to filter out nodes in Preempt phase
+	kubeNodes := make([]apiv1.Node, 0, len(args.NodeNameToVictims))
+	for nodeName := range args.NodeNameToVictims {
+		// optimize this when we have performance issue
+		node, err := s.kubeCli.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		kubeNodes = append(kubeNodes, *node)
+	}
+	var err error
+	for _, predicate := range predicatesByComponent {
+		klog.Infof("entering preempt/predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
+		kubeNodes, err = predicate.Filter(instanceName, pod, kubeNodes)
+		klog.Infof("leaving preempt/predicate: %s, nodes: %v", predicate.Name(), predicates.GetNodeNames(kubeNodes))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	feasibleNodeNameToVictims := map[string]*schedulerapiv1.Victims{}
+	for _, node := range kubeNodes {
+		if victims, ok := args.NodeNameToVictims[node.Name]; ok {
+			feasibleNodeNameToVictims[node.Name] = victims
+		} else {
+			return nil, fmt.Errorf("internal error: node %s does not found in args.NodeNameToVictims", node.Name)
+		}
+	}
+
+	return &schedulerapiv1.ExtenderPreemptionResult{
+		NodeNameToMetaVictims: convertToNodeNameToMetaVictims(feasibleNodeNameToVictims),
 	}, nil
 }
 
