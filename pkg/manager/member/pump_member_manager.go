@@ -75,6 +75,7 @@ func (pmm *pumpMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 	if err := pmm.syncHeadlessService(tc); err != nil {
+		klog.Error(err)
 		return err
 	}
 	return pmm.syncPumpStatefulSetForTidbCluster(tc)
@@ -101,6 +102,7 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 
 	cm, err := pmm.syncConfigMap(tc, oldPumpSet)
 	if err != nil {
+		klog.Error(err.Error())
 		return err
 	}
 
@@ -116,7 +118,11 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return pmm.setControl.CreateStatefulSet(tc, newPumpSet)
 	}
 
-	return updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
+	err = updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
+	if err != nil {
+		klog.Error(err.Error())
+	}
+	return err
 }
 
 func (pmm *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
@@ -182,6 +188,9 @@ func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) erro
 			svc.Labels = newSvc.Labels
 		}
 		_, err = pmm.svcControl.UpdateService(tc, &svc)
+		if err != nil {
+			klog.Error(err.Error())
+		}
 		return err
 	}
 	return nil
