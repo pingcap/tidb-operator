@@ -384,6 +384,14 @@ func installPDDashboardCertificates(ns, tcName string) error {
 	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "dashboard"})
 }
 
+func installBackupCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "backup"})
+}
+
+func installRestoreCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "restore"})
+}
+
 func installCert(tmplStr string, tp interface{}) error {
 	var buf bytes.Buffer
 	tmpl, err := template.New("template").Parse(tmplStr)
