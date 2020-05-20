@@ -255,19 +255,20 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	if err != nil {
 		return nil, err
 	}
-	if monitor.Spec.Prometheus.Config != nil && monitor.Spec.Prometheus.Config.ConfigMapRef != nil && len(monitor.Spec.Prometheus.Config.ConfigMapRef.Name) > 0 {
+	config :=  monitor.Spec.Prometheus.Config
+	if config != nil && config.ConfigMapRef != nil && len(config.ConfigMapRef.Name) > 0 {
 		namespace := monitor.Namespace
-		if monitor.Spec.Prometheus.Config.ConfigMapRef.Namespace != nil {
-			namespace = *monitor.Spec.Prometheus.Config.ConfigMapRef.Namespace
+		if config.ConfigMapRef.Namespace != nil {
+			namespace = *config.ConfigMapRef.Namespace
 		}
 		externalCM, err := mm.cmControl.GetConfigMap(monitor, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      monitor.Spec.Prometheus.Config.ConfigMapRef.Name,
+				Name:      config.ConfigMapRef.Name,
 				Namespace: namespace,
 			},
 		})
 		if err != nil {
-			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", namespace, monitor.Spec.Prometheus.Config.ConfigMapRef.Name, err)
+			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", namespace, config.ConfigMapRef.Name, err)
 			return nil, err
 		}
 		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {

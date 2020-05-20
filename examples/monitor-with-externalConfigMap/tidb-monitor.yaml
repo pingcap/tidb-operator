@@ -9,7 +9,6 @@ spec:
     config:
       configMapRef:
         name: external-config
-        namespace: default
       commandOptions:
         - --web.enable-admin-api
         - --web.enable-lifecycle
