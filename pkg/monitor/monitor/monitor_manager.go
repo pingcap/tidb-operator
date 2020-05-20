@@ -255,7 +255,7 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	if err != nil {
 		return nil, err
 	}
-	config :=  monitor.Spec.Prometheus.Config
+	config := monitor.Spec.Prometheus.Config
 	if config != nil && config.ConfigMapRef != nil && len(config.ConfigMapRef.Name) > 0 {
 		namespace := monitor.Namespace
 		if config.ConfigMapRef.Namespace != nil {
