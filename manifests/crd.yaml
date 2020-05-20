@@ -1639,6 +1639,18 @@ spec:
                   type: object
                 baseImage:
                   type: string
+                config:
+                  properties:
+                    gcTTL:
+                      format: int32
+                      type: integer
+                    logFile:
+                      type: string
+                    logLevel:
+                      type: string
+                    timezone:
+                      type: string
+                  type: object
                 configUpdateStrategy:
                   type: string
                 env:

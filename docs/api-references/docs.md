@@ -8107,6 +8107,76 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="ticdcconfig">TiCDCConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcspec">TiCDCSpec</a>)
+</p>
+<p>
+<p>TiCDCConfig is the configuration of tidbcdc</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TiCDC
+Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gcTTL</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CDC GC safepoint TTL duration, specified in seconds
+Optional: Defaults to 86400</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogLevel is the log level
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogFile is the log file
+Optional: Defaults to /dev/stderr</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ticdcspec">TiCDCSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -8185,6 +8255,20 @@ string
 <td>
 <em>(Optional)</em>
 <p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#ticdcconfig">
+TiCDCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of tidbcdc servers</p>
 </td>
 </tr>
 </tbody>
