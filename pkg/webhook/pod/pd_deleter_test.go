@@ -15,8 +15,6 @@ package pod
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -30,7 +28,9 @@ import (
 	admission "k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8sTesting "k8s.io/client-go/testing"
 )
@@ -67,7 +67,7 @@ func TestPDDeleterDelete(t *testing.T) {
 
 		deletePod := newPDPodForPDPodAdmissionControl()
 		ownerStatefulSet := newOwnerStatefulSetForPDPodAdmissionControl()
-		tc := newTidbClusterForPodAdmissionControl()
+		tc := newTidbClusterForPodAdmissionControl(pdReplicas, tikvReplicas)
 		kubeCli := kubefake.NewSimpleClientset()
 
 		if test.UpdatePVCErr {
