@@ -31,8 +31,8 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 	})
 	ginkgo.AfterEach(func() {
 		// tidb-operator may set persistentVolumeReclaimPolicy to Retain if
-		// users reqeust this. To reduce storage usage, we try to clean them if
-		// namespace is deleted.
+		// users request this. To reduce storage usage, we try to recycle them
+		// if the PVC namespace does not exist anymore.
 		pvList, err := c.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
 		if err != nil {
 			framework.Logf("failed to list pvs: %v", err)
@@ -65,10 +65,11 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 				failed++
 				continue
 			}
-			if apierrors.IsNotFound(err) {
+			if !apierrors.IsNotFound(err) {
 				skipped++
 				continue
 			}
+			// now we can safely recycle the PV
 			pv.Spec.PersistentVolumeReclaimPolicy = v1.PersistentVolumeReclaimDelete
 			_, err = c.CoreV1().PersistentVolumes().Update(&pv)
 			if err != nil {
