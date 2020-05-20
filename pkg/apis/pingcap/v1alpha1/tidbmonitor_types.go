@@ -105,7 +105,7 @@ type PrometheusConfiguration struct {
 // ConfigMapRef is the external configMap
 // +k8s:openapi-gen=true
 type ConfigMapRef struct {
-	Name      string  `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 
 	// +optional
 	// if the namespace is omited, the operator controller would use the Tidbmonitor's namespace instead.
