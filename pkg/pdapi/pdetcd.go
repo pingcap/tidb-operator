@@ -23,9 +23,9 @@ import (
 )
 
 type PDEtcdClient interface {
-	// PutKey would put key to the target pd etcd cluster
+	// PutKey will put key to the target pd etcd cluster
 	PutKey(key, value string) error
-	// DeleteKey would delete key from the target pd etcd cluster
+	// DeleteKey will delete key from the target pd etcd cluster
 	DeleteKey(key string) error
 }
 
