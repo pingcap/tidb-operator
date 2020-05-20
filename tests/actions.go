@@ -236,7 +236,6 @@ type OperatorActions interface {
 	CheckInitSQLOrDie(info *TidbClusterConfig)
 	DeployAndCheckPump(tc *TidbClusterConfig) error
 	WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
-	WaitForFullTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error
 	WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string)
 	DataIsTheSameAs(from, to *TidbClusterConfig) (bool, error)
 }
@@ -3523,31 +3522,6 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	if tc == nil {
-		return fmt.Errorf("tidbcluster is nil, cannot call WaitForFullTidbClusterReady")
-	}
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		var local *v1alpha1.TidbCluster
-		var err error
-		if local, err = oa.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{}); err != nil {
-			klog.Errorf("failed to get tidbcluster: %s/%s, %v", tc.Namespace, tc.Name, err)
-			return false, nil
-		}
-
-		if b, err := oa.pdMembersReadyFn(local); !b && err == nil {
-			return false, nil
-		}
-		if b, err := oa.tikvMembersReadyFn(local); !b && err == nil {
-			return false, nil
-		}
-		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
-			return false, nil
-		}
-		return true, nil
-	})
-}
-
-func (oa *operatorActions) WaitForFullTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
-	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
 	}
 	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
@@ -3567,8 +3541,10 @@ func (oa *operatorActions) WaitForFullTidbClusterReady(tc *v1alpha1.TidbCluster,
 		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
 			return false, nil
 		}
-		if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
-			return false, nil
+		if tc.Spec.TiFlash != nil {
+			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
+				return false, nil
+			}
 		}
 		return true, nil
 	})
