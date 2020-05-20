@@ -3122,6 +3122,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -3132,6 +3133,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -3142,6 +3144,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -6471,6 +6474,39 @@ bool
 </tr>
 <tr>
 <td>
+<code>agg-push-down-join</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>committer-concurrency</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-txn-ttl</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>txn-entry-count-limit</code></br>
 <em>
 uint64
@@ -8071,6 +8107,76 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="ticdcconfig">TiCDCConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcspec">TiCDCSpec</a>)
+</p>
+<p>
+<p>TiCDCConfig is the configuration of tidbcdc</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TiCDC
+Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gcTTL</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CDC GC safepoint TTL duration, specified in seconds
+Optional: Defaults to 86400</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogLevel is the log level
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogFile is the log file
+Optional: Defaults to /dev/stderr</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ticdcspec">TiCDCSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -8149,6 +8255,20 @@ string
 <td>
 <em>(Optional)</em>
 <p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#ticdcconfig">
+TiCDCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of tidbcdc servers</p>
 </td>
 </tr>
 </tbody>
@@ -8360,6 +8480,19 @@ int64
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 34359738368</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tmp-storage-quota</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
+If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error</p>
 </td>
 </tr>
 <tr>
@@ -10096,6 +10229,18 @@ Optional: Defaults to 0</p>
 </tr>
 <tr>
 <td>
+<code>store-liveness-timeout</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoreLivenessTimeout is the timeout for store liveness check request.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>copr-cache</code></br>
 <em>
 <a href="#coprocessorcache">
@@ -11394,22 +11539,28 @@ bool
 <td>
 <code>wait-for-lock-timeout</code></br>
 <em>
-int32
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
+<p>The default and maximum delay before responding to TiDB when pessimistic
+transactions encounter locks</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>wake-up-delay-duration</code></br>
 <em>
-int32
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
+<p>If more than one transaction is waiting for the same lock, only the one with smallest
+start timestamp will be waked up immediately when the lock is released. Others will
+be waked up after <code>wake_up_delay_duration</code> to reduce contention and make the oldest
+one more likely acquires the lock.</p>
 </td>
 </tr>
 <tr>
@@ -12435,6 +12586,177 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>encryption</code></br>
+<em>
+<a href="#tikvsecurityconfigencryption">
+TiKVSecurityConfigEncryption
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvsecurityconfigencryption">TiKVSecurityConfigEncryption</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvsecurityconfig">TiKVSecurityConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>data-encryption-method</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Encryption method to use for data files.
+Possible values are &ldquo;plaintext&rdquo;, &ldquo;aes128-ctr&rdquo;, &ldquo;aes192-ctr&rdquo; and &ldquo;aes256-ctr&rdquo;. Value other than
+&ldquo;plaintext&rdquo; means encryption is enabled, in which case master key must be specified.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-key-rotation-period</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Specifies how often TiKV rotates data encryption key.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master-key</code></br>
+<em>
+<a href="#tikvsecurityconfigencryptionmasterkey">
+TiKVSecurityConfigEncryptionMasterKey
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Specifies master key if encryption is enabled. There are three types of master key:</p>
+<ul>
+<li><p>&ldquo;plaintext&rdquo;:</p>
+<p>Plaintext as master key means no master key is given and only applicable when
+encryption is not enabled, i.e. data-encryption-method = &ldquo;plaintext&rdquo;. This type doesn&rsquo;t
+have sub-config items. Example:</p>
+<p>[security.encryption.master-key]
+type = &ldquo;plaintext&rdquo;</p></li>
+<li><p>&ldquo;kms&rdquo;:</p>
+<p>Use a KMS service to supply master key. Currently only AWS KMS is supported. This type of
+master key is recommended for production use. Example:</p>
+<p>[security.encryption.master-key]
+type = &ldquo;kms&rdquo;</p>
+<h2>KMS CMK key id. Must be a valid KMS CMK where the TiKV process has access to.</h2>
+<h2>In production is recommended to grant access of the CMK to TiKV using IAM.</h2>
+<p>key-id = &ldquo;1234abcd-12ab-34cd-56ef-1234567890ab&rdquo;</p>
+<h2>AWS region of the KMS CMK.</h2>
+<p>region = &ldquo;us-west-2&rdquo;</p>
+<h2>(Optional) AWS KMS service endpoint. Only required when non-default KMS endpoint is</h2>
+<h2>desired.</h2>
+<p>endpoint = &ldquo;<a href="https://kms.us-west-2.amazonaws.com&quot;">https://kms.us-west-2.amazonaws.com&rdquo;</a></p></li>
+<li><p>&ldquo;file&rdquo;:</p>
+<p>Supply a custom encryption key stored in a file. It is recommended NOT to use in production,
+as it breaks the purpose of encryption at rest, unless the file is stored in tempfs.
+The file must contain a 256-bits (32 bytes, regardless of key length implied by
+data-encryption-method) key encoded as hex string and end with newline (&ldquo;\n&rdquo;). Example:</p>
+<p>[security.encryption.master-key]
+type = &ldquo;file&rdquo;
+path = &ldquo;/path/to/master/key/file&rdquo;</p></li>
+</ul>
+</td>
+</tr>
+<tr>
+<td>
+<code>previous-master-key</code></br>
+<em>
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">
+TiKVSecurityConfigEncryptionPreviousMasterKey
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Specifies the old master key when rotating master key. Same config format as master-key.
+The key is only access once during TiKV startup, after that TiKV do not need access to the key.
+And it is okay to leave the stale previous-master-key config after master key rotation.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvsecurityconfigencryption">TiKVSecurityConfigEncryption</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvsecurityconfigencryption">TiKVSecurityConfigEncryption</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvserverconfig">TiKVServerConfig</h3>
@@ -13387,6 +13709,28 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>level_merge</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gc-merge-rewrite</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>optional</p>
 </td>
 </tr>
 </tbody>
