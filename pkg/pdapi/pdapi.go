@@ -53,6 +53,7 @@ type PDControlInterface interface {
 // defaultPDControl is the default implementation of PDControlInterface.
 type defaultPDControl struct {
 	mutex         sync.Mutex
+	etcdmutex     sync.Mutex
 	kubeCli       kubernetes.Interface
 	pdClients     map[string]PDClient
 	pdEtcdClients map[string]PDEtcdClient
@@ -76,8 +77,8 @@ func GetTLSConfig(kubeCli kubernetes.Interface, namespace Namespace, tcName stri
 }
 
 func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error) {
-	pdc.mutex.Lock()
-	defer pdc.mutex.Unlock()
+	pdc.etcdmutex.Lock()
+	defer pdc.etcdmutex.Unlock()
 
 	var tlsConfig *tls.Config
 	var err error
