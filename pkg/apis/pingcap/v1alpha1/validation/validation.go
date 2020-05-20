@@ -115,8 +115,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 				}
 			}
 			if config.CommonConfig.Flash.FlashCluster != nil {
-				if config.CommonConfig.Flash.FlashCluster.ClusterLog != "" {
-					splitPath := strings.Split(config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
+				if config.CommonConfig.Flash.FlashCluster.ClusterLog != nil {
+					splitPath := strings.Split(*config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
 					// The log path should be at least /dir/base.log
 					if len(splitPath) < 3 {
 						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
@@ -126,8 +126,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 				}
 			}
 			if config.CommonConfig.Flash.FlashProxy != nil {
-				if config.CommonConfig.Flash.FlashProxy.LogFile != "" {
-					splitPath := strings.Split(config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
+				if config.CommonConfig.Flash.FlashProxy.LogFile != nil {
+					splitPath := strings.Split(*config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
 					// The log path should be at least /dir/base.log
 					if len(splitPath) < 3 {
 						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_proxy.log-file"),
@@ -138,8 +138,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 			}
 		}
 		if config.CommonConfig.FlashLogger != nil {
-			if config.CommonConfig.FlashLogger.ServerLog != "" {
-				splitPath := strings.Split(config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
+			if config.CommonConfig.FlashLogger.ServerLog != nil {
+				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
 				// The log path should be at least /dir/base.log
 				if len(splitPath) < 3 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
@@ -147,8 +147,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 						"log path should include at least one level dir."))
 				}
 			}
-			if config.CommonConfig.FlashLogger.ErrorLog != "" {
-				splitPath := strings.Split(config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
+			if config.CommonConfig.FlashLogger.ErrorLog != nil {
+				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
 				// The log path should be at least /dir/base.log
 				if len(splitPath) < 3 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
