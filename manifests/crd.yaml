@@ -1639,6 +1639,18 @@ spec:
                   type: object
                 baseImage:
                   type: string
+                config:
+                  properties:
+                    gcTTL:
+                      format: int32
+                      type: integer
+                    logFile:
+                      type: string
+                    logLevel:
+                      type: string
+                    timezone:
+                      type: string
+                  type: object
                 configUpdateStrategy:
                   type: string
                 env:
@@ -2197,8 +2209,13 @@ spec:
                       type: object
                     performance:
                       properties:
+                        agg-push-down-join:
+                          type: boolean
                         bind-info-lease:
                           type: string
+                        committer-concurrency:
+                          format: int32
+                          type: integer
                         cross-join:
                           type: boolean
                         feedback-probability:
@@ -2211,6 +2228,9 @@ spec:
                           type: integer
                         max-procs:
                           format: int32
+                          type: integer
+                        max-txn-ttl:
+                          format: int64
                           type: integer
                         pseudo-estimate-ratio:
                           format: double
@@ -2366,9 +2386,14 @@ spec:
                         store-limit:
                           format: int64
                           type: integer
+                        store-liveness-timeout:
+                          type: string
                       type: object
                     tmp-storage-path:
                       type: string
+                    tmp-storage-quota:
+                      format: int64
+                      type: integer
                     token-limit:
                       format: int32
                       type: integer
@@ -3430,11 +3455,9 @@ spec:
                         pipelined:
                           type: boolean
                         wait-for-lock-timeout:
-                          format: int32
-                          type: integer
+                          type: string
                         wake-up-delay-duration:
-                          format: int32
-                          type: integer
+                          type: string
                       type: object
                     raftdb:
                       properties:
@@ -3534,6 +3557,10 @@ spec:
                                 discardable-ratio:
                                   format: double
                                   type: number
+                                gc-merge-rewrite:
+                                  type: boolean
+                                level_merge:
+                                  type: boolean
                                 max-gc-batch-size:
                                   type: string
                                 merge-small-file-threshold:
@@ -3872,6 +3899,10 @@ spec:
                                 discardable-ratio:
                                   format: double
                                   type: number
+                                gc-merge-rewrite:
+                                  type: boolean
+                                level_merge:
+                                  type: boolean
                                 max-gc-batch-size:
                                   type: string
                                 merge-small-file-threshold:
@@ -3992,6 +4023,10 @@ spec:
                                 discardable-ratio:
                                   format: double
                                   type: number
+                                gc-merge-rewrite:
+                                  type: boolean
+                                level_merge:
+                                  type: boolean
                                 max-gc-batch-size:
                                   type: string
                                 merge-small-file-threshold:
@@ -4112,6 +4147,10 @@ spec:
                                 discardable-ratio:
                                   format: double
                                   type: number
+                                gc-merge-rewrite:
+                                  type: boolean
+                                level_merge:
+                                  type: boolean
                                 max-gc-batch-size:
                                   type: string
                                 merge-small-file-threshold:
@@ -4254,6 +4293,10 @@ spec:
                                 discardable-ratio:
                                   format: double
                                   type: number
+                                gc-merge-rewrite:
+                                  type: boolean
+                                level_merge:
+                                  type: boolean
                                 max-gc-batch-size:
                                   type: string
                                 merge-small-file-threshold:
@@ -4282,6 +4325,7 @@ spec:
                           type: string
                         cipher-file:
                           type: string
+                        encryption: {}
                         key-path:
                           type: string
                         override-ssl-target:
