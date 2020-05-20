@@ -135,8 +135,10 @@ const (
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
 	TiKVLabelVal string = "tikv"
-	// TiFlashLabelVal is TiKV label value
+	// TiFlashLabelVal is TiFlash label value
 	TiFlashLabelVal string = "tiflash"
+	// TiCDCLabelVal is TiCDC label value
+	TiCDCLabelVal string = "ticdc"
 	// PumpLabelVal is Pump label value
 	PumpLabelVal string = "pump"
 	// DiscoveryLabelVal is Discovery label value
@@ -323,6 +325,17 @@ func (l Label) TiFlash() Label {
 // IsTiFlash returns whether label is a TiFlash
 func (l Label) IsTiFlash() bool {
 	return l[ComponentLabelKey] == TiFlashLabelVal
+}
+
+// TiCDC assigns ticdc to component key in label
+func (l Label) TiCDC() Label {
+	l.Component(TiCDCLabelVal)
+	return l
+}
+
+// IsTiCDC returns whether label is a TiCDC
+func (l Label) IsTiCDC() bool {
+	return l[ComponentLabelKey] == TiCDCLabelVal
 }
 
 // IsTiKV returns whether label is a TiKV
