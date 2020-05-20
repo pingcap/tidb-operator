@@ -2883,7 +2883,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>if the namespace is omited, the operator controller would use the Tidbmonitor&rsquo;s namespace instead.</p>
+<p>if the namespace is omitted, the operator controller would use the Tidbmonitor&rsquo;s namespace instead.</p>
 </td>
 </tr>
 </tbody>

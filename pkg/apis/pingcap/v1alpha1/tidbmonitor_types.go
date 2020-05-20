@@ -108,7 +108,7 @@ type ConfigMapRef struct {
 	Name string `json:"name,omitempty"`
 
 	// +optional
-	// if the namespace is omited, the operator controller would use the Tidbmonitor's namespace instead.
+	// if the namespace is omitted, the operator controller would use the Tidbmonitor's namespace instead.
 	Namespace *string `json:"namespace,omitempty"`
 }
 

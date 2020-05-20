@@ -1189,7 +1189,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref common.ReferenceCallback)
 					},
 					"namespace": {
 						SchemaProps: spec.SchemaProps{
-							Description: "if the namespace is omited, the operator controller would use the Tidbmonitor's namespace instead.",
+							Description: "if the namespace is omitted, the operator controller would use the Tidbmonitor's namespace instead.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
