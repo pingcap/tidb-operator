@@ -31,6 +31,7 @@ const (
 	TiDBV3UpgradeVersion          = "v3.0.9"
 	TiDBV4Version                 = "v4.0.0-rc"
 	TiDBV4UpgradeVersion          = "v4.0.0-rc.2"
+	TiDBNightly                   = "nightly"
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.11.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
