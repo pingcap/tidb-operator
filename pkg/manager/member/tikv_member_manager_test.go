@@ -1910,10 +1910,10 @@ func TestGetTiKVConfigMap(t *testing.T) {
 						Config: &v1alpha1.TiKVConfig{
 							Raftstore: &v1alpha1.TiKVRaftstoreConfig{
 								SyncLog:              pointer.BoolPtr(false),
-								RaftBaseTickInterval: "1s",
+								RaftBaseTickInterval: pointer.StringPtr("1s"),
 							},
 							Server: &v1alpha1.TiKVServerConfig{
-								GrpcKeepaliveTimeout: "30s",
+								GrpcKeepaliveTimeout: pointer.StringPtr("30s"),
 							},
 						},
 					},
