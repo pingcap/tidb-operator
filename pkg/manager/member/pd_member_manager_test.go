@@ -1237,7 +1237,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						},
 						Config: &v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
-								MaxStoreDownTime:         "5m",
+								MaxStoreDownTime:         pointer.StringPtr("5m"),
 								DisableRemoveDownReplica: pointer.BoolPtr(true),
 							},
 							Replication: &v1alpha1.PDReplicationConfig{

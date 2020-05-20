@@ -60,6 +60,10 @@ type TiDBConfig struct {
 	// Optional: Defaults to 34359738368
 	// +optional
 	MemQuotaQuery *int64 `toml:"mem-quota-query,omitempty" json:"mem-quota-query,omitempty"`
+	// TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
+	// If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error
+	// +optional
+	TempStorageQuota *int64 `toml:"tmp-storage-quota,omitempty" json:"tmp-storage-quota,omitempty"` // Bytes
 	// Optional: Defaults to false
 	// +optional
 	EnableStreaming *bool `toml:"enable-streaming,omitempty" json:"enable-streaming,omitempty"`
@@ -259,6 +263,12 @@ type Performance struct {
 	// Optional: Defaults to true
 	// +optional
 	RunAutoAnalyze *bool `toml:"run-auto-analyze,omitempty" json:"run-auto-analyze,omitempty"`
+	// +optional
+	DistinctAggPushDown *bool `toml:"distinct-agg-push-down,omitempty" json:"agg-push-down-join,omitempty"`
+	// +optional
+	CommitterConcurrency *int `toml:"committer-concurrency,omitempty" json:"committer-concurrency,omitempty"`
+	// +optional
+	MaxTxnTTL *uint64 `toml:"max-txn-ttl,omitempty" json:"max-txn-ttl,omitempty"`
 	// Optional: Defaults to 300000
 	// +optional
 	TxnEntryCountLimit *uint64 `toml:"txn-entry-count-limit,omitempty" json:"txn-entry-count-limit,omitempty"`
@@ -305,9 +315,9 @@ type OpenTracing struct {
 	// +optional
 	Enable *bool `toml:"enable,omitempty" json:"enable,omitempty"`
 	// +optional
-	Sampler OpenTracingSampler `toml:"sampler,omitempty" json:"sampler,omitempty"`
+	Sampler *OpenTracingSampler `toml:"sampler,omitempty" json:"sampler,omitempty"`
 	// +optional
-	Reporter OpenTracingReporter `toml:"reporter,omitempty" json:"reporter,omitempty"`
+	Reporter *OpenTracingReporter `toml:"reporter,omitempty" json:"reporter,omitempty"`
 	// +optional
 	RPCMetrics *bool `toml:"rpc-metrics,omitempty" json:"rpc-metrics,omitempty"`
 }
@@ -325,7 +335,7 @@ type OpenTracingSampler struct {
 	// +optional
 	MaxOperations *int `toml:"max-operations,omitempty" json:"max-operations,omitempty"`
 	// +optional
-	SamplingRefreshInterval time.Duration `toml:"sampling-refresh-interval,omitempty" json:"sampling-refresh-interval,omitempty"`
+	SamplingRefreshInterval *time.Duration `toml:"sampling-refresh-interval,omitempty" json:"sampling-refresh-interval,omitempty"`
 }
 
 // OpenTracingReporter is the config for opentracing reporter.
@@ -335,7 +345,7 @@ type OpenTracingReporter struct {
 	// +optional
 	QueueSize *int `toml:"queue-size,omitempty" json:"queue-size,omitempty"`
 	// +optional
-	BufferFlushInterval time.Duration `toml:"buffer-flush-interval,omitempty" json:"buffer-flush-interval,omitempty"`
+	BufferFlushInterval *time.Duration `toml:"buffer-flush-interval,omitempty" json:"buffer-flush-interval,omitempty"`
 	// +optional
 	LogSpans *bool `toml:"log-spans,omitempty" json:"log-spans,omitempty"`
 	// +optional
@@ -392,7 +402,7 @@ type TiKVClient struct {
 	// MaxBatchWaitTime in nanosecond is the max wait time for batch.
 	// Optional: Defaults to 0
 	// +optional
-	MaxBatchWaitTime time.Duration `toml:"max-batch-wait-time,omitempty" json:"max-batch-wait-time,omitempty"`
+	MaxBatchWaitTime *time.Duration `toml:"max-batch-wait-time,omitempty" json:"max-batch-wait-time,omitempty"`
 	// BatchWaitSize is the max wait size for batch.
 	// Optional: Defaults to 8
 	// +optional
@@ -406,7 +416,10 @@ type TiKVClient struct {
 	// prevent the store occupying too much token in dispatching level.
 	// Optional: Defaults to 0
 	// +optional
-	StoreLimit int64 `toml:"store-limit,omitempty" json:"store-limit,omitempty"`
+	StoreLimit *int64 `toml:"store-limit,omitempty" json:"store-limit,omitempty"`
+	// StoreLivenessTimeout is the timeout for store liveness check request.
+	// +optional
+	StoreLivenessTimeout *string `toml:"store-liveness-timeout,omitempty" json:"store-liveness-timeout,omitempty"`
 	// +optional
 	CoprCache *CoprocessorCache `toml:"copr-cache,omitempty" json:"copr-cache,omitempty"`
 }
