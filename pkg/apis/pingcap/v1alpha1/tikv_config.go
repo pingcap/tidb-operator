@@ -539,6 +539,13 @@ type TiKVStorageConfig struct {
 	SchedulerPendingWriteThreshold *string `json:"scheduler-pending-write-threshold,omitempty" toml:"scheduler-pending-write-threshold,omitempty"`
 	// +optional
 	BlockCache *TiKVBlockCacheConfig `json:"block-cache,omitempty" toml:"block-cache,omitempty"`
+	// The size of the temporary file that preoccupies the extra space when
+	// TiKV is started. The name of temporary file is `space_placeholder_file`,
+	// located in the `storage.data-dir` directory. When TiKV runs out of disk
+	// space and cannot be started normally, you can delete this file as an
+	// emergency intervention and set it to `0MB`. Default value is 2GB.
+	// +optional
+	ReserveSpace *string `json:"reserve-space,omitempty" toml:"reserve-space,omitempty"`
 }
 
 // TiKVBlockCacheConfig is the config of a block cache
