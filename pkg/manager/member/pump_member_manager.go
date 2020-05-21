@@ -116,6 +116,11 @@ func (pmm *pumpMemberManager) syncPumpStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return pmm.setControl.CreateStatefulSet(tc, newPumpSet)
 	}
 
+	// Wait for PD & TiKV upgrading done
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+		return nil
+	}
+
 	return updateStatefulSet(pmm.setControl, tc, newPumpSet, oldPumpSet)
 }
 
