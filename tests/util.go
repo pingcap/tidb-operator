@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	"os/exec"
 	"text/template"
 	"time"
 
@@ -28,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 // Keep will keep the fun running in the period, otherwise the fun return error
@@ -302,19 +301,25 @@ func IntPtr(i int) *int {
 }
 
 func DeployReleasedCRDOrDie(version string) {
-	cmd := fmt.Sprintf(`kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml`, version)
-	klog.Info(cmd)
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		klog.Fatalf(fmt.Sprintf("failed to deploy crd: %v, %s", err, string(res)))
-	}
+	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
+	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
+		_, err := framework.RunKubectl("apply", "-f", url)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err)
 }
 
 func CleanReleasedCRDOrDie(version string) {
-	cmd := fmt.Sprintf(`kubectl delete -f https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml`, version)
-	klog.Info(cmd)
-	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
-	if err != nil {
-		klog.Fatalf(fmt.Sprintf("failed to clean crd: %v, %s", err, string(res)))
-	}
+	url := fmt.Sprintf("https://raw.githubusercontent.com/pingcap/tidb-operator/%s/manifests/crd.yaml", version)
+	err := wait.PollImmediate(time.Second*10, time.Minute, func() (bool, error) {
+		_, err := framework.RunKubectl("delete", "-f", url)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	framework.ExpectNoError(err)
 }
