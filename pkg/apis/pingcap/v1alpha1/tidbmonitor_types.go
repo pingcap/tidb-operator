@@ -99,7 +99,7 @@ type PrometheusConfiguration struct {
 	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
 
 	// user can  use it specify prometheus command options
-	CommandOptions []string `json:"command,omitempty"`
+	CommandOptions []string `json:"commandOptions,omitempty"`
 }
 
 // ConfigMapRef is the external configMap

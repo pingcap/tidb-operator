@@ -5,10 +5,8 @@ metadata:
   name: external-config
   labels:
     app.kubernetes.io/name: tidb-cluster
-    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test
     app.kubernetes.io/component: monitor
-    helm.sh/chart: tidb-cluster-dev
 data:
   prometheus-config: |-
     global:
