@@ -1409,9 +1409,6 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 	err := genericCli.Create(context.TODO(), tcFrom)
 	framework.ExpectNoError(err)
-	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
-	framework.ExpectNoError(err)
-	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
 
 	// create restore cluster
 	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
@@ -1423,6 +1420,11 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 	err = genericCli.Create(context.TODO(), tcTo)
 	framework.ExpectNoError(err)
+
+	// wait tidbcluster ready
+	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
+	framework.ExpectNoError(err)
+	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
 	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err)
 	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4Version)
@@ -1464,6 +1466,33 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 	_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
 	framework.ExpectNoError(err)
+
+	cleanFunc := func() {
+		// delete backup data in S3
+		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return
+		}
+
+		err = storage.CheckDataCleaned()
+		if err != nil {
+			return
+		}
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			return
+		}
+		framework.Logf("clean backup success")
+	}
+	// If error happened in following code, we would still delete data in storage
+	defer cleanFunc()
 
 	// check backup is successed
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -1520,21 +1549,4 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	if !isSame {
 		framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 	}
-
-	// delete backup data in S3
-	err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-	framework.ExpectNoError(err)
-
-	err = storage.CheckDataCleaned()
-	framework.ExpectNoError(err)
-
-	err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, nil
-	})
-	framework.ExpectNoError(err, "clean backup failed")
-	framework.Logf("clean backup success")
 }
