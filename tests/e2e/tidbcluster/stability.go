@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
+	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilcloud "github.com/pingcap/tidb-operator/tests/e2e/util/cloud"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilnode "github.com/pingcap/tidb-operator/tests/e2e/util/node"
@@ -64,7 +65,7 @@ import (
 // stop kubelet, kill nodes, empty pd/tikv data.
 // Like serial tests, they cannot run in parallel too.
 var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
-	f := framework.NewDefaultFramework("stability")
+	f := e2eframework.NewDefaultFramework("stability")
 
 	var ns string
 	var c clientset.Interface
