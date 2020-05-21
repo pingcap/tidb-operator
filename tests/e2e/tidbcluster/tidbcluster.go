@@ -1398,9 +1398,12 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		err = installRestoreCertificates(ns, tcNameTo)
 		framework.ExpectNoError(err, "failed to install restore client certificate")
 	}
-
+	version := utilimage.TiDBV4Version
+	if brType == fixture.DumperType {
+		version = utilimage.TiDBV3Version
+	}
 	// create backup cluster
-	tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
+	tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, version)
 	tcFrom.Spec.PD.Replicas = 1
 	tcFrom.Spec.TiKV.Replicas = 1
 	tcFrom.Spec.TiDB.Replicas = 1
@@ -1411,7 +1414,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	framework.ExpectNoError(err)
 
 	// create restore cluster
-	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
+	tcTo := fixture.GetTidbCluster(ns, tcNameTo, version)
 	tcTo.Spec.PD.Replicas = 1
 	tcTo.Spec.TiKV.Replicas = 1
 	tcTo.Spec.TiDB.Replicas = 1
@@ -1424,10 +1427,10 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	// wait tidbcluster ready
 	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err)
-	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
+	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", version)
 	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err)
-	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4Version)
+	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", version)
 
 	// import some data to sql with blockwriter
 	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
