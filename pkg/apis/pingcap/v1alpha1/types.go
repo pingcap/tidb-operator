@@ -218,6 +218,7 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus      `json:"tidb,omitempty"`
 	Pump      PumpStatus      `josn:"pump,omitempty"`
 	TiFlash   TiFlashStatus   `json:"tiflash,omitempty"`
+	TiCDC     TiCDCStatus     `json:"ticdc,omitempty"`
 	Monitor   *TidbMonitorRef `json:"monitor,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
@@ -779,6 +780,20 @@ type TiFlashStatus struct {
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
+}
+
+// TiCDCStatus is TiCDC status
+type TiCDCStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+}
+
+// TiCDCCapture is TiCDC Capture status
+type TiCDCCapture struct {
+	PodName string `json:"podName,omitempty"`
+	ID      string `json:"id,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
