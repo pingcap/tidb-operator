@@ -1437,6 +1437,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	oa.BeginInsertDataToOrDie(&clusterFrom)
 	err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
 	framework.ExpectNoError(err)
+	time.Sleep(10 * time.Minute)
 	ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
 	oa.StopInsertDataTo(&clusterFrom)
 
@@ -1526,9 +1527,6 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 	_, err = cli.PingcapV1alpha1().Restores(ns).Create(restore)
 	framework.ExpectNoError(err)
-
-	time.Sleep(10 * time.Minute)
-	fmt.Println(restore)
 
 	// check restore is successed
 	err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
