@@ -95,6 +95,5 @@ func initDB() error {
 	if err != nil {
 		return err
 	}
-	db.Close()
 	return nil
 }
