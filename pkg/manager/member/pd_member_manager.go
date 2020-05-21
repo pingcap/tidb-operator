@@ -540,7 +540,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 
 	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
 	if err != nil {
-		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
 
 	annMount, annVolume := annotationsMountVolume()
@@ -736,7 +736,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.PDVersion())
 	if err != nil {
-		klog.Warningf("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
+		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", tc.PDVersion())
 	}
 
 	// override CA if tls enabled
