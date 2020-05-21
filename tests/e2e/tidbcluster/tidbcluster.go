@@ -1525,7 +1525,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	framework.ExpectNoError(err)
 
 	// check restore is successed
-	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+	err = wait.PollImmediate(5*time.Second, 30*time.Minute, func() (bool, error) {
 		tmpRestore, err := cli.PingcapV1alpha1().Restores(ns).Get(restore.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
