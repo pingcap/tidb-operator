@@ -5888,6 +5888,11 @@ func (in *TiKVStorageConfig) DeepCopyInto(out *TiKVStorageConfig) {
 		*out = new(TiKVBlockCacheConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ReserveSpace != nil {
+		in, out := &in.ReserveSpace, &out.ReserveSpace
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
