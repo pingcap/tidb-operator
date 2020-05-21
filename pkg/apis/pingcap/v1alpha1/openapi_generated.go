@@ -3244,7 +3244,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef"),
 						},
 					},
-					"command": {
+					"commandOptions": {
 						SchemaProps: spec.SchemaProps{
 							Description: "user can  use it specify prometheus command options",
 							Type:        []string{"array"},

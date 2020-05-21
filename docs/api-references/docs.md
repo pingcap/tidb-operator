@@ -6833,7 +6833,7 @@ ConfigMapRef
 </tr>
 <tr>
 <td>
-<code>command</code></br>
+<code>commandOptions</code></br>
 <em>
 []string
 </em>
