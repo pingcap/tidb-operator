@@ -185,6 +185,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+	// syncing the pump cluster
+	if err := tcc.pumpMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// works that should do to making the tidb cluster current state match the desired state:
 	//   - waiting for the tikv cluster available(at least one peer works)
 	//   - create or update tidb headless service
@@ -227,11 +232,6 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// cleaning the pod scheduling annotation for pd and tikv
 	if _, err := tcc.pvcCleaner.Clean(tc); err != nil {
-		return err
-	}
-
-	// syncing the pump cluster
-	if err := tcc.pumpMemberManager.Sync(tc); err != nil {
 		return err
 	}
 
