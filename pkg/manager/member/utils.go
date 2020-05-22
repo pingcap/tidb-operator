@@ -258,6 +258,8 @@ func getStsAnnotations(tc *v1alpha1.TidbCluster, component string) map[string]st
 		key = label.AnnTiDBDeleteSlots
 	} else if component == label.TiKVLabelVal {
 		key = label.AnnTiKVDeleteSlots
+	} else if component == label.TiFlashLabelVal {
+		key = label.AnnTiFlashDeleteSlots
 	} else {
 		return anns
 	}

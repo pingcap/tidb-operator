@@ -45,7 +45,7 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 func validateAnnotations(anns map[string]string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
-	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots} {
+	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots} {
 		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
 	}
 	return allErrs
