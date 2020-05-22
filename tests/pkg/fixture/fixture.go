@@ -16,6 +16,7 @@ package fixture
 import (
 	"fmt"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
@@ -65,8 +66,24 @@ func WithStorage(r corev1.ResourceRequirements, size string) corev1.ResourceRequ
 	return r
 }
 
+var (
+	// the first version which introduces storage.reserve-space config
+	// https://github.com/tikv/tikv/pull/6321
+	tikvV4Beta = semver.MustParse("v4.0.0-beta")
+)
+
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
+	tikvStorageConfig := &v1alpha1.TiKVStorageConfig{
+		// Don't reserve space in e2e tests, see
+		// https://github.com/pingcap/tidb-operator/issues/2509.
+		ReserveSpace: pointer.StringPtr("0MB"),
+	}
+	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
+	// e.g. nightly.
+	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
+		tikvStorageConfig = nil
+	}
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -85,11 +102,11 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
 				Config: &v1alpha1.PDConfig{
 					Log: &v1alpha1.PDLogConfig{
-						Level: "info",
+						Level: pointer.StringPtr("info"),
 					},
 					// accelerate failover
 					Schedule: &v1alpha1.PDScheduleConfig{
-						MaxStoreDownTime: "5m",
+						MaxStoreDownTime: pointer.StringPtr("5m"),
 					},
 				},
 			},
@@ -100,8 +117,9 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config: &v1alpha1.TiKVConfig{
-					LogLevel: "info",
+					LogLevel: pointer.StringPtr("info"),
 					Server:   &v1alpha1.TiKVServerConfig{},
+					Storage:  tikvStorageConfig,
 				},
 			},
 

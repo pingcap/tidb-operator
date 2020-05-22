@@ -32,9 +32,9 @@ type TiFlashConfig struct {
 // +k8s:openapi-gen=false
 type FlashServerConfig struct {
 	// +optional
-	EngineAddr string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
+	EngineAddr *string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
 	// +optional
-	StatusAddr       string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	StatusAddr       *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
 	TiKVServerConfig `json:",inline"`
 }
 
@@ -44,12 +44,12 @@ type FlashServerConfig struct {
 type ProxyConfig struct {
 	// Optional: Defaults to info
 	// +optional
-	LogLevel string `json:"log-level,omitempty" toml:"log-level,omitempty"`
+	LogLevel *string `json:"log-level,omitempty" toml:"log-level,omitempty"`
 	// +optional
-	LogFile string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 	// Optional: Defaults to 24h
 	// +optional
-	LogRotationTimespan string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
+	LogRotationTimespan *string `json:"log-rotation-timespan,omitempty" toml:"log-rotation-timespan,omitempty"`
 	// +optional
 	PanicWhenUnexpectedKeyOrData *bool `json:"panic-when-unexpected-key-or-data,omitempty" toml:"panic-when-unexpected-key-or-data,omitempty"`
 	// +optional
@@ -82,22 +82,22 @@ type CommonConfig struct {
 	// Optional: Defaults to "/data0/tmp"
 	// +optional
 	// +k8s:openapi-gen=false
-	TmpPath string `json:"tmp_path,omitempty" toml:"tmp_path,omitempty"`
+	TmpPath *string `json:"tmp_path,omitempty" toml:"tmp_path,omitempty"`
 
 	// Optional: Defaults to "TiFlash"
 	// +optional
 	// +k8s:openapi-gen=false
-	DisplayName string `json:"display_name,omitempty" toml:"display_name,omitempty"`
+	DisplayName *string `json:"display_name,omitempty" toml:"display_name,omitempty"`
 
 	// Optional: Defaults to "default"
 	// +optional
 	// +k8s:openapi-gen=false
-	DefaultProfile string `json:"default_profile,omitempty" toml:"default_profile,omitempty"`
+	DefaultProfile *string `json:"default_profile,omitempty" toml:"default_profile,omitempty"`
 
 	// Optional: Defaults to "/data0/db"
 	// +optional
 	// +k8s:openapi-gen=false
-	Path string `json:"path,omitempty" toml:"path,omitempty"`
+	Path *string `json:"path,omitempty" toml:"path,omitempty"`
 
 	// Optional: Defaults to false
 	// +optional
@@ -114,7 +114,7 @@ type CommonConfig struct {
 	// Optional: Defaults to "0.0.0.0"
 	// +optional
 	// +k8s:openapi-gen=false
-	ListenHost string `json:"listen_host,omitempty" toml:"listen_host,omitempty"`
+	ListenHost *string `json:"listen_host,omitempty" toml:"listen_host,omitempty"`
 
 	// Optional: Defaults to 9000
 	// +optional
@@ -188,9 +188,9 @@ type User struct {
 	// +optional
 	Password string `json:"password,omitempty" toml:"password"`
 	// +optional
-	Profile string `json:"profile,omitempty" toml:"profile,omitempty"`
+	Profile *string `json:"profile,omitempty" toml:"profile,omitempty"`
 	// +optional
-	Quota string `json:"quota,omitempty" toml:"quota,omitempty"`
+	Quota *string `json:"quota,omitempty" toml:"quota,omitempty"`
 	// +optional
 	Networks *Networks `json:"networks,omitempty" toml:"networks,omitempty"`
 }
@@ -199,7 +199,7 @@ type User struct {
 // +k8s:openapi-gen=false
 type Networks struct {
 	// +optional
-	IP string `json:"ip,omitempty" toml:"ip,omitempty"`
+	IP *string `json:"ip,omitempty" toml:"ip,omitempty"`
 }
 
 // FlashQuota is the configuration of [quotas] section.
@@ -251,13 +251,13 @@ type FlashStatus struct {
 // +k8s:openapi-gen=false
 type FlashRaft struct {
 	// +optional
-	PDAddr string `json:"pd_addr,omitempty" toml:"pd_addr,omitempty"`
+	PDAddr *string `json:"pd_addr,omitempty" toml:"pd_addr,omitempty"`
 	// Optional: Defaults to /data0/kvstore
 	// +optional
-	KVStorePath string `json:"kvstore_path,omitempty" toml:"kvstore_path,omitempty"`
+	KVStorePath *string `json:"kvstore_path,omitempty" toml:"kvstore_path,omitempty"`
 	// Optional: Defaults to dt
 	// +optional
-	StorageEngine string `json:"storage_engine,omitempty" toml:"storage_engine,omitempty"`
+	StorageEngine *string `json:"storage_engine,omitempty" toml:"storage_engine,omitempty"`
 }
 
 // FlashApplication is the configuration of [application] section.
@@ -274,17 +274,17 @@ type FlashLogger struct {
 	// Optional: Defaults to /data0/logs/error.log
 	// +optional
 	// +k8s:openapi-gen=false
-	ErrorLog string `json:"errorlog,omitempty" toml:"errorlog,omitempty"`
+	ErrorLog *string `json:"errorlog,omitempty" toml:"errorlog,omitempty"`
 	// Optional: Defaults to 100M
 	// +optional
-	Size string `json:"size,omitempty" toml:"size,omitempty"`
+	Size *string `json:"size,omitempty" toml:"size,omitempty"`
 	// Optional: Defaults to /data0/logs/server.log
 	// +optional
 	// +k8s:openapi-gen=false
-	ServerLog string `json:"log,omitempty" toml:"log,omitempty"`
+	ServerLog *string `json:"log,omitempty" toml:"log,omitempty"`
 	// Optional: Defaults to information
 	// +optional
-	Level string `json:"level,omitempty" toml:"level,omitempty"`
+	Level *string `json:"level,omitempty" toml:"level,omitempty"`
 	// Optional: Defaults to 10
 	// +optional
 	Count *int32 `json:"count,omitempty" toml:"count,omitempty"`
@@ -295,10 +295,10 @@ type FlashLogger struct {
 type Flash struct {
 	// +optional
 	// +k8s:openapi-gen=false
-	TiDBStatusAddr string `json:"tidb_status_addr,omitempty" toml:"tidb_status_addr,omitempty"`
+	TiDBStatusAddr *string `json:"tidb_status_addr,omitempty" toml:"tidb_status_addr,omitempty"`
 	// +optional
 	// +k8s:openapi-gen=false
-	ServiceAddr string `json:"service_addr,omitempty" toml:"service_addr,omitempty"`
+	ServiceAddr *string `json:"service_addr,omitempty" toml:"service_addr,omitempty"`
 	// Optional: Defaults to 0.6
 	// +optional
 	OverlapThreshold *float64 `json:"overlap_threshold,omitempty" toml:"overlap_threshold,omitempty"`
@@ -318,11 +318,11 @@ type FlashCluster struct {
 	// Optional: Defaults to /tiflash/flash_cluster_manager
 	// +optional
 	// +k8s:openapi-gen=false
-	ClusterManagerPath string `json:"cluster_manager_path,omitempty" toml:"cluster_manager_path,omitempty"`
+	ClusterManagerPath *string `json:"cluster_manager_path,omitempty" toml:"cluster_manager_path,omitempty"`
 	// Optional: Defaults to /data0/logs/flash_cluster_manager.log
 	// +optional
 	// +k8s:openapi-gen=false
-	ClusterLog string `json:"log,omitempty" toml:"log,omitempty"`
+	ClusterLog *string `json:"log,omitempty" toml:"log,omitempty"`
 	// Optional: Defaults to 20
 	// +optional
 	RefreshInterval *int32 `json:"refresh_interval,omitempty" toml:"refresh_interval,omitempty"`
@@ -339,16 +339,16 @@ type FlashCluster struct {
 type FlashProxy struct {
 	// Optional: Defaults to 0.0.0.0:20170
 	// +optional
-	Addr string `json:"addr,omitempty" toml:"addr,omitempty"`
+	Addr *string `json:"addr,omitempty" toml:"addr,omitempty"`
 	// +optional
-	AdvertiseAddr string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
+	AdvertiseAddr *string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
 	// Optional: Defaults to /data0/proxy
 	// +optional
-	DataDir string `json:"data-dir,omitempty" toml:"data-dir,omitempty"`
+	DataDir *string `json:"data-dir,omitempty" toml:"data-dir,omitempty"`
 	// Optional: Defaults to /data0/proxy.toml
 	// +optional
-	Config string `json:"config,omitempty" toml:"config,omitempty"`
+	Config *string `json:"config,omitempty" toml:"config,omitempty"`
 	// Optional: Defaults to /data0/logs/proxy.log
 	// +optional
-	LogFile string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 }

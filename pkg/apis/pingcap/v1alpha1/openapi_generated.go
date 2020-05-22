@@ -3055,6 +3055,24 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"agg-push-down-join": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"committer-concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"max-txn-ttl": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
 					"txn-entry-count-limit": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 300000",
@@ -4302,6 +4320,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Format:      "int64",
 						},
 					},
+					"tmp-storage-quota": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"enable-streaming": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to false",
@@ -5386,6 +5411,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVClient(ref common.ReferenceCallback) c
 							Format:      "int64",
 						},
 					},
+					"store-liveness-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoreLivenessTimeout is the timeout for store liveness check request.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"copr-cache": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CoprocessorCache"),
@@ -6100,14 +6132,16 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVPessimisticTxn(ref common.ReferenceCal
 					},
 					"wait-for-lock-timeout": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
+							Description: "The default and maximum delay before responding to TiDB when pessimistic transactions encounter locks",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"wake-up-delay-duration": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
+							Description: "If more than one transaction is waiting for the same lock, only the one with smallest start timestamp will be waked up immediately when the lock is released. Others will be waked up after `wake_up_delay_duration` to reduce contention and make the oldest one more likely acquires the lock.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"pipelined": {
@@ -6671,9 +6705,16 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSecurityConfig(ref common.ReferenceCal
 							Format: "",
 						},
 					},
+					"encryption": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfigEncryption"),
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfigEncryption"},
 	}
 }
 
@@ -7115,6 +7156,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageConfig(ref common.ReferenceCall
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVBlockCacheConfig"),
 						},
 					},
+					"reserve-space": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The size of the temporary file that preoccupies the extra space when TiKV is started. The name of temporary file is `space_placeholder_file`, located in the `storage.data-dir` directory. When TiKV runs out of disk space and cannot be started normally, you can delete this file as an emergency intervention and set it to `0MB`. Default value is 2GB.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -7243,6 +7291,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVTitanCfConfig(ref common.ReferenceCall
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
+						},
+					},
+					"level_merge": {
+						SchemaProps: spec.SchemaProps{
+							Description: "optional",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"gc-merge-rewrite": {
+						SchemaProps: spec.SchemaProps{
+							Description: "optional",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},

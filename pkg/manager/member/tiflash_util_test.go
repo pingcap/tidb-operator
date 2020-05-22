@@ -31,41 +31,41 @@ var (
 			FlashApplication: &v1alpha1.FlashApplication{
 				RunAsDaemon: pointer.BoolPtr(true),
 			},
-			DefaultProfile: "default",
-			DisplayName:    "TiFlash",
+			DefaultProfile: pointer.StringPtr("default"),
+			DisplayName:    pointer.StringPtr("TiFlash"),
 			Flash: &v1alpha1.Flash{
 				CompactLogMinPeriod: pointer.Int32Ptr(200),
 				FlashCluster: &v1alpha1.FlashCluster{
-					ClusterManagerPath: "/tiflash/flash_cluster_manager",
-					ClusterLog:         "/data0/logs/flash_cluster_manager.log",
+					ClusterManagerPath: pointer.StringPtr("/tiflash/flash_cluster_manager"),
+					ClusterLog:         pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
 					MasterTTL:          pointer.Int32Ptr(60),
 					RefreshInterval:    pointer.Int32Ptr(20),
 					UpdateRuleInterval: pointer.Int32Ptr(10),
 				},
 				OverlapThreshold: pointer.Float64Ptr(0.6),
 				FlashProxy: &v1alpha1.FlashProxy{
-					Addr:          "0.0.0.0:20170",
-					AdvertiseAddr: "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170",
-					Config:        "/data0/proxy.toml",
-					DataDir:       "/data0/proxy",
-					LogFile:       "/data0/logs/proxy.log",
+					Addr:          pointer.StringPtr("0.0.0.0:20170"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					Config:        pointer.StringPtr("/data0/proxy.toml"),
+					DataDir:       pointer.StringPtr("/data0/proxy"),
+					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
-				ServiceAddr:    "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930",
-				TiDBStatusAddr: "test-tidb.test.svc:10080",
+				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
 			},
 			HTTPPort:               pointer.Int32Ptr(8123),
 			InternalServerHTTPPort: pointer.Int32Ptr(9009),
-			ListenHost:             "0.0.0.0",
+			ListenHost:             pointer.StringPtr("0.0.0.0"),
 			FlashLogger: &v1alpha1.FlashLogger{
 				Count:     pointer.Int32Ptr(10),
-				ErrorLog:  "/data0/logs/error.log",
-				Level:     "information",
-				ServerLog: "/data0/logs/server.log",
-				Size:      "100M",
+				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
+				Level:     pointer.StringPtr("information"),
+				ServerLog: pointer.StringPtr("/data0/logs/server.log"),
+				Size:      pointer.StringPtr("100M"),
 			},
 			MarkCacheSize:        pointer.Int64Ptr(5368709120),
 			MinmaxIndexCacheSize: pointer.Int64Ptr(5368709120),
-			Path:                 "/data0/db",
+			Path:                 pointer.StringPtr("/data0/db"),
 			PathRealtimeMode:     pointer.BoolPtr(false),
 			FlashProfile: &v1alpha1.FlashProfile{
 				Default: &v1alpha1.Profile{
@@ -90,37 +90,37 @@ var (
 				},
 			},
 			FlashRaft: &v1alpha1.FlashRaft{
-				KVStorePath:   "/data0/kvstore",
-				PDAddr:        "test-pd.test.svc:2379",
-				StorageEngine: "dt",
+				KVStorePath:   pointer.StringPtr("/data0/kvstore"),
+				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
 				MetricsPort: pointer.Int32Ptr(8234),
 			},
 			TCPPort: pointer.Int32Ptr(9000),
-			TmpPath: "/data0/tmp",
+			TmpPath: pointer.StringPtr("/data0/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
 					Networks: &v1alpha1.Networks{
-						IP: "::/0",
+						IP: pointer.StringPtr("::/0"),
 					},
-					Profile: "default",
-					Quota:   "default",
+					Profile: pointer.StringPtr("default"),
+					Quota:   pointer.StringPtr("default"),
 				},
 				Readonly: &v1alpha1.User{
 					Networks: &v1alpha1.Networks{
-						IP: "::/0",
+						IP: pointer.StringPtr("::/0"),
 					},
-					Profile: "readonly",
-					Quota:   "default",
+					Profile: pointer.StringPtr("readonly"),
+					Quota:   pointer.StringPtr("default"),
 				},
 			},
 		},
 		ProxyConfig: &v1alpha1.ProxyConfig{
-			LogLevel: "info",
+			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr: "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930",
-				StatusAddr: "0.0.0.0:20292",
+				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
 			},
 		},
 	}
@@ -129,41 +129,41 @@ var (
 			FlashApplication: &v1alpha1.FlashApplication{
 				RunAsDaemon: pointer.BoolPtr(false),
 			},
-			DefaultProfile: "defaul",
-			DisplayName:    "TiFlah",
+			DefaultProfile: pointer.StringPtr("defaul"),
+			DisplayName:    pointer.StringPtr("TiFlah"),
 			Flash: &v1alpha1.Flash{
 				CompactLogMinPeriod: pointer.Int32Ptr(100),
 				FlashCluster: &v1alpha1.FlashCluster{
-					ClusterManagerPath: "/flash_cluster_manager",
-					ClusterLog:         "/data1/logs/flash_cluster_manager.log",
+					ClusterManagerPath: pointer.StringPtr("/flash_cluster_manager"),
+					ClusterLog:         pointer.StringPtr("/data1/logs/flash_cluster_manager.log"),
 					MasterTTL:          pointer.Int32Ptr(50),
 					RefreshInterval:    pointer.Int32Ptr(21),
 					UpdateRuleInterval: pointer.Int32Ptr(11),
 				},
 				OverlapThreshold: pointer.Float64Ptr(0.7),
 				FlashProxy: &v1alpha1.FlashProxy{
-					Addr:          "0.0.0.0:20171",
-					AdvertiseAddr: "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20171",
-					Config:        "/data0/proxy1.toml",
-					DataDir:       "/data0/proxy1",
-					LogFile:       "/data0/logs/proxy1.log",
+					Addr:          pointer.StringPtr("0.0.0.0:20171"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20171"),
+					Config:        pointer.StringPtr("/data0/proxy1.toml"),
+					DataDir:       pointer.StringPtr("/data0/proxy1"),
+					LogFile:       pointer.StringPtr("/data0/logs/proxy1.log"),
 				},
-				ServiceAddr:    "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3931",
-				TiDBStatusAddr: "test-tidb.test.svc:10081",
+				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3931"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10081"),
 			},
 			HTTPPort:               pointer.Int32Ptr(8121),
 			InternalServerHTTPPort: pointer.Int32Ptr(9001),
-			ListenHost:             "0.0.0.1",
+			ListenHost:             pointer.StringPtr("0.0.0.1"),
 			FlashLogger: &v1alpha1.FlashLogger{
 				Count:     pointer.Int32Ptr(11),
-				ErrorLog:  "/data1/logs/error1.log",
-				Level:     "information1",
-				ServerLog: "/data0/logs/server1.log",
-				Size:      "101M",
+				ErrorLog:  pointer.StringPtr("/data1/logs/error1.log"),
+				Level:     pointer.StringPtr("information1"),
+				ServerLog: pointer.StringPtr("/data0/logs/server1.log"),
+				Size:      pointer.StringPtr("101M"),
 			},
 			MarkCacheSize:        pointer.Int64Ptr(5368709121),
 			MinmaxIndexCacheSize: pointer.Int64Ptr(5368709121),
-			Path:                 "/data1/db",
+			Path:                 pointer.StringPtr("/data1/db"),
 			PathRealtimeMode:     pointer.BoolPtr(true),
 			FlashProfile: &v1alpha1.FlashProfile{
 				Default: &v1alpha1.Profile{
@@ -188,37 +188,37 @@ var (
 				},
 			},
 			FlashRaft: &v1alpha1.FlashRaft{
-				KVStorePath:   "/data1/kvstore",
-				PDAddr:        "test-pd.test.svc:2379",
-				StorageEngine: "dt",
+				KVStorePath:   pointer.StringPtr("/data1/kvstore"),
+				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
 				MetricsPort: pointer.Int32Ptr(8235),
 			},
 			TCPPort: pointer.Int32Ptr(9001),
-			TmpPath: "/data1/tmp",
+			TmpPath: pointer.StringPtr("/data1/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
 					Networks: &v1alpha1.Networks{
-						IP: "::/1",
+						IP: pointer.StringPtr("::/1"),
 					},
-					Profile: "default1",
-					Quota:   "default1",
+					Profile: pointer.StringPtr("default1"),
+					Quota:   pointer.StringPtr("default1"),
 				},
 				Readonly: &v1alpha1.User{
 					Networks: &v1alpha1.Networks{
-						IP: "::/1",
+						IP: pointer.StringPtr("::/1"),
 					},
-					Profile: "readonly1",
-					Quota:   "default1",
+					Profile: pointer.StringPtr("readonly1"),
+					Quota:   pointer.StringPtr("default1"),
 				},
 			},
 		},
 		ProxyConfig: &v1alpha1.ProxyConfig{
-			LogLevel: "info1",
+			LogLevel: pointer.StringPtr("info1"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr: "test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930",
-				StatusAddr: "0.0.0.0:20292",
+				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
 			},
 		},
 	}
@@ -226,15 +226,15 @@ var (
 		CommonConfig: &v1alpha1.CommonConfig{
 			Flash: &v1alpha1.Flash{
 				FlashCluster: &v1alpha1.FlashCluster{
-					ClusterLog: "/data0/logs/flash_cluster_manager.log",
+					ClusterLog: pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
 				},
 				FlashProxy: &v1alpha1.FlashProxy{
-					LogFile: "/data0/logs/proxy.log",
+					LogFile: pointer.StringPtr("/data0/logs/proxy.log"),
 				},
 			},
 			FlashLogger: &v1alpha1.FlashLogger{
-				ErrorLog:  "/data0/logs/error.log",
-				ServerLog: "/data0/logs/server.log",
+				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
+				ServerLog: pointer.StringPtr("/data0/logs/server.log"),
 			},
 		},
 	}
@@ -242,15 +242,15 @@ var (
 		CommonConfig: &v1alpha1.CommonConfig{
 			Flash: &v1alpha1.Flash{
 				FlashCluster: &v1alpha1.FlashCluster{
-					ClusterLog: "/data1/logs/flash_cluster_manager.log",
+					ClusterLog: pointer.StringPtr("/data1/logs/flash_cluster_manager.log"),
 				},
 				FlashProxy: &v1alpha1.FlashProxy{
-					LogFile: "/data1/logs/proxy.log",
+					LogFile: pointer.StringPtr("/data1/logs/proxy.log"),
 				},
 			},
 			FlashLogger: &v1alpha1.FlashLogger{
-				ErrorLog:  "/data1/logs/error.log",
-				ServerLog: "/data1/logs/server.log",
+				ErrorLog:  pointer.StringPtr("/data1/logs/error.log"),
+				ServerLog: pointer.StringPtr("/data1/logs/server.log"),
 			},
 		},
 	}
