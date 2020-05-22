@@ -91,10 +91,11 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return err
 	}
 
-	if controller.PodWebhookEnabled {
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-		return nil
-	}
+	// TODO: Update Webhook to support TiFlash
+	// if controller.PodWebhookEnabled {
+	// 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+	// 	return nil
+	// }
 
 	for _, store := range tc.Status.TiFlash.Stores {
 		if store.PodName == podName {
