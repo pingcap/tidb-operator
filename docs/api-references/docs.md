@@ -13399,6 +13399,22 @@ TiKVBlockCacheConfig
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>reserve-space</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The size of the temporary file that preoccupies the extra space when
+TiKV is started. The name of temporary file is <code>space_placeholder_file</code>,
+located in the <code>storage.data-dir</code> directory. When TiKV runs out of disk
+space and cannot be started normally, you can delete this file as an
+emergency intervention and set it to <code>0MB</code>. Default value is 2GB.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstoragereadpoolconfig">TiKVStorageReadPoolConfig</h3>
