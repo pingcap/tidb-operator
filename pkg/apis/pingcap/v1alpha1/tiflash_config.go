@@ -186,7 +186,7 @@ type FlashUser struct {
 // +k8s:openapi-gen=false
 type User struct {
 	// +optional
-	Password *string `json:"password,omitempty" toml:"password"`
+	Password string `json:"password,omitempty" toml:"password"`
 	// +optional
 	Profile *string `json:"profile,omitempty" toml:"profile,omitempty"`
 	// +optional
