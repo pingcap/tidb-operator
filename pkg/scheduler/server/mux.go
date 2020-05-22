@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -55,7 +56,7 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 	ws.Route(ws.POST("/preempt").To(svr.preemptNode).
 		Doc("preempt nodes").
 		Operation("preemptNodes").
-		Writes(schedulerapiv1.ExtenderPreemptionResult{}))
+		Writes(schedulerapi.ExtenderPreemptionResult{}))
 
 	ws.Route(ws.POST("/prioritize").To(svr.prioritizeNode).
 		Doc("prioritize nodes").
@@ -93,7 +94,7 @@ func (svr *server) preemptNode(req *restful.Request, resp *restful.Response) {
 	svr.lock.Lock()
 	defer svr.lock.Unlock()
 
-	args := &schedulerapiv1.ExtenderPreemptionArgs{}
+	args := &schedulerapi.ExtenderPreemptionArgs{}
 	if err := req.ReadEntity(args); err != nil {
 		errorResponse(resp, errFailToRead)
 		return

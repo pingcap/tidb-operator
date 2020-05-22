@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
+	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -272,11 +273,11 @@ func TestSchedulerPriority(t *testing.T) {
 }
 
 func TestSchedulerPreempt(t *testing.T) {
-	victims := &schedulerapiv1.Victims{
+	victims := &schedulerapi.Victims{
 		Pods: []*apiv1.Pod{},
 	}
-	metaVictims := &schedulerapiv1.MetaVictims{
-		Pods: []*schedulerapiv1.MetaPod{},
+	metaVictims := &schedulerapi.MetaVictims{
+		Pods: []*schedulerapi.MetaPod{},
 	}
 	nodeA := &apiv1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -312,24 +313,24 @@ func TestSchedulerPreempt(t *testing.T) {
 	tests := []struct {
 		name       string
 		nodes      []*apiv1.Node
-		args       *schedulerapiv1.ExtenderPreemptionArgs
+		args       *schedulerapi.ExtenderPreemptionArgs
 		predicates map[string][]predicates.Predicate
-		wantResult *schedulerapiv1.ExtenderPreemptionResult
+		wantResult *schedulerapi.ExtenderPreemptionResult
 		wantErr    string
 	}{
 		{
 			name:  "unrelated pod",
 			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
-			args: &schedulerapiv1.ExtenderPreemptionArgs{
+			args: &schedulerapi.ExtenderPreemptionArgs{
 				Pod: unrelatedPod,
-				NodeNameToVictims: map[string]*schedulerapiv1.Victims{
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
 					"node-a": victims,
 					"node-b": victims,
 					"node-c": victims,
 				},
 			},
-			wantResult: &schedulerapiv1.ExtenderPreemptionResult{
-				NodeNameToMetaVictims: map[string]*schedulerapiv1.MetaVictims{
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{
 					"node-a": metaVictims,
 					"node-b": metaVictims,
 					"node-c": metaVictims,
@@ -344,9 +345,9 @@ func TestSchedulerPreempt(t *testing.T) {
 					&predicates.FakePredicate{},
 				},
 			},
-			args: &schedulerapiv1.ExtenderPreemptionArgs{
+			args: &schedulerapi.ExtenderPreemptionArgs{
 				Pod: pdPod,
-				NodeNameToVictims: map[string]*schedulerapiv1.Victims{
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
 					"node-a": victims,
 					"node-b": victims,
 					"node-c": victims,
@@ -367,16 +368,16 @@ func TestSchedulerPreempt(t *testing.T) {
 					},
 				},
 			},
-			args: &schedulerapiv1.ExtenderPreemptionArgs{
+			args: &schedulerapi.ExtenderPreemptionArgs{
 				Pod: pdPod,
-				NodeNameToVictims: map[string]*schedulerapiv1.Victims{
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
 					"node-a": victims,
 					"node-b": victims,
 					"node-c": victims,
 				},
 			},
-			wantResult: &schedulerapiv1.ExtenderPreemptionResult{
-				NodeNameToMetaVictims: map[string]*schedulerapiv1.MetaVictims{
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{
 					"node-a": metaVictims,
 				},
 			},
@@ -391,16 +392,16 @@ func TestSchedulerPreempt(t *testing.T) {
 					},
 				},
 			},
-			args: &schedulerapiv1.ExtenderPreemptionArgs{
+			args: &schedulerapi.ExtenderPreemptionArgs{
 				Pod: pdPod,
-				NodeNameToVictims: map[string]*schedulerapiv1.Victims{
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
 					"node-a": victims,
 					"node-b": victims,
 					"node-c": victims,
 				},
 			},
-			wantResult: &schedulerapiv1.ExtenderPreemptionResult{
-				NodeNameToMetaVictims: map[string]*schedulerapiv1.MetaVictims{},
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{},
 			},
 		},
 		{
@@ -417,16 +418,16 @@ func TestSchedulerPreempt(t *testing.T) {
 					},
 				},
 			},
-			args: &schedulerapiv1.ExtenderPreemptionArgs{
+			args: &schedulerapi.ExtenderPreemptionArgs{
 				Pod: pdPod,
-				NodeNameToVictims: map[string]*schedulerapiv1.Victims{
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
 					"node-a": victims,
 					"node-b": victims,
 					"node-c": victims,
 				},
 			},
-			wantResult: &schedulerapiv1.ExtenderPreemptionResult{
-				NodeNameToMetaVictims: map[string]*schedulerapiv1.MetaVictims{
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{
 					"node-a": metaVictims,
 					"node-b": metaVictims,
 					"node-c": metaVictims,
