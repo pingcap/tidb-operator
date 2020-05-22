@@ -106,7 +106,11 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
-
+	if tc.Spec.Pump != nil {
+		if !tc.PumpIsAvailable() {
+			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
+		}
+	}
 	// Sync TiDB Headless Service
 	if err := tmm.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
 		return err
@@ -763,7 +767,8 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	if err != nil {
 		return err
 	}
-	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
+	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
+		tc.Status.PD.Phase != v1alpha1.UpgradePhase && tc.Status.Pump.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
