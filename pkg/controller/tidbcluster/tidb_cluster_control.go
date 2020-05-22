@@ -48,6 +48,7 @@ func NewDefaultTidbClusterControl(
 	pvcCleaner member.PVCCleanerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
+	ticdcMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
 	tidbClusterStatusManager manager.Manager,
 	podRestarter member.PodRestarter,
@@ -64,6 +65,7 @@ func NewDefaultTidbClusterControl(
 		pvcCleaner,
 		pumpMemberManager,
 		tiflashMemberManager,
+		ticdcMemberManager,
 		discoveryManager,
 		tidbClusterStatusManager,
 		podRestarter,
@@ -83,6 +85,7 @@ type defaultTidbClusterControl struct {
 	pvcCleaner               member.PVCCleanerInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
+	ticdcMemberManager       manager.Manager
 	discoveryManager         member.TidbDiscoveryManager
 	tidbClusterStatusManager manager.Manager
 	podRestarter             member.PodRestarter
@@ -182,6 +185,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+	// syncing the pump cluster
+	if err := tcc.pumpMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// works that should do to making the tidb cluster current state match the desired state:
 	//   - waiting for the tikv cluster available(at least one peer works)
 	//   - create or update tidb headless service
@@ -207,6 +215,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - create or update ticdc deployment
+	//   - sync ticdc cluster status from pd to TidbCluster object
+	if err := tcc.ticdcMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// syncing the labels from Pod to PVC and PV, these labels include:
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
@@ -217,11 +232,6 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 
 	// cleaning the pod scheduling annotation for pd and tikv
 	if _, err := tcc.pvcCleaner.Clean(tc); err != nil {
-		return err
-	}
-
-	// syncing the pump cluster
-	if err := tcc.pumpMemberManager.Sync(tc); err != nil {
 		return err
 	}
 

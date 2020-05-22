@@ -45,6 +45,8 @@ const (
 	TiKVMemberType MemberType = "tikv"
 	// TiFlashMemberType is tiflash container type
 	TiFlashMemberType MemberType = "tiflash"
+	// TiCDCMemberType is ticdc container type
+	TiCDCMemberType MemberType = "ticdc"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
@@ -407,6 +409,34 @@ type TiCDCSpec struct {
 	// +kubebuilder:default=pingcap/ticdc
 	// +optional
 	BaseImage string `json:"baseImage"`
+
+	// Config is the Configuration of tidbcdc servers
+	// +optional
+	Config *TiCDCConfig `json:"config,omitempty"`
+}
+
+// TiCDCConfig is the configuration of tidbcdc
+// +k8s:openapi-gen=true
+type TiCDCConfig struct {
+	// Time zone of TiCDC
+	// Optional: Defaults to UTC
+	// +optional
+	Timezone *string `json:"timezone,omitempty"`
+
+	// CDC GC safepoint TTL duration, specified in seconds
+	// Optional: Defaults to 86400
+	// +optional
+	GCTTL *int32 `json:"gcTTL,omitempty"`
+
+	// LogLevel is the log level
+	// Optional: Defaults to info
+	// +optional
+	LogLevel *string `json:"logLevel,omitempty"`
+
+	// LogFile is the log file
+	// Optional: Defaults to /dev/stderr
+	// +optional
+	LogFile *string `json:"logFile,omitempty"`
 }
 
 // +k8s:openapi-gen=true
