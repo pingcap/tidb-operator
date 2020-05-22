@@ -181,7 +181,7 @@ function e2e::setup_helm_server() {
         echo "info: wait for tiller to be ready"
         e2e::__wait_for_deploy kube-system tiller-deploy
     else
-        $HELM_BIN init --service-account=tiller --wait
+        $HELM_BIN init --service-account=tiller --skip-refresh --wait
     fi
     $HELM_BIN version
 }

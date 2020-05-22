@@ -7151,6 +7151,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageConfig(ref common.ReferenceCall
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVBlockCacheConfig"),
 						},
 					},
+					"reserve-space": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The size of the temporary file that preoccupies the extra space when TiKV is started. The name of temporary file is `space_placeholder_file`, located in the `storage.data-dir` directory. When TiKV runs out of disk space and cannot be started normally, you can delete this file as an emergency intervention and set it to `0MB`. Default value is 2GB.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

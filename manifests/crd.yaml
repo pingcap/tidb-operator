@@ -4373,6 +4373,8 @@ spec:
                         max-key-size:
                           format: int64
                           type: integer
+                        reserve-space:
+                          type: string
                         scheduler-concurrency:
                           format: int64
                           type: integer
