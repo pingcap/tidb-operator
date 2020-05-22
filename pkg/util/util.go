@@ -87,6 +87,9 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	} else if memberType == v1alpha1.TiDBMemberType {
 		ann = label.AnnTiDBDeleteSlots
 		replicas = tc.Spec.TiDB.Replicas
+	} else if memberType == v1alpha1.TiFlashMemberType {
+		ann = label.AnnTiFlashDeleteSlots
+		replicas = tc.Spec.TiFlash.Replicas
 	} else {
 		return nil, fmt.Errorf("unknown member type %v", memberType)
 	}
