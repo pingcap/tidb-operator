@@ -37,7 +37,8 @@ func TestValidateAnnotations(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 					Annotations: map[string]string{
-						label.AnnTiKVDeleteSlots: "[1,2]",
+						label.AnnTiKVDeleteSlots:    "[1,2]",
+						label.AnnTiFlashDeleteSlots: "[1]",
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
@@ -101,7 +102,8 @@ func TestValidateAnnotations(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 					Annotations: map[string]string{
-						label.AnnTiKVDeleteSlots: "",
+						label.AnnTiKVDeleteSlots:    "",
+						label.AnnTiFlashDeleteSlots: "",
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
@@ -124,6 +126,10 @@ func TestValidateAnnotations(t *testing.T) {
 				{
 					Type:   field.ErrorTypeInvalid,
 					Detail: `value of "tikv.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
+				},
+				{
+					Type:   field.ErrorTypeInvalid,
+					Detail: `value of "tiflash.tidb.pingcap.com/delete-slots" annotation must be a JSON list of int32`,
 				},
 			},
 		},
