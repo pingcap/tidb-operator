@@ -19,7 +19,6 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -64,7 +63,7 @@ func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, kubeCli kubernetes.I
 
 // check whether the former upgraded pd pods were healthy in PD cluster during PD upgrading.
 // If not,then return an error
-func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster, namespace string, ordinal int32, replicas int32) error {
+func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClient, tc *v1alpha1.TidbCluster, set *apps.StatefulSet, ordinal int32) error {
 	healthInfo, err := pdClient.GetHealth()
 	if err != nil {
 		return err
@@ -73,9 +72,14 @@ func checkFormerPDPodStatus(kubeCli kubernetes.Interface, pdClient pdapi.PDClien
 	for _, memberHealth := range healthInfo.Healths {
 		membersHealthMap[memberHealth.Name] = memberHealth.Health
 	}
+	namespace := tc.Namespace
 
 	tcName := tc.Name
-	for i := replicas - 1; i > ordinal; i-- {
+
+	for i := range helper.GetPodOrdinals(tc.Spec.PD.Replicas, set) {
+		if i <= ordinal {
+			continue
+		}
 		podName := memberUtil.PdPodName(tcName, i)
 		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
@@ -155,21 +159,9 @@ func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alph
 		return false, nil
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
-		for k := range helper.GetPodOrdinals(replicas, payload.ownerStatefulSet) {
-			if k > ordinal {
-				existed, err := f(tc.Name, k, memberType)
-				if err != nil {
-					return false, err
-				}
-				if existed {
-					return true, nil
-				}
-			}
-		}
-	} else {
-		for i := replicas - 1; i > ordinal; i-- {
-			existed, err := f(tc.Name, i, memberType)
+	for k := range helper.GetPodOrdinals(replicas, payload.ownerStatefulSet) {
+		if k > ordinal {
+			existed, err := f(tc.Name, k, memberType)
 			if err != nil {
 				return false, err
 			}
@@ -178,6 +170,7 @@ func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alph
 			}
 		}
 	}
+
 	return false, nil
 }
 
