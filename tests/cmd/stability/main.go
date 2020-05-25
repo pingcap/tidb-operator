@@ -19,7 +19,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -93,8 +92,8 @@ func run() {
 
 	onePDCluster1 := newTidbClusterConfig("ns1", "one-pd-cluster-1")
 	onePDCluster2 := newTidbClusterConfig("ns2", "one-pd-cluster-2")
-	onePDCluster1.Resources["pd.replicas"] = "1"
-	onePDCluster2.Resources["pd.replicas"] = "1"
+	onePDCluster1.TidbCluster.Spec.PD.Replicas = 1
+	onePDCluster2.TidbCluster.Spec.PD.Replicas = 1
 
 	allClusters := []*tests.TidbClusterConfig{
 		cluster1,
@@ -158,60 +157,72 @@ func run() {
 		slack.NotifyAndCompletedf("clusters deployed and checked, ready to run stability test")
 		// scale out
 		for _, cluster := range clusters {
-			cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			oa.ScaleTidbClusterOrDie(cluster)
+			cluster.TidbCluster.Spec.TiDB.Replicas = 3
+			cluster.TidbCluster.Spec.TiKV.Replicas = 5
+			cluster.TidbCluster.Spec.PD.Replicas = 5
+			_, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(cluster.TidbCluster)
+			handleError(err)
 		}
 		for _, cluster := range clusters {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 		klog.Infof("clusters scale out and checked")
+		slack.NotifyAndCompletedf("stability test: clusters scale out and checked")
 
 		// scale in
 		for _, cluster := range clusters {
-			cluster.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
-			oa.ScaleTidbClusterOrDie(cluster)
+			cluster.TidbCluster.Spec.TiDB.Replicas = 2
+			cluster.TidbCluster.Spec.TiKV.Replicas = 3
+			cluster.TidbCluster.Spec.PD.Replicas = 3
+			_, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(cluster.TidbCluster)
+			handleError(err)
 		}
 		for _, cluster := range clusters {
 			oa.CheckTidbClusterStatusOrDie(cluster)
 			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 		klog.Infof("clusters scale in and checked")
+		slack.NotifyAndCompletedf("stability test: clusters scale in and checked")
 
 		// upgrade
 		namespace := os.Getenv("NAMESPACE")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
 		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
-			cluster.UpgradeAll(upgradeVersion)
-			oa.UpgradeTidbClusterOrDie(cluster)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			if err != nil {
+				handleError(err)
+			}
+			tc.Spec.PD.Image = fmt.Sprintf("pingcap/pd:%s", upgradeVersion)
+			tc.Spec.TiKV.Image = fmt.Sprintf("pingcap/tikv:%s", upgradeVersion)
+			tc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", upgradeVersion)
+			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+			if err != nil {
+				handleError(err)
+			}
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
 		}
 		klog.Infof("clusters upgraded in checked")
+		slack.NotifyAndCompletedf("stability test: clusters upgraded in checked")
 
 		// configuration change
 		for _, cluster := range clusters {
-			// bad conf
-			cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-			cluster.TiKVPreStartScript = strconv.Quote("exit 1")
-			cluster.PDPreStartScript = strconv.Quote("exit 1")
-			oa.UpgradeTidbClusterOrDie(cluster)
-			time.Sleep(30 * time.Second)
-			oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
-			// rollback conf
-			cluster.PDPreStartScript = strconv.Quote("")
-			cluster.TiKVPreStartScript = strconv.Quote("")
-			cluster.TiDBPreStartScript = strconv.Quote("")
-			oa.UpgradeTidbClusterOrDie(cluster)
-			// wait upgrade complete
-			oa.CheckUpgradeCompleteOrDie(cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
 
-			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
-				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
-				UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
-			oa.UpgradeTidbClusterOrDie(cluster)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			if err != nil {
+				handleError(err)
+			}
+			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+			concurrency := uint(3)
+			tc.Spec.TiKV.Config.Server.GrpcConcurrency = &concurrency
+			tokenLimit := uint(1500)
+			tc.Spec.TiDB.Config.TokenLimit = &tokenLimit
+			_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+			if err != nil {
+				handleError(err)
+			}
 			// wait upgrade complete
 			oa.CheckUpgradeOrDie(ctx, cluster)
 			oa.CheckTidbClusterStatusOrDie(cluster)
@@ -219,131 +230,133 @@ func run() {
 		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 		klog.Infof("clusters configurations updated in checked")
+		slack.NotifyAndCompletedf("stability test: clusters configurations updated in checked")
 
 		for _, cluster := range clusters {
 			oa.CheckDisasterToleranceOrDie(cluster)
 		}
 		klog.Infof("clusters DisasterTolerance checked")
+		slack.NotifyAndCompletedf("stability test: clusters DisasterTolerance checked")
 
-		// backup and restore
-		for i := range backupTargets {
-			oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
-			addDeployedClusterFn(backupTargets[i].TargetCluster)
-			oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
-		}
-		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
-		klog.Infof("clusters backup and restore checked")
-
-		// delete operator
-		oa.CleanOperatorOrDie(ocfg)
-		oa.CheckOperatorDownOrDie(deployedClusters)
-		oa.DeployOperatorOrDie(ocfg)
-		klog.Infof("clusters operator deleted and redeployed, checked")
-
-		//stop node
-		physicalNode, node, faultTime := fta.StopNodeOrDie()
-		oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
-		oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
-		oa.CheckFailoverOrDie(deployedClusters, node)
-		time.Sleep(3 * time.Minute)
-		fta.StartNodeOrDie(physicalNode, node)
-		oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
-		oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
-		oa.CheckRecoverOrDie(deployedClusters)
-		for _, cluster := range deployedClusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-		}
-		klog.Infof("clusters node stopped and restarted, checked")
-
-		// truncate tikv sst file
-		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
-		klog.Infof("clusters truncate sst file and checked failover")
-
-		// delete pd data
-		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
-		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
-
-		// stop one etcd
-		faultEtcd := tests.SelectNode(cfg.ETCDs)
-		fta.StopETCDOrDie(faultEtcd)
-		defer fta.StartETCDOrDie(faultEtcd)
-		time.Sleep(3 * time.Minute)
-		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
-		fta.StartETCDOrDie(faultEtcd)
-		klog.Infof("clusters stop on etcd and restart")
-
-		// stop all etcds
-		fta.StopETCDOrDie()
-		time.Sleep(10 * time.Minute)
-		fta.StartETCDOrDie()
-		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
-		klog.Infof("clusters stop all etcd and restart")
-
-		// stop all kubelets
-		fta.StopKubeletOrDie()
-		time.Sleep(10 * time.Minute)
-		fta.StartKubeletOrDie()
-		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
-		klog.Infof("clusters stop all kubelets and restart")
-
-		// stop all kube-proxy and k8s/operator/tidbcluster is available
-		fta.StopKubeProxyOrDie()
-		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
-		fta.StartKubeProxyOrDie()
-		klog.Infof("clusters stop all kube-proxy and restart")
-
-		// stop all kube-scheduler pods
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeSchedulerOrDie(vNode.IP)
-			}
-		}
-		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeSchedulerOrDie(vNode.IP)
-			}
-		}
-		klog.Infof("clusters stop all kube-scheduler and restart")
-
-		// stop all kube-controller-manager pods
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeControllerManagerOrDie(vNode.IP)
-			}
-		}
-		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeControllerManagerOrDie(vNode.IP)
-			}
-		}
-		klog.Infof("clusters stop all kube-controller and restart")
-
-		// stop one kube-apiserver pod
-		faultApiServer := tests.SelectNode(cfg.APIServers)
-		klog.Infof("fault ApiServer Node name = %s", faultApiServer)
-		fta.StopKubeAPIServerOrDie(faultApiServer)
-		defer fta.StartKubeAPIServerOrDie(faultApiServer)
-		time.Sleep(3 * time.Minute)
-		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
-		fta.StartKubeAPIServerOrDie(faultApiServer)
-		klog.Infof("clusters stop one kube-apiserver and restart")
-
-		time.Sleep(time.Minute)
-		// stop all kube-apiserver pods
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeAPIServerOrDie(vNode.IP)
-			}
-		}
-		oa.CheckAllApiserverDownOrDie(ocfg, clusters)
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeAPIServerOrDie(vNode.IP)
-			}
-		}
-		klog.Infof("clusters stop all kube-apiserver and restart")
+		//// backup and restore
+		//for i := range backupTargets {
+		//	oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
+		//	addDeployedClusterFn(backupTargets[i].TargetCluster)
+		//	oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
+		//}
+		//oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
+		//klog.Infof("clusters backup and restore checked")
+		//
+		//// delete operator
+		//oa.CleanOperatorOrDie(ocfg)
+		//oa.CheckOperatorDownOrDie(deployedClusters)
+		//oa.DeployOperatorOrDie(ocfg)
+		//klog.Infof("clusters operator deleted and redeployed, checked")
+		//
+		////stop node
+		//physicalNode, node, faultTime := fta.StopNodeOrDie()
+		//oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
+		//oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
+		//oa.CheckFailoverOrDie(deployedClusters, node)
+		//time.Sleep(3 * time.Minute)
+		//fta.StartNodeOrDie(physicalNode, node)
+		//oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
+		//oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
+		//oa.CheckRecoverOrDie(deployedClusters)
+		//for _, cluster := range deployedClusters {
+		//	oa.CheckTidbClusterStatusOrDie(cluster)
+		//}
+		//klog.Infof("clusters node stopped and restarted, checked")
+		//
+		//// truncate tikv sst file
+		//oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		//klog.Infof("clusters truncate sst file and checked failover")
+		//
+		//// delete pd data
+		//oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		//klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
+		//
+		//// stop one etcd
+		//faultEtcd := tests.SelectNode(cfg.ETCDs)
+		//fta.StopETCDOrDie(faultEtcd)
+		//defer fta.StartETCDOrDie(faultEtcd)
+		//time.Sleep(3 * time.Minute)
+		//oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
+		//fta.StartETCDOrDie(faultEtcd)
+		//klog.Infof("clusters stop on etcd and restart")
+		//
+		//// stop all etcds
+		//fta.StopETCDOrDie()
+		//time.Sleep(10 * time.Minute)
+		//fta.StartETCDOrDie()
+		//oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
+		//klog.Infof("clusters stop all etcd and restart")
+		//
+		//// stop all kubelets
+		//fta.StopKubeletOrDie()
+		//time.Sleep(10 * time.Minute)
+		//fta.StartKubeletOrDie()
+		//oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
+		//klog.Infof("clusters stop all kubelets and restart")
+		//
+		//// stop all kube-proxy and k8s/operator/tidbcluster is available
+		//fta.StopKubeProxyOrDie()
+		//oa.CheckKubeProxyDownOrDie(ocfg, clusters)
+		//fta.StartKubeProxyOrDie()
+		//klog.Infof("clusters stop all kube-proxy and restart")
+		//
+		//// stop all kube-scheduler pods
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StopKubeSchedulerOrDie(vNode.IP)
+		//	}
+		//}
+		//oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StartKubeSchedulerOrDie(vNode.IP)
+		//	}
+		//}
+		//klog.Infof("clusters stop all kube-scheduler and restart")
+		//
+		//// stop all kube-controller-manager pods
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StopKubeControllerManagerOrDie(vNode.IP)
+		//	}
+		//}
+		//oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StartKubeControllerManagerOrDie(vNode.IP)
+		//	}
+		//}
+		//klog.Infof("clusters stop all kube-controller and restart")
+		//
+		//// stop one kube-apiserver pod
+		//faultApiServer := tests.SelectNode(cfg.APIServers)
+		//klog.Infof("fault ApiServer Node name = %s", faultApiServer)
+		//fta.StopKubeAPIServerOrDie(faultApiServer)
+		//defer fta.StartKubeAPIServerOrDie(faultApiServer)
+		//time.Sleep(3 * time.Minute)
+		//oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
+		//fta.StartKubeAPIServerOrDie(faultApiServer)
+		//klog.Infof("clusters stop one kube-apiserver and restart")
+		//
+		//time.Sleep(time.Minute)
+		//// stop all kube-apiserver pods
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StopKubeAPIServerOrDie(vNode.IP)
+		//	}
+		//}
+		//oa.CheckAllApiserverDownOrDie(ocfg, clusters)
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StartKubeAPIServerOrDie(vNode.IP)
+		//	}
+		//}
+		//klog.Infof("clusters stop all kube-apiserver and restart")
 		time.Sleep(time.Minute)
 	}
 
@@ -366,7 +379,7 @@ func run() {
 			IncrementalType: tests.DbTypeFile,
 		})
 	}
-	caseFn(preUpgrade, onePDCluster1, backupTargets, upgradeVersions[0])
+	caseFn(preUpgrade, onePDCluster1, backupTargets, "v4.0.0-rc.2-hotfix")
 
 	// after operator upgrade
 	if cfg.UpgradeOperatorImage != "" && cfg.UpgradeOperatorTag != "" {
@@ -593,15 +606,12 @@ func newTidbCluster(ns, clusterName string, config *tests.TidbClusterConfig) (*v
 }
 
 func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
-	tidbVersion := cfg.GetTiDBVersionOrDie()
+	tidbVersion := "v3.1.0"
 	topologyKey := "rack"
 	tcc := &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
 		OperatorTag:      cfg.OperatorTag,
-		PDImage:          fmt.Sprintf("pingcap/pd:%s", tidbVersion),
-		TiKVImage:        fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
-		TiDBImage:        fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
 		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		UserName:         "root",
@@ -609,25 +619,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName),
 		BackupName:       "backup",
-		Resources: map[string]string{
-			"pd.resources.limits.cpu":        "1000m",
-			"pd.resources.limits.memory":     "2Gi",
-			"pd.resources.requests.cpu":      "200m",
-			"pd.resources.requests.memory":   "1Gi",
-			"tikv.resources.limits.cpu":      "8000m",
-			"tikv.resources.limits.memory":   "16Gi",
-			"tikv.resources.requests.cpu":    "1000m",
-			"tikv.resources.requests.memory": "2Gi",
-			"tidb.resources.limits.cpu":      "8000m",
-			"tidb.resources.limits.memory":   "8Gi",
-			"tidb.resources.requests.cpu":    "500m",
-			"tidb.resources.requests.memory": "1Gi",
-			"monitor.persistent":             "true",
-			"discovery.image":                cfg.OperatorImage,
-			"tikv.defaultcfBlockCacheSize":   "8GB",
-			"tikv.writecfBlockCacheSize":     "2GB",
-			"pvReclaimPolicy":                "Delete",
-		},
 		Args: map[string]string{
 			"binlog.drainer.workerCount": "1024",
 			"binlog.drainer.txnBatch":    "512",
@@ -641,9 +632,14 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	}
 	tc, err := newTidbCluster(ns, clusterName, tcc)
 	if err != nil {
-		klog.Fatal(err.Error())
-		return nil
+		handleError(err)
 	}
 	tcc.TidbCluster = tc
 	return tcc
+}
+
+func handleError(err error) {
+	if err != nil {
+		slack.NotifyAndPanic(err)
+	}
 }
