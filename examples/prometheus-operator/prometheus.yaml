@@ -12,7 +12,7 @@ spec:
       namespace: monitoring
       port: web
   baseImage: prom/prometheus
-  version: v2.11.0
+  version: v2.18.1
   nodeSelector:
     kubernetes.io/os: linux
   podMonitorSelector: {}
