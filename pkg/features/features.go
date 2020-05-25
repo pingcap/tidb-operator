@@ -45,6 +45,9 @@ const (
 
 	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
 	AutoScaling string = "AutoScaling"
+
+	// DynamicConfiguration controls whether enable TiDB DynamicConfiguration feature
+	DynamicConfiguration string = "DynamicConfiguration"
 )
 
 type FeatureGate interface {
