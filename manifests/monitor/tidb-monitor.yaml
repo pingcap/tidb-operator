@@ -7,7 +7,7 @@ spec:
   - name: demo
   prometheus:
     baseImage: prom/prometheus
-    version: v2.11.1
+    version: v2.18.1
     resources: {}
     #  limits:
     #    cpu: 8000m
