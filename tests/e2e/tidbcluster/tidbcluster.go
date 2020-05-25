@@ -88,6 +88,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	var genericCli client.Client
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
+	var coa tests.CRDOperatorActions
 	/**
 	 * StatefulSet or AdvancedStatefulSet interface.
 	 */
@@ -123,6 +124,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			stsGetter = c.AppsV1().StatefulSets
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		coa = tests.NewCRDOperatorActions(cli, c)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -150,38 +152,43 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
-				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localCfg.Name, "", localCfg.Version)
-				if len(localCfg.Values) > 0 {
-					for k, v := range localCfg.Values {
-						cluster.Resources[k] = v
-					}
-				}
-
+				cluster := newTidbCluster(ns, localCfg.Name, localCfg.Version)
+				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// support reclaim pv when scale in tikv or pd component
-				cluster.EnablePVReclaim = true
-				oa.DeployTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
-				oa.CheckDisasterToleranceOrDie(&cluster)
-				oa.CheckInitSQLOrDie(&cluster)
+
+				coa.CreateTidbClusterOrDie(cluster)
+				err := oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				coa.CheckDisasterToleranceOrDie(cluster)
 
 				// scale
-				cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-				oa.ScaleTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
-				oa.CheckDisasterToleranceOrDie(&cluster)
+				tc := coa.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
+				tc.Spec.TiDB.Replicas = 3
+				tc.Spec.TiKV.Replicas = 5
+				tc.Spec.PD.Replicas = 5
+				coa.UpdateTidbClusterOrDie(tc)
+				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				coa.CheckDisasterToleranceOrDie(cluster)
 
-				cluster.ScaleTiDB(2).ScaleTiKV(4).ScalePD(3)
-				oa.ScaleTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
-				oa.CheckDisasterToleranceOrDie(&cluster)
+				tc = coa.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
+				tc.Spec.TiDB.Replicas = 2
+				tc.Spec.TiKV.Replicas = 4
+				tc.Spec.PD.Replicas = 3
+				coa.UpdateTidbClusterOrDie(tc)
+				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				coa.CheckDisasterToleranceOrDie(cluster)
 
 				// configuration change
-				cluster.EnableConfigMapRollout = true
-				cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
-					UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
-					UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
-				oa.UpgradeTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
+				tc = coa.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
+				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
+				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
+				coa.UpdateTidbClusterOrDie(tc)
+				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
 			})
 		}
 	})
@@ -1285,6 +1292,29 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 })
 
+func newTidbCluster(ns, clusterName, tidbVersion string) *v1alpha1.TidbCluster {
+	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
+	tc.Spec.EnablePVReclaim = pointer.BoolPtr(false)
+	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
+	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
+
+	CpuLimits := parseQuantity("1000m")
+	MemLimits := parseQuantity("2Gi")
+	CpuRequests := parseQuantity("20m")
+	MemRequests := parseQuantity("20Mi")
+	tc.Spec.PD.ResourceRequirements = corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    CpuRequests,
+			corev1.ResourceMemory: MemRequests,
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    CpuLimits,
+			corev1.ResourceMemory: MemLimits,
+		},
+	}
+	return tc
+}
+
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{
 		Namespace:        ns,
@@ -1528,4 +1558,10 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	})
 	framework.ExpectNoError(err, "clean backup failed")
 	framework.Logf("clean backup success")
+}
+
+func parseQuantity(value string) resource.Quantity {
+	q, err := resource.ParseQuantity(value)
+	framework.ExpectNoError(err)
+	return q
 }
