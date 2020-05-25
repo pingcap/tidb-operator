@@ -686,6 +686,9 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
 		status := tfmm.getTiFlashStore(store)
 		if status == nil {
 			continue
