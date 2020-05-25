@@ -99,6 +99,19 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 		return err
 	}
 
+	// recreate the delete pd pod
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		err = oa.kubeCli.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+
 	err = oa.CheckTidbClusterStatus(info)
 	if err != nil {
 		return err
