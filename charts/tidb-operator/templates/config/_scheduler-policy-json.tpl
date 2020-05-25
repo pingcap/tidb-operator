@@ -34,6 +34,7 @@
     {
       "urlPrefix": "http://127.0.0.1:10262/scheduler",
       "filterVerb": "filter",
+      "preemptVerb": "preempt",
       "weight": 1,
       "httpTimeout": 30000000000,
       "enableHttps": false
