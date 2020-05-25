@@ -1392,7 +1392,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 
 	// create backup cluster
-	tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4Version)
+	tcFrom := fixture.GetTidbCluster(ns, tcNameFrom, utilimage.TiDBV4UpgradeVersion)
 	tcFrom.Spec.PD.Replicas = 1
 	tcFrom.Spec.TiKV.Replicas = 1
 	tcFrom.Spec.TiDB.Replicas = 1
