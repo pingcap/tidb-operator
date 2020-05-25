@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	TiDBV3Version                 = "v3.0.8"
-	TiDBV3UpgradeVersion          = "v3.0.9"
+	TiDBV3Version                 = "v3.1.0"
+	TiDBV3UpgradeVersion          = "v3.1.1"
 	TiDBV4Version                 = "v4.0.0-rc"
 	TiDBV4UpgradeVersion          = "v4.0.0-rc.2"
 	PrometheusImage               = "prom/prometheus"
@@ -45,6 +45,7 @@ func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
 	versions = append(versions, TiDBV3Version)
+	versions = append(versions, TiDBV3UpgradeVersion)
 	versions = append(versions, TiDBV4Version)
 	versions = append(versions, TiDBV4UpgradeVersion)
 	for _, v := range versions {
