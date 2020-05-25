@@ -14,6 +14,10 @@
 package framework
 
 import (
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
@@ -30,6 +34,13 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 		c = f.ClientSet
 	})
 	ginkgo.AfterEach(func() {
+		// Dump all resources if the test failed.
+		if ginkgo.CurrentGinkgoTestDescription().Failed && framework.TestContext.DumpLogsOnFailure {
+			if !f.SkipNamespaceCreation {
+				dumpAllResourcesToArtifacts(f.Namespace.Name)
+			}
+		}
+
 		// tidb-operator may set persistentVolumeReclaimPolicy to Retain if
 		// users request this. To reduce storage usage, we try to recycle them
 		// if the PVC namespace does not exist anymore.
@@ -83,4 +94,18 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 		return
 	})
 	return f
+}
+
+func dumpAllResourcesToArtifacts(ns string) {
+	file := filepath.Join(framework.TestContext.ReportDir, fmt.Sprintf("all-resources-%s.yaml", ns))
+	output, err := framework.RunKubectl("-n", ns, "get", "all", "-o", "yaml")
+	if err != nil {
+		framework.Logf("failed to dump resources in namespace %s to %s: %v", ns, file, err)
+		return
+	}
+	err = ioutil.WriteFile(file, []byte(output), 0666)
+	if err != nil {
+		framework.Logf("failed to save %s: %v", file, err)
+		return
+	}
 }
