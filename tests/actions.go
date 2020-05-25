@@ -54,6 +54,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -339,6 +340,8 @@ type TidbClusterConfig struct {
 
 	pumpConfig    []string
 	drainerConfig []string
+
+	TidbCluster *v1alpha1.TidbCluster
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -727,21 +730,41 @@ func (oa *operatorActions) DeployTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to create secret of cluster [%s]: %v", info.ClusterName, err)
 	}
 
-	cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
-		oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
+	// deploy tidbcluster by helm
+	if info.TidbCluster == nil {
+		cmd := fmt.Sprintf("helm install %s  --name %s --namespace %s --set-string %s",
+			oa.tidbClusterChartPath(info.OperatorTag), info.ClusterName, info.Namespace, info.TidbClusterHelmSetString(nil))
 
-	svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
+		svFilePath, err := info.BuildSubValues(oa.tidbClusterChartPath(info.OperatorTag))
+		if err != nil {
+			return err
+		}
+		cmd = fmt.Sprintf(" %s --values %s", cmd, svFilePath)
+		klog.Info(cmd)
+
+		if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
+				info.Namespace, info.ClusterName, err, string(res))
+		}
+		return nil
+	}
+	// deploy tidbcluster by crd
+	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Create(info.TidbCluster)
 	if err != nil {
 		return err
 	}
-	cmd = fmt.Sprintf(" %s --values %s", cmd, svFilePath)
-	klog.Info(cmd)
-
-	if res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to deploy tidbcluster: %s/%s, %v, %s",
-			info.Namespace, info.ClusterName, err, string(res))
+	init := fixture.GetTidbInitializer(info.Namespace, tc.Name, tc.Name, info.InitSecretName, "")
+	_, err = oa.cli.PingcapV1alpha1().TidbInitializers(info.Namespace).Create(init)
+	if err != nil {
+		return err
 	}
-
+	if info.Monitor {
+		monitor := fixture.NewTidbMonitor(fmt.Sprintf("%s-monitor", info.ClusterName), info.Namespace, tc, true, false)
+		_, err = oa.cli.PingcapV1alpha1().TidbMonitors(info.Namespace).Create(monitor)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

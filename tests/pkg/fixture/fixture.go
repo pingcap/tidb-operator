@@ -161,7 +161,7 @@ func GetTidbClusterWithTiFlash(ns, name, version string) *v1alpha1.TidbCluster {
 }
 
 func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string) *v1alpha1.TidbInitializer {
-	return &v1alpha1.TidbInitializer{
+	ti := &v1alpha1.TidbInitializer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      initName,
 			Namespace: ns,
@@ -171,10 +171,13 @@ func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string
 			Clusters: v1alpha1.TidbClusterRef{
 				Name: tcName,
 			},
-			PasswordSecret:      &initPassWDName,
-			TLSClientSecretName: &initTLSName,
+			PasswordSecret: &initPassWDName,
 		},
 	}
+	if len(initTLSName) > 0 {
+		ti.Spec.TLSClientSecretName = &initTLSName
+	}
+	return ti
 }
 
 func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEnabled, persist bool) *v1alpha1.TidbMonitor {

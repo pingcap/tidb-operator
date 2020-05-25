@@ -22,16 +22,21 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 var cfg *tests.Config
@@ -429,9 +434,144 @@ func newOperatorConfig() *tests.OperatorConfig {
 	}
 }
 
+func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
+	topologyKey := "rack"
+	pdCpuLimits, err := resource.ParseQuantity("1000m")
+	if err != nil {
+		return nil, err
+	}
+	pdMemLimits, err := resource.ParseQuantity("2Gi")
+	if err != nil {
+		return nil, err
+	}
+	pdCpuRequests, err := resource.ParseQuantity("200m")
+	if err != nil {
+		return nil, err
+	}
+	pdMemRequests, err := resource.ParseQuantity("1Gi")
+	if err != nil {
+		return nil, err
+	}
+	tikvCpuLimits, err := resource.ParseQuantity("8000m")
+	if err != nil {
+		return nil, err
+	}
+	tikvMemLimits, err := resource.ParseQuantity("16Gi")
+	if err != nil {
+		return nil, err
+	}
+	tikvCpuRequests, err := resource.ParseQuantity("1000m")
+	if err != nil {
+		return nil, err
+	}
+	tikvMemRequests, err := resource.ParseQuantity("2Gi")
+	if err != nil {
+		return nil, err
+	}
+	tidbCpuLimits, err := resource.ParseQuantity("8000m")
+	if err != nil {
+		return nil, err
+	}
+	tidbMemLimits, err := resource.ParseQuantity("8Gi")
+	if err != nil {
+		return nil, err
+	}
+	tidbCpuRequests, err := resource.ParseQuantity("500m")
+	if err != nil {
+		return nil, err
+	}
+	tidbMemRequests, err := resource.ParseQuantity("1Gi")
+	if err != nil {
+		return nil, err
+	}
+
+	tidbVersion := cfg.GetTiDBVersionOrDie()
+	tidbcluster := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
+			PVReclaimPolicy:      corev1.PersistentVolumeReclaimDelete,
+			PD: v1alpha1.PDSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: fmt.Sprintf("pingcap/pd:%s", tidbVersion),
+				},
+				StorageClassName: pointer.StringPtr("local-storage"),
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    pdCpuRequests,
+						corev1.ResourceMemory: pdMemRequests,
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    pdCpuLimits,
+						corev1.ResourceMemory: pdMemLimits,
+					},
+				},
+				Config: &v1alpha1.PDConfig{
+					Replication: &v1alpha1.PDReplicationConfig{
+						LocationLabels: []string{
+							topologyKey,
+						},
+					},
+				},
+			},
+			TiKV: v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
+				},
+				StorageClassName: pointer.StringPtr("local-storage"),
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    tikvCpuRequests,
+						corev1.ResourceMemory: tikvMemRequests,
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    tikvCpuLimits,
+						corev1.ResourceMemory: tikvMemLimits,
+					},
+				},
+				Config: &v1alpha1.TiKVConfig{
+					Rocksdb: &v1alpha1.TiKVDbConfig{
+						Defaultcf: &v1alpha1.TiKVCfConfig{
+							BlockCacheSize: pointer.StringPtr("8GB"),
+						},
+						Writecf: &v1alpha1.TiKVCfConfig{
+							BlockCacheSize: pointer.StringPtr("2GB"),
+						},
+					},
+				},
+			},
+			TiDB: v1alpha1.TiDBSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: fmt.Sprintf("pingcap/tidb:%s", tidbVersion),
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    tidbCpuRequests,
+						corev1.ResourceMemory: tidbMemRequests,
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    tidbCpuLimits,
+						corev1.ResourceMemory: tidbMemLimits,
+					},
+				},
+			},
+		},
+	}
+	return tidbcluster, nil
+}
+
 func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
 	topologyKey := "rack"
+	tc, err := newTidbCluster(ns, clusterName)
+	if err != nil {
+		klog.Fatal(err.Error())
+		return nil
+	}
+
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
@@ -474,5 +614,6 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TopologyKey:            topologyKey,
 		ClusterVersion:         tidbVersion,
 		EnableConfigMapRollout: true,
+		TidbCluster:            tc,
 	}
 }
