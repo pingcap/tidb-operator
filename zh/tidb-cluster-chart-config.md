@@ -46,7 +46,7 @@ category: reference
 | `pd.resources.requests.memory` | 每个 PD Pod 的内存资源请求 | `nil` |
 | `pd.resources.requests.storage` | 每个 PD Pod 的存储容量请求 | `1Gi` |
 | `pd.affinity` | `pd.affinity` 定义 PD 的调度规则和偏好，详细请参考：[affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
-| `pd.nodeSelector` | `pd.nodeSelector` 确保 PD Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector) | `{}` |
+| `pd.nodeSelector` | `pd.nodeSelector` 确保 PD Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) | `{}` |
 | `pd.tolerations` | `pd.tolerations` 应用于 PD Pods，允许 PD Pods 调度到含有指定 taints 的节点上，详情参考：[taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration) | `{}` |
 | `pd.annotations` | 为 PD Pods 添加特定的 `annotations` | `{}` |
 | `tikv.config` | 配置文件格式的 TiKV 的配置，请参考 [`tikv/etc/config-template.toml`](https://github.com/tikv/tikv/blob/master/etc/config-template.toml) 查看默认 TiKV 配置文件（选择对应 TiKV 版本的 tag），可以参考 [TiKV 配置文件描述](https://pingcap.com/docs-cn/v3.0/reference/configuration/tikv-server/configuration-file/)查看配置参数的具体介绍（请选择对应的文档版本），这里只需要**按照配置文件中的格式修改配置**。<br/><br/>以下两个配置项需要显式配置：<br/><br/>`[storage.block-cache]`<br/>&nbsp;&nbsp;`shared = true`<br/>&nbsp;&nbsp;`capacity = "1GB"`<br/>推荐设置：`capacity` 设置为 `tikv.resources.limits.memory` 的 50%<br/><br/>`[readpool.coprocessor]`<br/>&nbsp;&nbsp;`high-concurrency = 8`<br/>&nbsp;&nbsp;`normal-concurrency = 8`<br/>&nbsp;&nbsp;`low-concurrency = 8`<br/>推荐设置：设置为 `tikv.resources.limits.cpu` 的 80%| TiDB Operator 版本 <= v1.0.0-beta.3，默认值为：<br/>`nil`<br/>TiDB Operator 版本 > v1.0.0-beta.3，默认值为：<br/>`log-level = "info"`<br/>配置示例：<br/>&nbsp;&nbsp;`config:` \|<br/>&nbsp;&nbsp;&nbsp;&nbsp;`log-level = "info"` |
@@ -64,7 +64,7 @@ category: reference
 | `tikv.resources.requests.memory` | 每个 TiKV Pod 的内存资源请求 | `nil` |
 | `tikv.resources.requests.storage` | 每个 TiKV Pod 的存储容量请求 | `10Gi` |
 | `tikv.affinity` | `tikv.affinity` 定义 TiKV 的调度规则和偏好，详细请参考：[affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
-| `tikv.nodeSelector` | `tikv.nodeSelector`确保 TiKV Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector) | `{}` |
+| `tikv.nodeSelector` | `tikv.nodeSelector`确保 TiKV Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) | `{}` |
 | `tikv.tolerations` | `tikv.tolerations` 应用于 TiKV Pods，允许 TiKV Pods 调度到含有指定 taints 的节点上，详情参考：[taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration) | `{}` |
 | `tikv.annotations` | 为 TiKV Pods 添加特定的 `annotations` | `{}` |
 | `tikv.defaultcfBlockCacheSize` | 指定 block 缓存大小，block 缓存用于缓存未压缩的 block，较大的 block 缓存设置可以加快读取速度。一般推荐设置为 `tikv.resources.limits.memory` 的 30%-50%<br/>如果 TiDB Operator 版本 > v1.0.0-beta.3，请通过 `tikv.config` 配置：<br/>`[rocksdb.defaultcf]`<br/>`block-cache-size = "1GB"`<br/>从 TiKV v3.0.0 开始，不再需要配置 `[rocksdb.defaultcf].block-cache-size` 和 `[rocksdb.writecf].block-cache-size`，改为配置 `[storage.block-cache].capacity` | `1GB` |
@@ -84,7 +84,7 @@ category: reference
 | `tidb.passwordSecretName`| 存放 TiDB 用户名及密码的 Secret 的名字，该 Secret 可以使用以下命令创建机密：`kubectl create secret generic tidb secret--from literal=root=${password}--namespace=${namespace}`，如果没有设置，则 TiDB 根密码为空 | `nil` |
 | `tidb.initSql`| 在 TiDB 集群启动成功后，会执行的初始化脚本 | `nil` |
 | `tidb.affinity` | `tidb.affinity` 定义 TiDB 的调度规则和偏好，详细请参考：[affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
-| `tidb.nodeSelector` | `tidb.nodeSelector`确保 TiDB Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#nodeselector) | `{}` |
+| `tidb.nodeSelector` | `tidb.nodeSelector`确保 TiDB Pods 只调度到以该键值对作为标签的节点，详情参考：[nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) | `{}` |
 | `tidb.tolerations` | `tidb.tolerations` 应用于 TiDB Pods，允许 TiDB Pods 调度到含有指定 taints 的节点上，详情参考：[taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration) | `{}` |
 | `tidb.annotations` | 为 TiDB Pods 添加特定的 `annotations` | `{}` |
 | `tidb.maxFailoverCount` | TiDB 最大的故障转移数量，假设为 3 即最多支持同时 3 个 TiDB 实例故障转移 | `3` |
