@@ -434,7 +434,7 @@ func newOperatorConfig() *tests.OperatorConfig {
 	}
 }
 
-func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
+func newTidbCluster(ns, clusterName string, config *tests.TidbClusterConfig) (*v1alpha1.TidbCluster, error) {
 	topologyKey := "rack"
 	pdCpuLimits, err := resource.ParseQuantity("1000m")
 	if err != nil {
@@ -486,6 +486,24 @@ func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
 	}
 
 	tidbVersion := cfg.GetTiDBVersionOrDie()
+
+	pdLogLevel := config.PDLogLevel
+	if pdLogLevel == "" {
+		pdLogLevel = "info"
+	}
+	pdMaxReplicas := config.PDMaxReplicas
+	if pdMaxReplicas == 0 {
+		pdMaxReplicas = 3
+	}
+	tikvGrpcConcurrency := uint(config.TiKVGrpcConcurrency)
+	if tikvGrpcConcurrency == 0 {
+		tikvGrpcConcurrency = 4
+	}
+	tidbTokenLimit := uint(config.TiDBTokenLimit)
+	if tidbTokenLimit == 0 {
+		tidbTokenLimit = 1000
+	}
+
 	tidbcluster := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
@@ -495,6 +513,7 @@ func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
 			ConfigUpdateStrategy: v1alpha1.ConfigUpdateStrategyRollingUpdate,
 			PVReclaimPolicy:      corev1.PersistentVolumeReclaimDelete,
 			PD: v1alpha1.PDSpec{
+				MaxFailoverCount: pointer.Int32Ptr(int32(pdMaxReplicas)),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: fmt.Sprintf("pingcap/pd:%s", tidbVersion),
 				},
@@ -515,9 +534,13 @@ func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
 							topologyKey,
 						},
 					},
+					Log: &v1alpha1.PDLogConfig{
+						Level: pointer.StringPtr(pdLogLevel),
+					},
 				},
 			},
 			TiKV: v1alpha1.TiKVSpec{
+				MaxFailoverCount: pointer.Int32Ptr(int32(3)),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: fmt.Sprintf("pingcap/tikv:%s", tidbVersion),
 				},
@@ -541,6 +564,9 @@ func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
 							BlockCacheSize: pointer.StringPtr("2GB"),
 						},
 					},
+					Server: &v1alpha1.TiKVServerConfig{
+						GrpcConcurrency: &tikvGrpcConcurrency,
+					},
 				},
 			},
 			TiDB: v1alpha1.TiDBSpec{
@@ -557,6 +583,9 @@ func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
 						corev1.ResourceMemory: tidbMemLimits,
 					},
 				},
+				Config: &v1alpha1.TiDBConfig{
+					TokenLimit: &tidbTokenLimit,
+				},
 			},
 		},
 	}
@@ -566,13 +595,7 @@ func newTidbCluster(ns, clusterName string) (*v1alpha1.TidbCluster, error) {
 func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
 	topologyKey := "rack"
-	tc, err := newTidbCluster(ns, clusterName)
-	if err != nil {
-		klog.Fatal(err.Error())
-		return nil
-	}
-
-	return &tests.TidbClusterConfig{
+	tcc := &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
 		OperatorTag:      cfg.OperatorTag,
@@ -614,6 +637,13 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TopologyKey:            topologyKey,
 		ClusterVersion:         tidbVersion,
 		EnableConfigMapRollout: true,
-		TidbCluster:            tc,
+		TidbCluster:            nil,
 	}
+	tc, err := newTidbCluster(ns, clusterName, tcc)
+	if err != nil {
+		klog.Fatal(err.Error())
+		return nil
+	}
+	tcc.TidbCluster = tc
+	return tcc
 }
