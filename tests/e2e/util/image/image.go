@@ -45,6 +45,7 @@ func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
 	versions = append(versions, TiDBV3Version)
+	versions = append(versions, TiDBV3UpgradeVersion)
 	versions = append(versions, TiDBV4Version)
 	versions = append(versions, TiDBV4UpgradeVersion)
 	for _, v := range versions {
