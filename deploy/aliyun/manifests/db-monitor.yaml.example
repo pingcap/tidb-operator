@@ -65,7 +65,7 @@ spec:
     service:
       portName: http-prometheus
       type: NodePort
-    version: v2.11.1
+    version: v2.18.1
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     imagePullPolicy: IfNotPresent
