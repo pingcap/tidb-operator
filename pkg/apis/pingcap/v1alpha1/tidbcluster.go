@@ -463,6 +463,15 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
+func (tc *TidbCluster) PumpIsAvailable() bool {
+	var lowerLimit int32 = 1
+	if tc.Status.Pump.StatefulSet == nil || tc.Status.Pump.StatefulSet.ReadyReplicas < lowerLimit {
+		return false
+	}
+
+	return true
+}
+
 func (tc *TidbCluster) GetClusterID() string {
 	return tc.Status.ClusterID
 }

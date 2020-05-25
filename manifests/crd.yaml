@@ -3338,57 +3338,6 @@ spec:
                         split-region-on-table:
                           type: boolean
                       type: object
-                    encryption:
-                      properties:
-                        data-encryption-method:
-                          type: string
-                        data-key-rotation-period:
-                          type: string
-                        master-key:
-                          properties:
-                            access-key:
-                              type: string
-                            endpoint:
-                              type: string
-                            key-id:
-                              type: string
-                            method:
-                              type: string
-                            path:
-                              type: string
-                            region:
-                              type: string
-                            secret-access-key:
-                              type: string
-                            type:
-                              type: string
-                          required:
-                          - path
-                          - key-id
-                          type: object
-                        previous-master-key:
-                          properties:
-                            access-key:
-                              type: string
-                            endpoint:
-                              type: string
-                            key-id:
-                              type: string
-                            method:
-                              type: string
-                            path:
-                              type: string
-                            region:
-                              type: string
-                            secret-access-key:
-                              type: string
-                            type:
-                              type: string
-                          required:
-                          - path
-                          - key-id
-                          type: object
-                      type: object
                     gc:
                       properties:
                         "\tbatch-keys":
@@ -4424,6 +4373,8 @@ spec:
                         max-key-size:
                           format: int64
                           type: integer
+                        reserve-space:
+                          type: string
                         scheduler-concurrency:
                           format: int64
                           type: integer
