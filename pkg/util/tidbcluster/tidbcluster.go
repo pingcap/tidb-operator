@@ -85,3 +85,9 @@ func filterOutCondition(conditions []v1alpha1.TidbClusterCondition, condType v1a
 	}
 	return newConditions
 }
+
+// GetTidbClusterReadyCondition extracts the tidbcluster ready condition from the given status and returns that.
+// Returns nil if the condition is not present.
+func GetTidbClusterReadyCondition(status v1alpha1.TidbClusterStatus) *v1alpha1.TidbClusterCondition {
+	return GetTidbClusterCondition(status, v1alpha1.TidbClusterReady)
+}
