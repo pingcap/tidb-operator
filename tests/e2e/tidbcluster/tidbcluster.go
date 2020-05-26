@@ -1450,7 +1450,7 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	// import some data to sql with blockwriter
 	ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterFrom.ClusterName))
 	oa.BeginInsertDataToOrDie(&clusterFrom)
-	err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "test", "block_writer"))
+	err = wait.PollImmediate(time.Second*5, time.Minute*5, utiltidb.TiDBIsInserted(fw, tcFrom.GetNamespace(), tcFrom.GetName(), "root", "", "sbtest", "block_writer"))
 	framework.ExpectNoError(err)
 	ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterFrom.ClusterName))
 	oa.StopInsertDataTo(&clusterFrom)

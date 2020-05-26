@@ -8296,6 +8296,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorRef(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"grafanaEnabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GrafanaEnabled indicate whether the grafana is enabled for this target tidbmonitor",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"name"},
 			},

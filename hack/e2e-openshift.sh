@@ -25,6 +25,7 @@ ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
 PULL_SECRET_FILE=${PULL_SECRET_FILE:-}
+DOCKER_VERSION=${DOCKER_VERSION:-19.03.9}
 
 if [ ! -e "$PULL_SECRET_FILE" ]; then
     echo "error: pull secret file '$PULL_SECRET_FILE' does not exist"
@@ -44,7 +45,10 @@ sudo yum install -y jq git make golang
 sudo yum install -y yum-utils
 sudo yum-config-manager \
     --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo yum install -y --nobest docker-ce docker-ce-cli containerd.io
+# install required containerd.io manually, see https://linuxconfig.org/how-to-install-docker-in-rhel-8
+sudo yum install -y https://download.docker.com/linux/centos/7/x86_64/stable/Packages/containerd.io-1.2.6-3.3.el7.x86_64.rpm
+# pin the same version for daemon and cli: https://github.com/docker/cli/issues/2533
+sudo yum install -y docker-ce-${DOCKER_VERSION} docker-ce-cli-${DOCKER_VERSION}
 if ! systemctl is-active --quiet docker; then
     sudo systemctl start docker
 fi
