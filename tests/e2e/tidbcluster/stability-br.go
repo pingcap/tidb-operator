@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			ginkgo.By("Installing cert-manager")
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
-			
+
 			testBR(provider, ns, fw, c, genericCli, oa, cli, true)
 			ginkgo.By("Deleting cert-manager")
 			err = deleteCertManager(f.ClientSet)
