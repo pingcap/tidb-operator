@@ -22,11 +22,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/onsi/ginkgo"
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -42,7 +40,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -65,10 +62,6 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 	var genericCli client.Client
 	var fwCancel context.CancelFunc
 	var fw portforward.PortForward
-	/**
-	 * StatefulSet or AdvancedStatefulSet interface.
-	 */
-	var stsGetter func(namespace string) typedappsv1.StatefulSetInterface
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -94,11 +87,6 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
 		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
-		if ocfg.Enabled(features.AdvancedStatefulSet) {
-			stsGetter = helper.NewHijackClient(c, asCli).AppsV1().StatefulSets
-		} else {
-			stsGetter = c.AppsV1().StatefulSets
-		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 	})
 
