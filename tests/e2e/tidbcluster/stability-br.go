@@ -118,7 +118,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
+		ginkgo.It("Backup and restore with BR when TLS enabled", func() {
 			ginkgo.By("Installing cert-manager")
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
