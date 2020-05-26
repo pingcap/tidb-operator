@@ -205,6 +205,11 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 		return err
 	}
 
+	// Recover failed stores if any before generating desired statefulset
+	if len(tc.Status.TiFlash.FailureStores) > 0 {
+		tfmm.tiflashFailover.Recover(tc)
+	}
+
 	newSet, err := getNewStatefulSet(tc, cm)
 	if err != nil {
 		return err
