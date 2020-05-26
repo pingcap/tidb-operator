@@ -1311,12 +1311,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating change feed task")
-		fromTCName := fromTc.Namespace
+		fromTCName := fromTc.Name
 		toTCName := toTc.Name
 		changeFeedCMD := fmt.Sprintf("/cdc cli changefeed create "+
 			"--sink-uri=\"tidb://root:@%s:4000/\" --pd=http://%s:2379",
 			controller.TiDBMemberName(toTCName), controller.PDMemberName(fromTCName))
-		cmd := fmt.Sprintf("kubectl exec -it -n %s %s-0 -- %s",
+		cmd := fmt.Sprintf("kubectl exec -n %s %s-0 -- %s",
 			ns, controller.TiCDCMemberName(fromTCName), changeFeedCMD)
 		data, err := exec.Command("sh", "-c", cmd).CombinedOutput()
 		framework.ExpectNoError(err, fmt.Sprintf("failed to create change feed task: %s, %v", string(data), err))
