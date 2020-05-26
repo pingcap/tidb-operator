@@ -152,6 +152,10 @@ type TidbMonitorRef struct {
 
 	// Name is the name of TidbMonitor object
 	Name string `json:"name"`
+
+	// GrafanaEnabled indicate whether the grafana is enabled for this target tidbmonitor
+	// +optional
+	GrafanaEnabled bool `json:"grafanaEnabled,omitempty"`
 }
 
 // +k8s:openapi-gen=true
