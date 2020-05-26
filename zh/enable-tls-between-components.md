@@ -12,7 +12,7 @@ category: how-to
     - 为 PD/TiKV/TiDB/Pump/Drainer 组件分别创建一套 Server 端证书，保存为 Kubernetes Secret 对象：`${cluster_name}-${component_name}-cluster-secret`
     - 为它们的各种客户端创建一套共用的 Client 端证书，保存为 Kubernetes Secret 对象：`${cluster_name}-cluster-client-secret`
 2. 部署集群，设置 `.spec.tlsCluster.enabled` 属性为 `true`；
-3. 配置 `pd-ctl` 连接集群。
+3. 配置 `pd-ctl`，`tikv-ctl` 连接集群。
 
 其中，颁发证书的方式有多种，本文档提供两种方式，用户也可以根据需要为 TiDB 集群颁发证书，这两种方式分别为：
 
@@ -1070,12 +1070,13 @@ category: how-to
     kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}'  | base64 --decode > client-ca.crt
     ```
 
-3. 使用 pd-ctl 连接 PD 集群。
+3. 使用 `pd-ctl`，`tikv-ctl` 连接集群。
 
-    由于我们刚才在配置 PD Server 端证书的时候，自定义填写了一些 `hosts`，所以需要通过这些 `hosts` 来连接 PD 集群。
+    由于我们刚才在配置 PD/TiKV Server 端证书的时候，自定义填写了一些 `hosts`，所以需要通过这些 `hosts` 来连接 PD/TiKV 集群。
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
     pd-ctl --cacert=client-ca.crt --cert=client-tls.crt --key=client-tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
+    tikv-ctl --ca-path=client-ca.crt --cert-path=client-tls.crt --key-path=client-tls.key --host ${cluster_name}-tikv-0.${cluster_name}-tikv-peer.${namespace}:20160 cluster
     ```
