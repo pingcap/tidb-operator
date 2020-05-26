@@ -1080,7 +1080,7 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", info.BlockWriteConfig.Concurrency))
 
-	pod := oa.getBlockWriterPod(info, "test")
+	pod := oa.getBlockWriterPod(info, "sbtest")
 	pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil {
 		return err
@@ -2568,7 +2568,7 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bool, error) {
 	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	dsn, cancel, err := oa.getTiDBDSN(tc.Namespace, tc.ClusterName, "test", tc.Password)
+	dsn, cancel, err := oa.getTiDBDSN(tc.Namespace, tc.ClusterName, "sbtest", tc.Password)
 	if err != nil {
 		return false, nil
 	}
@@ -2578,7 +2578,7 @@ func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bo
 		return false, err
 	}
 	defer infoDb.Close()
-	otherDsn, otherCancel, err := oa.getTiDBDSN(otherInfo.Namespace, otherInfo.ClusterName, "test", otherInfo.Password)
+	otherDsn, otherCancel, err := oa.getTiDBDSN(otherInfo.Namespace, otherInfo.ClusterName, "sbtest", otherInfo.Password)
 	if err != nil {
 		return false, nil
 	}
