@@ -59,7 +59,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		t.Log(test.name)
 		deleteTiKVPod := newTiKVPod(1)
 		ownerStatefulSet := newOwnerStatefulsetForTikv()
-		tc := newTidbClusterForPodAdmissionControl()
+		tc := newTidbClusterForPodAdmissionControl(pdReplicas, tikvReplicas)
 		kubeCli := kubefake.NewSimpleClientset()
 
 		podAdmissionControl := newPodAdmissionControl(kubeCli)
