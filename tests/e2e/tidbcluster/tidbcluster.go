@@ -253,6 +253,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.By("Register webhook")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, ns, svc.Name, certCtx)
+		// Make sure the webook is deleted after test finishs no matter it fails or not
+		defer oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 
 		ginkgo.By(fmt.Sprintf("Deploying tidb cluster %s", cluster.ClusterVersion))
 		oa.DeployTidbClusterOrDie(&cluster)
@@ -276,8 +278,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Logf("webhook logs: %s", logs)
 			e2elog.Fail("webhook pod is not running")
 		}
-
-		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 	})
 
 	ginkgo.It("Backup and restore TiDB Cluster", func() {

@@ -101,7 +101,7 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		LogLevel:                  "4",
 		WebhookServiceName:        "webhook-service",
 		WebhookSecretName:         "webhook-secret",
-		WebhookConfigName:         "webhook-config",
+		WebhookConfigName:         "webhook-config.pingcap.com",
 		ImagePullPolicy:           v1.PullIfNotPresent,
 		TestMode:                  true,
 		WebhookEnabled:            true,
