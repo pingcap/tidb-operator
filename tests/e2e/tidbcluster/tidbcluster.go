@@ -1173,11 +1173,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
 
-			provider := framework.TestContext.Provider
-			if provider != "aws" && provider != "kind" {
-				framework.Skipf("provider is not aws or kind, skipping")
-			}
-			
 			ginkgo.By("Deleting cert-manager")
 			err = deleteCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to delete cert-manager")

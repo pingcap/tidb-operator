@@ -119,14 +119,15 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 	ginkgo.Context("[Feature: TLS]", func() {
 		ginkgo.It("Backup and restore with BR when TLS enabled", func() {
-			ginkgo.By("Installing cert-manager")
-			err := installCertManager(f.ClientSet)
-			framework.ExpectNoError(err, "failed to install cert-manager")
-
 			provider := framework.TestContext.Provider
 			if provider != "aws" && provider != "kind" {
 				framework.Skipf("provider is not aws or kind, skipping")
 			}
+
+			ginkgo.By("Installing cert-manager")
+			err := installCertManager(f.ClientSet)
+			framework.ExpectNoError(err, "failed to install cert-manager")
+			
 			testBR(provider, ns, fw, c, genericCli, oa, cli, true)
 			ginkgo.By("Deleting cert-manager")
 			err = deleteCertManager(f.ClientSet)
