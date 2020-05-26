@@ -31,6 +31,7 @@
   + Deploy Monitoring
     - [Monitor Kubernetes and TiDB Cluster](monitor-a-tidb-cluster.md)
     - [Monitor TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md)
+    - [Access TiDB Dashboard](access-dashboard.md)
 + Secure
   - [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
   - [Enable TLS between TiDB Components](enable-tls-between-components.md)
