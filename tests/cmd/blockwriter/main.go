@@ -14,6 +14,7 @@
 package main
 
 import (
+	"database/sql"
 	goflag "flag"
 	"fmt"
 	"os"
@@ -59,6 +60,10 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
+	err := initDB()
+	if err != nil {
+		klog.Fatal(err)
+	}
 	dsn := getDSN(optNamespace, optClusterName, optDatabase, optPassword)
 	db, err := util.OpenDB(dsn, optConfig.Concurrency)
 	if err != nil {
@@ -76,4 +81,19 @@ func main() {
 		writer.Stop()
 		return
 	}
+}
+
+func initDB() error {
+	s := fmt.Sprintf("root:%s@(%s-tidb.%s:4000)/?charset=utf8", optPassword, optClusterName, optNamespace)
+	db, err := sql.Open("mysql", s)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	exec := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", optDatabase)
+	_, err = db.Exec(exec)
+	if err != nil {
+		return err
+	}
+	return nil
 }
