@@ -52,7 +52,7 @@ import (
 )
 
 var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
-	f := e2eframework.NewDefaultFramework("asts")
+	f := e2eframework.NewDefaultFramework("br")
 
 	var ns string
 	var c clientset.Interface
