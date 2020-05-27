@@ -282,15 +282,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.StopInsertDataTo(&clusterA)
 	})
 
-	ginkgo.It("CRD:Backup and restore with Dumper", func() {
-		provider := framework.TestContext.Provider
-		if provider != "aws" && provider != "kind" {
-			framework.Skipf("provider is not aws or kind, skipping")
-		}
-
-		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.DumperType)
-	})
-
 	ginkgo.It("Test aggregated apiserver", func() {
 		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
 		framework.Logf("config: %v", config)

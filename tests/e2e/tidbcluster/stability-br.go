@@ -105,6 +105,15 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.BRType)
 	})
 
+	ginkgo.It("CRD:Backup and restore with Dumper", func() {
+		provider := framework.TestContext.Provider
+		if provider != "aws" && provider != "kind" {
+			framework.Skipf("provider is not aws or kind, skipping")
+		}
+
+		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.DumperType)
+	})
+
 	ginkgo.Context("[Feature: TLS]", func() {
 		ginkgo.It("Backup and restore with BR when TLS enabled", func() {
 			provider := framework.TestContext.Provider
