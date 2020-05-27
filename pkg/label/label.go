@@ -109,6 +109,12 @@ const (
 	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
 	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
 
+	// AnnTiKVReadyToScaleTimestamp records timestamp when tikv ready to scale
+	AnnTiKVReadyToScaleTimestamp = "tikv.tidb.pingcap.com/ready-to-scale-timestamp"
+
+	// AnnLastSyncingTimestamp records last sync timestamp
+	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
+
 	// AnnTiDBConsecutiveScaleOutCount describes the least consecutive count to scale-out for tidb
 	AnnTiDBConsecutiveScaleOutCount = "tidb.tidb.pingcap.com/consecutive-scale-out-count"
 	// AnnTiDBConsecutiveScaleInCount describes the least consecutive count to scale-in for tidb
