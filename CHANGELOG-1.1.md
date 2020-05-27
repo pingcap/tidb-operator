@@ -4,6 +4,10 @@ This is the GA release of TiDB Operator 1.1, which focuses on the usability, ext
 
 See our official [documentation site](https://pingcap.com/docs/tidb-in-kubernetes/stable/) for new features, guides, and instructions in production, etc.
 
+## Upgrade from v1.0.x
+
+For 1.0.x users, please refer to [our upgrade docs](https://pingcap.com/docs/tidb-in-kubernetes/stable/upgrade-tidb-operator/) to upgrade TiDB Operator in your cluster. Note that you must read this release notes (especially break changes and action required items) before you upgrade.
+
 ## Break changes since v1.0.0
 
 - Change TiDB pod `readiness` probe from `HTTPGet` to `TCPSocket` 4000 port. This will trigger rolling-upgrade for the `tidb-server` component. You can set `spec.paused` to `true` before upgrading tidb-operator to avoid the rolling upgrade, and set it back to `false` when you are ready to upgrade your tidb server ([#2139](https://github.com/pingcap/tidb-operator/pull/2139), [@weekface](https://github.com/weekface))
