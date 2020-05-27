@@ -59,8 +59,6 @@ type TiKVConfig struct {
 	// +optional
 	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
 	// +optional
-	Encryption *TiKVEncryptionConfig `json:"encryption,omitempty" toml:"encryption,omitempty"`
-	// +optional
 	TiKVPessimisticTxn *TiKVPessimisticTxn `json:"pessimistic-txn,omitempty" toml:"pessimistic-txn,omitempty"`
 }
 
@@ -294,11 +292,27 @@ type TiKVSecurityConfigEncryption struct {
 type TiKVSecurityConfigEncryptionMasterKey struct {
 	// +optional
 	Type *string `json:"type" toml:"type,omitempty"`
+
+	// Master key file config
+	// If the type set to file, this config should be filled
+	MasterKeyFileConfig `json:",inline"`
+
+	// Master key KMS config
+	// If the type set to kms, this config should be filled
+	MasterKeyKMSConfig `json:",inline"`
 }
 
 type TiKVSecurityConfigEncryptionPreviousMasterKey struct {
 	// +optional
 	Type *string `json:"type" toml:"type,omitempty"`
+
+	// Master key file config
+	// If the type set to file, this config should be filled
+	MasterKeyFileConfig `json:",inline"`
+
+	// Master key KMS config
+	// If the type set to kms, this config should be filled
+	MasterKeyKMSConfig `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
@@ -539,6 +553,13 @@ type TiKVStorageConfig struct {
 	SchedulerPendingWriteThreshold *string `json:"scheduler-pending-write-threshold,omitempty" toml:"scheduler-pending-write-threshold,omitempty"`
 	// +optional
 	BlockCache *TiKVBlockCacheConfig `json:"block-cache,omitempty" toml:"block-cache,omitempty"`
+	// The size of the temporary file that preoccupies the extra space when
+	// TiKV is started. The name of temporary file is `space_placeholder_file`,
+	// located in the `storage.data-dir` directory. When TiKV runs out of disk
+	// space and cannot be started normally, you can delete this file as an
+	// emergency intervention and set it to `0MB`. Default value is 2GB.
+	// +optional
+	ReserveSpace *string `json:"reserve-space,omitempty" toml:"reserve-space,omitempty"`
 }
 
 // TiKVBlockCacheConfig is the config of a block cache

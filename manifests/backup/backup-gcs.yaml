@@ -5,6 +5,12 @@ metadata:
   name: demo1-backup-gcs
   namespace: test1
 spec:
+  # resources:
+  #   limits:
+  #     cpu: 300m
+  #     memory: 300Mi
+  #   requests:
+  #     memory: 300Mi
   from:
     host: 10.233.10.242
     port: 4000

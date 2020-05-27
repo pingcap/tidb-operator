@@ -142,6 +142,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             storageEnv,
+					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,

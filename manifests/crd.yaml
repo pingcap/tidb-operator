@@ -3338,57 +3338,6 @@ spec:
                         split-region-on-table:
                           type: boolean
                       type: object
-                    encryption:
-                      properties:
-                        data-encryption-method:
-                          type: string
-                        data-key-rotation-period:
-                          type: string
-                        master-key:
-                          properties:
-                            access-key:
-                              type: string
-                            endpoint:
-                              type: string
-                            key-id:
-                              type: string
-                            method:
-                              type: string
-                            path:
-                              type: string
-                            region:
-                              type: string
-                            secret-access-key:
-                              type: string
-                            type:
-                              type: string
-                          required:
-                          - path
-                          - key-id
-                          type: object
-                        previous-master-key:
-                          properties:
-                            access-key:
-                              type: string
-                            endpoint:
-                              type: string
-                            key-id:
-                              type: string
-                            method:
-                              type: string
-                            path:
-                              type: string
-                            region:
-                              type: string
-                            secret-access-key:
-                              type: string
-                            type:
-                              type: string
-                          required:
-                          - path
-                          - key-id
-                          type: object
-                      type: object
                     gc:
                       properties:
                         "\tbatch-keys":
@@ -4424,6 +4373,8 @@ spec:
                         max-key-size:
                           format: int64
                           type: integer
+                        reserve-space:
+                          type: string
                         scheduler-concurrency:
                           format: int64
                           type: integer
@@ -5006,6 +4957,13 @@ spec:
                 tableRegex:
                   type: string
               type: object
+            resources:
+              properties:
+                limits:
+                  type: object
+                requests:
+                  type: object
+              type: object
             s3:
               properties:
                 acl:
@@ -5409,6 +5367,13 @@ spec:
               required:
               - projectId
               - secretName
+              type: object
+            resources:
+              properties:
+                limits:
+                  type: object
+                requests:
+                  type: object
               type: object
             s3:
               properties:
@@ -5869,6 +5834,13 @@ spec:
                     tableRegex:
                       type: string
                   type: object
+                resources:
+                  properties:
+                    limits:
+                      type: object
+                    requests:
+                      type: object
+                  type: object
                 s3:
                   properties:
                     acl:
@@ -6148,6 +6120,8 @@ spec:
               type: string
             monitor:
               properties:
+                grafanaEnabled:
+                  type: boolean
                 name:
                   type: string
                 namespace:
@@ -6244,6 +6218,9 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
+                readyToScaleThresholdSeconds:
+                  format: int32
+                  type: integer
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
@@ -6287,6 +6264,8 @@ spec:
                     - thresholdValue
                     type: object
                   type: array
+                phase:
+                  type: string
                 recommendedReplicas:
                   format: int32
                   type: integer
@@ -6316,6 +6295,8 @@ spec:
                     - thresholdValue
                     type: object
                   type: array
+                phase:
+                  type: string
                 recommendedReplicas:
                   format: int32
                   type: integer
