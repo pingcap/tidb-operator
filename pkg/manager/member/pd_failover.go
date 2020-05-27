@@ -83,18 +83,7 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	healthCount := 0
-	pdsts, err := pf.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
-	if err != nil {
-		return err
-	}
-	podNames := sets.String{}
-	for _, ordinal := range helper.GetPodOrdinals(*pdsts.Spec.Replicas, pdsts).List() {
-		podNames.Insert(util.GetPodName(tc, v1alpha1.PDMemberType, ordinal))
-	}
 	for podName, pdMember := range tc.Status.PD.Members {
-		if !podNames.Has(podName) {
-			continue
-		}
 		if pdMember.Health {
 			healthCount++
 		} else {
@@ -138,7 +127,20 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
+	pdsts, err := pf.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+	if err != nil {
+		return err
+	}
+	podNames := sets.String{}
+	for _, ordinal := range helper.GetPodOrdinals(*pdsts.Spec.Replicas, pdsts).List() {
+		podNames.Insert(util.GetPodName(tc, v1alpha1.PDMemberType, ordinal))
+	}
+
 	for podName, pdMember := range tc.Status.PD.Members {
+		if !podNames.Has(podName) {
+			continue
+		}
+
 		if pdMember.LastTransitionTime.IsZero() {
 			continue
 		}
