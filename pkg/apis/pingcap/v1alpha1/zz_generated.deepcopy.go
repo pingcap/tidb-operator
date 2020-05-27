@@ -767,6 +767,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.PublicPathPrefix != nil {
+		in, out := &in.PublicPathPrefix, &out.PublicPathPrefix
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
