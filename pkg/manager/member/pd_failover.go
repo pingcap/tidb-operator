@@ -125,6 +125,9 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		if pdMember.LastTransitionTime.IsZero() {
 			continue
 		}
+		if !pf.isPodDesired(tc, podName) {
+			continue
+		}
 
 		if tc.Status.PD.FailureMembers == nil {
 			tc.Status.PD.FailureMembers = map[string]v1alpha1.PDFailureMember{}
@@ -256,4 +259,14 @@ func (fpf *fakePDFailover) Failover(_ *v1alpha1.TidbCluster) error {
 
 func (fpf *fakePDFailover) Recover(_ *v1alpha1.TidbCluster) {
 	return
+}
+
+func (pf *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := tc.PDStsDesiredOrdinals(true)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }
