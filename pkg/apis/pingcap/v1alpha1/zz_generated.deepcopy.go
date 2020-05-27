@@ -6837,6 +6837,11 @@ func (in *TidbMonitorStatus) DeepCopy() *TidbMonitorStatus {
 func (in *TikvAutoScalerSpec) DeepCopyInto(out *TikvAutoScalerSpec) {
 	*out = *in
 	in.BasicAutoScalerSpec.DeepCopyInto(&out.BasicAutoScalerSpec)
+	if in.ReadyToScaleThresholdSeconds != nil {
+		in, out := &in.ReadyToScaleThresholdSeconds, &out.ReadyToScaleThresholdSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
