@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	_ "net/http/pprof"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -1302,12 +1301,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		ginkgo.By("Creating change feed task")
 		fromTCName := fromTc.Name
 		toTCName := toTc.Name
-		changeFeedCMD := fmt.Sprintf("/cdc cli changefeed create "+
-			"--sink-uri=\"tidb://root:@%s:4000/\" --pd=http://%s:2379",
-			controller.TiDBMemberName(toTCName), controller.PDMemberName(fromTCName))
-		cmd := fmt.Sprintf("kubectl exec -n %s %s-0 -- %s",
-			ns, controller.TiCDCMemberName(fromTCName), changeFeedCMD)
-		data, err := exec.Command("sh", "-c", cmd).CombinedOutput()
+		args := []string{
+			"exec", "-n", ns,
+			fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
+			"--",
+			"/cdc", "cli", "changefeed", "create",
+			fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+			fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+		}
+		data, err := framework.RunKubectl(args...)
 		framework.ExpectNoError(err, fmt.Sprintf("failed to create change feed task: %s, %v", string(data), err))
 
 		ginkgo.By("Inserting data to cdc cluster")
