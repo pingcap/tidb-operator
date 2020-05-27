@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -26,6 +27,8 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
+	apps "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
@@ -40,6 +43,7 @@ type pdFailover struct {
 	pvcLister        corelisters.PersistentVolumeClaimLister
 	pvcControl       controller.PVCControlInterface
 	pvLister         corelisters.PersistentVolumeLister
+	setLister        apps.StatefulSetLister
 	recorder         record.EventRecorder
 }
 
@@ -52,6 +56,7 @@ func NewPDFailover(cli versioned.Interface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
 	pvLister corelisters.PersistentVolumeLister,
+	setLister apps.StatefulSetLister,
 	recorder record.EventRecorder) Failover {
 	return &pdFailover{
 		cli,
@@ -62,6 +67,7 @@ func NewPDFailover(cli versioned.Interface,
 		pvcLister,
 		pvcControl,
 		pvLister,
+		setLister,
 		recorder}
 }
 
@@ -77,7 +83,18 @@ func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	}
 
 	healthCount := 0
+	pdsts, err := pf.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+	if err != nil {
+		return err
+	}
+	podNames := sets.String{}
+	for _, ordinal := range helper.GetPodOrdinals(*pdsts.Spec.Replicas, pdsts).List() {
+		podNames.Insert(util.GetPodName(tc, v1alpha1.PDMemberType, ordinal))
+	}
 	for podName, pdMember := range tc.Status.PD.Members {
+		if !podNames.Has(podName) {
+			continue
+		}
 		if pdMember.Health {
 			healthCount++
 		} else {
