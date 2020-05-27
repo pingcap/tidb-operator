@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -34,6 +35,16 @@ func NewTiKVFailover(tikvFailoverPeriod time.Duration, recorder record.EventReco
 	return &tikvFailover{tikvFailoverPeriod, recorder}
 }
 
+func (tf *tikvFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := tc.TiKVStsDesiredOrdinals(true)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
+}
+
 func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -41,6 +52,12 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	for storeID, store := range tc.Status.TiKV.Stores {
 		podName := store.PodName
 		if store.LastTransitionTime.IsZero() {
+			continue
+		}
+		if !tf.isPodDesired(tc, podName) {
+			// we should ignore the store record of deleted pod, otherwise the
+			// record of deleted pod may be added back to failure stores
+			// (before it enters into Offline/Tombstone state)
 			continue
 		}
 		deadline := store.LastTransitionTime.Add(tf.tikvFailoverPeriod)
@@ -75,8 +92,15 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tf *tikvFailover) Recover(_ *v1alpha1.TidbCluster) {
-	// Do nothing now
+func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
+	for key, failureStore := range tc.Status.TiKV.FailureStores {
+		if !tf.isPodDesired(tc, failureStore.PodName) {
+			// If we delete the pods, e.g. by using advanced statefulset delete
+			// slots feature. We should remove the record of undesired pods,
+			// otherwise an extra replacement pod will be created.
+			delete(tc.Status.TiKV.FailureStores, key)
+		}
+	}
 }
 
 type fakeTiKVFailover struct{}
