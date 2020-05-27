@@ -10,6 +10,12 @@ spec:
   # backupType: full
   # useKMS: false
   # serviceAccount: myServiceAccount
+  # resources:
+  #   limits:
+  #     cpu: 300m
+  #     memory: 300Mi
+  #   requests:
+  #     memory: 300Mi
   br:
     cluster: myCluster
     # clusterNamespce: <restore-namespace>
