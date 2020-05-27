@@ -5553,11 +5553,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig"),
 						},
 					},
-					"encryption": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVEncryptionConfig"),
-						},
-					},
 					"pessimistic-txn": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPessimisticTxn"),
@@ -5567,7 +5562,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVEncryptionConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPessimisticTxn", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVReadPoolConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPessimisticTxn", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVReadPoolConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"},
 	}
 }
 
