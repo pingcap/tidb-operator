@@ -102,7 +102,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			framework.Skipf("provider is not aws or kind, skipping")
 		}
 
-		testBR(provider, ns, fw, c, genericCli, oa, cli, false)
+		testBR(provider, ns, fw, c, genericCli, oa, cli, false, fixture.BRType)
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
 
-			testBR(provider, ns, fw, c, genericCli, oa, cli, true)
+			testBR(provider, ns, fw, c, genericCli, oa, cli, true, fixture.BRType)
 			ginkgo.By("Deleting cert-manager")
 			err = deleteCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to delete cert-manager")
@@ -125,7 +125,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 })
 
-func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, cli versioned.Interface, tlsEnabled bool) {
+func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interface, genericCli client.Client, oa tests.OperatorActions, cli versioned.Interface, tlsEnabled bool, brType string) {
 	backupFolder := time.Now().Format(time.RFC3339)
 	var storage teststorage.TestStorage
 	switch provider {
@@ -195,9 +195,6 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 	err := genericCli.Create(context.TODO(), tcFrom)
 	framework.ExpectNoError(err)
-	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
-	framework.ExpectNoError(err)
-	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
 
 	// create restore cluster
 	tcTo := fixture.GetTidbCluster(ns, tcNameTo, utilimage.TiDBV4Version)
@@ -209,6 +206,11 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	}
 	err = genericCli.Create(context.TODO(), tcTo)
 	framework.ExpectNoError(err)
+
+	// wait both tidbcluster ready
+	err = oa.WaitForTidbClusterReady(tcFrom, 30*time.Minute, 15*time.Second)
+	framework.ExpectNoError(err)
+	clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameFrom, "", utilimage.TiDBV4Version)
 	err = oa.WaitForTidbClusterReady(tcTo, 30*time.Minute, 15*time.Second)
 	framework.ExpectNoError(err)
 	clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, tcNameTo, "", utilimage.TiDBV4Version)
@@ -243,13 +245,34 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 
 	ginkgo.By(fmt.Sprintf("Begion to backup data cluster %q", clusterFrom.ClusterName))
 	// create backup CRD to process backup
-	backup := storage.ProvideBackup(tcFrom, backupSecret)
+	backup := storage.ProvideBackup(tcFrom, backupSecret, brType)
 	if tlsEnabled {
 		backupSecretName := fmt.Sprintf("%s-backup-tls", tcNameFrom)
 		backup.Spec.From.TLSClientSecretName = &backupSecretName
 	}
 	_, err = cli.PingcapV1alpha1().Backups(ns).Create(backup)
 	framework.ExpectNoError(err)
+
+	cleanFunc := func() {
+		// delete backup data in S3
+		err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err)
+
+		err = storage.CheckDataCleaned()
+		framework.ExpectNoError(err)
+
+		err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+			_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectNoError(err)
+		framework.Logf("clean backup success")
+	}
+	// If error happened in following code, we would still delete data in storage
+	defer cleanFunc()
 
 	// check backup is successed
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
@@ -272,7 +295,8 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 
 	ginkgo.By(fmt.Sprintf("Begion to Restore data cluster %q", clusterTo.ClusterName))
 	// create restore CRD to process restore
-	restore := storage.ProvideRestore(tcTo, restoreSecret)
+	restore, err := storage.ProvideRestore(tcTo, restoreSecret, brType)
+	framework.ExpectNoError(err)
 	if tlsEnabled {
 		restoreSecretName := fmt.Sprintf("%s-restore-tls", tcNameTo)
 		restore.Spec.To.TLSClientSecretName = &restoreSecretName
@@ -306,20 +330,5 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 		framework.ExpectNoError(nerrors.New("backup database and restore database is not the same"))
 	}
 
-	// delete backup data in S3
-	err = cli.PingcapV1alpha1().Backups(ns).Delete(backup.Name, &metav1.DeleteOptions{})
-	framework.ExpectNoError(err)
-
-	err = storage.CheckDataCleaned()
-	framework.ExpectNoError(err)
-
-	err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		_, err := cli.PingcapV1alpha1().Backups(ns).Get(backup.Name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, nil
-	})
-	framework.ExpectNoError(err, "clean backup failed")
 	framework.Logf("clean backup success")
 }
