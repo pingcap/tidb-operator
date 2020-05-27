@@ -126,9 +126,6 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 			continue
 		}
 		if !pf.isPodDesired(tc, podName) {
-			// we should ignore the store record of deleted pod, otherwise the
-			// record of deleted pod may be added back to failure stores
-			// (before it enters into Offline/Tombstone state)
 			continue
 		}
 
