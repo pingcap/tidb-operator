@@ -6,7 +6,7 @@ category: how-to
 
 # 通过 TidbCluster 配置 TiDB 集群
 
-TidbCluster 文件支持在其上面直接配置 TiDB/TiKV/PD/TiFlash 的配置选项，本篇文章将介绍如何在 TidbCluster 上配置参数。目前 Operator 1.1 版本支持了 TiDB 集群 v3.1 版本参数。针对各组件配置参数，请参考 PingCAP 官方文档。
+TidbCluster 文件支持在其上面直接配置 TiDB/TiKV/PD/TiFlash/TiCDC 的配置选项，本篇文章将介绍如何在 TidbCluster 上配置参数。目前 Operator 1.1 版本支持了 TiDB 集群 v3.1 版本参数。针对各组件配置参数，请参考 PingCAP 官方文档。
 
 ## 配置 TiDB 配置参数
 
@@ -100,4 +100,22 @@ spec:
         logger:
           count: 5
           level: information
+```
+
+## 配置 TiCDC 启动参数
+
+你可以通过 TidbCluster Custom Resource 的 `spec.ticdc.config` 来配置 TiCDC 启动参数，以下是一个例子。获取所有可以配置的 CDC 启动参数，请参考 [CDC 启动参数文档](https://pingcap.com/docs-cn/stable/ticdc/deploy-ticdc/#手动在原有-tidb-集群上新增-ticdc-组件)。
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  ...
+  ticdc:
+    config:
+      timezone: UTC
+      gcTTL: 86400
+      logLevel: info
 ```

@@ -27,6 +27,7 @@
       - [初始化 TiDB 集群](initialize-a-cluster.md)
       - [访问 TiDB 集群](access-tidb.md)
   - [部署 TiFlash](deploy-tiflash.md)
+  - [部署 TiCDC](deploy-ticdc.md)
   - [部署 TiDB Binlog](deploy-tidb-binlog.md)
   + 部署 TiDB 集群监控
     - [监控 Kubernetes 和 TiDB 集群](monitor-a-tidb-cluster.md)
