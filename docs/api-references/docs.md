@@ -4283,6 +4283,7 @@ optional</p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>)
 </p>
@@ -8170,6 +8171,44 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="ticdccapture">TiCDCCapture</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcstatus">TiCDCStatus</a>)
+</p>
+<p>
+<p>TiCDCCapture is TiCDC Capture status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -8332,6 +8371,70 @@ TiCDCConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcstatus">TiCDCStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCDCStatus is TiCDC status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>captures</code></br>
+<em>
+<a href="#ticdccapture">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCapture
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -14752,6 +14855,18 @@ PumpStatus
 <em>
 <a href="#tiflashstatus">
 TiFlashStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcstatus">
+TiCDCStatus
 </a>
 </em>
 </td>
