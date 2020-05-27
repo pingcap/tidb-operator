@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -472,7 +471,7 @@ func TestPDFailoverFailover(t *testing.T) {
 			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(test.maxFailoverCount)
 			test.update(tc)
 
-			pdFailover, pvcIndexer, podIndexer, stsIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
+			pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
 			pdClient := controller.NewFakePDClient(fakePDControl, tc)
 			pdFailover.recorder = recorder
 
@@ -482,8 +481,6 @@ func TestPDFailoverFailover(t *testing.T) {
 				}
 				return nil, nil
 			})
-
-			stsIndexer.Add(newStsForTc(tc, v1alpha1.PDMemberType))
 
 			if test.hasPVC {
 				pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
@@ -528,7 +525,7 @@ func TestPDFailoverRecovery(t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.update(tc)
 
-		pdFailover, _, _, _, _, _, _ := newFakePDFailover()
+		pdFailover, _, _, _, _, _ := newFakePDFailover()
 		pdFailover.Recover(tc)
 		test.expectFn(tc)
 	}
@@ -617,7 +614,7 @@ func TestPDFailoverRecovery(t *testing.T) {
 	}
 }
 
-func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Indexer, *pdapi.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
+func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	pdControl := pdapi.NewFakePDControl(kubeCli)
@@ -625,7 +622,6 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Index
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
-	stsInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 	podControl := controller.NewFakePodControl(podInformer)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
@@ -638,11 +634,9 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, cache.Index
 			pvcInformer.Lister(),
 			pvcControl,
 			pvInformer.Lister(),
-			stsInformer.Lister(),
 			nil},
 		pvcInformer.Informer().GetIndexer(),
 		podInformer.Informer().GetIndexer(),
-		stsInformer.Informer().GetIndexer(),
 		pdControl, podControl, pvcControl
 }
 
@@ -761,21 +755,4 @@ func collectEvents(source <-chan string) []string {
 		}
 	}
 	return events
-}
-
-func newStsForTc(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) *apps.StatefulSet {
-	sts := apps.StatefulSet{}
-	sts.Name = fmt.Sprintf("%s-%s", tc.Name, memberType.String())
-	sts.Namespace = tc.Namespace
-	switch memberType {
-	case v1alpha1.TiDBMemberType:
-		sts.Spec.Replicas = &tc.Spec.TiDB.Replicas
-	case v1alpha1.TiKVMemberType:
-		sts.Spec.Replicas = &tc.Spec.TiKV.Replicas
-	case v1alpha1.PDMemberType:
-		sts.Spec.Replicas = &tc.Spec.PD.Replicas
-	case v1alpha1.TiFlashMemberType:
-		sts.Spec.Replicas = &tc.Spec.TiFlash.Replicas
-	}
-	return &sts
 }

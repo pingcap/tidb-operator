@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -27,7 +26,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	apps "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -43,7 +41,6 @@ type pdFailover struct {
 	pvcLister        corelisters.PersistentVolumeClaimLister
 	pvcControl       controller.PVCControlInterface
 	pvLister         corelisters.PersistentVolumeLister
-	setLister        apps.StatefulSetLister
 	recorder         record.EventRecorder
 }
 
@@ -67,7 +64,6 @@ func NewPDFailover(cli versioned.Interface,
 		pvcLister,
 		pvcControl,
 		pvLister,
-		setLister,
 		recorder}
 }
 
@@ -127,21 +123,14 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	pdsts, err := pf.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
-	if err != nil {
-		return err
-	}
-	podNames := sets.String{}
-	for _, ordinal := range helper.GetPodOrdinals(*pdsts.Spec.Replicas, pdsts).List() {
-		podNames.Insert(util.GetPodName(tc, v1alpha1.PDMemberType, ordinal))
-	}
-
 	for podName, pdMember := range tc.Status.PD.Members {
-		if !podNames.Has(podName) {
+		if pdMember.LastTransitionTime.IsZero() {
 			continue
 		}
-
-		if pdMember.LastTransitionTime.IsZero() {
+		if !pf.isPodDesired(tc, podName) {
+			// we should ignore the store record of deleted pod, otherwise the
+			// record of deleted pod may be added back to failure stores
+			// (before it enters into Offline/Tombstone state)
 			continue
 		}
 
@@ -275,4 +264,14 @@ func (fpf *fakePDFailover) Failover(_ *v1alpha1.TidbCluster) error {
 
 func (fpf *fakePDFailover) Recover(_ *v1alpha1.TidbCluster) {
 	return
+}
+
+func (pf *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := tc.PDStsDesiredOrdinals(true)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }
