@@ -1078,7 +1078,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Inserting data into source db")
-			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, passwd))
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, passwd, true))
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Checking tidb-binlog works as expected")
@@ -1220,6 +1220,55 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
 	})
 
+	ginkgo.It("[Feature: CDC]", func() {
+		ginkgo.By("Creating cdc cluster")
+		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBNightly)
+		fromTc.Spec.PD.Replicas = 3
+		fromTc.Spec.TiKV.Replicas = 3
+		fromTc.Spec.TiDB.Replicas = 2
+		fromTc.Spec.TiCDC = &v1alpha1.TiCDCSpec{
+			BaseImage: "pingcap/ticdc",
+			Replicas:  3,
+		}
+		err := genericCli.Create(context.TODO(), fromTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(fromTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		ginkgo.By("Creating cdc-sink cluster")
+		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBNightly)
+		toTc.Spec.PD.Replicas = 1
+		toTc.Spec.TiKV.Replicas = 1
+		toTc.Spec.TiDB.Replicas = 1
+		err = genericCli.Create(context.TODO(), toTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(toTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		ginkgo.By("Creating change feed task")
+		fromTCName := fromTc.Name
+		toTCName := toTc.Name
+		args := []string{
+			"exec", "-n", ns,
+			fmt.Sprintf("%s-0", controller.TiCDCMemberName(fromTCName)),
+			"--",
+			"/cdc", "cli", "changefeed", "create",
+			fmt.Sprintf("--sink-uri=tidb://root:@%s:4000/", controller.TiDBMemberName(toTCName)),
+			fmt.Sprintf("--pd=http://%s:2379", controller.PDMemberName(fromTCName)),
+		}
+		data, err := framework.RunKubectl(args...)
+		framework.ExpectNoError(err, fmt.Sprintf("failed to create change feed task: %s, %v", string(data), err))
+
+		ginkgo.By("Inserting data to cdc cluster")
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Checking cdc works as expected")
+		err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, toTCName, "", false))
+		framework.ExpectNoError(err)
+
+		framework.Logf("CDC works as expected")
+	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
