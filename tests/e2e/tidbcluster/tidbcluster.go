@@ -1383,7 +1383,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			return true, nil
 		})
-		framework.ExpectError(err, wait.ErrWaitTimeout, "expect tidbcluster shouldn't be create statefulset for 3 mins")
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tidbcluster shouldn't be create statefulset for 3 mins")
 
 		unlegalTc.Spec.PD.ResourceRequirements = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
