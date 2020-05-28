@@ -30,7 +30,7 @@ For v1.0.x users, refer to [Upgrade TiDB Operator](https://pingcap.com/docs/tidb
 - Supports advanced statefulset for TiFlash ([#2469](https://github.com/pingcap/tidb-operator/pull/2469), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Sync Pump before TiDB ([#2515](https://github.com/pingcap/tidb-operator/pull/2515), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Improve performance by removing `TidbControl` lock ([#2489](https://github.com/pingcap/tidb-operator/pull/2489), [@weekface](https://github.com/weekface))
-- Add TiCDC controller ([#2362](https://github.com/pingcap/tidb-operator/pull/2362), [@weekface](https://github.com/weekface))
+- Support TiCDC in `TidbCluster` ([#2362](https://github.com/pingcap/tidb-operator/pull/2362), [@weekface](https://github.com/weekface))
 - Update TiDB/TiKV/PD configuration to 4.0.0 GA version ([#2571](https://github.com/pingcap/tidb-operator/pull/2571), [@Yisaer](https://github.com/Yisaer))
 - TiDB Operator will not do failover for PD pods which are not desired ([#2570](https://github.com/pingcap/tidb-operator/pull/2570), [@Yisaer](https://github.com/Yisaer))
 
