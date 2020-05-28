@@ -109,6 +109,9 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 						MaxStoreDownTime: pointer.StringPtr("5m"),
 					},
 				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
+				},
 			},
 
 			TiKV: v1alpha1.TiKVSpec{
@@ -120,6 +123,9 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					LogLevel: pointer.StringPtr("info"),
 					Server:   &v1alpha1.TiKVServerConfig{},
 					Storage:  tikvStorageConfig,
+				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
 			},
 
@@ -138,6 +144,32 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Config: &v1alpha1.TiDBConfig{
 					Log: &v1alpha1.Log{
 						Level: pointer.StringPtr("info"),
+					},
+				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
+				},
+			},
+		},
+	}
+}
+
+func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: int32(50),
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/component": memberType.String(),
+								"app.kubernetes.io/instance":  name,
+							},
+						},
+						Namespaces: []string{
+							namespace,
+						},
 					},
 				},
 			},
