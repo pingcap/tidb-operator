@@ -18,8 +18,6 @@ For v1.0.x users, refer to [Upgrade TiDB Operator](https://pingcap.com/docs/tidb
   For the `tidb-cluster` chart, we already have the `timezone` option (`UTC` by default). If the user does not change it to a different value (for example, `Aisa/Shanghai`), all Pods will not be recreated.
   If the user changes it to another value (for example, `Aisa/Shanghai`), all the related Pods (add a `TZ` env) will be recreated, namely rolling updated.
 
-  Other charts do not have a `timezone` option in their `values.yaml`. The `timezone` option is added in this PR. Whether the user uses the old `values.yaml` or the new `values.yaml`, all the related Pods (add a `TZ` env) will not be recreated, namely rolling updated.
-
   The related Pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
 
   All images' time zone maintained by TiDB Operator is `UTC`. If you use your own images, you need to make sure that the time zone inside your images is `UTC`.
