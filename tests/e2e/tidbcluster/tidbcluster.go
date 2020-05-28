@@ -1398,6 +1398,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(unlegalTc)
 		framework.ExpectNoError(err, "update unlegal tidbcluster failed")
 		err = oa.WaitForTidbClusterReady(unlegalTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "legal tidbcluster create success")
 	})
 })
 
