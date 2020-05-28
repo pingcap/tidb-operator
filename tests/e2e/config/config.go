@@ -112,6 +112,7 @@ func NewDefaultOperatorConfig(cfg *tests.Config) *tests.OperatorConfig {
 		StringValues: map[string]string{
 			"admissionWebhook.failurePolicy.validation": "Fail",
 			"admissionWebhook.failurePolicy.mutation":   "Fail",
+			"tidbBackupManagerImage":                    cfg.OperatorImage,
 		},
 	}
 }
