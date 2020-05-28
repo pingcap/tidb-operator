@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -35,30 +36,39 @@ import (
 
 // ticdcMemberManager implements manager.Manager.
 type ticdcMemberManager struct {
-	pdControl    pdapi.PDControlInterface
-	typedControl controller.TypedControlInterface
-	stsLister    appslisters.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	svcControl   controller.ServiceControlInterface
-	stsControl   controller.StatefulSetControlInterface
+	pdControl                     pdapi.PDControlInterface
+	cdcControl                    controller.TiCDCControlInterface
+	typedControl                  controller.TypedControlInterface
+	stsLister                     appslisters.StatefulSetLister
+	svcLister                     corelisters.ServiceLister
+	podLister                     corelisters.PodLister
+	svcControl                    controller.ServiceControlInterface
+	stsControl                    controller.StatefulSetControlInterface
+	ticdcStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
 // NewTiCDCMemberManager returns a *ticdcMemberManager
 func NewTiCDCMemberManager(
 	pdControl pdapi.PDControlInterface,
+	cdcControl controller.TiCDCControlInterface,
 	typedControl controller.TypedControlInterface,
 	stsLister appslisters.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
+	podLister corelisters.PodLister,
 	svcControl controller.ServiceControlInterface,
 	stsControl controller.StatefulSetControlInterface) manager.Manager {
-	return &ticdcMemberManager{
+	tcmm := &ticdcMemberManager{
 		pdControl:    pdControl,
+		cdcControl:   cdcControl,
 		typedControl: typedControl,
 		stsLister:    stsLister,
 		svcLister:    svcLister,
+		podLister:    podLister,
 		svcControl:   svcControl,
 		stsControl:   stsControl,
 	}
+	tcmm.ticdcStatefulSetIsUpgradingFn = ticdcStatefulSetIsUpgrading
+	return tcmm
 }
 
 // Sync fulfills the manager.Manager interface
@@ -126,8 +136,38 @@ func (tcmm *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error 
 	return updateStatefulSet(tcmm.stsControl, tc, newSts, oldSts)
 }
 
-// TODO syncTiCDCStatus
 func (tcmm *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
+	if sts == nil {
+		// skip if not created yet
+		return nil
+	}
+
+	tc.Status.TiCDC.StatefulSet = &sts.Status
+	upgrading, err := tcmm.ticdcStatefulSetIsUpgradingFn(tcmm.podLister, tcmm.pdControl, sts, tc)
+	if err != nil {
+		return err
+	}
+	if upgrading {
+		tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
+	} else {
+		tc.Status.TiCDC.Phase = v1alpha1.NormalPhase
+	}
+
+	ticdcCaptures := map[string]v1alpha1.TiCDCCapture{}
+	for id := range helper.GetPodOrdinals(tc.Status.TiCDC.StatefulSet.Replicas, sts) {
+		podName := fmt.Sprintf("%s-%d", controller.TiCDCMemberName(tc.GetName()), id)
+		capture, err := tcmm.cdcControl.GetStatus(tc, int32(id))
+		if err != nil {
+			return err
+		}
+		ticdcCaptures[podName] = v1alpha1.TiCDCCapture{
+			PodName: podName,
+			ID:      capture.ID,
+		}
+	}
+	tc.Status.TiCDC.Synced = true
+	tc.Status.TiCDC.Captures = ticdcCaptures
+
 	return nil
 }
 
@@ -294,6 +334,32 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 func labelTiCDC(tc *v1alpha1.TidbCluster) label.Label {
 	instanceName := tc.GetInstanceName()
 	return label.New().Instance(instanceName).TiCDC()
+}
+
+func ticdcStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi.PDControlInterface, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	instanceName := tc.GetInstanceName()
+	selector, err := label.New().Instance(instanceName).TiCDC().Selector()
+	if err != nil {
+		return false, err
+	}
+	ticdcPods, err := podLister.Pods(tc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range ticdcPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tc.Status.TiCDC.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 type FakeTiCDCMemberManager struct {
