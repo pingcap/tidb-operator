@@ -215,6 +215,173 @@ You can use the `terraform output` command to get the output again.
     kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db-monitor.yaml -n ${namespace}
     ```
 
+### Enable cross-zone load balancing for the LoadBalancer of the TiDB service
+
+Due to an [issue](https://github.com/kubernetes/kubernetes/issues/82595) of AWS Network Load Balancer (NLB), the NLB created for the TiDB service cannot automatically enable cross-zone load balancing. You can manually enable it by taking the following steps:
+
+1. Get the name of the NLB created for the TiDB service:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get svc ${default_cluster_name}-tidb -n ${namespace}
+    ```
+
+    This is an example of the output:
+
+    ```
+    kubectl --kubeconfig credentials/kubeconfig_test get svc test-tidb -n test
+    NAME        TYPE           CLUSTER-IP      EXTERNAL-IP                                                                     PORT(S)                          AGE
+    tidb-tidb   LoadBalancer   172.20.39.180   a7aa544c49f914930b3b0532022e7d3c-83c0c97d8b659075.elb.us-west-2.amazonaws.com   4000:32387/TCP,10080:31486/TCP   3m46s
+    ```
+
+    In the value of the `EXTERNAL-IP` field, the first field that is separated by `-` is the name of NLB. In the example above, the NLB name is `a7aa544c49f914930b3b0532022e7d3c`.
+
+2. Get the LoadBalancerArn for the NLB:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    aws elbv2 describe-load-balancers | grep ${LoadBalancerName}
+    ```
+
+    `${LoadBalancerName}` is the NLB name obtained in Step 1.
+
+    This is an example of the output:
+
+    ```
+    aws elbv2 describe-load-balancers | grep a7aa544c49f914930b3b0532022e7d3c
+              "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075",
+              "DNSName": "a7aa544c49f914930b3b0532022e7d3c-83c0c97d8b659075.elb.us-west-2.amazonaws.com",
+              "LoadBalancerName": "a7aa544c49f914930b3b0532022e7d3c",
+    ```
+
+    The value of the `LoadBalancerArn` field is the NLB LoadBalancerArn.
+
+3. View the NLB attributes:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    aws elbv2 describe-load-balancer-attributes --load-balancer-arn ${LoadBalancerArn}
+    ```
+
+    `${LoadBalancerArn}` is the NLB LoadBalancerArn obtained in Step 2.
+
+    This is an example of the output:
+
+    ```
+    aws elbv2 describe-load-balancer-attributes --load-balancer-arn "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075"
+    {
+      "Attributes": [
+          {
+              "Key": "access_logs.s3.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "load_balancing.cross_zone.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "access_logs.s3.prefix",
+              "Value": ""
+          },
+          {
+              "Key": "deletion_protection.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "access_logs.s3.bucket",
+              "Value": ""
+          }
+      ]
+    }
+    ```
+
+    If the value of `load_balancing.cross_zone.enabled` is `false`, continue the next step to enable cross-zone load balancing.
+
+4. Enable cross-zone load balancing for NLB:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    aws elbv2 modify-load-balancer-attributes --load-balancer-arn ${LoadBalancerArn} --attributes Key=load_balancing.cross_zone.enabled,Value=true
+    ```
+
+    `${LoadBalancerArn}` is the NLB LoadBalancerArn obtained in Step 2.
+
+    This is an example of the output:
+
+    ```
+    aws elbv2 modify-load-balancer-attributes --load-balancer-arn "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075" --attributes Key=load_balancing.cross_zone.enabled,Value=true
+    {
+      "Attributes": [
+          {
+              "Key": "load_balancing.cross_zone.enabled",
+              "Value": "true"
+          },
+          {
+              "Key": "access_logs.s3.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "access_logs.s3.prefix",
+              "Value": ""
+          },
+          {
+              "Key": "deletion_protection.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "access_logs.s3.bucket",
+              "Value": ""
+          }
+      ]
+    }
+    ```
+
+5. Confirm that the NLB cross-zone load balancing attribute is enabled:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    aws elbv2 describe-load-balancer-attributes --load-balancer-arn ${LoadBalancerArn}
+    ```
+
+    `${LoadBalancerArn}` is the NLB LoadBalancerArn obtained in Step 2.
+
+    This is an example of the output:
+
+    ```
+    aws elbv2 describe-load-balancer-attributes --load-balancer-arn "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075"
+    {
+      "Attributes": [
+          {
+              "Key": "access_logs.s3.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "load_balancing.cross_zone.enabled",
+              "Value": "true"
+          },
+          {
+              "Key": "access_logs.s3.prefix",
+              "Value": ""
+          },
+          {
+              "Key": "deletion_protection.enabled",
+              "Value": "false"
+          },
+          {
+              "Key": "access_logs.s3.bucket",
+              "Value": ""
+          }
+      ]
+    }
+    ```
+
+    Confirm that the value of `load_balancing.cross_zone.enabled` is `true`.
+
 ## Access the database
 
 After deploying the cluster, to access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `${}` parts with values from the output):
@@ -233,7 +400,7 @@ mysql -h ${tidb_lb} -P 4000 -u root
 
 The default value of `eks_name` is `my-cluster`. If the DNS name is not resolvable, be patient and wait a few minutes.
 
-`tidb_lb` is the LoadBalancer of TiDB Service.
+`tidb_lb` is the LoadBalancer of TiDB Service. To check this value, run `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get svc ${default_cluster_name}-tidb -n ${namespace}` and view the `EXTERNAL-IP` field in the output information.
 
 You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_${eks_name}` in the following two ways.
 
@@ -275,7 +442,7 @@ You can interact with the EKS cluster using `kubectl` and `helm` with the kubeco
 
 You can access the `<monitor-lb>:3000` address (printed in outputs) using your web browser to view monitoring metrics.
 
-`monitor-lb` is the LoadBalancer of the cluster Monitor Service.
+`monitor-lb` is the LoadBalancer of the cluster Monitor Service. To check this value, run `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get svc ${default_cluster_name}-grafana -n ${namespace}` and view the `EXTERNAL-IP` field in the output information.
 
 The initial Grafana login credentials are:
 
