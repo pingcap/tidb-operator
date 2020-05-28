@@ -20,12 +20,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestReadImagesFromValues(t *testing.T) {
 	tests := []struct {
 		name       string
 		values     string
+		keys       sets.String
 		wantImages []string
 	}{
 		{
@@ -37,8 +39,24 @@ foo:
   mysql:
     image: pingcap/tidb-monitor-reloader:v1.0.1
 `,
+			keys: nil,
 			wantImages: []string{
 				"pingcap/tidb-monitor-reloader:v1.0.1",
+				"pingcap/tidb:v3.0.4",
+				"busybox:latest",
+			},
+		},
+		{
+			name: "basic",
+			values: `
+image: pingcap/tidb:v3.0.4
+foo:
+  image: busybox:latest
+  mysql:
+    image: pingcap/tidb-monitor-reloader:v1.0.1
+`,
+			keys: sets.NewString(".image", ".foo.image"),
+			wantImages: []string{
 				"pingcap/tidb:v3.0.4",
 				"busybox:latest",
 			},
@@ -56,13 +74,13 @@ foo:
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := readImagesFromValues(tmpfile.Name())
+			got, err := readImagesFromValues(tmpfile.Name(), tt.keys)
 			if err != nil {
 				t.Error(err)
 			}
 			sort.Strings(got)
 			sort.Strings(tt.wantImages)
-			if diff := cmp.Diff(got, tt.wantImages); diff != "" {
+			if diff := cmp.Diff(tt.wantImages, got); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
 			}
 		})
