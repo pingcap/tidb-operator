@@ -6,7 +6,7 @@ See our official [documentation site](https://pingcap.com/docs/tidb-in-kubernete
 
 ## Upgrade from v1.0.x
 
-For 1.0.x users, please refer to [our upgrade docs](https://pingcap.com/docs/tidb-in-kubernetes/stable/upgrade-tidb-operator/) to upgrade TiDB Operator in your cluster. Note that you must read this release notes (especially break changes and action required items) before you upgrade.
+For v1.0.x users, refer to [Upgrade TiDB Operator](https://pingcap.com/docs/tidb-in-kubernetes/stable/upgrade-tidb-operator/) to upgrade TiDB Operator in your cluster. Note that you should read the release notes (especially breaking changes and action required items) before the upgrade.
 
 ## Break changes since v1.0.0
 
