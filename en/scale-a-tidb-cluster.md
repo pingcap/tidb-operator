@@ -16,9 +16,61 @@ Currently, the TiDB cluster supports management by Helm or by TidbCluster Custom
 
 ### Horizontal scaling operations (CR)
 
+#### Scale PD, TiDB, and TiKV
+
 Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the `TidbCluster` object of the cluster to a desired value using kubectl.
 
-If TiFlash is deployed in the cluster, you can scale in and out TiFlash by modifying `spec.tiflash.replicas`.
+#### Scale out TiFlash
+
+If TiFlash is deployed in the cluster, you can scale out TiFlash by modifying `spec.tiflash.replicas`.
+
+#### Scale in TiFlash
+
+1. Expose the PD service by using `port-forward`:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl port-forward -n ${namespace} svc/${cluster_name}-pd 2379:2379
+    ```
+
+2. Open a **new** terminal tab or window. Check the maximum number (`N`) of replicas of all data tables with which TiFlash is enabled by running the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    curl 127.0.0.1:2379/pd/api/v1/config/rules/group/tiflash | grep count
+    ```
+
+    In the printed result, the largest value of `count` is the maximum number (`N`) of replicas of all data tables.
+
+3. Go back to the terminal window in Step 1, where `port-forward` is running. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop `port-forward`.
+
+4. After the scale-in operation, if the number of remaining Pods in TiFlash >= `N`, skip to Step 6. Otherwise, take the following steps:
+
+    1. Refer to [Access TiDB](access-tidb.md) and connect to the TiDB service.
+
+    2. For all the tables that have more replicas than the remaining Pods in TiFlash, run the following command:
+
+        {{< copyable "sql" >}}
+
+        ```sql
+        alter table <db-name>.<table-name> set tiflash replica 0;
+        ```
+
+5. Wait for TiFlash replicas in the related tables to be deleted.
+
+    Connect to the TiDB service, and run the following command:
+
+    {{< copyable "sql" >}}
+
+    ```sql
+    SELECT * FROM information_schema.tiflash_replica WHERE TABLE_SCHEMA = '<db_name>' and TABLE_NAME = '<table_name>';
+    ```
+
+    If you cannot view the replication information of related tables, the TiFlash replicas are successfully deleted.
+
+6. Modify `spec.tiflash.replicas` to scale in TiFlash.
 
 ### Horizontal scaling operations (Helm)
 

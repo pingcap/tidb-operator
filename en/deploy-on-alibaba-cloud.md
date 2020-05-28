@@ -90,6 +90,8 @@ All the instances except ACK mandatory workers are deployed across availability 
     operator_version = "v1.1.0-rc.1"
     ```
 
+    If you need to deploy TiFlash in the cluster, set `create_tiflash_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiFlash node pool by modifying `tiflash_count` and `tiflash_instance_type`. By default, the value of `tiflash_count` is `2`, and the value of `tiflash_instance_type` is `ecs.i2.2xlarge`.
+
     > **Note:**
     >
     > Check the `operator_version` in the `variables.tf` file for the default TiDB Operator version of the current scripts. If the default version is not your desired one, configure `operator_version` in `terraform.tfvars`.
@@ -167,10 +169,35 @@ All the instances except ACK mandatory workers are deployed across availability 
 
     To complete the CR file configuration, refer to [TiDB Operator API documentation](api-references.md) and [Configuring TiDB Cluster](configure-cluster-using-tidbcluster.md).
 
+    If you need to deploy TiFlash, configure `spec.tiflash` in `db.yaml` as follows:
+
+    ```yaml
+    spec
+      ...
+      tiflash:
+        baseImage: pingcap/tiflash
+        maxFailoverCount: 3
+        nodeSelector:
+          dedicated: TIDB_CLUSTER_NAME-tiflash
+        replicas: 1
+        storageClaims:
+        - resources:
+            requests:
+              storage: 100Gi
+          storageClassName: local-volume
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: TIDB_CLUSTER_NAME-tiflash
+    ```
+
+    Modify `replicas`, `storageClaims[].resources.requests.storage`, and `storageClassName` according to your needs.
+
     > **Note:**
     >
     > * Replace all the `TIDB_CLUSTER_NAME` in the `db.yaml` and `db-monitor.yaml` files with `tidb_cluster_name` configured in the deployment of ACK.
-    > * Make sure the number of PD, TiKV, and TiDB nodes is the same as the `replicas` value of the corresponding component in `db.yaml`.
+    > * Make sure the number of PD, TiKV, TiFlash, or TiDB nodes is >= the `replicas` value of the corresponding component in `db.yaml`.
     > * Make sure `spec.initializer.version` in `db-monitor.yaml` is the same as `spec.version` in `db.yaml`. Otherwise, the monitor might not display correctly.
 
 2. Create `Namespace`:
@@ -237,11 +264,16 @@ This may take a while to complete. You can watch the process using the following
 kubectl get pods --namespace ${namespace} -o wide --watch
 ```
 
-## Scale
+## Scale out TiDB cluster
 
-To scale the TiDB cluster, modify `tikv_count` or `tidb_count` in the `terraform.tfvars` file, and then run `terraform apply` to scale out the number of nodes for the corresponding components.
+To scale out the TiDB cluster, modify `tikv_count`, `tiflash_count` or `tidb_count` in the `terraform.tfvars` file, and then run `terraform apply` to scale out the number of nodes for the corresponding components.
 
 After the nodes scale out, modify the `replicas` of the corresponding components by running `kubectl --kubeconfig credentials/kubeconfig edit tc ${tidb_cluster_name} -n ${namespace}`.
+
+> **Note:**
+>
+> - Because it is impossible to determine which node will be taken offline during the scale-in process, the scale-in of TiDB clusters is currently not supported.
+> - The scale-out process takes a few minutes. You can watch the status by running `kubectl --kubeconfig credentials/kubeconfig get po -n ${namespace} --watch`.
 
 ## Configure
 
@@ -317,6 +349,8 @@ All the configurable parameters in `tidb-cluster` are as follows:
 | `pd_instance_type` | The PD instance type | `ecs.g5.large` |
 | `tikv_count` | The number of TiKV nodes | 3 |
 | `tikv_instance_type` | The TiKV instance type | `ecs.i2.2xlarge` |
+| `tiflash_count` | The count of TiFlash nodes | 2 |
+| `tiflash_instance_type` | The TiFlash instance type | `ecs.i2.2xlarge` |
 | `tidb_count` | The number of TiDB nodes | 2 |
 | `tidb_instance_type` | The TiDB instance type | `ecs.c5.4xlarge` |
 | `monitor_instance_type` | The instance type of monitoring components | `ecs.c5.xlarge` |
