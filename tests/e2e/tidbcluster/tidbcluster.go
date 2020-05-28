@@ -1314,193 +1314,134 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("CDC works as expected")
 	})
 
-	ginkgo.Context("[Feature: Defaulting and Validating]", func() {
-		var ocfg *tests.OperatorConfig
-		var oa tests.OperatorActions
+	ginkgo.It("[Feature: Defaulting and Validating]", func() {
+		ginkgo.By("Resources created before webhook enabled could be operated normally")
+		legacyTc := &v1alpha1.TidbCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      "created-by-helm",
+			},
+			Spec: v1alpha1.TidbClusterSpec{
+				TiDB: v1alpha1.TiDBSpec{
+					Replicas: 0,
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
+					},
+				},
+				TiKV: v1alpha1.TiKVSpec{
+					Replicas: 0,
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
+					},
+					ResourceRequirements: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceStorage: resource.MustParse("10G"),
+						},
+					},
+				},
+				PD: v1alpha1.PDSpec{
+					Replicas: 0,
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
+					},
+					ResourceRequirements: v1.ResourceRequirements{
+						Requests: v1.ResourceList{
+							v1.ResourceStorage: resource.MustParse("10G"),
+						},
+					},
+				},
+			},
+		}
+		var err error
+		legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(legacyTc)
+		// err := genericCli.Create(context.TODO(), legacyTc)
+		framework.ExpectNoError(err, "Expected create tidbcluster")
 
-		ginkgo.BeforeEach(func() {
-			ocfg = &tests.OperatorConfig{
-				Namespace:                 ns,
-				ReleaseName:               "operator",
-				Image:                     cfg.OperatorImage,
-				Tag:                       cfg.OperatorTag,
-				SchedulerImage:            "k8s.gcr.io/kube-scheduler",
-				LogLevel:                  "4",
-				ImagePullPolicy:           v1.PullIfNotPresent,
-				TestMode:                  true,
-				WebhookEnabled:            false,
-				SchedulerReplicas:         tests.IntPtr(0),
-				ControllerManagerReplicas: tests.IntPtr(0),
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(legacyTc.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, nil
 			}
-			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
-			ginkgo.By("Installing CRDs")
-			oa.CleanCRDOrDie()
-			oa.InstallCRDOrDie(ocfg)
-			ginkgo.By("Installing tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			oa.DeployOperatorOrDie(ocfg)
+			if legacyTc.Spec.TLSCluster == nil {
+				return false, nil
+			}
+			if legacyTc.Spec.TLSCluster.Enabled != false {
+				return false, nil
+			}
+			if legacyTc.Spec.PD.MaxFailoverCount == nil {
+				return false, nil
+			}
+			if legacyTc.Spec.TiKV.MaxFailoverCount == nil {
+				return false, nil
+			}
+			if legacyTc.Spec.TiDB.MaxFailoverCount == nil {
+				return false, nil
+			}
+			return true, nil
 		})
+		framework.ExpectNoError(err, "Expected tidbcluster defaulted")
 
-		ginkgo.AfterEach(func() {
-			ginkgo.By("Uninstall tidb-operator")
-			oa.CleanOperatorOrDie(ocfg)
-			ginkgo.By("Uninstalling CRDs")
-			oa.CleanCRDOrDie()
+		ginkgo.By("Validating should reject legacy fields for newly created cluster")
+		unlegalTc := &v1alpha1.TidbCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      "newly-created",
+			},
+			Spec: v1alpha1.TidbClusterSpec{
+				TiDB: v1alpha1.TiDBSpec{
+					Replicas: 1,
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
+					},
+				},
+				TiKV: v1alpha1.TiKVSpec{
+					Replicas: 1,
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
+					},
+				},
+				PD: v1alpha1.PDSpec{
+					Replicas: 1,
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
+					},
+				},
+			},
+		}
+		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(unlegalTc)
+		framework.ExpectNoError(err, "UnLegalTc create failed")
+
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+			unlegalTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(unlegalTc.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if unlegalTc.Status.PD.StatefulSet == nil {
+				return false, nil
+			}
+			if unlegalTc.Status.TiKV.StatefulSet == nil {
+				return false, nil
+			}
+			if unlegalTc.Status.TiDB.StatefulSet == nil {
+				return false, nil
+			}
+			return true, nil
 		})
+		framework.ExpectError(err, wait.ErrWaitTimeout, "expect tidbcluster shouldn't be create statefulset for 3 mins")
 
-		ginkgo.It("should perform defaulting and validating properly", func() {
-
-			ginkgo.By("Resources created before webhook enabled could be operated normally")
-			legacyTc := &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      "created-by-helm",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
-						Replicas: 1,
-						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
-						},
-					},
-					TiKV: v1alpha1.TiKVSpec{
-						Replicas: 1,
-						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
-						},
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("10G"),
-							},
-						},
-					},
-					PD: v1alpha1.PDSpec{
-						Replicas: 1,
-						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
-						},
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("10G"),
-							},
-						},
-					},
-				},
-			}
-			var err error
-			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(legacyTc)
-			// err := genericCli.Create(context.TODO(), legacyTc)
-			framework.ExpectNoError(err, "Expected create tidbcluster without defaulting and validating")
-			ocfg.WebhookEnabled = true
-			oa.UpgradeOperatorOrDie(ocfg)
-			// now the webhook enabled
-			legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version)
-			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
-			framework.ExpectNoError(err, "Update legacy tidbcluster should not be influenced by validating")
-			framework.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
-
-			ginkgo.By("Resources created before webhook will be checked if user migrate it to use new API")
-			legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
-			legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
-			legacyTc.Spec.PD.BaseImage = "pingcap/pd"
-			legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV3Version)
-			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
-			framework.ExpectNoError(err, "Expected update tidbcluster")
-			legacyTc.Spec.TiDB.BaseImage = ""
-			legacyTc.Spec.PD.Version = pointer.StringPtr("")
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
-			framework.ExpectError(err,
-				"Validating should reject mandatory fields being empty if the resource has already been migrated to use the new API")
-
-			ginkgo.By("Validating should reject legacy fields for newly created cluster")
-			newTC := &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      "newly-created",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
-						},
-					},
-					TiKV: v1alpha1.TiKVSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
-						},
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("10G"),
-							},
-						},
-					},
-					PD: v1alpha1.PDSpec{
-						ComponentSpec: v1alpha1.ComponentSpec{
-							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
-						},
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("10G"),
-							},
-						},
-					},
-				},
-			}
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(newTC)
-			framework.ExpectError(err,
-				"Validating should reject legacy fields for newly created cluster")
-
-			ginkgo.By("Defaulting should set proper default for newly created cluster")
-			newTC = &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: ns,
-					Name:      "newly-created",
-				},
-				Spec: v1alpha1.TidbClusterSpec{
-					Version: utilimage.TiDBV3Version,
-					TiDB: v1alpha1.TiDBSpec{
-						Replicas: 1,
-					},
-					TiKV: v1alpha1.TiKVSpec{
-						Replicas: 1,
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("10G"),
-							},
-						},
-					},
-					PD: v1alpha1.PDSpec{
-						Replicas: 1,
-						ResourceRequirements: v1.ResourceRequirements{
-							Requests: v1.ResourceList{
-								v1.ResourceStorage: resource.MustParse("10G"),
-							},
-						},
-					},
-				},
-			}
-			newTC, err = cli.PingcapV1alpha1().TidbClusters(ns).Create(newTC)
-			framework.ExpectNoError(err, "Though some required fields are omitted, they will be set by defaulting")
-			// don't have to check all fields, just take some to test if defaulting set
-			if empty, err := gomega.BeEmpty().Match(newTC.Spec.TiDB.BaseImage); empty {
-				e2elog.Failf("Expected tidb.baseImage has default value set, %v", err)
-			}
-
-			ginkgo.By("Validating should reject illegal update")
-			newTC.Labels = map[string]string{
-				label.InstanceLabelKey: "some-insane-label-value",
-			}
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
-			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
-
-			newTC.Spec.PD.Config = &v1alpha1.PDConfig{
-				Replication: &v1alpha1.PDReplicationConfig{
-					MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
-				},
-			}
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
-			framework.ExpectError(err, "PD replication config is immutable through CR")
-		})
+		unlegalTc.Spec.PD.ResourceRequirements = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceStorage: resource.MustParse("1G"),
+			},
+		}
+		unlegalTc.Spec.TiKV.ResourceRequirements = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceStorage: resource.MustParse("1G"),
+			},
+		}
+		_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(unlegalTc)
+		framework.ExpectNoError(err, "update unlegal tidbcluster failed")
+		err = oa.WaitForTidbClusterReady(unlegalTc, 30*time.Minute, 15*time.Second)
 	})
 })
 
