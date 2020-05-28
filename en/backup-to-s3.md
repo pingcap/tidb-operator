@@ -72,9 +72,19 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
         secretName: s3-secret
         region: ${region}
         bucket: ${bucket}
+        # prefix: ${prefix}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -106,7 +116,17 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
         provider: ceph
         secretName: s3-secret
         endpoint: ${endpoint}
+        # prefix: ${prefix}
         bucket: ${bucket}
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
       storageClassName: local-storage
       storageSize: 10Gi
     ```
@@ -141,11 +161,21 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
         provider: aws
         region: ${region}
         bucket: ${bucket}
+        # prefix: ${prefix}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
-    storageClassName: local-storage
-    storageSize: 10Gi
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
+      storageClassName: local-storage
+      storageSize: 10Gi
     ```
 
 + Create the `Backup` CR, and back up data to Amazon S3 by binding IAM with ServiceAccount to grant permissions:
@@ -177,11 +207,21 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
         provider: aws
         region: ${region}
         bucket: ${bucket}
+        # prefix: ${prefix}
         # storageClass: STANDARD_IA
         # acl: private
         # endpoint:
-    storageClassName: local-storage
-    storageSize: 10Gi
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
+      storageClassName: local-storage
+      storageSize: 10Gi
     ```
 
 In the examples above, all data of the TiDB cluster is exported and backed up to Amazon S3 and Ceph respectively. You can ignore the `acl`, `endpoint`, and `storageClass` configuration items in the Amazon S3 configuration. S3-compatible storage types other than Amazon S3 can also use configuration similar to that of Amazon S3. You can also leave the configuration item fields empty if you do not need to configure these items as shown in the above Ceph configuration.
@@ -223,8 +263,22 @@ More `Backup` CRs are described as follows:
 * `.spec.from.port`: the port of the TiDB cluster to be backed up.
 * `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
 * `.spec.from.secretName`：the secret contains the password of the `.spec.from.user`.
-* `.spec.s3.region`: the region of Amazon S3.
-* `.spec.s3.bucket`: the bucket name of S3.
+* `spec.s3.region`: configures the Region where Amazon S3 is located if you want to use Amazon S3 for backup storage.
+* `.spec.s3.bucket`: the name of the bucket compatible with S3 storage.
+* `.spec.s3.prefix`: this field can be ignored. If you set this field, it will be used to make up the remote storage path `s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`.
+* `.spec.mydumper`: Mydumper-related configurations, with two major fields. One is the [`options`](https://pingcap.com/docs/stable/reference/tools/mydumper/) field, which specifies some parameters needed by Mydumper, and the other is the `tableRegex` field, which allows Mydumper to back up a table that matches this regular expression. These configurations of Mydumper can be ignored by default. When not specified, the values of `options` and `tableRegex` (by default) is as follows:
+
+    ```
+    options:
+    --tidb-force-priority=LOW_PRIORITY
+    --long-query-guard=3600
+    --threads=16
+    --rows=10000
+    --skip-tz-utc
+    --verbose=3
+   tableRegex: "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+   ```
+
 * `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation.
 * `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than the backup data size of the TiDB cluster.
 
@@ -281,27 +335,37 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
-    name: demo1-backup-schedule-s3
-    namespace: test1
+      name: demo1-backup-schedule-s3
+      namespace: test1
     spec:
-    #maxBackups: 5
-    #pause: true
-    maxReservedTime: "3h"
-    schedule: "*/2 * * * *"
-    backupTemplate:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      backupTemplate:
         from:
-        host: ${tidb_host}
-        port: ${tidb_port}
-        user: ${tidb_user}
-        secretName: backup-demo1-tidb-secret
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
+          secretName: backup-demo1-tidb-secret
         s3:
-        provider: aws
-        secretName: s3-secret
-        region: ${region}
-        bucket: ${bucket}
-        # storageClass: STANDARD_IA
-        # acl: private
-        # endpoint:
+          provider: aws
+          secretName: s3-secret
+          region: ${region}
+          bucket: ${bucket}
+          # prefix: ${prefix}
+          # storageClass: STANDARD_IA
+          # acl: private
+          # endpoint:
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -321,24 +385,34 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
-    name: demo1-backup-schedule-ceph
-    namespace: test1
+      name: demo1-backup-schedule-ceph
+      namespace: test1
     spec:
-    #maxBackups: 5
-    #pause: true
-    maxReservedTime: "3h"
-    schedule: "*/2 * * * *"
-    backupTemplate:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      backupTemplate:
         from:
-        host: ${tidb_host}
-        port: ${tidb_port}
-        user: ${tidb_user}
-        secretName: backup-demo1-tidb-secret
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
+          secretName: backup-demo1-tidb-secret
         s3:
-        provider: ceph
-        secretName: s3-secret
-        endpoint: ${endpoint}
-        bucket: ${bucket}
+          provider: ceph
+          secretName: s3-secret
+          endpoint: ${endpoint}
+          bucket: ${bucket}
+          # prefix: ${prefix}
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -377,9 +451,19 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
           provider: aws
           region: ${region}
           bucket: ${bucket}
+          # prefix: ${prefix}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
@@ -417,9 +501,19 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
           provider: aws
           region: ${region}
           bucket: ${bucket}
+          # prefix: ${prefix}
           # storageClass: STANDARD_IA
           # acl: private
           # endpoint:
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```

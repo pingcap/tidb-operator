@@ -64,10 +64,21 @@ To better explain how to perform the backup operation, this document shows an ex
     gcs:
         secretName: gcs-secret
         projectId: ${project_id}
+        bucket: ${bucket}
+        # prefix: ${prefix}
         # location: us-east1
         # storageClass: STANDARD_IA
         # objectAcl: private
         # bucketAcl: private
+    # mydumper:
+    #  options:
+    #  - --tidb-force-priority=LOW_PRIORITY
+    #  - --long-query-guard=3600
+    #  - --threads=16
+    #  - --rows=10000
+    #  - --skip-tz-utc
+    #  - --verbose=3
+    #  tableRegex: "^test"
     storageClassName: local-storage
     storageSize: 10Gi
     ```
@@ -130,6 +141,21 @@ More `Backup` CRs are described as follows:
 * `.spec.from.port`: the port of the TiDB cluster to be backed up.
 * `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
 * `.spec.from.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be backed up.
+* `.spec.gcs.bucket`: the name of the bucket that stores data.
+* `.spec.gcs.prefix`: this field can be ignored. If you set this field, it will be used to make up the remote storage path `s3://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`.
+* `.spec.mydumper`: Mydumper-related configurations, with two major fields. One is the [`options`](https://pingcap.com/docs/stable/reference/tools/mydumper/) field, which specifies some parameters needed by Mydumper, and the other is the `tableRegex` field, which allows Mydumper to back up a table that matches this regular expression. These configuration items of Mydumper can be ignored by default. When not specified, the values of `options` and `tableRegex` (by default) are as follows:
+
+    ```
+    options:
+    --tidb-force-priority=LOW_PRIORITY
+    --long-query-guard=3600
+    --threads=16
+    --rows=10000
+    --skip-tz-utc
+    --verbose=3
+   tableRegex: "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+    ```
+
 * `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation. If this item is not specified, the value of the `default-backup-storage-class-name` parameter is used by default. This parameter is specified when TiDB Operator is started, and is set to `standard` by default.
 * `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than the size of the TiDB cluster to be backed up.
 
@@ -152,26 +178,37 @@ The prerequisites for the scheduled backup is the same with the [prerequisites f
     apiVersion: pingcap.com/v1alpha1
     kind: BackupSchedule
     metadata:
-    name: demo1-backup-schedule-gcs
-    namespace: test1
+      name: demo1-backup-schedule-gcs
+      namespace: test1
     spec:
-    #maxBackups: 5
-    #pause: true
-    maxReservedTime: "3h"
-    schedule: "*/2 * * * *"
-    backupTemplate:
+      #maxBackups: 5
+      #pause: true
+      maxReservedTime: "3h"
+      schedule: "*/2 * * * *"
+      backupTemplate:
         from:
-        host: ${tidb_host}
-        port: ${tidb_port}
-        user: ${tidb_user}
-        secretName: backup-demo1-tidb-secret
+          host: ${tidb_host}
+          port: ${tidb_port}
+          user: ${tidb_user}
+          secretName: backup-demo1-tidb-secret
         gcs:
-        secretName: gcs-secret
-        projectId: ${project_id}
-        # location: us-east1
-        # storageClass: STANDARD_IA
-        # objectAcl: private
-        # bucketAcl: private
+          secretName: gcs-secret
+          projectId: ${project_id}
+          bucket: ${bucket}
+          # prefix: ${prefix}
+          # location: us-east1
+          # storageClass: STANDARD_IA
+          # objectAcl: private
+          # bucketAcl: private
+      # mydumper:
+      #  options:
+      #  - --tidb-force-priority=LOW_PRIORITY
+      #  - --long-query-guard=3600
+      #  - --threads=16
+      #  - --rows=10000
+      #  - --skip-tz-utc
+      #  - --verbose=3
+      #  tableRegex: "^test"
         storageClassName: local-storage
         storageSize: 10Gi
     ```
