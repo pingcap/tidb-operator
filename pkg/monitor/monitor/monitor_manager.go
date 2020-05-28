@@ -189,7 +189,7 @@ func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*co
 	pvc := getMonitorPVC(monitor)
 	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc, false)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
+		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 	return pvc, nil
