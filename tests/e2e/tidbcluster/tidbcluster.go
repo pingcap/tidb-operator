@@ -855,50 +855,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
 	})
 
-	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
-		if !ocfg.Enabled(features.AdvancedStatefulSet) {
-			framework.Skipf("AdvancedStatefulSet feature of default operator is not enabled, skipping")
-		}
-		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV3Version)
-		tc.Spec.PD.Replicas = 5
-		tc.Spec.TiKV.Replicas = 4
-		tc.Spec.TiDB.Replicas = 3
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err)
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err)
-
-		ginkgo.By("Scaling in the cluster by deleting some pods not at the end")
-		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err)
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			if tc.Annotations == nil {
-				tc.Annotations = map[string]string{}
-			}
-			tc.Annotations[label.AnnPDDeleteSlots] = "[1]"
-			tc.Annotations[label.AnnTiKVDeleteSlots] = "[0]"
-			tc.Annotations[label.AnnTiDBDeleteSlots] = "[1]"
-			tc.Spec.PD.Replicas = 3
-			tc.Spec.TiKV.Replicas = 3
-			tc.Spec.TiDB.Replicas = 2
-			return nil
-		})
-		framework.ExpectNoError(err)
-		ginkgo.By("Checking for tidb cluster is ready")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err)
-
-		ginkgo.By("Upgrding the cluster")
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
-			return nil
-		})
-		framework.ExpectNoError(err)
-		ginkgo.By("Checking for tidb cluster is ready")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err)
-	})
-
 	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
 		tcName := "paused"
 		tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV3Version)
