@@ -10,18 +10,18 @@ This document describes how to enable TLS for MySQL client of the TiDB cluster o
 
 To enable TLS for the MySQL client, perform the following steps:
 
-1. Issue two sets of certificates: a set of server-side certificates for TiDB server, and a set of client-side certificates for MySQL client. Create two Secret objects, `${cluster_name}-tidb-server-secret` and `${cluster_name}-tidb-client-secret`, including the two sets of certificates respectively.
+1. [Issue two sets of certificates](#issue-two-sets-of-certificates-for-the-tidb-cluster): a set of server-side certificates for TiDB server, and a set of client-side certificates for MySQL client. Create two Secret objects, `${cluster_name}-tidb-server-secret` and `${cluster_name}-tidb-client-secret`, respectively including these two sets of certificates.
 
     Certificates can be issued in multiple methods. This document describes two methods. You can choose either of them to issue certificates for the TiDB cluster:
 
     - [Using the `cfssl` system](#using-cfssl)
     - [Using the `cert-manager` system](#using-cert-manager)
 
-2. Deploy the cluster, and set `.spec.tidb.tlsClient.enabled` to `true`.
+2. [Deploy the cluster](#deploy-the-tidb-cluster), and set `.spec.tidb.tlsClient.enabled` to `true`.
 
-3. Configure the MySQL client to use encrypted connection.
+3. [Configure the MySQL client to use encrypted connection](#configure-the-mysql-client-to-use-encrypted-connection).
 
-## Step 1: Issue two sets of certificates for the TiDB cluster
+## Issue two sets of certificates for the TiDB cluster
 
 This section describe how to issue certificates for the TiDB cluster using two methods: `cfssl` and `cert-manager`.
 
@@ -369,70 +369,263 @@ You can generate multiple sets of client-side certificates. At least one set of 
 
     After the object is created, cert-manager generates a `${cluster_name}-tidb-client-secret` Secret object to be used by the TiDB client.
 
-You can generate multiple sets of client-side certificates. At least one set of client-side certificate is needed for the internal components of TiDB Operator to access the TiDB server. Currently, TidbInitializer access the TiDB server to set the password or perform initialization.
+5. Create multiple sets of client-side certificates (optional).
 
-> **Note:**
->
-> TiDB server's TLS is compatible with the MySQL protocol. When the certificate content is changed, the administrator needs to manually execute the SQL statement `alter instance reload tls` to refresh the content.
+    Four components in the TiDB Operator cluster need to request the TiDB server. When TLS is enabled, these components can use certificates to request the TiDB server, each with a separate certificate. The four components are listed as follows:
 
-## Step 2: Deploy the TiDB cluster
+    - TidbInitializer
+    - PD Dashboard
+    - Backup
+    - Restore
 
-In this step, you create a TiDB cluster using two CR object, enable TLS for the MySQL client and initialize the cluster. An `app` database is created for the purpose of demonstration.
+    To create certificates for these components, take the following steps:
 
-1. Create a `cr.yaml` file with the following content:
+    1. Create a `tidb-components-client-cert.yaml` file with the following content:
 
-    ```yaml
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbCluster
-    metadata:
-    name: ${cluster_name}
-    namespace: ${namespace}
-    spec:
-    version: v3.1.0
-    timezone: UTC
-    pvReclaimPolicy: Retain
-    pd:
-      baseImage: pingcap/pd
-      replicas: 1
-      requests:
-        storage: "1Gi"
-      config: {}
-    tikv:
-      baseImage: pingcap/tikv
-      replicas: 1
-      requests:
-        storage: "1Gi"
-      config: {}
-    tidb:
-      baseImage: pingcap/tidb
-      replicas: 1
-      service:
-        type: ClusterIP
-      config: {}
-      tlsClient:
-        enabled: true
-    ---
-    apiVersion: pingcap.com/v1alpha1
-    kind: TidbInitializer
-    metadata:
-    name: ${cluster_name}-init
-    namespace: ${namespace}
-    spec:
-    image: tnir/mysqlclient
-    cluster:
-      namespace: ${namespace}
-      name: ${cluster_name}
-    initSql: |-
-      create database app;
+        ```yaml
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-tidb-initializer-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-tidb-initializer-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "TiDB Initializer client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-pd-dashboard-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-pd-dashboard-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "PD Dashboard client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-backup-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-backup-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "Backup client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+        name: ${cluster_name}-restore-client-secret
+        namespace: ${namespace}
+        spec:
+        secretName: ${cluster_name}-restore-client-secret
+        duration: 8760h # 365d
+        renewBefore: 360h # 15d
+        organization:
+            - PingCAP
+        commonName: "Restore client"
+        usages:
+            - client auth
+        issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ```
+
+        In the `.yaml` file above, `${cluster_name}` is the name of the cluster. Configure the items as follows:
+
+        - Set the value of `spec.secretName` to `${cluster_name}-${component}-client-secret`.
+        - Add `client auth` in `usages`.
+        - `dnsNames` and `ipAddresses` are not required.
+        - Add the Issuer created above in the `issuerRef`.
+        - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
+    
+    2. Create the certificate by running the following command:
+
+        {{< copyable "shell-regular" >}}
+
+        ``` shell
+        kubectl apply -f tidb-components-client-cert.yaml
+        ```
+    
+    3. After creating these objects, cert-manager will generate four secret objects for the four components.
+
+    > **Note:**
+    >
+    > TiDB server's TLS is compatible with the MySQL protocol. When the certificate content is changed, the administrator needs to manually execute the SQL statement `alter instance reload tls` to refresh the content.
+
+## Deploy the TiDB cluster
+
+In this step, you create a TiDB cluster and perform the following operations:
+
+- Enable TLS for the MySQL client
+- Initialize the cluster (an `app` database is created for the purpose of demonstration)
+- Create a Backup object to back up the cluster
+- Create a Restore object to restore the cluster
+- Use separate client-side certificates for TidbInitializer, PD Dashboard, Backup, and Restore (specified by `tlsClientSecretName`)
+
+1. Create three `.yaml` files:
+
+    - `tidb-cluster.yaml` file:
+
+        ```yaml
+        apiVersion: pingcap.com/v1alpha1
+        kind: TidbCluster
+        metadata:
+          name: ${cluster_name}
+          amespace: ${namespace}
+        spec:
+          version: v3.1.0
+          timezone: UTC
+          pvReclaimPolicy: Retain
+          pd:
+            baseImage: pingcap/pd
+            replicas: 1
+            requests:
+              storage: "1Gi"
+            config: {}
+            tlsClientSecretName: ${cluster_name}-pd-dashboard-client-secret
+          tikv:
+            baseImage: pingcap/tikv
+            replicas: 1
+            requests:
+              storage: "1Gi"
+            config: {}
+          tidb:
+            baseImage: pingcap/tidb
+            replicas: 1
+            service:
+              type: ClusterIP
+            config: {}
+            tlsClient:
+              enabled: true
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: TidbInitializer
+        metadata:
+          name: ${cluster_name}-init
+          namespace: ${namespace}
+        spec:
+          image: tnir/mysqlclient
+          cluster:
+            namespace: ${namespace}
+            name: ${cluster_name}
+          initSql: |-
+            create database app;
+          tlsClientSecretName: ${cluster_name}-tidb-initializer-client-secret
+        ```
+
+    - `backup.yaml`:
+
+        ```
+        apiVersion: pingcap.com/v1alpha1
+        kind: Backup
+        metadata:
+          name: ${cluster_name}-backup
+          namespace: ${namespace}
+        spec:
+          backupType: full
+          br:
+          cluster: ${cluster_name}
+          clusterNamespace: ${namespace}
+          sendCredToTikv: true
+          from:
+            host: ${host}
+            secretName: ${tidb_secret}
+            port: 4000
+            user: root
+            tlsClientSecretName: ${cluster_name}-backup-client-secret
+          s3:
+            provider: aws
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
+        ```
+
+    - `restore.yaml`:
+
+        ```
+        apiVersion: pingcap.com/v1alpha1
+        kind: Restore
+        metadata:
+          name: ${cluster_name}-restore
+          namespace: ${namespace}
+        spec:
+          backupType: full
+          br:
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
+            sendCredToTikv: true
+          to:
+            host: ${host}
+            secretName: ${tidb_secret}
+            port: 4000
+            user: root
+            tlsClientSecretName: ${cluster_name}-restore-client-secret
+          s3:
+            provider: aws
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
+        ```
+
+    In the above file, `${cluster_name}` is the name of the cluster, and `${namespace}` is the namespace in which the TiDB cluster is deployed. To enable TLS for the MySQL client, set `spec.tidb.tlsClient.enabled` to `true`.
+
+2. Deploy the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f tidb-cluster.yaml
     ```
 
-    In the above file, `${cluster_name}` is the name of the cluster, and `${namespace}` is the namespace in which the TiDB cluster is deployed.
+3. Back up the cluster:
 
-2. To enable TLS for the MySQL client, set `spec.tidb.tlsClient.enabled` to `true`.
+    {{< copyable "shell-regular" >}}
 
-3. Execute `kubectl apply -f cr.yaml` to create the TiDB cluster.
+    ``` shell
+    kubectl apply -f backup.yaml
+    ```
 
-## Step 3: Configure the MySQL client to use encrypted connection
+4. Restore the cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f restore.yaml
+    ```
+
+## Configure the MySQL client to use encrypted connection
 
 To connect the MySQL client with the TiDB cluster, use the client-side certificate created above and take the following methods. For details, refer to [Configure the MySQL client to use encrypted connections](https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/#configure-the-mysql-client-to-use-encrypted-connections).
 
