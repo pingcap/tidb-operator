@@ -196,15 +196,11 @@ admissionWebhook:
     ## pods hook would check requests for creating and deleting tidbcluster's pods
     ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
     pods: true
-    ## validating hook validates the correctness of the resources under pingcap.com group
-    pingcapResources: false
   ## mutation webhook would mutate the given request for the specific resource and operation
   mutation:
     ## pods mutation hook would mutate the pod. Currently It is used for TiKV Auto-Scaling.
     ## refer to https://github.com/pingcap/tidb-operator/issues/1651
     pods: true
-    ## defaulting hook set default values for the the resources under pingcap.com group
-    pingcapResources: true
   ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
   ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
   failurePolicy:

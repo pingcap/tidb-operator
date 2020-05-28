@@ -291,8 +291,6 @@ type OperatorConfig struct {
 	WebhookEnabled            bool
 	PodWebhookEnabled         bool
 	StsWebhookEnabled         bool
-	DefaultingEnabled         bool
-	ValidatingEnabled         bool
 	Cabundle                  string
 	BackupImage               string
 	AutoFailover              *bool
@@ -414,8 +412,6 @@ func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 		"admissionWebhook.validation.pods":             oi.PodWebhookEnabled,
 		"admissionWebhook.mutation.pods":               oi.PodWebhookEnabled,
 		"admissionWebhook.validation.statefulSets":     oi.StsWebhookEnabled,
-		"admissionWebhook.mutation.pingcapResources":   oi.DefaultingEnabled,
-		"admissionWebhook.validation.pingcapResources": oi.ValidatingEnabled,
 	}
 	arr := make([]string, 0, len(set))
 	for k, v := range set {
