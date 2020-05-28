@@ -486,114 +486,138 @@ category: how-to
 - 创建一个 Restore 对象对进群进行恢复；
 - TidbInitializer，PD Dashboard，Backup 以及 Restore 分别使用单独的 Client 证书（用 `tlsClientSecretName` 指定）。
 
-tidb-cluster.yaml:
+1. 创建三个 `.yaml` 文件：
 
-``` yaml
-apiVersion: pingcap.com/v1alpha1
-kind: TidbCluster
-metadata:
- name: ${cluster_name}
- namespace: ${namespace}
-spec:
- version: v3.1.0
- timezone: UTC
- pvReclaimPolicy: Retain
- pd:
-   baseImage: pingcap/pd
-   replicas: 1
-   requests:
-     storage: "1Gi"
-   config: {}
-   tlsClientSecretName: ${cluster_name}-pd-dashboard-client-secret
- tikv:
-   baseImage: pingcap/tikv
-   replicas: 1
-   requests:
-     storage: "1Gi"
-   config: {}
- tidb:
-   baseImage: pingcap/tidb
-   replicas: 1
-   service:
-     type: ClusterIP
-   config: {}
-   tlsClient:
-     enabled: true
----
-apiVersion: pingcap.com/v1alpha1
-kind: TidbInitializer
-metadata:
- name: ${cluster_name}-init
- namespace: ${namespace}
-spec:
- image: tnir/mysqlclient
- cluster:
-   namespace: ${namespace}
-   name: ${cluster_name}
- initSql: |-
-   create database app;
- tlsClientSecretName: ${cluster_name}-tidb-initializer-client-secret
-```
+    - `tidb-cluster.yaml`:
 
-backup.yaml:
+        ``` yaml
+        apiVersion: pingcap.com/v1alpha1
+        kind: TidbCluster
+        metadata:
+         name: ${cluster_name}
+         namespace: ${namespace}
+        spec:
+         version: v3.1.0
+         timezone: UTC
+         pvReclaimPolicy: Retain
+         pd:
+           baseImage: pingcap/pd
+           replicas: 1
+           requests:
+             storage: "1Gi"
+           config: {}
+           tlsClientSecretName: ${cluster_name}-pd-dashboard-client-secret
+         tikv:
+           baseImage: pingcap/tikv
+           replicas: 1
+           requests:
+             storage: "1Gi"
+           config: {}
+         tidb:
+           baseImage: pingcap/tidb
+           replicas: 1
+           service:
+             type: ClusterIP
+           config: {}
+           tlsClient:
+             enabled: true
+        ---
+        apiVersion: pingcap.com/v1alpha1
+        kind: TidbInitializer
+        metadata:
+         name: ${cluster_name}-init
+         namespace: ${namespace}
+        spec:
+         image: tnir/mysqlclient
+         cluster:
+           namespace: ${namespace}
+           name: ${cluster_name}
+         initSql: |-
+           create database app;
+         tlsClientSecretName: ${cluster_name}-tidb-initializer-client-secret
+        ```
 
-```
-apiVersion: pingcap.com/v1alpha1
-kind: Backup
-metadata:
-  name: ${cluster_name}-backup
-  namespace: ${namespace}
-spec:
-  backupType: full
-  br:
-    cluster: ${cluster_name}
-    clusterNamespace: ${namespace}
-    sendCredToTikv: true
-  from:
-    host: ${host}
-    secretName: ${tidb_secret}
-    port: 4000
-    user: root
-    tlsClientSecretName: ${cluster_name}-backup-client-secret
-  s3:
-    provider: aws
-    region: ${my_region}
-    secretName: ${s3_secret}
-    bucket: ${my_bucket}
-    prefix: ${my_folder}
-```
+    - `backup.yaml`:
 
-restore.yaml:
+        ```
+        apiVersion: pingcap.com/v1alpha1
+        kind: Backup
+        metadata:
+          name: ${cluster_name}-backup
+          namespace: ${namespace}
+        spec:
+          backupType: full
+          br:
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
+            sendCredToTikv: true
+          from:
+            host: ${host}
+            secretName: ${tidb_secret}
+            port: 4000
+            user: root
+            tlsClientSecretName: ${cluster_name}-backup-client-secret
+          s3:
+            provider: aws
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
+        ```
 
-```
-apiVersion: pingcap.com/v1alpha1
-kind: Restore
-metadata:
-  name: ${cluster_name}-restore
-  namespace: ${namespace}
-spec:
-  backupType: full
-  br:
-    cluster: ${cluster_name}
-    clusterNamespace: ${namespace}
-    sendCredToTikv: true
-  to:
-    host: ${host}
-    secretName: ${tidb_secret}
-    port: 4000
-    user: root
-    tlsClientSecretName: ${cluster_name}-restore-client-secret
-  s3:
-    provider: aws
-    region: ${my_region}
-    secretName: ${s3_secret}
-    bucket: ${my_bucket}
-    prefix: ${my_folder}
-```
+    - `restore.yaml`:
 
-其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间。通过设置 `spec.tidb.tlsClient.enabled` 属性为 `true` 来开启 MySQL 客户端 TLS。
+        ```
+        apiVersion: pingcap.com/v1alpha1
+        kind: Restore
+        metadata:
+          name: ${cluster_name}-restore
+          namespace: ${namespace}
+        spec:
+          backupType: full
+          br:
+            cluster: ${cluster_name}
+            clusterNamespace: ${namespace}
+            sendCredToTikv: true
+          to:
+            host: ${host}
+            secretName: ${tidb_secret}
+            port: 4000
+            user: root
+            tlsClientSecretName: ${cluster_name}-restore-client-secret
+          s3:
+            provider: aws
+            region: ${my_region}
+            secretName: ${s3_secret}
+            bucket: ${my_bucket}
+            prefix: ${my_folder}
+        ```
 
-将上面文件保存为 `cr.yaml`，然后使用 `kubectl apply -f cr.yaml` 来创建 TiDB 集群。
+    其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间。通过设置 `spec.tidb.tlsClient.enabled` 属性为 `true` 来开启 MySQL 客户端 TLS。
+
+2. 部署 TiDB 集群：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f tidb-cluster.yaml
+    ```
+
+3. 集群备份：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f backup.yaml
+    ```
+
+4. 集群恢复：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl apply -f restore.yaml
+    ```
 
 ## 第三步：配置 MySQL 客户端使用加密连接
 
