@@ -33,7 +33,7 @@ For v1.0.x users, refer to [Upgrade TiDB Operator](https://pingcap.com/docs/tidb
 - TiFlash supports advanced statefulset ([#2469](https://github.com/pingcap/tidb-operator/pull/2469), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Sync Pump before TiDB ([#2515](https://github.com/pingcap/tidb-operator/pull/2515), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Improve performance by removing `TidbControl` lock ([#2489](https://github.com/pingcap/tidb-operator/pull/2489), [@weekface](https://github.com/weekface))
-- Add CDC controller ([#2362](https://github.com/pingcap/tidb-operator/pull/2362), [@weekface](https://github.com/weekface))
+- Add TiCDC controller ([#2362](https://github.com/pingcap/tidb-operator/pull/2362), [@weekface](https://github.com/weekface))
 - Support TiDB and TiKV Configuration to v4.0.0-rc.2 ([#2488](https://github.com/pingcap/tidb-operator/pull/2488), [@Yisaer](https://github.com/Yisaer))
 
 ## Previous releases
