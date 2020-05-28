@@ -408,10 +408,10 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 
 func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 	set := map[string]bool{
-		"admissionWebhook.create":                      oi.WebhookEnabled,
-		"admissionWebhook.validation.pods":             oi.PodWebhookEnabled,
-		"admissionWebhook.mutation.pods":               oi.PodWebhookEnabled,
-		"admissionWebhook.validation.statefulSets":     oi.StsWebhookEnabled,
+		"admissionWebhook.create":                  oi.WebhookEnabled,
+		"admissionWebhook.validation.pods":         oi.PodWebhookEnabled,
+		"admissionWebhook.mutation.pods":           oi.PodWebhookEnabled,
+		"admissionWebhook.validation.statefulSets": oi.StsWebhookEnabled,
 	}
 	arr := make([]string, 0, len(set))
 	for k, v := range set {
