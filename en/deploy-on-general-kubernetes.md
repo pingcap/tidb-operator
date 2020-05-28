@@ -74,6 +74,16 @@ TiFlash supports mounting multiple Persistent Volumes (PVs). If you want to conf
       storageClassName: local-storage
 ```
 
+To enable TiCDC for the cluster, configure `spec.ticdc` in the `${cluster_name}/tidb-cluster.yaml` file:
+
+```yaml
+  ticdc:
+    baseImage: pingcap/ticdc
+    replicas: 3
+    config:
+      logLevel: info
+```
+
 To deploy TiDB cluster monitor, refer to the [TidbMonitor example](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) and [API documentation](api-references.md) to complete TidbMonitor CR, and save it to the `${cluster_name}/tidb-monitor.yaml` file. Please switch the TidbMonitor example and API documentation to the currently used version of TiDB Operator.
 
 ### Storage class

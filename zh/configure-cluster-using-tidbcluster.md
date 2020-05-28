@@ -104,7 +104,7 @@ spec:
 
 ## 配置 TiCDC 启动参数
 
-你可以通过 TidbCluster Custom Resource 的 `spec.ticdc.config` 来配置 TiCDC 启动参数，以下是一个例子。获取所有可以配置的 CDC 启动参数，请参考 [CDC 启动参数文档](https://pingcap.com/docs-cn/stable/ticdc/deploy-ticdc/#手动在原有-tidb-集群上新增-ticdc-组件)。
+你可以通过 TidbCluster Custom Resource 的 `spec.ticdc.config` 来配置 TiCDC 启动参数，以下是一个例子。获取所有可以配置的 TiCDC 启动参数，请参考 [TiCDC 启动参数文档](https://pingcap.com/docs-cn/stable/ticdc/deploy-ticdc/#手动在原有-tidb-集群上新增-ticdc-组件)。
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1

@@ -24,6 +24,10 @@ Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the
 
 If TiFlash is deployed in the cluster, you can scale out TiFlash by modifying `spec.tiflash.replicas`.
 
+#### Scale TiCDC
+
+If TiCDC is deployed in the cluster, you can scale out TiCDC by modifying `spec.ticdc.replicas`.
+
 #### Scale in TiFlash
 
 1. Expose the PD service by using `port-forward`:
@@ -117,6 +121,8 @@ Currently, the TiDB cluster supports management by Helm or by TidbCluster Custom
 Modify `spec.pd.resources`, `spec.tikv.resources`, and `spec.tidb.resources` in the `TidbCluster` object that corresponds to the cluster to the desired values using kubectl.
 
 If TiFlash is deployed in the cluster, you can scale up and down TiFlash by modifying `spec.tiflash.resources`.
+
+If TiCDC is deployed in the cluster, you can scale up and down TiCDC by modifying `spec.ticdc.resources`.
 
 ### Vertical scaling operations (Helm)
 

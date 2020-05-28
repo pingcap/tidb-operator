@@ -6,7 +6,7 @@ category: how-to
 
 # Configure a TiDB Cluster Using TidbCluster
 
-This document introduces how to configure the parameters of TiDB/TiKV/PD/TiFlash using TidbCluster.
+This document introduces how to configure the parameters of TiDB/TiKV/PD/TiFlash/TiCDC using TidbCluster.
 
 The current TiDB Operator v1.1 supports all parameters of TiDB v3.1. For parameters of different components, refer to [TiDB documentation](https://pingcap.com/docs/).
 
@@ -117,3 +117,25 @@ spec:
           count: 5
           level: information
 ```
+
+## Configure TiCDC start parameters
+
+You can configure TiCDC start parameters through `spec.ticdc.config` in TidbCluster Custom Resource.
+
+For example:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  ...
+  ticdc:
+    config:
+      timezone: UTC
+      gcTTL: 86400
+      logLevel: info
+```
+
+For all configurable start parameters of TiCDC, see [TiCDC start parameters](https://pingcap.com/docs/stable/ticdc/deploy-ticdc/#manually-add-ticdc-component-to-an-existing-tidb-cluster).
