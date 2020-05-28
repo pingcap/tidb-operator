@@ -5,13 +5,13 @@
 
 ## 文档目录
 
++ 关于 TiDB Operator
+  - [简介](tidb-operator-overview.md)
+  - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
 + 快速上手
   - [kind](deploy-tidb-from-kubernetes-kind.md)
   - [GKE](deploy-tidb-from-kubernetes-gke.md)
   - [Minikube](deploy-tidb-from-kubernetes-minikube.md)
-+ 关于 TiDB Operator
-  - [简介](tidb-operator-overview.md)
-  - [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)
 + 部署
   - 部署 TiDB 集群
     - [部署到 AWS EKS](deploy-on-aws-eks.md)
