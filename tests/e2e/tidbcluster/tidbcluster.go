@@ -1295,21 +1295,6 @@ func newTidbCluster(ns, clusterName, tidbVersion string) *v1alpha1.TidbCluster {
 	tc.Spec.EnablePVReclaim = pointer.BoolPtr(false)
 	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
 	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
-
-	CpuLimits := parseQuantity("1000m")
-	MemLimits := parseQuantity("2Gi")
-	CpuRequests := parseQuantity("20m")
-	MemRequests := parseQuantity("20Mi")
-	tc.Spec.PD.ResourceRequirements = corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    CpuRequests,
-			corev1.ResourceMemory: MemRequests,
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    CpuLimits,
-			corev1.ResourceMemory: MemLimits,
-		},
-	}
 	return tc
 }
 
@@ -1556,10 +1541,4 @@ func testBR(provider, ns string, fw portforward.PortForward, c clientset.Interfa
 	})
 	framework.ExpectNoError(err, "clean backup failed")
 	framework.Logf("clean backup success")
-}
-
-func parseQuantity(value string) resource.Quantity {
-	q, err := resource.ParseQuantity(value)
-	framework.ExpectNoError(err)
-	return q
 }
