@@ -310,9 +310,9 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		builds["E2E v1.12"] = {
 			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --ginkgo.focus='Deploying'")
 		}
-		builds["E2E v1.18"] = {
-			build("v1.18", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- -preload-images --ginkgo.focus='Deploying' --operator-killer")
-		}
+// 		builds["E2E v1.18"] = {
+// 			build("v1.18", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- -preload-images --operator-killer")
+// 		}
 // 		builds["E2E v1.18 AdvancedStatefulSet"] = {
 // 			build("v1.18-advanced-statefulset", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer")
 // 		}
