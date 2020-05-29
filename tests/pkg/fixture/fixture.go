@@ -170,6 +170,7 @@ func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *core
 						Namespaces: []string{
 							namespace,
 						},
+						TopologyKey: "rack",
 					},
 				},
 			},
