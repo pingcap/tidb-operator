@@ -11706,12 +11706,17 @@ bool
 </tr>
 <tr>
 <td>
-<code>wait-for-lock-timeout</code></br>
+<code>WaitForLockTimeout</code></br>
 <em>
-string
+<a href="#waitforlocktimeout">
+WaitForLockTimeout
+</a>
 </em>
 </td>
 <td>
+<p>
+(Members of <code>WaitForLockTimeout</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>The default and maximum delay before responding to TiDB when pessimistic
 transactions encounter locks</p>
@@ -11719,12 +11724,17 @@ transactions encounter locks</p>
 </tr>
 <tr>
 <td>
-<code>wake-up-delay-duration</code></br>
+<code>WakeUpDelayDuration</code></br>
 <em>
-string
+<a href="#wakeupdelayduration">
+WakeUpDelayDuration
+</a>
 </em>
 </td>
 <td>
+<p>
+(Members of <code>WakeUpDelayDuration</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>If more than one transaction is waiting for the same lock, only the one with smallest
 start timestamp will be waked up immediately when the lock is released. Others will
@@ -15591,6 +15601,60 @@ Networks
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="waitforlocktimeout">WaitForLockTimeout</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvpessimistictxn">TiKVPessimisticTxn</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>wait-for-lock-timeout</code></br>
+<em>
+interface{}
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wakeupdelayduration">WakeUpDelayDuration</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvpessimistictxn">TiKVPessimisticTxn</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>wake-up-delay-duration</code></br>
+<em>
+interface{}
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

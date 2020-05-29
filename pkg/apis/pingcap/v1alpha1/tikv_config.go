@@ -13,6 +13,8 @@
 
 package v1alpha1
 
+import "gopkg.in/yaml.v2"
+
 // Port from TiKV v3.0.6
 
 // TiKVConfig is the configuration of TiKV.
@@ -946,13 +948,58 @@ type TiKVPessimisticTxn struct {
 	// The default and maximum delay before responding to TiDB when pessimistic
 	// transactions encounter locks
 	// +optional
-	WaitForLockTimeout *string `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
+	WaitForLockTimeout *WaitForLockTimeout `json:",inline"`
 	// If more than one transaction is waiting for the same lock, only the one with smallest
 	// start timestamp will be waked up immediately when the lock is released. Others will
 	// be waked up after `wake_up_delay_duration` to reduce contention and make the oldest
 	// one more likely acquires the lock.
 	// +optional
-	WakeUpDelayDuration *string `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
+	WakeUpDelayDuration *WakeUpDelayDuration `json:",inline"`
 	// +optional
 	Pipelined *bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
+}
+
+// +k8s:openapi-gen=false
+// +k8s:deepcopy-gen=false
+type WaitForLockTimeout struct {
+	Values interface{} `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
+}
+
+// +k8s:openapi-gen=false
+// +k8s:deepcopy-gen=false
+type WakeUpDelayDuration struct {
+	Values interface{} `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
+}
+
+func (in *WaitForLockTimeout) DeepCopyInto(out *WaitForLockTimeout) {
+	if in == nil {
+		return
+	}
+
+	b, err := yaml.Marshal(in.Values)
+	if err != nil {
+		return
+	}
+	var values interface{}
+	err = yaml.Unmarshal(b, &values)
+	if err != nil {
+		return
+	}
+	out.Values = values
+}
+
+func (in *WakeUpDelayDuration) DeepCopyInto(out *WakeUpDelayDuration) {
+	if in == nil {
+		return
+	}
+	b, err := yaml.Marshal(in.Values)
+	if err != nil {
+		return
+	}
+	var values interface{}
+	err = yaml.Unmarshal(b, &values)
+	if err != nil {
+		return
+	}
+	out.Values = values
 }
