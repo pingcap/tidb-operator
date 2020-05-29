@@ -308,17 +308,17 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		// pod cann't be recovered when it's deleted because we hooked pod
 		// CREATE/DELETE event.
 		builds["E2E v1.12"] = {
-			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images --ginkgo.focus='Defaulting'")
+			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images")
 		}
-// 		builds["E2E v1.18"] = {
-// 			build("v1.18", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- -preload-images --operator-killer")
-// 		}
-// 		builds["E2E v1.18 AdvancedStatefulSet"] = {
-// 			build("v1.18-advanced-statefulset", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer")
-// 		}
-// 		builds["E2E v1.18 Serial"] = {
-// 			build("v1.18-serial", "${GLOBALS} KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", e2eSerialResources)
-// 		}
+		builds["E2E v1.18"] = {
+			build("v1.18", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- -preload-images --operator-killer")
+		}
+		builds["E2E v1.18 AdvancedStatefulSet"] = {
+			build("v1.18-advanced-statefulset", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer")
+		}
+		builds["E2E v1.18 Serial"] = {
+			build("v1.18-serial", "${GLOBALS} KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", e2eSerialResources)
+		}
 		builds.failFast = false
 		parallel builds
 
