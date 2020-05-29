@@ -1291,6 +1291,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc311, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc311Target.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		tc400, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc400Target.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err)
 		err = oa.WaitForTidbClusterReady(tc311, 30*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err)
 		err = oa.WaitForTidbClusterReady(tc400, 30*time.Minute, 5*time.Second)
