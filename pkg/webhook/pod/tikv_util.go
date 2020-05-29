@@ -18,25 +18,28 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
-
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	memberUtil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 // checkFormerTiKVPodStatus would check all the former tikv pods whether their store state were UP during Upgrading
 // check need both  check former pod is ready ,store up, and no evict leader
-func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, ordinal int32, replicas int32, storesInfo *pdapi.StoresInfo) error {
+func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, ordinal int32, set *apps.StatefulSet, storesInfo *pdapi.StoresInfo) error {
 
 	tcName := tc.Name
 	namespace := tc.Namespace
 
-	for i := replicas - 1; i > ordinal; i-- {
+	for i := range helper.GetPodOrdinals(tc.Spec.TiKV.Replicas, set) {
+		if i <= ordinal {
+			continue
+		}
 		podName := memberUtil.TikvPodName(tcName, i)
 		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {

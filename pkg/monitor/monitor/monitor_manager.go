@@ -189,7 +189,7 @@ func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*co
 	pvc := getMonitorPVC(monitor)
 	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc, false)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
+		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 	return pvc, nil
@@ -387,11 +387,16 @@ func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef,
 	}
 	var mergePatch []byte
 	if tcRef != nil {
+		grafanaEnabled := true
+		if monitor.Spec.Grafana == nil {
+			grafanaEnabled = false
+		}
 		mergePatch, err = json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
 				"monitor": map[string]interface{}{
-					"name":      monitor.Name,
-					"namespace": monitor.Namespace,
+					"name":           monitor.Name,
+					"namespace":      monitor.Namespace,
+					"grafanaEnabled": grafanaEnabled,
 				},
 			},
 		})

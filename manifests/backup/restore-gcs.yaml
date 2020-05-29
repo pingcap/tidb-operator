@@ -5,6 +5,12 @@ metadata:
   name: demo2-restore
   namespace: test2
 spec:
+  # resources:
+  #   limits:
+  #     cpu: 300m
+  #     memory: 300Mi
+  #   requests:
+  #     memory: 300Mi
   to:
     host: 10.233.31.143
     port: 4000

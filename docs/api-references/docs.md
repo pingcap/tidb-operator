@@ -82,6 +82,18 @@ BackupSpec
 <table>
 <tr>
 <td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>from</code></br>
 <em>
 <a href="#tidbaccessconfig">
@@ -463,6 +475,18 @@ RestoreSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>to</code></br>
@@ -1599,6 +1623,13 @@ TidbMonitorStatus
 </tr>
 </tbody>
 </table>
+<h3 id="autoscalerphase">AutoScalerPhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
+</p>
+<p>
+</p>
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -2004,6 +2035,18 @@ Kubernetes meta/v1.Time
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>from</code></br>
@@ -2429,6 +2472,19 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#autoscalerphase">
+AutoScalerPhase
+</a>
+</em>
+</td>
+<td>
+<p>Phase describes cluster auto scaling phase</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>metrics</code></br>
@@ -3156,7 +3212,7 @@ CrdKind
 <tbody>
 <tr>
 <td>
-<code>tidb_cacert_path</code></br>
+<code>tidb-cacert-path</code></br>
 <em>
 string
 </em>
@@ -3167,7 +3223,7 @@ string
 </tr>
 <tr>
 <td>
-<code>tidb_cert_path</code></br>
+<code>tidb-cert-path</code></br>
 <em>
 string
 </em>
@@ -3178,7 +3234,18 @@ string
 </tr>
 <tr>
 <td>
-<code>tidb_key_path</code></br>
+<code>tidb-key-path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>public-path-prefix</code></br>
 <em>
 string
 </em>
@@ -4161,7 +4228,9 @@ Kubernetes core/v1.ResourceRequirements
 <h3 id="masterkeyfileconfig">MasterKeyFileConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>, 
+<a href="#tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</a>, 
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</a>)
 </p>
 <p>
 </p>
@@ -4192,7 +4261,9 @@ optional</p>
 <h3 id="masterkeykmsconfig">MasterKeyKMSConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>, 
+<a href="#tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</a>, 
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</a>)
 </p>
 <p>
 </p>
@@ -4272,6 +4343,7 @@ optional</p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>)
 </p>
@@ -7306,6 +7378,18 @@ string
 <tbody>
 <tr>
 <td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>to</code></br>
 <em>
 <a href="#tidbaccessconfig">
@@ -8202,6 +8286,44 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="ticdccapture">TiCDCCapture</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcstatus">TiCDCStatus</a>)
+</p>
+<p>
+<p>TiCDCCapture is TiCDC Capture status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -8364,6 +8486,70 @@ TiCDCConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcstatus">TiCDCStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCDCStatus is TiCDC status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>captures</code></br>
+<em>
+<a href="#ticdccapture">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCapture
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -10600,19 +10786,6 @@ TiKVSecurityConfig
 </tr>
 <tr>
 <td>
-<code>encryption</code></br>
-<em>
-<a href="#tikvencryptionconfig">
-TiKVEncryptionConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
 <code>pessimistic-txn</code></br>
 <em>
 <a href="#tikvpessimistictxn">
@@ -11191,10 +11364,6 @@ TiKVTitanDBConfig
 </tbody>
 </table>
 <h3 id="tikvencryptionconfig">TiKVEncryptionConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
 <p>
 </p>
 <table>
@@ -12824,6 +12993,40 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>MasterKeyFileConfig</code></br>
+<em>
+<a href="#masterkeyfileconfig">
+MasterKeyFileConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyFileConfig</code> are embedded into this type.)
+</p>
+<p>Master key file config
+If the type set to file, this config should be filled</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyKMSConfig</code></br>
+<em>
+<a href="#masterkeykmsconfig">
+MasterKeyKMSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyKMSConfig</code> are embedded into this type.)
+</p>
+<p>Master key KMS config
+If the type set to kms, this config should be filled</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</h3>
@@ -12850,6 +13053,40 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyFileConfig</code></br>
+<em>
+<a href="#masterkeyfileconfig">
+MasterKeyFileConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyFileConfig</code> are embedded into this type.)
+</p>
+<p>Master key file config
+If the type set to file, this config should be filled</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyKMSConfig</code></br>
+<em>
+<a href="#masterkeykmsconfig">
+MasterKeyKMSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyKMSConfig</code> are embedded into this type.)
+</p>
+<p>Master key KMS config
+If the type set to kms, this config should be filled</p>
 </td>
 </tr>
 </tbody>
@@ -14741,6 +14978,18 @@ TiFlashStatus
 </tr>
 <tr>
 <td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcstatus">
+TiCDCStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>monitor</code></br>
 <em>
 <a href="#tidbmonitorref">
@@ -14991,6 +15240,18 @@ string
 <p>Name is the name of TidbMonitor object</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>grafanaEnabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GrafanaEnabled indicate whether the grafana is enabled for this target tidbmonitor</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbmonitorspec">TidbMonitorSpec</h3>
@@ -15228,6 +15489,20 @@ BasicAutoScalerSpec
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readyToScaleThresholdSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
+should last for before auto scaling.
+If not set, the default ReadyToScaleThresholdSeconds will be set to 30.</p>
 </td>
 </tr>
 </tbody>
