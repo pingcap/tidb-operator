@@ -45,7 +45,7 @@ This document describes the configuration of the tidb-cluster chart.
 | `pd.resources.requests.cpu` | CPU resource request for each PD Pod | `nil` |
 | `pd.resources.requests.memory` | Memory resource request for each PD Pod | `nil` |
 | `pd.resources.requests.storage` | Storage capacity request for each PD Pod | `1Gi` |
-| `pd.affinity` | `pd.affinity` defines PD scheduling rules and preferences. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
+| `pd.affinity` | `pd.affinity` defines PD scheduling rules and preferences. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity) | `{}` |
 | `pd.nodeSelector` | `pd.nodeSelector` makes sure that PD Pods are dispatched only to nodes that have this key-value pair as a label. For details, refer to [nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) | `{}` |
 | `pd.tolerations` | `pd.tolerations` applies to PD Pods, allowing PD Pods to be dispatched to nodes with specified taints. For details, refer to [taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration) | `{}` |
 | `pd.annotations` | Add specific `annotations` to PD Pods | `{}` |
@@ -63,7 +63,7 @@ This document describes the configuration of the tidb-cluster chart.
 | `tikv.resources.requests.cpu` | CPU resource request for each TiKV Pod | `nil` |
 | `tikv.resources.requests.memory` | Memory resource request for each TiKV Pod | `nil` |
 | `tikv.resources.requests.storage` | Storage capacity request for each TiKV Pod | `10Gi` |
-| `tikv.affinity` | `tikv.affinity` defines TiKV's scheduling rules and preferences. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
+| `tikv.affinity` | `tikv.affinity` defines TiKV's scheduling rules and preferences. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity) | `{}` |
 | `tikv.nodeSelector` | `tikv.nodeSelector` makes sure that TiKV Pods are dispatched only to nodes that have this key-value pair as a label. For details, refer to [nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) | `{}` |
 | `tikv.tolerations` | `tikv.tolerations` applies to TiKV Pods, allowing TiKV Pods to be dispatched to nodes with specified taints. For details, refer to [taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration) | `{}` |
 | `tikv.annotations` | Add specific `annotations` for TiKV Pods | `{}` |
@@ -83,7 +83,7 @@ This document describes the configuration of the tidb-cluster chart.
 | `tidb.resources.requests.memory` | Memory resource request for each TiDB Pod | `nil` |
 | `tidb.passwordSecretName`| The name of the Secret which stores the TiDB username and password. This Secret can be created with the following command: `kubectl create secret generic tidb secret--from literal=root=${password}--namespace=${namespace}`. If the parameter is not set, the TiDB root password is empty. | `nil` |
 | `tidb.initSql`| The initialization script that will be executed after the TiDB cluster is successfully started. | `nil` |
-| `tidb.affinity` | `tidb.affinity` defines the scheduling rules and preferences of TiDB. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity). | `{}` |
+| `tidb.affinity` | `tidb.affinity` defines the scheduling rules and preferences of TiDB. For details, refer to [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity). | `{}` |
 | `tidb.nodeSelector` | `tidb.nodeSelector` makes sure that TiDB Pods are only dispatched to nodes that have this key-value pair as a label. For details, refer to[nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector). | `{}` |
 | `tidb.tolerations` | `tidb.tolerations` applies to TiKV Pods, allowing TiKV Pods to be dispatched to nodes with specified taints. For details, refer to [taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration). | `{}` |
 | `tidb.annotations` | Add specific `annotations` for TiDB Pods | `{}` |

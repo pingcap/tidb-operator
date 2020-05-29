@@ -30,7 +30,7 @@ category: reference
 | `resources` | drainer Pod 的资源限制和请求 | `{}` |
 | `nodeSelector` | 确保 drainer Pod 仅被调度到具有特定键值对作为标签的节点上。详情可参阅 [nodeselector](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector) | `{}` |
 | `tolerations` | 适用于 drainer Pod，允许将 Pod 调度到有指定 taint 的节点上。详情可参阅 [taint-and-toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration) | `{}` |
-| `affinity` | 定义 drainer Pod 的调度策略和首选项。详情可参阅 [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#affinity-and-anti-affinity) | `{}` |
+| `affinity` | 定义 drainer Pod 的调度策略和首选项。详情可参阅 [affinity-and-anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity) | `{}` |
 
 `config` 的默认值为：
 
