@@ -916,6 +916,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.Reference
 				Description: "BasicAutoScalerStatus describe the basic auto-scaling status",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase describes cluster auto scaling phase",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MetricsStatusList describes the metrics status in the last auto-scaling reconciliation",
@@ -7489,6 +7496,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceC
 				Description: "TidbAutoScalerStatus describe the auto-scaling status of tidb",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase describes cluster auto scaling phase",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MetricsStatusList describes the metrics status in the last auto-scaling reconciliation",
@@ -8521,6 +8535,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
 						},
 					},
+					"readyToScaleThresholdSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase should last for before auto scaling. If not set, the default ReadyToScaleThresholdSeconds will be set to 30.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"maxReplicas"},
 			},
@@ -8537,6 +8558,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerStatus(ref common.ReferenceC
 				Description: "TikvAutoScalerStatus describe the auto-scaling status of tikv",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase describes cluster auto scaling phase",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MetricsStatusList describes the metrics status in the last auto-scaling reconciliation",
