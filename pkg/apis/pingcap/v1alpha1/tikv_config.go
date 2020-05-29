@@ -946,25 +946,15 @@ type TiKVPessimisticTxn struct {
 	// The default and maximum delay before responding to TiDB when pessimistic
 	// transactions encounter locks
 	// +optional
-	WaitForLockTimeout WaitForLockTimeout `json:",inline"`
+	// +k8s:openapi-gen=false
+	WaitForLockTimeout *string `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
 	// If more than one transaction is waiting for the same lock, only the one with smallest
 	// start timestamp will be waked up immediately when the lock is released. Others will
 	// be waked up after `wake_up_delay_duration` to reduce contention and make the oldest
 	// one more likely acquires the lock.
 	// +optional
-	WakeUpDelayDuration WakeUpDelayDuration `json:",inline"`
+	// +k8s:openapi-gen=false
+	WakeUpDelayDuration *string `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
 	// +optional
 	Pipelined *bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
-}
-
-// +k8s:openapi-gen=false
-// +k8s:deepcopy-gen=false
-type WaitForLockTimeout struct {
-	Values interface{} `json:"wait-for-lock-timeout,omitempty" toml:"wait-for-lock-timeout,omitempty"`
-}
-
-// +k8s:openapi-gen=false
-// +k8s:deepcopy-gen=false
-type WakeUpDelayDuration struct {
-	Values interface{} `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
 }

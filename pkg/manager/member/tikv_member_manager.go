@@ -511,6 +511,36 @@ func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
+// TODO: add unit test
+func transformTiKVConfigMap(src []byte, tc *v1alpha1.TidbCluster) string {
+	config := tc.Spec.TiKV.Config
+	if config == nil {
+		return string(src)
+	}
+	srcStr := string(src)
+	if config.TiKVPessimisticTxn != nil {
+		clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.TiKVVersion())
+		if err != nil {
+			klog.Infof("cluster version: %s is not semantic versioning compatible", tc.TiKVVersion())
+		}
+		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
+			if !clusterVersionGE4 && err == nil {
+				old := fmt.Sprintf(`wait-for-lock-timeout = "%s"`, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				newString := fmt.Sprintf(`wait-for-lock-timeout = %s`, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		}
+		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
+			if !clusterVersionGE4 && err == nil {
+				old := fmt.Sprintf(`wake-up-delay-duration = "%s"`, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				newString := fmt.Sprintf(`wake-up-delay-duration = %s`, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		}
+	}
+	return srcStr
+}
+
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	config := tc.Spec.TiKV.Config
@@ -548,7 +578,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: map[string]string{
-			"config-file":    string(confText),
+			"config-file":    transformTiKVConfigMap(confText, tc),
 			"startup-script": startScript,
 		},
 	}
