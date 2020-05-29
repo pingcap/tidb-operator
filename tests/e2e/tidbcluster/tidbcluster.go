@@ -1349,18 +1349,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					ComponentSpec: v1alpha1.ComponentSpec{
 						Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
 					},
+					Config: &v1alpha1.TiDBConfig{},
 				},
 				TiKV: v1alpha1.TiKVSpec{
 					Replicas: 1,
 					ComponentSpec: v1alpha1.ComponentSpec{
 						Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
 					},
+					Config: &v1alpha1.TiKVConfig{},
 				},
 				PD: v1alpha1.PDSpec{
 					Replicas: 1,
 					ComponentSpec: v1alpha1.ComponentSpec{
 						Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
 					},
+					Config: &v1alpha1.PDConfig{},
 				},
 			},
 		}
