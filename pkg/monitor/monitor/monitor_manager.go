@@ -50,6 +50,7 @@ type MonitorManager struct {
 	ingressLister      extensionslister.IngressLister
 	pvControl          controller.PVControlInterface
 	recorder           record.EventRecorder
+	cmControl          controller.ConfigMapControlInterface
 }
 
 const (
@@ -253,6 +254,26 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {
 		return nil, err
+	}
+	config := monitor.Spec.Prometheus.Config
+	if config != nil && config.ConfigMapRef != nil && len(config.ConfigMapRef.Name) > 0 {
+		namespace := monitor.Namespace
+		if config.ConfigMapRef.Namespace != nil {
+			namespace = *config.ConfigMapRef.Namespace
+		}
+		externalCM, err := mm.cmControl.GetConfigMap(monitor, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.ConfigMapRef.Name,
+				Namespace: namespace,
+			},
+		})
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", namespace, config.ConfigMapRef.Name, err)
+			return nil, err
+		}
+		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
+			newCM.Data["prometheus-config"] = externalContent
+		}
 	}
 	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
