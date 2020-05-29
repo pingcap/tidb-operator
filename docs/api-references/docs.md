@@ -3172,7 +3172,7 @@ CrdKind
 <tbody>
 <tr>
 <td>
-<code>tidb_cacert_path</code></br>
+<code>tidb-cacert-path</code></br>
 <em>
 string
 </em>
@@ -3183,7 +3183,7 @@ string
 </tr>
 <tr>
 <td>
-<code>tidb_cert_path</code></br>
+<code>tidb-cert-path</code></br>
 <em>
 string
 </em>
@@ -3194,7 +3194,18 @@ string
 </tr>
 <tr>
 <td>
-<code>tidb_key_path</code></br>
+<code>tidb-key-path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>public-path-prefix</code></br>
 <em>
 string
 </em>
@@ -4177,7 +4188,9 @@ Kubernetes core/v1.ResourceRequirements
 <h3 id="masterkeyfileconfig">MasterKeyFileConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>, 
+<a href="#tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</a>, 
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</a>)
 </p>
 <p>
 </p>
@@ -4208,7 +4221,9 @@ optional</p>
 <h3 id="masterkeykmsconfig">MasterKeyKMSConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>)
+<a href="#tikvmasterkeyconfig">TiKVMasterKeyConfig</a>, 
+<a href="#tikvsecurityconfigencryptionmasterkey">TiKVSecurityConfigEncryptionMasterKey</a>, 
+<a href="#tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</a>)
 </p>
 <p>
 </p>
@@ -4288,6 +4303,7 @@ optional</p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>)
 </p>
@@ -8175,6 +8191,44 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="ticdccapture">TiCDCCapture</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcstatus">TiCDCStatus</a>)
+</p>
+<p>
+<p>TiCDCCapture is TiCDC Capture status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -8337,6 +8391,70 @@ TiCDCConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcstatus">TiCDCStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCDCStatus is TiCDC status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>captures</code></br>
+<em>
+<a href="#ticdccapture">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCapture
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -10573,19 +10691,6 @@ TiKVSecurityConfig
 </tr>
 <tr>
 <td>
-<code>encryption</code></br>
-<em>
-<a href="#tikvencryptionconfig">
-TiKVEncryptionConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
 <code>pessimistic-txn</code></br>
 <em>
 <a href="#tikvpessimistictxn">
@@ -11164,10 +11269,6 @@ TiKVTitanDBConfig
 </tbody>
 </table>
 <h3 id="tikvencryptionconfig">TiKVEncryptionConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
 <p>
 </p>
 <table>
@@ -12797,6 +12898,40 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>MasterKeyFileConfig</code></br>
+<em>
+<a href="#masterkeyfileconfig">
+MasterKeyFileConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyFileConfig</code> are embedded into this type.)
+</p>
+<p>Master key file config
+If the type set to file, this config should be filled</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyKMSConfig</code></br>
+<em>
+<a href="#masterkeykmsconfig">
+MasterKeyKMSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyKMSConfig</code> are embedded into this type.)
+</p>
+<p>Master key KMS config
+If the type set to kms, this config should be filled</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvsecurityconfigencryptionpreviousmasterkey">TiKVSecurityConfigEncryptionPreviousMasterKey</h3>
@@ -12823,6 +12958,40 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyFileConfig</code></br>
+<em>
+<a href="#masterkeyfileconfig">
+MasterKeyFileConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyFileConfig</code> are embedded into this type.)
+</p>
+<p>Master key file config
+If the type set to file, this config should be filled</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>MasterKeyKMSConfig</code></br>
+<em>
+<a href="#masterkeykmsconfig">
+MasterKeyKMSConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MasterKeyKMSConfig</code> are embedded into this type.)
+</p>
+<p>Master key KMS config
+If the type set to kms, this config should be filled</p>
 </td>
 </tr>
 </tbody>
@@ -14706,6 +14875,18 @@ PumpStatus
 <em>
 <a href="#tiflashstatus">
 TiFlashStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcstatus">
+TiCDCStatus
 </a>
 </em>
 </td>
