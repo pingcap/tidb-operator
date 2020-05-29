@@ -13,8 +13,6 @@
 
 package v1alpha1
 
-import "gopkg.in/yaml.v2"
-
 // Port from TiKV v3.0.6
 
 // TiKVConfig is the configuration of TiKV.
@@ -969,37 +967,4 @@ type WaitForLockTimeout struct {
 // +k8s:deepcopy-gen=false
 type WakeUpDelayDuration struct {
 	Values interface{} `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
-}
-
-func (in *WaitForLockTimeout) DeepCopyInto(out *WaitForLockTimeout) {
-	if in == nil {
-		return
-	}
-
-	b, err := yaml.Marshal(in.Values)
-	if err != nil {
-		return
-	}
-	var values interface{}
-	err = yaml.Unmarshal(b, &values)
-	if err != nil {
-		return
-	}
-	out.Values = values
-}
-
-func (in *WakeUpDelayDuration) DeepCopyInto(out *WakeUpDelayDuration) {
-	if in == nil {
-		return
-	}
-	b, err := yaml.Marshal(in.Values)
-	if err != nil {
-		return
-	}
-	var values interface{}
-	err = yaml.Unmarshal(b, &values)
-	if err != nil {
-		return
-	}
-	out.Values = values
 }
