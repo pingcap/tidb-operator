@@ -782,8 +782,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		ginkgo.It("Deploy TidbCluster and Upgrade Operator", func() {
 			tcName := "tidbcluster"
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
-			cluster.Resources["pd.replicas"] = "1"
-			cluster.Resources["tikv.replicas"] = "1"
+			cluster.Resources["pd.replicas"] = "3"
+			cluster.Resources["tikv.replicas"] = "3"
 			cluster.Resources["tidb.replicas"] = "1"
 			cluster.Monitor = false
 			cluster.OperatorTag = version
@@ -801,9 +801,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return podList.Items, nil
 			}
 
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get tc")
-
 			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
 			framework.ExpectNoError(err, "failed to get pd pods")
 
@@ -818,7 +815,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.Image = cfg.OperatorImage
 			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
-			
+
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				// confirm the pd Pod haven't been changed
 				changed, err := utilpod.PodsAreChanged(c, pdPods)()
