@@ -5098,16 +5098,8 @@ func (in *TiKVPessimisticTxn) DeepCopyInto(out *TiKVPessimisticTxn) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.WaitForLockTimeout != nil {
-		in, out := &in.WaitForLockTimeout, &out.WaitForLockTimeout
-		*out = new(WaitForLockTimeout)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.WakeUpDelayDuration != nil {
-		in, out := &in.WakeUpDelayDuration, &out.WakeUpDelayDuration
-		*out = new(WakeUpDelayDuration)
-		(*in).DeepCopyInto(*out)
-	}
+	in.WaitForLockTimeout.DeepCopyInto(&out.WaitForLockTimeout)
+	in.WakeUpDelayDuration.DeepCopyInto(&out.WakeUpDelayDuration)
 	if in.Pipelined != nil {
 		in, out := &in.Pipelined, &out.Pipelined
 		*out = new(bool)

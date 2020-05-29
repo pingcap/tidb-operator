@@ -6142,6 +6142,18 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVPessimisticTxn(ref common.ReferenceCal
 							Format: "",
 						},
 					},
+					"wait-for-lock-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"object"},
+							Format: "",
+						},
+					},
+					"wake-up-delay-duration": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"object"},
+							Format: "",
+						},
+					},
 					"pipelined": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},

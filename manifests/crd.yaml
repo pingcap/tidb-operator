@@ -3403,6 +3403,10 @@ spec:
                           type: boolean
                         pipelined:
                           type: boolean
+                        wait-for-lock-timeout:
+                          type: object
+                        wake-up-delay-duration:
+                          type: object
                       type: object
                     raftdb:
                       properties:

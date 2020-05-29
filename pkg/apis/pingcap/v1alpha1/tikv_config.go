@@ -946,13 +946,13 @@ type TiKVPessimisticTxn struct {
 	// The default and maximum delay before responding to TiDB when pessimistic
 	// transactions encounter locks
 	// +optional
-	WaitForLockTimeout *WaitForLockTimeout `json:",inline"`
+	WaitForLockTimeout WaitForLockTimeout `json:",inline"`
 	// If more than one transaction is waiting for the same lock, only the one with smallest
 	// start timestamp will be waked up immediately when the lock is released. Others will
 	// be waked up after `wake_up_delay_duration` to reduce contention and make the oldest
 	// one more likely acquires the lock.
 	// +optional
-	WakeUpDelayDuration *WakeUpDelayDuration `json:",inline"`
+	WakeUpDelayDuration WakeUpDelayDuration `json:",inline"`
 	// +optional
 	Pipelined *bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
 }

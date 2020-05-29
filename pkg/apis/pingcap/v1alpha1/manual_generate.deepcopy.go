@@ -13,23 +13,30 @@
 
 package v1alpha1
 
-import "gopkg.in/yaml.v2"
+import (
+	"fmt"
+	"reflect"
+
+	"gopkg.in/yaml.v2"
+)
 
 func (in *WaitForLockTimeout) DeepCopyInto(out *WaitForLockTimeout) {
 	if in == nil {
 		return
 	}
-
-	b, err := yaml.Marshal(in.Values)
-	if err != nil {
+	if in.Values == nil {
+		out.Values = nil
 		return
 	}
-	var values interface{}
-	err = yaml.Unmarshal(b, &values)
-	if err != nil {
-		return
+	switch in.Values.(type) {
+	case string:
+		out.Values = in.Values.(string)
+	case int:
+		out.Values = in.Values.(int)
+	default:
+		fmt.Println(reflect.TypeOf(in.Values))
 	}
-	out.Values = values
+	return
 }
 
 func (in *WakeUpDelayDuration) DeepCopyInto(out *WakeUpDelayDuration) {
