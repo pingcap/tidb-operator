@@ -401,4 +401,81 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 		err = utilpod.WaitForPodsAreChanged(c, podListBeforeUpgrade.Items, time.Minute*3)
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "Pods are changed after the operator is upgraded")
 	})
+
+	ginkgo.It("[Feature: AdvancedStatefulSet] Upgrading tidb cluster while pods are not consecutive", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+		var genericCli client.Client
+
+		ocfg = &tests.OperatorConfig{
+			Namespace:      ns,
+			ReleaseName:    "operator",
+			Image:          cfg.OperatorImage,
+			Tag:            cfg.OperatorTag,
+			SchedulerImage: "k8s.gcr.io/kube-scheduler",
+			Features: []string{
+				"StableScheduling=true",
+				"AdvancedStatefulSet=false",
+			},
+			LogLevel:        "4",
+			ImagePullPolicy: v1.PullIfNotPresent,
+			TestMode:        true,
+		}
+		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		ginkgo.By("Installing CRDs")
+		oa.CleanCRDOrDie()
+		oa.InstallCRDOrDie(ocfg)
+		ginkgo.By("Installing tidb-operator without AdvancedStatefulSet feature")
+		oa.CleanOperatorOrDie(ocfg)
+		oa.DeployOperatorOrDie(ocfg)
+		var err error
+		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		framework.ExpectNoError(err, "failed to create clientset")
+
+		defer func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		}()
+
+		tc := fixture.GetTidbCluster(ns, "upgrade-cluster", utilimage.TiDBV3Version)
+		tc.Spec.PD.Replicas = 5
+		tc.Spec.TiKV.Replicas = 4
+		tc.Spec.TiDB.Replicas = 3
+		err = genericCli.Create(context.TODO(), tc)
+		framework.ExpectNoError(err)
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Scaling in the cluster by deleting some pods not at the end")
+		tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			if tc.Annotations == nil {
+				tc.Annotations = map[string]string{}
+			}
+			tc.Annotations[label.AnnPDDeleteSlots] = "[1]"
+			tc.Annotations[label.AnnTiKVDeleteSlots] = "[0]"
+			tc.Annotations[label.AnnTiDBDeleteSlots] = "[1]"
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			return nil
+		})
+		framework.ExpectNoError(err)
+		ginkgo.By("Checking for tidb cluster is ready")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Upgrding the cluster")
+		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+			return nil
+		})
+		framework.ExpectNoError(err)
+		ginkgo.By("Checking for tidb cluster is ready")
+		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err)
+	})
 })
