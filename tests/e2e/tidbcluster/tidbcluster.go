@@ -1350,6 +1350,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
 					},
 					Config: &v1alpha1.TiDBConfig{},
+					Service: &v1alpha1.TiDBServiceSpec{
+						
+					},
 				},
 				TiKV: v1alpha1.TiKVSpec{
 					Replicas: 1,
