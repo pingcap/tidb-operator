@@ -36,7 +36,7 @@ metadata:
   # This name uniquely identifies the service
   name: minio-service
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
     - port: 9000
       targetPort: 9000
