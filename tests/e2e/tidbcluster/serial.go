@@ -750,13 +750,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 	})
 
-	ginkgo.Context("[Verify: Upgrading Operator from 1.0.6", func() {
+	ginkgo.Context("[Verify: Upgrading Operator from 1.1.0", func() {
 		var oa tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = "v1.0.6"
+			version = "v1.1.0"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",
@@ -784,7 +784,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "3"
-			cluster.Resources["tidb.replicas"] = "2"
+			cluster.Resources["tidb.replicas"] = "1"
 			cluster.Monitor = false
 			cluster.OperatorTag = version
 			oa.DeployTidbClusterOrDie(&cluster)
@@ -801,9 +801,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return podList.Items, nil
 			}
 
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get tc")
-
 			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
 			framework.ExpectNoError(err, "failed to get pd pods")
 
@@ -818,40 +815,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.Image = cfg.OperatorImage
 			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
-
-			// confirm the tidb has been changed
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				newTc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-				if err != nil {
-					return false, nil
-				}
-				// wait tidb to be updated
-				if tc.Status.TiDB.StatefulSet.CurrentRevision == newTc.Status.TiDB.StatefulSet.CurrentRevision {
-					klog.Info("wait tidb to be updated")
-					return false, nil
-				}
-				// wait tidb finish updating
-				if newTc.Status.TiDB.StatefulSet.CurrentRevision != newTc.Status.TiDB.StatefulSet.UpdateRevision {
-					klog.Info("wait tidb finish updating")
-					return false, nil
-				}
-
-				// confirm the tidb pod have been changed
-				changed, err := utilpod.PodsAreChanged(c, tidbPods)()
-				if changed {
-					klog.Infof("confirm tidb pods have been changed")
-				} else {
-					if err != nil {
-						klog.Errorf("meet error during verify tidb pods, err:%v", err)
-						return false, nil
-					}
-					if !changed {
-						return false, fmt.Errorf("tidb should be updated after operator upgrading")
-					}
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "Failed to check Tidb Status After Upgrading Operator")
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				// confirm the pd Pod haven't been changed
@@ -875,9 +838,21 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return true, nil
 				}
 				klog.Infof("confirm tikv pods haven't been changed this time")
+
+				// confirm the tidb haven't been changed
+				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
+				if err != nil {
+					klog.Errorf("meet error during verify tidb pods, err:%v", err)
+					return true, nil
+				}
+				if changed {
+					return true, nil
+				}
+				klog.Infof("confirm tidb pods haven't been changed this time")
+
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tikv and pd haven't been changed for 5 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
 	})
 
