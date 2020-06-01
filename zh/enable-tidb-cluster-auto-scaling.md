@@ -102,30 +102,123 @@ spec:
   ......
 ```
 
-## 快速上手
+## 例子
 
-我们将通过以下指令快速部署一个 3 PD、3 TiKV、2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
+1. 执行以下命令在 Kubernetes 集群上快速安装一个 1 PD、3 TiKV、2 TiDB，并带有监控与弹性伸缩能力的 TiDB 集群。
 
-```shell
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
-tidbcluster.pingcap.com/auto-scaling-demo created
+    {{< copyable "shell-regular" >}}
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
-tidbmonitor.pingcap.com/auto-scaling-demo created
+    ```shell
+    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
+    ```
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
-tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
-```
+    {{< copyable "shell-regular" >}}
 
-当 TiDB 集群创建完毕以后，你可以通过 [sysbench](https://www.percona.com/blog/tag/sysbench/) 等数据库压测工具进行压测来体验弹性伸缩功能。
+    ```shell
+    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
+    ```
 
-使用如下命令销毁环境：
+    {{< copyable "shell-regular" >}}
 
-```shell
-kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
-kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
-kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
-```
+    ```shell
+    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
+    ```
+
+2. 当 TiDB 集群创建完毕以后，使用以下方式暴露 TiDB 集群服务到本地。
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl port-forward svc/auto-scaling-demo-tidb 4000:4000 &
+    ```
+
+    将以下内容复制到本地的 sysbench.config 文件中：
+
+    ```config
+    mysql-host=127.0.0.1
+    mysql-port=4000
+    mysql-user=root
+    mysql-password=
+    mysql-db=test
+    time=120
+    threads=20
+    report-interval=5
+    db-driver=mysql
+    ```
+
+3. 使用 [sysbench](https://github.com/akopytov/sysbench) 工具准备数据并进行压测。
+
+    将以下内容复制到本地的 sysbench.config 文件中：
+
+    ```config
+    mysql-host=127.0.0.1
+    mysql-port=4000
+    mysql-user=root
+    mysql-password=
+    mysql-db=test
+    time=120
+    threads=20
+    report-interval=5
+    db-driver=mysql
+    ```
+
+    通过以下命令准备数据:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sysbench --config-file=${path-to-file}/sysbench.config oltp_point_select --tables=1 --table-size=20000 prepare
+    ```
+
+    通过以下命令开始进行压测:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sysbench --config-file=${path-to-file}/sysbench.config oltp_point_select --tables=1 --table-size=20000 run
+    ```
+
+    上述命令执行完毕后，出现如下输出：
+
+    ```sh
+    Initializing worker threads...
+
+    Threads started!
+
+    [ 5s ] thds: 20 tps: 37686.35 qps: 37686.35 (r/w/o: 37686.35/0.00/0.00) lat (ms,95%): 0.99 err/s: 0.00 reconn/s: 0.00
+    [ 10s ] thds: 20 tps: 38487.20 qps: 38487.20 (r/w/o: 38487.20/0.00/0.00) lat (ms,95%): 0.95 err/s: 0.00 reconn/s: 0.00
+    ```
+
+4. 新建一个会话终端，通过以下命令观察 TiDB 集群的 Pod 变化情况。
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    watch -n1 "kubectl -n ${namespace} get pod"
+    ```
+
+    出现如下输出:
+
+    ```sh
+    auto-scaling-demo-discovery-fbd95b679-f4cb9   1/1     Running   0          17m
+    auto-scaling-demo-monitor-6857c58564-ftkp4    3/3     Running   0          17m
+    auto-scaling-demo-pd-0                        1/1     Running   0          17m
+    auto-scaling-demo-tidb-0                      2/2     Running   0          15m
+    auto-scaling-demo-tidb-1                      2/2     Running   0          15m
+    auto-scaling-demo-tikv-0                      1/1     Running   0          15m
+    auto-scaling-demo-tikv-1                      1/1     Running   0          15m
+    auto-scaling-demo-tikv-2                      1/1     Running   0          15m
+    ```
+
+    观察 Pod 的变化情况与 sysbench 的 TPS 与 QPS，当 TiKV 与 TiDB Pod 新增时，sysbench 的 TPS 与 QPS 值有显著提升。当 sysbench 结束后，观察 Pod 变化情况，发现新增的 TiKV 与 TiDB Pod 自动消失。
+
+5. 使用如下命令销毁环境：
+
+    ```shell
+    kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
+    kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
+    kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
+    ```
 
 ## 配置 TidbClusterAutoScaler
 
