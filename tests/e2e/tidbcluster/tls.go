@@ -20,10 +20,10 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"text/template"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -412,9 +412,10 @@ func installCert(tmplStr string, tp interface{}) error {
 		return err
 	}
 	if data, err := exec.Command("sh", "-c", fmt.Sprintf("kubectl apply -f %s", tmpFile.Name())).CombinedOutput(); err != nil {
-		framework.Logf("failed to apply template: %s, %v", string(data), err)
+		framework.Logf("failed to create certificate: %s, %v", string(data), err)
 		return err
 	}
+
 	return nil
 }
 
