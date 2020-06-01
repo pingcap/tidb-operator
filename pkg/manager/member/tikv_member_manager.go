@@ -525,15 +525,17 @@ func transformTiKVConfigMap(src []byte, tc *v1alpha1.TidbCluster) string {
 		}
 		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
 			if !clusterVersionGE4 && err == nil {
-				old := fmt.Sprintf(`wait-for-lock-timeout = "%s"`, *config.TiKVPessimisticTxn.WaitForLockTimeout)
-				newString := fmt.Sprintf(`wait-for-lock-timeout = %s`, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				waitForLockTimeOutKey := "wait-for-lock-timeout"
+				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
 		}
 		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
 			if !clusterVersionGE4 && err == nil {
-				old := fmt.Sprintf(`wake-up-delay-duration = "%s"`, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				newString := fmt.Sprintf(`wake-up-delay-duration = %s`, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				wakeUpDelayDuration := "wake-up-delay-duration"
+				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
 		}

@@ -2074,3 +2074,77 @@ func TestGetTiKVConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func TestTransformTiKVConfigMap(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tc := newTidbClusterForTiKV()
+	type testcase struct {
+		name    string
+		version int
+		result  string
+	}
+	tests := []testcase{
+		{
+			name:    "under 4.0",
+			version: 3,
+			result: `[pessimistic-txn]
+  wait-for-lock-timeout = 1000
+  wake-up-delay-duration = 20
+`,
+		},
+		{
+			name:    "4.0.0",
+			version: 4,
+			result: `[pessimistic-txn]
+  wait-for-lock-timeout = "1s"
+  wake-up-delay-duration = "20ms"
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc.Spec.TiKV.Image = fmt.Sprintf("tikv:%d.0.0", test.version)
+			if test.version < 4 {
+				tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
+					WaitForLockTimeout:  pointer.StringPtr("1000"),
+					WakeUpDelayDuration: pointer.StringPtr("20"),
+				}
+			} else {
+				tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
+					WaitForLockTimeout:  pointer.StringPtr("1s"),
+					WakeUpDelayDuration: pointer.StringPtr("20ms"),
+				}
+			}
+			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(confText, tc)))
+		})
+	}
+}
+
+func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: corev1.NamespaceDefault,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tikv-test-image",
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				},
+				Replicas:         3,
+				StorageClassName: pointer.StringPtr("my-storage-class"),
+				Config:           &v1alpha1.TiKVConfig{},
+			},
+		},
+	}
+}
