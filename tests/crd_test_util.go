@@ -45,7 +45,12 @@ func CreateTidbClusterOrDie(cli versioned.Interface, tc *v1alpha1.TidbCluster) {
 
 func UpdateTidbClusterOrDie(cli versioned.Interface, tc *v1alpha1.TidbCluster) {
 	err := wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
-		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+		latestTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, nil
+		}
+		latestTC.Spec = tc.Spec
+		_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(latestTC)
 		if err != nil {
 			return false, nil
 		}
