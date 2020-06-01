@@ -18,6 +18,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -518,24 +519,22 @@ func transformTiKVConfigMap(src []byte, tc *v1alpha1.TidbCluster) string {
 	}
 	srcStr := string(src)
 	if config.TiKVPessimisticTxn != nil {
-		clusterVersionGE4, err := clusterVersionGreaterThanOrEqualTo4(tc.TiKVVersion())
-		if err != nil {
-			klog.Infof("cluster version: %s is not semantic versioning compatible", tc.TiKVVersion())
-		}
 		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
-			if !clusterVersionGE4 && err == nil {
+			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
+			if err == nil {
 				waitForLockTimeOutKey := "wait-for-lock-timeout"
 				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
 				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
 				srcStr = strings.ReplaceAll(srcStr, old, newString)
 			}
-		}
-		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
-			if !clusterVersionGE4 && err == nil {
-				wakeUpDelayDuration := "wake-up-delay-duration"
-				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
+				_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WakeUpDelayDuration, 10, 64)
+				if err == nil {
+					wakeUpDelayDuration := "wake-up-delay-duration"
+					old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+					newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+					srcStr = strings.ReplaceAll(srcStr, old, newString)
+				}
 			}
 		}
 	}

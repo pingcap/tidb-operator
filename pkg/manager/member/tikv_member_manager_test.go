@@ -2077,24 +2077,26 @@ func TestGetTiKVConfigMap(t *testing.T) {
 
 func TestTransformTiKVConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
-	tc := newTidbClusterForTiKV()
 	type testcase struct {
-		name    string
-		version int
-		result  string
+		name                string
+		waitForLockTimeout  string
+		wakeUpDelayDuration string
+		result              string
 	}
 	tests := []testcase{
 		{
-			name:    "under 4.0",
-			version: 3,
+			name:                "under 4.0",
+			waitForLockTimeout:  "1000",
+			wakeUpDelayDuration: "20",
 			result: `[pessimistic-txn]
   wait-for-lock-timeout = 1000
   wake-up-delay-duration = 20
 `,
 		},
 		{
-			name:    "4.0.0",
-			version: 4,
+			name:                "4.0.0",
+			waitForLockTimeout:  "1s",
+			wakeUpDelayDuration: "20ms",
 			result: `[pessimistic-txn]
   wait-for-lock-timeout = "1s"
   wake-up-delay-duration = "20ms"
@@ -2104,17 +2106,10 @@ func TestTransformTiKVConfigMap(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tc.Spec.TiKV.Image = fmt.Sprintf("tikv:%d.0.0", test.version)
-			if test.version < 4 {
-				tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
-					WaitForLockTimeout:  pointer.StringPtr("1000"),
-					WakeUpDelayDuration: pointer.StringPtr("20"),
-				}
-			} else {
-				tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
-					WaitForLockTimeout:  pointer.StringPtr("1s"),
-					WakeUpDelayDuration: pointer.StringPtr("20ms"),
-				}
+			tc := newTidbClusterForTiKV()
+			tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
+				WaitForLockTimeout:  pointer.StringPtr(test.waitForLockTimeout),
+				WakeUpDelayDuration: pointer.StringPtr(test.wakeUpDelayDuration),
 			}
 			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
 			g.Expect(err).NotTo(HaveOccurred())
