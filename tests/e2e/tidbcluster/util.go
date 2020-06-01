@@ -14,14 +14,8 @@
 package tidbcluster
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"text/template"
-
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -174,30 +168,4 @@ func mustToString(set sets.Int32) string {
 		panic(err)
 	}
 	return string(b)
-}
-
-func installTemplate(tmplStr string, tp interface{}) error {
-	var buf bytes.Buffer
-	tmpl, err := template.New("template").Parse(tmplStr)
-	if err != nil {
-		return fmt.Errorf("error when parsing template: %v", err)
-	}
-	err = tmpl.Execute(&buf, tp)
-	if err != nil {
-		return fmt.Errorf("error when executing template: %v", err)
-	}
-
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "tls-")
-	if err != nil {
-		return err
-	}
-	_, err = tmpFile.Write(buf.Bytes())
-	if err != nil {
-		return err
-	}
-	if data, err := exec.Command("sh", "-c", fmt.Sprintf("kubectl apply -f %s", tmpFile.Name())).CombinedOutput(); err != nil {
-		framework.Logf("failed to apply template: %s, %v", string(data), err)
-		return err
-	}
-	return nil
 }
