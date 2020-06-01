@@ -1269,34 +1269,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		framework.Logf("CDC works as expected")
 	})
-
-	ginkgo.It("[TikvConfig]", func() {
-		ginkgo.By("tikvConfig")
-		type Target struct {
-			Namespace string
-			Name      string
-		}
-		tc311Target := Target{
-			ns,
-			"tc311",
-		}
-		tc400Target := Target{
-			ns,
-			"tc400",
-		}
-		err := installTemplate(fixture.Tidbcluster3_1_1, tc311Target)
-		framework.ExpectNoError(err)
-		err = installTemplate(fixture.TidbCluster4_0_0, tc400Target)
-		framework.ExpectNoError(err)
-		tc311, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc311Target.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err)
-		tc400, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tc400Target.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err)
-		err = oa.WaitForTidbClusterReady(tc311, 30*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err)
-		err = oa.WaitForTidbClusterReady(tc400, 30*time.Minute, 5*time.Second)
-		framework.ExpectNoError(err)
-	})
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
