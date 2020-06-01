@@ -512,12 +512,15 @@ func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
-func transformTiKVConfigMap(src []byte, tc *v1alpha1.TidbCluster) string {
+// transformTiKVConfigMap change the `wait-for-lock-timeout` and `wake-up-delay-duration` due to their content type.
+// If either of their content is numeric, it would be rendered as numeric in toml in the tikv configmap.
+// In https://github.com/tikv/tikv/pull/7197 , these 2 configurations become string type from int32 type, so we add
+// this transforming steps to make tikv config compatible with both 4.0.0 version or under 4.0.0 version
+func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 	config := tc.Spec.TiKV.Config
 	if config == nil {
-		return string(src)
+		return srcStr
 	}
-	srcStr := string(src)
 	if config.TiKVPessimisticTxn != nil {
 		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
 			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
@@ -578,7 +581,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: map[string]string{
-			"config-file":    transformTiKVConfigMap(confText, tc),
+			"config-file":    transformTiKVConfigMap(string(confText), tc),
 			"startup-script": startScript,
 		},
 	}

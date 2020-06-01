@@ -2113,7 +2113,7 @@ func TestTransformTiKVConfigMap(t *testing.T) {
 			}
 			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(confText, tc)))
+			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(string(confText), tc)))
 		})
 	}
 }
