@@ -82,7 +82,7 @@ TiDB Operator 提供了多种方式来部署 Kubernetes 上的 TiDB 集群：
 + [TiDB 集群备份恢复](restore-from-aws-s3-using-br.md)
 + [配置 TiDB 集群故障自动转移](use-auto-failover.md)
 + [监控 TiDB 集群](monitor-a-tidb-cluster.md)
-+ [TiDB 集群日志收集](collect-tidb-logs.md)
++ [查看 TiDB 日志](view-logs.md)
 + [维护 TiDB 所在的 Kubernetes 节点](maintain-a-kubernetes-node.md)
 
 当集群出现问题需要进行诊断时，你可以：
