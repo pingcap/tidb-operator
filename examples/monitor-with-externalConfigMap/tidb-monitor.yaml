@@ -1,13 +1,23 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
-  name: auto-scaling-demo
+  name: basic
 spec:
   clusters:
-  - name: auto-scaling-demo
+  - name: basic
   prometheus:
+    config:
+      configMapRef:
+        name: external-config
+      commandOptions:
+        - --web.enable-admin-api
+        - --web.enable-lifecycle
+        - --log.level=info
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/data/prometheus
+        - --storage.tsdb.retention=12d
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.11.1
   grafana:
     baseImage: grafana/grafana
     version: 6.0.1

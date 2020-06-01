@@ -151,27 +151,6 @@ func run() {
 		}
 		klog.Infof("clusters deployed and checked")
 		slack.NotifyAndCompletedf("clusters deployed and checked, ready to run stability test")
-		// scale out
-		for _, cluster := range clusters {
-			cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-			oa.ScaleTidbClusterOrDie(cluster)
-		}
-		for _, cluster := range clusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckDisasterToleranceOrDie(cluster)
-		}
-		klog.Infof("clusters scale out and checked")
-
-		// scale in
-		for _, cluster := range clusters {
-			cluster.ScaleTiDB(2).ScaleTiKV(3).ScalePD(3)
-			oa.ScaleTidbClusterOrDie(cluster)
-		}
-		for _, cluster := range clusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckDisasterToleranceOrDie(cluster)
-		}
-		klog.Infof("clusters scale in and checked")
 
 		// upgrade
 		namespace := os.Getenv("NAMESPACE")
@@ -228,12 +207,6 @@ func run() {
 		}
 		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
 		klog.Infof("clusters backup and restore checked")
-
-		// delete operator
-		oa.CleanOperatorOrDie(ocfg)
-		oa.CheckOperatorDownOrDie(deployedClusters)
-		oa.DeployOperatorOrDie(ocfg)
-		klog.Infof("clusters operator deleted and redeployed, checked")
 
 		//stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()

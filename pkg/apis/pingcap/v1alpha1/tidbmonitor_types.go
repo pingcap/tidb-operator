@@ -86,6 +86,30 @@ type PrometheusSpec struct {
 
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
+
+	// +optional
+	Config *PrometheusConfiguration `json:"config,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// Config  is the the desired state of Prometheus Configuration
+type PrometheusConfiguration struct {
+
+	// user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain `prometheus-config` key in data.
+	ConfigMapRef *ConfigMapRef `json:"configMapRef,omitempty"`
+
+	// user can  use it specify prometheus command options
+	CommandOptions []string `json:"commandOptions,omitempty"`
+}
+
+// ConfigMapRef is the external configMap
+// +k8s:openapi-gen=true
+type ConfigMapRef struct {
+	Name string `json:"name,omitempty"`
+
+	// +optional
+	// if the namespace is omitted, the operator controller would use the Tidbmonitor's namespace instead.
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GrafanaSpec is the desired state of grafana

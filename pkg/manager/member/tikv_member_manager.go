@@ -201,6 +201,11 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		return err
 	}
 
+	// Recover failed stores if any before generating desired statefulset
+	if len(tc.Status.TiKV.FailureStores) > 0 {
+		tkmm.tikvFailover.Recover(tc)
+	}
+
 	newSet, err := getNewTiKVSetForTidbCluster(tc, cm)
 	if err != nil {
 		return err
@@ -629,6 +634,9 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
 		status := tkmm.getTiKVStore(store)
 		if status == nil {
 			continue
