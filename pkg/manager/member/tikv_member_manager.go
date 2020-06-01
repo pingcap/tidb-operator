@@ -511,7 +511,6 @@ func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
-// TODO: add unit test
 func transformTiKVConfigMap(src []byte, tc *v1alpha1.TidbCluster) string {
 	config := tc.Spec.TiKV.Config
 	if config == nil {
