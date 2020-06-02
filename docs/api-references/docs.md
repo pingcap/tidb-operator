@@ -82,6 +82,18 @@ BackupSpec
 <table>
 <tr>
 <td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>from</code></br>
 <em>
 <a href="#tidbaccessconfig">
@@ -463,6 +475,18 @@ RestoreSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>to</code></br>
@@ -1599,6 +1623,13 @@ TidbMonitorStatus
 </tr>
 </tbody>
 </table>
+<h3 id="autoscalerphase">AutoScalerPhase</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
+</p>
+<p>
+</p>
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -2004,6 +2035,18 @@ Kubernetes meta/v1.Time
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>from</code></br>
@@ -2431,6 +2474,19 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 <tbody>
 <tr>
 <td>
+<code>phase</code></br>
+<em>
+<a href="#autoscalerphase">
+AutoScalerPhase
+</a>
+</em>
+</td>
+<td>
+<p>Phase describes cluster auto scaling phase</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>metrics</code></br>
 <em>
 <a href="#metricsstatus">
@@ -2848,6 +2904,46 @@ tidb-operator built envs.
 </tr>
 </tbody>
 </table>
+<h3 id="configmapref">ConfigMapRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusconfiguration">PrometheusConfiguration</a>)
+</p>
+<p>
+<p>ConfigMapRef is the external configMap</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if the namespace is omitted, the operator controller would use the Tidbmonitor&rsquo;s namespace instead.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="configupdatestrategy">ConfigUpdateStrategy</h3>
 <p>
 (<em>Appears on:</em>
@@ -3116,7 +3212,7 @@ CrdKind
 <tbody>
 <tr>
 <td>
-<code>tidb_cacert_path</code></br>
+<code>tidb-cacert-path</code></br>
 <em>
 string
 </em>
@@ -3127,7 +3223,7 @@ string
 </tr>
 <tr>
 <td>
-<code>tidb_cert_path</code></br>
+<code>tidb-cert-path</code></br>
 <em>
 string
 </em>
@@ -3138,7 +3234,18 @@ string
 </tr>
 <tr>
 <td>
-<code>tidb_key_path</code></br>
+<code>tidb-key-path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>public-path-prefix</code></br>
 <em>
 string
 </em>
@@ -4236,6 +4343,7 @@ optional</p>
 (<em>Appears on:</em>
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
+<a href="#ticdcstatus">TiCDCStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>)
 </p>
@@ -6766,6 +6874,48 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="prometheusconfiguration">PrometheusConfiguration</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
+<p>Config  is the the desired state of Prometheus Configuration</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>configMapRef</code></br>
+<em>
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commandOptions</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>user can  use it specify prometheus command options</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="prometheusspec">PrometheusSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -6836,6 +6986,19 @@ int
 <em>
 <a href="#ingressspec">
 IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#prometheusconfiguration">
+PrometheusConfiguration
 </a>
 </em>
 </td>
@@ -7213,6 +7376,18 @@ string
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 <tr>
 <td>
 <code>to</code></br>
@@ -8111,6 +8286,44 @@ Same for other components.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="ticdccapture">TiCDCCapture</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcstatus">TiCDCStatus</a>)
+</p>
+<p>
+<p>TiCDCCapture is TiCDC Capture status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -8273,6 +8486,70 @@ TiCDCConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcstatus">TiCDCStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCDCStatus is TiCDC status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>captures</code></br>
+<em>
+<a href="#ticdccapture">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCapture
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -14701,6 +14978,18 @@ TiFlashStatus
 </tr>
 <tr>
 <td>
+<code>ticdc</code></br>
+<em>
+<a href="#ticdcstatus">
+TiCDCStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>monitor</code></br>
 <em>
 <a href="#tidbmonitorref">
@@ -15200,6 +15489,20 @@ BasicAutoScalerSpec
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readyToScaleThresholdSeconds</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
+should last for before auto scaling.
+If not set, the default ReadyToScaleThresholdSeconds will be set to 30.</p>
 </td>
 </tr>
 </tbody>

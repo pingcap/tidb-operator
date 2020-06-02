@@ -218,6 +218,7 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus      `json:"tidb,omitempty"`
 	Pump      PumpStatus      `josn:"pump,omitempty"`
 	TiFlash   TiFlashStatus   `json:"tiflash,omitempty"`
+	TiCDC     TiCDCStatus     `json:"ticdc,omitempty"`
 	Monitor   *TidbMonitorRef `json:"monitor,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
@@ -781,6 +782,20 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 }
 
+// TiCDCStatus is TiCDC status
+type TiCDCStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+}
+
+// TiCDCCapture is TiCDC Capture status
+type TiCDCCapture struct {
+	PodName string `json:"podName,omitempty"`
+	ID      string `json:"id,omitempty"`
+}
+
 // TiKVStores is either Up/Down/Offline/Tombstone
 type TiKVStore struct {
 	// store id is also uint64, due to the same reason as pd id, we store id as string
@@ -997,6 +1012,7 @@ type TiDBAccessConfig struct {
 // +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
@@ -1228,6 +1244,7 @@ type RestoreCondition struct {
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.

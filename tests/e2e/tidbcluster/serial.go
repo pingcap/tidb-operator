@@ -435,6 +435,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					MetricsTimeDuration:    &duration,
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
+				ReadyToScaleThresholdSeconds: pointer.Int32Ptr(40),
 			}
 			tac.Spec.TiKV.Metrics = []autoscalingv2beta2.MetricSpec{}
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
@@ -445,23 +446,49 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
 			var firstScaleTimestamp int64
-			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
+			var readyToScaleTimestamp int64
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tac.Annotations == nil || len(tac.Annotations) < 1 {
+					framework.Logf("tac haven't marked any annotation")
+					return false, nil
+				}
+				t, ok := tac.Annotations[label.AnnTiKVReadyToScaleTimestamp]
+				if !ok {
+					framework.Logf("tac has no tikv.tidb.pingcap.com/ready-to-scale-timestamp annotation")
+					return false, nil
+				}
+				readyToScaleTimestamp, err = strconv.ParseInt(t, 10, 64)
+				if err != nil {
+					return false, err
+				}
+				if tac.Status.TiKV.Phase != v1alpha1.ReadyToScaleOutAutoScalerPhase {
+					framework.Logf("tac dont' have the right ReadyToScale phase, expect: %s, got %s", v1alpha1.ReadyToScaleOutAutoScalerPhase, tac.Status.TiKV.Phase)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
 				// check replicas
 				if tc.Spec.TiKV.Replicas != int32(4) {
-					klog.Infof("tikv haven't auto-scale to 4 replicas")
+					framework.Logf("tikv haven't auto-scale to 4 replicas")
 					return false, nil
 				}
 				if len(tc.Status.TiKV.Stores) != 4 {
-					klog.Infof("tikv's stores haven't auto-scale to 4")
+					framework.Logf("tikv's stores haven't auto-scale to 4")
 					return false, nil
 				}
 				// check annotations
 				if tc.Annotations == nil || len(tc.Annotations) < 1 {
-					klog.Infof("tc haven't marked any annotation")
+					framework.Logf("tc haven't marked any annotation")
 					return false, nil
 				}
 				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
@@ -469,17 +496,24 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					klog.Infof("tac haven't marked any annotation")
+					framework.Logf("tac haven't marked any annotation")
 					return false, nil
 				}
 				v, ok := tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 				if !ok {
-					klog.Infof("tac haven't marked any annotation")
+					framework.Logf("tac has no tikv.tidb.pingcap.com/last-autoscaling-timestamp annotation")
 					return false, nil
 				}
 				firstScaleTimestamp, err = strconv.ParseInt(v, 10, 64)
 				if err != nil {
 					return false, err
+				}
+				// check readyToScaleTimestamp
+				if time.Now().Sub(time.Unix(readyToScaleTimestamp, 0)).Seconds() < 40 {
+					return false, fmt.Errorf("tikv doesn't meet the ReadyToScale threshold")
+				}
+				if tac.Status.TiKV.Phase != v1alpha1.NormalAutoScalerPhase {
+					return false, fmt.Errorf("tikv don't have right ReadyToScale phase")
 				}
 				// check store label
 				storeId := ""
@@ -509,7 +543,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return false, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
-			klog.Info("success to check tikv auto scale-out to 4 replicas")
+			framework.Logf("success to check tikv auto scale-out to 4 replicas")
 
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
@@ -523,23 +557,48 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 			framework.ExpectNoError(err, "set tikv mock metrics error")
 
+			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tac.Annotations == nil || len(tac.Annotations) < 1 {
+					framework.Logf("tac haven't marked any annotation")
+					return false, nil
+				}
+				t, ok := tac.Annotations[label.AnnTiKVReadyToScaleTimestamp]
+				if !ok {
+					framework.Logf("tac has no tikv.tidb.pingcap.com/ready-to-scale-timestamp annotation")
+					return false, nil
+				}
+				readyToScaleTimestamp, err = strconv.ParseInt(t, 10, 64)
+				if err != nil {
+					return false, err
+				}
+				if tac.Status.TiKV.Phase != v1alpha1.ReadyToScaleInAutoScalerPhase {
+					framework.Logf("tac dont' have the right ReadyToScale phase, expect: %s, got %s", v1alpha1.ReadyToScaleOutAutoScalerPhase, tac.Status.TiKV.Phase)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
 				}
 				if tc.Spec.TiKV.Replicas != 3 {
-					klog.Info("tikv haven't auto-scale to 3 replicas")
+					framework.Logf("tikv haven't auto-scale to 3 replicas")
 					return false, nil
 				}
 				if len(tc.Status.TiKV.Stores) != 3 {
-					klog.Info("tikv's store haven't auto-scale to 3")
+					framework.Logf("tikv's store haven't auto-scale to 3")
 					return false, nil
 				}
 				if tc.Annotations != nil && len(tc.Annotations) > 0 {
 					_, ok := tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals]
 					if ok {
-						klog.Infof("tikv auto-scale out annotation still exists")
+						framework.Logf("tikv auto-scale out annotation still exists")
 						return false, nil
 					}
 				}
@@ -548,12 +607,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					klog.Infof("tc haven't marked any annotation")
+					framework.Logf("tac haven't marked any annotation")
 					return false, nil
 				}
 				v, ok := tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp]
 				if !ok {
-					klog.Infof("tac haven't marked any annotation")
+					framework.Logf("tac has no tikv.tidb.pingcap.com/last-autoscaling-timestamp annotation")
 					return false, nil
 				}
 				secondTs, err := strconv.ParseInt(v, 10, 64)
@@ -561,16 +620,22 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, err
 				}
 				if secondTs == firstScaleTimestamp {
-					klog.Info("tikv haven't scale yet")
+					framework.Logf("tikv haven't scale yet")
 					return false, nil
 				}
 				if secondTs-firstScaleTimestamp < 100 {
 					return false, fmt.Errorf("tikv second scale's interval isn't meeting the interval requirement")
 				}
+				if time.Now().Sub(time.Unix(readyToScaleTimestamp, 0)).Seconds() < 40 {
+					return false, fmt.Errorf("tikv doesn't meet the ReadyToScale threshold")
+				}
+				if tac.Status.TiKV.Phase != v1alpha1.NormalAutoScalerPhase {
+					return false, fmt.Errorf("tikv don't have right ReadyToScale phase")
+				}
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 3 error")
-			klog.Info("success to check tikv auto scale-in to 3 replicas")
+			framework.Logf("success to check tikv auto scale-in to 3 replicas")
 
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
@@ -685,13 +750,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 	})
 
-	ginkgo.Context("[Verify: Upgrading Operator from 1.0.6", func() {
+	ginkgo.Context("[Verify: Upgrading Operator from 1.1.0", func() {
 		var oa tests.OperatorActions
 		var ocfg *tests.OperatorConfig
 		var version string
 
 		ginkgo.BeforeEach(func() {
-			version = "v1.0.6"
+			version = "v1.1.0"
 			ocfg = &tests.OperatorConfig{
 				Namespace:   ns,
 				ReleaseName: "operator",
@@ -719,7 +784,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, tcName, "", utilimage.TiDBV3Version)
 			cluster.Resources["pd.replicas"] = "3"
 			cluster.Resources["tikv.replicas"] = "3"
-			cluster.Resources["tidb.replicas"] = "2"
+			cluster.Resources["tidb.replicas"] = "1"
 			cluster.Monitor = false
 			cluster.OperatorTag = version
 			oa.DeployTidbClusterOrDie(&cluster)
@@ -736,9 +801,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return podList.Items, nil
 			}
 
-			tc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-			framework.ExpectNoError(err, "failed to get tc")
-
 			pdPods, err := getPods(labels.SelectorFromSet(label.New().Instance(tcName).PD().Labels()).String())
 			framework.ExpectNoError(err, "failed to get pd pods")
 
@@ -753,40 +815,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.Image = cfg.OperatorImage
 			oa.InstallCRDOrDie(ocfg)
 			oa.UpgradeOperatorOrDie(ocfg)
-
-			// confirm the tidb has been changed
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				newTc, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-				if err != nil {
-					return false, nil
-				}
-				// wait tidb to be updated
-				if tc.Status.TiDB.StatefulSet.CurrentRevision == newTc.Status.TiDB.StatefulSet.CurrentRevision {
-					klog.Info("wait tidb to be updated")
-					return false, nil
-				}
-				// wait tidb finish updating
-				if newTc.Status.TiDB.StatefulSet.CurrentRevision != newTc.Status.TiDB.StatefulSet.UpdateRevision {
-					klog.Info("wait tidb finish updating")
-					return false, nil
-				}
-
-				// confirm the tidb pod have been changed
-				changed, err := utilpod.PodsAreChanged(c, tidbPods)()
-				if changed {
-					klog.Infof("confirm tidb pods have been changed")
-				} else {
-					if err != nil {
-						klog.Errorf("meet error during verify tidb pods, err:%v", err)
-						return false, nil
-					}
-					if !changed {
-						return false, fmt.Errorf("tidb should be updated after operator upgrading")
-					}
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "Failed to check Tidb Status After Upgrading Operator")
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 				// confirm the pd Pod haven't been changed
@@ -810,9 +838,21 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return true, nil
 				}
 				klog.Infof("confirm tikv pods haven't been changed this time")
+
+				// confirm the tidb haven't been changed
+				changed, err = utilpod.PodsAreChanged(c, tidbPods)()
+				if err != nil {
+					klog.Errorf("meet error during verify tidb pods, err:%v", err)
+					return true, nil
+				}
+				if changed {
+					return true, nil
+				}
+				klog.Infof("confirm tidb pods haven't been changed this time")
+
 				return false, nil
 			})
-			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect tikv and pd haven't been changed for 5 minutes")
+			framework.ExpectEqual(err, wait.ErrWaitTimeout, "expect pd/tikv/tidb haven't been changed for 5 minutes")
 		})
 	})
 
