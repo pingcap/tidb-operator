@@ -705,6 +705,19 @@ TidbClusterSpec
 <table>
 <tr>
 <td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -3252,6 +3265,39 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="discoveryspec">DiscoverySpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>DiscoverySpec contains details of Discovery members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -14580,6 +14626,19 @@ string
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>pd</code></br>
