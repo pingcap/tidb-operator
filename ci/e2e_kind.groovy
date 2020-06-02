@@ -40,12 +40,12 @@ spec:
       value: "true"
     resources:
       requests:
-        memory: "8000Mi"
-        cpu: 8000m
+        memory: "4Gi"
+        cpu: "4"
         ephemeral-storage: "70Gi"
       limits:
-        memory: "8000Mi"
-        cpu: 8000m
+        memory: "8Gi"
+        cpu: "8"
         ephemeral-storage: "70Gi"
     # kind needs /lib/modules and cgroups from the host
     volumeMounts:
