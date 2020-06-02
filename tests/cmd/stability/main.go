@@ -14,7 +14,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -150,86 +149,87 @@ func run() {
 		}
 		klog.Infof("clusters deployed and checked")
 		slack.NotifyAndCompletedf("clusters deployed and checked, ready to run stability test")
-
-		// upgrade
-		namespace := os.Getenv("NAMESPACE")
-		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
-		ctx, cancel := context.WithCancel(context.Background())
-		for _, cluster := range clusters {
-			cluster.UpgradeAll(upgradeVersion)
-			oa.UpgradeTidbClusterOrDie(cluster)
-			oa.CheckUpgradeOrDie(ctx, cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
-		}
-		klog.Infof("clusters upgraded in checked")
-
-		// configuration change
-		for _, cluster := range clusters {
-			// This seems useless
-			// bad conf
-			//cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-			//cluster.TiKVPreStartScript = strconv.Quote("exit 1")
-			//cluster.PDPreStartScript = strconv.Quote("exit 1")
-			//oa.UpgradeTidbClusterOrDie(cluster)
-			//time.Sleep(30 * time.Second)
-			//oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
-			//// rollback conf
-			//cluster.PDPreStartScript = strconv.Quote("")
-			//cluster.TiKVPreStartScript = strconv.Quote("")
-			//cluster.TiDBPreStartScript = strconv.Quote("")
-			//oa.UpgradeTidbClusterOrDie(cluster)
-			//// wait upgrade complete
-			//oa.CheckUpgradeCompleteOrDie(cluster)
-			//oa.CheckTidbClusterStatusOrDie(cluster)
-
-			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
-				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
-				UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
-			oa.UpgradeTidbClusterOrDie(cluster)
-			// wait upgrade complete
-			oa.CheckUpgradeOrDie(ctx, cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
-		}
-		cancel()
-		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
-		klog.Infof("clusters configurations updated in checked")
-
-		for _, cluster := range clusters {
-			oa.CheckDisasterToleranceOrDie(cluster)
-		}
-		klog.Infof("clusters DisasterTolerance checked")
+		//ctx, cancel := context.WithCancel(context.Background())
+		//
+		//// upgrade
+		//namespace := os.Getenv("NAMESPACE")
+		//oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
+		//for _, cluster := range clusters {
+		//	cluster.UpgradeAll(upgradeVersion)
+		//	oa.UpgradeTidbClusterOrDie(cluster)
+		//	oa.CheckUpgradeOrDie(ctx, cluster)
+		//	oa.CheckTidbClusterStatusOrDie(cluster)
+		//}
+		//klog.Infof("clusters upgraded in checked")
+		//
+		//// configuration change
+		//for _, cluster := range clusters {
+		//	// This seems useless
+		//	// bad conf
+		//	//cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+		//	//cluster.TiKVPreStartScript = strconv.Quote("exit 1")
+		//	//cluster.PDPreStartScript = strconv.Quote("exit 1")
+		//	//oa.UpgradeTidbClusterOrDie(cluster)
+		//	//time.Sleep(30 * time.Second)
+		//	//oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
+		//	//// rollback conf
+		//	//cluster.PDPreStartScript = strconv.Quote("")
+		//	//cluster.TiKVPreStartScript = strconv.Quote("")
+		//	//cluster.TiDBPreStartScript = strconv.Quote("")
+		//	//oa.UpgradeTidbClusterOrDie(cluster)
+		//	//// wait upgrade complete
+		//	//oa.CheckUpgradeCompleteOrDie(cluster)
+		//	//oa.CheckTidbClusterStatusOrDie(cluster)
+		//
+		//	cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
+		//		UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
+		//		UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
+		//	oa.UpgradeTidbClusterOrDie(cluster)
+		//	// wait upgrade complete
+		//	oa.CheckUpgradeOrDie(ctx, cluster)
+		//	oa.CheckTidbClusterStatusOrDie(cluster)
+		//}
+		//cancel()
+		//oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
+		//klog.Infof("clusters configurations updated in checked")
+		//
+		//for _, cluster := range clusters {
+		//	oa.CheckDisasterToleranceOrDie(cluster)
+		//}
+		//klog.Infof("clusters DisasterTolerance checked")
 
 		// backup and restore
-		for i := range backupTargets {
-			oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
-			addDeployedClusterFn(backupTargets[i].TargetCluster)
-			oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
-		}
-		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
-		klog.Infof("clusters backup and restore checked")
+		//for i := range backupTargets {
+		//	oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
+		//	addDeployedClusterFn(backupTargets[i].TargetCluster)
+		//	oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
+		//}
+		//oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
+		//klog.Infof("clusters backup and restore checked")
 
 		//stop node
-		physicalNode, node, faultTime := fta.StopNodeOrDie()
-		oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
-		oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
-		oa.CheckFailoverOrDie(deployedClusters, node)
-		time.Sleep(3 * time.Minute)
-		fta.StartNodeOrDie(physicalNode, node)
-		oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
-		oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
-		oa.CheckRecoverOrDie(deployedClusters)
-		for _, cluster := range deployedClusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-		}
-		klog.Infof("clusters node stopped and restarted, checked")
-
-		// truncate tikv sst file
-		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
-		klog.Infof("clusters truncate sst file and checked failover")
+		//physicalNode, node, faultTime := fta.StopNodeOrDie()
+		//oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
+		//oa.CheckFailoverPendingOrDie(deployedClusters, node, &faultTime)
+		//oa.CheckFailoverOrDie(deployedClusters, node)
+		//time.Sleep(3 * time.Minute)
+		//fta.StartNodeOrDie(physicalNode, node)
+		//oa.EmitEvent(nil, fmt.Sprintf("StartNode: %s on %s", node, physicalNode))
+		//oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
+		//oa.CheckRecoverOrDie(deployedClusters)
+		//for _, cluster := range deployedClusters {
+		//	oa.CheckTidbClusterStatusOrDie(cluster)
+		//}
+		//klog.Infof("clusters node stopped and restarted, checked")
+		//
+		//// truncate tikv sst file
+		//oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
+		//klog.Infof("clusters truncate sst file and checked failover")
 
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
+		slack.NotifyAndCompletedf("stability test: DeletePDDataThenCheckFailoverOrDie success")
 
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)

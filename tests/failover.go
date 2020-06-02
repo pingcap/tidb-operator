@@ -79,6 +79,28 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	}
 	klog.Infof("check pd %s/%s failover successfully", ns, podName)
 
+	// Wait All failover PD Member has been deleted
+	err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) < 1 {
+			return true, nil
+		}
+		for _, failureMember := range tc.Status.PD.FailureMembers {
+			if failureMember.MemberDeleted == false {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// clear failover Member
 	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {

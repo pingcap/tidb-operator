@@ -503,6 +503,12 @@ func (pc *pdClient) DeleteMember(name string) error {
 	}
 	defer httputil.DeferClose(res.Body)
 	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		response, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			klog.Error(err.Error())
+			return err
+		}
+		klog.Infof("code = %v, response = %v", res.StatusCode, string(response))
 		return nil
 	}
 	err2 := httputil.ReadErrorBody(res.Body)
