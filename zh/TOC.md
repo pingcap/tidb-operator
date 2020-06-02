@@ -66,6 +66,7 @@
     - [TiDB Scheduler 扩展调度器](tidb-scheduler.md)
     - [增强型 StatefulSet 控制器](advanced-statefulset.md)
     - [准入控制器](enable-admission-webhook.md)
+  - [Sysbench 性能测试](benchmark-sysbench.md)
   - [API 参考文档](https://github.com/pingcap/docs-tidb-operator/blob/master/zh/api-references.md)
   - [Cheat Sheet](cheat-sheet.md)
   + 工具
