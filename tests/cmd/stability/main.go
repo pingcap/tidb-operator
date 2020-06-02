@@ -19,7 +19,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/tests"
@@ -166,21 +165,22 @@ func run() {
 
 		// configuration change
 		for _, cluster := range clusters {
+			// This seems useless
 			// bad conf
-			cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-			cluster.TiKVPreStartScript = strconv.Quote("exit 1")
-			cluster.PDPreStartScript = strconv.Quote("exit 1")
-			oa.UpgradeTidbClusterOrDie(cluster)
-			time.Sleep(30 * time.Second)
-			oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
-			// rollback conf
-			cluster.PDPreStartScript = strconv.Quote("")
-			cluster.TiKVPreStartScript = strconv.Quote("")
-			cluster.TiDBPreStartScript = strconv.Quote("")
-			oa.UpgradeTidbClusterOrDie(cluster)
-			// wait upgrade complete
-			oa.CheckUpgradeCompleteOrDie(cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
+			//cluster.TiDBPreStartScript = strconv.Quote("exit 1")
+			//cluster.TiKVPreStartScript = strconv.Quote("exit 1")
+			//cluster.PDPreStartScript = strconv.Quote("exit 1")
+			//oa.UpgradeTidbClusterOrDie(cluster)
+			//time.Sleep(30 * time.Second)
+			//oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
+			//// rollback conf
+			//cluster.PDPreStartScript = strconv.Quote("")
+			//cluster.TiKVPreStartScript = strconv.Quote("")
+			//cluster.TiDBPreStartScript = strconv.Quote("")
+			//oa.UpgradeTidbClusterOrDie(cluster)
+			//// wait upgrade complete
+			//oa.CheckUpgradeCompleteOrDie(cluster)
+			//oa.CheckTidbClusterStatusOrDie(cluster)
 
 			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
 				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
