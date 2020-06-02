@@ -222,8 +222,8 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
---status-addr=0.0.0.0:20180 \
---advertise-status-addr={{ .StatusHost }}:20180 \
+--status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
+--advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
 --data-dir=/var/lib/tikv \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
@@ -240,8 +240,9 @@ exec /tikv-server ${ARGS}
 `))
 
 type TiKVStartScriptModel struct {
-	Scheme     string
-	StatusHost string
+	Scheme                    string
+	EnableAdvertiseStatusAddr bool
+	AdvertiseStatusAddr       string
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {

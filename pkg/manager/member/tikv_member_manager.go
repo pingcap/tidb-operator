@@ -529,11 +529,12 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	scriptModel := &TiKVStartScriptModel{
-		Scheme:     tc.Scheme(),
-		StatusHost: "0.0.0.0",
+		Scheme:                    tc.Scheme(),
+		EnableAdvertiseStatusAddr: false,
 	}
 	if features.DefaultFeatureGate.Enabled(features.DynamicConfiguration) {
-		scriptModel.StatusHost = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
+		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
+		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 	startScript, err := RenderTiKVStartScript(scriptModel)
 	if err != nil {
