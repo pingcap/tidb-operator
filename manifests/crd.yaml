@@ -334,6 +334,13 @@ spec:
               type: object
             configUpdateStrategy:
               type: string
+            discovery:
+              properties:
+                limits:
+                  type: object
+                requests:
+                  type: object
+              type: object
             enablePVReclaim:
               type: boolean
             helper:
