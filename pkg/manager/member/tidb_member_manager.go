@@ -473,8 +473,13 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Selector: tidbLabels,
 		},
 	}
-	if svcSpec.LoadBalancerIP != nil {
-		tidbSvc.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+	if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
+		if svcSpec.LoadBalancerIP != nil {
+			tidbSvc.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+		}
+		if svcSpec.LoadBalancerSourceRanges != nil {
+			tidbSvc.Spec.LoadBalancerSourceRanges = *svcSpec.LoadBalancerSourceRanges
+		}
 	}
 	if svcSpec.ExternalTrafficPolicy != nil {
 		tidbSvc.Spec.ExternalTrafficPolicy = *svcSpec.ExternalTrafficPolicy
