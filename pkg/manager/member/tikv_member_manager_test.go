@@ -2040,7 +2040,7 @@ exec /tikv-server ${ARGS}
 			name:                "enable AdvertiseAddr",
 			enableAdvertiseAddr: true,
 			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
-			result:              `#!/bin/sh
+			result: `#!/bin/sh
 
 # This script is used to start tikv containers in kubernetes cluster
 
