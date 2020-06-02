@@ -40,6 +40,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef":                  schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec":                 schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint":              schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
@@ -1209,6 +1210,49 @@ func schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref common.ReferenceCallback)
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DiscoverySpec contains details of Discovery members",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"limits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+					"requests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -7879,6 +7923,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 				Description: "TidbClusterSpec describes the attributes that a user creates on a tidb cluster",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"discovery": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Discovery spec",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec"),
+						},
+					},
 					"pd": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PD cluster spec",
@@ -8051,7 +8101,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiFlashSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSpec", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
