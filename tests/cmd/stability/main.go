@@ -232,86 +232,86 @@ func run() {
 		slack.NotifyAndCompletedf("stability test: DeletePDDataThenCheckFailoverOrDie success")
 
 		// stop one etcd
-		faultEtcd := tests.SelectNode(cfg.ETCDs)
-		fta.StopETCDOrDie(faultEtcd)
-		defer fta.StartETCDOrDie(faultEtcd)
-		time.Sleep(3 * time.Minute)
-		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
-		fta.StartETCDOrDie(faultEtcd)
-		klog.Infof("clusters stop on etcd and restart")
-
-		// stop all etcds
-		fta.StopETCDOrDie()
-		time.Sleep(10 * time.Minute)
-		fta.StartETCDOrDie()
-		oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
-		klog.Infof("clusters stop all etcd and restart")
-
-		// stop all kubelets
-		fta.StopKubeletOrDie()
-		time.Sleep(10 * time.Minute)
-		fta.StartKubeletOrDie()
-		oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
-		klog.Infof("clusters stop all kubelets and restart")
-
-		// stop all kube-proxy and k8s/operator/tidbcluster is available
-		fta.StopKubeProxyOrDie()
-		oa.CheckKubeProxyDownOrDie(ocfg, clusters)
-		fta.StartKubeProxyOrDie()
-		klog.Infof("clusters stop all kube-proxy and restart")
-
-		// stop all kube-scheduler pods
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeSchedulerOrDie(vNode.IP)
-			}
-		}
-		oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeSchedulerOrDie(vNode.IP)
-			}
-		}
-		klog.Infof("clusters stop all kube-scheduler and restart")
-
-		// stop all kube-controller-manager pods
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeControllerManagerOrDie(vNode.IP)
-			}
-		}
-		oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeControllerManagerOrDie(vNode.IP)
-			}
-		}
-		klog.Infof("clusters stop all kube-controller and restart")
-
-		// stop one kube-apiserver pod
-		faultApiServer := tests.SelectNode(cfg.APIServers)
-		klog.Infof("fault ApiServer Node name = %s", faultApiServer)
-		fta.StopKubeAPIServerOrDie(faultApiServer)
-		defer fta.StartKubeAPIServerOrDie(faultApiServer)
-		time.Sleep(3 * time.Minute)
-		oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
-		fta.StartKubeAPIServerOrDie(faultApiServer)
-		klog.Infof("clusters stop one kube-apiserver and restart")
-
-		time.Sleep(time.Minute)
-		// stop all kube-apiserver pods
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StopKubeAPIServerOrDie(vNode.IP)
-			}
-		}
-		oa.CheckAllApiserverDownOrDie(ocfg, clusters)
-		for _, physicalNode := range cfg.APIServers {
-			for _, vNode := range physicalNode.Nodes {
-				fta.StartKubeAPIServerOrDie(vNode.IP)
-			}
-		}
-		klog.Infof("clusters stop all kube-apiserver and restart")
+		//faultEtcd := tests.SelectNode(cfg.ETCDs)
+		//fta.StopETCDOrDie(faultEtcd)
+		//defer fta.StartETCDOrDie(faultEtcd)
+		//time.Sleep(3 * time.Minute)
+		//oa.CheckEtcdDownOrDie(ocfg, deployedClusters, faultEtcd)
+		//fta.StartETCDOrDie(faultEtcd)
+		//klog.Infof("clusters stop on etcd and restart")
+		//
+		//// stop all etcds
+		//fta.StopETCDOrDie()
+		//time.Sleep(10 * time.Minute)
+		//fta.StartETCDOrDie()
+		//oa.CheckEtcdDownOrDie(ocfg, deployedClusters, "")
+		//klog.Infof("clusters stop all etcd and restart")
+		//
+		//// stop all kubelets
+		//fta.StopKubeletOrDie()
+		//time.Sleep(10 * time.Minute)
+		//fta.StartKubeletOrDie()
+		//oa.CheckKubeletDownOrDie(ocfg, deployedClusters, "")
+		//klog.Infof("clusters stop all kubelets and restart")
+		//
+		//// stop all kube-proxy and k8s/operator/tidbcluster is available
+		//fta.StopKubeProxyOrDie()
+		//oa.CheckKubeProxyDownOrDie(ocfg, clusters)
+		//fta.StartKubeProxyOrDie()
+		//klog.Infof("clusters stop all kube-proxy and restart")
+		//
+		//// stop all kube-scheduler pods
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StopKubeSchedulerOrDie(vNode.IP)
+		//	}
+		//}
+		//oa.CheckKubeSchedulerDownOrDie(ocfg, clusters)
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StartKubeSchedulerOrDie(vNode.IP)
+		//	}
+		//}
+		//klog.Infof("clusters stop all kube-scheduler and restart")
+		//
+		//// stop all kube-controller-manager pods
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StopKubeControllerManagerOrDie(vNode.IP)
+		//	}
+		//}
+		//oa.CheckKubeControllerManagerDownOrDie(ocfg, clusters)
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StartKubeControllerManagerOrDie(vNode.IP)
+		//	}
+		//}
+		//klog.Infof("clusters stop all kube-controller and restart")
+		//
+		//// stop one kube-apiserver pod
+		//faultApiServer := tests.SelectNode(cfg.APIServers)
+		//klog.Infof("fault ApiServer Node name = %s", faultApiServer)
+		//fta.StopKubeAPIServerOrDie(faultApiServer)
+		//defer fta.StartKubeAPIServerOrDie(faultApiServer)
+		//time.Sleep(3 * time.Minute)
+		//oa.CheckOneApiserverDownOrDie(ocfg, clusters, faultApiServer)
+		//fta.StartKubeAPIServerOrDie(faultApiServer)
+		//klog.Infof("clusters stop one kube-apiserver and restart")
+		//
+		//time.Sleep(time.Minute)
+		//// stop all kube-apiserver pods
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StopKubeAPIServerOrDie(vNode.IP)
+		//	}
+		//}
+		//oa.CheckAllApiserverDownOrDie(ocfg, clusters)
+		//for _, physicalNode := range cfg.APIServers {
+		//	for _, vNode := range physicalNode.Nodes {
+		//		fta.StartKubeAPIServerOrDie(vNode.IP)
+		//	}
+		//}
+		//klog.Infof("clusters stop all kube-apiserver and restart")
 		time.Sleep(time.Minute)
 	}
 

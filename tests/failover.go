@@ -61,6 +61,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	}
 	klog.Infof("delete pod %s/%s data successfully", ns, podName)
 
+	// first we ensured that pd failover new pod, and failure member should note be deleted.
 	err = wait.Poll(10*time.Second, failoverTimeout+pdFailoverPeriod, func() (bool, error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
@@ -68,58 +69,74 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 			return false, nil
 		}
 
+		pdSpecReplicas := tc.Spec.PD.Replicas
+		pdsts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-pd", tc.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		if *pdsts.Spec.Replicas != pdSpecReplicas+1 {
+			klog.Errorf("pdSpec replicas = %d, pdsts replicas = %d, pdsts replicas should equal pdspec replicas + 1", pdSpecReplicas, *pdsts.Spec.Replicas)
+			return false, nil
+		}
+
 		if len(tc.Status.PD.FailureMembers) == 1 {
 			klog.Infof("%#v", tc.Status.PD.FailureMembers)
-			return true, nil
+			for _, failureMember := range tc.Status.PD.FailureMembers {
+				if !failureMember.MemberDeleted {
+					return true, nil
+				}
+			}
 		}
 		return false, nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to check pd %s/%s failover", ns, podName)
 	}
-	klog.Infof("check pd %s/%s failover successfully", ns, podName)
+	klog.Infof("check pd %s/%s failover marked successfully, new pod verified", ns, podName)
 
-	// Wait All failover PD Member has been deleted
+	// Then we wailt the failure Member should be marked as Deleted
 	err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
-			klog.Error(err.Error())
+			klog.Error(err)
 			return false, nil
 		}
-		if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) < 1 {
-			return true, nil
-		}
-		for _, failureMember := range tc.Status.PD.FailureMembers {
-			if failureMember.MemberDeleted == false {
-				return false, nil
+		if len(tc.Status.PD.FailureMembers) == 1 {
+			klog.Infof("%#v", tc.Status.PD.FailureMembers)
+			for _, failureMember := range tc.Status.PD.FailureMembers {
+				if failureMember.MemberDeleted {
+					return true, nil
+				}
 			}
-		}
-		return true, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// clear failover Member
-	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-		if err != nil {
-			klog.Error(err.Error())
-			return false, nil
-		}
-		if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) < 1 {
-			return true, nil
-		}
-		tc.Status.PD.FailureMembers = nil
-		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
-		if err != nil {
-			klog.Error(err.Error())
 		}
 		return false, nil
 	})
 	if err != nil {
 		return err
 	}
+	klog.Infof("failover pd member all has been deleted")
+
+	// clear failover Member
+	//err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+	//	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	//	if err != nil {
+	//		klog.Error(err.Error())
+	//		return false, nil
+	//	}
+	//	if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) < 1 {
+	//		return true, nil
+	//	}
+	//	tc.Status.PD.FailureMembers = nil
+	//	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+	//	if err != nil {
+	//		klog.Error(err.Error())
+	//	}
+	//	return false, nil
+	//})
+	//if err != nil {
+	//	return err
+	//}
 
 	err = oa.CheckTidbClusterStatus(info)
 	if err != nil {
