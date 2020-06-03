@@ -1191,6 +1191,76 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g.Expect(hasTLSVolMount(sts)).To(BeTrue())
 			},
 		},
+		{
+			name: "tidbcluster with failureMember",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+						Replicas: 3,
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"test": {
+								MemberDeleted: false,
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(*sts.Spec.Replicas).To(Equal(int32(4)))
+			},
+		},
+		{
+			name: "tidbcluster with failureMember Deleted",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+						Replicas: 3,
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"test": {
+								MemberDeleted: true,
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(*sts.Spec.Replicas).To(Equal(int32(3)))
+			},
+		},
 		// TODO add more tests
 	}
 
