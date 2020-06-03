@@ -61,11 +61,26 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	}
 	klog.Infof("delete pod %s/%s data successfully", ns, podName)
 
-	// first we ensured that pd failover new pod, and failure member should note be deleted.
+	oldPD, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
+	// first we ensured that pd failover new pod, and failure member should be deleted.
 	err = wait.Poll(10*time.Second, failoverTimeout+pdFailoverPeriod, func() (bool, error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Error(err)
+			return false, nil
+		}
+
+		newPd, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return false, nil
+		}
+		if string(oldPD.UID) == string(newPd.UID) {
+			klog.Infof()
 			return false, nil
 		}
 
@@ -83,7 +98,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 		if len(tc.Status.PD.FailureMembers) == 1 {
 			klog.Infof("%#v", tc.Status.PD.FailureMembers)
 			for _, failureMember := range tc.Status.PD.FailureMembers {
-				if !failureMember.MemberDeleted {
+				if failureMember.MemberDeleted {
 					return true, nil
 				}
 			}
@@ -95,20 +110,26 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	}
 	klog.Infof("check pd %s/%s failover marked successfully, new pod verified", ns, podName)
 
-	// Then we wailt the failure Member should be marked as Deleted
+	// Then we wait the failure Member and pod has been deleted
 	err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Error(err)
 			return false, nil
 		}
-		if len(tc.Status.PD.FailureMembers) == 1 {
-			klog.Infof("%#v", tc.Status.PD.FailureMembers)
-			for _, failureMember := range tc.Status.PD.FailureMembers {
-				if failureMember.MemberDeleted {
-					return true, nil
-				}
-			}
+
+		pdSpecReplicas := tc.Spec.PD.Replicas
+		pdsts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-pd", tc.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		if *pdsts.Spec.Replicas != pdSpecReplicas {
+			klog.Errorf("pdSpec replicas = %d, pdsts replicas = %d, pdsts replicas should equal pdspec replicas", pdSpecReplicas, *pdsts.Spec.Replicas)
+			return false, nil
+		}
+		if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) == 0 {
+			return true, nil
 		}
 		return false, nil
 	})
