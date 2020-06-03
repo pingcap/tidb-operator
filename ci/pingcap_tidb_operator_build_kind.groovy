@@ -116,23 +116,23 @@ String buildPodYAML(Map m = [:]) {
 
 e2ePodResources = [
 		requests: [
-			cpu: "8",
-			memory: "8G"
+			cpu: "4",
+			memory: "4Gi"
 		],
 		limits: [
 			cpu: "8",
-			memory: "8G"
+			memory: "8Gi"
 		],
 	]
 
 e2eSerialResources = [
 		requests: [
 			cpu: "4",
-			memory: "8G"
+			memory: "4Gi"
 		],
 		limits: [
 			cpu: "4",
-			memory: "8G"
+			memory: "8Gi"
 		],
 	]
 
