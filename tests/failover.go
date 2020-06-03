@@ -66,7 +66,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 		klog.Error(err.Error())
 		return err
 	}
-	// first we ensured that pd failover new pod, and failure member should be deleted.
+	// first we ensured that pd failover new pod, and failure member/pod should be deleted.
 	err = wait.Poll(10*time.Second, failoverTimeout+pdFailoverPeriod, func() (bool, error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
@@ -74,27 +74,18 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 			return false, nil
 		}
 
+		// ensure oldPD is deleted
 		newPd, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 		if err != nil {
 			klog.Error(err)
 			return false, nil
 		}
 		if string(oldPD.UID) == string(newPd.UID) {
-			klog.Infof()
+			klog.Infof("oldPD should be deleted and newPD should be created")
 			return false, nil
 		}
 
-		pdSpecReplicas := tc.Spec.PD.Replicas
-		pdsts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-pd", tc.Name), metav1.GetOptions{})
-		if err != nil {
-			klog.Error(err.Error())
-			return false, nil
-		}
-		if *pdsts.Spec.Replicas != pdSpecReplicas+1 {
-			klog.Errorf("pdSpec replicas = %d, pdsts replicas = %d, pdsts replicas should equal pdspec replicas + 1", pdSpecReplicas, *pdsts.Spec.Replicas)
-			return false, nil
-		}
-
+		// ensure failure member has deleted state
 		if len(tc.Status.PD.FailureMembers) == 1 {
 			klog.Infof("%#v", tc.Status.PD.FailureMembers)
 			for _, failureMember := range tc.Status.PD.FailureMembers {
@@ -108,16 +99,20 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 	if err != nil {
 		return fmt.Errorf("failed to check pd %s/%s failover", ns, podName)
 	}
-	klog.Infof("check pd %s/%s failover marked successfully, new pod verified", ns, podName)
+	klog.Infof("check pd pod %s/%s failover marked successfully, new pod verified", ns, podName)
 
-	// Then we wait the failure Member and pod has been deleted
-	err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+	// Then we ensure pd failover recovery
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Error(err)
 			return false, nil
 		}
 
+		if tc.Status.PD.FailureMembers != nil && len(tc.Status.PD.FailureMembers) > 0 {
+			klog.Error("pd failover should empty failure members in recovery")
+			return false, nil
+		}
 		pdSpecReplicas := tc.Spec.PD.Replicas
 		pdsts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-pd", tc.Name), metav1.GetOptions{})
 		if err != nil {
@@ -125,39 +120,15 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 			return false, nil
 		}
 		if *pdsts.Spec.Replicas != pdSpecReplicas {
-			klog.Errorf("pdSpec replicas = %d, pdsts replicas = %d, pdsts replicas should equal pdspec replicas", pdSpecReplicas, *pdsts.Spec.Replicas)
+			klog.Errorf("pdsts replicas[%d] should equal pdspec replicas[%d]", pdSpecReplicas, *pdsts.Spec.Replicas)
 			return false, nil
 		}
-		if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) == 0 {
-			return true, nil
-		}
-		return false, nil
+		return true, nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("check pd cluster %s/%s recovery failed after failover", ns, tcName)
 	}
-	klog.Infof("failover pd member all has been deleted")
-
-	// clear failover Member
-	//err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-	//	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
-	//	if err != nil {
-	//		klog.Error(err.Error())
-	//		return false, nil
-	//	}
-	//	if tc.Status.PD.FailureMembers == nil || len(tc.Status.PD.FailureMembers) < 1 {
-	//		return true, nil
-	//	}
-	//	tc.Status.PD.FailureMembers = nil
-	//	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
-	//	if err != nil {
-	//		klog.Error(err.Error())
-	//	}
-	//	return false, nil
-	//})
-	//if err != nil {
-	//	return err
-	//}
+	klog.Infof("pd cluster have been recovered")
 
 	err = oa.CheckTidbClusterStatus(info)
 	if err != nil {
