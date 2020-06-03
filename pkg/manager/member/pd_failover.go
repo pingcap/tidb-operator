@@ -66,11 +66,11 @@ func NewPDFailover(cli versioned.Interface,
 }
 
 // Failover is used to failover broken pd member
-// If there is 3 pd member in a tidbcluster with 1 broken pd member pd-0, pdFailover will do failover in following 3 round:
-// 1. pdFailover append pd-0 into pd status's failure Member map with nonDeleteMember state.
-// 2. pdFailover will delete pd-0 member by pdapi and mark pd-0 member in failure member map as deleted state.
-// 3. pd member manager will render pd's statefulset replicas as tc.spec.pd.replicas + count of failure pd member with deleted state.
-// If the count of the failure pd member with deleted state is equal or greater than MaxFailoverCount, we wil skip failover.
+// If there are 3 PD members in a tidb cluster with 1 broken member pd-0, pdFailover will do failover in 3 rounds:
+// 1. mark pd-0 as a failure Member with non-deleted state (MemberDeleted=false)
+// 2. delete the failure member pd-0, and mark it deleted (MemberDeleted=true)
+// 3. PD member manager will add the count of deleted failure members more replicas
+// If the count of the failure PD member with the deleted state (MemberDeleted=true) is equal or greater than MaxFailoverCount, we will skip failover.
 func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
