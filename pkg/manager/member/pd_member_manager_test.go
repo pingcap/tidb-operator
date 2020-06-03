@@ -1192,7 +1192,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 		},
 		{
-			name: "tidbcluster with failureMember",
+			name: "tidbcluster with failureMember nonDeleted",
 			tc: v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tls-nightly",
@@ -1223,7 +1223,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(*sts.Spec.Replicas).To(Equal(int32(4)))
+				g.Expect(*sts.Spec.Replicas).To(Equal(int32(3)))
 			},
 		},
 		{
@@ -1258,7 +1258,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(*sts.Spec.Replicas).To(Equal(int32(3)))
+				g.Expect(*sts.Spec.Replicas).To(Equal(int32(4)))
 			},
 		},
 		// TODO add more tests

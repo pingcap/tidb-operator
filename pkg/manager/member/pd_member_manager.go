@@ -522,7 +522,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 func getFailureReplicas(tc *v1alpha1.TidbCluster) int {
 	failureReplicas := 0
 	for _, failureMember := range tc.Status.PD.FailureMembers {
-		if !failureMember.MemberDeleted {
+		if failureMember.MemberDeleted {
 			failureReplicas++
 		}
 	}
