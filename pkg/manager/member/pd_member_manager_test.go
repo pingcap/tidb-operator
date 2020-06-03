@@ -1205,11 +1205,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 						Replicas: 3,
 					},
-					TiDB: v1alpha1.TiDBSpec{
-						TLSClient: &v1alpha1.TiDBTLSClient{
-							Enabled: true,
-						},
-					},
 				},
 				Status: v1alpha1.TidbClusterStatus{
 					PD: v1alpha1.PDStatus{
@@ -1239,11 +1234,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							Image: "pingcap/pd:nightly",
 						},
 						Replicas: 3,
-					},
-					TiDB: v1alpha1.TiDBSpec{
-						TLSClient: &v1alpha1.TiDBTLSClient{
-							Enabled: true,
-						},
 					},
 				},
 				Status: v1alpha1.TidbClusterStatus{
