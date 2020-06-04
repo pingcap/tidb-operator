@@ -63,7 +63,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 
 	oldPD, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
 	if err != nil {
-		klog.Error(err.Error())
+		klog.Error(err)
 		return err
 	}
 	// first we ensured that pd failover new pod, and failure member/pod should be deleted.
@@ -116,7 +116,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 		pdSpecReplicas := tc.Spec.PD.Replicas
 		pdsts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-pd", tc.Name), metav1.GetOptions{})
 		if err != nil {
-			klog.Error(err.Error())
+			klog.Error(err)
 			return false, nil
 		}
 		if *pdsts.Spec.Replicas != pdSpecReplicas {
