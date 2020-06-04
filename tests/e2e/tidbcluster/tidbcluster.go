@@ -88,6 +88,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	 * StatefulSet or AdvancedStatefulSet interface.
 	 */
 	var stsGetter func(namespace string) typedappsv1.StatefulSetInterface
+	var crdUtil *tests.CrdTestUtil
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -119,6 +120,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			stsGetter = c.AppsV1().StatefulSets
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, false)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -142,7 +144,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name:    "basic-v4",
 			},
 		}
-
+		
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
@@ -150,37 +152,37 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// support reclaim pv when scale in tikv or pd component
 
-				tests.CreateTidbClusterOrDie(cli, cluster)
+				crdUtil.CreateTidbClusterOrDie(cluster)
 				err := oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
-				tests.CheckDisasterToleranceOrDie(c, cluster)
+				crdUtil.CheckDisasterToleranceOrDie(cluster)
 
 				// scale
-				tc := tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc := crdUtil.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
 				tc.Spec.TiDB.Replicas = 3
 				tc.Spec.TiKV.Replicas = 5
 				tc.Spec.PD.Replicas = 5
-				tests.UpdateTidbClusterOrDie(cli, tc)
+				crdUtil.UpdateTidbClusterOrDie(tc)
 				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
-				tests.CheckDisasterToleranceOrDie(c, cluster)
+				crdUtil.CheckDisasterToleranceOrDie(cluster)
 
-				tc = tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc = crdUtil.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
 				tc.Spec.TiDB.Replicas = 2
 				tc.Spec.TiKV.Replicas = 4
 				tc.Spec.PD.Replicas = 3
-				tests.UpdateTidbClusterOrDie(cli, tc)
+				crdUtil.UpdateTidbClusterOrDie(tc)
 				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
-				tests.CheckDisasterToleranceOrDie(c, cluster)
+				crdUtil.CheckDisasterToleranceOrDie(cluster)
 
 				// configuration change
-				tc = tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc = crdUtil.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
 				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
 				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
 				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
-				tests.UpdateTidbClusterOrDie(cli, tc)
+				crdUtil.UpdateTidbClusterOrDie(tc)
 				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
 			})
