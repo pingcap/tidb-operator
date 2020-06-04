@@ -48,8 +48,11 @@ func NewDefaultTidbClusterControl(
 	pvcCleaner member.PVCCleanerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
+	ticdcMemberManager manager.Manager,
 	discoveryManager member.TidbDiscoveryManager,
+	tidbClusterStatusManager manager.Manager,
 	podRestarter member.PodRestarter,
+	conditionUpdater TidbClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -62,26 +65,32 @@ func NewDefaultTidbClusterControl(
 		pvcCleaner,
 		pumpMemberManager,
 		tiflashMemberManager,
+		ticdcMemberManager,
 		discoveryManager,
+		tidbClusterStatusManager,
 		podRestarter,
+		conditionUpdater,
 		recorder,
 	}
 }
 
 type defaultTidbClusterControl struct {
-	tcControl            controller.TidbClusterControlInterface
-	pdMemberManager      manager.Manager
-	tikvMemberManager    manager.Manager
-	tidbMemberManager    manager.Manager
-	reclaimPolicyManager manager.Manager
-	metaManager          manager.Manager
-	orphanPodsCleaner    member.OrphanPodsCleaner
-	pvcCleaner           member.PVCCleanerInterface
-	pumpMemberManager    manager.Manager
-	tiflashMemberManager manager.Manager
-	discoveryManager     member.TidbDiscoveryManager
-	podRestarter         member.PodRestarter
-	recorder             record.EventRecorder
+	tcControl                controller.TidbClusterControlInterface
+	pdMemberManager          manager.Manager
+	tikvMemberManager        manager.Manager
+	tidbMemberManager        manager.Manager
+	reclaimPolicyManager     manager.Manager
+	metaManager              manager.Manager
+	orphanPodsCleaner        member.OrphanPodsCleaner
+	pvcCleaner               member.PVCCleanerInterface
+	pumpMemberManager        manager.Manager
+	tiflashMemberManager     manager.Manager
+	ticdcMemberManager       manager.Manager
+	discoveryManager         member.TidbDiscoveryManager
+	tidbClusterStatusManager manager.Manager
+	podRestarter             member.PodRestarter
+	conditionUpdater         TidbClusterConditionUpdater
+	recorder                 record.EventRecorder
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -97,6 +106,11 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 	if err := tcc.updateTidbCluster(tc); err != nil {
 		errs = append(errs, err)
 	}
+
+	if err := tcc.conditionUpdater.Update(tc); err != nil {
+		errs = append(errs, err)
+	}
+
 	if apiequality.Semantic.DeepEqual(&tc.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
@@ -171,6 +185,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+	// syncing the pump cluster
+	if err := tcc.pumpMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// works that should do to making the tidb cluster current state match the desired state:
 	//   - waiting for the tikv cluster available(at least one peer works)
 	//   - create or update tidb headless service
@@ -196,6 +215,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+	//   - waiting for the pd cluster available(pd cluster is in quorum)
+	//   - create or update ticdc deployment
+	//   - sync ticdc cluster status from pd to TidbCluster object
+	if err := tcc.ticdcMemberManager.Sync(tc); err != nil {
+		return err
+	}
+
 	// syncing the labels from Pod to PVC and PV, these labels include:
 	//   - label.StoreIDLabelKey
 	//   - label.MemberIDLabelKey
@@ -209,8 +235,9 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
-	// syncing the pump cluster
-	return tcc.pumpMemberManager.Sync(tc)
+	// syncing the some tidbcluster status attributes
+	// 	- sync tidbmonitor reference
+	return tcc.tidbClusterStatusManager.Sync(tc)
 }
 
 var _ ControlInterface = &defaultTidbClusterControl{}

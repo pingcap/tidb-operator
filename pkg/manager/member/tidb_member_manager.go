@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -106,7 +106,11 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
-
+	if tc.Spec.Pump != nil {
+		if !tc.PumpIsAvailable() {
+			return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for Pump cluster running", ns, tcName)
+		}
+	}
 	// Sync TiDB Headless Service
 	if err := tmm.syncTiDBHeadlessServiceForTidbCluster(tc); err != nil {
 		return err
@@ -300,7 +304,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
-	util.RemainNodeport(newSvc, oldSvc)
+	util.RetainManagedFields(newSvc, oldSvc)
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {
@@ -460,7 +464,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Name:            svcName,
 			Namespace:       ns,
 			Labels:          tidbLabels,
-			Annotations:     svcSpec.Annotations,
+			Annotations:     copyAnnotations(svcSpec.Annotations),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -763,7 +767,8 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	if err != nil {
 		return err
 	}
-	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
+	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
+		tc.Status.PD.Phase != v1alpha1.UpgradePhase && tc.Status.Pump.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase

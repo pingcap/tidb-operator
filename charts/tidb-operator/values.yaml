@@ -12,11 +12,11 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.0-rc.3
+operatorImage: pingcap/tidb-operator:v1.1.0
 imagePullPolicy: IfNotPresent
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0-rc.3
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0
 
 #
 # Enable or disable tidb-operator features:
@@ -150,7 +150,7 @@ apiserver:
 #   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml      # k8s version >= 1.16.0
 advancedStatefulset:
   create: false
-  image: pingcap/advanced-statefulset:v0.3.1
+  image: pingcap/advanced-statefulset:v0.3.3
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
   logLevel: 2
@@ -181,6 +181,7 @@ admissionWebhook:
   create: false
   replicas: 1
   serviceAccount: tidb-admission-webhook
+  logLevel: 2
   rbac:
     create: true
   ## jobImage is to indicate the image used in `pre-delete-job.yaml`

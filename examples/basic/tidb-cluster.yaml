@@ -6,15 +6,26 @@ spec:
   version: v3.0.13
   timezone: UTC
   pvReclaimPolicy: Delete
+  discovery:
+    limits:
+      cpu: 250m
+      memory: 150Mi
+    requests:
+      cpu: 80m
+      memory: 50Mi
   pd:
     baseImage: pingcap/pd
     replicas: 3
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
     requests:
       storage: "1Gi"
     config: {}
   tikv:
     baseImage: pingcap/tikv
     replicas: 3
+    # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
+    # storageClassName: local-storage
     requests:
       storage: "1Gi"
     config: {}

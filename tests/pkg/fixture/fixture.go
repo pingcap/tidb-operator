@@ -16,8 +16,10 @@ package fixture
 import (
 	"fmt"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
@@ -60,12 +62,28 @@ func WithStorage(r corev1.ResourceRequirements, size string) corev1.ResourceRequ
 		r.Requests = corev1.ResourceList{}
 	}
 	r.Requests[corev1.ResourceStorage] = resource.MustParse(size)
-
 	return r
 }
 
+var (
+	// the first version which introduces storage.reserve-space config
+	// https://github.com/tikv/tikv/pull/6321
+	tikvV4Beta = semver.MustParse("v4.0.0-beta")
+)
+
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
+	tikvStorageConfig := &v1alpha1.TiKVStorageConfig{
+		// Don't reserve space in e2e tests, see
+		// https://github.com/pingcap/tidb-operator/issues/2509.
+		ReserveSpace: pointer.StringPtr("0MB"),
+	}
+	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
+	// e.g. nightly.
+	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
+		tikvStorageConfig = nil
+	}
+
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -84,12 +102,15 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
 				Config: &v1alpha1.PDConfig{
 					Log: &v1alpha1.PDLogConfig{
-						Level: "info",
+						Level: pointer.StringPtr("info"),
 					},
 					// accelerate failover
 					Schedule: &v1alpha1.PDScheduleConfig{
-						MaxStoreDownTime: "5m",
+						MaxStoreDownTime: pointer.StringPtr("5m"),
 					},
+				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
 				},
 			},
 
@@ -99,8 +120,12 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
 				Config: &v1alpha1.TiKVConfig{
-					LogLevel: "info",
+					LogLevel: pointer.StringPtr("info"),
 					Server:   &v1alpha1.TiKVServerConfig{},
+					Storage:  tikvStorageConfig,
+				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
 			},
 
@@ -121,7 +146,66 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 						Level: pointer.StringPtr("info"),
 					},
 				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
+				},
 			},
+		},
+	}
+}
+
+func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: int32(50),
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/component": memberType.String(),
+								"app.kubernetes.io/instance":  name,
+							},
+						},
+						Namespaces: []string{
+							namespace,
+						},
+						TopologyKey: "rack",
+					},
+				},
+			},
+		},
+	}
+}
+
+func GetTidbClusterWithTiFlash(ns, name, version string) *v1alpha1.TidbCluster {
+	tc := GetTidbCluster(ns, name, version)
+	tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{
+		Replicas:         1,
+		BaseImage:        "pingcap/tiflash",
+		MaxFailoverCount: pointer.Int32Ptr(3),
+		StorageClaims: []v1alpha1.StorageClaim{
+			{
+				Resources: WithStorage(BurstbleMedium, "10Gi"),
+			},
+		},
+	}
+	return tc
+}
+
+func GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName string) *v1alpha1.TidbInitializer {
+	return &v1alpha1.TidbInitializer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      initName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbInitializerSpec{
+			Image: "tnir/mysqlclient",
+			Clusters: v1alpha1.TidbClusterRef{
+				Name: tcName,
+			},
+			PasswordSecret:      &initPassWDName,
+			TLSClientSecretName: &initTLSName,
 		},
 	}
 }
@@ -239,7 +323,7 @@ func GetBackupServiceAccount(tc *v1alpha1.TidbCluster, serviceAccountName string
 	}
 }
 
-func GetBackupRoleBing(tc *v1alpha1.TidbCluster, serviceAccountName string) *rbacv1beta1.RoleBinding {
+func GetBackupRoleBinding(tc *v1alpha1.TidbCluster, serviceAccountName string) *rbacv1beta1.RoleBinding {
 	return &rbacv1beta1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
@@ -273,83 +357,30 @@ func GetBackupSecret(tc *v1alpha1.TidbCluster, password string) *corev1.Secret {
 	}
 }
 
-func GetS3Secret(tc *v1alpha1.TidbCluster, accessKey, secretKey string) *corev1.Secret {
+func GetInitializerSecret(tc *v1alpha1.TidbCluster, initPassWDName, password string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      initPassWDName,
+			Namespace: tc.GetNamespace(),
+		},
+		Data: map[string][]byte{
+			"root": []byte(password),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+}
+
+func GetS3Secret(namespace, accessKey, secretKey string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      S3Secret,
-			Namespace: tc.GetNamespace(),
+			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			"access_key": []byte(accessKey),
 			"secret_key": []byte(secretKey),
 		},
 		Type: corev1.SecretTypeOpaque,
-	}
-}
-
-func GetBackupCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1.Backup {
-	sendCredToTikv := true
-	return &v1alpha1.Backup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-backup", tc.GetName()),
-			Namespace: tc.GetNamespace(),
-		},
-		Spec: v1alpha1.BackupSpec{
-			Type: v1alpha1.BackupTypeFull,
-			StorageProvider: v1alpha1.StorageProvider{
-				S3: &v1alpha1.S3StorageProvider{
-					Provider:   v1alpha1.S3StorageProviderTypeAWS,
-					Region:     AWSRegion,
-					Bucket:     Bucket,
-					Prefix:     backupFolder,
-					SecretName: S3Secret,
-				},
-			},
-			From: v1alpha1.TiDBAccessConfig{
-				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
-				SecretName: fmt.Sprintf("%s-backup-secret", tc.GetName()),
-				Port:       4000,
-				User:       "root",
-			},
-			BR: &v1alpha1.BRConfig{
-				Cluster:          tc.GetName(),
-				ClusterNamespace: tc.GetNamespace(),
-				SendCredToTikv:   &sendCredToTikv,
-			},
-		},
-	}
-}
-
-func GetRestoreCRDWithBR(tc *v1alpha1.TidbCluster, backupFolder string) *v1alpha1.Restore {
-	sendCredToTikv := true
-	return &v1alpha1.Restore{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-restore", tc.GetName()),
-			Namespace: tc.GetNamespace(),
-		},
-		Spec: v1alpha1.RestoreSpec{
-			Type: v1alpha1.BackupTypeFull,
-			StorageProvider: v1alpha1.StorageProvider{
-				S3: &v1alpha1.S3StorageProvider{
-					Provider:   v1alpha1.S3StorageProviderTypeAWS,
-					Region:     AWSRegion,
-					Bucket:     Bucket,
-					Prefix:     backupFolder,
-					SecretName: S3Secret,
-				},
-			},
-			To: v1alpha1.TiDBAccessConfig{
-				Host:       fmt.Sprintf("%s-tidb.%s", tc.GetName(), tc.GetNamespace()),
-				SecretName: fmt.Sprintf("%s-backup-secret", tc.GetName()),
-				Port:       4000,
-				User:       "root",
-			},
-			BR: &v1alpha1.BRConfig{
-				Cluster:          tc.GetName(),
-				ClusterNamespace: tc.GetNamespace(),
-				SendCredToTikv:   &sendCredToTikv,
-			},
-		},
 	}
 }
 
@@ -372,4 +403,84 @@ func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1a
 			TiDB: nil,
 		},
 	}
+}
+
+const (
+	BRType     = "br"
+	DumperType = "dumper"
+)
+
+func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
+	if brType != BRType && brType != DumperType {
+		return nil
+	}
+	sendCredToTikv := true
+	br := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-backup", tc.Name),
+			Namespace: tc.Namespace,
+		},
+		Spec: v1alpha1.BackupSpec{
+			Type: v1alpha1.BackupTypeFull,
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: s3config,
+			},
+			From: v1alpha1.TiDBAccessConfig{
+				Host:       util.GetTidbServiceName(tc.Name),
+				SecretName: fromSecretName,
+				Port:       4000,
+				User:       "root",
+			},
+			BR: &v1alpha1.BRConfig{
+				Cluster:          tc.GetName(),
+				ClusterNamespace: tc.GetNamespace(),
+				SendCredToTikv:   &sendCredToTikv,
+			},
+		},
+	}
+	if brType == DumperType {
+		storage := "local-storage"
+		br.Spec.BR = nil
+		br.Spec.StorageClassName = &storage
+		br.Spec.StorageSize = "1Gi"
+	}
+	return br
+}
+
+func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Restore {
+	if restoreType != BRType && restoreType != DumperType {
+		return nil
+	}
+	sendCredToTikv := true
+	restore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-restore", tc.GetName()),
+			Namespace: tc.GetNamespace(),
+		},
+		Spec: v1alpha1.RestoreSpec{
+			Type: v1alpha1.BackupTypeFull,
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: s3config,
+			},
+			To: v1alpha1.TiDBAccessConfig{
+				Host:       util.GetTidbServiceName(tc.Name),
+				SecretName: toSecretName,
+				Port:       4000,
+				User:       "root",
+			},
+			BR: &v1alpha1.BRConfig{
+				Cluster:          tc.GetName(),
+				ClusterNamespace: tc.GetNamespace(),
+				SendCredToTikv:   &sendCredToTikv,
+			},
+		},
+	}
+	if restoreType == DumperType {
+		storage := "local-storage"
+		restore.Spec.BR = nil
+		restore.Spec.StorageClassName = &storage
+		restore.Spec.StorageSize = "1Gi"
+		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
+	}
+	return restore
 }

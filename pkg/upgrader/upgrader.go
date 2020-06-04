@@ -16,9 +16,9 @@ package upgrader
 import (
 	"fmt"
 
-	asappsv1 "github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -137,7 +137,7 @@ func deleteSlotAnns(tc *v1alpha1.TidbCluster) map[string]string {
 	if tc == nil || tc.Annotations == nil {
 		return anns
 	}
-	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots} {
+	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots} {
 		if v, ok := tc.Annotations[key]; ok {
 			anns[key] = v
 		}

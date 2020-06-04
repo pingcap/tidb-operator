@@ -34,8 +34,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/ghodss/yaml"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
-	asclientset "github.com/pingcap/advanced-statefulset/pkg/client/clientset/versioned"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	pingcapErrors "github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -408,18 +408,29 @@ func (tc *TidbClusterConfig) TidbClusterHelmSetString(m map[string]string) strin
 	return strings.Join(arr, ",")
 }
 
+func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
+	set := map[string]bool{
+		"admissionWebhook.create":                      oi.WebhookEnabled,
+		"admissionWebhook.validation.pods":             oi.PodWebhookEnabled,
+		"admissionWebhook.mutation.pods":               oi.PodWebhookEnabled,
+		"admissionWebhook.validation.statefulSets":     oi.StsWebhookEnabled,
+		"admissionWebhook.mutation.pingcapResources":   oi.DefaultingEnabled,
+		"admissionWebhook.validation.pingcapResources": oi.ValidatingEnabled,
+	}
+	arr := make([]string, 0, len(set))
+	for k, v := range set {
+		arr = append(arr, fmt.Sprintf("--set %s=%v", k, v))
+	}
+	return fmt.Sprintf("%s", strings.Join(arr, " "))
+}
+
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
 	set := map[string]string{
-		"operatorImage":                                oi.Image,
-		"tidbBackupManagerImage":                       oi.BackupImage,
-		"scheduler.logLevel":                           "4",
-		"testMode":                                     strconv.FormatBool(oi.TestMode),
-		"admissionWebhook.cabundle":                    oi.Cabundle,
-		"admissionWebhook.create":                      strconv.FormatBool(oi.WebhookEnabled),
-		"admissionWebhook.validation.pods":             strconv.FormatBool(oi.PodWebhookEnabled),
-		"admissionWebhook.validation.statefulSets":     strconv.FormatBool(oi.StsWebhookEnabled),
-		"admissionWebhook.mutation.pingcapResources":   strconv.FormatBool(oi.DefaultingEnabled),
-		"admissionWebhook.validation.pingcapResources": strconv.FormatBool(oi.ValidatingEnabled),
+		"operatorImage":             oi.Image,
+		"tidbBackupManagerImage":    oi.BackupImage,
+		"scheduler.logLevel":        "4",
+		"testMode":                  strconv.FormatBool(oi.TestMode),
+		"admissionWebhook.cabundle": oi.Cabundle,
 	}
 	if oi.LogLevel != "" {
 		set["controllerManager.logLevel"] = oi.LogLevel
@@ -493,6 +504,10 @@ func (oa *operatorActions) CleanCRDOrDie() {
 		framework.Logf("Deleting CRD %q", crd.Name)
 		err = oa.apiExtCli.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(crd.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err)
+		// Even if DELETE API request succeeds, the CRD object may still exists
+		// in ap server. We should wait for it to be gone.
+		e2eutil.WaitForCRDNotFound(oa.apiExtCli, crd.Name)
+		framework.ExpectNoError(err)
 	}
 }
 
@@ -539,10 +554,11 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s --set-string %s`,
+	cmd := fmt.Sprintf(`helm install %s --name %s --namespace %s %s --set-string %s`,
 		oa.operatorChartPath(info.Tag),
 		info.ReleaseName,
 		info.Namespace,
+		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 	klog.Info(cmd)
 
@@ -550,6 +566,7 @@ func (oa *operatorActions) DeployOperator(info *OperatorConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to deploy operator: %v, %s", err, string(res))
 	}
+	klog.Infof("deploy operator response: %v\n", string(res))
 
 	klog.Infof("Wait for all apiesrvices are available")
 	return e2eutil.WaitForAPIServicesAvaiable(oa.aggrCli, labels.Everything())
@@ -597,8 +614,9 @@ func (oa *operatorActions) UpgradeOperator(info *OperatorConfig) error {
 		}
 	}
 
-	cmd := fmt.Sprintf("helm upgrade %s %s --set-string %s",
+	cmd := fmt.Sprintf("helm upgrade %s %s %s --set-string %s",
 		info.ReleaseName, oa.operatorChartPath(info.Tag),
+		info.OperatorHelmSetBoolean(),
 		info.OperatorHelmSetString(nil))
 
 	res, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
@@ -880,14 +898,21 @@ func (oa *operatorActions) CleanTidbCluster(info *TidbClusterConfig) error {
 		return fmt.Errorf("failed to delete configmaps: %v, %s", err, string(res))
 	}
 
-	patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
-		"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
-		label.ManagedByLabelKey, "tidb-operator",
-		label.NamespaceLabelKey, info.Namespace,
-		label.InstanceLabelKey, info.ClusterName)
-	klog.V(4).Info(patchPVCmd)
-	if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to patch pv: %v, %s", err, string(res))
+	err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+		patchPVCmd := fmt.Sprintf("kubectl get pv --no-headers -l %s=%s,%s=%s,%s=%s | awk '{print $1}' | "+
+			"xargs -I {} kubectl patch pv {} -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}'",
+			label.ManagedByLabelKey, "tidb-operator",
+			label.NamespaceLabelKey, info.Namespace,
+			label.InstanceLabelKey, info.ClusterName)
+		klog.V(4).Info(patchPVCmd)
+		if res, err := exec.Command("/bin/sh", "-c", patchPVCmd).CombinedOutput(); err != nil {
+			klog.Errorf(fmt.Errorf("failed to patch pv: %v, %s", err, string(res)).Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	pollFn := func() (bool, error) {
@@ -1055,7 +1080,7 @@ func (oa *operatorActions) getBlockWriterPod(info *TidbClusterConfig, database s
 func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", info.BlockWriteConfig.Concurrency))
 
-	pod := oa.getBlockWriterPod(info, "test")
+	pod := oa.getBlockWriterPod(info, "sbtest")
 	pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil {
 		return err
@@ -1387,6 +1412,7 @@ func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.Stat
 	for _, container := range pod.Spec.Containers {
 		if container.Name == v1alpha1.PDMemberType.String() ||
 			container.Name == v1alpha1.TiKVMemberType.String() ||
+			container.Name == v1alpha1.TiFlashMemberType.String() ||
 			container.Name == v1alpha1.TiDBMemberType.String() {
 			return &container, true
 		}
@@ -1544,6 +1570,81 @@ func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, e
 	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
 		klog.Errorf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+	tiflashSetName := controller.TiFlashMemberName(tcName)
+
+	tiflashSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tiflashSetName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
+		return false, nil
+	}
+
+	if tiflashSet.Status.CurrentRevision != tiflashSet.Status.UpdateRevision {
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tiflashSet) {
+		return false, nil
+	}
+
+	if tc.Status.TiFlash.StatefulSet == nil {
+		klog.Infof("tidbcluster: %s/%s .status.TiFlash.StatefulSet is nil", ns, tcName)
+		return false, nil
+	}
+	failureCount := len(tc.Status.TiFlash.FailureStores)
+	replicas := tc.Spec.TiFlash.Replicas + int32(failureCount)
+	if *tiflashSet.Spec.Replicas != replicas {
+		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+			ns, tiflashSetName, *tiflashSet.Spec.Replicas, replicas)
+		return false, nil
+	}
+	if tiflashSet.Status.ReadyReplicas != replicas {
+		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, replicas)
+		return false, nil
+	}
+	if len(tc.Status.TiFlash.Stores) != int(replicas) {
+		klog.Infof("tidbcluster: %s/%s .status.TiFlash.Stores.count(%d) != %d",
+			ns, tcName, len(tc.Status.TiFlash.Stores), replicas)
+		return false, nil
+	}
+	if tiflashSet.Status.ReadyReplicas != tiflashSet.Status.Replicas {
+		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, tiflashSet.Status.Replicas)
+		return false, nil
+	}
+
+	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiFlashLabelVal)
+	if !found {
+		klog.Infof("statefulset: %s/%s not found containers[name=tiflash] or pod %s-0",
+			ns, tiflashSetName, tiflashSetName)
+		return false, nil
+	}
+
+	if tc.TiFlashImage() != c.Image {
+		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
+			ns, tiflashSetName, c.Image, tc.TiFlashImage())
+		return false, nil
+	}
+
+	for _, store := range tc.Status.TiFlash.Stores {
+		if store.State != v1alpha1.TiKVStateUp {
+			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			return false, nil
+		}
+	}
+
+	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
+	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
+		klog.Errorf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
 
@@ -2467,7 +2568,7 @@ func (oa *operatorActions) ForceDeploy(info *TidbClusterConfig) error {
 func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bool, error) {
 	tableNum := otherInfo.BlockWriteConfig.TableNum
 
-	dsn, cancel, err := oa.getTiDBDSN(tc.Namespace, tc.ClusterName, "test", tc.Password)
+	dsn, cancel, err := oa.getTiDBDSN(tc.Namespace, tc.ClusterName, "sbtest", tc.Password)
 	if err != nil {
 		return false, nil
 	}
@@ -2477,7 +2578,7 @@ func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bo
 		return false, err
 	}
 	defer infoDb.Close()
-	otherDsn, otherCancel, err := oa.getTiDBDSN(otherInfo.Namespace, otherInfo.ClusterName, "test", otherInfo.Password)
+	otherDsn, otherCancel, err := oa.getTiDBDSN(otherInfo.Namespace, otherInfo.ClusterName, "sbtest", otherInfo.Password)
 	if err != nil {
 		return false, nil
 	}
@@ -3439,6 +3540,11 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 		if b, err := oa.tidbMembersReadyFn(local); !b && err == nil {
 			return false, nil
+		}
+		if tc.Spec.TiFlash != nil {
+			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
+				return false, nil
+			}
 		}
 		return true, nil
 	})

@@ -14,12 +14,14 @@
 package tidbcluster
 
 import (
+	"encoding/json"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
 )
@@ -159,4 +161,12 @@ func startWebhook(f *framework.Framework, image, ns, svcName string, cert []byte
 	err = e2epod.WaitForPodRunningInNamespace(f.ClientSet, pod)
 	framework.ExpectNoError(err, "failed to wait for pod %s/%s to be running", pod.Namespace, pod.Name)
 	return pod, svc
+}
+
+func mustToString(set sets.Int32) string {
+	b, err := json.Marshal(set.List())
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
 }

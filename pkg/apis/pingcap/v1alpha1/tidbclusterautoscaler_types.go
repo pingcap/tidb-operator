@@ -18,6 +18,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type AutoScalerPhase string
+
+const (
+	NormalAutoScalerPhase          AutoScalerPhase = "Normal"
+	ReadyToScaleOutAutoScalerPhase AutoScalerPhase = "ReadyToScaleOut"
+	ReadyToScaleInAutoScalerPhase  AutoScalerPhase = "ReadyToScaleIn"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -76,6 +84,12 @@ type TidbClusterAutoScalerSpec struct {
 // TikvAutoScalerSpec describes the spec for tikv auto-scaling
 type TikvAutoScalerSpec struct {
 	BasicAutoScalerSpec `json:",inline"`
+
+	// ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
+	// should last for before auto scaling.
+	// If not set, the default ReadyToScaleThresholdSeconds will be set to 30.
+	// +optional
+	ReadyToScaleThresholdSeconds *int32 `json:"readyToScaleThresholdSeconds,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -152,6 +166,10 @@ type TidbMonitorRef struct {
 
 	// Name is the name of TidbMonitor object
 	Name string `json:"name"`
+
+	// GrafanaEnabled indicate whether the grafana is enabled for this target tidbmonitor
+	// +optional
+	GrafanaEnabled bool `json:"grafanaEnabled,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -180,6 +198,8 @@ type TikvAutoScalerStatus struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerStatus describe the basic auto-scaling status
 type BasicAutoScalerStatus struct {
+	// Phase describes cluster auto scaling phase
+	Phase AutoScalerPhase `json:"phase,omitempty"`
 	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
 	// +optional
 	MetricsStatusList []MetricsStatus `json:"metrics,omitempty"`

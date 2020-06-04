@@ -92,6 +92,7 @@ pipeline {
         string(name: 'CLUSTER', defaultValue: env.DEFAULT_CLUSTER, description: 'the name of the cluster')
         string(name: 'GCP_PROJECT', defaultValue: env.DEFAULT_GCP_PROJECT, description: 'the GCP project ID')
         string(name: 'GCP_ZONE', defaultValue: env.DEFAULT_GCP_ZONE, description: 'the GCP zone')
+        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: true, description: 'delete namespace on failure or not')
     }
 
     environment {
@@ -141,17 +142,19 @@ pipeline {
                     file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PUBLIC_KEY', variable: 'GCP_SSH_PUBLIC_KEY'),
                 ]) {
                     sh """
-                    #!/bin/bash
                     export PROVIDER=gke
                     export CLUSTER=${params.CLUSTER}
                     export GCP_ZONE=${params.GCP_ZONE}
                     export GCP_PROJECT=${params.GCP_PROJECT}
                     export GINKGO_NODES=${params.GINKGO_NODES}
-                    export REPORT_DIR=${ARTIFACTS}
+                    export DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE}
+                    export ARTIFACTS=${ARTIFACTS}
+                    export GINKGO_NO_COLOR=y
                     echo "info: try to clean the cluster created previously"
-                    SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y ./hack/e2e.sh
+                    SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DUMP=y ./hack/e2e.sh
                     echo "info: begin to run e2e"
-                    ./hack/e2e.sh -- ${params.E2E_ARGS}
+                    # TODO support dumping cluster logs in GKE
+                    SKIP_DUMP=y ./hack/e2e.sh -- ${params.E2E_ARGS}
                     """
                 }
             }
@@ -161,8 +164,32 @@ pipeline {
     post {
         always {
             dir(ARTIFACTS) {
+                sh """#!/bin/bash
+                echo "info: change ownerships for jenkins"
+                chown -R 1000:1000 .
+                echo "info: print total size of artifacts"
+                du -sh .
+                echo "info: list all files"
+                find .
+                """
                 archiveArtifacts artifacts: "**", allowEmptyArchive: true
                 junit testResults: "*.xml", allowEmptyResults: true
+            }
+        }
+        unsuccessful {
+            withCredentials([
+                file(credentialsId: 'TIDB_OPERATOR_GCP_CREDENTIALS', variable: 'GCP_CREDENTIALS'),
+                file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PRIVATE_KEY', variable: 'GCP_SSH_PRIVATE_KEY'),
+                file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PUBLIC_KEY', variable: 'GCP_SSH_PUBLIC_KEY'),
+            ]) {
+                sh """
+                export PROVIDER=gke
+                export CLUSTER=${params.CLUSTER}
+                export GCP_ZONE=${params.GCP_ZONE}
+                export GCP_PROJECT=${params.GCP_PROJECT}
+                echo "info: try to clean the cluster created previously"
+                SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DUMP=y ./hack/e2e.sh
+                """
             }
         }
     }

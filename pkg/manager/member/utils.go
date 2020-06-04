@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -258,6 +258,8 @@ func getStsAnnotations(tc *v1alpha1.TidbCluster, component string) map[string]st
 		key = label.AnnTiDBDeleteSlots
 	} else if component == label.TiKVLabelVal {
 		key = label.AnnTiKVDeleteSlots
+	} else if component == label.TiFlashLabelVal {
+		key = label.AnnTiFlashDeleteSlots
 	} else {
 		return anns
 	}
@@ -331,4 +333,15 @@ func filterContainer(sts *apps.StatefulSet, containerName string) *corev1.Contai
 		}
 	}
 	return nil
+}
+
+func copyAnnotations(src map[string]string) map[string]string {
+	if src == nil {
+		return nil
+	}
+	dst := map[string]string{}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }

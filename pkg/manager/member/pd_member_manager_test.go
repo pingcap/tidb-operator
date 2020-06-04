@@ -1113,6 +1113,144 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 			}),
 		},
+		{
+			name: "tidb version v3.1.0, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-v3",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v3.1.0",
+						},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(hasTLSVol(sts)).To(BeFalse())
+				g.Expect(hasTLSVolMount(sts)).To(BeFalse())
+			},
+		},
+		{
+			name: "tidb version v4.0.0-rc.1, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-v4",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v4.0.0-rc.1",
+						},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(hasTLSVol(sts)).To(BeTrue())
+				g.Expect(hasTLSVolMount(sts)).To(BeTrue())
+			},
+		},
+		{
+			name: "tidb version nightly, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(hasTLSVol(sts)).To(BeTrue())
+				g.Expect(hasTLSVolMount(sts)).To(BeTrue())
+			},
+		},
+		{
+			name: "tidbcluster with failureMember nonDeleted",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"test": {
+								MemberDeleted: false,
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(*sts.Spec.Replicas).To(Equal(int32(3)))
+			},
+		},
+		{
+			name: "tidbcluster with failureMember Deleted",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						FailureMembers: map[string]v1alpha1.PDFailureMember{
+							"test": {
+								MemberDeleted: true,
+							},
+						},
+					},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(*sts.Spec.Replicas).To(Equal(int32(4)))
+			},
+		},
 		// TODO add more tests
 	}
 
@@ -1159,7 +1297,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						},
 						Config: &v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
-								MaxStoreDownTime:         "5m",
+								MaxStoreDownTime:         pointer.StringPtr("5m"),
 								DisableRemoveDownReplica: pointer.BoolPtr(true),
 							},
 							Replication: &v1alpha1.PDReplicationConfig{
@@ -1204,6 +1342,170 @@ func TestGetPDConfigMap(t *testing.T) {
 [replication]
   max-replicas = 5
   location-labels = ["node", "rack"]
+`,
+				},
+			},
+		},
+		{
+			name: "tidb version v3.1.0, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-v3",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v3.1.0",
+						},
+						Config: &v1alpha1.PDConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-v3-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "tls-v3",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "tls-v3",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file":    "",
+				},
+			},
+		},
+		{
+			name: "tidb version v4.0.0-rc.1, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-v4",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v4.0.0-rc.1",
+						},
+						Config: &v1alpha1.PDConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-v4-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "tls-v4",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "tls-v4",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[dashboard]
+  tidb-cacert-path = "/var/lib/tidb-client-tls/ca.crt"
+  tidb-cert-path = "/var/lib/tidb-client-tls/tls.crt"
+  tidb-key-path = "/var/lib/tidb-client-tls/tls.key"
+`,
+				},
+			},
+		},
+		{
+			name: "tidb version nightly, tidb client tls is enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:nightly",
+						},
+						Config: &v1alpha1.PDConfig{},
+					},
+					TiDB: v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+				},
+			},
+			expected: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tls-nightly-pd",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "tls-nightly",
+						"app.kubernetes.io/component":  "pd",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "pingcap.com/v1alpha1",
+							Kind:       "TidbCluster",
+							Name:       "tls-nightly",
+							UID:        "",
+							Controller: func(b bool) *bool {
+								return &b
+							}(true),
+							BlockOwnerDeletion: func(b bool) *bool {
+								return &b
+							}(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"startup-script": "",
+					"config-file": `[dashboard]
+  tidb-cacert-path = "/var/lib/tidb-client-tls/ca.crt"
+  tidb-cert-path = "/var/lib/tidb-client-tls/tls.crt"
+  tidb-key-path = "/var/lib/tidb-client-tls/tls.key"
 `,
 				},
 			},
@@ -1882,4 +2184,26 @@ func TestPDShouldRecover(t *testing.T) {
 			}
 		})
 	}
+}
+
+func hasTLSVol(sts *apps.StatefulSet) bool {
+	for _, vol := range sts.Spec.Template.Spec.Volumes {
+		if vol.Name == "tidb-client-tls" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasTLSVolMount(sts *apps.StatefulSet) bool {
+	for _, container := range sts.Spec.Template.Spec.Containers {
+		if container.Name == v1alpha1.PDMemberType.String() {
+			for _, vm := range container.VolumeMounts {
+				if vm.Name == "tidb-client-tls" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

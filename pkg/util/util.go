@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/advanced-statefulset/pkg/apis/apps/v1/helper"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -87,6 +87,9 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	} else if memberType == v1alpha1.TiDBMemberType {
 		ann = label.AnnTiDBDeleteSlots
 		replicas = tc.Spec.TiDB.Replicas
+	} else if memberType == v1alpha1.TiFlashMemberType {
+		ann = label.AnnTiFlashDeleteSlots
+		replicas = tc.Spec.TiFlash.Replicas
 	} else {
 		return nil, fmt.Errorf("unknown member type %v", memberType)
 	}
@@ -227,11 +230,14 @@ func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
 	return ref.Kind == v1alpha1.TiDBClusterKind && gv.Group == v1alpha1.SchemeGroupVersion.Group, ref
 }
 
-// RemainNodeport is to make service nodeport unchanged during each reconciliation
-func RemainNodeport(desiredSvc, existedSvc *corev1.Service) {
+// RetainManagedFields retains the fields in the old object that are managed by kube-controller-manager, such as node ports
+func RetainManagedFields(desiredSvc, existedSvc *corev1.Service) {
+	// Retain healthCheckNodePort if it has been filled by controller
+	desiredSvc.Spec.HealthCheckNodePort = existedSvc.Spec.HealthCheckNodePort
 	if desiredSvc.Spec.Type != corev1.ServiceTypeNodePort && desiredSvc.Spec.Type != corev1.ServiceTypeLoadBalancer {
 		return
 	}
+	// Retain NodePorts
 	for id, dport := range desiredSvc.Spec.Ports {
 		for _, eport := range existedSvc.Spec.Ports {
 			if dport.Port == eport.Port && dport.Protocol == eport.Protocol {

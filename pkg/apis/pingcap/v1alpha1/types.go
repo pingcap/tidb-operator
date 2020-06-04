@@ -45,6 +45,8 @@ const (
 	TiKVMemberType MemberType = "tikv"
 	// TiFlashMemberType is tiflash container type
 	TiFlashMemberType MemberType = "tiflash"
+	// TiCDCMemberType is ticdc container type
+	TiCDCMemberType MemberType = "ticdc"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
@@ -105,6 +107,9 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
+	// Discovery spec
+	Discovery DiscoverySpec `json:"discovery,omitempty"`
+
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -117,6 +122,10 @@ type TidbClusterSpec struct {
 	// TiFlash cluster spec
 	// +optional
 	TiFlash *TiFlashSpec `json:"tiflash,omitempty"`
+
+	// TiCDC cluster spec
+	// +optional
+	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
 
 	// Pump cluster spec
 	// +optional
@@ -206,12 +215,56 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string        `json:"clusterID,omitempty"`
-	PD        PDStatus      `json:"pd,omitempty"`
-	TiKV      TiKVStatus    `json:"tikv,omitempty"`
-	TiDB      TiDBStatus    `json:"tidb,omitempty"`
-	Pump      PumpStatus    `josn:"pump,omitempty"`
-	TiFlash   TiFlashStatus `json:"tiflash,omitempty"`
+	ClusterID string          `json:"clusterID,omitempty"`
+	PD        PDStatus        `json:"pd,omitempty"`
+	TiKV      TiKVStatus      `json:"tikv,omitempty"`
+	TiDB      TiDBStatus      `json:"tidb,omitempty"`
+	Pump      PumpStatus      `josn:"pump,omitempty"`
+	TiFlash   TiFlashStatus   `json:"tiflash,omitempty"`
+	TiCDC     TiCDCStatus     `json:"ticdc,omitempty"`
+	Monitor   *TidbMonitorRef `json:"monitor,omitempty"`
+	// Represents the latest available observations of a tidb cluster's state.
+	// +optional
+	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
+}
+
+// TidbClusterCondition describes the state of a tidb cluster at a certain point.
+type TidbClusterCondition struct {
+	// Type of the condition.
+	Type TidbClusterConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// The reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// A human readable message indicating details about the transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+// TidbClusterConditionType represents a tidb cluster condition value.
+type TidbClusterConditionType string
+
+const (
+	// TidbClusterReady indicates that the tidb cluster is ready or not.
+	// This is defined as:
+	// - All statefulsets are up to date (currentRevision == updateRevision).
+	// - All PD members are healthy.
+	// - All TiDB pods are healthy.
+	// - All TiKV stores are up.
+	// - All TiFlash stores are up.
+	TidbClusterReady TidbClusterConditionType = "Ready"
+)
+
+// +k8s:openapi-gen=true
+// DiscoverySpec contains details of Discovery members
+type DiscoverySpec struct {
+	corev1.ResourceRequirements `json:",inline"`
 }
 
 // +k8s:openapi-gen=true
@@ -249,6 +302,11 @@ type PDSpec struct {
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
+
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
+	// which used by Dashboard.
+	// +optional
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -333,6 +391,53 @@ type TiFlashSpec struct {
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+}
+
+// TiCDCSpec contains details of TiCDC members
+// +k8s:openapi-gen=true
+type TiCDCSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCDC
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/ticdc
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// Config is the Configuration of tidbcdc servers
+	// +optional
+	Config *TiCDCConfig `json:"config,omitempty"`
+}
+
+// TiCDCConfig is the configuration of tidbcdc
+// +k8s:openapi-gen=true
+type TiCDCConfig struct {
+	// Time zone of TiCDC
+	// Optional: Defaults to UTC
+	// +optional
+	Timezone *string `json:"timezone,omitempty"`
+
+	// CDC GC safepoint TTL duration, specified in seconds
+	// Optional: Defaults to 86400
+	// +optional
+	GCTTL *int32 `json:"gcTTL,omitempty"`
+
+	// LogLevel is the log level
+	// Optional: Defaults to info
+	// +optional
+	LogLevel *string `json:"logLevel,omitempty"`
+
+	// LogFile is the log file
+	// Optional: Defaults to /dev/stderr
+	// +optional
+	LogFile *string `json:"logFile,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -686,6 +791,20 @@ type TiFlashStatus struct {
 	Image           string                      `json:"image,omitempty"`
 }
 
+// TiCDCStatus is TiCDC status
+type TiCDCStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+}
+
+// TiCDCCapture is TiCDC Capture status
+type TiCDCCapture struct {
+	PodName string `json:"podName,omitempty"`
+	ID      string `json:"id,omitempty"`
+}
+
 // TiKVStores is either Up/Down/Offline/Tombstone
 type TiKVStore struct {
 	// store id is also uint64, due to the same reason as pd id, we store id as string
@@ -730,12 +849,6 @@ type TiDBTLSClient struct {
 	//   4. Set Enabled to `true`.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
-	// Specify a secret of client cert for backup/restore
-	// Optional: Defaults to <cluster>-tidb-client-secret
-	// +optional
-	// If you want to specify a secret for backup/restore, generate a Secret Object according to the third step of the above procedure, The difference is the Secret Name can be freely defined, and then copy the Secret Name to TLSSecret
-	// this field only work in backup/restore process
-	TLSSecret string `json:"tlsSecret,omitempty"`
 }
 
 // TLSCluster can enable TLS connection between TiDB server components
@@ -899,15 +1012,16 @@ type TiDBAccessConfig struct {
 	User string `json:"user,omitempty"`
 	// SecretName is the name of secret which stores tidb cluster's password.
 	SecretName string `json:"secretName"`
-	// Whether enable the TLS connection between the SQL client and TiDB server
+	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// Optional: Defaults to nil
 	// +optional
-	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
+	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
@@ -926,6 +1040,8 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+	// MydumperConfig is the configs for mydumper
+	Mydumper *MydumperConfig `json:"mydumper,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -936,6 +1052,15 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// MydumperConfig contains config for mydumper
+type MydumperConfig struct {
+	// Options means options for backup data to remote storage with mydumper.
+	Options []string `json:"options,omitempty"`
+	// TableRegex means Regular expression for 'db.table' matching
+	TableRegex *string `json:"tableRegex,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1128,6 +1253,7 @@ type RestoreCondition struct {
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.

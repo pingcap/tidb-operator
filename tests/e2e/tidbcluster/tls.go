@@ -294,9 +294,35 @@ spec:
     group: cert-manager.io
 `
 
-type tidbClusterTmplMeta struct {
+var tidbClientCertificateTmpl = `
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-{{ .Component }}-tls
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-{{ .Component }}-tls
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+    - PingCAP
+  commonName: "TiDB Client"
+  usages:
+    - client auth
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+`
+
+type tcTmplMeta struct {
 	Namespace   string
 	ClusterName string
+}
+
+type tcCliTmplMeta struct {
+	tcTmplMeta
+	Component string
 }
 
 func installCertManager(cli clientset.Interface) error {
@@ -339,24 +365,40 @@ func deleteCertManager(cli clientset.Interface) error {
 }
 
 func installTiDBIssuer(ns, tcName string) error {
-	return installCert(tidbIssuerTmpl, ns, tcName)
+	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName})
 }
 
 func installTiDBCertificates(ns, tcName string) error {
-	return installCert(tidbCertificatesTmpl, ns, tcName)
+	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName})
 }
 
 func installTiDBComponentsCertificates(ns, tcName string) error {
-	return installCert(tidbComponentsCertificatesTmpl, ns, tcName)
+	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName})
 }
 
-func installCert(tmplStr, ns, tcName string) error {
+func installTiDBInitializerCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "initializer"})
+}
+
+func installPDDashboardCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "dashboard"})
+}
+
+func installBackupCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "backup"})
+}
+
+func installRestoreCertificates(ns, tcName string) error {
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "restore"})
+}
+
+func installCert(tmplStr string, tp interface{}) error {
 	var buf bytes.Buffer
 	tmpl, err := template.New("template").Parse(tmplStr)
 	if err != nil {
 		return fmt.Errorf("error when parsing template: %v", err)
 	}
-	err = tmpl.Execute(&buf, tidbClusterTmplMeta{ns, tcName})
+	err = tmpl.Execute(&buf, tp)
 	if err != nil {
 		return fmt.Errorf("error when executing template: %v", err)
 	}
@@ -379,7 +421,7 @@ func installCert(tmplStr, ns, tcName string) error {
 
 func tidbIsTLSEnabled(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string) wait.ConditionFunc {
 	return func() (bool, error) {
-		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, true)
+		db, cancel, err := connectToTiDBWithTLSSupport(fw, c, ns, tcName, passwd, true)
 		if err != nil {
 			return false, nil
 		}
@@ -411,22 +453,23 @@ func tidbIsTLSEnabled(fw portforward.PortForward, c clientset.Interface, ns, tcN
 	}
 }
 
-func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string) wait.ConditionFunc {
+func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string, tlsEnabled bool) wait.ConditionFunc {
 	return func() (bool, error) {
-		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, true)
+		db, cancel, err := connectToTiDBWithTLSSupport(fw, c, ns, tcName, passwd, tlsEnabled)
 		if err != nil {
+			framework.Logf("failed to connect to source db: %v", err)
 			return false, nil
 		}
 		defer db.Close()
 		defer cancel()
 
-		res, err := db.Exec("CREATE TABLE tls (name VARCHAR(64))")
+		res, err := db.Exec("CREATE TABLE city (name VARCHAR(64) PRIMARY KEY)")
 		if err != nil {
 			framework.Logf("can't create table in source db: %v, %v", res, err)
 			return false, nil
 		}
 
-		res, err = db.Exec("INSERT INTO tls (name) VALUES (\"tls\")")
+		res, err = db.Exec("INSERT INTO city (name) VALUES (\"beijing\")")
 		if err != nil {
 			framework.Logf("can't insert into table tls in source db: %v, %v", res, err)
 			return false, nil
@@ -436,9 +479,9 @@ func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface,
 	}
 }
 
-func binlogWorksWhileTLSIsEnabled(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string) wait.ConditionFunc {
+func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string, tlsEnabled bool) wait.ConditionFunc {
 	return func() (bool, error) {
-		db, cancel, err := connectToTiDBWithTLS(fw, c, ns, tcName, passwd, false)
+		db, cancel, err := connectToTiDBWithTLSSupport(fw, c, ns, tcName, passwd, tlsEnabled)
 		if err != nil {
 			framework.Logf("can't connect to %s/%s, %v", ns, tcName, err)
 			return false, nil
@@ -446,7 +489,7 @@ func binlogWorksWhileTLSIsEnabled(fw portforward.PortForward, c clientset.Interf
 		defer db.Close()
 		defer cancel()
 
-		rows, err := db.Query("SELECT name from tls limit 1")
+		rows, err := db.Query("SELECT name from city limit 1")
 		if err != nil {
 			framework.Logf("can't select from %s/%s, %v", ns, tcName, err)
 			return false, nil
@@ -459,8 +502,8 @@ func binlogWorksWhileTLSIsEnabled(fw portforward.PortForward, c clientset.Interf
 				return false, nil
 			}
 
-			framework.Logf("TABLE test.tls name = %s", name)
-			if name == "tls" {
+			framework.Logf("TABLE test.city name = %s", name)
+			if name == "beijing" {
 				return true, nil
 			}
 
@@ -471,9 +514,8 @@ func binlogWorksWhileTLSIsEnabled(fw portforward.PortForward, c clientset.Interf
 	}
 }
 
-func connectToTiDBWithTLS(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string, tlsEnabled bool) (*sql.DB, context.CancelFunc, error) {
+func connectToTiDBWithTLSSupport(fw portforward.PortForward, c clientset.Interface, ns, tcName, passwd string, tlsEnabled bool) (*sql.DB, context.CancelFunc, error) {
 	var tlsParams string
-	tlsKey := "tidb-server-tls"
 
 	localHost, localPort, cancel, err := portforward.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", controller.TiDBMemberName(tcName)), 4000)
 	if err != nil {
@@ -481,6 +523,7 @@ func connectToTiDBWithTLS(fw portforward.PortForward, c clientset.Interface, ns,
 	}
 
 	if tlsEnabled {
+		tlsKey := "tidb-server-tls"
 		secretName := util.TiDBClientTLSSecretName(tcName)
 		secret, err := c.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
 		if err != nil {

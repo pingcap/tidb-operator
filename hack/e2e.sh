@@ -56,6 +56,7 @@ Environments:
     SKIP_IMAGE_LOAD       skip load images
     SKIP_UP               skip starting the cluster
     SKIP_DOWN             skip shutting down the cluster
+    SKIP_DUMP             skip dump cluster logs
     SKIP_TEST             skip running the test
     KUBE_VERSION          the version of Kubernetes to test against
     KUBE_WORKERS          the number of worker nodes (excludes master nodes), defaults: 3
@@ -79,6 +80,7 @@ Environments:
     GINKGO_NO_COLOR       if set to `y`, suppress color output in default reporter
     RUNNER_SUITE_NAME     the suite name of runner
     SKIP_GINKGO           if set to `y`, skip ginkgo
+    ARTIFACTS             directory to put artifacts
 
 Examples:
 
@@ -182,6 +184,7 @@ SKIP_IMAGE_LOAD=${SKIP_IMAGE_LOAD:-}
 SKIP_UP=${SKIP_UP:-}
 SKIP_DOWN=${SKIP_DOWN:-}
 SKIP_TEST=${SKIP_TEST:-}
+SKIP_DUMP=${SKIP_DUMP:-}
 REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
 GCP_PROJECT=${GCP_PROJECT:-}
@@ -202,6 +205,7 @@ GCR_IO_MIRROR=${GCR_IO_MIRROR:-}
 QUAY_IO_MIRROR=${QUAY_IO_MIRROR:-}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 RUNNER_SUITE_NAME=${RUNNER_SUITE_NAME:-}
+ARTIFACTS=${ARTIFACTS:-}
 
 echo "PROVIDER: $PROVIDER"
 echo "DOCKER_REPO: $DOCKER_REPO"
@@ -212,6 +216,8 @@ echo "SKIP_BUILD: $SKIP_BUILD"
 echo "SKIP_IMAGE_BUILD: $SKIP_IMAGE_BUILD"
 echo "SKIP_UP: $SKIP_UP"
 echo "SKIP_DOWN: $SKIP_DOWN"
+echo "SKIP_TEST: $SKIP_TEST"
+echo "SKIP_DUMP: $SKIP_DUMP"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
 echo "GCP_PROJECT: $GCP_PROJECT"
 echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
@@ -227,6 +233,7 @@ echo "KUBE_WORKERS: $KUBE_WORKERS"
 echo "DOCKER_IO_MIRROR: $DOCKER_IO_MIRROR"
 echo "GCR_IO_MIRROR: $GCR_IO_MIRROR"
 echo "QUAY_IO_MIRROR: $QUAY_IO_MIRROR"
+echo "ARTIFACTS: $ARTIFACTS"
 
 # https://github.com/kubernetes-sigs/kind/releases/tag/v0.8.1
 declare -A kind_node_images
@@ -294,6 +301,41 @@ function e2e::create_kindconfig() {
     cat <<EOF > $tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta1
+  apiServer:
+    extraArgs:
+      v: "4"
+  scheduler:
+    extraArgs:
+      v: "4"
+  controllerManager:
+    extraArgs:
+      v: "4"
+- |
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1beta2
+  apiServer:
+    extraArgs:
+      v: "4"
+  scheduler:
+    extraArgs:
+      v: "4"
+  controllerManager:
+    extraArgs:
+      v: "4"
+- |
+  # backward compatibility for Kubernetes 1.12 and prior versions
+  kind: ClusterConfiguration
+  apiVersion: kubeadm.k8s.io/v1alpha3
+  apiServerExtraArgs:
+    v: "4"
+  schedulerExtraArgs:
+    v: "4"
+  controllerManagerExtraArgs:
+    v: "4"
 EOF
     if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
 cat <<EOF >> $tmpfile
@@ -496,13 +538,24 @@ elif [ "$PROVIDER" == "eks" ]; then
     aws configure set default.region "$AWS_REGION"
     aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
     aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
-    mngName=$CLUSTER-mng-$RANDOM
+    if [ -z "$SKIP_UP" ]; then
+        echo "info: make $HOME/.ssh/kube_aws_rsa writable if we're going to start the cluster"
+        # aws-k8s-tester tries to create or update ~/.ssh/kube_aws_rsa with new key
+        # pair every time, however previous created file is read-only and can't be
+        # updated
+        if test -f $HOME/.ssh/kube_aws_rsa; then
+            chmod 0600 $HOME/.ssh/kube_aws_rsa
+        fi
+    fi
+    echo "info: exporting AWS_K8S_TESTER config environments"
+    mngName=$CLUSTER-mng
     export AWS_K8S_TESTER_EKS_NAME=$CLUSTER
     export AWS_K8S_TESTER_EKS_CONFIG_PATH=/tmp/kubetest2.eks.$CLUSTER
     export AWS_K8S_TESTER_EKS_PARAMETERS_VERSION="1.15"
     export AWS_K8S_TESTER_EKS_PARAMETERS_ENCRYPTION_CMK_CREATE="false"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_ENABLE="true"
     export AWS_K8S_TESTER_EKS_ADD_ON_MANAGED_NODE_GROUPS_MNGS=$(printf '{"%s":{"name":"%s","ami-type":"AL2_x86_64","asg-min-size":%d,"asg-max-size":%d,"asg-desired-capacity":%d,"instance-types":["c5.xlarge"],"volume-size":40}}' "$mngName" "$mngName" "$KUBE_WORKERS" "$KUBE_WORKERS" "$KUBE_WORKERS")
+    env | grep ^AWS_K8S_TESTER --color=never
     # override KUBECONFIG
     KUBECONFIG=$AWS_K8S_TESTER_EKS_CONFIG_PATH.kubeconfig.yaml
 else
@@ -538,9 +591,12 @@ export TIDB_BACKUP_MANAGER_IMAGE=$DOCKER_REPO/tidb-backup-manager:${IMAGE_TAG}
 export E2E_IMAGE=$DOCKER_REPO/tidb-operator-e2e:${IMAGE_TAG}
 export PATH=$OUTPUT_BIN:$PATH
 
-# Environments for kubetest2
-if [ -n "${REPORT_DIR:-}" ]; then
-    export ARTIFACTS=${REPORT_DIR:-}
+if [ -n "${ARTIFACTS}" ]; then
+    export REPORT_DIR=${ARTIFACTS}
+fi
+
+if [ -n "${ARTIFACTS}" -a -z "$SKIP_DUMP" ]; then
+    kubetest2_args+=(--dump)
 fi
 
 hack::ensure_kubetest2

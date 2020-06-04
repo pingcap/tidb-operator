@@ -28,6 +28,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -317,8 +318,10 @@ func newFakeTidbClusterControl() (
 	pvcCleaner := mm.NewFakePVCCleaner()
 	pumpMemberManager := mm.NewFakePumpMemberManager()
 	tiflashMemberManager := mm.NewFakeTiFlashMemberManager()
+	ticdcMemberManager := mm.NewFakeTiCDCMemberManager()
 	discoveryManager := mm.NewFakeDiscoveryManger()
 	podRestarter := mm.NewFakePodRestarter()
+	statusManager := mm.NewFakeTidbClusterStatusManager()
 	control := NewDefaultTidbClusterControl(
 		tcUpdater,
 		pdMemberManager,
@@ -330,8 +333,11 @@ func newFakeTidbClusterControl() (
 		pvcCleaner,
 		pumpMemberManager,
 		tiflashMemberManager,
+		ticdcMemberManager,
 		discoveryManager,
+		statusManager,
 		podRestarter,
+		&tidbClusterConditionUpdater{},
 		recorder,
 	)
 
@@ -355,11 +361,21 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 				Replicas:  3,
 				BaseImage: "pingcap/pd",
 				Config:    &v1alpha1.PDConfig{},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
 			},
 			TiKV: v1alpha1.TiKVSpec{
 				Replicas:  3,
 				BaseImage: "pingcap/tikv",
 				Config:    &v1alpha1.TiKVConfig{},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
 			},
 			TiDB: v1alpha1.TiDBSpec{
 				Replicas:  2,

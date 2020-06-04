@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
+
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -44,7 +45,7 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 func validateAnnotations(anns map[string]string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
-	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots} {
+	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots} {
 		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
 	}
 	return allErrs
@@ -61,18 +62,23 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiFlash != nil {
 		allErrs = append(allErrs, validateTiFlashSpec(spec.TiFlash, fldPath.Child("tiflash"))...)
 	}
+	if spec.TiCDC != nil {
+		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
+	}
 	return allErrs
 }
 
 func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	return allErrs
 }
 
 func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	return allErrs
 }
 
@@ -84,6 +90,12 @@ func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims"),
 			spec.StorageClaims, "storageClaims should be configured at least one item."))
 	}
+	return allErrs
+}
+
+func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	return allErrs
 }
 
@@ -103,8 +115,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 				}
 			}
 			if config.CommonConfig.Flash.FlashCluster != nil {
-				if config.CommonConfig.Flash.FlashCluster.ClusterLog != "" {
-					splitPath := strings.Split(config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
+				if config.CommonConfig.Flash.FlashCluster.ClusterLog != nil {
+					splitPath := strings.Split(*config.CommonConfig.Flash.FlashCluster.ClusterLog, string(os.PathSeparator))
 					// The log path should be at least /dir/base.log
 					if len(splitPath) < 3 {
 						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_cluster.log"),
@@ -114,8 +126,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 				}
 			}
 			if config.CommonConfig.Flash.FlashProxy != nil {
-				if config.CommonConfig.Flash.FlashProxy.LogFile != "" {
-					splitPath := strings.Split(config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
+				if config.CommonConfig.Flash.FlashProxy.LogFile != nil {
+					splitPath := strings.Split(*config.CommonConfig.Flash.FlashProxy.LogFile, string(os.PathSeparator))
 					// The log path should be at least /dir/base.log
 					if len(splitPath) < 3 {
 						allErrs = append(allErrs, field.Invalid(path.Child("config.config.flash.flash_proxy.log-file"),
@@ -126,8 +138,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 			}
 		}
 		if config.CommonConfig.FlashLogger != nil {
-			if config.CommonConfig.FlashLogger.ServerLog != "" {
-				splitPath := strings.Split(config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
+			if config.CommonConfig.FlashLogger.ServerLog != nil {
+				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ServerLog, string(os.PathSeparator))
 				// The log path should be at least /dir/base.log
 				if len(splitPath) < 3 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.log"),
@@ -135,8 +147,8 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 						"log path should include at least one level dir."))
 				}
 			}
-			if config.CommonConfig.FlashLogger.ErrorLog != "" {
-				splitPath := strings.Split(config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
+			if config.CommonConfig.FlashLogger.ErrorLog != nil {
+				splitPath := strings.Split(*config.CommonConfig.FlashLogger.ErrorLog, string(os.PathSeparator))
 				// The log path should be at least /dir/base.log
 				if len(splitPath) < 3 {
 					allErrs = append(allErrs, field.Invalid(path.Child("config.config.logger.errorlog"),
@@ -165,6 +177,15 @@ func validateComponentSpec(spec *v1alpha1.ComponentSpec, fldPath *field.Path) fi
 	allErrs := field.ErrorList{}
 	// TODO validate other fields
 	allErrs = append(allErrs, validateEnv(spec.Env, fldPath.Child("env"))...)
+	return allErrs
+}
+
+//validateRequestsStorage validates resources requests storage
+func validateRequestsStorage(requests corev1.ResourceList, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if _, ok := requests[corev1.ResourceStorage]; !ok {
+		allErrs = append(allErrs, field.Required(fldPath.Child("requests.storage").Key((string(corev1.ResourceStorage))), "storage request must not be empty"))
+	}
 	return allErrs
 }
 

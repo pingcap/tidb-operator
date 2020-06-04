@@ -206,7 +206,8 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
 					},
-					Env: envVars,
+					Env:       envVars,
+					Resources: restore.Spec.ResourceRequirements,
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -303,8 +304,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	if tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 		args = append(args, "--client-tls=true")
 		clientSecretName := util.TiDBClientTLSSecretName(restore.Spec.BR.Cluster)
-		if restore.Spec.To.TLSClient != nil && restore.Spec.To.TLSClient.TLSSecret != "" {
-			clientSecretName = restore.Spec.To.TLSClient.TLSSecret
+		if restore.Spec.To.TLSClientSecretName != nil {
+			clientSecretName = *restore.Spec.To.TLSClientSecretName
 		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "tidb-client-tls",
@@ -341,6 +342,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
 					Env:             envVars,
+					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},
 			Volumes:       volumes,

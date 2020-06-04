@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.1.0-rc.3
+  image: pingcap/tidb-operator:v1.1.0
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -558,7 +558,7 @@ monitor:
       type: NodePort
       portName: http-grafana
   prometheus:
-    image: prom/prometheus:v2.11.1
+    image: prom/prometheus:v2.18.1
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:

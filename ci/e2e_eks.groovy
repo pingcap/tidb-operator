@@ -87,6 +87,7 @@ pipeline {
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'")
         string(name: 'CLUSTER', defaultValue: env.DEFAULT_CLUSTER, description: 'the name of the cluster')
         string(name: 'AWS_REGION', defaultValue: env.DEFAULT_AWS_REGION, description: 'the AWS region')
+        booleanParam(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: true, description: 'delete namespace on failure or not')
     }
 
     environment {
@@ -135,12 +136,13 @@ pipeline {
                     string(credentialsId: 'TIDB_OPERATOR_AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
                 ]) {
                     sh """
-                    #!/bin/bash
                     export PROVIDER=eks
                     export CLUSTER=${params.CLUSTER}
                     export AWS_REGION=${params.AWS_REGION}
                     export GINKGO_NODES=${params.GINKGO_NODES}
-                    export REPORT_DIR=${ARTIFACTS}
+                    export DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE}
+                    export ARTIFACTS=${ARTIFACTS}
+                    export GINKGO_NO_COLOR=y
                     echo "info: try to clean the cluster created previously"
                     ./ci/aws-clean-eks.sh \$CLUSTER
                     echo "info: begin to run e2e"
@@ -154,9 +156,24 @@ pipeline {
     post {
         always {
             dir(ARTIFACTS) {
+                sh """#!/bin/bash
+                echo "info: change ownerships for jenkins"
+                chown -R 1000:1000 .
+                echo "info: print total size of artifacts"
+                du -sh .
+                echo "info: list all files"
+                find .
+                """
                 archiveArtifacts artifacts: "**", allowEmptyArchive: true
                 junit testResults: "*.xml", allowEmptyResults: true
             }
+        }
+        unsuccessful {
+            sh """
+            export CLUSTER=${params.CLUSTER}
+            echo "info: cleaning eks cluster \$CLUSTER"
+            ./ci/aws-clean-eks.sh \$CLUSTER
+            """
         }
     }
 }
