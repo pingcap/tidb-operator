@@ -176,6 +176,22 @@ pipeline {
                 junit testResults: "*.xml", allowEmptyResults: true
             }
         }
+        unsuccessful {
+            withCredentials([
+                file(credentialsId: 'TIDB_OPERATOR_GCP_CREDENTIALS', variable: 'GCP_CREDENTIALS'),
+                file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PRIVATE_KEY', variable: 'GCP_SSH_PRIVATE_KEY'),
+                file(credentialsId: 'TIDB_OPERATOR_GCP_SSH_PUBLIC_KEY', variable: 'GCP_SSH_PUBLIC_KEY'),
+            ]) {
+                sh """
+                export PROVIDER=gke
+                export CLUSTER=${params.CLUSTER}
+                export GCP_ZONE=${params.GCP_ZONE}
+                export GCP_PROJECT=${params.GCP_PROJECT}
+                echo "info: try to clean the cluster created previously"
+                SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DUMP=y ./hack/e2e.sh
+                """
+            }
+        }
     }
 }
 
