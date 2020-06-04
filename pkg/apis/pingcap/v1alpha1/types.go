@@ -685,7 +685,7 @@ type ServiceSpec struct {
 	// More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/
 	// Optional: Defaults to omitted
 	// +optional
-	LoadBalancerSourceRanges *[]string `json:"loadBalancerSourceRanges,omitempty"`
+	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
 
 // +k8s:openapi-gen=true

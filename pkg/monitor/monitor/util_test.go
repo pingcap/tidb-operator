@@ -137,7 +137,7 @@ func TestGetMonitorService(t *testing.T) {
 						Service: v1alpha1.ServiceSpec{
 							Type:           corev1.ServiceTypeLoadBalancer,
 							LoadBalancerIP: pointer.StringPtr("78.11.24.19"),
-							LoadBalancerSourceRanges: &[]string{
+							LoadBalancerSourceRanges: []string{
 								"10.0.0.0/8",
 								"130.211.204.1/32",
 							},
@@ -147,7 +147,7 @@ func TestGetMonitorService(t *testing.T) {
 						Service: v1alpha1.ServiceSpec{
 							Type:           corev1.ServiceTypeLoadBalancer,
 							LoadBalancerIP: pointer.StringPtr("78.11.24.19"),
-							LoadBalancerSourceRanges: &[]string{
+							LoadBalancerSourceRanges: []string{
 								"10.0.0.0/8",
 								"130.211.204.1/32",
 							},

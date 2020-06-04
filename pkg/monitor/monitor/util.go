@@ -691,7 +691,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
 		}
 		if monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges != nil {
-			prometheusService.Spec.LoadBalancerSourceRanges = *monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
+			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
 		}
 	}
 
@@ -722,7 +722,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
 		}
 		if monitor.Spec.Reloader.Service.LoadBalancerSourceRanges != nil {
-			reloaderService.Spec.LoadBalancerSourceRanges = *monitor.Spec.Reloader.Service.LoadBalancerSourceRanges
+			reloaderService.Spec.LoadBalancerSourceRanges = monitor.Spec.Reloader.Service.LoadBalancerSourceRanges
 		}
 	}
 
@@ -755,7 +755,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
 			}
 			if monitor.Spec.Grafana.Service.LoadBalancerSourceRanges != nil {
-				grafanaService.Spec.LoadBalancerSourceRanges = *monitor.Spec.Grafana.Service.LoadBalancerSourceRanges
+				grafanaService.Spec.LoadBalancerSourceRanges = monitor.Spec.Grafana.Service.LoadBalancerSourceRanges
 			}
 		}
 

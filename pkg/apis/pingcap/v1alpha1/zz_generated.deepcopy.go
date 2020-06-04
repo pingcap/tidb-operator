@@ -3461,12 +3461,8 @@ func (in *ServiceSpec) DeepCopyInto(out *ServiceSpec) {
 	}
 	if in.LoadBalancerSourceRanges != nil {
 		in, out := &in.LoadBalancerSourceRanges, &out.LoadBalancerSourceRanges
-		*out = new([]string)
-		if **in != nil {
-			in, out := *in, *out
-			*out = make([]string, len(*in))
-			copy(*out, *in)
-		}
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	return
 }

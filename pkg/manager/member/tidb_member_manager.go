@@ -478,7 +478,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			tidbSvc.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
 		}
 		if svcSpec.LoadBalancerSourceRanges != nil {
-			tidbSvc.Spec.LoadBalancerSourceRanges = *svcSpec.LoadBalancerSourceRanges
+			tidbSvc.Spec.LoadBalancerSourceRanges = svcSpec.LoadBalancerSourceRanges
 		}
 	}
 	if svcSpec.ExternalTrafficPolicy != nil {

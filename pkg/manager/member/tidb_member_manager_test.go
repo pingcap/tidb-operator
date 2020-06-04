@@ -1503,7 +1503,7 @@ func TestGetNewTiDBService(t *testing.T) {
 								Annotations: map[string]string{
 									"lb-type": "testlb",
 								},
-								LoadBalancerSourceRanges: &loadBalancerSourceRanges,
+								LoadBalancerSourceRanges: loadBalancerSourceRanges,
 							},
 							ExternalTrafficPolicy: &trafficPolicy,
 							ExposeStatus:          pointer.BoolPtr(true),
