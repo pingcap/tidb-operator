@@ -255,6 +255,11 @@ func TestValidateService(t *testing.T) {
 			err := validateService(svc, field.NewPath("spec"))
 			r := len(err)
 			g.Expect(r).Should(Equal(tt.expectedErrors))
+			if r > 0 {
+				for _, e := range err {
+					g.Expect(e.Detail).To(ContainSubstring("service.Spec.LoadBalancerSourceRanges is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24."))
+				}
+			}
 		})
 	}
 }
@@ -286,6 +291,11 @@ func TestValidateTidbMonitor(t *testing.T) {
 			err := ValidateTidbMonitor(monitor)
 			r := len(err)
 			g.Expect(r).Should(Equal(tt.expectedErrors))
+			if r > 0 {
+				for _, e := range err {
+					g.Expect(e.Detail).To(ContainSubstring("service.Spec.LoadBalancerSourceRanges is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24."))
+				}
+			}
 		})
 	}
 }
