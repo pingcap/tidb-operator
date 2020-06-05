@@ -13,7 +13,7 @@ category: how-to
 > * 如果 TiDB 集群创建完以后手动修改过 `root` 用户的密码，初始化会失败。
 > * 以下功能只在 TiDB 集群创建后第一次执行起作用，执行完以后再修改不会生效。
 
-## 第 1 步：配置 TidbInitializer
+## 配置 TidbInitializer
 
 请参考 TidbInitializer [示例](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml)和 [API 文档](api-references.md)（示例和 API 文档请切换到当前使用的 TiDB Operator 版本）以及下面的步骤，完成 TidbInitializer CR，保存到文件 `${cluster_name}/tidb-initializer.yaml`。
 
@@ -41,11 +41,11 @@ kubectl create secret generic tidb-secret --from-literal=root=${root_password} -
 
 在 `${cluster_name}/tidb-initializer.yaml` 中设置 `passwordSecret: tidb-secret`。
 
-## 第 2 步：设置允许访问 TiDB 的主机
+## 设置允许访问 TiDB 的主机
 
 在 `${cluster_name}/tidb-initializer.yaml` 中设置 `permitHost: ${mysql_client_host_name}` 配置项来设置允许访问 TiDB 的主机 **host_name**。如果不设置，则允许所有主机访问。详情请参考 [MySQL GRANT host name](https://dev.mysql.com/doc/refman/5.7/en/grant.html)。
 
-## 第 3 步：批量执行初始化 SQL 语句
+## 批量执行初始化 SQL 语句
 
 集群在初始化过程还可以自动执行 `initSql` 中的 SQL 语句用于初始化，该功能可以用于默认给集群创建一些 database 或者 table，并且执行一些用户权限管理类的操作。例如如下设置会在集群创建完成后自动创建名为 `app` 的 database，并且赋予 `developer` 账号对 `app` 的所有管理权限：
 
@@ -63,7 +63,7 @@ initSql: |-
 >
 > 目前没有对 initSql 做校验，尽管也可以在 initSql 里面创建账户和设置密码，但这种方式会将密码以明文形式存到 initializer Job 对象上，不建议这么做。
 
-## 第 4 步：执行初始化
+## 执行初始化
 
 {{< copyable "shell-regular" >}}
 
