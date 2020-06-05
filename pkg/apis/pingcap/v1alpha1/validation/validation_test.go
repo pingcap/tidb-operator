@@ -230,9 +230,85 @@ func TestValidateRequestsStorage(t *testing.T) {
 	}
 }
 
+func TestValidateService(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name                     string
+		loadBalancerSourceRanges []string
+		expectedErrors           int
+	}{
+		{
+			name:                     "correct LoadBalancerSourceRanges",
+			loadBalancerSourceRanges: strings.Split("192.168.0.1/32", ","),
+			expectedErrors:           0,
+		},
+		{
+			name:                     "incorrect LoadBalancerSourceRanges",
+			loadBalancerSourceRanges: strings.Split("192.168.0.1", ","),
+			expectedErrors:           1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := newService()
+			svc.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
+			err := validateService(svc, field.NewPath("spec"))
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
+func TestValidateTidbMonitor(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tests := []struct {
+		name                     string
+		loadBalancerSourceRanges []string
+		expectedErrors           int
+	}{
+		{
+			name:                     "correct LoadBalancerSourceRanges",
+			loadBalancerSourceRanges: strings.Split("192.168.0.1/24,192.168.1.1/24", ","),
+			expectedErrors:           0,
+		},
+		{
+			name:                     "incorrect LoadBalancerSourceRanges",
+			loadBalancerSourceRanges: strings.Split("192.168.0.1,192.168.1.1", ","),
+			expectedErrors:           3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			monitor := newTidbMonitor()
+			monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
+			monitor.Spec.Grafana.Service.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
+			monitor.Spec.Reloader.Service.LoadBalancerSourceRanges = tt.loadBalancerSourceRanges
+			err := ValidateTidbMonitor(monitor)
+			r := len(err)
+			g.Expect(r).Should(Equal(tt.expectedErrors))
+		})
+	}
+}
+
 func newTidbCluster() *v1alpha1.TidbCluster {
 	tc := &v1alpha1.TidbCluster{}
 	tc.Name = "test-validate-requests-storage"
 	tc.Namespace = "default"
 	return tc
+}
+
+func newService() *v1alpha1.ServiceSpec {
+	svc := &v1alpha1.ServiceSpec{}
+	return svc
+}
+
+func newTidbMonitor() *v1alpha1.TidbMonitor {
+	monitor := &v1alpha1.TidbMonitor{
+		Spec: v1alpha1.TidbMonitorSpec{
+			Grafana:    &v1alpha1.GrafanaSpec{},
+			Prometheus: v1alpha1.PrometheusSpec{},
+			Reloader:   v1alpha1.ReloaderSpec{},
+		},
+	}
+	return monitor
 }
