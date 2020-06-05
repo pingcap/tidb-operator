@@ -370,7 +370,7 @@ nodes:
 - role: control-plane
 EOF
     # check $ETCD_STORAGE_TYPE in [disk, memory]
-    if [[$ETCD_STORAGE_TYPE == "disk" || $ETCD_STORAGE_TYPE == "memory"]]; then
+    if [[ "$ETCD_STORAGE_TYPE" == "disk" || $ETCD_STORAGE_TYPE == "memory" ]]; then
         # check $KIND_DATA_HOSTPATH
         if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
             if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
