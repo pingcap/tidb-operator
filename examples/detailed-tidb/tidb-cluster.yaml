@@ -1,0 +1,257 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: detailed-tidb
+  namespace: default
+
+spec:
+  # ** Basic Configuration **
+  # TiDB cluster version
+  version: "v3.0.13"
+
+  # Time zone of TiDB cluster Pods
+  timezone: UTC
+
+  # ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
+  # UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
+  # cluster component is needed to reload the configuration change.
+  # UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
+  # related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
+  # support InPlace and RollingUpdate
+  configUpdateStrategy: RollingUpdate
+
+  # Host networking requested for this pod. Use the host's network namespace
+  hostNetwork: false
+
+  # ImagePullPolicy of TiDB cluster Pods
+  imagePullPolicy: IfNotPresent
+
+  # Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
+  # helper:
+  #   image: busybox:1.31.1
+
+  pd:
+    # Base image of the component
+    baseImage: pingcap/pd
+
+    # PD Configuration
+    # Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-pd-parameters
+    config: {}
+
+    # The desired ready replicas
+    replicas: 3
+
+    # describes the compute resource requirements.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    requests:
+      cpu: "100m"
+      storage: 1Gi
+
+    ## The storageClassName of the persistent volume for TiKV data storage.
+    ## Defaults to Kubernetes default storage class.
+    # storageClassName: ""
+
+    ## Affinity for pod assignment
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    # affinity:
+    #   podAntiAffinity:
+    #     preferredDuringSchedulingIgnoredDuringExecution:
+    #       - podAffinityTerm:
+    #           labelSelector:
+    #             matchExpressions:
+    #               - key: app.kubernetes.io/component
+    #                 operator: In
+    #                 values:
+    #                   - tidb
+    #                   - tikv
+    #           topologyKey: ""
+    #         weight: 100
+    ## If you use require affinity, you must ensure that at least 3 nodes are available in the cluster
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       - labelSelector:
+    #           matchExpressions:
+    #             - key: app.kubernetes.io/component
+    #               operator: In
+    #               values:
+    #                 - pd
+    #         topologyKey: ""
+    
+    ## Specify node labels for pods assignment
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+    # nodeSelector:
+    #   app.kubernetes.io/component: pd
+
+  tidb:
+    # Base image of the component
+    baseImage: pingcap/tidb
+
+    # The desired ready replicas
+    replicas: 3
+
+    # describes the compute resource requirements.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    requests:
+      cpu: "100m"
+
+    # TiDB Configuration
+    # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tidb-parameters
+    config: {}
+
+    ## Service defines a Kubernetes service of TiDB cluster.
+    ## If you are in a public cloud environment, you can use cloud LB to access the TiDB service
+    ## if you are in a private cloud environment, you can use ingress
+    # service:
+    #   externalTrafficPolicy: Local
+    #   type: LoadBalancer
+
+    ## Affinity for pod assignment
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    # affinity:
+    #   podAntiAffinity:
+    #     preferredDuringSchedulingIgnoredDuringExecution:
+    #       - podAffinityTerm:
+    #           labelSelector:
+    #             matchExpressions:
+    #               - key: app.kubernetes.io/component
+    #                 operator: In
+    #                 values:
+    #                   - pd
+    #                   - tikv
+    #           topologyKey: ""
+    #         weight: 100
+    ## If you use require affinity, you must ensure that at least 3 nodes are available in the cluster
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       - labelSelector:
+    #           matchExpressions:
+    #             - key: app.kubernetes.io/component
+    #               operator: In
+    #               values:
+    #                 - tidb
+    #         topologyKey: ""
+
+    ## Specify node labels for pods assignment
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+    # nodeSelector:
+    #   app.kubernetes.io/component: tidb
+
+  tikv:
+    # Base image of the component
+    baseImage: pingcap/tikv
+
+    # TiKV Configuration
+    # https://pingcap.com/docs/tidb-in-kubernetes/stable/configure-cluster-using-tidbcluster/#configure-tikv-parameters
+    config: {}
+
+    # The desired ready replicas
+    replicas: 3
+
+    # describes the compute resource requirements.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+    requests:
+      cpu: "100m"
+      storage: 1Gi
+
+    ## The storageClassName of the persistent volume for TiKV data storage.
+    ## Defaults to Kubernetes default storage class.
+    # storageClassName: ""
+
+    ## Affinity for pod assignment
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    # affinity:
+    #   podAntiAffinity:
+    #     preferredDuringSchedulingIgnoredDuringExecution:
+    #       - podAffinityTerm:
+    #           labelSelector:
+    #             matchExpressions:
+    #               - key: app.kubernetes.io/component
+    #                 operator: In
+    #                 values:
+    #                   - tidb
+    #                   - pd
+    #           topologyKey: ""
+    #         weight: 100
+    ## If you use require affinity, you must ensure that at least 3 nodes are available in the cluster
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       - labelSelector:
+    #           matchExpressions:
+    #             - key: app.kubernetes.io/component
+    #               operator: In
+    #               values:
+    #                 - tikv
+    #         topologyKey: ""
+  
+    ## Specify node labels for pods assignment
+    ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+    # nodeSelector:
+    #   app.kubernetes.io/component: tikv
+
+
+  ## ** TiDB advanced feature **
+  ## Deploy TiDB Binlog of a TiDB cluster
+  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
+  # pump:
+  #   baseImage: pingcap/tidb-binlog
+  #   replicas: 1
+  #   storageClassName: local-storage
+  #   requests:
+  #     storage: 30Gi
+  #   schedulerName: default-scheduler
+  #   config:
+  #     addr: 0.0.0.0:8250
+  #     gc: 7
+  #     heartbeat-interval: 2
+
+  ## Ref: TiCDC is a tool for replicating the incremental data of TiDB
+  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-ticdc/
+  # ticdc:
+  #   baseImage: pingcap/ticdc
+  #   replicas: 3
+
+
+  ## Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/deploy-tiflash/
+  # tiflash:
+  #   baseImage: pingcap/tiflash
+  #   maxFailoverCount: 3
+  #   replicas: 1
+  #   storageClaims:
+  #     - resources:
+  #         requests:
+  #           storage: 1Gi
+  #       storageClassName: local-storage
+
+
+  # ** Persistent Volume Reclaim Configuration **
+  # Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+  enablePVReclaim: false
+
+  # Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
+  pvReclaimPolicy: Recycle
+
+  # ** TLS related Configuration **
+  # Whether enable the TLS connection between TiDB server components
+  # Ref: https://pingcap.com/docs/tidb-in-kubernetes/stable/enable-tls-between-components/
+  tlsCluster: {}
+
+
+  ## ** Global Scheduler related Configuration **
+  ## SchedulerName of TiDB cluster Pods
+  # schedulerName: tidb-scheduler
+
+  ## Affinity for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  # affinity: {}
+
+  # priorityClassName: system-cluster-critical
+
+  ## Specify node labels for pods assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  # nodeSelector:
+  #   "node-role.kubernetes.io/tidb:": "true"
+
+  ## Tolerations are applied to pods, and allow (but do not require) the pods to schedule onto nodes with matching taints.
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  # tolerations:
+  #   - effect: NoSchedule
+  #     key: dedicated
+  #     operator: Equal
+  #     value: tidb
