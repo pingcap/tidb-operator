@@ -146,38 +146,43 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
-				cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, localCfg.Name, "", localCfg.Version)
-				if len(localCfg.Values) > 0 {
-					for k, v := range localCfg.Values {
-						cluster.Resources[k] = v
-					}
-				}
-
+				cluster := newTidbCluster(ns, localCfg.Name, localCfg.Version)
+				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// support reclaim pv when scale in tikv or pd component
-				cluster.EnablePVReclaim = true
-				oa.DeployTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
-				oa.CheckDisasterToleranceOrDie(&cluster)
-				oa.CheckInitSQLOrDie(&cluster)
+
+				tests.CreateTidbClusterOrDie(cli, cluster)
+				err := oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				tests.CheckDisasterToleranceOrDie(c, cluster)
 
 				// scale
-				cluster.ScaleTiDB(3).ScaleTiKV(5).ScalePD(5)
-				oa.ScaleTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
-				oa.CheckDisasterToleranceOrDie(&cluster)
+				tc := tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc.Spec.TiDB.Replicas = 3
+				tc.Spec.TiKV.Replicas = 5
+				tc.Spec.PD.Replicas = 5
+				tests.UpdateTidbClusterOrDie(cli, tc)
+				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				tests.CheckDisasterToleranceOrDie(c, cluster)
 
-				cluster.ScaleTiDB(2).ScaleTiKV(4).ScalePD(3)
-				oa.ScaleTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
-				oa.CheckDisasterToleranceOrDie(&cluster)
+				tc = tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc.Spec.TiDB.Replicas = 2
+				tc.Spec.TiKV.Replicas = 4
+				tc.Spec.PD.Replicas = 3
+				tests.UpdateTidbClusterOrDie(cli, tc)
+				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				tests.CheckDisasterToleranceOrDie(c, cluster)
 
 				// configuration change
-				cluster.EnableConfigMapRollout = true
-				cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
-					UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
-					UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
-				oa.UpgradeTidbClusterOrDie(&cluster)
-				oa.CheckTidbClusterStatusOrDie(&cluster)
+				tc = tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
+				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
+				tests.UpdateTidbClusterOrDie(cli, tc)
+				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
 			})
 		}
 	})
@@ -693,42 +698,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected tidbcluster pod restarted")
 	})
 
-	ginkgo.It("should be operable without helm [API]", func() {
-		tc := fixture.GetTidbCluster(ns, "plain-cr", utilimage.TiDBV3Version)
-		err := genericCli.Create(context.TODO(), tc)
-		framework.ExpectNoError(err, "Expected TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster ready")
-
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.PD.Replicas = 5
-			tc.Spec.TiKV.Replicas = 5
-			tc.Spec.TiDB.Replicas = 4
-			return nil
-		})
-		framework.ExpectNoError(err, "Expected TiDB cluster updated")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster scaled out and ready")
-
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
-			return nil
-		})
-		framework.ExpectNoError(err, "Expected TiDB cluster updated")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster upgraded to new version and ready")
-
-		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.PD.Replicas = 3
-			tc.Spec.TiKV.Replicas = 3
-			tc.Spec.TiDB.Replicas = 2
-			return nil
-		})
-		framework.ExpectNoError(err, "Expected TiDB cluster updated")
-		err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
-		framework.ExpectNoError(err, "Expected TiDB cluster scaled in and ready")
-	})
-
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
 		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", utilimage.TiDBV3Version)
 		cluster.Resources["pd.replicas"] = "1"
@@ -1222,7 +1191,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
-		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBNightly)
+		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
 		fromTc.Spec.PD.Replicas = 3
 		fromTc.Spec.TiKV.Replicas = 3
 		fromTc.Spec.TiDB.Replicas = 2
@@ -1236,7 +1205,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating cdc-sink cluster")
-		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBNightly)
+		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV4Version)
 		toTc.Spec.PD.Replicas = 1
 		toTc.Spec.TiKV.Replicas = 1
 		toTc.Spec.TiDB.Replicas = 1
@@ -1271,6 +1240,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 })
 
+func newTidbCluster(ns, clusterName, tidbVersion string) *v1alpha1.TidbCluster {
+	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
+	tc.Spec.EnablePVReclaim = pointer.BoolPtr(false)
+	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
+	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
+	return tc
+}
+
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{
 		Namespace:        ns,
@@ -1288,20 +1265,24 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName),
 		BackupName:       "backup",
 		Resources: map[string]string{
-			"pd.resources.limits.cpu":        "1000m",
-			"pd.resources.limits.memory":     "2Gi",
-			"pd.resources.requests.cpu":      "20m",
-			"pd.resources.requests.memory":   "20Mi",
-			"tikv.resources.limits.cpu":      "2000m",
-			"tikv.resources.limits.memory":   "4Gi",
-			"tikv.resources.requests.cpu":    "20m",
-			"tikv.resources.requests.memory": "20Mi",
-			"tidb.resources.limits.cpu":      "2000m",
-			"tidb.resources.limits.memory":   "4Gi",
-			"tidb.resources.requests.cpu":    "20m",
-			"tidb.resources.requests.memory": "20Mi",
-			"tidb.initSql":                   strconv.Quote("create database e2e;"),
-			"discovery.image":                cfg.OperatorImage,
+			"discovery.resources.limits.cpu":      "1000m",
+			"discovery.resources.limits.memory":   "2Gi",
+			"discovery.resources.requests.cpu":    "20m",
+			"discovery.resources.requests.memory": "20Mi",
+			"pd.resources.limits.cpu":             "1000m",
+			"pd.resources.limits.memory":          "2Gi",
+			"pd.resources.requests.cpu":           "20m",
+			"pd.resources.requests.memory":        "20Mi",
+			"tikv.resources.limits.cpu":           "2000m",
+			"tikv.resources.limits.memory":        "4Gi",
+			"tikv.resources.requests.cpu":         "20m",
+			"tikv.resources.requests.memory":      "20Mi",
+			"tidb.resources.limits.cpu":           "2000m",
+			"tidb.resources.limits.memory":        "4Gi",
+			"tidb.resources.requests.cpu":         "20m",
+			"tidb.resources.requests.memory":      "20Mi",
+			"tidb.initSql":                        strconv.Quote("create database e2e;"),
+			"discovery.image":                     cfg.OperatorImage,
 		},
 		Args:    map[string]string{},
 		Monitor: true,

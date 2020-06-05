@@ -2077,3 +2077,72 @@ func TestGetTiKVConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func TestTransformTiKVConfigMap(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                string
+		waitForLockTimeout  string
+		wakeUpDelayDuration string
+		result              string
+	}
+	tests := []testcase{
+		{
+			name:                "under 4.0",
+			waitForLockTimeout:  "1000",
+			wakeUpDelayDuration: "20",
+			result: `[pessimistic-txn]
+  wait-for-lock-timeout = 1000
+  wake-up-delay-duration = 20
+`,
+		},
+		{
+			name:                "4.0.0",
+			waitForLockTimeout:  "1s",
+			wakeUpDelayDuration: "20ms",
+			result: `[pessimistic-txn]
+  wait-for-lock-timeout = "1s"
+  wake-up-delay-duration = "20ms"
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc := newTidbClusterForTiKV()
+			tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
+				WaitForLockTimeout:  pointer.StringPtr(test.waitForLockTimeout),
+				WakeUpDelayDuration: pointer.StringPtr(test.wakeUpDelayDuration),
+			}
+			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(string(confText), tc)))
+		})
+	}
+}
+
+func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: corev1.NamespaceDefault,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tikv-test-image",
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				},
+				Replicas:         3,
+				StorageClassName: pointer.StringPtr("my-storage-class"),
+				Config:           &v1alpha1.TiKVConfig{},
+			},
+		},
+	}
+}
