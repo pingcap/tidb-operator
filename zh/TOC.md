@@ -55,9 +55,11 @@
   - [重启 TiDB 集群](restart-a-tidb-cluster.md)
   - [维护 TiDB 集群所在节点](maintain-a-kubernetes-node.md)
   - [查看日志](view-logs.md)
-  - [集群故障自动转移](use-auto-failover.md)
-  - [恢复 PD 集群](pd-recover.md)
+  - [集群故障自动转移](use-auto-failover.md)  
   - [销毁 TiDB 集群](destroy-a-tidb-cluster.md)
++ 灾难恢复
+  - [恢复 PD 集群](pd-recover.md)
+  - [恢复误删的集群](recover-deleted-cluster.md)
 - [导入集群数据](restore-data-using-tidb-lightning.md)
 - [故障诊断](troubleshoot.md)
 - [常见问题](faq.md)

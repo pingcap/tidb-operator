@@ -46,18 +46,6 @@ kubectl delete pod ${pod_name} -n ${namespace}
 
 Pod 重建后会自动回到正常运行模式。
 
-## Helm 管理的集群意外删除后恢复
-
-TiDB Operator 使用 PV (Persistent Volume)、PVC (Persistent Volume Claim) 来存储持久化的数据，如果不小心使用 `helm delete` 意外删除了集群，PV/PVC 对象以及数据都会保留下来，以最大程度保证数据安全。
-
-此时集群恢复的办法就是使用 `helm install` 命令来创建一个同名的集群，之前保留下来未被删除的 PV/PVC 以及数据会被复用：
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm install pingcap/tidb-cluster -n ${release_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
-```
-
 ## Pod 未正常创建
 
 通过 `helm install` 创建集群后，如果 Pod 没有创建，则可以通过以下方式进行诊断：
