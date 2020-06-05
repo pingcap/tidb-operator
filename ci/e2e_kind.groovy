@@ -199,6 +199,7 @@ pipeline {
                 export DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE}
                 export ARTIFACTS=${ARTIFACTS}
                 export GINKGO_NO_COLOR=y
+                export ETCD_STORAGE_TYPE=memory
                 echo "info: begin to run e2e"
                 ./hack/e2e.sh -- ${params.E2E_ARGS}
                 """
