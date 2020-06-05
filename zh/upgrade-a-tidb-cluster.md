@@ -22,18 +22,12 @@ category: how-to
 
 1. 修改集群的 TidbCluster CR 中各组件的镜像配置。
 
-   需要注意的是，TidbCluster CR 中关于镜像配置有多个参数：
+    正常情况下，集群内的各组件应该使用相同版本，所以一般修改 `spec.version` 即可，如果要为集群内不同组件设置不同的版本，可以修改 `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`。
+
+    `version` 字段格式如下：
 
     - `spec.version`，格式为 `imageTag`，例如 `v3.1.0`
-    - `spec.<pd/tidb/tikv/pump>.baseImage`，格式为 `imageName`，例如 `pingcap/tidb`
-    - `spec.<pd/tidb/tikv/pump>.version`，格式为 `imageTag`，例如 `v3.1.0`
-    - `spec.<pd/tidb/tikv/pump>.image`，格式为 `imageName:imageTag`，例如 `pingcap/tidb:v3.1.0`
-
-    镜像配置获取的优先级为：
-
-    `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.<pd/tidb/tikv/pump>.version` > `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` > `spec.<pd/tidb/tikv/pump>.image`。
-
-    正常情况下，集群内的各组件应该使用相同版本，所以一般建议配置 `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` 即可，这样升级 TiDB 集群只需要修改 `spec.version`。
+    - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v3.1.0`
 
     {{< copyable "shell-regular" >}}
 
@@ -42,22 +36,6 @@ category: how-to
     ```
 
 2. 查看升级进度：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    watch kubectl -n ${namespace} get pod -o wide
-    ```
-
-    当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
-
-### 更新 TiDB 集群配置
-
-默认条件下，修改配置不会自动应用到 TiDB 集群中，只有在 Pod 重启时，才会重新加载新的配置文件，建议设置 `spec.configUpdateStrategy` 为 `RollingUpdate` 开启配置自动更新特性，在每次配置更新时，自动对组件执行滚动更新，将修改后的配置应用到集群中。
-
-1. 设置 `spec.configUpdateStrategy` 为 `RollingUpdate`；
-2. 参考 [TiDB 集群配置](configure-cluster-using-tidbcluster.md)调整集群配置项；
-3. 查看升级进度：
 
     {{< copyable "shell-regular" >}}
 
@@ -116,36 +94,6 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
     ```
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
-
-### 更新 TiDB 集群配置
-
-默认条件下，修改配置文件不会自动应用到 TiDB 集群中，只有在实例重启时，才会重新加载新的配置文件。
-
-您可以开启配置文件自动更新特性，在每次配置文件更新时，自动执行滚动更新，将修改后的配置应用到集群中。操作步骤如下：
-
-1. 修改集群的 `values.yaml` 文件，将 `enableConfigMapRollout` 的值设为 `true`；
-2. 根据需求修改 `values.yaml` 中需要调整的集群配置项；
-3. 执行 `helm upgrade` 命令进行升级：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${chart_version}
-    ```
-
-4. 查看升级进度：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    watch kubectl -n ${namespace} get pod -o wide
-    ```
-
-    当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
-
-> **注意：**
->
-> - 将 `enableConfigMapRollout` 特性从关闭状态打开时，即使没有配置变更，也会触发一次 PD、TiKV、TiDB 的滚动更新。
 
 ### 强制升级 TiDB 集群
 

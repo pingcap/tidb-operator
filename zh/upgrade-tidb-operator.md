@@ -28,16 +28,16 @@ category: how-to
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p /home/tidb/tidb-operator/${version} && \
-    helm inspect values pingcap/tidb-operator --version=${version} > /home/tidb/tidb-operator/${version}/values-tidb-operator.yaml
+    mkdir -p ${HOME}/tidb-operator/${version} && \
+    helm inspect values pingcap/tidb-operator --version=${version} > ${HOME}/tidb-operator/${version}/values-tidb-operator.yaml
     ```
     
-3. 修改 `/home/tidb/tidb-operator/${version}/values-tidb-operator.yaml` 中 `operatorImage` 镜像版本，并将旧版本 `values.yaml` 中的自定义配置合并到 `/home/tidb/tidb-operator/${version}/values-tidb-operator.yaml`，然后执行 `helm upgrade`：
+3. 修改 `${HOME}/tidb-operator/${version}/values-tidb-operator.yaml` 中 `operatorImage` 镜像版本，并将旧版本 `values.yaml` 中的自定义配置合并到 `${HOME}/tidb-operator/${version}/values-tidb-operator.yaml`，然后执行 `helm upgrade`：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade tidb-operator pingcap/tidb-operator --version=${version} -f /home/tidb/tidb-operator/${version}/values-tidb-operator.yaml
+    helm upgrade tidb-operator pingcap/tidb-operator --version=${version} -f ${HOME}/tidb-operator/${version}/values-tidb-operator.yaml
     ```
 
     > **注意：**
@@ -47,7 +47,3 @@ category: how-to
 ## 从 TiDB Operator v1.0 版本升级到 v1.1 及之后版本
 
 从 TiDB Operator v1.1.0 开始，PingCAP 不再继续更新维护 tidb-cluster chart，原来由 tidb-cluster chart 负责管理的组件或者功能在 v1.1 中切换到 CR (Custom Resource) 或者单独的 chart 进行管理，详细信息请参考 [TiDB Operator v1.1 重要注意事项](notes-tidb-operator-v1.1.md)。
-
-## 升级 Kubernetes
-
-当你的 Kubernetes 集群有版本升级，请确保 `kubeSchedulerImageTag` 与之匹配。默认情况下，这个值是由 Helm 在安装或者升级过程中生成的，要修改它你需要执行 `helm upgrade`。
