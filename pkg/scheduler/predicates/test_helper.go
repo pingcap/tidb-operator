@@ -168,6 +168,26 @@ func fakeTwoNodes() []apiv1.Node {
 	}
 }
 
+func fakeSkipNodes(nodeTopologyMap map[string]string) func() []apiv1.Node {
+	return func() []apiv1.Node {
+		nodes := make([]apiv1.Node, 0)
+		for nodeName, nodeTopology := range nodeTopologyMap {
+			nodes = append(nodes, apiv1.Node{
+				TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: nodeName,
+					Labels: map[string]string{
+						"kubernetes.io/hostname": nodeName,
+						"zone":                   nodeTopology,
+					},
+				},
+			})
+		}
+
+		return nodes
+	}
+}
+
 func fakeOneNode() []apiv1.Node {
 	return []apiv1.Node{
 		{
@@ -185,6 +205,25 @@ func fakeOneNode() []apiv1.Node {
 
 func fakeZeroNode() []apiv1.Node {
 	return []apiv1.Node{}
+}
+
+func fakeZeroScheduledNode(nodeName string) (*apiv1.Node, error) {
+	return &apiv1.Node{}, nil
+}
+
+func fakeScheduledNode(scheduledNodeName, zone string) func(string) (*apiv1.Node, error) {
+	return func(nodeName string) (*apiv1.Node, error) {
+		return &apiv1.Node{
+			TypeMeta: metav1.TypeMeta{Kind: "Node", APIVersion: "v1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: scheduledNodeName,
+				Labels: map[string]string{
+					"kubernetes.io/hostname": scheduledNodeName,
+					"zone":                   zone,
+				},
+			},
+		}, nil
+	}
 }
 
 func CollectEvents(source <-chan string) []string {
