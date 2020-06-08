@@ -1193,7 +1193,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
-		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBNightly)
+		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
 		fromTc.Spec.PD.Replicas = 3
 		fromTc.Spec.TiKV.Replicas = 3
 		fromTc.Spec.TiDB.Replicas = 2
@@ -1207,7 +1207,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating cdc-sink cluster")
-		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBNightly)
+		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV4Version)
 		toTc.Spec.PD.Replicas = 1
 		toTc.Spec.TiKV.Replicas = 1
 		toTc.Spec.TiDB.Replicas = 1
