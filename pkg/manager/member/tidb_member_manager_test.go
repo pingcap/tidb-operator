@@ -1347,6 +1347,10 @@ func TestTiDBInitContainers(t *testing.T) {
 func TestGetNewTiDBService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	trafficPolicy := corev1.ServiceExternalTrafficPolicyTypeLocal
+	loadBalancerSourceRanges := []string{
+		"10.0.0.0/8",
+		"130.211.204.1/32",
+	}
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1499,6 +1503,7 @@ func TestGetNewTiDBService(t *testing.T) {
 								Annotations: map[string]string{
 									"lb-type": "testlb",
 								},
+								LoadBalancerSourceRanges: loadBalancerSourceRanges,
 							},
 							ExternalTrafficPolicy: &trafficPolicy,
 							ExposeStatus:          pointer.BoolPtr(true),
@@ -1537,6 +1542,10 @@ func TestGetNewTiDBService(t *testing.T) {
 				Spec: corev1.ServiceSpec{
 					Type:                  corev1.ServiceTypeLoadBalancer,
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+					LoadBalancerSourceRanges: []string{
+						"10.0.0.0/8",
+						"130.211.204.1/32",
+					},
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "mysql-client",
