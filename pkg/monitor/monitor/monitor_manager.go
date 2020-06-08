@@ -389,11 +389,16 @@ func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef,
 	}
 	var mergePatch []byte
 	if tcRef != nil {
+		grafanaEnabled := true
+		if monitor.Spec.Grafana == nil {
+			grafanaEnabled = false
+		}
 		mergePatch, err = json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
 				"monitor": map[string]interface{}{
-					"name":      monitor.Name,
-					"namespace": monitor.Namespace,
+					"name":           monitor.Name,
+					"namespace":      monitor.Namespace,
+					"grafanaEnabled": grafanaEnabled,
 				},
 			},
 		})

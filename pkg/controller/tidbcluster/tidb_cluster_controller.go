@@ -226,7 +226,7 @@ func NewController(
 				setControl,
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
-			mm.NewTidbClusterStatusManager(cli),
+			mm.NewTidbClusterStatusManager(kubeCli, cli),
 			podRestarter,
 			&tidbClusterConditionUpdater{},
 			recorder,
