@@ -705,6 +705,19 @@ TidbClusterSpec
 <table>
 <tr>
 <td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -2904,6 +2917,46 @@ tidb-operator built envs.
 </tr>
 </tbody>
 </table>
+<h3 id="configmapref">ConfigMapRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusconfiguration">PrometheusConfiguration</a>)
+</p>
+<p>
+<p>ConfigMapRef is the external configMap</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>if the namespace is omitted, the operator controller would use the Tidbmonitor&rsquo;s namespace instead.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="configupdatestrategy">ConfigUpdateStrategy</h3>
 <p>
 (<em>Appears on:</em>
@@ -3212,6 +3265,39 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="discoveryspec">DiscoverySpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>DiscoverySpec contains details of Discovery members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -6834,6 +6920,48 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="prometheusconfiguration">PrometheusConfiguration</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#prometheusspec">PrometheusSpec</a>)
+</p>
+<p>
+<p>Config  is the the desired state of Prometheus Configuration</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>configMapRef</code></br>
+<em>
+<a href="#configmapref">
+ConfigMapRef
+</a>
+</em>
+</td>
+<td>
+<p>user can mount prometheus rule config with external configMap.If use this feature, the external configMap must contain <code>prometheus-config</code> key in data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commandOptions</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>user can  use it specify prometheus command options</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="prometheusspec">PrometheusSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -6904,6 +7032,19 @@ int
 <em>
 <a href="#ingressspec">
 IngressSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#prometheusconfiguration">
+PrometheusConfiguration
 </a>
 </em>
 </td>
@@ -14485,6 +14626,19 @@ string
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>pd</code></br>

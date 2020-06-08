@@ -62,7 +62,6 @@ func WithStorage(r corev1.ResourceRequirements, size string) corev1.ResourceRequ
 		r.Requests = corev1.ResourceList{}
 	}
 	r.Requests[corev1.ResourceStorage] = resource.MustParse(size)
-
 	return r
 }
 
@@ -84,6 +83,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
 		tikvStorageConfig = nil
 	}
+
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -109,6 +109,9 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 						MaxStoreDownTime: pointer.StringPtr("5m"),
 					},
 				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
+				},
 			},
 
 			TiKV: v1alpha1.TiKVSpec{
@@ -120,6 +123,9 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					LogLevel: pointer.StringPtr("info"),
 					Server:   &v1alpha1.TiKVServerConfig{},
 					Storage:  tikvStorageConfig,
+				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
 			},
 
@@ -138,6 +144,33 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Config: &v1alpha1.TiDBConfig{
 					Log: &v1alpha1.Log{
 						Level: pointer.StringPtr("info"),
+					},
+				},
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
+				},
+			},
+		},
+	}
+}
+
+func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: int32(50),
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/component": memberType.String(),
+								"app.kubernetes.io/instance":  name,
+							},
+						},
+						Namespaces: []string{
+							namespace,
+						},
+						TopologyKey: "rack",
 					},
 				},
 			},
@@ -372,9 +405,17 @@ func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1a
 	}
 }
 
-func GetBackupCRDForBRWithS3(tc *v1alpha1.TidbCluster, fromSecretName string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
+const (
+	BRType     = "br"
+	DumperType = "dumper"
+)
+
+func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Backup {
+	if brType != BRType && brType != DumperType {
+		return nil
+	}
 	sendCredToTikv := true
-	return &v1alpha1.Backup{
+	br := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-backup", tc.Name),
 			Namespace: tc.Namespace,
@@ -397,11 +438,21 @@ func GetBackupCRDForBRWithS3(tc *v1alpha1.TidbCluster, fromSecretName string, s3
 			},
 		},
 	}
+	if brType == DumperType {
+		storage := "local-storage"
+		br.Spec.BR = nil
+		br.Spec.StorageClassName = &storage
+		br.Spec.StorageSize = "1Gi"
+	}
+	return br
 }
 
-func GetRestoreCRDForBRWithS3(tc *v1alpha1.TidbCluster, toSecretName string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Restore {
+func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType string, s3config *v1alpha1.S3StorageProvider) *v1alpha1.Restore {
+	if restoreType != BRType && restoreType != DumperType {
+		return nil
+	}
 	sendCredToTikv := true
-	return &v1alpha1.Restore{
+	restore := &v1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-restore", tc.GetName()),
 			Namespace: tc.GetNamespace(),
@@ -424,4 +475,12 @@ func GetRestoreCRDForBRWithS3(tc *v1alpha1.TidbCluster, toSecretName string, s3c
 			},
 		},
 	}
+	if restoreType == DumperType {
+		storage := "local-storage"
+		restore.Spec.BR = nil
+		restore.Spec.StorageClassName = &storage
+		restore.Spec.StorageSize = "1Gi"
+		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
+	}
+	return restore
 }
