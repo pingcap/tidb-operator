@@ -6131,6 +6131,8 @@ spec:
               type: string
             monitor:
               properties:
+                grafanaEnabled:
+                  type: boolean
                 name:
                   type: string
                 namespace:

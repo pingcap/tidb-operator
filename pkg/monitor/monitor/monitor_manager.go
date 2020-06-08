@@ -49,8 +49,8 @@ type MonitorManager struct {
 	pvLister           corelisters.PersistentVolumeLister
 	ingressLister      extensionslister.IngressLister
 	pvControl          controller.PVControlInterface
-	recorder           record.EventRecorder
 	cmControl          controller.ConfigMapControlInterface
+	recorder           record.EventRecorder
 }
 
 const (
@@ -68,6 +68,7 @@ func NewMonitorManager(
 	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
+	cmControl := controller.NewRealConfigMapControl(kubeCli, recorder)
 	return &MonitorManager{
 		cli: cli,
 		pvManager: meta.NewReclaimPolicyMonitorManager(
@@ -80,6 +81,7 @@ func NewMonitorManager(
 		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:           pvLister,
 		ingressLister:      kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+		cmControl:          cmControl,
 		recorder:           recorder,
 	}
 }
@@ -387,11 +389,16 @@ func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef,
 	}
 	var mergePatch []byte
 	if tcRef != nil {
+		grafanaEnabled := true
+		if monitor.Spec.Grafana == nil {
+			grafanaEnabled = false
+		}
 		mergePatch, err = json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
 				"monitor": map[string]interface{}{
-					"name":      monitor.Name,
-					"namespace": monitor.Namespace,
+					"name":           monitor.Name,
+					"namespace":      monitor.Namespace,
+					"grafanaEnabled": grafanaEnabled,
 				},
 			},
 		})
