@@ -63,8 +63,9 @@ spec:
     # legacy docker path for cr.io/k8s-testimages/kubekins-e2e
     - name: docker-graph
       mountPath: /docker-graph
-	- name: etcd-data-dir
-	  mountPath: /mnt/tmpfs/etcd
+    # use memory storage for etcd hostpath in kind cluster
+    - name: etcd-data-dir
+      mountPath: /mnt/tmpfs/etcd
   volumes:
   - name: modules
     hostPath:
