@@ -183,7 +183,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 	}
 
 	if isUpgrading {
-		err = checkFormerTiKVPodStatus(pc.kubeCli, payload.tc, ordinal, *payload.ownerStatefulSet.Spec.Replicas, storesInfo)
+		err = checkFormerTiKVPodStatus(pc.kubeCli, payload.tc, ordinal, payload.ownerStatefulSet, storesInfo)
 		if err != nil {
 			klog.Infof("tc[%s/%s]'s tikv pod[%s/%s] failed to delete,%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)

@@ -38,6 +38,8 @@ type ConfigMapControlInterface interface {
 	UpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	// DeleteConfigMap delete the given ConfigMap owned by the controller object
 	DeleteConfigMap(controller runtime.Object, cm *corev1.ConfigMap) error
+	// GetConfigMap get the ConfigMap by configMap name
+	GetConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
 }
 
 type realConfigMapControl struct {
@@ -95,6 +97,11 @@ func (cc *realConfigMapControl) DeleteConfigMap(owner runtime.Object, cm *corev1
 	return err
 }
 
+func (cc *realConfigMapControl) GetConfigMap(owner runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	existConfigMap, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cm.Name, metav1.GetOptions{})
+	return existConfigMap, err
+}
+
 func (cc *realConfigMapControl) recordConfigMapEvent(verb string, owner runtime.Object, cm *corev1.ConfigMap, err error) {
 	kind := owner.GetObjectKind().GroupVersionKind().Kind
 	var name string
@@ -124,6 +131,7 @@ func NewFakeConfigMapControl(cmInformer coreinformers.ConfigMapInformer) *FakeCo
 		RequestTracker{},
 		RequestTracker{},
 		RequestTracker{},
+		RequestTracker{},
 	}
 }
 
@@ -133,6 +141,7 @@ type FakeConfigMapControl struct {
 	createConfigMapTracker RequestTracker
 	updateConfigMapTracker RequestTracker
 	deleteConfigMapTracker RequestTracker
+	getConfigMapTracker    RequestTracker
 }
 
 // SetCreateConfigMapError sets the error attributes of createConfigMapTracker
@@ -179,6 +188,15 @@ func (cc *FakeConfigMapControl) UpdateConfigMap(_ runtime.Object, cm *corev1.Con
 // DeleteConfigMap deletes the ConfigMap of CmIndexer
 func (cc *FakeConfigMapControl) DeleteConfigMap(_ runtime.Object, _ *corev1.ConfigMap) error {
 	return nil
+}
+
+func (cc *FakeConfigMapControl) GetConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	defer cc.getConfigMapTracker.Inc()
+	if cc.getConfigMapTracker.ErrorReady() {
+		defer cc.getConfigMapTracker.Reset()
+		return nil, cc.getConfigMapTracker.GetError()
+	}
+	return cm, nil
 }
 
 var _ ConfigMapControlInterface = &FakeConfigMapControl{}

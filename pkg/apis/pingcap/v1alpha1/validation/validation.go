@@ -23,10 +23,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
-
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	utilnet "k8s.io/utils/net"
 )
 
 // ValidateTidbCluster validates a TidbCluster, it performs basic validation for all TidbClusters despite it is legacy
@@ -39,6 +39,17 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	allErrs = append(allErrs, validateAnnotations(tc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
 	// validate spec
 	allErrs = append(allErrs, validateTiDBClusterSpec(&tc.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
+func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
+	allErrs := field.ErrorList{}
+	// validate monitor service
+	if monitor.Spec.Grafana != nil {
+		allErrs = append(allErrs, validateService(&monitor.Spec.Grafana.Service, field.NewPath("spec"))...)
+	}
+	allErrs = append(allErrs, validateService(&monitor.Spec.Prometheus.Service, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateService(&monitor.Spec.Reloader.Service, field.NewPath("spec"))...)
 	return allErrs
 }
 
@@ -164,6 +175,9 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	if spec.Service != nil {
+		allErrs = append(allErrs, validateService(&spec.Service.ServiceSpec, fldPath)...)
+	}
 	return allErrs
 }
 
@@ -395,6 +409,19 @@ func validateDeleteSlots(annotations map[string]string, key string, fldPath *fie
 				msg := fmt.Sprintf("value of %q annotation must be a JSON list of int32", key)
 				allErrs = append(allErrs, field.Invalid(fldPath, value, msg))
 			}
+		}
+	}
+	return allErrs
+}
+
+func validateService(spec *v1alpha1.ServiceSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	//validate LoadBalancerSourceRanges field from service
+	if len(spec.LoadBalancerSourceRanges) > 0 {
+		ip := spec.LoadBalancerSourceRanges
+		_, err := utilnet.ParseIPNets(ip...)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.LoadBalancerSourceRanges"), spec.LoadBalancerSourceRanges, "service.Spec.LoadBalancerSourceRanges is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24."))
 		}
 	}
 	return allErrs

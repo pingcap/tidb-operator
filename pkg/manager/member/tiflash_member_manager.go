@@ -205,6 +205,11 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 		return err
 	}
 
+	// Recover failed stores if any before generating desired statefulset
+	if len(tc.Status.TiFlash.FailureStores) > 0 {
+		tfmm.tiflashFailover.Recover(tc)
+	}
+
 	newSet, err := getNewStatefulSet(tc, cm)
 	if err != nil {
 		return err
@@ -686,6 +691,9 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
 		status := tfmm.getTiFlashStore(store)
 		if status == nil {
 			continue

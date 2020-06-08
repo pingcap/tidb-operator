@@ -367,11 +367,6 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		Resources: controller.ContainerResource(monitor.Spec.Prometheus.Resources),
 		Command: []string{
 			"/bin/prometheus",
-			"--web.enable-admin-api",
-			"--web.enable-lifecycle",
-			"--config.file=/etc/prometheus/prometheus.yml",
-			"--storage.tsdb.path=/data/prometheus",
-			fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays),
 		},
 		Ports: []core.ContainerPort{
 			{
@@ -403,6 +398,17 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 			},
 		},
 	}
+	commandOptions := []string{"--web.enable-admin-api",
+		"--web.enable-lifecycle",
+		"--config.file=/etc/prometheus/prometheus.yml",
+		"--storage.tsdb.path=/data/prometheus",
+		fmt.Sprintf("--storage.tsdb.retention=%dd", monitor.Spec.Prometheus.ReserveDays)}
+
+	if monitor.Spec.Prometheus.Config != nil && len(monitor.Spec.Prometheus.Config.CommandOptions) > 0 {
+		commandOptions = monitor.Spec.Prometheus.Config.CommandOptions
+	}
+	c.Command = append(c.Command, commandOptions...)
+
 	if len(monitor.Spec.Prometheus.LogLevel) > 0 {
 		c.Command = append(c.Command, fmt.Sprintf("--log.level=%s", monitor.Spec.Prometheus.LogLevel))
 	}
@@ -684,6 +690,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
 			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
 		}
+		if monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges != nil {
+			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
+		}
 	}
 
 	reloaderService := &core.Service{
@@ -711,6 +720,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
 		if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
 			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
+		}
+		if monitor.Spec.Reloader.Service.LoadBalancerSourceRanges != nil {
+			reloaderService.Spec.LoadBalancerSourceRanges = monitor.Spec.Reloader.Service.LoadBalancerSourceRanges
 		}
 	}
 
@@ -741,6 +753,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
 			if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
 				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+			}
+			if monitor.Spec.Grafana.Service.LoadBalancerSourceRanges != nil {
+				grafanaService.Spec.LoadBalancerSourceRanges = monitor.Spec.Grafana.Service.LoadBalancerSourceRanges
 			}
 		}
 

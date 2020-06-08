@@ -29,8 +29,8 @@ import (
 const (
 	TiDBV3Version                 = "v3.0.8"
 	TiDBV3UpgradeVersion          = "v3.0.9"
-	TiDBV4Version                 = "v4.0.0-rc"
-	TiDBV4UpgradeVersion          = "v4.0.0-rc.2"
+	TiDBV4Version                 = "v4.0.0-rc.2"
+	TiDBV4UpgradeVersion          = "v4.0.0"
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.18.1"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
@@ -45,6 +45,7 @@ func ListImages() []string {
 	images := []string{}
 	versions := make([]string, 0)
 	versions = append(versions, TiDBV3Version)
+	versions = append(versions, TiDBV3UpgradeVersion)
 	versions = append(versions, TiDBV4Version)
 	versions = append(versions, TiDBV4UpgradeVersion)
 	for _, v := range versions {
@@ -56,12 +57,13 @@ func ListImages() []string {
 	images = append(images, fmt.Sprintf("%s:%s", TiDBMonitorReloaderImage, TiDBMonitorReloaderVersion))
 	images = append(images, fmt.Sprintf("%s:%s", TiDBMonitorInitializerImage, TiDBMonitorInitializerVersion))
 	images = append(images, fmt.Sprintf("%s:%s", GrafanaImage, GrafanaVersion))
-	imagesFromOperator, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-operator/values.yaml"))
+	imagesFromOperator, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-operator/values.yaml"), sets.NewString(".advancedStatefulset.image", ".admissionWebhook.jobImage"))
 	if err != nil {
 		framework.ExpectNoError(err)
 	}
 	images = append(images, imagesFromOperator...)
-	imagesFromTiDBCluster, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-cluster/values.yaml"))
+	imageKeysFromTiDBCluster := sets.NewString(".pd.image", ".tikv.image", ".tidb.image")
+	imagesFromTiDBCluster, err := readImagesFromValues(filepath.Join(framework.TestContext.RepoRoot, "charts/tidb-cluster/values.yaml"), imageKeysFromTiDBCluster)
 	if err != nil {
 		framework.ExpectNoError(err)
 	}
@@ -72,17 +74,17 @@ func ListImages() []string {
 // values represents a collection of chart values.
 type values map[string]interface{}
 
-func walkValues(vals values, fn func(k string, v interface{})) {
+func walkValues(vals values, parentKey string, fn func(k string, v interface{})) {
 	for k, v := range vals {
-		fn(k, v)
+		fn(parentKey+"."+k, v)
 		valsMap, ok := v.(map[string]interface{})
 		if ok {
-			walkValues(valsMap, fn)
+			walkValues(valsMap, parentKey+"."+k, fn)
 		}
 	}
 }
 
-func readImagesFromValues(f string) ([]string, error) {
+func readImagesFromValues(f string, keys sets.String) ([]string, error) {
 	var vals values
 	data, err := ioutil.ReadFile(f)
 	if err != nil {
@@ -96,8 +98,8 @@ func readImagesFromValues(f string) ([]string, error) {
 		vals = values{}
 	}
 	images := []string{}
-	walkValues(vals, func(k string, v interface{}) {
-		if k != "image" {
+	walkValues(vals, "", func(k string, v interface{}) {
+		if keys != nil && !keys.Has(k) {
 			return
 		}
 		if image, ok := v.(string); ok {

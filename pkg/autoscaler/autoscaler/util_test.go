@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -25,6 +26,102 @@ import (
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/utils/pointer"
 )
+
+func Test_checkLastSyncingTimestamp(t *testing.T) {
+	g := NewGomegaWithT(t)
+	c := clockwork.NewFakeClockAt(time.Now())
+	tests := []struct {
+		name                  string
+		withTimestamp         bool
+		lastSyncSecAgo        int
+		expectPhase           v1alpha1.AutoScalerPhase
+		expectedPermitScaling bool
+	}{
+		{
+			name:                  "tikv, no timestamp",
+			withTimestamp:         false,
+			lastSyncSecAgo:        0,
+			expectPhase:           v1alpha1.ReadyToScaleOutAutoScalerPhase,
+			expectedPermitScaling: true,
+		},
+		{
+			name:                  "tikv, last sync 10s ago",
+			withTimestamp:         true,
+			lastSyncSecAgo:        10,
+			expectPhase:           v1alpha1.ReadyToScaleOutAutoScalerPhase,
+			expectedPermitScaling: true,
+		},
+		{
+			name:                  "tikv, last sync 120s ago",
+			withTimestamp:         true,
+			lastSyncSecAgo:        120,
+			expectPhase:           v1alpha1.NormalAutoScalerPhase,
+			expectedPermitScaling: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tac := newTidbClusterAutoScaler()
+			tac.Status.TiKV = &v1alpha1.TikvAutoScalerStatus{BasicAutoScalerStatus: v1alpha1.BasicAutoScalerStatus{Phase: v1alpha1.ReadyToScaleOutAutoScalerPhase}}
+			if tt.withTimestamp {
+				d := time.Duration(tt.lastSyncSecAgo) * time.Second
+				tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", time.Now().Add(-d).Unix())
+			} else {
+				tac.Annotations = map[string]string{}
+			}
+			r, err := checkLastSyncingTimestamp(tac, 100*time.Second, c)
+			g.Expect(err).Should(BeNil())
+			g.Expect(r).Should(Equal(tt.expectedPermitScaling))
+			g.Expect(tac.Status.TiKV.Phase).Should(Equal(tt.expectPhase))
+		})
+	}
+}
+
+func TestCheckStsReadyAutoScalingTimestamp(t *testing.T) {
+	g := NewGomegaWithT(t)
+	c := clockwork.NewFakeClockAt(time.Now())
+	tests := []struct {
+		name                  string
+		withTimestamp         bool
+		readyAutoScalingSec   int
+		expectedPermitScaling bool
+	}{
+		{
+			name:                  "tikv, no timestamp",
+			withTimestamp:         false,
+			readyAutoScalingSec:   0,
+			expectedPermitScaling: false,
+		},
+		{
+			name:                  "tikv, ready autoscaling 60s",
+			withTimestamp:         true,
+			readyAutoScalingSec:   60,
+			expectedPermitScaling: false,
+		},
+		{
+			name:                  "tikv, ready autoscaling 120s",
+			withTimestamp:         true,
+			readyAutoScalingSec:   120,
+			expectedPermitScaling: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			thresholdSec := int32(100)
+			tac := newTidbClusterAutoScaler()
+			d := time.Duration(tt.readyAutoScalingSec) * time.Second
+			if tt.withTimestamp {
+				tac.Annotations[label.AnnTiKVReadyToScaleTimestamp] = fmt.Sprintf("%d", time.Now().Add(-d).Unix())
+			} else {
+				tac.Annotations = map[string]string{}
+			}
+			r, err := checkStsReadyAutoScalingTimestamp(tac, thresholdSec, c)
+			g.Expect(err).Should(BeNil())
+			g.Expect(r).Should(Equal(tt.expectedPermitScaling))
+		})
+	}
+}
 
 func TestCheckStsAutoScalingInterval(t *testing.T) {
 	g := NewGomegaWithT(t)

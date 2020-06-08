@@ -18,6 +18,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -200,6 +201,11 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 	cm, err := tkmm.syncTiKVConfigMap(tc, oldSet)
 	if err != nil {
 		return err
+	}
+
+	// Recover failed stores if any before generating desired statefulset
+	if len(tc.Status.TiKV.FailureStores) > 0 {
+		tkmm.tikvFailover.Recover(tc)
 	}
 
 	newSet, err := getNewTiKVSetForTidbCluster(tc, cm)
@@ -507,6 +513,38 @@ func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
+// transformTiKVConfigMap change the `wait-for-lock-timeout` and `wake-up-delay-duration` due to their content type.
+// If either of their content is numeric, it would be rendered as numeric in toml in the tikv configmap.
+// In https://github.com/tikv/tikv/pull/7197 , these 2 configurations become string type from int32 type, so we add
+// this transforming steps to make tikv config compatible with both 4.0.0 version or under 4.0.0 version
+func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
+	config := tc.Spec.TiKV.Config
+	if config == nil {
+		return srcStr
+	}
+	if config.TiKVPessimisticTxn != nil {
+		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
+			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
+			if err == nil {
+				waitForLockTimeOutKey := "wait-for-lock-timeout"
+				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		}
+		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
+			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WakeUpDelayDuration, 10, 64)
+			if err == nil {
+				wakeUpDelayDuration := "wake-up-delay-duration"
+				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		}
+	}
+	return srcStr
+}
+
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	config := tc.Spec.TiKV.Config
@@ -550,7 +588,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: map[string]string{
-			"config-file":    string(confText),
+			"config-file":    transformTiKVConfigMap(string(confText), tc),
 			"startup-script": startScript,
 		},
 	}
@@ -636,6 +674,9 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		return err
 	}
 	for _, store := range tombstoneStoresInfo.Stores {
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
 		status := tkmm.getTiKVStore(store)
 		if status == nil {
 			continue

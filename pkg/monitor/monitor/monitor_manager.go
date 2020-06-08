@@ -49,6 +49,7 @@ type MonitorManager struct {
 	pvLister           corelisters.PersistentVolumeLister
 	ingressLister      extensionslister.IngressLister
 	pvControl          controller.PVControlInterface
+	cmControl          controller.ConfigMapControlInterface
 	recorder           record.EventRecorder
 }
 
@@ -67,6 +68,7 @@ func NewMonitorManager(
 	pvcLister := kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister()
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	pvControl := controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder)
+	cmControl := controller.NewRealConfigMapControl(kubeCli, recorder)
 	return &MonitorManager{
 		cli: cli,
 		pvManager: meta.NewReclaimPolicyMonitorManager(
@@ -79,6 +81,7 @@ func NewMonitorManager(
 		pvControl:          controller.NewRealPVControl(kubeCli, pvcLister, pvLister, recorder),
 		pvLister:           pvLister,
 		ingressLister:      kubeInformerFactory.Extensions().V1beta1().Ingresses().Lister(),
+		cmControl:          cmControl,
 		recorder:           recorder,
 	}
 }
@@ -188,7 +191,7 @@ func (mm *MonitorManager) syncTidbMonitorPVC(monitor *v1alpha1.TidbMonitor) (*co
 	pvc := getMonitorPVC(monitor)
 	pvc, err := mm.typedControl.CreateOrUpdatePVC(monitor, pvc, false)
 	if err != nil {
-		klog.Errorf("tm[%s/%s]'s pvc[%s] failed to sync,err: %v", monitor.Namespace, monitor.Name, pvc.Name, err)
+		klog.Errorf("tm[%s/%s]'s pvc failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 	return pvc, nil
@@ -253,6 +256,26 @@ func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monito
 	newCM, err := getMonitorConfigMap(tc, monitor)
 	if err != nil {
 		return nil, err
+	}
+	config := monitor.Spec.Prometheus.Config
+	if config != nil && config.ConfigMapRef != nil && len(config.ConfigMapRef.Name) > 0 {
+		namespace := monitor.Namespace
+		if config.ConfigMapRef.Namespace != nil {
+			namespace = *config.ConfigMapRef.Namespace
+		}
+		externalCM, err := mm.cmControl.GetConfigMap(monitor, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      config.ConfigMapRef.Name,
+				Namespace: namespace,
+			},
+		})
+		if err != nil {
+			klog.Errorf("tm[%s/%s]'s configMap failed to get,err: %v", namespace, config.ConfigMapRef.Name, err)
+			return nil, err
+		}
+		if externalContent, ok := externalCM.Data["prometheus-config"]; ok {
+			newCM.Data["prometheus-config"] = externalContent
+		}
 	}
 	return mm.typedControl.CreateOrUpdateConfigMap(monitor, newCM)
 }
@@ -366,11 +389,16 @@ func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef,
 	}
 	var mergePatch []byte
 	if tcRef != nil {
+		grafanaEnabled := true
+		if monitor.Spec.Grafana == nil {
+			grafanaEnabled = false
+		}
 		mergePatch, err = json.Marshal(map[string]interface{}{
 			"status": map[string]interface{}{
 				"monitor": map[string]interface{}{
-					"name":      monitor.Name,
-					"namespace": monitor.Namespace,
+					"name":           monitor.Name,
+					"namespace":      monitor.Namespace,
+					"grafanaEnabled": grafanaEnabled,
 				},
 			},
 		})

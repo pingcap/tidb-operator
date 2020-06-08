@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -52,6 +53,11 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 		Operation("filterNodes").
 		Writes(schedulerapiv1.ExtenderFilterResult{}))
 
+	ws.Route(ws.POST("/preempt").To(svr.preemptNode).
+		Doc("preempt nodes").
+		Operation("preemptNodes").
+		Writes(schedulerapi.ExtenderPreemptionResult{}))
+
 	ws.Route(ws.POST("/prioritize").To(svr.prioritizeNode).
 		Doc("prioritize nodes").
 		Operation("prioritizeNodes").
@@ -80,6 +86,28 @@ func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
 	}
 
 	if err := resp.WriteEntity(filterResult); err != nil {
+		errorResponse(resp, errFailToWrite)
+	}
+}
+
+func (svr *server) preemptNode(req *restful.Request, resp *restful.Response) {
+	svr.lock.Lock()
+	defer svr.lock.Unlock()
+
+	args := &schedulerapi.ExtenderPreemptionArgs{}
+	if err := req.ReadEntity(args); err != nil {
+		errorResponse(resp, errFailToRead)
+		return
+	}
+
+	preemptResult, err := svr.scheduler.Preempt(args)
+	if err != nil {
+		errorResponse(resp, restful.NewError(http.StatusInternalServerError,
+			fmt.Sprintf("unable to preempt nodes: %v", err)))
+		return
+	}
+
+	if err := resp.WriteEntity(preemptResult); err != nil {
 		errorResponse(resp, errFailToWrite)
 	}
 }

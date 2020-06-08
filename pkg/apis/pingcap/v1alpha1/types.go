@@ -107,6 +107,9 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
+	// Discovery spec
+	Discovery DiscoverySpec `json:"discovery,omitempty"`
+
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -218,6 +221,7 @@ type TidbClusterStatus struct {
 	TiDB      TiDBStatus      `json:"tidb,omitempty"`
 	Pump      PumpStatus      `josn:"pump,omitempty"`
 	TiFlash   TiFlashStatus   `json:"tiflash,omitempty"`
+	TiCDC     TiCDCStatus     `json:"ticdc,omitempty"`
 	Monitor   *TidbMonitorRef `json:"monitor,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
@@ -256,6 +260,12 @@ const (
 	// - All TiFlash stores are up.
 	TidbClusterReady TidbClusterConditionType = "Ready"
 )
+
+// +k8s:openapi-gen=true
+// DiscoverySpec contains details of Discovery members
+type DiscoverySpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
 
 // +k8s:openapi-gen=true
 // PDSpec contains details of PD members
@@ -667,6 +677,15 @@ type ServiceSpec struct {
 	// PortName is the name of service port
 	// +optional
 	PortName *string `json:"portName,omitempty"`
+
+	// LoadBalancerSourceRanges is the loadBalancerSourceRanges of service
+	// If specified and supported by the platform, this will restrict traffic through the cloud-provider
+	// load-balancer will be restricted to the specified client IPs. This field will be ignored if the
+	// cloud-provider does not support the feature."
+	// More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/
+	// Optional: Defaults to omitted
+	// +optional
+	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -779,6 +798,20 @@ type TiFlashStatus struct {
 	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
 	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
 	Image           string                      `json:"image,omitempty"`
+}
+
+// TiCDCStatus is TiCDC status
+type TiCDCStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+}
+
+// TiCDCCapture is TiCDC Capture status
+type TiCDCCapture struct {
+	PodName string `json:"podName,omitempty"`
+	ID      string `json:"id,omitempty"`
 }
 
 // TiKVStores is either Up/Down/Offline/Tombstone
@@ -997,6 +1030,7 @@ type TiDBAccessConfig struct {
 // +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// From is the tidb cluster that needs to backup.
 	From TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster.
@@ -1228,6 +1262,7 @@ type RestoreCondition struct {
 // +k8s:openapi-gen=true
 // RestoreSpec contains the specification for a restore of a tidb cluster backup.
 type RestoreSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// To is the tidb cluster that needs to restore.
 	To TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster.

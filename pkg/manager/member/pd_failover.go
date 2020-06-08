@@ -65,6 +65,12 @@ func NewPDFailover(cli versioned.Interface,
 		recorder}
 }
 
+// Failover is used to failover broken pd member
+// If there are 3 PD members in a tidb cluster with 1 broken member pd-0, pdFailover will do failover in 3 rounds:
+// 1. mark pd-0 as a failure Member with non-deleted state (MemberDeleted=false)
+// 2. delete the failure member pd-0, and mark it deleted (MemberDeleted=true)
+// 3. PD member manager will add the count of deleted failure members more replicas
+// If the count of the failure PD member with the deleted state (MemberDeleted=true) is equal or greater than MaxFailoverCount, we will skip failover.
 func (pf *pdFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -123,6 +129,9 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 
 	for podName, pdMember := range tc.Status.PD.Members {
 		if pdMember.LastTransitionTime.IsZero() {
+			continue
+		}
+		if !pf.isPodDesired(tc, podName) {
 			continue
 		}
 
@@ -256,4 +265,14 @@ func (fpf *fakePDFailover) Failover(_ *v1alpha1.TidbCluster) error {
 
 func (fpf *fakePDFailover) Recover(_ *v1alpha1.TidbCluster) {
 	return
+}
+
+func (pf *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := tc.PDStsDesiredOrdinals(true)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }
