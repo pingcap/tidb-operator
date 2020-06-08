@@ -4,7 +4,7 @@ metadata:
   name: basic
 spec:
   clusters:
-  - name: basic
+    - name: basic
   prometheus:
     config:
       configMapRef:
@@ -21,6 +21,10 @@ spec:
   grafana:
     baseImage: grafana/grafana
     version: 6.0.1
+    username: "admin"
+    passwordSecret:
+      name: grafana
+      key: password
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
     version: v3.0.13

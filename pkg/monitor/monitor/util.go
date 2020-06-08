@@ -93,21 +93,6 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 	return cm, nil
 }
 
-func getMonitorSecret(monitor *v1alpha1.TidbMonitor) *core.Secret {
-	return &core.Secret{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Data: map[string][]byte{
-			"username": []byte(monitor.Spec.Grafana.Username),
-			"password": []byte(monitor.Spec.Grafana.Password),
-		},
-	}
-}
-
 func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccount {
 	sa := &core.ServiceAccount{
 		ObjectMeta: meta.ObjectMeta{
@@ -192,7 +177,7 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.Deployment, error) {
+func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.Deployment, error) {
 	deployment := getMonitorDeploymentSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, initContainer)
@@ -200,7 +185,7 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	if monitor.Spec.Grafana != nil {
-		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
+		grafanaContainer := getMonitorGrafanaContainer(monitor, tc)
 		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, grafanaContainer)
 	}
 	volumes := getMonitorVolumes(config, monitor, tc)
@@ -431,7 +416,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	return c
 }
 
-func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorGrafanaContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
 	c := core.Container{
 		Name:      "grafana",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
@@ -449,30 +434,12 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 				Value: "/data/grafana",
 			},
 			{
-				Name: "GF_SECURITY_ADMIN_USER",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "username",
-					},
-				},
-			},
-			{
-				Name: "GF_SECURITY_ADMIN_PASSWORD",
-				ValueFrom: &core.EnvVarSource{
-					SecretKeyRef: &core.SecretKeySelector{
-						LocalObjectReference: core.LocalObjectReference{
-							Name: secret.Name,
-						},
-						Key: "password",
-					},
-				},
-			},
-			{
 				Name:  "TZ",
 				Value: tc.Timezone(),
+			},
+			{
+				Name:  "GF_SECURITY_ADMIN_USER",
+				Value: monitor.Spec.Grafana.Username,
 			},
 		},
 		VolumeMounts: []core.VolumeMount{
@@ -506,6 +473,16 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
+
+	if monitor.Spec.Grafana.PasswordSecret != nil {
+		c.Env = append(c.Env, core.EnvVar{
+			Name: "GF_SECURITY_ADMIN_PASSWORD",
+			ValueFrom: &core.EnvVarSource{
+				SecretKeyRef: monitor.Spec.Grafana.PasswordSecret,
+			},
+		})
+	}
+
 	sort.Sort(util.SortEnvByName(c.Env))
 	return c
 }

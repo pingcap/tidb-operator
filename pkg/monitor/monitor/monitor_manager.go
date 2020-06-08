@@ -217,11 +217,6 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mo
 		klog.Errorf("tm[%s/%s]'s configmap failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
-	secret, err := mm.syncTidbMonitorSecret(monitor)
-	if err != nil {
-		klog.Errorf("tm[%s/%s]'s secret failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-		return err
-	}
 
 	sa, err := mm.syncTidbMonitorRbac(monitor)
 	if err != nil {
@@ -229,7 +224,7 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mo
 		return err
 	}
 
-	deployment, err := getMonitorDeployment(sa, cm, secret, monitor, tc)
+	deployment, err := getMonitorDeployment(sa, cm, monitor, tc)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s deployment failed to generate,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
@@ -241,14 +236,6 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mo
 	}
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
-}
-
-func (mm *MonitorManager) syncTidbMonitorSecret(monitor *v1alpha1.TidbMonitor) (*corev1.Secret, error) {
-	if monitor.Spec.Grafana == nil {
-		return nil, nil
-	}
-	newSt := getMonitorSecret(monitor)
-	return mm.typedControl.CreateOrUpdateSecret(monitor, newSt)
 }
 
 func (mm *MonitorManager) syncTidbMonitorConfig(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*corev1.ConfigMap, error) {

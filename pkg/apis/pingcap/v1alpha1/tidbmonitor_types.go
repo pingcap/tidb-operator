@@ -121,8 +121,18 @@ type GrafanaSpec struct {
 
 	LogLevel string      `json:"logLevel,omitempty"`
 	Service  ServiceSpec `json:"service,omitempty"`
-	Username string      `json:"username,omitempty"`
-	Password string      `json:"password,omitempty"`
+
+	// +optional
+	// if passwordSecret is omitted, Grafana will use `admin` as its password by default.
+	PasswordSecret *corev1.SecretKeySelector `json:"passwordSecret,omitempty"`
+
+	Username string `json:"username,omitempty"`
+
+	// +optional
+	// Deprecated
+	// +k8s:openapi-gen=false
+	Password string `json:"password,omitempty"`
+
 	// +optional
 	Envs map[string]string `json:"envs,omitempty"`
 

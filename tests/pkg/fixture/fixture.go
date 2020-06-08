@@ -270,8 +270,6 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 				ImagePullPolicy: &imagePullPolicy,
 				Resources:       corev1.ResourceRequirements{},
 			},
-			Username: "admin",
-			Password: "admin",
 			Service: v1alpha1.ServiceSpec{
 				Type:        corev1.ServiceTypeClusterIP,
 				Annotations: map[string]string{},

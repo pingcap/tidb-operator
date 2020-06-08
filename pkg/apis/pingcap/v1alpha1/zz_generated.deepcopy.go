@@ -1358,6 +1358,11 @@ func (in *GrafanaSpec) DeepCopyInto(out *GrafanaSpec) {
 	*out = *in
 	in.MonitorContainer.DeepCopyInto(&out.MonitorContainer)
 	in.Service.DeepCopyInto(&out.Service)
+	if in.PasswordSecret != nil {
+		in, out := &in.PasswordSecret, &out.PasswordSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Envs != nil {
 		in, out := &in.Envs, &out.Envs
 		*out = make(map[string]string, len(*in))
