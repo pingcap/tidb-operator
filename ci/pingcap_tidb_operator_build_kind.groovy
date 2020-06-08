@@ -63,6 +63,8 @@ spec:
     # legacy docker path for cr.io/k8s-testimages/kubekins-e2e
     - name: docker-graph
       mountPath: /docker-graph
+	- name: etcd-data-dir
+	  mountPath: /mnt/tmpfs/etcd
   volumes:
   - name: modules
     hostPath:
@@ -76,6 +78,9 @@ spec:
     emptyDir: {}
   - name: docker-graph
     emptyDir: {}
+  - name: etcd-data-dir
+    emptyDir:
+      medium: Memory
   tolerations:
   - effect: NoSchedule
     key: tidb-operator
@@ -301,7 +306,7 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		}
 		}
 
-		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
+		def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
 		def builds = [:]
 		// We must not enable operator killer for Kubernetes before 1.15 in
 		// which webhook configuration does not support objectSelector. Webhook

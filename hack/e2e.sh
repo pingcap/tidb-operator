@@ -64,7 +64,7 @@ Environments:
     GCR_IO_MIRROR         configure mirror for gcr.io
     QUAY_IO_MIRROR        configure mirror for quay.io
     KIND_DATA_HOSTPATH    (kind only) the host path of data directory for kind cluster, defaults: none
-    ETCD_STORAGE_TYPE     (kind only) the etcd storage type [disk, memory], default: disk
+    KIND_ETCD_DATADIR     (kind only) the host path of etcd data directory for kind cluster, defaults: none
     GCP_PROJECT           (gke only) the GCP project to run in
     GCP_CREDENTIALS       (gke only) the GCP service account to use
     GCP_REGION            (gke only) the GCP region, if specified a regional cluster is creaetd
@@ -188,7 +188,7 @@ SKIP_TEST=${SKIP_TEST:-}
 SKIP_DUMP=${SKIP_DUMP:-}
 REUSE_CLUSTER=${REUSE_CLUSTER:-}
 KIND_DATA_HOSTPATH=${KIND_DATA_HOSTPATH:-none}
-ETCD_STORAGE_TYPE=${ETCD_STORAGE_TYPE:-disk}
+KIND_ETCD_DATADIR=${KIND_ETCD_DATADIR:-none}
 GCP_PROJECT=${GCP_PROJECT:-}
 GCP_CREDENTIALS=${GCP_CREDENTIALS:-}
 GCP_REGION=${GCP_REGION:-}
@@ -221,7 +221,7 @@ echo "SKIP_DOWN: $SKIP_DOWN"
 echo "SKIP_TEST: $SKIP_TEST"
 echo "SKIP_DUMP: $SKIP_DUMP"
 echo "KIND_DATA_HOSTPATH: $KIND_DATA_HOSTPATH"
-echo "ETCD_STORAGE_TYPE: $ETCD_STORAGE_TYPE"
+echo "KIND_ETCD_DATADIR: $KIND_ETCD_DATADIR"
 echo "GCP_PROJECT: $GCP_PROJECT"
 echo "GCP_CREDENTIALS: $GCP_CREDENTIALS"
 echo "GCP_REGION: $GCP_REGION"
@@ -369,9 +369,38 @@ EOF
 nodes:
 - role: control-plane
 EOF
-    # check $ETCD_STORAGE_TYPE in [disk, memory]
-    if [[ "$ETCD_STORAGE_TYPE" == "disk" || $ETCD_STORAGE_TYPE == "memory" ]]; then
+    # check $KIND_ETCD_DATADIR
+    if [[ "$KIND_ETCD_DATADIR" != "none" ]]; then
         # check $KIND_DATA_HOSTPATH
+        if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
+            if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
+                echo "error: '$KIND_DATA_HOSTPATH' is not a directory"
+                exit 1
+            fi
+            if [ ! -d "$KIND_ETCD_DATADIR" ]; then
+                echo "error: '$KIND_ETCD_DATADIR' is not a directory"
+                exit 1
+            fi
+            local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
+            test -d $hostWorkerPath || mkdir $hostWorkerPath
+            # set custom KIND_DATA_HOSTPATH and KIND_ETCD_DATADIR
+            cat <<EOF >> $tmpfile
+  extraMounts:
+  - containerPath: /mnt/disks/
+    hostPath: "$hostWorkerPath"
+    propagation: HostToContainer
+  - containerPath: /var/lib/etcd
+    hostPath: "$KIND_ETCD_DATADIR"
+EOF
+        else
+            # set custom KIND_ETCD_DATADIR
+            cat <<EOF >> $tmpfile
+  extraMounts:
+  - containerPath: /var/lib/etcd
+    hostPath: "$KIND_ETCD_DATADIR"
+EOF
+        fi
+    else 
         if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
             if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
                 echo "error: '$KIND_DATA_HOSTPATH' is not a directory"
@@ -379,42 +408,13 @@ EOF
             fi
             local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
             test -d $hostWorkerPath || mkdir $hostWorkerPath
-            # set custom KIND_DATA_HOSTPATH and ETCD_STORAGE_TYPE in disk
-            if [[ "$ETCD_STORAGE_TYPE" == "disk" ]]; then
-                cat <<EOF >> $tmpfile
+            # set custom KIND_DATA_HOSTPATH
+            cat <<EOF >> $tmpfile
   extraMounts:
   - containerPath: /mnt/disks/
     hostPath: "$hostWorkerPath"
     propagation: HostToContainer
 EOF
-            # set custom KIND_DATA_HOSTPATH and ETCD_STORAGE_TYPE in memory
-            elif [[ "$ETCD_STORAGE_TYPE" == "memory" ]]; then
-                mkdir /tmp/etcd
-                mount -t tmpfs  /tmp/etcd
-                cat <<EOF >> $tmpfile
-  extraMounts:
-  - containerPath: /mnt/disks/
-    hostPath: "$hostWorkerPath"
-    propagation: HostToContainer
-  - containerPath: /var/lib/etcd
-    hostPath: /tmp/etcd
-EOF
-            fi
-        else
-            # set ETCD_STORAGE_TYPE in memory
-            if [[ "$ETCD_STORAGE_TYPE" == "memory" ]]; then
-                mkdir /tmp/etcd
-                mount -t tmpfs  /tmp/etcd
-                cat <<EOF >> $tmpfile
-  extraMounts:
-  - containerPath: /var/lib/etcd
-    hostPath: /tmp/etcd
-EOF
-            fi
-        fi
-    else 
-        echo "error: '$ETCD_STORAGE_TYPE' is incorrect, must be [disk, memory]"
-        exit 1
     fi
     # workers
     for ((i = 1; i <= $KUBE_WORKERS; i++)) {
