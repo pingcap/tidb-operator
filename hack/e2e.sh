@@ -29,12 +29,10 @@ source "${ROOT}/hack/lib.sh"
 # check bash version
 BASH_MAJOR_VERSION=$(echo "$BASH_VERSION" | cut -d '.' -f 1)
 # we need bash version >= 4
-if [ $BASH_MAJOR_VERSION -lt 4 ]
-then
-  echo "error: e2e.sh could not work with bash version earlier than 4 for now, please upgrade your bash"
-  exit 1
+if [ $BASH_MAJOR_VERSION -lt 4 ]; then
+    echo "error: e2e.sh could not work with bash version earlier than 4 for now, please upgrade your bash"
+    exit 1
 fi
-
 
 function usage() {
     cat <<'EOF'
@@ -163,7 +161,7 @@ EOF
 
 while getopts "h?" opt; do
     case "$opt" in
-    h|\?)
+    h | \?)
         usage
         exit 0
         ;;
@@ -270,9 +268,9 @@ function e2e::__restart_docker() {
     local MAX_WAIT=5
     while true; do
         # docker ps -q should only work if the daemon is ready
-        docker ps -q > /dev/null 2>&1 && break
+        docker ps -q >/dev/null 2>&1 && break
         if [[ ${WAIT_N} -lt ${MAX_WAIT} ]]; then
-            WAIT_N=$((WAIT_N+1))
+            WAIT_N=$((WAIT_N + 1))
             echo "info; Waiting for docker to be ready, sleeping for ${WAIT_N} seconds."
             sleep ${WAIT_N}
         else
@@ -285,7 +283,7 @@ function e2e::__restart_docker() {
 
 function e2e::__configure_docker_mirror_for_dind() {
     echo "info: configure docker.io mirror '$DOCKER_IO_MIRROR' for DinD"
-cat <<EOF > /etc/docker/daemon.json.tmp
+    cat <<EOF >/etc/docker/daemon.json.tmp
 {
     "registry-mirrors": ["$DOCKER_IO_MIRROR"]
 }
@@ -301,7 +299,7 @@ EOF
 
 function e2e::create_kindconfig() {
     local tmpfile=${1}
-    cat <<EOF > $tmpfile
+    cat <<EOF >$tmpfile
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 kubeadmConfigPatches:
@@ -341,31 +339,31 @@ kubeadmConfigPatches:
     v: "4"
 EOF
     if [ -n "$DOCKER_IO_MIRROR" -o -n "$GCR_IO_MIRROR" -o -n "$QUAY_IO_MIRROR" ]; then
-cat <<EOF >> $tmpfile
+        cat <<EOF >>$tmpfile
 containerdConfigPatches:
 - |-
 EOF
         if [ -n "$DOCKER_IO_MIRROR" ]; then
-cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
     endpoint = ["$DOCKER_IO_MIRROR"]
 EOF
         fi
         if [ -n "$GCR_IO_MIRROR" ]; then
-cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
     endpoint = ["$GCR_IO_MIRROR"]
 EOF
         fi
         if [ -n "$QUAY_IO_MIRROR" ]; then
-cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
     endpoint = ["$QUAY_IO_MIRROR"]
 EOF
         fi
     fi
     # control-plane
-    cat <<EOF >> $tmpfile
+    cat <<EOF >>$tmpfile
 nodes:
 - role: control-plane
 EOF
@@ -384,7 +382,7 @@ EOF
             local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
             test -d $hostWorkerPath || mkdir $hostWorkerPath
             # set custom KIND_DATA_HOSTPATH and KIND_ETCD_DATADIR
-            cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   extraMounts:
   - containerPath: /mnt/disks/
     hostPath: "$hostWorkerPath"
@@ -394,13 +392,13 @@ EOF
 EOF
         else
             # set custom KIND_ETCD_DATADIR
-            cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   extraMounts:
   - containerPath: /var/lib/etcd
     hostPath: "$KIND_ETCD_DATADIR"
 EOF
         fi
-    else 
+    else
         if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
             if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
                 echo "error: '$KIND_DATA_HOSTPATH' is not a directory"
@@ -409,16 +407,17 @@ EOF
             local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
             test -d $hostWorkerPath || mkdir $hostWorkerPath
             # set custom KIND_DATA_HOSTPATH
-            cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   extraMounts:
   - containerPath: /mnt/disks/
     hostPath: "$hostWorkerPath"
     propagation: HostToContainer
 EOF
+        fi
     fi
     # workers
     for ((i = 1; i <= $KUBE_WORKERS; i++)) {
-        cat <<EOF >> $tmpfile
+        cat <<EOF >>$tmpfile
 - role: worker
 EOF
         if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
@@ -428,7 +427,7 @@ EOF
             fi
             local hostWorkerPath="${KIND_DATA_HOSTPATH}/worker${i}"
             test -d $hostWorkerPath || mkdir $hostWorkerPath
-            cat <<EOF >> $tmpfile
+            cat <<EOF >>$tmpfile
   extraMounts:
   - containerPath: /mnt/disks/
     hostPath: "$hostWorkerPath"
