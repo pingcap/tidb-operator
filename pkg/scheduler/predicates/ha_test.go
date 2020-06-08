@@ -427,15 +427,16 @@ func TestHARealAcquireLockFn(t *testing.T) {
 func TestHAFilter(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name          string
-		podFn         func(string, string, int32) *apiv1.Pod
-		nodesFn       func() []apiv1.Node
-		podListFn     func(string, string, string) (*apiv1.PodList, error)
-		podGetFn      func(string, string) (*apiv1.Pod, error)
-		pvcGetFn      func(string, string) (*apiv1.PersistentVolumeClaim, error)
-		tcGetFn       func(string, string) (*v1alpha1.TidbCluster, error)
-		acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
-		expectFn      func([]apiv1.Node, error)
+		name               string
+		podFn              func(string, string, int32) *apiv1.Pod
+		nodesFn            func() []apiv1.Node
+		podListFn          func(string, string, string) (*apiv1.PodList, error)
+		podGetFn           func(string, string) (*apiv1.Pod, error)
+		pvcGetFn           func(string, string) (*apiv1.PersistentVolumeClaim, error)
+		tcGetFn            func(string, string) (*v1alpha1.TidbCluster, error)
+		scheduledNodeGetFn func(string) (*apiv1.Node, error)
+		acquireLockFn      func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
+		expectFn           func([]apiv1.Node, error)
 	}
 
 	topologyKey := "zone"
@@ -448,10 +449,11 @@ func TestHAFilter(t *testing.T) {
 		nodes := test.nodesFn()
 
 		ha := ha{
-			podListFn:     test.podListFn,
-			pvcGetFn:      test.pvcGetFn,
-			tcGetFn:       test.tcGetFn,
-			acquireLockFn: test.acquireLockFn,
+			podListFn:          test.podListFn,
+			pvcGetFn:           test.pvcGetFn,
+			tcGetFn:            test.tcGetFn,
+			scheduledNodeGetFn: test.scheduledNodeGetFn,
+			acquireLockFn:      test.acquireLockFn,
 		}
 		n, err := ha.Filter(instanceName, pod, nodes)
 		test.expectFn(n, err)
@@ -662,9 +664,10 @@ func TestHAFilter(t *testing.T) {
 					Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimPending},
 				}, nil
 			},
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {1}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {1}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				// g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 pd pods), max pods per node: 1"))
@@ -672,12 +675,13 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "two topologies, one pod scheduled on the topology, return one topology",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeTwoNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			name:               "two topologies, one pod scheduled on the topology, return one topology",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeTwoNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -686,12 +690,13 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "two topologies, two pods scheduled on these two topologies, return zero topology",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeTwoNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			name:               "two topologies, two pods scheduled on these two topologies, return zero topology",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeTwoNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				// g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per node: 1"))
@@ -699,12 +704,13 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "three topologies, zero pod scheduled, return all the three topologies",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			name:               "three topologies, zero pod scheduled, return all the three topologies",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
@@ -713,12 +719,13 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "three topologies, one pod scheduled, return two topologies",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			name:               "three topologies, one pod scheduled, return two topologies",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -727,12 +734,13 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "three topologies, two pods scheduled, return one topology",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			name:               "three topologies, two pods scheduled, return one topology",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -741,17 +749,56 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
-			name:          "three topologies, one pod not scheduled on these three topologies, return all the three nodes",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-4": {4}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
+			name:               "three topologies, one pod not scheduled on these three topologies, return all the three nodes",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-4": {4}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
 				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
+			},
+		},
+		{
+			name:      "three topologies, three pods scheduled on these two topologies, replicas is 5, return one topology",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeSkipNodes(map[string]string{"kube-node-1": "zone1", "kube-node-5": "zone2"}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1, 2}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.PD.Replicas = 5
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeScheduledNode("kube-node-2", "zone2"),
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1"}))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
+			},
+		},
+		{
+			name:      "three topologies, two pods scheduled on these two topologies, replicas is 5, return two topologies",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeSkipNodes(map[string]string{"kube-node-1": "zone1", "kube-node-5": "zone2"}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.PD.Replicas = 5
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeScheduledNode("kube-node-2", "zone2"),
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-5"}))
 			},
 		},
 		{
@@ -764,7 +811,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
@@ -783,6 +831,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -800,7 +849,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 4
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(0))
@@ -816,7 +866,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 6
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -833,7 +884,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 6
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(4))
@@ -850,7 +902,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 6
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -867,7 +920,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 6
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -884,7 +938,8 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 5
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				//g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 tikv pods), kube-node-2 (1 tikv pods), max pods per node: 1"))
@@ -902,6 +957,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
@@ -920,6 +976,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -937,6 +994,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
@@ -954,6 +1012,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(4))
@@ -971,6 +1030,7 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
@@ -1005,6 +1065,7 @@ func newHATiKVPod(instanceName, clusterName string, ordinal int32) *apiv1.Pod {
 		},
 	}
 }
+
 func podListFn(nodePodMap map[string][]int32) func(string, string, string) (*apiv1.PodList, error) {
 	return func(ns, clusterName, component string) (*apiv1.PodList, error) {
 		podList := &apiv1.PodList{
