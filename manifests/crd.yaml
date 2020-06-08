@@ -940,6 +940,10 @@ spec:
                       type: string
                     loadBalancerIP:
                       type: string
+                    loadBalancerSourceRanges:
+                      items:
+                        type: string
+                      type: array
                     portName:
                       type: string
                     type:
