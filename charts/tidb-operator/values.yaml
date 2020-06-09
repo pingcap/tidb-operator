@@ -190,6 +190,9 @@ admissionWebhook:
   jobImage: "bitnami/kubectl:latest"
   ## validation webhook would check the given request for the specific resource and operation
   validation:
+    ## statefulsets hook would check requests for updating tidbcluster's statefulsets
+    ## If enabled it, the statefulsets of tidbcluseter would update in partition by tidbcluster's annotation
+    statefulSets: false
     ## pods hook would check requests for creating and deleting tidbcluster's pods
     ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
     pods: true
