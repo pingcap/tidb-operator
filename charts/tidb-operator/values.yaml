@@ -35,7 +35,6 @@ features: []
 # - AdvancedStatefulSet=false
 # - StableScheduling=true
 # - AutoScaling=false
-# - DynamicConfiguration=true
 
 controllerManager:
   # With rbac.create=false, the user is responsible for creating this account

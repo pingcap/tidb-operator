@@ -1024,6 +1024,18 @@ Optional: Defaults to UTC</p>
 Deprecated</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableDynamicConfiguration</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -14962,6 +14974,18 @@ Optional: Defaults to UTC</p>
 <td>
 <p>Services list non-headless services type used in TidbCluster
 Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableDynamicConfiguration</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
 </td>
 </tr>
 </tbody>
