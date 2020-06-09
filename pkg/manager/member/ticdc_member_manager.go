@@ -107,8 +107,10 @@ func (tcmm *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error 
 	stsNotExist := errors.IsNotFound(err)
 	oldSts := oldStsTmp.DeepCopy()
 
+	// failed to sync ticdc status will not affect subsequent logic, just print the errors.
 	if err := tcmm.syncTiCDCStatus(tc, oldSts); err != nil {
-		return err
+		klog.Errorf("failed to sync TidbCluster: [%s/%s]'s ticdc status, error: %v",
+			ns, tcName, err)
 	}
 
 	newSts, err := getNewTiCDCStatefulSet(tc)
