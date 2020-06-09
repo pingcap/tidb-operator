@@ -45,7 +45,6 @@ const (
 
 	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
 	AutoScaling string = "AutoScaling"
-
 )
 
 type FeatureGate interface {
