@@ -24,6 +24,11 @@ import (
 const (
 	// The following labels are recommended by kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 
+	// ResourceNameLabelKey is the unique identifier of the resource, its value is the same as metadata.name
+	ResourceNameLabelKey string = "kubernetes.io/name"
+	// UsedByLabelKey indicate where it is used. for example, tidb has two services,
+	// one for internal component access and the other for end-user
+	UsedByLabelKey string = "app.kubernetes.io/used-by"
 	// ManagedByLabelKey is Kubernetes recommended label key, it represents the tool being used to manage the operation of an application
 	// For resources managed by TiDB Operator, its value is always tidb-operator
 	ManagedByLabelKey string = "app.kubernetes.io/managed-by"
@@ -223,6 +228,30 @@ func (l Label) Instance(name string) Label {
 	return l
 }
 
+// UserBy adds use-by kv pair to label
+func (l Label) UsedBy(name string) Label {
+	l[UsedByLabelKey] = name
+	return l
+}
+
+// UsedByInternal adds used-by=internal label
+func (l Label) UsedByInternal() Label {
+	l[UsedByLabelKey] = "internal"
+	return l
+}
+
+// UsedByEndUser adds use-by=end-user label
+func (l Label) UsedByEndUser() Label {
+	l[UsedByLabelKey] = "end-user"
+	return l
+}
+
+// ResourceName adds resource name kv pair to label
+func (l Label) ResourceName(name string) Label {
+	l[ResourceNameLabelKey] = name
+	return l
+}
+
 // Namespace adds namespace kv pair to label
 func (l Label) Namespace(name string) Label {
 	l[NamespaceLabelKey] = name
@@ -367,6 +396,15 @@ func (l Label) LabelSelector() *metav1.LabelSelector {
 // Labels converts label to map[string]string
 func (l Label) Labels() map[string]string {
 	return l
+}
+
+// Copy copy the value of label to avoid pointer copy
+func (l Label) Copy() Label {
+	copyLabel := make(Label)
+	for k, v := range l {
+		copyLabel[k] = v
+	}
+	return copyLabel
 }
 
 // String converts label to a string

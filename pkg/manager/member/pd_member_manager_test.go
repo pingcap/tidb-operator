@@ -847,6 +847,8 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "internal",
+						"kubernetes.io/name":           "foo-pd-peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1557,6 +1559,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
+						"kubernetes.io/name":           "foo-pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1617,6 +1621,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
+						"kubernetes.io/name":           "foo-pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1678,6 +1684,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
+						"kubernetes.io/name":           "foo-pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1740,6 +1748,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
+						"kubernetes.io/name":           "foo-pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1804,6 +1814,8 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
+						"kubernetes.io/name":           "foo-pd",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

@@ -436,8 +436,9 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 	ns := tc.Namespace
 	tcName := tc.Name
 	instanceName := tc.GetInstanceName()
-	tidbLabels := label.New().Instance(instanceName).TiDB().Labels()
+	tidbSelector := label.New().Instance(instanceName).TiDB()
 	svcName := controller.TiDBMemberName(tcName)
+	tidbLabels := tidbSelector.Copy().UsedByEndUser().ResourceName(svcName).Labels()
 	portName := "mysql-client"
 	if svcSpec.PortName != nil {
 		portName = *svcSpec.PortName
@@ -470,7 +471,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Type:     svcSpec.Type,
 			Ports:    ports,
-			Selector: tidbLabels,
+			Selector: tidbSelector.Labels(),
 		},
 	}
 	if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
@@ -495,7 +496,8 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 	tcName := tc.Name
 	instanceName := tc.GetInstanceName()
 	svcName := controller.TiDBPeerMemberName(tcName)
-	tidbLabel := label.New().Instance(instanceName).TiDB().Labels()
+	tidbSelector := label.New().Instance(instanceName).TiDB()
+	tidbLabel := tidbSelector.Copy().UsedByInternal().ResourceName(svcName).Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -514,7 +516,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector:                 tidbLabel,
+			Selector:                 tidbSelector.Labels(),
 			PublishNotReadyAddresses: true,
 		},
 	}

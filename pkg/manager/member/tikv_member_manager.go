@@ -275,13 +275,19 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 	tcName := tc.Name
 	instanceName := tc.GetInstanceName()
 	svcName := svcConfig.MemberName(tcName)
-	svcLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Labels()
+	svcSelector := svcConfig.SvcLabel(label.New().Instance(instanceName))
+	svcLabel := svcSelector.Copy().ResourceName("svcName")
+	if svcConfig.Headless {
+		svcLabel = svcLabel.UsedByInternal()
+	} else {
+		svcLabel = svcLabel.UsedByEndUser()
+	}
 
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
-			Labels:          svcLabel,
+			Labels:          svcLabel.Labels(),
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -293,7 +299,7 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector:                 svcLabel,
+			Selector:                 svcSelector.Labels(),
 			PublishNotReadyAddresses: true,
 		},
 	}

@@ -1503,6 +1503,8 @@ func TestGetNewTiFlashServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tikv",
+						"app.kubernetes.io/used-by":    "internal",
+						"kubernetes.io/name":           "svcName",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
