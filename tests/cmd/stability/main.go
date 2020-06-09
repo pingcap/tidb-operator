@@ -236,6 +236,7 @@ func run() {
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("clusters truncate sst file and checked failover")
+		slack.NotifyAndCompletedf("stability test: clusters truncate sst file and checked failover")
 
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)

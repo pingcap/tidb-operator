@@ -100,10 +100,12 @@ func NewOperatorActions(cli versioned.Interface,
 	fw portforward.PortForward, f *framework.Framework) OperatorActions {
 
 	var tcStsGetter typedappsv1.StatefulSetsGetter
+	astsEnable := true
 	if operatorConfig != nil && operatorConfig.Enabled(features.AdvancedStatefulSet) {
 		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
 	} else {
 		tcStsGetter = kubeCli.AppsV1()
+		astsEnable = false
 	}
 
 	oa := &operatorActions{
@@ -118,6 +120,7 @@ func NewOperatorActions(cli versioned.Interface,
 		pollInterval: pollInterval,
 		cfg:          cfg,
 		fw:           fw,
+		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, astsEnable),
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
@@ -256,6 +259,7 @@ type operatorActions struct {
 	lock               sync.Mutex
 	eventWorkerRunning bool
 	fw                 portforward.PortForward
+	crdUtil            *CrdTestUtil
 }
 
 type clusterEvent struct {
@@ -948,6 +952,10 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
 	klog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
+	if info.Clustrer != nil {
+		oa.crdUtil.WaitTidbClusterReadyOrDie(info.Clustrer, 30*time.Minute)
+		return nil
+	}
 
 	ns := info.Namespace
 	tcName := info.ClusterName

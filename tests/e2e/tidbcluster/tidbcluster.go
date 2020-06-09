@@ -144,7 +144,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name:    "basic-v4",
 			},
 		}
-		
+
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
