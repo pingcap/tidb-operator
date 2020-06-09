@@ -8110,6 +8110,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"enableDynamicConfiguration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"pd", "tidb", "tikv"},
 			},
