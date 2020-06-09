@@ -211,6 +211,10 @@ type TidbClusterSpec struct {
 	// Deprecated
 	// +k8s:openapi-gen=false
 	Services []Service `json:"services,omitempty"`
+
+	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
+	// +optional
+	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
