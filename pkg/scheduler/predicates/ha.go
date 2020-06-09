@@ -36,16 +36,17 @@ import (
 )
 
 type ha struct {
-	lock          sync.Mutex
-	kubeCli       kubernetes.Interface
-	cli           versioned.Interface
-	podListFn     func(ns, instanceName, component string) (*apiv1.PodList, error)
-	podGetFn      func(ns, podName string) (*apiv1.Pod, error)
-	pvcGetFn      func(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error)
-	tcGetFn       func(ns, tcName string) (*v1alpha1.TidbCluster, error)
-	pvcListFn     func(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error)
-	updatePVCFn   func(*apiv1.PersistentVolumeClaim) error
-	acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
+	lock               sync.Mutex
+	kubeCli            kubernetes.Interface
+	cli                versioned.Interface
+	podListFn          func(ns, instanceName, component string) (*apiv1.PodList, error)
+	podGetFn           func(ns, podName string) (*apiv1.Pod, error)
+	pvcGetFn           func(ns, pvcName string) (*apiv1.PersistentVolumeClaim, error)
+	tcGetFn            func(ns, tcName string) (*v1alpha1.TidbCluster, error)
+	scheduledNodeGetFn func(nodeName string) (*apiv1.Node, error)
+	pvcListFn          func(ns, instanceName, component string) (*apiv1.PersistentVolumeClaimList, error)
+	updatePVCFn        func(*apiv1.PersistentVolumeClaim) error
+	acquireLockFn      func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
 }
 
 // NewHA returns a Predicate
@@ -58,6 +59,7 @@ func NewHA(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	h.podGetFn = h.realPodGetFn
 	h.pvcGetFn = h.realPVCGetFn
 	h.tcGetFn = h.realTCGetFn
+	h.scheduledNodeGetFn = h.realScheduledNodeGetFn
 	h.pvcListFn = h.realPVCListFn
 	h.updatePVCFn = h.realUpdatePVCFn
 	h.acquireLockFn = h.realAcquireLock
@@ -132,13 +134,34 @@ func (h *ha) Filter(instanceName string, pod *apiv1.Pod, nodes []apiv1.Node) ([]
 	topologyMap := make(map[string]sets.String)
 
 	for _, node := range nodes {
+		if _, ok := node.Labels[topologyKey]; !ok {
+			continue
+		}
 		topologyMap[node.Labels[topologyKey]] = make(sets.String)
 	}
+
+	scheduledNodes := make([]*apiv1.Node, 0)
+	for _, pod := range podList.Items {
+		nodeName := pod.Spec.NodeName
+		if nodeName == "" {
+			continue
+		}
+		scheduledNode, err := h.scheduledNodeGetFn(nodeName)
+		if err != nil {
+			klog.Errorf("failed to get node by name, nodeName: %s, error: %v", nodeName, err)
+			return nil, err
+		}
+		if _, ok := scheduledNode.Labels[topologyKey]; !ok {
+			continue
+		}
+		scheduledNodes = append(scheduledNodes, scheduledNode)
+	}
+
 	for _, pod := range podList.Items {
 		pName := pod.GetName()
 		nodeName := pod.Spec.NodeName
 
-		topology := getTopologyFromNode(topologyKey, nodeName, nodes)
+		topology := getTopologyFromNode(topologyKey, nodeName, nodes, scheduledNodes)
 		if topology != "" {
 			allTopologies.Insert(topology)
 		}
@@ -357,6 +380,10 @@ func (h *ha) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
 	return h.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 }
 
+func (h *ha) realScheduledNodeGetFn(nodeName string) (*apiv1.Node, error) {
+	return h.kubeCli.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+}
+
 func (h *ha) setCurrentPodScheduling(pvc *apiv1.PersistentVolumeClaim) error {
 	ns := pvc.GetNamespace()
 	pvcName := pvc.GetName()
@@ -405,16 +432,19 @@ func getPodNameFromPVC(pvc *apiv1.PersistentVolumeClaim) string {
 	return strings.TrimPrefix(pvc.Name, fmt.Sprintf("%s-", pvc.Labels[label.ComponentLabelKey]))
 }
 
-func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node) string {
-	var topology string
+func getTopologyFromNode(topologyKey string, nodeName string, nodes []apiv1.Node, scheduledNode []*apiv1.Node) string {
 	for _, node := range nodes {
 		if _, ok := node.Labels[topologyKey]; !ok {
 			continue
 		}
 		if node.Name == nodeName {
-			topology = node.Labels[topologyKey]
-			break
+			return node.Labels[topologyKey]
 		}
 	}
-	return topology
+	for _, node := range scheduledNode {
+		if node.Name == nodeName {
+			return node.Labels[topologyKey]
+		}
+	}
+	return ""
 }
