@@ -88,11 +88,11 @@ func EnsureDirectoryExist(dirName string) error {
 func OpenDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("open dsn %s failed, err: %v", dsn, err)
+		return nil, fmt.Errorf("open datasource failed, err: %v", err)
 	}
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("cannot connect to mysql: %s, err: %v", dsn, err)
+		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
 	}
 	return db, nil
 }
