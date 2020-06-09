@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	_ "net/http/pprof"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -955,12 +954,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 func setPartitionAnnotation(namespace, tcName, component string, ordinal int) error {
 	// add annotation to pause statefulset upgrade process
-	cmd := fmt.Sprintf("kubectl annotate tc %s -n %s tidb.pingcap.com/%s-partition=%d --overwrite",
-		tcName, namespace, component, ordinal)
-	klog.Infof("%s", cmd)
-	output, err := exec.Command("/bin/sh", "-c", cmd).CombinedOutput()
+	output, err := framework.RunKubectl("annotate", "tc", tcName, "-n", namespace, fmt.Sprintf("tidb.pingcap.com/%s-partition=%d", component, ordinal), "--overwrite")
 	if err != nil {
-		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, string(output))
+		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, output)
 	}
 	return nil
 }
