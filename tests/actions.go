@@ -953,8 +953,7 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
 	klog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
 	if info.Clustrer != nil {
-		oa.crdUtil.WaitTidbClusterReadyOrDie(info.Clustrer, 30*time.Minute)
-		return nil
+		return oa.crdUtil.WaitForTidbClusterReady(info.Clustrer, 30*time.Minute, 5*time.Second)
 	}
 
 	ns := info.Namespace
@@ -1091,20 +1090,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	oa.EmitEvent(info, fmt.Sprintf("BeginInsertData: concurrency: %d", info.BlockWriteConfig.Concurrency))
 
 	pod := oa.getBlockWriterPod(info, "sbtest")
-	klog.Infof("pod[%s/%s] existed, going to delete it", pod.Namespace, pod.Name)
-	err := wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-		_, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Get(pod.Name, metav1.GetOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			return true, nil
-		}
-		oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-		return false, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	pod, err = oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
+	pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil {
 		klog.Error(err)
 		return err

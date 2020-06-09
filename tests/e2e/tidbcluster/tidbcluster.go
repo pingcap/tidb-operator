@@ -148,42 +148,52 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
-				cluster := newTidbCluster(ns, localCfg.Name, localCfg.Version)
-				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
+				tc := newTidbCluster(ns, localCfg.Name, localCfg.Version)
+				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// support reclaim pv when scale in tikv or pd component
 
-				crdUtil.CreateTidbClusterOrDie(cluster)
-				err := oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err)
-				crdUtil.CheckDisasterToleranceOrDie(cluster)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				err = crdUtil.CheckDisasterTolerance(tc)
+				framework.ExpectNoError(err)
 
 				// scale
-				tc := crdUtil.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
 				tc.Spec.TiDB.Replicas = 3
 				tc.Spec.TiKV.Replicas = 5
 				tc.Spec.PD.Replicas = 5
-				crdUtil.UpdateTidbClusterOrDie(tc)
-				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 				framework.ExpectNoError(err)
-				crdUtil.CheckDisasterToleranceOrDie(cluster)
+				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				err = crdUtil.CheckDisasterTolerance(tc)
+				framework.ExpectNoError(err)
 
-				tc = crdUtil.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
 				tc.Spec.TiDB.Replicas = 2
 				tc.Spec.TiKV.Replicas = 4
 				tc.Spec.PD.Replicas = 3
-				crdUtil.UpdateTidbClusterOrDie(tc)
-				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 				framework.ExpectNoError(err)
-				crdUtil.CheckDisasterToleranceOrDie(cluster)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				err = crdUtil.CheckDisasterTolerance(tc)
+				framework.ExpectNoError(err)
 
 				// configuration change
-				tc = crdUtil.GetTidbClusterOrDie(cluster.Name, cluster.Namespace)
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
 				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
 				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
 				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
-				crdUtil.UpdateTidbClusterOrDie(tc)
-				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				framework.ExpectNoError(err)
+				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
 			})
 		}

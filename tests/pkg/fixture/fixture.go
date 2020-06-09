@@ -151,7 +151,6 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
 				},
 			},
-			TiFlash: nil,
 		},
 	}
 }

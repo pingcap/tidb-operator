@@ -14,7 +14,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -130,21 +129,21 @@ func run() {
 
 	crdUil := tests.NewCrdTestUtil(cli, kubeCli, asCli, false)
 	klog.Infof(fmt.Sprintf("allclusters: %v", allClusters))
-	for _, cluster := range allClusters {
-		crdUil.DeleteTidbClusterOrDie(cluster.Clustrer)
-		oa.CleanTidbClusterOrDie(cluster)
-	}
+	crdUil.CleanResourcesOrDie("tc", "ns1")
+	crdUil.CleanResourcesOrDie("tc", "ns2")
 	crdUil.CleanResourcesOrDie("pvc", "ns1")
 	crdUil.CleanResourcesOrDie("pvc", "ns2")
 	crdUil.CleanResourcesOrDie("secret", "ns1")
 	crdUil.CleanResourcesOrDie("secret", "ns2")
+	crdUil.CleanResourcesOrDie("pod", "ns1")
+	crdUil.CleanResourcesOrDie("pod", "ns2")
 
 	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, backupTargets []tests.BackupTarget, upgradeVersion string) {
 		// check env
 		fta.CheckAndRecoverEnvOrDie()
 		oa.CheckK8sAvailableOrDie(nil, nil)
 
-		// deploy and clean the one-pd-cluster
+		//deploy and clean the one-pd-cluster
 		onePDTC := onePDClsuter.Clustrer
 		crdUil.CreateTidbClusterOrDie(onePDTC)
 		crdUil.WaitTidbClusterReadyOrDie(onePDTC, 60*time.Minute)
@@ -170,11 +169,9 @@ func run() {
 		// upgrade
 		namespace := os.Getenv("NAMESPACE")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
-		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
 			cluster.Clustrer.Spec.Version = upgradeVersion
 			crdUil.UpdateTidbClusterOrDie(cluster.Clustrer)
-			oa.CheckUpgradeOrDie(ctx, cluster)
 			crdUil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
 		klog.Infof("clusters upgraded in checked")
@@ -187,10 +184,8 @@ func run() {
 			tokenLimit := uint(cfg.TiDBTokenLimit)
 			cluster.Clustrer.Spec.TiDB.Config.TokenLimit = &tokenLimit
 			crdUil.UpdateTidbClusterOrDie(cluster.Clustrer)
-			oa.CheckUpgradeOrDie(ctx, cluster)
 			crdUil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
-		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 		klog.Infof("clusters configurations updated in checked")
 
@@ -199,6 +194,7 @@ func run() {
 		}
 		klog.Infof("clusters DisasterTolerance checked")
 
+		// TODO: Use Backup and Restore CRD instead
 		//backup and restore
 		//for i := range backupTargets {
 		//	tc := backupTargets[i].TargetCluster.Clustrer
@@ -241,6 +237,7 @@ func run() {
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
+		slack.NotifyAndCompletedf("stability test: DeletePDDataThenCheckFailoverOrDie success")
 
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
@@ -322,7 +319,7 @@ func run() {
 				fta.StartKubeAPIServerOrDie(vNode.IP)
 			}
 		}
-		klog.Infof("clusters stop all kube-apiserver and restart")
+		//klog.Infof("clusters stop all kube-apiserver and restart")
 		time.Sleep(time.Minute)
 	}
 

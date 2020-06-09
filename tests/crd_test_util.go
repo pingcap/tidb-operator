@@ -96,14 +96,14 @@ func (ctu *CrdTestUtil) UpdateTidbClusterOrDie(tc *v1alpha1.TidbCluster) {
 }
 
 func (ctu *CrdTestUtil) CheckDisasterToleranceOrDie(tc *v1alpha1.TidbCluster) {
-	err := checkDisasterTolerance(ctu.kubeCli, tc)
+	err := ctu.CheckDisasterTolerance(tc)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func checkDisasterTolerance(kubeCli kubernetes.Interface, cluster *v1alpha1.TidbCluster) error {
-	pds, err := kubeCli.CoreV1().Pods(cluster.Namespace).List(
+func (ctu *CrdTestUtil) CheckDisasterTolerance(cluster *v1alpha1.TidbCluster) error {
+	pds, err := ctu.kubeCli.CoreV1().Pods(cluster.Namespace).List(
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.Name).PD().Labels(),
 		).String()})
@@ -115,7 +115,7 @@ func checkDisasterTolerance(kubeCli kubernetes.Interface, cluster *v1alpha1.Tidb
 		return err
 	}
 
-	tikvs, err := kubeCli.CoreV1().Pods(cluster.Namespace).List(
+	tikvs, err := ctu.kubeCli.CoreV1().Pods(cluster.Namespace).List(
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.Name).TiKV().Labels(),
 		).String()})
@@ -127,7 +127,7 @@ func checkDisasterTolerance(kubeCli kubernetes.Interface, cluster *v1alpha1.Tidb
 		return err
 	}
 
-	tidbs, err := kubeCli.CoreV1().Pods(cluster.Namespace).List(
+	tidbs, err := ctu.kubeCli.CoreV1().Pods(cluster.Namespace).List(
 		metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
 			label.New().Instance(cluster.Name).TiDB().Labels(),
 		).String()})
@@ -168,13 +168,13 @@ func (ctu *CrdTestUtil) DeleteTidbClusterOrDie(tc *v1alpha1.TidbCluster) {
 }
 
 func (ctu *CrdTestUtil) WaitTidbClusterReadyOrDie(tc *v1alpha1.TidbCluster, timeout time.Duration) {
-	err := ctu.waitForTidbClusterReady(tc, timeout, 5*time.Second)
+	err := ctu.WaitForTidbClusterReady(tc, timeout, 5*time.Second)
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
 }
 
-func (ctu *CrdTestUtil) waitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
+func (ctu *CrdTestUtil) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
 	}

@@ -63,14 +63,12 @@ func (t *BackupTarget) GetDrainerConfig(source *TidbClusterConfig, ts string) *D
 }
 
 func (oa *operatorActions) BackupAndRestoreToMultipleClusters(source *TidbClusterConfig, targets []BackupTarget) error {
-	if source.Clustrer == nil {
-		err := oa.DeployAndCheckPump(source)
-		if err != nil {
-			return err
-		}
+	err := oa.DeployAndCheckPump(source)
+	if err != nil {
+		return err
 	}
 
-	err := oa.DeployAdHocBackup(source)
+	err = oa.DeployAdHocBackup(source)
 	if err != nil {
 		klog.Errorf("cluster:[%s] deploy happen error: %v", source.ClusterName, err)
 		return err

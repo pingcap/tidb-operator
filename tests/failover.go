@@ -18,15 +18,18 @@ import (
 	"fmt"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -265,9 +268,31 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return err
 	}
 
+	err = wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
+		if err := tikvOps.RemovePanicMark(info.Namespace, podName); err != nil {
+			klog.Errorf("failed to remove panic mark %s/%s, %v", info.Namespace, podName, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	klog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+
 	ns := info.Namespace
 	tcName := info.ClusterName
-	return wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Error(err.Error())
@@ -283,6 +308,16 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		}
 		return false, nil
 	})
+	if err != nil {
+		return err
+	}
+	err = oa.CheckTidbClusterStatus(info)
+	if err != nil {
+		return err
+	}
+
+	klog.Infof("recover %s/%s successfully", ns, podName)
+	return nil
 }
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
@@ -463,6 +498,49 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 		return false, nil
 	}
 
+	// Wait all Store State Up
+	for k, v := range tc.Status.TiKV.Stores {
+		if v.State != v1alpha1.TiKVStateUp {
+			klog.Infof("Store[%s]'s State[%s] is not Up", k, v.State)
+			return false, nil
+		}
+	}
+
+	tikvSts, err := oa.kubeCli.AppsV1().StatefulSets(tc.Namespace).Get(fmt.Sprintf("%s-tikv", tc.Name), metav1.GetOptions{})
+	if err != nil {
+		klog.Error(err)
+		return false, nil
+	}
+
+	// delete failover member store manually
+	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
+		pdclient := oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		for _, v := range tc.Status.TiKV.Stores {
+			ordinal, err := util.GetOrdinalFromPodName(v.PodName)
+			if err != nil {
+				klog.Error(err)
+				return false, nil
+			}
+			if !helper.GetPodOrdinals(*tikvSts.Spec.Replicas, tikvSts).Has(ordinal) {
+				id, err := strconv.ParseInt(v.ID, 10, 64)
+				if err != nil {
+					klog.Error(err)
+					return false, nil
+				}
+				err = pdclient.DeleteStore(uint64(id))
+				if err != nil {
+					klog.Error(err)
+					return false, nil
+				}
+			}
+		}
+	}
+
+	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
 	// recover tikv manually
 	if tc.Status.TiKV.FailureStores != nil {
 		tc.Status.TiKV.FailureStores = nil
@@ -471,8 +549,8 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 			klog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
 			return false, nil
 		}
+		return false, nil
 	}
-
 	return true, nil
 }
 
