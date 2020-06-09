@@ -369,52 +369,33 @@ EOF
 nodes:
 - role: control-plane
 EOF
-    # check $KIND_ETCD_DATADIR
-    if [[ "$KIND_ETCD_DATADIR" != "none" ]]; then
-        # check $KIND_DATA_HOSTPATH
+    if [[ "$KIND_DATA_HOSTPATH" != "none" || "$KIND_ETCD_DATADIR" != "none" ]]; then
+        cat <<EOF >> $tmpfile
+  extraMounts:
+EOF
         if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
             if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
                 echo "error: '$KIND_DATA_HOSTPATH' is not a directory"
                 exit 1
             fi
+            local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
+            test -d $hostWorkerPath || mkdir $hostWorkerPath
+            cat <<EOF >> $tmpfile
+  - containerPath: /mnt/disks/
+    hostPath: "$hostWorkerPath"
+    propagation: HostToContainer
+EOF
+        fi
+        if [[ "$KIND_ETCD_DATADIR" != "none" ]]; then
             if [ ! -d "$KIND_ETCD_DATADIR" ]; then
                 echo "error: '$KIND_ETCD_DATADIR' is not a directory"
                 exit 1
             fi
-            local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
-            test -d $hostWorkerPath || mkdir $hostWorkerPath
-            # set custom KIND_DATA_HOSTPATH and KIND_ETCD_DATADIR
             cat <<EOF >> $tmpfile
-  extraMounts:
-  - containerPath: /mnt/disks/
-    hostPath: "$hostWorkerPath"
-    propagation: HostToContainer
-  - containerPath: /var/lib/etcd
-    hostPath: "$KIND_ETCD_DATADIR"
-EOF
-        else
-            # set custom KIND_ETCD_DATADIR
-            cat <<EOF >> $tmpfile
-  extraMounts:
   - containerPath: /var/lib/etcd
     hostPath: "$KIND_ETCD_DATADIR"
 EOF
         fi
-    else 
-        if [[ "$KIND_DATA_HOSTPATH" != "none" ]]; then
-            if [ ! -d "$KIND_DATA_HOSTPATH" ]; then
-                echo "error: '$KIND_DATA_HOSTPATH' is not a directory"
-                exit 1
-            fi
-            local hostWorkerPath="${KIND_DATA_HOSTPATH}/control-plane"
-            test -d $hostWorkerPath || mkdir $hostWorkerPath
-            # set custom KIND_DATA_HOSTPATH
-            cat <<EOF >> $tmpfile
-  extraMounts:
-  - containerPath: /mnt/disks/
-    hostPath: "$hostWorkerPath"
-    propagation: HostToContainer
-EOF
     fi
     # workers
     for ((i = 1; i <= $KUBE_WORKERS; i++)) {
