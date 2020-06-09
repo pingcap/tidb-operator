@@ -472,7 +472,18 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
+			framework.Logf("tikv has checked ready-to-scale-timestamp")
+
 			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if stac.Status.TiKV != nil && len(stac.Status.TiKV.MetricsStatusList) > 0 {
+					metrics := stac.Status.TiKV.MetricsStatusList[0]
+					framework.Logf("tikv threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+				}
+
 				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -545,6 +556,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
 			framework.Logf("success to check tikv auto scale-out to 4 replicas")
 
+			// Scale Tikv To 3 replicas and Check, set cpu load with a lower value
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
 				MemberType: v1alpha1.TiKVMemberType.String(),
@@ -583,6 +595,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if stac.Status.TiKV != nil && len(stac.Status.TiKV.MetricsStatusList) > 0 {
+					metrics := stac.Status.TiKV.MetricsStatusList[0]
+					framework.Logf("tikv threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+				}
+
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -667,6 +688,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
 
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if stac.Status.TiDB != nil && len(stac.Status.TiDB.MetricsStatusList) > 0 {
+					metrics := stac.Status.TiDB.MetricsStatusList[0]
+					framework.Logf("tidb threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+				}
+
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -695,8 +725,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 3 error")
-			klog.Infof("success to check tidb auto scale-out to 3 replicas")
+			framework.Logf("success to check tidb auto scale-out to 3 replicas")
 
+			// Scale Tidb to 2 replicas and Check
 			mp = &mock.MonitorParams{
 				Name:       tc.Name,
 				MemberType: v1alpha1.TiDBMemberType.String(),
@@ -711,6 +742,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			// Scale Tidb to 2 Replicas and Check
 			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if stac.Status.TiDB != nil && len(stac.Status.TiDB.MetricsStatusList) > 0 {
+					metrics := stac.Status.TiDB.MetricsStatusList[0]
+					framework.Logf("tidb threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+				}
+
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -746,7 +786,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 2 error")
-			klog.Info("success to check auto scale-in tidb to 2 replicas")
+			framework.Logf("success to check auto scale-in tidb to 2 replicas")
 		})
 	})
 
