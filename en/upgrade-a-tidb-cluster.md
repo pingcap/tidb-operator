@@ -59,7 +59,7 @@ It is recommended that you set `spec.configUpdateStrategy` to `RollingUpdate` to
 
 1. Set `spec.configUpdateStrategy` to `RollingUpdate`.
 
-2. Modify the configuration items of the cluster, as described in [Configure a TiDB Cluster](configure-cluster-using-tidbcluster.md)
+2. Modify the configuration items of the cluster, as described in [Configure a TiDB Cluster](configure-a-tidb-cluster.md)
 
 3. View the update progress:
 

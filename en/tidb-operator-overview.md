@@ -76,7 +76,7 @@ TiDB Operator provides several ways to deploy TiDB clusters in Kubernetes:
 
         You also need to adjust the configuration of the Kubernetes cluster based on [Prerequisites for TiDB in Kubernetes](prerequisites.md) and configure the local PV for your Kubernetes cluster to achieve low latency of local storage for TiKV according to [Local PV Configuration](configure-storage-class.md#local-pv-configuration).
 
-Before deploying TiDB on any of the above two environments, you can always refer to [TiDB Cluster Configuration Document](configure-cluster-using-tidbcluster.md) to customize TiDB configurations.
+Before deploying TiDB on any of the above two environments, you can always refer to [TiDB Cluster Configuration Document](configure-a-tidb-cluster.md) to customize TiDB configurations.
 
 After the deployment is complete, see the following documents to use, operate, and maintain TiDB clusters in Kubernetes:
 
