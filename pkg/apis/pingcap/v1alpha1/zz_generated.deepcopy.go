@@ -6578,6 +6578,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = make([]Service, len(*in))
 		copy(*out, *in)
 	}
+	if in.EnableDynamicConfiguration != nil {
+		in, out := &in.EnableDynamicConfiguration, &out.EnableDynamicConfiguration
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
