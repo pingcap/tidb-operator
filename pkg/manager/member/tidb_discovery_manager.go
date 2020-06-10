@@ -150,6 +150,14 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 								Name:  "TZ",
 								Value: tc.Timezone(),
 							},
+							{
+								Name:  "NAMESPACE",
+								Value: tc.Namespace,
+							},
+							{
+								Name:  "TC_NAME",
+								Value: tc.Name,
+							},
 						},
 					}},
 				},

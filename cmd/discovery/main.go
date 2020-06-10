@@ -33,12 +33,14 @@ import (
 var (
 	printVersion bool
 	port         int
+	proxyPort    int
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")
+	flag.IntVar(&proxyPort, "proxy-port", 10262, "The port that proxy the tidbcluster's pd dashboard service")
 	flag.Parse()
 }
 
@@ -69,8 +71,21 @@ func main() {
 		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
+	ns := os.Getenv("NAMESPACE")
+	if len(ns) < 1 {
+		klog.Fatal("ENV NAMESPACE not set")
+	}
+	tcName := os.Getenv("TC_NAME")
+	if len(tcName) < 1 {
+		klog.Fatal("ENV TC_NAME is not set")
+	}
+
 	go wait.Forever(func() {
 		server.StartServer(cli, kubeCli, port)
 	}, 5*time.Second)
+	go wait.Forever(func() {
+		server.StartProxyServer(cli, kubeCli, tcName, ns, proxyPort)
+	}, 5*time.Second)
+
 	klog.Fatal(http.ListenAndServe(":6060", nil))
 }
