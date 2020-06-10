@@ -103,6 +103,8 @@ operator_version = "v1.1.0-rc.1"
 
 如果需要在集群中部署 TiFlash，需要在 `terraform.tfvars` 中设置 `create_tiflash_node_pool = true`，也可以设置 `cluster_tiflash_count` 和 `cluster_tiflash_instance_type` 来配置 TiFlash 节点池的节点数量和实例类型，`cluster_tiflash_count` 默认为 `2`，`cluster_tiflash_instance_type` 默认为 `i3.4xlarge`。
 
+如果需要在集群中部署 TiCDC，需要在 `terraform.tfvars` 中设置 `create_cdc_node_pool = true`，也可以设置 `cluster_cdc_count` 和 `cluster_cdc_instance_type` 来配置 TiCDC 节点池的节点数量和实例类型，`cluster_cdc_count` 默认为 `3`，`cluster_cdc_instance_type` 默认为 `c5.2xlarge`。
+
 > **注意：**
 >
 > 请通过 `variables.tf` 文件中的 `operator_version` 确认当前版本脚本中默认的 TiDB Operator 版本，如果默认版本不是想要使用的版本，请在 `terraform.tfvars` 中配置 `operator_version`。
@@ -186,10 +188,29 @@ region = us-west-21
 
     根据实际情况修改 `replicas`、`storageClaims[].resources.requests.storage`、`storageClassName`。
 
+    如果要部署 TiCDC，可以在 db.yaml 中配置 `spec.ticdc`，例如：
+
+    ```yaml
+    spec:
+      ...
+      tiflash:
+        baseImage: pingcap/ticdc
+        nodeSelector:
+          dedicated: CLUSTER_NAME-cdc
+        replicas: 3
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: CLUSTER_NAME-cdc
+    ```
+
+    根据实际情况修改 `replicas`。
+
     > **注意：**
     >
     > * 请使用 EKS 部署过程中配置的 `default_cluster_name` 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`。
-    > * 请确保 EKS 部署过程中 PD、TiKV、TiFlash 或者 TiDB 节点的数量的值大于等于 `db.yaml` 中对应组件的 `replicas`。
+    > * 请确保 EKS 部署过程中 PD、TiKV、TiFlash、TiCDC 或者 TiDB 节点的数量的值大于等于 `db.yaml` 中对应组件的 `replicas`。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
 
 2. 创建 `Namespace`：
@@ -457,7 +478,7 @@ Grafana 默认登录信息：
 
 ## 扩容 TiDB 集群
 
-若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `default_cluster_tikv_count`、`cluster_tiflash_count` 或者 `default_cluster_tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}` 修改对应组件的 `replicas`。
+若要扩容 TiDB 集群，可以在文件 `terraform.tfvars` 文件中设置 `default_cluster_tikv_count`、`cluster_tiflash_count`、`cluster_cdc_count` 或者 `default_cluster_tidb_count` 变量，然后运行 `terraform apply`，扩容对应组件节点数量，节点扩容完成后，通过 `kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}` 修改对应组件的 `replicas`。
 
 例如，可以将 `default_cluster_tidb_count` 从 2 改为 4 以扩容 TiDB 节点：
 
