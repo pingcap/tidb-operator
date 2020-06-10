@@ -14,6 +14,7 @@ timezone: UTC
 # operatorImage is TiDB Operator image
 operatorImage: pingcap/tidb-operator:v1.1.0
 imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
 tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.0

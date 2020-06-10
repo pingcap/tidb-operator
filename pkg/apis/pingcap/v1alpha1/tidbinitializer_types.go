@@ -61,6 +61,10 @@ type TidbInitializerSpec struct {
 	// +optional
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
 	// permitHost is the host which will only be allowed to connect to the TiDB.
 	// +optional
 	PermitHost *string `json:"permitHost,omitempty"`
