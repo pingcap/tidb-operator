@@ -63,6 +63,9 @@ spec:
     # legacy docker path for cr.io/k8s-testimages/kubekins-e2e
     - name: docker-graph
       mountPath: /docker-graph
+    # use memory storage for etcd hostpath in kind cluster
+    - name: etcd-data-dir
+      mountPath: /mnt/tmpfs/etcd
   volumes:
   - name: modules
     hostPath:
@@ -76,6 +79,9 @@ spec:
     emptyDir: {}
   - name: docker-graph
     emptyDir: {}
+  - name: etcd-data-dir
+    emptyDir:
+      medium: Memory
   tolerations:
   - effect: NoSchedule
     key: tidb-operator
@@ -301,20 +307,14 @@ def call(BUILD_BRANCH, CREDENTIALS_ID, CODECOV_CREDENTIALS_ID) {
 		}
 		}
 
-		def GLOBALS = "SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
+		def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
 		def builds = [:]
 		// We must not enable operator killer for Kubernetes before 1.15 in
 		// which webhook configuration does not support objectSelector. Webhook
 		// pod cann't be recovered when it's deleted because we hooked pod
 		// CREATE/DELETE event.
-		builds["E2E v1.12"] = {
-			build("v1.12", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.12 ./hack/e2e.sh -- --preload-images")
-		}
 		builds["E2E v1.18"] = {
 			build("v1.18", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- -preload-images --operator-killer")
-		}
-		builds["E2E v1.18 AdvancedStatefulSet"] = {
-			build("v1.18-advanced-statefulset", "${GLOBALS} GINKGO_NODES=6 KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --operator-features AdvancedStatefulSet=true --operator-killer")
 		}
 		builds["E2E v1.18 Serial"] = {
 			build("v1.18-serial", "${GLOBALS} KUBE_VERSION=v1.18 ./hack/e2e.sh -- --preload-images --ginkgo.focus='\\[Serial\\]' --install-operator=false", e2eSerialResources)

@@ -1024,6 +1024,18 @@ Optional: Defaults to UTC</p>
 Deprecated</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableDynamicConfiguration</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -8038,6 +8050,23 @@ string
 <p>PortName is the name of service port</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>loadBalancerSourceRanges</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LoadBalancerSourceRanges is the loadBalancerSourceRanges of service
+If specified and supported by the platform, this will restrict traffic through the cloud-provider
+load-balancer will be restricted to the specified client IPs. This field will be ignored if the
+cloud-provider does not support the feature.&rdquo;
+More info: <a href="https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/">https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/</a>
+Optional: Defaults to omitted</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="status">Status</h3>
@@ -14945,6 +14974,18 @@ Optional: Defaults to UTC</p>
 <td>
 <p>Services list non-headless services type used in TidbCluster
 Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableDynamicConfiguration</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
 </td>
 </tr>
 </tbody>

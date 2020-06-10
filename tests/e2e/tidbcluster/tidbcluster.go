@@ -699,14 +699,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-
-		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4UpgradeVersion)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tests.CreateTidbClusterOrDie(cli, tc)
+		err := oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
@@ -782,8 +780,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
-		pv, err = c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
 
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
@@ -794,16 +790,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 			if prometheusSvc.Spec.Type != corev1.ServiceTypeNodePort {
+				framework.Logf("prometheus service type haven't be changed")
 				return false, nil
 			}
 			if prometheusSvc.Spec.Ports[0].Name != "any-other-word" {
+				framework.Logf("prometheus port name haven't be changed")
 				return false, nil
 			}
 			if prometheusSvc.Spec.Ports[0].NodePort != targetPort {
 				return false, nil
 			}
+			pv, err = c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
 			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
-				return false, fmt.Errorf("pv[%s] 's policy is not Retain", pv.Name)
+				framework.Logf("prometheus PersistentVolumeReclaimPolicy haven't be changed")
+				return false, nil
 			}
 			return true, nil
 		})
@@ -812,7 +815,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 			if err != nil {
 				return false, err
 			}
@@ -1191,7 +1194,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
-		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBNightly)
+		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
 		fromTc.Spec.PD.Replicas = 3
 		fromTc.Spec.TiKV.Replicas = 3
 		fromTc.Spec.TiDB.Replicas = 2
@@ -1205,7 +1208,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
 		ginkgo.By("Creating cdc-sink cluster")
-		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBNightly)
+		toTc := fixture.GetTidbCluster(ns, "cdc-sink", utilimage.TiDBV4Version)
 		toTc.Spec.PD.Replicas = 1
 		toTc.Spec.TiKV.Replicas = 1
 		toTc.Spec.TiDB.Replicas = 1

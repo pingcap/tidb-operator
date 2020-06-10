@@ -18,6 +18,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -35,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -61,6 +63,7 @@ type tikvMemberManager struct {
 	tikvFailover                 Failover
 	tikvScaler                   Scaler
 	tikvUpgrader                 Upgrader
+	recorder                     record.EventRecorder
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -77,7 +80,8 @@ func NewTiKVMemberManager(
 	autoFailover bool,
 	tikvFailover Failover,
 	tikvScaler Scaler,
-	tikvUpgrader Upgrader) manager.Manager {
+	tikvUpgrader Upgrader,
+	recorder record.EventRecorder) manager.Manager {
 	kvmm := tikvMemberManager{
 		pdControl:    pdControl,
 		podLister:    podLister,
@@ -91,6 +95,7 @@ func NewTiKVMemberManager(
 		tikvFailover: tikvFailover,
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
+		recorder:     recorder,
 	}
 	kvmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return &kvmm
@@ -511,6 +516,38 @@ func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 	}
 }
 
+// transformTiKVConfigMap change the `wait-for-lock-timeout` and `wake-up-delay-duration` due to their content type.
+// If either of their content is numeric, it would be rendered as numeric in toml in the tikv configmap.
+// In https://github.com/tikv/tikv/pull/7197 , these 2 configurations become string type from int32 type, so we add
+// this transforming steps to make tikv config compatible with both 4.0.0 version or under 4.0.0 version
+func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
+	config := tc.Spec.TiKV.Config
+	if config == nil {
+		return srcStr
+	}
+	if config.TiKVPessimisticTxn != nil {
+		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
+			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
+			if err == nil {
+				waitForLockTimeOutKey := "wait-for-lock-timeout"
+				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		}
+		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
+			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WakeUpDelayDuration, 10, 64)
+			if err == nil {
+				wakeUpDelayDuration := "wake-up-delay-duration"
+				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
+				srcStr = strings.ReplaceAll(srcStr, old, newString)
+			}
+		}
+	}
+	return srcStr
+}
+
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	config := tc.Spec.TiKV.Config
@@ -532,9 +569,15 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderTiKVStartScript(&TiKVStartScriptModel{
-		Scheme: tc.Scheme(),
-	})
+	scriptModel := &TiKVStartScriptModel{
+		Scheme:                    tc.Scheme(),
+		EnableAdvertiseStatusAddr: false,
+	}
+	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
+		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
+		scriptModel.EnableAdvertiseStatusAddr = true
+	}
+	startScript, err := RenderTiKVStartScript(scriptModel)
 	if err != nil {
 		return nil, err
 	}
@@ -548,7 +591,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Data: map[string]string{
-			"config-file":    string(confText),
+			"config-file":    transformTiKVConfigMap(string(confText), tc),
 			"startup-script": startScript,
 		},
 	}
@@ -725,7 +768,9 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
 			if err != nil {
-				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
+				msg := fmt.Sprintf("failed to set labels %v for store (id: %d, pod: %s/%s): %v ",
+					ls, store.Store.Id, ns, podName, err)
+				tkmm.recorder.Event(tc, corev1.EventTypeWarning, FailedSetStoreLabels, msg)
 				continue
 			}
 			if set {

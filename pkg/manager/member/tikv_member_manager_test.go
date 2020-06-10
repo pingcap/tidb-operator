@@ -39,6 +39,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -1454,6 +1455,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 	tikvScaler := NewFakeTiKVScaler()
 	tikvUpgrader := NewFakeTiKVUpgrader()
+	recorder := record.NewFakeRecorder(10)
 	genericControl := controller.NewFakeGenericControl()
 
 	tmm := &tikvMemberManager{
@@ -1467,6 +1469,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		svcLister:    svcInformer.Lister(),
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
+		recorder:     recorder,
 	}
 	tmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
@@ -2072,5 +2075,204 @@ func TestGetTiKVConfigMap(t *testing.T) {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
 		})
+	}
+}
+
+func TestRenderTiKVStartScript(t *testing.T) {
+	g := NewGomegaWithT(t)
+	testcases := []struct {
+		name                string
+		enableAdvertiseAddr bool
+		advertiseAddr       string
+		result              string
+	}{
+		{
+			name:                "disable AdvertiseAddr",
+			enableAdvertiseAddr: false,
+			advertiseAddr:       "",
+			result: `#!/bin/sh
+
+# This script is used to start tikv containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+	echo "entering debug mode."
+	tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+--addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
+--data-dir=/var/lib/tikv \
+--capacity=${CAPACITY} \
+--config=/etc/tikv/tikv.toml
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+		{
+			name:                "enable AdvertiseAddr",
+			enableAdvertiseAddr: true,
+			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
+			result: `#!/bin/sh
+
+# This script is used to start tikv containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+	echo "entering debug mode."
+	tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+--addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
+--advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180 \
+--data-dir=/var/lib/tikv \
+--capacity=${CAPACITY} \
+--config=/etc/tikv/tikv.toml
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+	}
+	for _, test := range testcases {
+		t.Run(test.name, func(t *testing.T) {
+			model := TiKVStartScriptModel{
+				Scheme:                    "http",
+				EnableAdvertiseStatusAddr: test.enableAdvertiseAddr,
+				AdvertiseStatusAddr:       test.advertiseAddr,
+			}
+			script, err := RenderTiKVStartScript(&model)
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(script).Should(Equal(test.result))
+		})
+	}
+}
+
+func TestTransformTiKVConfigMap(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name                string
+		waitForLockTimeout  string
+		wakeUpDelayDuration string
+		result              string
+	}
+	tests := []testcase{
+		{
+			name:                "under 4.0",
+			waitForLockTimeout:  "1000",
+			wakeUpDelayDuration: "20",
+			result: `[pessimistic-txn]
+  wait-for-lock-timeout = 1000
+  wake-up-delay-duration = 20
+`,
+		},
+		{
+			name:                "4.0.0",
+			waitForLockTimeout:  "1s",
+			wakeUpDelayDuration: "20ms",
+			result: `[pessimistic-txn]
+  wait-for-lock-timeout = "1s"
+  wake-up-delay-duration = "20ms"
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc := newTidbClusterForTiKV()
+			tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
+				WaitForLockTimeout:  pointer.StringPtr(test.waitForLockTimeout),
+				WakeUpDelayDuration: pointer.StringPtr(test.wakeUpDelayDuration),
+			}
+			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(string(confText), tc)))
+		})
+	}
+}
+
+func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
+	return &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: corev1.NamespaceDefault,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tikv-test-image",
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:     resource.MustParse("1"),
+						corev1.ResourceMemory:  resource.MustParse("2Gi"),
+						corev1.ResourceStorage: resource.MustParse("100Gi"),
+					},
+				},
+				Replicas:         3,
+				StorageClassName: pointer.StringPtr("my-storage-class"),
+				Config:           &v1alpha1.TiKVConfig{},
+			},
+		},
 	}
 }

@@ -3459,6 +3459,11 @@ func (in *ServiceSpec) DeepCopyInto(out *ServiceSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LoadBalancerSourceRanges != nil {
+		in, out := &in.LoadBalancerSourceRanges, &out.LoadBalancerSourceRanges
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -6572,6 +6577,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		in, out := &in.Services, &out.Services
 		*out = make([]Service, len(*in))
 		copy(*out, *in)
+	}
+	if in.EnableDynamicConfiguration != nil {
+		in, out := &in.EnableDynamicConfiguration, &out.EnableDynamicConfiguration
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
