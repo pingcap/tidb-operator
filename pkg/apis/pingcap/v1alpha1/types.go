@@ -211,6 +211,10 @@ type TidbClusterSpec struct {
 	// Deprecated
 	// +k8s:openapi-gen=false
 	Services []Service `json:"services,omitempty"`
+
+	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
+	// +optional
+	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1120,6 +1124,8 @@ const (
 	BackupRetryFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
+	// BackupPrepare means the backup prepare backup process
+	BackupPrepare BackupConditionType = "Prepare"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.

@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
@@ -62,6 +63,7 @@ type tikvMemberManager struct {
 	tikvFailover                 Failover
 	tikvScaler                   Scaler
 	tikvUpgrader                 Upgrader
+	recorder                     record.EventRecorder
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 }
 
@@ -78,7 +80,8 @@ func NewTiKVMemberManager(
 	autoFailover bool,
 	tikvFailover Failover,
 	tikvScaler Scaler,
-	tikvUpgrader Upgrader) manager.Manager {
+	tikvUpgrader Upgrader,
+	recorder record.EventRecorder) manager.Manager {
 	kvmm := tikvMemberManager{
 		pdControl:    pdControl,
 		podLister:    podLister,
@@ -92,6 +95,7 @@ func NewTiKVMemberManager(
 		tikvFailover: tikvFailover,
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
+		recorder:     recorder,
 	}
 	kvmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return &kvmm
@@ -565,9 +569,15 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderTiKVStartScript(&TiKVStartScriptModel{
-		Scheme: tc.Scheme(),
-	})
+	scriptModel := &TiKVStartScriptModel{
+		Scheme:                    tc.Scheme(),
+		EnableAdvertiseStatusAddr: false,
+	}
+	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
+		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
+		scriptModel.EnableAdvertiseStatusAddr = true
+	}
+	startScript, err := RenderTiKVStartScript(scriptModel)
 	if err != nil {
 		return nil, err
 	}
@@ -758,7 +768,9 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		if !tkmm.storeLabelsEqualNodeLabels(store.Store.Labels, ls) {
 			set, err := pdCli.SetStoreLabels(store.Store.Id, ls)
 			if err != nil {
-				klog.Warningf("failed to set pod: [%s/%s]'s store labels: %v", ns, podName, ls)
+				msg := fmt.Sprintf("failed to set labels %v for store (id: %d, pod: %s/%s): %v ",
+					ls, store.Store.Id, ns, podName, err)
+				tkmm.recorder.Event(tc, corev1.EventTypeWarning, FailedSetStoreLabels, msg)
 				continue
 			}
 			if set {
