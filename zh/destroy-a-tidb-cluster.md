@@ -43,6 +43,8 @@ helm delete ${cluster_name} --purge
 > **警告：**
 >
 > 下列命令会彻底删除数据，务必考虑清楚再执行。
+>
+> 为了确保数据安全，在任何情况下都不要删除 PV，除非你熟悉 PV 的工作原理。
 
 {{< copyable "shell-regular" >}}
 
