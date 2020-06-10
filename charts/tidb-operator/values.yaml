@@ -44,12 +44,12 @@ controllerManager:
   logLevel: 2
   replicas: 1
   resources:
-    limits:
-      cpu: 250m
-      memory: 150Mi
     requests:
       cpu: 80m
       memory: 50Mi
+#  # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+#  priorityClassName: system-cluster-critical
+
   # autoFailover is whether tidb-operator should auto failover when failure occurs
   autoFailover: true
   # pd failover period default(5m)
