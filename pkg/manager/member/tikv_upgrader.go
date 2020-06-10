@@ -87,11 +87,6 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		return nil
 	}
 
-	if controller.PodWebhookEnabled {
-		setUpgradePartition(newSet, 0)
-		return nil
-	}
-
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -120,6 +115,11 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			}
 
 			continue
+		}
+
+		if controller.PodWebhookEnabled {
+			setUpgradePartition(newSet, i)
+			return nil
 		}
 
 		return tku.upgradeTiKVPod(tc, i, newSet)
