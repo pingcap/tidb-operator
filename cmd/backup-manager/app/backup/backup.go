@@ -38,14 +38,14 @@ type Options struct {
 	backupUtil.GenericOptions
 }
 
-func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
+func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	clusterNamespace := backup.Spec.BR.ClusterNamespace
 	if backup.Spec.BR.ClusterNamespace == "" {
 		clusterNamespace = backup.Namespace
 	}
-	args, remotePath, err := constructOptions(backup)
+	args, err := constructOptions(backup)
 	if err != nil {
-		return "", err
+		return err
 	}
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:2379", backup.Spec.BR.Cluster, clusterNamespace))
 	if bo.TLSCluster {
@@ -71,15 +71,15 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
 	}
 	var errMsg string
 	reader := bufio.NewReader(stdOut)
@@ -101,11 +101,11 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) (string, error) {
 	}
 	err = cmd.Wait()
 	if err != nil {
-		return remotePath, fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
 	}
 
 	klog.Infof("Backup data for cluster %s successfully", bo)
-	return remotePath, nil
+	return nil
 }
 
 // getCommitTs get backup position from `EndVersion` in BR backup meta
@@ -138,10 +138,10 @@ func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
 }
 
 // constructOptions constructs options for BR and also return the remote path
-func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
-	args, remotePath, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
+func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
+	args, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
 	if err != nil {
-		return args, remotePath, err
+		return args, err
 	}
 	config := backup.Spec.BR
 	if config.Concurrency != nil {
@@ -156,7 +156,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, string, error) {
 	if config.Checksum != nil {
 		args = append(args, fmt.Sprintf("--checksum=%t", *config.Checksum))
 	}
-	return args, remotePath, nil
+	return args, nil
 }
 
 // getBackupSize get the backup data size from remote

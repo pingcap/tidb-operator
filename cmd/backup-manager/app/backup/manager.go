@@ -127,6 +127,7 @@ func (bm *Manager) ProcessBackup() error {
 func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	started := time.Now()
 
+	var errs []error
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupRunning,
 		Status: corev1.ConditionTrue,
@@ -135,7 +136,36 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		return err
 	}
 
-	var errs []error
+	backupFullPath, err := util.GetRemotePath(backup)
+	if err != nil {
+		errs = append(errs, err)
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetBackupRemotePathFailed",
+			Message: err.Error(),
+		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+
+	backup.Status.BackupPath = backupFullPath
+	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupPrepare,
+		Status: corev1.ConditionTrue,
+	})
+	if err != nil {
+		errs = append(errs, err)
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "UpdatePrepareBackupFailed",
+			Message: err.Error(),
+		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+
 	oldTikvGCTime, err := bm.GetTikvGCLifeTime(db)
 	if err != nil {
 		errs = append(errs, err)
@@ -216,7 +246,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 		klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, tikvGCLifeTime)
 	}
 
-	backupFullPath, backupErr := bm.backupData(backup)
+	backupErr := bm.backupData(backup)
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
@@ -282,7 +312,6 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 
 	finish := time.Now()
 
-	backup.Status.BackupPath = backupFullPath
 	backup.Status.TimeStarted = metav1.Time{Time: started}
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
 	backup.Status.BackupSize = size
