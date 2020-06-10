@@ -1124,6 +1124,8 @@ const (
 	BackupRetryFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
+	// BackupPrepare means the backup prepare backup process
+	BackupPrepare BackupConditionType = "Prepare"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
