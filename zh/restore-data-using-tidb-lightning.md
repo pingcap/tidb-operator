@@ -110,26 +110,26 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
             type: Opaque
             stringData:
               rclone.conf: |
-              [s3]
-              type = s3
-              provider = AWS
-              env_auth = false
-              access_key_id = ${access_key}
-              secret_access_key = ${secret_key}
-              region = us-east-1
-              [ceph]
-              type = s3
-              provider = Ceph
-              env_auth = false
-              access_key_id = ${access_key}
-              secret_access_key = ${secret_key}
-              endpoint = ${endpoint}
-              region = :default-placement
-              [gcs]
-              type = google cloud storage
-              # 该服务账号必须被授予 Storage Object Viewer 角色。
-              # 该内容可以通过 `cat ${service-account-file} | jq -c .` 命令获取。
-              service_account_credentials = ${service_account_json_file_content}
+                [s3]
+                type = s3
+                provider = AWS
+                env_auth = false
+                access_key_id = ${access_key}
+                secret_access_key = ${secret_key}
+                region = us-east-1
+                [ceph]
+                type = s3
+                provider = Ceph
+                env_auth = false
+                access_key_id = ${access_key}
+                secret_access_key = ${secret_key}
+                endpoint = ${endpoint}
+                region = :default-placement
+                [gcs]
+                type = google cloud storage
+                # 该服务账号必须被授予 Storage Object Viewer 角色。
+                # 该内容可以通过 `cat ${service-account-file} | jq -c .` 命令获取。
+                service_account_credentials = ${service_account_json_file_content}
             ```
     
         + 使用 Amazon S3 IAM 绑定 Pod 的授权方式或者 Amazon S3 IAM 绑定 ServiceAccount 授权方式时，可以省略 `s3.access_key_id` 以及 `s3.secret_access_key：
@@ -144,13 +144,13 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
             type: Opaque
             stringData:
               rclone.conf: |
-              [s3]
-              type = s3
-              provider = AWS
-              env_auth = true
-              access_key_id =
-              secret_access_key =
-              region = us-east-1
+                [s3]
+                type = s3
+                provider = AWS
+                env_auth = true
+                access_key_id =
+                secret_access_key =
+                region = us-east-1
             ```
 
             使用你的实际配置替换上述配置中的占位符，并将该文件存储为 `secret.yaml`。然后通过 `kubectl apply -f secret.yaml -n ${namespace}` 命令创建该 `Secret`。
