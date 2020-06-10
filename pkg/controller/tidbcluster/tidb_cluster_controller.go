@@ -151,6 +151,7 @@ func NewController(
 				tikvFailover,
 				tikvScaler,
 				tikvUpgrader,
+				recorder,
 			),
 			mm.NewTiDBMemberManager(
 				setControl,
