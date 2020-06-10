@@ -20,11 +20,7 @@ Before deploying TiDB Operator, make sure the following items are installed on y
 
 ## Deploy Kubernetes cluster
 
-TiDB Operator runs in Kubernetes cluster. You can refer to [the document of how to set up Kubernetes](https://kubernetes.io/docs/setup/) to set up a Kubernetes cluster. Make sure that the Kubernetes version is v1.12 or higher. If you are using AWS, GKE or local machines, here are quick-start tutorials:
-
-* [kind tutorial](deploy-tidb-from-kubernetes-kind.md)
-* [Google GKE tutorial](deploy-tidb-from-kubernetes-gke.md)
-* [AWS EKS tutorial](deploy-on-aws-eks.md)
+TiDB Operator runs in Kubernetes cluster. You can refer to [the document of how to set up Kubernetes](https://kubernetes.io/docs/setup/) to set up a Kubernetes cluster. Make sure that the Kubernetes version is v1.12 or higher. If you want to deploy a very simple Kubernetes cluster for testing purposes, consult the [Get Started](get-started.md) document.
 
 TiDB Operator uses [Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to persist the data of TiDB cluster (including the database, monitoring data, and backup data), so the Kubernetes cluster must provide at least one kind of persistent volume. For better performance, it is recommended to use local SSD disk as the volumes. Follow [this step](#configure-local-persistent-volume) to provision local persistent volumes.
 
