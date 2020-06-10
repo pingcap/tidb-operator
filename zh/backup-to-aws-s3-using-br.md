@@ -322,7 +322,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
 * `.spec.from.tidbSecretName`：待备份 TiDB 集群 `.spec.from.user` 用户的密码所对应的 secret。
-* `.spec.from.tlsClient.tlsSecret`：指定备份使用的存储证书的 Secret。
+* `.spec.from.tlsClientSecretName`：指定备份使用的存储证书的 Secret。
 
     如果 TiDB 集群开启了 [TLS](enable-tls-between-components.md)，但是不想使用[文档](enable-tls-between-components.md)中创建的 `${cluster_name}-cluster-client-secret` 进行备份，可以通过这个参数为备份指定一个 Secret，可以通过如下命令生成：
 
