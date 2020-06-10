@@ -586,7 +586,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
 			},
 		},
@@ -628,7 +628,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
 			},
 		},
@@ -714,7 +714,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
@@ -729,7 +729,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone2", "zone3"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
 			},
 		},
@@ -759,7 +759,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
@@ -778,7 +778,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
 			},
 		},
@@ -797,7 +797,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-5"}))
 			},
 		},
@@ -816,7 +816,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
@@ -835,7 +835,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone2", "zone3"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
 			},
 		},
@@ -961,7 +961,7 @@ func TestHAFilter(t *testing.T) {
 			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
-				g.Expect(getTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
@@ -1174,11 +1174,12 @@ func getSortedNodeNames(nodes []apiv1.Node) []string {
 	return arr
 }
 
-func getTopologies(nodes []apiv1.Node, topologyKey string) []string {
+func getSortedTopologies(nodes []apiv1.Node, topologyKey string) []string {
 	arr := make([]string, 0)
 	for _, node := range nodes {
 		arr = append(arr, node.Labels[topologyKey])
 	}
+	sort.Strings(arr)
 	return arr
 }
 
