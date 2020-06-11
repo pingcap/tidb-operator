@@ -12428,6 +12428,33 @@ Optional: Defaults to 8MB</p>
 </tr>
 <tr>
 <td>
+<code>raft-max-size-per-msg</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Limit the max size of each append message.
+Optional: Defaults to 1MB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>raft-max-inflight-msgs</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Limit the max number of in-flight append messages during optimistic
+replication phase.
+Optional: Defaults to 256</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>raft-log-gc-tick-interval</code></br>
 <em>
 string
