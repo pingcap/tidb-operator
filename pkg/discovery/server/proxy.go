@@ -49,7 +49,9 @@ func buildProxy(cli versioned.Interface, kubeCli kubernetes.Interface, tcName, n
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	if url.Scheme == "https" {
 		tlsConfig, err := pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName, nil)
-		klog.Fatal(err)
+		if err != nil {
+			klog.Fatal(err)
+		}
 		proxy.Transport = &http.Transport{TLSClientConfig: tlsConfig}
 	}
 
