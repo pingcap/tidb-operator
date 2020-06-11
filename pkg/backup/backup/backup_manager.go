@@ -240,6 +240,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		},
 	}
 
+	if backup.Spec.ImagePullSecrets != nil {
+		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backup.GetBackupJobName(),
@@ -364,6 +368,10 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Tolerations:   backup.Spec.Tolerations,
 			Volumes:       volumes,
 		},
+	}
+
+	if backup.Spec.ImagePullSecrets != nil {
+		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{

@@ -149,6 +149,10 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		},
 	}
 
+	if backup.Spec.ImagePullSecrets != nil {
+		podSpec.Spec.ImagePullSecrets = backup.Spec.ImagePullSecrets
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backup.GetCleanJobName(),
