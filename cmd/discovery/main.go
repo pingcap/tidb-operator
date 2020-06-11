@@ -40,7 +40,7 @@ func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")
-	flag.IntVar(&proxyPort, "proxy-port", 10262, "The port that proxy the tidbcluster's pd dashboard service")
+	flag.IntVar(&proxyPort, "proxy-port", 10262, "The port that the tidb discovery's proxy service runs on (default 10262)")
 	flag.Parse()
 }
 
