@@ -72,10 +72,6 @@ func main() {
 		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
-	ns := os.Getenv("NAMESPACE")
-	if len(ns) < 1 {
-		klog.Fatal("ENV NAMESPACE not set")
-	}
 	tcName := os.Getenv("TC_NAME")
 	if len(tcName) < 1 {
 		klog.Fatal("ENV TC_NAME is not set")
@@ -90,7 +86,7 @@ func main() {
 		server.StartServer(cli, kubeCli, port)
 	}, 5*time.Second)
 	go wait.Forever(func() {
-		server.StartProxyServer(cli, tcName, ns, tcTls, proxyPort)
+		server.StartProxyServer(tcName, tcTls, proxyPort)
 	}, 5*time.Second)
 
 	klog.Fatal(http.ListenAndServe(":6060", nil))

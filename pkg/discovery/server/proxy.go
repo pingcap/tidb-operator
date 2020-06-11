@@ -23,12 +23,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	"k8s.io/klog"
 )
 
-func buildUrl(cli versioned.Interface, tcName, namespace string, tlsEnabled bool) (*url.URL, error) {
+func buildUrl(tcName string, tlsEnabled bool) (*url.URL, error) {
 	url := &url.URL{
 		Host:   fmt.Sprintf("%s-pd:2379", tcName),
 		Scheme: "http",
@@ -40,8 +39,8 @@ func buildUrl(cli versioned.Interface, tcName, namespace string, tlsEnabled bool
 	return url, nil
 }
 
-func buildProxy(cli versioned.Interface, tcName, namespace string, tlsEnabled bool) (*httputil.ReverseProxy, error) {
-	url, err := buildUrl(cli, tcName, namespace, tlsEnabled)
+func buildProxy(tcName string, tlsEnabled bool) (*httputil.ReverseProxy, error) {
+	url, err := buildUrl(tcName, tlsEnabled)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
@@ -82,23 +81,20 @@ func buildProxy(cli versioned.Interface, tcName, namespace string, tlsEnabled bo
 }
 
 type handler struct {
-	cli          versioned.Interface
 	tcName       string
 	namespace    string
 	tcTlsEnabled bool
 }
 
-func NewHandler(cli versioned.Interface, tcName, namespace string, tcTlsEnabled bool) *handler {
+func NewHandler(tcName string, tcTlsEnabled bool) *handler {
 	return &handler{
-		cli:          cli,
 		tcName:       tcName,
-		namespace:    namespace,
 		tcTlsEnabled: tcTlsEnabled,
 	}
 }
 
 func (handler *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	proxy, err := buildProxy(handler.cli, handler.tcName, handler.namespace, handler.tcTlsEnabled)
+	proxy, err := buildProxy(handler.tcName, handler.tcTlsEnabled)
 	if err != nil {
 		msg := fmt.Sprintf("Error Happed, err:%v", err)
 		w.Write([]byte(msg))
@@ -107,8 +103,8 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
-func StartProxyServer(cli versioned.Interface, tcName, namespace string, tcTlsEnabled bool, port int) {
-	handler := NewHandler(cli, tcName, namespace, tcTlsEnabled)
+func StartProxyServer(tcName string, tcTlsEnabled bool, port int) {
+	handler := NewHandler(tcName, tcTlsEnabled)
 	klog.Infof("start proxy-server")
 	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), handler))
 }
