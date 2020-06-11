@@ -18,6 +18,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -79,12 +80,17 @@ func main() {
 	if len(tcName) < 1 {
 		klog.Fatal("ENV TC_NAME is not set")
 	}
+	tcTls := false
+	tlsEnabled := os.Getenv("TC_TLS_ENABLED")
+	if tlsEnabled == strconv.FormatBool(true) {
+		tcTls = true
+	}
 
 	go wait.Forever(func() {
 		server.StartServer(cli, kubeCli, port)
 	}, 5*time.Second)
 	go wait.Forever(func() {
-		server.StartProxyServer(cli, kubeCli, tcName, ns, proxyPort)
+		server.StartProxyServer(cli, tcName, ns, tcTls, proxyPort)
 	}, 5*time.Second)
 
 	klog.Fatal(http.ListenAndServe(":6060", nil))

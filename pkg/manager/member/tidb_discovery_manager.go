@@ -15,6 +15,7 @@ package member
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -195,6 +196,10 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 				MountPath: PdTlsCertPath,
 			},
 		}
+		d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "TC_TLS_ENABLED",
+			Value: strconv.FormatBool(true),
+		})
 	}
 	b, err := json.Marshal(d.Spec.Template.Spec)
 	if err != nil {
