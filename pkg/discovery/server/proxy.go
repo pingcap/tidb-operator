@@ -15,15 +15,16 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
+
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"strings"
 )
 
 func buildUrl(cli versioned.Interface, tcName, namespace string) (*url.URL, error) {
