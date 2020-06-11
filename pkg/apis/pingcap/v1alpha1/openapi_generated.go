@@ -6610,6 +6610,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref common.ReferenceCa
 							Format:      "",
 						},
 					},
+					"raft-max-size-per-msg": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limit the max size of each append message. Optional: Defaults to 1MB",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"raft-max-inflight-msgs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Limit the max number of in-flight append messages during optimistic replication phase. Optional: Defaults to 256",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"raft-log-gc-tick-interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Interval to gc unnecessary raft log (ms). Optional: Defaults to 10s",

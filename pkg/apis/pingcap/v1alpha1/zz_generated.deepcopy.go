@@ -5389,6 +5389,16 @@ func (in *TiKVRaftstoreConfig) DeepCopyInto(out *TiKVRaftstoreConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.RaftMaxSizePerMsg != nil {
+		in, out := &in.RaftMaxSizePerMsg, &out.RaftMaxSizePerMsg
+		*out = new(string)
+		**out = **in
+	}
+	if in.RaftMaxInflightMsgs != nil {
+		in, out := &in.RaftMaxInflightMsgs, &out.RaftMaxInflightMsgs
+		*out = new(int64)
+		**out = **in
+	}
 	if in.RaftLogGCTickInterval != nil {
 		in, out := &in.RaftLogGCTickInterval, &out.RaftLogGCTickInterval
 		*out = new(string)
