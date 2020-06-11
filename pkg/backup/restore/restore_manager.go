@@ -226,6 +226,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		},
 	}
 
+	if restore.Spec.ImagePullSecrets != nil {
+		podSpec.Spec.ImagePullSecrets = restore.Spec.ImagePullSecrets
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      restore.GetRestoreJobName(),
@@ -348,6 +352,10 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			Volumes:       volumes,
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
+	}
+
+	if restore.Spec.ImagePullSecrets != nil {
+		podSpec.Spec.ImagePullSecrets = restore.Spec.ImagePullSecrets
 	}
 
 	job := &batchv1.Job{
