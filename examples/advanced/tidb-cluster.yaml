@@ -160,6 +160,8 @@ spec:
     ## /var/lib/tikv.
     ## Specifying this will change the data directory to a subdirectory, e.g.
     ## /var/lib/tikv/data if you set the value to "data".
+	  ## It's dangerous to change this value for a running cluster as it will
+	  ## upgrade your cluster to use a new storage directory.
     ## Defaults to "" (volume's root).
     # dataSubDir: ""
 

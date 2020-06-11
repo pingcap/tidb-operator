@@ -303,6 +303,17 @@ type PDSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// Subdirectory within the volume to store PD Data. By default, the data
+	// is stored in the root directory of volume which is mounted at
+	// /var/lib/pd.
+	// Specifying this will change the data directory to a subdirectory, e.g.
+	// /var/lib/pd/data if you set the value to "data".
+	// It's dangerous to change this value for a running cluster as it will
+	// upgrade your cluster to use a new storage directory.
+	// Defaults to "" (volume's root).
+	// +optional
+	DataSubDir string `json:"dataSubDir,omitempty"`
+
 	// Config is the Configuration of pd-servers
 	// +optional
 	Config *PDConfig `json:"config,omitempty"`
@@ -354,6 +365,8 @@ type TiKVSpec struct {
 	// /var/lib/tikv.
 	// Specifying this will change the data directory to a subdirectory, e.g.
 	// /var/lib/tikv/data if you set the value to "data".
+	// It's dangerous to change this value for a running cluster as it will
+	// upgrade your cluster to use a new storage directory.
 	// Defaults to "" (volume's root).
 	// +optional
 	DataSubDir string `json:"dataSubDir,omitempty"`

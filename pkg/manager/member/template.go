@@ -148,7 +148,7 @@ echo "nslookup domain ${domain} failed" >&2
 fi
 done
 
-ARGS="--data-dir=/var/lib/pd \
+ARGS="--data-dir={{ .DataDir }} \
 --name=${POD_NAME} \
 --peer-urls={{ .Scheme }}://0.0.0.0:2380 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:2380 \
@@ -157,16 +157,16 @@ ARGS="--data-dir=/var/lib/pd \
 --config=/etc/pd/pd.toml \
 "
 
-if [[ -f /var/lib/pd/join ]]
+if [[ -f {{ .DataDir }}/join ]]
 then
 # The content of the join file is:
 #   demo-pd-0=http://demo-pd-0.demo-pd-peer.demo.svc:2380,demo-pd-1=http://demo-pd-1.demo-pd-peer.demo.svc:2380
 # The --join args must be:
 #   --join=http://demo-pd-0.demo-pd-peer.demo.svc:2380,http://demo-pd-1.demo-pd-peer.demo.svc:2380
-join=` + "`" + `cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=` + "`" + `cat {{ .DataDir }}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
 join=${join%,}
 ARGS="${ARGS} --join=${join}"
-elif [[ ! -d /var/lib/pd/member/wal ]]
+elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
 until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
@@ -182,7 +182,8 @@ exec /pd-server ${ARGS}
 `))
 
 type PDStartScriptModel struct {
-	Scheme string
+	Scheme  string
+	DataDir string
 }
 
 func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
