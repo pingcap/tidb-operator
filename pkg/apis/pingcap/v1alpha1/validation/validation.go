@@ -17,6 +17,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -90,6 +92,9 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	if len(spec.DataSubDir) > 0 {
+		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
+	}
 	return allErrs
 }
 
@@ -422,6 +427,36 @@ func validateService(spec *v1alpha1.ServiceSpec, fldPath *field.Path) field.Erro
 		_, err := utilnet.ParseIPNets(ip...)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.LoadBalancerSourceRanges"), spec.LoadBalancerSourceRanges, "service.Spec.LoadBalancerSourceRanges is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24."))
+		}
+	}
+	return allErrs
+}
+
+// This validate will make sure targetPath:
+// 1. is not abs path
+// 2. does not have any element which is ".."
+func validateLocalDescendingPath(targetPath string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if path.IsAbs(targetPath) {
+		allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must be a relative path"))
+	}
+
+	allErrs = append(allErrs, validatePathNoBacksteps(targetPath, fldPath)...)
+
+	return allErrs
+}
+
+// validatePathNoBacksteps makes sure the targetPath does not have any `..` path elements when split
+//
+// This assumes the OS of the apiserver and the nodes are the same. The same check should be done
+// on the node to ensure there are no backsteps.
+func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	parts := strings.Split(filepath.ToSlash(targetPath), "/")
+	for _, item := range parts {
+		if item == ".." {
+			allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must not contain '..'"))
+			break // even for `../../..`, one error is sufficient to make the point
 		}
 	}
 	return allErrs
