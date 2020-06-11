@@ -349,6 +349,15 @@ type TiKVSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// Subdirectory within the volume to store TiKV Data. By default, the data
+	// is stored in the root directory of volume which is mounted at
+	// /var/lib/tikv.
+	// Specifying this will change the data directory to a subdirectory, e.g.
+	// /var/lib/tikv/data if you set the value to "data".
+	// Defaults to "" (volume's root).
+	// +optional
+	DataSubDir string `json:"dataSubDir,omitempty"`
+
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`

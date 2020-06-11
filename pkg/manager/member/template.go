@@ -224,7 +224,7 @@ ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
 --advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
---data-dir=/var/lib/tikv \
+--data-dir={{ .DataDir }} \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
 "
@@ -243,6 +243,7 @@ type TiKVStartScriptModel struct {
 	Scheme                    string
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
+	DataDir                   string
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {

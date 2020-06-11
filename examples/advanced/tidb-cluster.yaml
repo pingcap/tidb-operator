@@ -155,6 +155,14 @@ spec:
     ## Defaults to Kubernetes default storage class.
     # storageClassName: ""
 
+    ## Subdirectory within the volume to store TiKV Data. By default, the data
+	  ## is stored in the root directory of volume which is mounted at
+    ## /var/lib/tikv.
+    ## Specifying this will change the data directory to a subdirectory, e.g.
+    ## /var/lib/tikv/data if you set the value to "data".
+    ## Defaults to "" (volume's root).
+    # dataSubDir: ""
+
     ## Affinity for pod assignment
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
     # affinity:
