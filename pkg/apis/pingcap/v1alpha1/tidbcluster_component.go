@@ -25,6 +25,7 @@ const (
 // and component-level overrides
 type ComponentAccessor interface {
 	ImagePullPolicy() corev1.PullPolicy
+	ImagePullSecrets() []corev1.LocalObjectReference
 	HostNetwork() bool
 	Affinity() *corev1.Affinity
 	PriorityClassName() *string
@@ -40,10 +41,10 @@ type ComponentAccessor interface {
 }
 
 type componentAccessorImpl struct {
-	// Cluster is the TidbCluster Spec
+	// ClusterSpec is the TidbCluster Spec
 	ClusterSpec *TidbClusterSpec
 
-	// Cluster is the Component Spec
+	// ComponentSpec is the Component Spec
 	ComponentSpec *ComponentSpec
 }
 
@@ -57,6 +58,14 @@ func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
 		return a.ClusterSpec.ImagePullPolicy
 	}
 	return *pp
+}
+
+func (a *componentAccessorImpl) ImagePullSecrets() []corev1.LocalObjectReference {
+	ips := a.ComponentSpec.ImagePullSecrets
+	if ips == nil {
+		return a.ClusterSpec.ImagePullSecrets
+	}
+	return ips
 }
 
 func (a *componentAccessorImpl) HostNetwork() bool {
@@ -157,6 +166,9 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
+	}
+	if a.ImagePullSecrets() != nil {
+		spec.ImagePullSecrets = a.ImagePullSecrets()
 	}
 	return spec
 }
