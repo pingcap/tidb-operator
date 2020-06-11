@@ -54,8 +54,8 @@ spec:
   tikv:
     image: pingcap.com/tikv:v3.1.0
     config:
-      grpc-concurrenc: 4
-      sync-log: true
+      log-level: "info"
+      slow-log-threshold: "1s"
     replicas: 1
     requests:
       cpu: 2
@@ -79,8 +79,8 @@ spec:
   pd:
     image: pingcap.com/pd:v3.1.0
     config:
-      format: "format"
-      disable-timestamp: false
+      lease: 3
+      enable-prevote: true
 ```
 
 ## 配置 TiFlash 配置参数
