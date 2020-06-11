@@ -105,12 +105,20 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{{
-				Name:       "discovery",
-				Port:       10261,
-				TargetPort: intstr.FromInt(10261),
-				Protocol:   corev1.ProtocolTCP,
-			}},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "discovery",
+					Port:       10261,
+					TargetPort: intstr.FromInt(10261),
+					Protocol:   corev1.ProtocolTCP,
+				},
+				{
+					Name:       "proxy",
+					Port:       10262,
+					TargetPort: intstr.FromInt(10262),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
 			Selector: deploy.Spec.Template.Labels,
 		},
 	}

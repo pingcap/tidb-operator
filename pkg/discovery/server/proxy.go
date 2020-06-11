@@ -63,5 +63,6 @@ func buildProxy(cli versioned.Interface, kubeCli kubernetes.Interface, tcName, n
 
 func StartProxyServer(cli versioned.Interface, kubeCli kubernetes.Interface, tcName, namespace string, port int) {
 	proxy := buildProxy(cli, kubeCli, tcName, namespace)
+	klog.Infof("start proxy-server")
 	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), proxy))
 }
