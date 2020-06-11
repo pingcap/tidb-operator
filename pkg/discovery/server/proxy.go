@@ -15,7 +15,9 @@ package server
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -51,13 +53,25 @@ func buildProxy(cli versioned.Interface, kubeCli kubernetes.Interface, tcName, n
 	}
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	if url.Scheme == "https" {
+		// load crt and key
 		certPath := fmt.Sprintf("%s/tls.crt", member.PdTlsCertPath)
 		keyPath := fmt.Sprintf("%s/tls.key", member.PdTlsCertPath)
 		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 		if err != nil {
 			klog.Fatal(err)
 		}
-		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+		// load ca
+		rootCAs := x509.NewCertPool()
+		caPath := fmt.Sprintf("%s/ca.crt", member.PdTlsCertPath)
+		caByte, err := ioutil.ReadFile(caPath)
+		if err != nil {
+			klog.Fatal(err)
+		}
+		rootCAs.AppendCertsFromPEM(caByte)
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      rootCAs,
+		}
 		proxy.Transport = &http.Transport{TLSClientConfig: tlsConfig}
 	}
 	director := proxy.Director
