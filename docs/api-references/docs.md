@@ -6295,6 +6295,25 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store PD Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/pd.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/pd/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>config</code></br>
 <em>
 <a href="#pdconfig">
@@ -13603,6 +13622,25 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiKV data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store TiKV Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/tikv.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/tikv/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 </td>
 </tr>
 <tr>
