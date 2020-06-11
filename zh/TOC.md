@@ -63,7 +63,11 @@
   - [恢复 PD 集群](pd-recover.md)
   - [恢复误删的集群](recover-deleted-cluster.md)
 - [导入集群数据](restore-data-using-tidb-lightning.md)
-- [故障诊断](troubleshoot.md)
++ 故障诊断
+  - [使用技巧](tips.md)
+  - [部署错误](deploy-failures.md)
+  - [集群异常](exceptions.md)
+  - [网络问题](network-issues.md)
 - [常见问题](faq.md)
 + 参考
   + 架构

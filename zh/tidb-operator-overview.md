@@ -88,7 +88,7 @@ TiDB Operator 提供了多种方式来部署 Kubernetes 上的 TiDB 集群：
 当集群出现问题需要进行诊断时，你可以：
 
 + 查阅 [Kubernetes 上的 TiDB FAQ](faq.md) 寻找是否存在现成的解决办法；
-+ 参考 [Kubernetes 上的 TiDB 故障诊断](troubleshoot.md)解决故障。
++ 参考 [Kubernetes 上的 TiDB 故障诊断](tips.md)解决故障。
 
 Kubernetes 上的 TiDB 提供了专用的命令行工具 `tkctl` 用于集群管理和辅助诊断，同时，在 Kubernetes 上，TiDB 的部分生态工具的使用方法也有所不同，你可以：
 

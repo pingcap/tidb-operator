@@ -84,7 +84,7 @@ TiDB Operator 尚不支持自动编排 TiSpark。
 
 TiDB Operator 调度 Pod 失败的原因可能有三种情况：
 
-* 资源不足，导致 Pod 一直阻塞在 `Pending` 状态。详细说明参见[集群故障诊断](troubleshoot.md)。
+* 资源不足，导致 Pod 一直阻塞在 `Pending` 状态。详细说明参见[集群故障诊断](deploy-failures.md)。
 
 * 部分 Node 被打了 `taint`，导致 Pod 无法调度到对应的 Node 上。详请参考 [taint & toleration](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/)。
 
