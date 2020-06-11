@@ -3658,6 +3658,11 @@ spec:
                           type: integer
                         raft-log-gc-tick-interval:
                           type: string
+                        raft-max-inflight-msgs:
+                          format: int64
+                          type: integer
+                        raft-max-size-per-msg:
+                          type: string
                         raft-reject-transfer-leader-duration:
                           type: string
                         raft-store-max-leader-lease:
