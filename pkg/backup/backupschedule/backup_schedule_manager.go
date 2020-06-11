@@ -228,6 +228,10 @@ func (bm *backupScheduleManager) createBackup(bs *v1alpha1.BackupSchedule, times
 		}
 	}
 
+	if bs.Spec.ImagePullSecrets != nil {
+		backupSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
+	}
+
 	bsLabel := label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName)
 
 	backup := &v1alpha1.Backup{
