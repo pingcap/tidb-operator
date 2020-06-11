@@ -815,6 +815,8 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dataSubDir:
+                  type: string
                 env:
                   items:
                     properties:
@@ -4449,6 +4451,8 @@ spec:
                       type: object
                   type: object
                 configUpdateStrategy:
+                  type: string
+                dataSubDir:
                   type: string
                 env:
                   items:
