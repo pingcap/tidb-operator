@@ -19,11 +19,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+)
+
+const (
+	PdTlsCertPath = "/var/lib/pd-tls"
 )
 
 type TidbDiscoveryManager interface {
@@ -171,6 +176,25 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 				},
 			},
 		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		d.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{
+				Name: "pd-tls",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
+					},
+				},
+			},
+		}
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
+			{
+				Name:      "pd-tls",
+				ReadOnly:  true,
+				MountPath: PdTlsCertPath,
+			},
+		}
 	}
 	b, err := json.Marshal(d.Spec.Template.Spec)
 	if err != nil {

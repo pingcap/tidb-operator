@@ -14,6 +14,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -21,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/manager/member"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
@@ -50,10 +51,13 @@ func buildProxy(cli versioned.Interface, kubeCli kubernetes.Interface, tcName, n
 	}
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	if url.Scheme == "https" {
-		tlsConfig, err := pdapi.GetTLSConfig(kubeCli, pdapi.Namespace(namespace), tcName, nil)
+		certPath := fmt.Sprintf("%s/tls.crt", member.PdTlsCertPath)
+		keyPath := fmt.Sprintf("%s/tls.key", member.PdTlsCertPath)
+		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 		if err != nil {
 			klog.Fatal(err)
 		}
+		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
 		proxy.Transport = &http.Transport{TLSClientConfig: tlsConfig}
 	}
 	director := proxy.Director
