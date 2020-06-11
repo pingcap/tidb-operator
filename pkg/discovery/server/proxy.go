@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
 func buildUrl(cli versioned.Interface, tcName, namespace string) (*url.URL, error) {
@@ -54,11 +55,12 @@ func buildProxy(cli versioned.Interface, kubeCli kubernetes.Interface, tcName, n
 		}
 		proxy.Transport = &http.Transport{TLSClientConfig: tlsConfig}
 	}
-
 	director := proxy.Director
 	proxy.Director = func(req *http.Request) {
-		director(req)
-		req.Host = req.URL.Host
+		if strings.HasPrefix(req.RequestURI, "/dashboard") {
+			director(req)
+			req.Host = req.URL.Host
+		}
 	}
 	return proxy
 }
