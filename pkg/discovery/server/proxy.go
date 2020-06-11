@@ -37,7 +37,7 @@ func buildUrl(cli versioned.Interface, tcName, namespace string) (*url.URL, erro
 		klog.Error(err)
 		return nil, err
 	}
-	if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
+	if tc.IsTLSClusterEnabled() {
 		url.Scheme = "https"
 	}
 	return url, nil
