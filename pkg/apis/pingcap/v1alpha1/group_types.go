@@ -98,8 +98,8 @@ type TiKVGroupStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +k8s:openapi-gen=true
-// TKVGroupList is TiKVGroup list
-type TKVGroupList struct {
+// TiKVGroupList is TiKVGroup list
+type TiKVGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ListMeta `json:"metadata"`
