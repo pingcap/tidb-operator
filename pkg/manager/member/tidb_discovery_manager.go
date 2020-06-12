@@ -130,7 +130,8 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 				Spec: corev1.PodSpec{
 					ServiceAccountName: meta.Name,
 					Containers: []corev1.Container{{
-						Name: "discovery",
+						Name:      "discovery",
+						Resources: controller.ContainerResource(tc.Spec.Discovery.ResourceRequirements),
 						Command: []string{
 							"/usr/local/bin/tidb-discovery",
 						},
@@ -163,6 +164,10 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 		d.Annotations = map[string]string{}
 	}
 	d.Annotations[controller.LastAppliedPodTemplate] = string(b)
+
+	if tc.Spec.ImagePullSecrets != nil {
+		d.Spec.Template.Spec.ImagePullSecrets = tc.Spec.ImagePullSecrets
+	}
 	return d, nil
 }
 

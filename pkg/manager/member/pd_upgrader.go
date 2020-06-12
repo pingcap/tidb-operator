@@ -72,11 +72,6 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		return nil
 	}
 
-	if controller.PodWebhookEnabled {
-		setUpgradePartition(newSet, 0)
-		return nil
-	}
-
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -97,6 +92,11 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
+		}
+
+		if controller.PodWebhookEnabled {
+			setUpgradePartition(newSet, i)
+			return nil
 		}
 
 		return pu.upgradePDPod(tc, i, newSet)

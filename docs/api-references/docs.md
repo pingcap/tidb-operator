@@ -213,6 +213,20 @@ MydumperConfig
 </tr>
 <tr>
 <td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>affinity</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#affinity-v1-core">
@@ -400,6 +414,20 @@ string
 </td>
 <td>
 <p>StorageSize is the request storage size for backup job</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
 </table>
@@ -629,6 +657,20 @@ string
 <p>Specify service account of restore</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -703,6 +745,19 @@ TidbClusterSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>pd</code></br>
@@ -863,6 +918,20 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>configUpdateStrategy</code></br>
 <em>
 <a href="#configupdatestrategy">
@@ -1009,6 +1078,18 @@ Optional: Defaults to UTC</p>
 <td>
 <p>Services list non-headless services type used in TidbCluster
 Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableDynamicConfiguration</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
 </td>
 </tr>
 </table>
@@ -1267,6 +1348,20 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>permitHost</code></br>
 <em>
 string
@@ -1509,6 +1604,20 @@ Kubernetes core/v1.PullPolicy
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
 <tr>
@@ -1961,6 +2070,20 @@ string
 <p>StorageSize is the request storage size for backup job</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupschedulestatus">BackupScheduleStatus</h3>
@@ -2164,6 +2287,20 @@ MydumperConfig
 <td>
 <em>(Optional)</em>
 <p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
 <tr>
@@ -2752,6 +2889,20 @@ Optional: Defaults to cluster-level setting</p>
 </tr>
 <tr>
 <td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hostNetwork</code></br>
 <em>
 bool
@@ -3252,6 +3403,39 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="discoveryspec">DiscoverySpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>DiscoverySpec contains details of Discovery members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -6237,6 +6421,25 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store PD Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/pd.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/pd/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>config</code></br>
 <em>
 <a href="#pdconfig">
@@ -7530,6 +7733,20 @@ string
 <p>Specify service account of restore</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="restorestatus">RestoreStatus</h3>
@@ -7990,6 +8207,23 @@ string
 <td>
 <em>(Optional)</em>
 <p>PortName is the name of service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>loadBalancerSourceRanges</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LoadBalancerSourceRanges is the loadBalancerSourceRanges of service
+If specified and supported by the platform, this will restrict traffic through the cloud-provider
+load-balancer will be restricted to the specified client IPs. This field will be ignored if the
+cloud-provider does not support the feature.&rdquo;
+More info: <a href="https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/">https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/</a>
+Optional: Defaults to omitted</p>
 </td>
 </tr>
 </tbody>
@@ -12213,6 +12447,33 @@ Optional: Defaults to 8MB</p>
 </tr>
 <tr>
 <td>
+<code>raft-max-size-per-msg</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Limit the max size of each append message.
+Optional: Defaults to 1MB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>raft-max-inflight-msgs</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Limit the max number of in-flight append messages during optimistic
+replication phase.
+Optional: Defaults to 256</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>raft-log-gc-tick-interval</code></br>
 <em>
 string
@@ -13532,6 +13793,25 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store TiKV Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/tikv.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/tikv/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>config</code></br>
 <em>
 <a href="#tikvconfig">
@@ -14582,6 +14862,19 @@ string
 <tbody>
 <tr>
 <td>
+<code>discovery</code></br>
+<em>
+<a href="#discoveryspec">
+DiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -14740,6 +15033,20 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>configUpdateStrategy</code></br>
 <em>
 <a href="#configupdatestrategy">
@@ -14886,6 +15193,18 @@ Optional: Defaults to UTC</p>
 <td>
 <p>Services list non-headless services type used in TidbCluster
 Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enableDynamicConfiguration</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
 </td>
 </tr>
 </tbody>
@@ -15065,6 +15384,20 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
 <tr>
@@ -15354,6 +15687,20 @@ Kubernetes core/v1.PullPolicy
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
 <tr>

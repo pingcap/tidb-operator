@@ -213,6 +213,11 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 		deployment.Annotations = map[string]string{}
 	}
 	deployment.Annotations[controller.LastAppliedPodTemplate] = string(b)
+
+	if monitor.Spec.ImagePullSecrets != nil {
+		deployment.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
+	}
+
 	return deployment, nil
 }
 
@@ -690,6 +695,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.Spec.Prometheus.Service.LoadBalancerIP != nil {
 			prometheusService.Spec.LoadBalancerIP = *monitor.Spec.Prometheus.Service.LoadBalancerIP
 		}
+		if monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges != nil {
+			prometheusService.Spec.LoadBalancerSourceRanges = monitor.Spec.Prometheus.Service.LoadBalancerSourceRanges
+		}
 	}
 
 	reloaderService := &core.Service{
@@ -717,6 +725,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 	if monitor.BaseReloaderSpec().ServiceType() == core.ServiceTypeLoadBalancer {
 		if monitor.Spec.Reloader.Service.LoadBalancerIP != nil {
 			reloaderService.Spec.LoadBalancerIP = *monitor.Spec.Reloader.Service.LoadBalancerIP
+		}
+		if monitor.Spec.Reloader.Service.LoadBalancerSourceRanges != nil {
+			reloaderService.Spec.LoadBalancerSourceRanges = monitor.Spec.Reloader.Service.LoadBalancerSourceRanges
 		}
 	}
 
@@ -747,6 +758,9 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		if monitor.BaseGrafanaSpec().ServiceType() == core.ServiceTypeLoadBalancer {
 			if monitor.Spec.Grafana.Service.LoadBalancerIP != nil {
 				grafanaService.Spec.LoadBalancerIP = *monitor.Spec.Grafana.Service.LoadBalancerIP
+			}
+			if monitor.Spec.Grafana.Service.LoadBalancerSourceRanges != nil {
+				grafanaService.Spec.LoadBalancerSourceRanges = monitor.Spec.Grafana.Service.LoadBalancerSourceRanges
 			}
 		}
 

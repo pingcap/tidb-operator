@@ -107,6 +107,9 @@ type TidbClusterList struct {
 // +k8s:openapi-gen=true
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
+	// Discovery spec
+	Discovery DiscoverySpec `json:"discovery,omitempty"`
+
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -153,6 +156,10 @@ type TidbClusterSpec struct {
 	// ImagePullPolicy of TiDB cluster Pods
 	// +kubebuilder:default=IfNotPresent
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
 	// UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
@@ -208,6 +215,10 @@ type TidbClusterSpec struct {
 	// Deprecated
 	// +k8s:openapi-gen=false
 	Services []Service `json:"services,omitempty"`
+
+	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
+	// +optional
+	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -259,6 +270,12 @@ const (
 )
 
 // +k8s:openapi-gen=true
+// DiscoverySpec contains details of Discovery members
+type DiscoverySpec struct {
+	corev1.ResourceRequirements `json:",inline"`
+}
+
+// +k8s:openapi-gen=true
 // PDSpec contains details of PD members
 type PDSpec struct {
 	ComponentSpec               `json:",inline"`
@@ -289,6 +306,17 @@ type PDSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// Subdirectory within the volume to store PD Data. By default, the data
+	// is stored in the root directory of volume which is mounted at
+	// /var/lib/pd.
+	// Specifying this will change the data directory to a subdirectory, e.g.
+	// /var/lib/pd/data if you set the value to "data".
+	// It's dangerous to change this value for a running cluster as it will
+	// upgrade your cluster to use a new storage directory.
+	// Defaults to "" (volume's root).
+	// +optional
+	DataSubDir string `json:"dataSubDir,omitempty"`
 
 	// Config is the Configuration of pd-servers
 	// +optional
@@ -335,6 +363,17 @@ type TiKVSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// Subdirectory within the volume to store TiKV Data. By default, the data
+	// is stored in the root directory of volume which is mounted at
+	// /var/lib/tikv.
+	// Specifying this will change the data directory to a subdirectory, e.g.
+	// /var/lib/tikv/data if you set the value to "data".
+	// It's dangerous to change this value for a running cluster as it will
+	// upgrade your cluster to use a new storage directory.
+	// Defaults to "" (volume's root).
+	// +optional
+	DataSubDir string `json:"dataSubDir,omitempty"`
 
 	// Config is the Configuration of tikv-servers
 	// +optional
@@ -584,6 +623,10 @@ type ComponentSpec struct {
 	// +optional
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
 	// Whether Hostnetwork of the component is enabled. Override the cluster-level setting if present
 	// Optional: Defaults to cluster-level setting
 	// +optional
@@ -668,6 +711,15 @@ type ServiceSpec struct {
 	// PortName is the name of service port
 	// +optional
 	PortName *string `json:"portName,omitempty"`
+
+	// LoadBalancerSourceRanges is the loadBalancerSourceRanges of service
+	// If specified and supported by the platform, this will restrict traffic through the cloud-provider
+	// load-balancer will be restricted to the specified client IPs. This field will be ignored if the
+	// cloud-provider does not support the feature."
+	// More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/
+	// Optional: Defaults to omitted
+	// +optional
+	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1036,6 +1088,9 @@ type BackupSpec struct {
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -1102,6 +1157,8 @@ const (
 	BackupRetryFailed BackupConditionType = "RetryFailed"
 	// BackupInvalid means invalid backup CR
 	BackupInvalid BackupConditionType = "Invalid"
+	// BackupPrepare means the backup prepare backup process
+	BackupPrepare BackupConditionType = "Prepare"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -1174,6 +1231,9 @@ type BackupScheduleSpec struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
@@ -1273,6 +1333,9 @@ type RestoreSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of restore
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.

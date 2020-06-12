@@ -31,6 +31,10 @@ spec:
       {{- if .Values.serviceAccount }}
       serviceAccountName: {{ .Values.serviceAccount }}
       {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 6 }}
+      {{- end }}
       {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
       nodeName: {{ .Values.dataSource.local.nodeName }}
       {{ else if not .Values.dataSource.adhoc.pvcName -}}

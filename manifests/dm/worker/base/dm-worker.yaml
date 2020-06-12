@@ -47,7 +47,7 @@ spec:
           value: dm-worker
         - name: TZ
           value: UTC
-        image: pingcap/dm:ha-alpha
+        image: pingcap/dm:v2.0.0-beta.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 8
@@ -118,4 +118,3 @@ spec:
   publishNotReadyAddresses: true
   sessionAffinity: None
   type: ClusterIP
-

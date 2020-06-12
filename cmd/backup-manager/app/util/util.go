@@ -84,15 +84,46 @@ func EnsureDirectoryExist(dirName string) error {
 	return nil
 }
 
+func GetRemotePath(backup *v1alpha1.Backup) (string, error) {
+	var path, bucket, prefix string
+	st := util.GetStorageType(backup.Spec.StorageProvider)
+	switch st {
+	case v1alpha1.BackupStorageTypeS3:
+		prefix = backup.Spec.StorageProvider.S3.Prefix
+		bucket = backup.Spec.StorageProvider.S3.Bucket
+		prefix = strings.Trim(prefix, "/")
+		prefix += "/"
+		if prefix == "/" {
+			path = fmt.Sprintf("s3://%s%s", bucket, prefix)
+		} else {
+			path = fmt.Sprintf("s3://%s/%s", bucket, prefix)
+		}
+		return path, nil
+	case v1alpha1.BackupStorageTypeGcs:
+		prefix = backup.Spec.StorageProvider.Gcs.Prefix
+		bucket = backup.Spec.StorageProvider.Gcs.Bucket
+		prefix = strings.Trim(prefix, "/")
+		prefix += "/"
+		if prefix == "/" {
+			path = fmt.Sprintf("gcs://%s%s", bucket, prefix)
+		} else {
+			path = fmt.Sprintf("gcs://%s/%s", bucket, prefix)
+		}
+		return path, nil
+	default:
+		return "", fmt.Errorf("storage %s not support yet", st)
+	}
+}
+
 // OpenDB opens db
 func OpenDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("open dsn %s failed, err: %v", dsn, err)
+		return nil, fmt.Errorf("open datasource failed, err: %v", err)
 	}
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("cannot connect to mysql: %s, err: %v", dsn, err)
+		return nil, fmt.Errorf("cannot connect to mysql, err: %v", err)
 	}
 	return db, nil
 }
@@ -127,16 +158,16 @@ func GetOptionValueFromEnv(option, envPrefix string) string {
 }
 
 // ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.
-func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, string, error) {
+func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error) {
 	var args []string
 	config := backup.Spec.BR
 	if config == nil {
-		return nil, "", fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
+		return nil, fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config)...)
-	storageArgs, remotePath, err := getRemoteStorage(backup.Spec.StorageProvider)
+	storageArgs, err := getRemoteStorage(backup.Spec.StorageProvider)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	args = append(args, storageArgs...)
 	if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.DB != "" {
@@ -145,7 +176,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, strin
 	if backup.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
 		args = append(args, fmt.Sprintf("--table=%s", config.Table))
 	}
-	return args, remotePath, nil
+	return args, nil
 }
 
 // ConstructMydumperOptionsForBackup constructs mydumper options for backup
@@ -180,7 +211,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
 	args = append(args, constructBRGlobalOptions(config)...)
-	storageArgs, _, err := getRemoteStorage(restore.Spec.StorageProvider)
+	storageArgs, err := getRemoteStorage(restore.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}

@@ -17,16 +17,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
-
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	utilnet "k8s.io/utils/net"
 )
 
 // ValidateTidbCluster validates a TidbCluster, it performs basic validation for all TidbClusters despite it is legacy
@@ -39,6 +41,17 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	allErrs = append(allErrs, validateAnnotations(tc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
 	// validate spec
 	allErrs = append(allErrs, validateTiDBClusterSpec(&tc.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
+func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
+	allErrs := field.ErrorList{}
+	// validate monitor service
+	if monitor.Spec.Grafana != nil {
+		allErrs = append(allErrs, validateService(&monitor.Spec.Grafana.Service, field.NewPath("spec"))...)
+	}
+	allErrs = append(allErrs, validateService(&monitor.Spec.Prometheus.Service, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateService(&monitor.Spec.Reloader.Service, field.NewPath("spec"))...)
 	return allErrs
 }
 
@@ -79,6 +92,9 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	if len(spec.DataSubDir) > 0 {
+		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
+	}
 	return allErrs
 }
 
@@ -164,6 +180,9 @@ func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) fie
 func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	if spec.Service != nil {
+		allErrs = append(allErrs, validateService(&spec.Service.ServiceSpec, fldPath)...)
+	}
 	return allErrs
 }
 
@@ -395,6 +414,49 @@ func validateDeleteSlots(annotations map[string]string, key string, fldPath *fie
 				msg := fmt.Sprintf("value of %q annotation must be a JSON list of int32", key)
 				allErrs = append(allErrs, field.Invalid(fldPath, value, msg))
 			}
+		}
+	}
+	return allErrs
+}
+
+func validateService(spec *v1alpha1.ServiceSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	//validate LoadBalancerSourceRanges field from service
+	if len(spec.LoadBalancerSourceRanges) > 0 {
+		ip := spec.LoadBalancerSourceRanges
+		_, err := utilnet.ParseIPNets(ip...)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.LoadBalancerSourceRanges"), spec.LoadBalancerSourceRanges, "service.Spec.LoadBalancerSourceRanges is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24."))
+		}
+	}
+	return allErrs
+}
+
+// This validate will make sure targetPath:
+// 1. is not abs path
+// 2. does not have any element which is ".."
+func validateLocalDescendingPath(targetPath string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if path.IsAbs(targetPath) {
+		allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must be a relative path"))
+	}
+
+	allErrs = append(allErrs, validatePathNoBacksteps(targetPath, fldPath)...)
+
+	return allErrs
+}
+
+// validatePathNoBacksteps makes sure the targetPath does not have any `..` path elements when split
+//
+// This assumes the OS of the apiserver and the nodes are the same. The same check should be done
+// on the node to ensure there are no backsteps.
+func validatePathNoBacksteps(targetPath string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	parts := strings.Split(filepath.ToSlash(targetPath), "/")
+	for _, item := range parts {
+		if item == ".." {
+			allErrs = append(allErrs, field.Invalid(fldPath, targetPath, "must not contain '..'"))
+			break // even for `../../..`, one error is sufficient to make the point
 		}
 	}
 	return allErrs
