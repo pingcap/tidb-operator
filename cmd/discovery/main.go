@@ -18,6 +18,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -33,12 +34,14 @@ import (
 var (
 	printVersion bool
 	port         int
+	proxyPort    int
 )
 
 func init() {
 	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")
+	flag.IntVar(&proxyPort, "proxy-port", 10262, "The port that the tidb discovery's proxy service runs on (default 10262)")
 	flag.Parse()
 }
 
@@ -69,8 +72,22 @@ func main() {
 		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
 	}
 
+	tcName := os.Getenv("TC_NAME")
+	if len(tcName) < 1 {
+		klog.Fatal("ENV TC_NAME is not set")
+	}
+	tcTls := false
+	tlsEnabled := os.Getenv("TC_TLS_ENABLED")
+	if tlsEnabled == strconv.FormatBool(true) {
+		tcTls = true
+	}
+
 	go wait.Forever(func() {
 		server.StartServer(cli, kubeCli, port)
 	}, 5*time.Second)
+	go wait.Forever(func() {
+		server.StartProxyServer(tcName, tcTls, proxyPort)
+	}, 5*time.Second)
+
 	klog.Fatal(http.ListenAndServe(":6060", nil))
 }
