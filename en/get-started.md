@@ -5,7 +5,6 @@ category: how-to
 aliases: ['/docs/dev/tidb-in-kubernetes/deploy-tidb-from-kubernetes-dind/', '/docs/dev/tidb-in-kubernetes/deploy-tidb-from-kubernetes-kind/', '/docs/dev/tidb-in-kubernetes/deploy-tidb-from-kubernetes-minikube/']
 ---
 
-
 # Get Started with TiDB Operator in Kubernetes
 
 This document explains how to create a simple Kubernetes cluster and use it to do a basic test deployment of TiDB Cluster using TiDB Operator.
