@@ -7,6 +7,8 @@ timezone: UTC
 
 image: pingcap/tidb-lightning:v4.0.0
 imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
+
 service:
   type: NodePort
 

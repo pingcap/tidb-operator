@@ -10,6 +10,8 @@ clusterName: demo
 
 image: pingcap/tidb-lightning:v4.0.0
 imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
+
 storageClassName: local-storage
 storage: 20Gi
 resources:

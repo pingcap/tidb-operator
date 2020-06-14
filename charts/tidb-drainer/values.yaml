@@ -16,6 +16,7 @@ clusterVersion: v4.0.0
 
 baseImage: pingcap/tidb-binlog
 imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
 
 logLevel: info
 # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

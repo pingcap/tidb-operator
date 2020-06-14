@@ -15,15 +15,21 @@ package member
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+)
+
+const (
+	PdTlsCertPath = "/var/lib/pd-tls"
 )
 
 type TidbDiscoveryManager interface {
@@ -105,12 +111,20 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{{
-				Name:       "discovery",
-				Port:       10261,
-				TargetPort: intstr.FromInt(10261),
-				Protocol:   corev1.ProtocolTCP,
-			}},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "discovery",
+					Port:       10261,
+					TargetPort: intstr.FromInt(10261),
+					Protocol:   corev1.ProtocolTCP,
+				},
+				{
+					Name:       "proxy",
+					Port:       10262,
+					TargetPort: intstr.FromInt(10262),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
 			Selector: deploy.Spec.Template.Labels,
 		},
 	}
@@ -150,11 +164,38 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 								Name:  "TZ",
 								Value: tc.Timezone(),
 							},
+							{
+								Name:  "TC_NAME",
+								Value: tc.Name,
+							},
 						},
 					}},
 				},
 			},
 		},
+	}
+	if tc.IsTLSClusterEnabled() {
+		d.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{
+				Name: "pd-tls",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
+					},
+				},
+			},
+		}
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
+			{
+				Name:      "pd-tls",
+				ReadOnly:  true,
+				MountPath: PdTlsCertPath,
+			},
+		}
+		d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "TC_TLS_ENABLED",
+			Value: strconv.FormatBool(true),
+		})
 	}
 	b, err := json.Marshal(d.Spec.Template.Spec)
 	if err != nil {
@@ -164,6 +205,10 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 		d.Annotations = map[string]string{}
 	}
 	d.Annotations[controller.LastAppliedPodTemplate] = string(b)
+
+	if tc.Spec.ImagePullSecrets != nil {
+		d.Spec.Template.Spec.ImagePullSecrets = tc.Spec.ImagePullSecrets
+	}
 	return d, nil
 }
 

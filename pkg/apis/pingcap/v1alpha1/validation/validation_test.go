@@ -322,3 +322,30 @@ func newTidbMonitor() *v1alpha1.TidbMonitor {
 	}
 	return monitor
 }
+
+func TestValidateLocalDescendingPath(t *testing.T) {
+	successCases := []string{
+		"data",
+		"foo/data",
+	}
+
+	for _, c := range successCases {
+		errs := validateLocalDescendingPath(c, field.NewPath("dataSubDir"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := []string{
+		"/data",
+		"../data",
+		"../foo/data",
+	}
+
+	for _, c := range errorCases {
+		errs := validateLocalDescendingPath(c, field.NewPath("dataSubDir"))
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", c)
+		}
+	}
+}
