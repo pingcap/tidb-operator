@@ -472,6 +472,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 	svcName := controller.PDPeerMemberName(tcName)
 	instanceName := tc.GetInstanceName()
 	pdLabel := label.New().Instance(instanceName).PD().Labels()
+
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
