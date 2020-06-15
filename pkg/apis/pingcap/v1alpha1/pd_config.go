@@ -133,6 +133,8 @@ type DashboardConfig struct {
 	TiDBKeyPath *string `toml:"tidb-key-path,omitempty" json:"tidb-key-path,omitempty"`
 	// +optional
 	PublicPathPrefix *string `toml:"public-path-prefix,omitempty" json:"public-path-prefix,omitempty"`
+	// +optional
+	InternalProxy *bool `toml:"internal-proxy,omitempty" json:"internal_proxy,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
