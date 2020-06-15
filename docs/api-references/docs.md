@@ -7220,6 +7220,19 @@ PrometheusConfiguration
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>sidecars</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="proxyprotocol">ProxyProtocol</h3>
