@@ -69,9 +69,17 @@ func (rpc *realPVControl) PatchPVReclaimPolicy(obj runtime.Object, pv *corev1.Pe
 
 	name := metaObj.GetName()
 	pvName := pv.GetName()
-	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
 
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+	latestPV, err := rpc.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if string(latestPV.Spec.PersistentVolumeReclaimPolicy) == string(reclaimPolicy) {
+		return nil
+	}
+	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
+	
+	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		_, err := rpc.kubeCli.CoreV1().PersistentVolumes().Patch(pvName, types.StrategicMergePatchType, patchBytes)
 		return err
 	})
