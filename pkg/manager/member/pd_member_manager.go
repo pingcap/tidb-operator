@@ -763,6 +763,17 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Dashboard.TiDBKeyPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
 	}
 
+	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
+		if config.Dashboard != nil {
+			// EnableDashboardInternalProxy has a higher priority to cover the configuration in Dashboard
+			config.Dashboard.InternalProxy = pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy)
+		} else {
+			config.Dashboard = &v1alpha1.DashboardConfig{
+				InternalProxy: pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy),
+			}
+		}
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
