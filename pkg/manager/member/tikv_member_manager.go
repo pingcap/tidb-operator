@@ -633,7 +633,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	}
 	if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	} else {
+	} else if tc.Status.TiKV.Phase != v1alpha1.ScaleOutPhase && tc.Status.TiKV.Phase != v1alpha1.ScaleInPhase {
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
 

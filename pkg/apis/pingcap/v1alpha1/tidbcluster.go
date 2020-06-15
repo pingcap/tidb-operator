@@ -198,6 +198,11 @@ func (tc *TidbCluster) TiKVUpgrading() bool {
 	return tc.Status.TiKV.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) TiKVScaling() bool {
+	return tc.Status.TiKV.Phase == ScaleOutPhase ||
+		tc.Status.TiKV.Phase == ScaleInPhase
+}
+
 func (tc *TidbCluster) TiDBUpgrading() bool {
 	return tc.Status.TiDB.Phase == UpgradePhase
 }

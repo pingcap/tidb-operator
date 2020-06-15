@@ -49,6 +49,10 @@ func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		return tsd.ScaleOut(tc, oldSet, newSet)
 	} else if scaling < 0 {
 		return tsd.ScaleIn(tc, oldSet, newSet)
+	} else {
+		if tc.Status.TiKV.Phase == v1alpha1.ScaleOutPhase || tc.Status.TiKV.Phase == v1alpha1.ScaleInPhase {
+			tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+		}
 	}
 	// we only sync auto scaler annotations when we are finishing syncing scaling
 	return tsd.SyncAutoScalerAnn(tc, oldSet)
@@ -58,8 +62,22 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	if tc.TiKVUpgrading() {
+		klog.Infof("the TidbCluster: [%s/%s]'s tikv is upgrading, can not scale out until the upgrade completed",
+			tc.Namespace, tc.Name)
 		return nil
 	}
+	// During TidbCluster upgrade, if TiKV is scaled at the same time, since
+	// TiKV cannot be upgraded during PD upgrade, the TiKV scaling will occur
+	// before the TiKV upgrade, in this case, the Pump, TiDB, TiFlash, TiCDC, etc.
+	// will be upgraded before TiKV upgrade.
+	// To avoid this case, we skip the scaling out during PD upgrade.
+	if tc.PDUpgrading() {
+		klog.Infof("the TidbCluster: [%s/%s]'s pd is upgrading, can not scale out until the upgrade completed",
+			tc.Namespace, tc.Name)
+		return nil
+	}
+
+	tc.Status.TiKV.Phase = v1alpha1.ScaleOutPhase
 
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
@@ -85,6 +103,18 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			ns, tcName)
 		return nil
 	}
+	// During TidbCluster upgrade, if TiKV is scaled at the same time, since
+	// TiKV cannot be upgraded during PD upgrade, the TiKV scaling will occur
+	// before the TiKV upgrade, in this case, the Pump, TiDB, TiFlash, TiCDC, etc.
+	// will be upgraded before TiKV upgrade.
+	// To avoid this case, we skip the scaling in during PD upgrade.
+	if tc.PDUpgrading() {
+		klog.Infof("the TidbCluster: [%s/%s]'s pd is upgrading, can not scale in until the upgrade completed",
+			ns, tcName)
+		return nil
+	}
+
+	tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
 
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
