@@ -134,7 +134,7 @@ type DashboardConfig struct {
 	// +optional
 	PublicPathPrefix *string `toml:"public-path-prefix,omitempty" json:"public-path-prefix,omitempty"`
 	// +optional
-	InternalProxy *bool `toml:"internal-proxy,omitempty" json:"internal_proxy,omitempty"`
+	InternalProxy *bool `toml:"internal-proxy,omitempty" json:"internal-proxy,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.

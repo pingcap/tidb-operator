@@ -3407,7 +3407,7 @@ string
 </tr>
 <tr>
 <td>
-<code>internal_proxy</code></br>
+<code>internal-proxy</code></br>
 <em>
 bool
 </em>
