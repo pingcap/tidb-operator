@@ -143,13 +143,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// cleaning all orphan pods(pd, tikv or tiflash which don't have a related PVC) managed by operator
-	if skipReasons, err := tcc.orphanPodsCleaner.Clean(tc); err != nil {
+	skipReasons, err := tcc.orphanPodsCleaner.Clean(tc)
+	if err != nil {
 		return err
-	} else {
-		if klog.V(10) {
-			for podName, reason := range skipReasons {
-				klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, tc.Namespace, tc.Name, reason)
-			}
+	}
+	if klog.V(10) {
+		for podName, reason := range skipReasons {
+			klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, tc.Namespace, tc.Name, reason)
 		}
 	}
 
@@ -237,13 +237,13 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 	}
 
 	// cleaning the pod scheduling annotation for pd and tikv
-	if skipReasons, err := tcc.pvcCleaner.Clean(tc); err != nil {
+	pvcSkipReasons, err := tcc.pvcCleaner.Clean(tc)
+	if err != nil {
 		return err
-	} else {
-		if klog.V(10) {
-			for pvcName, reason := range skipReasons {
-				klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, tc.Namespace, tc.Name, reason)
-			}
+	}
+	if klog.V(10) {
+		for pvcName, reason := range pvcSkipReasons {
+			klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, tc.Namespace, tc.Name, reason)
 		}
 	}
 
