@@ -53,4 +53,4 @@ spec:
     matchLabels:
       app.kubernetes.io/component: pd
       app.kubernetes.io/instance: basic
-      headless: false
+      app.kubernetes.io/used-by: "end-user"

@@ -424,7 +424,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
 	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).Headless("false").PD().Labels()
+	pdLabel := label.New().Instance(instanceName).PD().Labels()
 
 	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

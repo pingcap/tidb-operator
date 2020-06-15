@@ -164,9 +164,6 @@ const (
 	InitJobLabelVal string = "initializer"
 	// TiDBOperator is ManagedByLabelKey label value
 	TiDBOperator string = "tidb-operator"
-
-	// HeadlessLabelKey is pd service headless type value
-	HeadlessLabelKey string = "headless"
 )
 
 // Label is the label field in metadata
@@ -386,11 +383,4 @@ func (l Label) String() string {
 // IsManagedByTiDBOperator returns whether label is a Managed by tidb-operator
 func (l Label) IsManagedByTiDBOperator() bool {
 	return l[ManagedByLabelKey] == TiDBOperator
-}
-
-
-// Instance adds instance kv pair to label
-func (l Label) Headless(val string) Label {
-	l[HeadlessLabelKey] = val
-	return l
 }
