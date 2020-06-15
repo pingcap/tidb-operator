@@ -7,5 +7,5 @@ default_cluster_pd_count   = 1
 default_cluster_tikv_count = 3
 default_cluster_tidb_count = 1
 
-eks_name = "demo"
+eks_name             = "demo"
 default_cluster_name = "tidb"
