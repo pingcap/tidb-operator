@@ -3111,6 +3111,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"enableDashboardInternalProxy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
