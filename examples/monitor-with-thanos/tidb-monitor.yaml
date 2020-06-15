@@ -1,0 +1,37 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+    - name: basic
+  prometheus:
+    sidecars:
+      - name: thanos
+        image: quay.io/thanos/thanos:v0.8.1
+        args:
+          - sidecar
+          - --prometheus.url=http://localhost:9090/
+          - --tsdb.path=/data/prometheus
+          - --grpc-address=[$(POD_IP)]:10901
+          - --http-address=[$(POD_IP)]:10902
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath:status.podIP
+        volumeMounts:
+          - name: monitor-data
+            mountPath: /data
+    baseImage: prom/prometheus
+    version: v2.11.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.0.1
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v3.0.13
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
