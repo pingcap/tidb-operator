@@ -24,11 +24,6 @@ import (
 const (
 	// The following labels are recommended by kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 
-	// ResourceNameLabelKey is the unique identifier of the resource, its value is the same as metadata.name
-	ResourceNameLabelKey string = "kubernetes.io/name"
-	// UsedByLabelKey indicate where it is used. for example, tidb has two services,
-	// one for internal component access and the other for end-user
-	UsedByLabelKey string = "app.kubernetes.io/used-by"
 	// ManagedByLabelKey is Kubernetes recommended label key, it represents the tool being used to manage the operation of an application
 	// For resources managed by TiDB Operator, its value is always tidb-operator
 	ManagedByLabelKey string = "app.kubernetes.io/managed-by"
@@ -43,7 +38,11 @@ const (
 
 	// NamespaceLabelKey is label key used in PV for easy querying
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
-
+	// ResourceNameLabelKey is the unique identifier of the resource, its value is the same as metadata.name
+	ResourceNameLabelKey string = "kubernetes.io/name"
+	// UsedByLabelKey indicate where it is used. for example, tidb has two services,
+	// one for internal component access and the other for end-user
+	UsedByLabelKey string = "app.kubernetes.io/used-by"
 	// ClusterIDLabelKey is cluster id label key
 	ClusterIDLabelKey string = "tidb.pingcap.com/cluster-id"
 	// StoreIDLabelKey is store id label key
@@ -236,7 +235,7 @@ func (l Label) UsedBy(name string) Label {
 
 // UsedByInternal adds used-by=internal label
 func (l Label) UsedByInternal() Label {
-	l[UsedByLabelKey] = "internal"
+	l[UsedByLabelKey] = "peer"
 	return l
 }
 

@@ -881,7 +881,7 @@ func TestGetNewTiDBHeadlessServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tidb",
-						"app.kubernetes.io/used-by":    "internal",
+						"app.kubernetes.io/used-by":    "peer",
 						"kubernetes.io/name":           "foo-tidb-peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{

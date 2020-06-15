@@ -255,6 +255,150 @@ func TestGetMonitorService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "tidb monitor with grafana",
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					Grafana: &v1alpha1.GrafanaSpec{
+						Service: v1alpha1.ServiceSpec{
+							Type: corev1.ServiceTypeClusterIP,
+						},
+					},
+				},
+			},
+			expected: []*corev1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo-prometheus",
+						Namespace: "ns",
+						Labels: map[string]string{
+							"app.kubernetes.io/name":       "tidb-cluster",
+							"app.kubernetes.io/managed-by": "tidb-operator",
+							"app.kubernetes.io/instance":   "foo",
+							"app.kubernetes.io/component":  "monitor",
+							"app.kubernetes.io/used-by":    "prometheus",
+							"kubernetes.io/name":           "foo-prometheus",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion: "pingcap.com/v1alpha1",
+								Kind:       "TidbMonitor",
+								Name:       "foo",
+								UID:        "",
+								Controller: func(b bool) *bool {
+									return &b
+								}(true),
+								BlockOwnerDeletion: func(b bool) *bool {
+									return &b
+								}(true),
+							},
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{
+								Name:       "http-prometheus",
+								Protocol:   "TCP",
+								Port:       9090,
+								TargetPort: intstr.IntOrString{IntVal: 9090},
+							},
+						},
+						Selector: map[string]string{
+							"app.kubernetes.io/component": "monitor",
+							"app.kubernetes.io/instance":  "foo",
+							"app.kubernetes.io/name":      "tidb-cluster",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo-monitor-reloader",
+						Namespace: "ns",
+						Labels: map[string]string{
+							"app.kubernetes.io/component":  "monitor",
+							"app.kubernetes.io/instance":   "foo",
+							"app.kubernetes.io/managed-by": "tidb-operator",
+							"app.kubernetes.io/name":       "tidb-cluster",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion: "pingcap.com/v1alpha1",
+								Kind:       "TidbMonitor",
+								Name:       "foo",
+								Controller: func(b bool) *bool {
+									return &b
+								}(true),
+								BlockOwnerDeletion: func(b bool) *bool {
+									return &b
+								}(true),
+							},
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Ports: []core.ServicePort{
+							{
+								Name:       "tcp-reloader",
+								Port:       9089,
+								Protocol:   core.ProtocolTCP,
+								TargetPort: intstr.FromInt(9089),
+							},
+						},
+						Selector: map[string]string{
+							"app.kubernetes.io/component": "monitor",
+							"app.kubernetes.io/instance":  "foo",
+							"app.kubernetes.io/name":      "tidb-cluster",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo-grafana",
+						Namespace: "ns",
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion: "pingcap.com/v1alpha1",
+								Kind:       "TidbMonitor",
+								Name:       "foo",
+								Controller: func(b bool) *bool {
+									return &b
+								}(true),
+								BlockOwnerDeletion: func(b bool) *bool {
+									return &b
+								}(true),
+							},
+						},
+						Labels: map[string]string{
+							"app.kubernetes.io/component":  "monitor",
+							"app.kubernetes.io/instance":   "foo",
+							"app.kubernetes.io/managed-by": "tidb-operator",
+							"app.kubernetes.io/name":       "tidb-cluster",
+							"app.kubernetes.io/used-by":    "grafana",
+							"kubernetes.io/name":           "foo-grafana",
+						},
+					},
+					Spec: core.ServiceSpec{
+						Ports: []core.ServicePort{
+							{
+								Name:       "http-grafana",
+								Port:       3000,
+								Protocol:   core.ProtocolTCP,
+								TargetPort: intstr.FromInt(3000),
+							},
+						},
+						Type: "ClusterIP",
+						Selector: map[string]string{
+							"app.kubernetes.io/component": "monitor",
+							"app.kubernetes.io/instance":  "foo",
+							"app.kubernetes.io/name":      "tidb-cluster",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
