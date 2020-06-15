@@ -817,6 +817,8 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                enableDashboardInternalProxy:
+                  type: boolean
                 env:
                   items:
                     properties:

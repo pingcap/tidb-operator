@@ -326,6 +326,10 @@ type PDSpec struct {
 	// which used by Dashboard.
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
+	// +optional
+	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
