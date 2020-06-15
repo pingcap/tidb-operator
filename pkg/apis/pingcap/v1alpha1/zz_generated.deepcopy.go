@@ -2581,6 +2581,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.EnableDashboardInternalProxy != nil {
+		in, out := &in.EnableDashboardInternalProxy, &out.EnableDashboardInternalProxy
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
