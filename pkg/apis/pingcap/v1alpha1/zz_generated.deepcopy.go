@@ -808,6 +808,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.InternalProxy != nil {
+		in, out := &in.InternalProxy, &out.InternalProxy
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
