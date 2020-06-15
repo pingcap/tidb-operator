@@ -124,6 +124,7 @@ type PDConfig struct {
 }
 
 // DashboardConfig is the configuration for tidb-dashboard.
+// +k8s:openapi-gen=true
 type DashboardConfig struct {
 	// +optional
 	TiDBCAPath *string `toml:"tidb-cacert-path,omitempty" json:"tidb-cacert-path,omitempty"`
