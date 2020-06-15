@@ -49,13 +49,11 @@ metadata:
   name: tikv-instances
   namespace: <same-as-your-tidbcluster>
 spec:
-  cluster:
-    name: <your-tidbcluster-name>
-    namespace: <your-tidbcluster-namepace>
+  clusterName: <your-tidbcluster-name>
   <some tikvspec.....>
 ```
 
 
-# TODO
-
-For more detail, please [see also](https://docs.google.com/document/d/1MV2bcsCjyYvfCCtwyc8-E18Z69qP_3-FKztpGj4ByEg/edit?usp=sharing)
+# See also
+ 
+This proposal is based on prior work in this [google doc](https://docs.google.com/document/d/1MV2bcsCjyYvfCCtwyc8-E18Z69qP_3-FKztpGj4ByEg/edit?usp=sharing)(in Chinese).
