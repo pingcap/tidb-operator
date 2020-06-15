@@ -6476,6 +6476,18 @@ string
 which used by Dashboard.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableDashboardInternalProxy</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDashboardInternalProxy would directly set <code>internal-proxy</code> in the <code>PdConfig</code></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
