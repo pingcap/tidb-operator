@@ -52,7 +52,6 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/instance":   "foo",
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
-							"kubernetes.io/name":           "foo-prometheus",
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
@@ -168,7 +167,6 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/instance":   "foo",
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
-							"kubernetes.io/name":           "foo-prometheus",
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
@@ -281,7 +279,6 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/instance":   "foo",
 							"app.kubernetes.io/component":  "monitor",
 							"app.kubernetes.io/used-by":    "prometheus",
-							"kubernetes.io/name":           "foo-prometheus",
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							{
@@ -377,7 +374,6 @@ func TestGetMonitorService(t *testing.T) {
 							"app.kubernetes.io/managed-by": "tidb-operator",
 							"app.kubernetes.io/name":       "tidb-cluster",
 							"app.kubernetes.io/used-by":    "grafana",
-							"kubernetes.io/name":           "foo-grafana",
 						},
 					},
 					Spec: core.ServiceSpec{

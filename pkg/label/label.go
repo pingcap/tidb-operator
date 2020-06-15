@@ -38,8 +38,6 @@ const (
 
 	// NamespaceLabelKey is label key used in PV for easy querying
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
-	// ResourceNameLabelKey is the unique identifier of the resource, its value is the same as metadata.name
-	ResourceNameLabelKey string = "kubernetes.io/name"
 	// UsedByLabelKey indicate where it is used. for example, tidb has two services,
 	// one for internal component access and the other for end-user
 	UsedByLabelKey string = "app.kubernetes.io/used-by"
@@ -242,12 +240,6 @@ func (l Label) UsedByInternal() Label {
 // UsedByEndUser adds use-by=end-user label
 func (l Label) UsedByEndUser() Label {
 	l[UsedByLabelKey] = "end-user"
-	return l
-}
-
-// ResourceName adds resource name kv pair to label
-func (l Label) ResourceName(name string) Label {
-	l[ResourceNameLabelKey] = name
 	return l
 }
 

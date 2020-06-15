@@ -421,7 +421,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	svcName := controller.PDMemberName(tcName)
 	instanceName := tc.GetInstanceName()
 	pdSelector := label.New().Instance(instanceName).PD()
-	pdLabels := pdSelector.Copy().UsedByEndUser().ResourceName(svcName).Labels()
+	pdLabels := pdSelector.Copy().UsedByEndUser().Labels()
 
 	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -469,7 +469,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 	svcName := controller.PDPeerMemberName(tcName)
 	instanceName := tc.GetInstanceName()
 	pdSelector := label.New().Instance(instanceName).PD()
-	pdLabels := pdSelector.Copy().UsedByInternal().ResourceName(svcName).Labels()
+	pdLabels := pdSelector.Copy().UsedByInternal().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

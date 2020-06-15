@@ -1187,7 +1187,6 @@ func TestGetNewServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tiflash",
 						"app.kubernetes.io/used-by":    "peer",
-						"kubernetes.io/name":           "svcName",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

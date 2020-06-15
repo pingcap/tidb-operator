@@ -666,8 +666,8 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 
 	prometheusName := prometheusName(monitor)
 	monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
-	promeLabel := monitorLabel.Copy().UsedBy("prometheus").ResourceName(prometheusName)
-	grafanaLabel := monitorLabel.Copy().UsedBy("grafana").ResourceName(grafanaName(monitor))
+	promeLabel := monitorLabel.Copy().UsedBy("prometheus")
+	grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
 			Name:            prometheusName,
