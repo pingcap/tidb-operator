@@ -56,7 +56,7 @@ TiDB Operator 使用 [CRD (Custom Resource Definition)](https://kubernetes.io/do
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0-rc.3/manifests/crd.yaml && \
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/crd.yaml && \
 kubectl get crd tidbclusters.pingcap.com
 ```
 
@@ -67,7 +67,7 @@ kubectl get crd tidbclusters.pingcap.com
 ```shell
 helm repo add pingcap https://charts.pingcap.org/
 kubectl create ns pingcap
-helm install --namespace pingcap tidb-operator pingcap/tidb-operator --version v1.1.0-rc.3
+helm install --namespace pingcap tidb-operator pingcap/tidb-operator --version v1.1.0
 ```
 
 若是使用 Helm 2，参考[安装 Helm](tidb-toolkit.md#使用-helm) 初始化 Helm 后，使用以下命令部署 TiDB Operator：
@@ -76,7 +76,7 @@ helm install --namespace pingcap tidb-operator pingcap/tidb-operator --version v
 
 ```shell
 helm repo add pingcap https://charts.pingcap.org/
-helm install --namespace pingcap --name tidb-operator pingcap/tidb-operator --version v1.1.0-rc.3
+helm install --namespace pingcap --name tidb-operator pingcap/tidb-operator --version v1.1.0
 ```
 
 查看 TiDB Operator 运行状态：
