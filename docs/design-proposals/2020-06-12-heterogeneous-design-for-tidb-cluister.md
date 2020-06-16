@@ -4,21 +4,20 @@ This document presents a design for the Heterogeneous components in one kind for
 
 ## Motivation
 
-Currently, the spec for the `TidbCluster` describe a groups of `PD`/`TiKV`/`TiDB` instances. For each kind of components, 
-their spec are all the same. This design is easy to use and also cover the most cases for using tidb cluster.
+Currently, the spec for the `TidbCluster` describes a group of `PD`/`TiKV`/`TiDB` instances. For each kind of components, 
+their specs are all the same. This design is easy to use and also covers the most cases for using the tidb cluster.
 
-However, as a distributed databases with clear and multi layers, the components in each layer could be different from 
+However, as a distributed database with clear and multilayers, the components in each layer could be different from 
 each other to meet the different requirements.
 
-For a example, as sql layer, tidb components could be composed of multiple instances with different resource requests 
-and configuration to handle the different workloads (AP/TP query). For the storage layer, tikv components could be 
+For example, as the SQL layer, tidb components could be composed of multiple instances with different resource requests 
+and configurations to handle the different workloads (AP/TP query). For the storage layer, tikv components could be 
 composed of multiple instances with different store labels which decided the data distribution as a whole storage system.
 
 ## Proposal
 
 Add 2 new CRD as `TiKVGroup` and `TiDBGroup` which represents a group of TiDB and TiKV instances. As a whole system, one
-TiDB Cluster can be composed of one `TidbCluster` and multiple `TiKVGroup` and `TiDBGroup`. Here is the basic API Design 
-example.
+TiDB Cluster can be composed of one `TidbCluster` and multiple `TiKVGroup` and `TiDBGroup`. Here is the basic example:
 
 For `TiKVGroup`:
 
@@ -30,7 +29,7 @@ type TiKVGroup struct {
 
 type TiKVGroupSpec struct {
     TiKVGrupSpec
-    Cluster TidbClusterRef
+    ClusterName string
 }
 
 type TiKVGroupStatus struct {
@@ -40,7 +39,7 @@ type TiKVGroupStatus struct {
 
 As you can see, `TiKVGroupSpec` and `TiKVGroupStatus` reuse the `Spec` and `Status` spec in the `TiKV`. If you already
 have a `TidbCluster` running in the kubernetes, and here is one example to show how to create a heterogeneous `TiKVGroup`
-joining in your `TidbCluster`
+joining in your `TidbCluster`:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
