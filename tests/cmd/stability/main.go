@@ -127,16 +127,16 @@ func run() {
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
 
-	crdUil := tests.NewCrdTestUtil(cli, kubeCli, asCli, false)
+	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, false)
 	klog.Infof(fmt.Sprintf("allclusters: %v", allClusters))
-	crdUil.CleanResourcesOrDie("tc", "ns1")
-	crdUil.CleanResourcesOrDie("tc", "ns2")
-	crdUil.CleanResourcesOrDie("pvc", "ns1")
-	crdUil.CleanResourcesOrDie("pvc", "ns2")
-	crdUil.CleanResourcesOrDie("secret", "ns1")
-	crdUil.CleanResourcesOrDie("secret", "ns2")
-	crdUil.CleanResourcesOrDie("pod", "ns1")
-	crdUil.CleanResourcesOrDie("pod", "ns2")
+	crdUtil.CleanResourcesOrDie("tc", "ns1")
+	crdUtil.CleanResourcesOrDie("tc", "ns2")
+	crdUtil.CleanResourcesOrDie("pvc", "ns1")
+	crdUtil.CleanResourcesOrDie("pvc", "ns2")
+	crdUtil.CleanResourcesOrDie("secret", "ns1")
+	crdUtil.CleanResourcesOrDie("secret", "ns2")
+	crdUtil.CleanResourcesOrDie("pod", "ns1")
+	crdUtil.CleanResourcesOrDie("pod", "ns2")
 
 	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, backupTargets []tests.BackupTarget, upgradeVersion string) {
 		// check env
@@ -145,22 +145,22 @@ func run() {
 
 		//deploy and clean the one-pd-cluster
 		onePDTC := onePDClsuter.Clustrer
-		crdUil.CreateTidbClusterOrDie(onePDTC)
-		crdUil.WaitTidbClusterReadyOrDie(onePDTC, 60*time.Minute)
-		crdUil.DeleteTidbClusterOrDie(onePDTC)
+		crdUtil.CreateTidbClusterOrDie(onePDTC)
+		crdUtil.WaitTidbClusterReadyOrDie(onePDTC, 60*time.Minute)
+		crdUtil.DeleteTidbClusterOrDie(onePDTC)
 
 		// deploy
 		for _, cluster := range clusters {
 			tc := cluster.Clustrer
-			crdUil.CreateTidbClusterOrDie(tc)
+			crdUtil.CreateTidbClusterOrDie(tc)
 			secret := buildSecret(cluster)
-			crdUil.CreateSecretOrDie(secret)
+			crdUtil.CreateSecretOrDie(secret)
 			addDeployedClusterFn(cluster)
 		}
 		for _, cluster := range clusters {
 			tc := cluster.Clustrer
-			crdUil.WaitTidbClusterReadyOrDie(tc, 60*time.Minute)
-			crdUil.CheckDisasterToleranceOrDie(tc)
+			crdUtil.WaitTidbClusterReadyOrDie(tc, 60*time.Minute)
+			crdUtil.CheckDisasterToleranceOrDie(tc)
 			oa.BeginInsertDataToOrDie(cluster)
 		}
 		klog.Infof("clusters deployed and checked")
@@ -171,8 +171,8 @@ func run() {
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
 		for _, cluster := range clusters {
 			cluster.Clustrer.Spec.Version = upgradeVersion
-			crdUil.UpdateTidbClusterOrDie(cluster.Clustrer)
-			crdUil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
+			crdUtil.UpdateTidbClusterOrDie(cluster.Clustrer)
+			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
 		klog.Infof("clusters upgraded in checked")
 
@@ -183,14 +183,14 @@ func run() {
 			cluster.Clustrer.Spec.TiKV.Config.Server.GrpcConcurrency = &grpcConcurrency
 			tokenLimit := uint(cfg.TiDBTokenLimit)
 			cluster.Clustrer.Spec.TiDB.Config.TokenLimit = &tokenLimit
-			crdUil.UpdateTidbClusterOrDie(cluster.Clustrer)
-			crdUil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
+			crdUtil.UpdateTidbClusterOrDie(cluster.Clustrer)
+			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 		klog.Infof("clusters configurations updated in checked")
 
 		for _, cluster := range clusters {
-			crdUil.CheckDisasterToleranceOrDie(cluster.Clustrer)
+			crdUtil.CheckDisasterToleranceOrDie(cluster.Clustrer)
 		}
 		klog.Infof("clusters DisasterTolerance checked")
 
@@ -205,7 +205,7 @@ func run() {
 		oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
 		oa.CheckRecoverOrDie(deployedClusters)
 		for _, cluster := range deployedClusters {
-			crdUil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 30*time.Minute)
+			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 30*time.Minute)
 		}
 		klog.Infof("clusters node stopped and restarted checked")
 		slack.NotifyAndCompletedf("stability test: clusters node stopped and restarted checked")
