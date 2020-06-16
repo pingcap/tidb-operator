@@ -85,6 +85,10 @@ spec:
     metadata:
       name: webhook-del
     spec:
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 6 }}
+    {{- end }}
       restartPolicy: Never
       serviceAccountName: {{ .Release.Name }}
       containers:

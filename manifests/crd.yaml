@@ -356,6 +356,13 @@ spec:
               type: boolean
             imagePullPolicy:
               type: string
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
             nodeSelector:
               type: object
             paused:
@@ -628,7 +635,19 @@ spec:
                       type: string
                     cluster-version:
                       type: string
-                    dashboard: {}
+                    dashboard:
+                      properties:
+                        internal-proxy:
+                          type: boolean
+                        public-path-prefix:
+                          type: string
+                        tidb-cacert-path:
+                          type: string
+                        tidb-cert-path:
+                          type: string
+                        tidb-key-path:
+                          type: string
+                      type: object
                     election-interval:
                       type: string
                     enable-grpc-gateway:
@@ -808,6 +827,10 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dataSubDir:
+                  type: string
+                enableDashboardInternalProxy:
+                  type: boolean
                 env:
                   items:
                     properties:
@@ -867,6 +890,13 @@ spec:
                   type: boolean
                 imagePullPolicy:
                   type: string
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 limits:
                   type: object
                 maxFailoverCount:
@@ -1301,6 +1331,13 @@ spec:
                   type: boolean
                 imagePullPolicy:
                   type: string
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 limits:
                   type: object
                 nodeSelector:
@@ -1725,6 +1762,13 @@ spec:
                   type: boolean
                 imagePullPolicy:
                   type: string
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 limits:
                   type: object
                 nodeSelector:
@@ -2482,6 +2526,13 @@ spec:
                   type: boolean
                 imagePullPolicy:
                   type: string
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 limits:
                   type: object
                 maxFailoverCount:
@@ -2957,6 +3008,13 @@ spec:
                   type: boolean
                 imagePullPolicy:
                   type: string
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 limits:
                   type: object
                 logTailer:
@@ -3657,6 +3715,11 @@ spec:
                           format: int64
                           type: integer
                         raft-log-gc-tick-interval:
+                          type: string
+                        raft-max-inflight-msgs:
+                          format: int64
+                          type: integer
+                        raft-max-size-per-msg:
                           type: string
                         raft-reject-transfer-leader-duration:
                           type: string
@@ -4403,6 +4466,8 @@ spec:
                   type: object
                 configUpdateStrategy:
                   type: string
+                dataSubDir:
+                  type: string
                 env:
                   items:
                     properties:
@@ -4462,6 +4527,13 @@ spec:
                   type: boolean
                 imagePullPolicy:
                   type: string
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 limits:
                   type: object
                 maxFailoverCount:
@@ -4961,6 +5033,13 @@ spec:
               - projectId
               - secretName
               type: object
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
             mydumper:
               properties:
                 options:
@@ -5381,6 +5460,13 @@ spec:
               - projectId
               - secretName
               type: object
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
             resources:
               properties:
                 limits:
@@ -5838,6 +5924,13 @@ spec:
                   - projectId
                   - secretName
                   type: object
+                imagePullSecrets:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  type: array
                 mydumper:
                   properties:
                     options:
@@ -5910,6 +6003,13 @@ spec:
                 useKMS:
                   type: boolean
               type: object
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
             maxBackups:
               format: int32
               type: integer
@@ -5968,6 +6068,13 @@ spec:
             grafana: {}
             imagePullPolicy:
               type: string
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
             initializer: {}
             kubePrometheusURL:
               type: string
@@ -6052,6 +6159,13 @@ spec:
               type: string
             imagePullPolicy:
               type: string
+            imagePullSecrets:
+              items:
+                properties:
+                  name:
+                    type: string
+                type: object
+              type: array
             initSql:
               type: string
             initSqlConfigMap:

@@ -23,6 +23,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: admission-webhook
     spec:
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 6 }}
+    {{- end }}
       serviceAccountName: {{ .Values.admissionWebhook.serviceAccount }}
       containers:
         - name: admission-webhook

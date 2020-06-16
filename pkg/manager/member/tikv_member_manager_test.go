@@ -39,6 +39,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 )
 
@@ -1454,6 +1455,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 	nodeInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Nodes()
 	tikvScaler := NewFakeTiKVScaler()
 	tikvUpgrader := NewFakeTiKVUpgrader()
+	recorder := record.NewFakeRecorder(10)
 	genericControl := controller.NewFakeGenericControl()
 
 	tmm := &tikvMemberManager{
@@ -1467,6 +1469,7 @@ func newFakeTiKVMemberManager(tc *v1alpha1.TidbCluster) (
 		svcLister:    svcInformer.Lister(),
 		tikvScaler:   tikvScaler,
 		tikvUpgrader: tikvUpgrader,
+		recorder:     recorder,
 	}
 	tmm.tikvStatefulSetIsUpgradingFn = tikvStatefulSetIsUpgrading
 	return tmm, setControl, svcControl, pdClient, podInformer.Informer().GetIndexer(), nodeInformer.Informer().GetIndexer()
@@ -2072,136 +2075,6 @@ func TestGetTiKVConfigMap(t *testing.T) {
 			if diff := cmp.Diff(*tt.expected, *cm); diff != "" {
 				t.Errorf("unexpected plugin configuration (-want, +got): %s", diff)
 			}
-		})
-	}
-}
-
-func TestRenderTiKVStartScript(t *testing.T) {
-	g := NewGomegaWithT(t)
-	testcases := []struct {
-		name                string
-		enableAdvertiseAddr bool
-		advertiseAddr       string
-		result              string
-	}{
-		{
-			name:                "disable AdvertiseAddr",
-			enableAdvertiseAddr: false,
-			advertiseAddr:       "",
-			result: `#!/bin/sh
-
-# This script is used to start tikv containers in kubernetes cluster
-
-# Use DownwardAPIVolumeFiles to store informations of the cluster:
-# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
-#
-#   runmode="normal/debug"
-#
-
-set -uo pipefail
-
-ANNOTATIONS="/etc/podinfo/annotations"
-
-if [[ ! -f "${ANNOTATIONS}" ]]
-then
-    echo "${ANNOTATIONS} does't exist, exiting."
-    exit 1
-fi
-source ${ANNOTATIONS} 2>/dev/null
-
-runmode=${runmode:-normal}
-if [[ X${runmode} == Xdebug ]]
-then
-	echo "entering debug mode."
-	tail -f /dev/null
-fi
-
-# Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
---addr=0.0.0.0:20160 \
---status-addr=0.0.0.0:20180 \
---data-dir=/var/lib/tikv \
---capacity=${CAPACITY} \
---config=/etc/tikv/tikv.toml
-"
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-  LABELS=" --labels ${STORE_LABELS} "
-  ARGS="${ARGS}${LABELS}"
-fi
-
-echo "starting tikv-server ..."
-echo "/tikv-server ${ARGS}"
-exec /tikv-server ${ARGS}
-`,
-		},
-		{
-			name:                "enable AdvertiseAddr",
-			enableAdvertiseAddr: true,
-			advertiseAddr:       "test-tikv-1.test-tikv-peer.namespace.svc",
-			result: `#!/bin/sh
-
-# This script is used to start tikv containers in kubernetes cluster
-
-# Use DownwardAPIVolumeFiles to store informations of the cluster:
-# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
-#
-#   runmode="normal/debug"
-#
-
-set -uo pipefail
-
-ANNOTATIONS="/etc/podinfo/annotations"
-
-if [[ ! -f "${ANNOTATIONS}" ]]
-then
-    echo "${ANNOTATIONS} does't exist, exiting."
-    exit 1
-fi
-source ${ANNOTATIONS} 2>/dev/null
-
-runmode=${runmode:-normal}
-if [[ X${runmode} == Xdebug ]]
-then
-	echo "entering debug mode."
-	tail -f /dev/null
-fi
-
-# Use HOSTNAME if POD_NAME is unset for backward compatibility.
-POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd=http://${CLUSTER_NAME}-pd:2379 \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
---addr=0.0.0.0:20160 \
---status-addr=0.0.0.0:20180 \
---advertise-status-addr=test-tikv-1.test-tikv-peer.namespace.svc:20180 \
---data-dir=/var/lib/tikv \
---capacity=${CAPACITY} \
---config=/etc/tikv/tikv.toml
-"
-
-if [ ! -z "${STORE_LABELS:-}" ]; then
-  LABELS=" --labels ${STORE_LABELS} "
-  ARGS="${ARGS}${LABELS}"
-fi
-
-echo "starting tikv-server ..."
-echo "/tikv-server ${ARGS}"
-exec /tikv-server ${ARGS}
-`,
-		},
-	}
-	for _, test := range testcases {
-		t.Run(test.name, func(t *testing.T) {
-			model := TiKVStartScriptModel{
-				Scheme:                    "http",
-				EnableAdvertiseStatusAddr: test.enableAdvertiseAddr,
-				AdvertiseStatusAddr:       test.advertiseAddr,
-			}
-			script, err := RenderTiKVStartScript(&model)
-			g.Expect(err).ShouldNot(HaveOccurred())
-			g.Expect(script).Should(Equal(test.result))
 		})
 	}
 }

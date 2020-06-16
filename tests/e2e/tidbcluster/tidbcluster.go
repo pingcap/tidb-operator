@@ -130,7 +130,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
 		clusterCfgs := []struct {
 			Version string
-			Name    string // helm release name, should not conflict with names used in other tests
+			Name    string
 			Values  map[string]string
 		}{
 			{
@@ -146,9 +146,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
-				cluster := newTidbCluster(ns, localCfg.Name, localCfg.Version)
-				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
+				cluster := fixture.GetTidbCluster(ns, localCfg.Name, localCfg.Version)
 				// support reclaim pv when scale in tikv or pd component
+				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
+				// change tikv data directory to a subdirectory of data volume
+				cluster.Spec.TiKV.DataSubDir = "data"
 
 				tests.CreateTidbClusterOrDie(cli, cluster)
 				err := oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
@@ -1242,14 +1244,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("CDC works as expected")
 	})
 })
-
-func newTidbCluster(ns, clusterName, tidbVersion string) *v1alpha1.TidbCluster {
-	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
-	tc.Spec.EnablePVReclaim = pointer.BoolPtr(false)
-	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
-	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
-	return tc
-}
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{

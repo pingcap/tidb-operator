@@ -213,6 +213,11 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 		deployment.Annotations = map[string]string{}
 	}
 	deployment.Annotations[controller.LastAppliedPodTemplate] = string(b)
+
+	if monitor.Spec.ImagePullSecrets != nil {
+		deployment.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
+	}
+
 	return deployment, nil
 }
 
