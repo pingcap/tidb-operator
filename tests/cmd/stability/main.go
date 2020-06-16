@@ -194,25 +194,6 @@ func run() {
 		}
 		klog.Infof("clusters DisasterTolerance checked")
 
-		// TODO: Use Backup and Restore CRD instead
-		//backup and restore
-		//for i := range backupTargets {
-		//	tc := backupTargets[i].TargetCluster.Clustrer
-		//	crdUil.CreateTidbClusterOrDie(tc)
-		//	addDeployedClusterFn(backupTargets[i].TargetCluster)
-		//	secret := buildSecret(backupTargets[i].TargetCluster)
-		//	crdUil.CreateSecretOrDie(secret)
-		//	crdUil.CheckDisasterToleranceOrDie(tc)
-		//}
-		//clusterZero := clusters[0].Clustrer
-		//clusterZero = crdUil.GetTidbClusterOrDie(clusterZero.Name, clusterZero.Namespace)
-		//clusterZero = fixture.AddPumpForTidbCluster(clusterZero)
-		//crdUil.UpdateTidbClusterOrDie(clusterZero)
-		//crdUil.WaitTidbClusterReadyOrDie(clusterZero, 30*time.Minute)
-		//oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
-		//klog.Infof("clusters backup and restore checked")
-		//slack.NotifyAndCompletedf("stability test: clusters backup and restore checked")
-
 		//stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()
 		oa.EmitEvent(nil, fmt.Sprintf("StopNode: %s on %s", node, physicalNode))
@@ -319,7 +300,7 @@ func run() {
 				fta.StartKubeAPIServerOrDie(vNode.IP)
 			}
 		}
-		//klog.Infof("clusters stop all kube-apiserver and restart")
+		klog.Infof("clusters stop all kube-apiserver and restart")
 		time.Sleep(time.Minute)
 	}
 
