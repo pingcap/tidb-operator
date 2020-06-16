@@ -199,9 +199,9 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
-	sidecarContainer := monitor.Spec.Prometheus.Sidecars
-	if len(sidecarContainer) > 0 {
-		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, sidecarContainer...)
+	additionalContainers := monitor.Spec.Prometheus.AdditionalContainers
+	if len(additionalContainers) > 0 {
+		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, additionalContainers...)
 	}
 	if monitor.Spec.Grafana != nil {
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)

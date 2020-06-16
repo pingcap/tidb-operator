@@ -2982,8 +2982,8 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 		*out = new(PrometheusConfiguration)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Sidecars != nil {
-		in, out := &in.Sidecars, &out.Sidecars
+	if in.AdditionalContainers != nil {
+		in, out := &in.AdditionalContainers, &out.AdditionalContainers
 		*out = make([]v1.Container, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

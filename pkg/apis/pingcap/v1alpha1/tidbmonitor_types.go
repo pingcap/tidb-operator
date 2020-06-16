@@ -94,7 +94,7 @@ type PrometheusSpec struct {
 	Config *PrometheusConfiguration `json:"config,omitempty"`
 
 	// +optional
-	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 }
 
 // +k8s:openapi-gen=true
