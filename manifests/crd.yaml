@@ -635,7 +635,19 @@ spec:
                       type: string
                     cluster-version:
                       type: string
-                    dashboard: {}
+                    dashboard:
+                      properties:
+                        internal-proxy:
+                          type: boolean
+                        public-path-prefix:
+                          type: string
+                        tidb-cacert-path:
+                          type: string
+                        tidb-cert-path:
+                          type: string
+                        tidb-key-path:
+                          type: string
+                      type: object
                     election-interval:
                       type: string
                     enable-grpc-gateway:
@@ -817,6 +829,8 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                enableDashboardInternalProxy:
+                  type: boolean
                 env:
                   items:
                     properties:
