@@ -70,7 +70,7 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 		return fmt.Errorf("failed to delete pod %s/%s data, %s", ns, podName, string(result))
 	}
 	klog.Infof("delete pod %s/%s data successfully", ns, podName)
-	
+
 	// first we ensured that pd failover new pod, and failure member/pod should be deleted.
 	err = wait.Poll(10*time.Second, 30*time.Minute+failoverTimeout+pdFailoverPeriod, func() (bool, error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
