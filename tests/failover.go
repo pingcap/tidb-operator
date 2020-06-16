@@ -50,6 +50,13 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 
 	var err error
 	var result []byte
+
+	oldPD, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		klog.Error(err)
+		return err
+	}
+
 	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
 		deletePDDataCmd := fmt.Sprintf("kubectl exec -n %s %s -- rm -rf /var/lib/pd/member", ns, podName)
 		result, err = exec.Command("/bin/sh", "-c", deletePDDataCmd).CombinedOutput()
@@ -63,14 +70,9 @@ func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig
 		return fmt.Errorf("failed to delete pod %s/%s data, %s", ns, podName, string(result))
 	}
 	klog.Infof("delete pod %s/%s data successfully", ns, podName)
-
-	oldPD, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
-	if err != nil {
-		klog.Error(err)
-		return err
-	}
+	
 	// first we ensured that pd failover new pod, and failure member/pod should be deleted.
-	err = wait.Poll(10*time.Second, failoverTimeout+pdFailoverPeriod, func() (bool, error) {
+	err = wait.Poll(10*time.Second, 30*time.Minute+failoverTimeout+pdFailoverPeriod, func() (bool, error) {
 		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 		if err != nil {
 			klog.Error(err)
