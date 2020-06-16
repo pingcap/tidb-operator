@@ -141,8 +141,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-			tests.CreateTidbClusterOrDie(cli, tc)
-			err := oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err)
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", utilimage.TiDBV3Version, utilimage.TiDBV3UpgradeVersion))
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
