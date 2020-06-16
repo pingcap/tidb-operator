@@ -808,6 +808,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.InternalProxy != nil {
+		in, out := &in.InternalProxy, &out.InternalProxy
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -2574,6 +2579,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	if in.TLSClientSecretName != nil {
 		in, out := &in.TLSClientSecretName, &out.TLSClientSecretName
 		*out = new(string)
+		**out = **in
+	}
+	if in.EnableDashboardInternalProxy != nil {
+		in, out := &in.EnableDashboardInternalProxy, &out.EnableDashboardInternalProxy
+		*out = new(bool)
 		**out = **in
 	}
 	return

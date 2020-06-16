@@ -14,12 +14,15 @@
 package meta
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/monitor"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
@@ -53,18 +56,31 @@ func NewReclaimPolicyMonitorManager(pvcLister corelisters.PersistentVolumeClaimL
 }
 
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
-	return rpm.sync(tc.GetNamespace(), tc.GetInstanceName(), tc.IsPVReclaimEnabled(), tc.Spec.PVReclaimPolicy, tc)
+	return rpm.sync(v1alpha1.TiDBClusterKind, tc.GetNamespace(), tc.GetInstanceName(), tc.IsPVReclaimEnabled(), tc.Spec.PVReclaimPolicy, tc)
 }
 
 func (rpm *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
-	return rpm.sync(tm.GetNamespace(), tm.GetName(), false, tm.Spec.PVReclaimPolicy, tm)
+	return rpm.sync(v1alpha1.TiDBMonitorKind, tm.GetNamespace(), tm.GetName(), false, tm.Spec.PVReclaimPolicy, tm)
 }
 
-func (rpm *reclaimPolicyManager) sync(ns, instanceName string, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy, obj runtime.Object) error {
-	l, err := label.New().Instance(instanceName).Selector()
-	if err != nil {
-		return err
+func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy, obj runtime.Object) error {
+	var l labels.Selector
+	var err error
+	switch kind {
+	case v1alpha1.TiDBMonitorKind:
+		l, err = label.NewMonitor().Instance(instanceName).Monitor().Selector()
+		if err != nil {
+			return err
+		}
+	case v1alpha1.TiDBClusterKind:
+		l, err = label.New().Instance(instanceName).Selector()
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown kind = %s", kind)
 	}
+
 	pvcs, err := rpm.pvcLister.PersistentVolumeClaims(ns).List(l)
 	if err != nil {
 		return err

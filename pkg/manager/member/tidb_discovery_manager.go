@@ -135,6 +135,7 @@ func getTidbDiscoveryDeployment(tc *v1alpha1.TidbCluster) (*appsv1.Deployment, e
 	d := &appsv1.Deployment{
 		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
+			Strategy: appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType},
 			Replicas: controller.Int32Ptr(1),
 			Selector: l.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
