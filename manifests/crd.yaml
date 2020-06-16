@@ -4664,39 +4664,39 @@ metadata:
   name: backups.pingcap.com
 spec:
   additionalPrinterColumns:
-    - JSONPath: .status.backupPath
-      description: The full path of backup data
-      name: BackupPath
-      type: string
-    - JSONPath: .status.backupSize
-      description: The data size of the backup
-      name: BackupSize
-      type: integer
-    - JSONPath: .status.commitTs
-      description: The commit ts of tidb cluster dump
-      name: CommitTS
-      type: string
-    - JSONPath: .status.timeStarted
-      description: The time at which the backup was started
-      format: date-time
-      name: Started
-      priority: 1
-      type: string
-    - JSONPath: .status.timeCompleted
-      description: The time at which the backup was completed
-      format: date-time
-      name: Completed
-      priority: 1
-      type: string
-    - JSONPath: .metadata.creationTimestamp
-      name: Age
-      type: date
+  - JSONPath: .status.backupPath
+    description: The full path of backup data
+    name: BackupPath
+    type: string
+  - JSONPath: .status.backupSize
+    description: The data size of the backup
+    name: BackupSize
+    type: integer
+  - JSONPath: .status.commitTs
+    description: The commit ts of tidb cluster dump
+    name: CommitTS
+    type: string
+  - JSONPath: .status.timeStarted
+    description: The time at which the backup was started
+    format: date-time
+    name: Started
+    priority: 1
+    type: string
+  - JSONPath: .status.timeCompleted
+    description: The time at which the backup was completed
+    format: date-time
+    name: Completed
+    priority: 1
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: Backup
     plural: backups
     shortNames:
-      - bk
+    - bk
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -4728,8 +4728,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchFields:
@@ -4744,8 +4744,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                             type: object
@@ -4753,8 +4753,8 @@ spec:
                             format: int32
                             type: integer
                         required:
-                          - weight
-                          - preference
+                        - weight
+                        - preference
                         type: object
                       type: array
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -4774,8 +4774,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchFields:
@@ -4790,14 +4790,14 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                             type: object
                           type: array
                       required:
-                        - nodeSelectorTerms
+                      - nodeSelectorTerms
                       type: object
                   type: object
                 podAffinity:
@@ -4821,8 +4821,8 @@ spec:
                                             type: string
                                           type: array
                                       required:
-                                        - key
-                                        - operator
+                                      - key
+                                      - operator
                                       type: object
                                     type: array
                                   matchLabels:
@@ -4835,14 +4835,14 @@ spec:
                               topologyKey:
                                 type: string
                             required:
-                              - topologyKey
+                            - topologyKey
                             type: object
                           weight:
                             format: int32
                             type: integer
                         required:
-                          - weight
-                          - podAffinityTerm
+                        - weight
+                        - podAffinityTerm
                         type: object
                       type: array
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -4862,8 +4862,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchLabels:
@@ -4876,7 +4876,7 @@ spec:
                           topologyKey:
                             type: string
                         required:
-                          - topologyKey
+                        - topologyKey
                         type: object
                       type: array
                   type: object
@@ -4901,8 +4901,8 @@ spec:
                                             type: string
                                           type: array
                                       required:
-                                        - key
-                                        - operator
+                                      - key
+                                      - operator
                                       type: object
                                     type: array
                                   matchLabels:
@@ -4915,14 +4915,14 @@ spec:
                               topologyKey:
                                 type: string
                             required:
-                              - topologyKey
+                            - topologyKey
                             type: object
                           weight:
                             format: int32
                             type: integer
                         required:
-                          - weight
-                          - podAffinityTerm
+                        - weight
+                        - podAffinityTerm
                         type: object
                       type: array
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -4942,8 +4942,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchLabels:
@@ -4956,7 +4956,7 @@ spec:
                           topologyKey:
                             type: string
                         required:
-                          - topologyKey
+                        - topologyKey
                         type: object
                       type: array
                   type: object
@@ -4992,7 +4992,7 @@ spec:
                 timeAgo:
                   type: string
               required:
-                - cluster
+              - cluster
               type: object
             from:
               properties:
@@ -5008,8 +5008,8 @@ spec:
                 user:
                   type: string
               required:
-                - host
-                - secretName
+              - host
+              - secretName
               type: object
             gcs:
               properties:
@@ -5032,8 +5032,8 @@ spec:
                 storageClass:
                   type: string
               required:
-                - projectId
-                - secretName
+              - projectId
+              - secretName
               type: object
             imagePullSecrets:
               items:
@@ -5085,7 +5085,7 @@ spec:
                 storageClass:
                   type: string
               required:
-                - provider
+              - provider
               type: object
             serviceAccount:
               type: string
@@ -5124,25 +5124,25 @@ metadata:
   name: restores.pingcap.com
 spec:
   additionalPrinterColumns:
-    - JSONPath: .status.timeStarted
-      description: The time at which the backup was started
-      format: date-time
-      name: Started
-      type: string
-    - JSONPath: .status.timeCompleted
-      description: The time at which the restore was completed
-      format: date-time
-      name: Completed
-      type: string
-    - JSONPath: .metadata.creationTimestamp
-      name: Age
-      type: date
+  - JSONPath: .status.timeStarted
+    description: The time at which the backup was started
+    format: date-time
+    name: Started
+    type: string
+  - JSONPath: .status.timeCompleted
+    description: The time at which the restore was completed
+    format: date-time
+    name: Completed
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: Restore
     plural: restores
     shortNames:
-      - rt
+    - rt
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -5174,8 +5174,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchFields:
@@ -5190,8 +5190,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                             type: object
@@ -5199,8 +5199,8 @@ spec:
                             format: int32
                             type: integer
                         required:
-                          - weight
-                          - preference
+                        - weight
+                        - preference
                         type: object
                       type: array
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -5220,8 +5220,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchFields:
@@ -5236,14 +5236,14 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                             type: object
                           type: array
                       required:
-                        - nodeSelectorTerms
+                      - nodeSelectorTerms
                       type: object
                   type: object
                 podAffinity:
@@ -5267,8 +5267,8 @@ spec:
                                             type: string
                                           type: array
                                       required:
-                                        - key
-                                        - operator
+                                      - key
+                                      - operator
                                       type: object
                                     type: array
                                   matchLabels:
@@ -5281,14 +5281,14 @@ spec:
                               topologyKey:
                                 type: string
                             required:
-                              - topologyKey
+                            - topologyKey
                             type: object
                           weight:
                             format: int32
                             type: integer
                         required:
-                          - weight
-                          - podAffinityTerm
+                        - weight
+                        - podAffinityTerm
                         type: object
                       type: array
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -5308,8 +5308,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchLabels:
@@ -5322,7 +5322,7 @@ spec:
                           topologyKey:
                             type: string
                         required:
-                          - topologyKey
+                        - topologyKey
                         type: object
                       type: array
                   type: object
@@ -5347,8 +5347,8 @@ spec:
                                             type: string
                                           type: array
                                       required:
-                                        - key
-                                        - operator
+                                      - key
+                                      - operator
                                       type: object
                                     type: array
                                   matchLabels:
@@ -5361,14 +5361,14 @@ spec:
                               topologyKey:
                                 type: string
                             required:
-                              - topologyKey
+                            - topologyKey
                             type: object
                           weight:
                             format: int32
                             type: integer
                         required:
-                          - weight
-                          - podAffinityTerm
+                        - weight
+                        - podAffinityTerm
                         type: object
                       type: array
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -5388,8 +5388,8 @@ spec:
                                         type: string
                                       type: array
                                   required:
-                                    - key
-                                    - operator
+                                  - key
+                                  - operator
                                   type: object
                                 type: array
                               matchLabels:
@@ -5402,7 +5402,7 @@ spec:
                           topologyKey:
                             type: string
                         required:
-                          - topologyKey
+                        - topologyKey
                         type: object
                       type: array
                   type: object
@@ -5438,7 +5438,7 @@ spec:
                 timeAgo:
                   type: string
               required:
-                - cluster
+              - cluster
               type: object
             gcs:
               properties:
@@ -5461,8 +5461,8 @@ spec:
                 storageClass:
                   type: string
               required:
-                - projectId
-                - secretName
+              - projectId
+              - secretName
               type: object
             imagePullSecrets:
               items:
@@ -5505,7 +5505,7 @@ spec:
                 storageClass:
                   type: string
               required:
-                - provider
+              - provider
               type: object
             serviceAccount:
               type: string
@@ -5529,8 +5529,8 @@ spec:
                 user:
                   type: string
               required:
-                - host
-                - secretName
+              - host
+              - secretName
               type: object
             tolerations:
               items:
