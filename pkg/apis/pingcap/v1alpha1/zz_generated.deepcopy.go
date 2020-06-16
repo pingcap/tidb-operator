@@ -772,6 +772,8 @@ func (in *CrdKinds) DeepCopyInto(out *CrdKinds) {
 	in.TiDBMonitor.DeepCopyInto(&out.TiDBMonitor)
 	in.TiDBInitializer.DeepCopyInto(&out.TiDBInitializer)
 	in.TidbClusterAutoScaler.DeepCopyInto(&out.TidbClusterAutoScaler)
+	in.TiKVGroup.DeepCopyInto(&out.TiKVGroup)
+	in.TiDBGroup.DeepCopyInto(&out.TiDBGroup)
 	return
 }
 
