@@ -658,7 +658,6 @@ type TiKVRaftstoreConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	SyncLog *bool `json:"sync-log,omitempty" toml:"sync-log,omitempty"`
-
 	// Optional: Defaults to true
 	// +optional
 	Prevote *bool `json:"prevote,omitempty" toml:"prevote,omitempty"`
@@ -673,7 +672,15 @@ type TiKVRaftstoreConfig struct {
 	// Optional: Defaults to 8MB
 	// +optional
 	RaftEntryMaxSize *string `json:"raft-entry-max-size,omitempty" toml:"raft-entry-max-size,omitempty"`
-
+	// Limit the max size of each append message.
+	// Optional: Defaults to 1MB
+	// +optional
+	RaftMaxSizePerMsg *string `json:"raft-max-size-per-msg,omitempty" toml:"raft-max-size-per-msg,omitempty"`
+	// Limit the max number of in-flight append messages during optimistic
+	// replication phase.
+	// Optional: Defaults to 256
+	// +optional
+	RaftMaxInflightMsgs *int64 `json:"raft-max-inflight-msgs,omitempty" toml:"raft-max-inflight-msgs,omitempty"`
 	// Interval to gc unnecessary raft log (ms).
 	// Optional: Defaults to 10s
 	// +optional

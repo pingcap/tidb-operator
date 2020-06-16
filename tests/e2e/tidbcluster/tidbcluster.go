@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	ginkgo.Context("Basic: Deploying, Scaling, Update Configuration", func() {
 		clusterCfgs := []struct {
 			Version string
-			Name    string // helm release name, should not conflict with names used in other tests
+			Name    string
 			Values  map[string]string
 		}{
 			{
@@ -148,9 +148,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
-				tc := newTidbCluster(ns, localCfg.Name, localCfg.Version)
-				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
+				tc := fixture.GetTidbCluster(ns, localCfg.Name, localCfg.Version)
 				// support reclaim pv when scale in tikv or pd component
+				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
+				// change tikv data directory to a subdirectory of data volume
+				tc.Spec.TiKV.DataSubDir = "data"
 
 				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err)
@@ -711,14 +713,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("TidbMonitor: Deploying and checking monitor", func() {
-		cluster := newTidbClusterConfig(e2econfig.TestConfig, ns, "monitor-test", "admin", utilimage.TiDBV3Version)
-		cluster.Resources["pd.replicas"] = "1"
-		cluster.Resources["tikv.replicas"] = "1"
-		cluster.Resources["tidb.replicas"] = "1"
-		oa.DeployTidbClusterOrDie(&cluster)
-		oa.CheckTidbClusterStatusOrDie(&cluster)
-
-		tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+		tc := fixture.GetTidbCluster(ns, "monitor-test", utilimage.TiDBV4UpgradeVersion)
+		tc.Spec.PD.Replicas = 1
+		tc.Spec.TiKV.Replicas = 1
+		tc.Spec.TiDB.Replicas = 1
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
@@ -794,8 +795,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
-		pv, err = c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
-		framework.ExpectNoError(err, "Expected fetch tidbmonitor pv success")
 
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
@@ -806,16 +805,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 			if prometheusSvc.Spec.Type != corev1.ServiceTypeNodePort {
+				framework.Logf("prometheus service type haven't be changed")
 				return false, nil
 			}
 			if prometheusSvc.Spec.Ports[0].Name != "any-other-word" {
+				framework.Logf("prometheus port name haven't be changed")
 				return false, nil
 			}
 			if prometheusSvc.Spec.Ports[0].NodePort != targetPort {
 				return false, nil
 			}
+			pv, err = c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+			if err != nil {
+				return false, nil
+			}
 			if pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
-				return false, fmt.Errorf("pv[%s] 's policy is not Retain", pv.Name)
+				framework.Logf("prometheus PersistentVolumeReclaimPolicy haven't be changed")
+				return false, nil
 			}
 			return true, nil
 		})
@@ -824,7 +830,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			tc, err := cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 			if err != nil {
 				return false, err
 			}
@@ -1251,14 +1257,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("CDC works as expected")
 	})
 })
-
-func newTidbCluster(ns, clusterName, tidbVersion string) *v1alpha1.TidbCluster {
-	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
-	tc.Spec.EnablePVReclaim = pointer.BoolPtr(false)
-	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
-	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
-	return tc
-}
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
 	return tests.TidbClusterConfig{

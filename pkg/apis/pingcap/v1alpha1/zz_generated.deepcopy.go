@@ -227,6 +227,11 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -296,6 +301,11 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
 	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
@@ -593,6 +603,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(v1.PullPolicy)
 		**out = **in
 	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	if in.HostNetwork != nil {
 		in, out := &in.HostNetwork, &out.HostNetwork
 		*out = new(bool)
@@ -791,6 +806,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 	if in.PublicPathPrefix != nil {
 		in, out := &in.PublicPathPrefix, &out.PublicPathPrefix
 		*out = new(string)
+		**out = **in
+	}
+	if in.InternalProxy != nil {
+		in, out := &in.InternalProxy, &out.InternalProxy
+		*out = new(bool)
 		**out = **in
 	}
 	return
@@ -2561,6 +2581,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.EnableDashboardInternalProxy != nil {
+		in, out := &in.EnableDashboardInternalProxy, &out.EnableDashboardInternalProxy
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -3286,6 +3311,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		in, out := &in.Affinity, &out.Affinity
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
 	}
 	return
 }
@@ -5369,6 +5399,16 @@ func (in *TiKVRaftstoreConfig) DeepCopyInto(out *TiKVRaftstoreConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.RaftMaxSizePerMsg != nil {
+		in, out := &in.RaftMaxSizePerMsg, &out.RaftMaxSizePerMsg
+		*out = new(string)
+		**out = **in
+	}
+	if in.RaftMaxInflightMsgs != nil {
+		in, out := &in.RaftMaxInflightMsgs, &out.RaftMaxInflightMsgs
+		*out = new(int64)
+		**out = **in
+	}
 	if in.RaftLogGCTickInterval != nil {
 		in, out := &in.RaftLogGCTickInterval, &out.RaftLogGCTickInterval
 		*out = new(string)
@@ -6527,6 +6567,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = new(HelperSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	if in.EnablePVReclaim != nil {
 		in, out := &in.EnablePVReclaim, &out.EnablePVReclaim
 		*out = new(bool)
@@ -6577,6 +6622,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		in, out := &in.Services, &out.Services
 		*out = make([]Service, len(*in))
 		copy(*out, *in)
+	}
+	if in.EnableDynamicConfiguration != nil {
+		in, out := &in.EnableDynamicConfiguration, &out.EnableDynamicConfiguration
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -6694,6 +6744,11 @@ func (in *TidbInitializerSpec) DeepCopyInto(out *TidbInitializerSpec) {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
 		*out = new(v1.PullPolicy)
 		**out = **in
+	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
 	}
 	if in.PermitHost != nil {
 		in, out := &in.PermitHost, &out.PermitHost
@@ -6848,6 +6903,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)

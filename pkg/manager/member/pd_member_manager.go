@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,9 @@ import (
 )
 
 const (
+	// pdDataVolumeMountPath is the mount path for pd data volume
+	pdDataVolumeMountPath = "/var/lib/pd"
+
 	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	pdClusterCertPath  = "/var/lib/pd-tls"
 	tidbClientCertPath = "/var/lib/tidb-client-tls"
@@ -420,13 +424,14 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
 	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
+	pdSelector := label.New().Instance(instanceName).PD()
+	pdLabels := pdSelector.Copy().UsedByEndUser().Labels()
 
 	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
-			Labels:          pdLabel,
+			Labels:          pdLabels,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -439,7 +444,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: pdLabel,
+			Selector: pdSelector.Labels(),
 		},
 	}
 	// if set pd service type ,overwrite global variable services
@@ -467,13 +472,14 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
 	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
+	pdSelector := label.New().Instance(instanceName).PD()
+	pdLabels := pdSelector.Copy().UsedByPeer().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
-			Labels:          pdLabel,
+			Labels:          pdLabels,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -486,7 +492,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector:                 pdLabel,
+			Selector:                 pdSelector.Labels(),
 			PublishNotReadyAddresses: true,
 		},
 	}
@@ -549,7 +555,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		annMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/pd"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
-		{Name: v1alpha1.PDMemberType.String(), MountPath: "/var/lib/pd"},
+		{Name: v1alpha1.PDMemberType.String(), MountPath: pdDataVolumeMountPath},
 	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -759,11 +765,25 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Dashboard.TiDBKeyPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
 	}
 
+	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
+		if config.Dashboard != nil {
+			// EnableDashboardInternalProxy has a higher priority to cover the configuration in Dashboard
+			config.Dashboard.InternalProxy = pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy)
+		} else {
+			config.Dashboard = &v1alpha1.DashboardConfig{
+				InternalProxy: pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy),
+			}
+		}
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
 	}
-	startScript, err := RenderPDStartScript(&PDStartScriptModel{Scheme: tc.Scheme()})
+	startScript, err := RenderPDStartScript(&PDStartScriptModel{
+		Scheme:  tc.Scheme(),
+		DataDir: filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+	})
 	if err != nil {
 		return nil, err
 	}
