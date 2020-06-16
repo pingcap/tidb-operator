@@ -847,6 +847,7 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1557,6 +1558,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1617,6 +1619,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1678,6 +1681,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1740,6 +1744,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
@@ -1804,6 +1809,7 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "pd",
+						"app.kubernetes.io/used-by":    "end-user",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
