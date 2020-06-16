@@ -636,7 +636,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
 			framework.Logf("check tikv has ready-to-scale-timestamp")
 
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
