@@ -28,7 +28,7 @@ type TiKVGroup struct {
 }
 
 type TiKVGroupSpec struct {
-    TiKVGrupSpec
+    TiKVSpec
     ClusterName string
 }
 
