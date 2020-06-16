@@ -673,12 +673,15 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 	}
 
-	promethuesName := prometheusName(monitor)
+	prometheusName := prometheusName(monitor)
+	monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
+	promeLabel := monitorLabel.Copy().UsedBy("prometheus")
+	grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            promethuesName,
+			Name:            prometheusName,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          promeLabel.Labels(),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 		},
@@ -741,7 +744,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			ObjectMeta: meta.ObjectMeta{
 				Name:            grafanaName(monitor),
 				Namespace:       monitor.Namespace,
-				Labels:          buildTidbMonitorLabel(monitor.Name),
+				Labels:          grafanaLabel.Labels(),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 				Annotations:     monitor.Spec.Grafana.Service.Annotations,
 			},
