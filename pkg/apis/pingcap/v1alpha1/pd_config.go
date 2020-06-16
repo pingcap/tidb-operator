@@ -124,6 +124,7 @@ type PDConfig struct {
 }
 
 // DashboardConfig is the configuration for tidb-dashboard.
+// +k8s:openapi-gen=true
 type DashboardConfig struct {
 	// +optional
 	TiDBCAPath *string `toml:"tidb-cacert-path,omitempty" json:"tidb-cacert-path,omitempty"`
@@ -133,6 +134,8 @@ type DashboardConfig struct {
 	TiDBKeyPath *string `toml:"tidb-key-path,omitempty" json:"tidb-key-path,omitempty"`
 	// +optional
 	PublicPathPrefix *string `toml:"public-path-prefix,omitempty" json:"public-path-prefix,omitempty"`
+	// +optional
+	InternalProxy *bool `toml:"internal-proxy,omitempty" json:"internal-proxy,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.

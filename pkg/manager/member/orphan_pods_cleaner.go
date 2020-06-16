@@ -30,7 +30,7 @@ const (
 	skipReasonOrphanPodsCleanerPVCIsFound          = "orphan pods cleaner: pvc is found"
 	skipReasonOrphanPodsCleanerPodHasBeenScheduled = "orphan pods cleaner: pod has been scheduled"
 	skipReasonOrphanPodsCleanerPodIsNotFound       = "orphan pods cleaner: pod does not exist anymore"
-	skipReasonOrphanPodsCleanerPodChanged          = "orphan pods cleaner: pod changed before deletion"
+	skipReasonOrphanPodsCleanerPodRecreated        = "orphan pods cleaner: pod is recreated before deletion"
 )
 
 // OrphanPodsCleaner implements the logic for cleaning the orphan pods(has no pvc)
@@ -67,7 +67,6 @@ func NewOrphanPodsCleaner(podLister corelisters.PodLister,
 
 func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, error) {
 	ns := tc.GetNamespace()
-	// for unit test
 	skipReason := map[string]string{}
 
 	selector, err := label.New().Instance(tc.GetInstanceName()).Selector()
@@ -141,17 +140,22 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
 			continue
 		}
+		if apiPod.UID != pod.UID {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodRecreated
+		}
 		if err != nil {
 			return skipReason, err
 		}
 		// In pre-1.14, kube-apiserver does not support
-		// deleteOption.Preconditions.ResourceVersion, we try our best to avoid
-		// deleting wrong object in apiserver.
-		if apiPod.UID != pod.UID || apiPod.ResourceVersion != pod.ResourceVersion {
-			skipReason[podName] = skipReasonOrphanPodsCleanerPodChanged
-			continue
+		// deleteOption.Preconditions.ResourceVersion, we fetch the latest
+		// version and check again before deletion.
+		if len(apiPod.Spec.NodeName) > 0 {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodHasBeenScheduled
 		}
-		err = opc.podControl.DeletePod(tc, pod)
+		// As the pod may be updated by kube-scheduler or other components
+		// frequently, we should use the latest object here to avoid API
+		// conflict.
+		err = opc.podControl.DeletePod(tc, apiPod)
 		if err != nil {
 			klog.Errorf("orphan pods cleaner: failed to clean orphan pod: %s/%s, %v", ns, podName, err)
 			return skipReason, err
