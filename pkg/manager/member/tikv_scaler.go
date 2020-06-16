@@ -77,14 +77,13 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		return nil
 	}
 
-	tc.Status.TiKV.Phase = v1alpha1.ScaleOutPhase
-
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
 	if err != nil {
 		return err
 	}
 
+	tc.Status.TiKV.Phase = v1alpha1.ScaleOutPhase
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
@@ -114,8 +113,6 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
-	tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
-
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
@@ -125,6 +122,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	}
 
 	if controller.PodWebhookEnabled {
+		tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}
@@ -137,6 +135,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				return err
 			}
 			if state != v1alpha1.TiKVStateOffline {
+				tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
 				if err := controller.GetPDClient(tsd.pdControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tikv scale in: failed to delete store %d, %v", id, err)
 					return err
@@ -174,7 +173,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			}
 			klog.Infof("tikv scale in: set pvc %s/%s annotation: %s to %s",
 				ns, pvcName, label.AnnPVCDeferDeleting, now)
-
+			tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
 			setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 			return nil
 		}
@@ -217,6 +216,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		}
 		klog.Infof("pod %s not ready, tikv scale in: set pvc %s/%s annotation: %s to %s",
 			podName, ns, pvcName, label.AnnPVCDeferDeleting, now)
+		tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
 		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 		return nil
 	}

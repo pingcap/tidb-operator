@@ -31,17 +31,70 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+func TestTiKVScalerScale(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name        string
+		tikvPhase   v1alpha1.MemberPhase
+		expectPhase v1alpha1.MemberPhase
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Log(test.name)
+		tc := newTidbClusterForPD()
+
+		tc.Status.TiKV.Phase = test.tikvPhase
+
+		oldSet := newStatefulSetForPDScale()
+		newSet := oldSet.DeepCopy()
+
+		scaler, _, _, _, _ := newFakeTiKVScaler()
+
+		_ = scaler.Scale(tc, oldSet, newSet)
+		g.Expect(tc.Status.TiKV.Phase).To(Equal(test.expectPhase))
+	}
+
+	tests := []testcase{
+		{
+			name:        "normal",
+			tikvPhase:   v1alpha1.NormalPhase,
+			expectPhase: v1alpha1.NormalPhase,
+		},
+		{
+			name:        "upgrade",
+			tikvPhase:   v1alpha1.UpgradePhase,
+			expectPhase: v1alpha1.UpgradePhase,
+		},
+		{
+			name:        "scale in",
+			tikvPhase:   v1alpha1.ScaleInPhase,
+			expectPhase: v1alpha1.NormalPhase,
+		},
+		{
+			name:        "scale out",
+			tikvPhase:   v1alpha1.ScaleOutPhase,
+			expectPhase: v1alpha1.NormalPhase,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
+}
+
 func TestTiKVScalerScaleOut(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name          string
 		tikvUpgrading bool
+		pdUpgrading   bool
 		hasPVC        bool
 		hasDeferAnn   bool
 		pvcDeleteErr  bool
 		annoIsNil     bool
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
+		tikvPhase     v1alpha1.MemberPhase
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
@@ -50,6 +103,9 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 
 		if test.tikvUpgrading {
 			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		}
+		if test.pdUpgrading {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		}
 
 		oldSet := newStatefulSetForPDScale()
@@ -78,6 +134,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 
 		err := scaler.ScaleOut(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
+		g.Expect(tc.Status.TiKV.Phase).To(Equal(test.tikvPhase))
 		if test.changed {
 			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(6))
 		} else {
@@ -95,10 +152,23 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       true,
+			tikvPhase:     v1alpha1.ScaleOutPhase,
 		},
 		{
 			name:          "tikv is upgrading",
 			tikvUpgrading: true,
+			hasPVC:        true,
+			hasDeferAnn:   false,
+			annoIsNil:     true,
+			pvcDeleteErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       false,
+			tikvPhase:     v1alpha1.UpgradePhase,
+		},
+		{
+			name:          "pd is upgrading",
+			tikvUpgrading: false,
+			pdUpgrading:   true,
 			hasPVC:        true,
 			hasDeferAnn:   false,
 			annoIsNil:     true,
@@ -115,6 +185,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       true,
+			tikvPhase:     v1alpha1.ScaleOutPhase,
 		},
 		{
 			name:          "pvc annotation is not nil but doesn't contain defer deletion annotation",
@@ -125,6 +196,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       true,
+			tikvPhase:     v1alpha1.ScaleOutPhase,
 		},
 		{
 			name:          "pvc annotations defer deletion is not nil, pvc delete failed",
@@ -147,6 +219,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 	type testcase struct {
 		name          string
 		tikvUpgrading bool
+		pdUpgrading   bool
 		storeFun      func(tc *v1alpha1.TidbCluster)
 		delStoreErr   bool
 		hasPVC        bool
@@ -156,6 +229,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		pvcUpdateErr  bool
 		errExpectFn   func(*GomegaWithT, error)
 		changed       bool
+		tikvPhase     v1alpha1.MemberPhase
 	}
 
 	controller.ResyncDuration = 0
@@ -167,6 +241,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 		if test.tikvUpgrading {
 			tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+		}
+		if test.pdUpgrading {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 		}
 
 		oldSet := newStatefulSetForPDScale()
@@ -217,6 +294,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 		err := scaler.ScaleIn(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
+		g.Expect(tc.Status.TiKV.Phase).To(Equal(test.tikvPhase))
 		if test.changed {
 			g.Expect(int(*newSet.Spec.Replicas)).To(Equal(4))
 		} else {
@@ -229,7 +307,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			name:          "store is up, delete store failed",
 			tikvUpgrading: false,
 			storeFun:      normalStoreFun,
-			delStoreErr:   false,
+			delStoreErr:   true,
 			hasPVC:        true,
 			storeIDSynced: true,
 			isPodReady:    true,
@@ -237,6 +315,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
+			tikvPhase:     v1alpha1.ScaleInPhase,
 		},
 		{
 			name:          "store state is up, delete store success",
@@ -250,10 +329,26 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectRequeue,
 			changed:       false,
+			tikvPhase:     v1alpha1.ScaleInPhase,
 		},
 		{
 			name:          "tikv is upgrading",
 			tikvUpgrading: true,
+			storeFun:      normalStoreFun,
+			delStoreErr:   false,
+			hasPVC:        true,
+			storeIDSynced: true,
+			isPodReady:    true,
+			hasSynced:     true,
+			pvcUpdateErr:  false,
+			errExpectFn:   errExpectNil,
+			changed:       false,
+			tikvPhase:     v1alpha1.UpgradePhase,
+		},
+		{
+			name:          "pd is upgrading",
+			tikvUpgrading: false,
+			pdUpgrading:   true,
 			storeFun:      normalStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
@@ -308,6 +403,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       true,
+			tikvPhase:     v1alpha1.ScaleInPhase,
 		},
 		{
 			name:          "podName not match",
@@ -375,6 +471,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNil,
 			changed:       true,
+			tikvPhase:     v1alpha1.ScaleInPhase,
 		},
 		{
 			name:          "store state is tombstone and store id not match",
@@ -388,6 +485,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNotNil,
 			changed:       false,
+			tikvPhase:     v1alpha1.ScaleInPhase,
 		},
 		{
 			name:          "store state is tombstone, id is not integer",
