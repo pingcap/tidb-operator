@@ -4070,7 +4070,6 @@ func (in *TiDBGroupList) DeepCopyObject() runtime.Object {
 func (in *TiDBGroupSpec) DeepCopyInto(out *TiDBGroupSpec) {
 	*out = *in
 	in.TiDBSpec.DeepCopyInto(&out.TiDBSpec)
-	out.Cluster = in.Cluster
 	return
 }
 
@@ -5225,7 +5224,6 @@ func (in *TiKVGroupList) DeepCopyObject() runtime.Object {
 func (in *TiKVGroupSpec) DeepCopyInto(out *TiKVGroupSpec) {
 	*out = *in
 	in.TiKVSpec.DeepCopyInto(&out.TiKVSpec)
-	out.Cluster = in.Cluster
 	return
 }
 

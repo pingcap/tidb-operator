@@ -40,8 +40,8 @@ type TiDBGroup struct {
 type TiDBGroupSpec struct {
 	TiDBSpec `json:",inline"`
 
-	// TidbClusterRef describe the target TidbCluster
-	Cluster TidbClusterRef `json:"cluster"`
+	// ClusterName describe the target TidbCluster in the same namespace
+	ClusterName string `json:"clusterName"`
 }
 
 // +k8s:openapi-gen=false
@@ -85,8 +85,8 @@ type TiKVGroup struct {
 type TiKVGroupSpec struct {
 	TiKVSpec `json:",inline"`
 
-	// TidbClusterRef describe the target TidbCluster
-	Cluster TidbClusterRef `json:"cluster"`
+	// ClusterName describe the target TidbCluster in the same namespace
+	ClusterName string `json:"clusterName"`
 }
 
 // +k8s:openapi-gen=false

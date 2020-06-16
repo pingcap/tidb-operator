@@ -766,15 +766,13 @@ TiDBSpec
 </tr>
 <tr>
 <td>
-<code>cluster</code></br>
+<code>clusterName</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
-</a>
+string
 </em>
 </td>
 <td>
-<p>TidbClusterRef describe the target TidbCluster</p>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
 </td>
 </tr>
 </table>
@@ -869,15 +867,13 @@ TiKVSpec
 </tr>
 <tr>
 <td>
-<code>cluster</code></br>
+<code>clusterName</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
-</a>
+string
 </em>
 </td>
 <td>
-<p>TidbClusterRef describe the target TidbCluster</p>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
 </td>
 </tr>
 </table>
@@ -9670,15 +9666,13 @@ TiDBSpec
 </tr>
 <tr>
 <td>
-<code>cluster</code></br>
+<code>clusterName</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
-</a>
+string
 </em>
 </td>
 <td>
-<p>TidbClusterRef describe the target TidbCluster</p>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
 </td>
 </tr>
 </tbody>
@@ -12078,15 +12072,13 @@ TiKVSpec
 </tr>
 <tr>
 <td>
-<code>cluster</code></br>
+<code>clusterName</code></br>
 <em>
-<a href="#tidbclusterref">
-TidbClusterRef
-</a>
+string
 </em>
 </td>
 <td>
-<p>TidbClusterRef describe the target TidbCluster</p>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
 </td>
 </tr>
 </tbody>
@@ -15175,8 +15167,6 @@ string
 <h3 id="tidbclusterref">TidbClusterRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbgroupspec">TiDBGroupSpec</a>, 
-<a href="#tikvgroupspec">TiKVGroupSpec</a>, 
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
