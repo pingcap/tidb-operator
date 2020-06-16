@@ -11258,7 +11258,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults true</p>
+<p>Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
@@ -13039,7 +13039,7 @@ int64
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults</p>
+<p>Optional: Defaults to 0</p>
 </td>
 </tr>
 <tr>
@@ -13051,7 +13051,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults</p>
+<p>Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -14220,7 +14220,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults true</p>
+<p>Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>

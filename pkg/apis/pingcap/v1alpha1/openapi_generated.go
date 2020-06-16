@@ -5930,7 +5930,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorReadPoolConfig(ref common.R
 					},
 					"use-unified-pool": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults true",
+							Description: "Optional: Defaults to true",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -6935,14 +6935,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref common.ReferenceCa
 					},
 					"perf-level": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults",
+							Description: "Optional: Defaults to 0",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
 					"dev-assert": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults",
+							Description: "Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -7561,7 +7561,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageReadPoolConfig(ref common.Refer
 					},
 					"use-unified-pool": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults true",
+							Description: "Optional: Defaults to true",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
