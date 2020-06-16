@@ -50,7 +50,7 @@ func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	} else if scaling < 0 {
 		return tsd.ScaleIn(tc, oldSet, newSet)
 	} else {
-		if tc.Status.TiKV.Phase == v1alpha1.ScaleOutPhase || tc.Status.TiKV.Phase == v1alpha1.ScaleInPhase {
+		if tc.TiKVScaling() {
 			tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		}
 	}
