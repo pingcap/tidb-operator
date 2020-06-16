@@ -424,13 +424,14 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 	tcName := tc.Name
 	svcName := controller.PDMemberName(tcName)
 	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
+	pdSelector := label.New().Instance(instanceName).PD()
+	pdLabels := pdSelector.Copy().UsedByEndUser().Labels()
 
 	pdService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
-			Labels:          pdLabel,
+			Labels:          pdLabels,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -443,7 +444,7 @@ func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbClust
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: pdLabel,
+			Selector: pdSelector.Labels(),
 		},
 	}
 	// if set pd service type ,overwrite global variable services
@@ -471,13 +472,14 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 	tcName := tc.Name
 	svcName := controller.PDPeerMemberName(tcName)
 	instanceName := tc.GetInstanceName()
-	pdLabel := label.New().Instance(instanceName).PD().Labels()
+	pdSelector := label.New().Instance(instanceName).PD()
+	pdLabels := pdSelector.Copy().UsedByPeer().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
 			Namespace:       ns,
-			Labels:          pdLabel,
+			Labels:          pdLabels,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: corev1.ServiceSpec{
@@ -490,7 +492,7 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector:                 pdLabel,
+			Selector:                 pdSelector.Labels(),
 			PublishNotReadyAddresses: true,
 		},
 	}
@@ -761,6 +763,17 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		config.Dashboard.TiDBCAPath = pointer.StringPtr(path.Join(tidbClientCertPath, tlsSecretRootCAKey))
 		config.Dashboard.TiDBCertPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSCertKey))
 		config.Dashboard.TiDBKeyPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
+	}
+
+	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
+		if config.Dashboard != nil {
+			// EnableDashboardInternalProxy has a higher priority to cover the configuration in Dashboard
+			config.Dashboard.InternalProxy = pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy)
+		} else {
+			config.Dashboard = &v1alpha1.DashboardConfig{
+				InternalProxy: pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy),
+			}
+		}
 	}
 
 	confText, err := MarshalTOML(config)
