@@ -3549,6 +3549,30 @@ CrdKind
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>TiKVGroup</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>TiDBGroup</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dashboardconfig">DashboardConfig</h3>
