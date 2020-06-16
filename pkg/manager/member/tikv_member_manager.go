@@ -278,7 +278,7 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 	svcSelector := svcConfig.SvcLabel(label.New().Instance(instanceName))
 	svcLabel := svcSelector.Copy()
 	if svcConfig.Headless {
-		svcLabel = svcLabel.UsedByInternal()
+		svcLabel = svcLabel.UsedByPeer()
 	} else {
 		svcLabel = svcLabel.UsedByEndUser()
 	}

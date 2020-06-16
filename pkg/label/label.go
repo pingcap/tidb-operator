@@ -231,8 +231,8 @@ func (l Label) UsedBy(name string) Label {
 	return l
 }
 
-// UsedByInternal adds used-by=internal label
-func (l Label) UsedByInternal() Label {
+// UsedByPeer adds used-by=peer label
+func (l Label) UsedByPeer() Label {
 	l[UsedByLabelKey] = "peer"
 	return l
 }

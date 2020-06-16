@@ -497,7 +497,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 	instanceName := tc.GetInstanceName()
 	svcName := controller.TiDBPeerMemberName(tcName)
 	tidbSelector := label.New().Instance(instanceName).TiDB()
-	tidbLabel := tidbSelector.Copy().UsedByInternal().Labels()
+	tidbLabel := tidbSelector.Copy().UsedByPeer().Labels()
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
