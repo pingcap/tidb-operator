@@ -7234,7 +7234,7 @@ PrometheusConfiguration
 </tr>
 <tr>
 <td>
-<code>sidecars</code></br>
+<code>additionalContainers</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
 []Kubernetes core/v1.Container
