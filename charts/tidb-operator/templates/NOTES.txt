@@ -1,5 +1,3 @@
-First, make sure tidb-operator components are running:
+Make sure tidb-operator components are running:
 
     kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
-
-Then follow the next steps to create your TiDB clusters.
