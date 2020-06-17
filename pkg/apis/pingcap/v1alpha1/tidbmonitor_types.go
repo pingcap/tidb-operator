@@ -76,8 +76,6 @@ type TidbMonitorSpec struct {
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
 	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
-	// +optional
-	DrainerRefs []DrainerRef `json:"drainers,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -170,24 +168,6 @@ type TidbClusterRef struct {
 
 // TODO: sync status
 type TidbMonitorStatus struct {
-}
-
-// +k8s:openapi-gen=true
-// DrainerRef reference to a drainer chart release
-type DrainerRef struct {
-	// ReleaseName is the releaseName of Drainer chart release
-	ReleaseName string `json:"releaseName"`
-	// Namespace is the namespace that Drainer chart release locates,
-	// default to the same namespace with TidbMonitor
-	// +optional
-	Namespace string `json:"namespace,omitempty"`
-
-	// DrainerName represents the `drainerName` in `tidb-drainer` chart values.yaml file
-	// If you didn't set `drainerName` in in `tidb-drainer` chart values.yaml file, you don't need to set this property
-	// +optional
-	DrainerName *string `json:"drainerName,omitempty"`
-	// ClusterName is the name of target tidbclusterName
-	ClusterName string `json:"clusterName"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

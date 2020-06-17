@@ -18,7 +18,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -114,7 +113,6 @@ type MonitorConfigModel struct {
 	ReleaseNamespaces  []string
 	ReleaseTargetRegex *config.Regexp
 	EnableTLSCluster   bool
-	Drainers           []v1alpha1.DrainerRef
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
@@ -135,16 +133,14 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			"/prometheus-rules/rules/*.rules.yml",
 		},
 		ScrapeConfigs: []*config.ScrapeConfig{
-			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfig(portLabel, pdReplacement, true), cmodel.ReleaseNamespaces),
-			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfig(portLabel, tidbReplacement, true), cmodel.ReleaseNamespaces),
-			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig(portLabel, tikvReplacement, true), cmodel.ReleaseNamespaces),
-			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig(portLabel, tiflashReplacement, true), cmodel.ReleaseNamespaces),
-			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig(tiflashProxyPortLabel, tiflashProxyReplacement, true), cmodel.ReleaseNamespaces),
-			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfig(portLabel, pumpReplacement, true), cmodel.ReleaseNamespaces),
+			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfig(portLabel, pdReplacement, true)),
+			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfig(portLabel, tidbReplacement, true)),
+			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig(portLabel, tikvReplacement, true)),
+			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig(portLabel, tiflashReplacement, true)),
+			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig(tiflashProxyPortLabel, tiflashProxyReplacement, true)),
+			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfig(portLabel, pumpReplacement, true)),
+			scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfig(portLabel, pumpReplacement, false)),
 		},
-	}
-	if len(cmodel.Drainers) > 0 {
-		c.ScrapeConfigs = append(c.ScrapeConfigs, generateDrainerJobs(cmodel)...)
 	}
 	return &c
 }
@@ -176,7 +172,7 @@ func buildAddressRelabelConfig(portLabelName, replacement string, isTidbClusterC
 	return addressRelabelConfig
 }
 
-func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig, sdNamespaces []string) *config.ScrapeConfig {
+func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) *config.ScrapeConfig {
 	return &config.ScrapeConfig{
 
 		JobName:        jobName,
@@ -188,7 +184,7 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 				{
 					Role: "pod",
 					NamespaceDiscovery: config.KubernetesNamespaceDiscovery{
-						Names: sdNamespaces,
+						Names: cmodel.ReleaseNamespaces,
 					},
 				},
 			},
@@ -267,37 +263,6 @@ func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorCo
 		},
 	}
 
-}
-
-func generateDrainerJobs(cmodel *MonitorConfigModel) []*config.ScrapeConfig {
-	if len(cmodel.Drainers) < 1 {
-		return nil
-	}
-	var jobs []*config.ScrapeConfig
-	for _, drainer := range cmodel.Drainers {
-		jobName := fmt.Sprintf("%s-drainer", drainer.ReleaseName)
-		replacement := ""
-		if drainer.DrainerName != nil {
-			replacement = fmt.Sprintf("$1.%s:$2", *drainer.DrainerName)
-		} else {
-			replacement = fmt.Sprintf("$1.%s-%s-drainer:$2", drainer.ClusterName, drainer.ReleaseName)
-		}
-		addressRelabelConfig := &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: replacement,
-			TargetLabel: "__address__",
-			SourceLabels: model.LabelNames{
-				podNameLabel,
-				model.LabelName(portLabel),
-			},
-		}
-		var namespaces []string
-		namespaces = append(namespaces, drainer.Namespace)
-		job := scrapeJob(jobName, drainerPattern, cmodel, addressRelabelConfig, namespaces)
-		jobs = append(jobs, job)
-	}
-	return jobs
 }
 
 func addAlertManagerUrl(pc *config.Config, cmodel *MonitorConfigModel) {
