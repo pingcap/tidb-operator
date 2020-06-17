@@ -6054,6 +6054,8 @@ spec:
           type: string
         spec:
           properties:
+            alertManagerRulesVersion:
+              type: string
             alertmanagerURL:
               type: string
             annotations:
