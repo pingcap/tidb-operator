@@ -8,13 +8,9 @@ category: how-to
 
 TiDB Dashboard 是 TiDB 4.0 专门用来帮助观察与诊断整个 TiDB 集群的可视化面板，你可以在 [TiDB Dashboard](https://github.com/pingcap-incubator/tidb-dashboard) 了解详情。本篇文章将介绍如何在 Kubernetes 环境下访问 TiDB Dashboard。
 
-## 快速上手
+## 前置条件
 
-> **注意：**
->
-> 以下教程仅为演示如何快速访问 TiDB Dashboard，请勿在生产环境中直接使用以下方法。 
-
-`TiDB Dashboard` 目前在 4.0 版本中已经内嵌在了 PD 组件中，你可以通过以下的例子在 Kubernetes 环境下快速部署一个 4.0.0-rc 版本的 TiDB 集群。运行 `kubectl apply -f` 命令，将以下 yaml 文件部署到 Kubernetes 集群中。
+你需要使用 v1.1.1 版本及以上的 TiDB Operator 以及 4.0.1 版本及以上的 TiDB 集群，才能在 Kubernetes 环境中流畅使用 `Dashboard`。 你需要在 `TidbCluster` 对象文件中通过以下方式开启 `Dashboard` 快捷访问:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1
@@ -22,10 +18,29 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v4.0.0-rc
+  pd:
+    enableDashboardInternalProxy: true
+```
+
+## 快速上手
+
+> **注意：**
+>
+> 以下教程仅为演示如何快速访问 TiDB Dashboard，请勿在生产环境中直接使用以下方法。 
+
+`TiDB Dashboard` 目前在 4.0.0 版本及以上中已经内嵌在了 PD 组件中，你可以通过以下的例子在 Kubernetes 环境下快速部署一个 4.0.1 版本的 TiDB 集群。运行 `kubectl apply -f` 命令，将以下 yaml 文件部署到 Kubernetes 集群中。
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  version: v4.0.1
   timezone: UTC
   pvReclaimPolicy: Delete
   pd:
+    enableDashboardInternalProxy: true
     baseImage: pingcap/pd
     replicas: 1
     requests:
@@ -51,16 +66,16 @@ spec:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl port-forward svc/tidb-pd -n ${namespace} 2379:2379
+kubectl port-forward svc/basic-discovery -n ${namespace} 10262:10262
 ```
 
-然后在浏览器中访问 <http://localhost:2379/dashboard> 即可访问到 TiDB Dashboard。
+然后在浏览器中访问 <http://localhost:10262/dashboard> 即可访问到 TiDB Dashboard。
 
 ## 通过 Ingress 访问 TiDB Dashboard
 
 > **注意：**
 >
-> 我们推荐在生产环境、关键环境内使用 `Ingress` 来暴露 `TiDB Dashboard` 服务。由于内嵌式 Dashboard 的端口与 PD API 的端口是同一个端口，如果采用其他自治方案在生产环境、关键环境内暴露 `TiDB Dashboard` 服务，需要注意不应该暴露 PD API 的相关接口。
+> 我们推荐在生产环境、关键环境内使用 `Ingress` 来暴露 `TiDB Dashboard` 服务。
 
 ### 环境准备
 
@@ -82,8 +97,8 @@ spec:
       http:
         paths:
           - backend:
-              serviceName: ${cluster_name}-pd
-              servicePort: 2379
+              serviceName: ${cluster_name}-discovery
+              servicePort: 10262
             path: /dashboard
 ```
 
@@ -113,8 +128,8 @@ spec:
       http:
         paths:
           - backend:
-              serviceName: ${cluster_name}-pd
-              servicePort: 2379
+              serviceName: ${cluster_name}-discovery
+              servicePort: 10262
             path: /dashboard
 ```
 
