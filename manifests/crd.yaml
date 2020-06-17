@@ -6054,8 +6054,6 @@ spec:
           type: string
         spec:
           properties:
-            alertManagerRulesVersion:
-              type: string
             additionalContainers:
               items:
                 properties:
@@ -6561,6 +6559,8 @@ spec:
                 - name
                 type: object
               type: array
+            alertManagerRulesVersion:
+              type: string
             alertmanagerURL:
               type: string
             annotations:
