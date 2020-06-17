@@ -45,6 +45,7 @@ var (
 	tidbPattern     config.Regexp
 	addressPattern  config.Regexp
 	tiflashPattern  config.Regexp
+	pumpPattern     config.Regexp
 	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
@@ -95,6 +96,10 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	pumpPattern, err = config.NewRegexp("pump")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
@@ -111,6 +116,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 	tiflashReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tiflash")
 	tiflashProxyReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tiflash")
 	tiflashProxyPortLabel := fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")
+	pumpReplacement := fmt.Sprintf("$1.$2-%s:$3", "pump")
 
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
@@ -126,6 +132,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig(portLabel, tikvReplacement, true)),
 			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig(portLabel, tiflashReplacement, true)),
 			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig(tiflashProxyPortLabel, tiflashProxyReplacement, true)),
+			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfig(portLabel, pumpReplacement, true)),
 		},
 	}
 	return &c
