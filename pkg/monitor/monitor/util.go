@@ -277,6 +277,10 @@ chmod 777 /data/prometheus /data/grafana
 		"-c",
 		c,
 	}
+	alertManagerRulesVersion := tc.TiDBImage()
+	if monitor.Spec.AlertManagerRulesVersion != nil {
+		alertManagerRulesVersion = fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
+	}
 	container := core.Container{
 		Name:  "monitor-initializer",
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
@@ -299,7 +303,7 @@ chmod 777 /data/prometheus /data/grafana
 			},
 			{
 				Name:  "TIDB_VERSION",
-				Value: tc.TiDBImage(),
+				Value: alertManagerRulesVersion,
 			},
 			{
 				Name:  "GF_TIDB_PROMETHEUS_URL",

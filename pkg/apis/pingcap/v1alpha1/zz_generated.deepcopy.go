@@ -6944,6 +6944,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AlertManagerRulesVersion != nil {
+		in, out := &in.AlertManagerRulesVersion, &out.AlertManagerRulesVersion
+		*out = new(string)
+		**out = **in
+	}
 	if in.AdditionalContainers != nil {
 		in, out := &in.AdditionalContainers, &out.AdditionalContainers
 		*out = make([]v1.Container, len(*in))

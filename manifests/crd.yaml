@@ -4678,14 +4678,16 @@ spec:
     type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
+    format: date-time
     name: Started
     priority: 1
-    type: date
+    type: string
   - JSONPath: .status.timeCompleted
     description: The time at which the backup was completed
+    format: date-time
     name: Completed
     priority: 1
-    type: date
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -5124,12 +5126,14 @@ spec:
   additionalPrinterColumns:
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
+    format: date-time
     name: Started
-    type: date
+    type: string
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
+    format: date-time
     name: Completed
-    type: date
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -6050,6 +6054,8 @@ spec:
           type: string
         spec:
           properties:
+            alertManagerRulesVersion:
+              type: string
             additionalContainers:
               items:
                 properties:

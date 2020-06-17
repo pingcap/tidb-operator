@@ -8840,6 +8840,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"alertManagerRulesVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "alertManagerRulesVersion is the version of the tidb cluster that used for alert rules. default to current tidb cluster version, for example: v3.0.15",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"additionalContainers": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
