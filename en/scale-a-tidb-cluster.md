@@ -12,13 +12,47 @@ This document introduces how to horizontally and vertically scale a TiDB cluster
 
 Horizontally scaling TiDB means that you scale TiDB out or in by adding or remove nodes in your pool of resources. When you scale a TiDB cluster, PD, TiKV, and TiDB are scaled out or in sequentially according to the values of their replicas. Scaling out operations add nodes based on the node ID in ascending order, while scaling in operations remove nodes based on the node ID in descending order.
 
-Currently, the TiDB cluster supports management by Helm or by TidbCluster Custom Resource (CR). You can choose the scaling method based on the management method of your TiDB cluster.
+Currently, the TiDB cluster supports management by TidbCluster Custom Resource (CR).
 
-### Horizontal scaling operations (CR)
+### Scale PD, TiDB, and TiKV
 
-#### Scale PD, TiDB, and TiKV
+Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the `TidbCluster` object of the cluster to a desired value using kubectl. You can modify the values in the local file or using online command.
 
-Modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the `TidbCluster` object of the cluster to a desired value using kubectl.
+- If a yaml file that describes the TiDB cluster exists in your local machine, modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the local file to your desired values. Then deploy the yaml file to the cluster by running the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f ${target_file}.yaml -n ${namespace}
+    ```
+
+- You can also online modify the `TidbCluster` definition in the Kubernetes cluster by running the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl edit tidbcluster ${cluster_name} -n ${namespace}
+    ```
+
+After modifying the values above, check whether the TiDB cluster in Kubernetes has updated to your desired definition:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get tidbcluster ${cluster_name} -n ${namespace} -oyaml
+```
+
+In the `TidbCluster` file output by the command above, if the values of `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` are consistent with the values you have modified, check whether the number of `TidbCluster` Pods has increased or decreased by running the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+watch kubectl -n ${namespace} get pod -o wide
+```
+
+For the PD and TiDB components, it might take 10-30 seconds to scale in or out.
+
+For the TiKV component, it might take 3-5 minutes to scale in or out because the process involves data migration.
 
 #### Scale out TiFlash
 
@@ -76,21 +110,15 @@ If TiCDC is deployed in the cluster, you can scale out TiCDC by modifying `spec.
 
 6. Modify `spec.tiflash.replicas` to scale in TiFlash.
 
-### Horizontal scaling operations (Helm)
-
-To perform a horizontal scaling operation, take the following steps:
-
-1. Modify `pd.replicas`, `tidb.replicas`, `tikv.replicas` in the `value.yaml` file of the cluster to a desired value.
-
-2. Run the `helm upgrade` command to scale out or in:
+    Check whether TiFlash in the TiDB cluster in Kubernetes has updated to your desired definition. Run the following command and see whether the value of `spec.tiflash.replicas` returned is expected:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
+    kubectl get tidbcluster ${cluster-name} -n ${namespace} -oyaml
     ```
 
-### View the scaling status
+### View the horizontal scaling status
 
 To view the scaling status of the cluster, run the following command:
 
@@ -110,13 +138,17 @@ When the number of Pods for all components reaches the preset value and all comp
 > - The TiFlash component has the same scale-in logic as TiKV.
 > - When the PD, TiKV, and TiFlash components scale in, the PVC of the deleted node is retained during the scaling in process. Because the PV's reclaim policy is changed to `Retain`, the data can still be retrieved even if the PVC is deleted.
 
+### Horizontal scaling failure
+
+During the horizontal scaling operation, Pods might go to the Pending state because of insufficient resources. See [Troubleshoot the Pod in Pending state](troubleshoot.md#the-pod-is-in-the-pending-state).
+
 ## Vertical scaling
 
 Vertically scaling TiDB means that you scale TiDB up or down by increasing or decreasing the limit of resources on the node. Vertically scaling is essentially the rolling update of the nodes.
 
-Currently, the TiDB cluster supports management by Helm or by TidbCluster Custom Resource (CR). You can choose the scaling method based on the management method of your TiDB cluster.
+Currently, the TiDB cluster supports management by TidbCluster Custom Resource (CR).
 
-### Vertical scaling operations (CR)
+### Vertical scaling operations
 
 Modify `spec.pd.resources`, `spec.tikv.resources`, and `spec.tidb.resources` in the `TidbCluster` object that corresponds to the cluster to the desired values using kubectl.
 
@@ -124,21 +156,7 @@ If TiFlash is deployed in the cluster, you can scale up and down TiFlash by modi
 
 If TiCDC is deployed in the cluster, you can scale up and down TiCDC by modifying `spec.ticdc.resources`.
 
-### Vertical scaling operations (Helm)
-
-To perform a vertical scaling operation:
-
-1. Modify `tidb.resources`, `tikv.resources`, `pd.resources` in the `values.yaml` file to a desired value.
-
-2. Run the `helm upgrade` command to upgrade:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
-    ```
-
-### View the upgrade progress
+### View the vertical scaling progress
 
 To view the upgrade progress of the cluster, run the following command:
 
@@ -154,3 +172,7 @@ When all Pods are rebuilt and in the `Running` state, the vertical scaling is co
 >
 > - If the resource's `requests` field is modified during the vertical scaling process, and if PD, TiKV, and TiFlash use `Local PV`, they will be scheduled back to the original node after the upgrade. At this time, if the original node does not have enough resources, the Pod ends up staying in the `Pending` status and thus impacts the service.
 > - TiDB is a horizontally scalable database, so it is recommended to take advantage of it simply by adding more nodes rather than upgrading hardware resources like you do with a traditional database.
+
+### Vertical scaling failure
+
+During the vertical scaling operation, Pods might go to the Pending state because of insufficient resources. See [Troubleshoot the Pod in Pending state](troubleshoot.md#the-pod-is-in-the-pending-state) for details.

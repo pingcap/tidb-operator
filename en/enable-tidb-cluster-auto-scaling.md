@@ -102,30 +102,131 @@ spec:
   ......
 ```
 
-## Quick start
+## Example
 
-Run the following commands to quickly deploy a TiDB cluster with 3 PD instances, 3 TiKV instances, 2 TiDB instances, and the monitoring and the auto-scaling features.
+1. Run the following commands to quickly deploy a TiDB cluster with 3 PD instances, 3 TiKV instances, 2 TiDB instances, and the monitoring and the auto-scaling features.
 
-```shell
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
-tidbcluster.pingcap.com/auto-scaling-demo created
+    {{< copyable "shell-regular" >}}
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
-tidbmonitor.pingcap.com/auto-scaling-demo created
+    ```shell
+    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
+    ```
 
-$ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
-tidbclusterautoscaler.pingcap.com/auto-scaling-demo created
-```
+    {{< copyable "shell-regular" >}}
 
-After the TiDB cluster is created, you can stress test the auto-scaling feature through database stress test tools such as [sysbench](https://www.percona.com/blog/tag/sysbench/).
+    ```shell
+    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
+    ```
 
-Run the following commands to destroy the environment:
+    {{< copyable "shell-regular" >}}
 
-```shell
-kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
-kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
-kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
-```
+    ```shell
+    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
+    ```
+
+2. After the TiDB cluster is created, expose the TiDB cluster service to the local machine by running the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl port-forward svc/auto-scaling-demo-tidb 4000:4000 &
+    ```
+
+    Copy the following content and paste it to the local `sysbench.config` file:
+
+    {{< copyable "" >}}
+
+    ```config
+    mysql-host=127.0.0.1
+    mysql-port=4000
+    mysql-user=root
+    mysql-password=
+    mysql-db=test
+    time=120
+    threads=20
+    report-interval=5
+    db-driver=mysql
+    ```
+
+3. Prepare data and perform the stress test against the auto-scaling feature using [sysbench](https://github.com/akopytov/sysbench).
+
+    Copy the following content and paste it to the local `sysbench.config` file:
+
+    {{< copyable "" >}}
+
+    ```config
+    mysql-host=127.0.0.1
+    mysql-port=4000
+    mysql-user=root
+    mysql-password=
+    mysql-db=test
+    time=120
+    threads=20
+    report-interval=5
+    db-driver=mysql
+    ```
+
+    Prepare data by running the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sysbench --config-file=${path-to-file}/sysbench.config oltp_point_select --tables=1 --table-size=20000 prepare
+    ```
+
+    Start the stress test:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    sysbench --config-file=${path-to-file}/sysbench.config oltp_point_select --tables=1 --table-size=20000 run
+    ```
+
+    The command above will return the following result:
+
+    ```sh
+    Initializing worker threads...
+
+    Threads started!
+
+    [ 5s ] thds: 20 tps: 37686.35 qps: 37686.35 (r/w/o: 37686.35/0.00/0.00) lat (ms,95%): 0.99 err/s: 0.00 reconn/s: 0.00
+    [ 10s ] thds: 20 tps: 38487.20 qps: 38487.20 (r/w/o: 38487.20/0.00/0.00) lat (ms,95%): 0.95 err/s: 0.00 reconn/s: 0.00
+    ```
+
+4. Create a new terminal session and view the Pod changing status of the TiDB cluster by running the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    watch -n1 "kubectl -n ${namespace} get pod"
+    ```
+
+    The output is as follows:
+
+    ```sh
+    auto-scaling-demo-discovery-fbd95b679-f4cb9   1/1     Running   0          17m
+    auto-scaling-demo-monitor-6857c58564-ftkp4    3/3     Running   0          17m
+    auto-scaling-demo-pd-0                        1/1     Running   0          17m
+    auto-scaling-demo-tidb-0                      2/2     Running   0          15m
+    auto-scaling-demo-tidb-1                      2/2     Running   0          15m
+    auto-scaling-demo-tikv-0                      1/1     Running   0          15m
+    auto-scaling-demo-tikv-1                      1/1     Running   0          15m
+    auto-scaling-demo-tikv-2                      1/1     Running   0          15m
+    ```
+
+    View the changing status of Pods and the TPS and QPS of sysbench. When new Pods are created in TiKV and TiDB, the TPS and QPS of sysbench increase significantly. 
+    
+    After sysbench finishes the test, the newly created Pods in TiKV and TiDB disappear automatically.
+
+5. Destroy the environment by running the following commands:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl delete tidbcluster auto-scaling-demo -n ${namespace}
+    kubectl delete tidbmonitor auto-scaling-demo -n ${namespace}
+    kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
+    ```
 
 ## TidbClusterAutoScaler configurations
 
