@@ -122,14 +122,16 @@ var (
 	}
 	backupStartedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
-		Type:        "date",
+		Type:        "string",
+		Format:      "date-time",
 		Description: "The time at which the backup was started",
 		Priority:    1,
 		JSONPath:    ".status.timeStarted",
 	}
 	backupCompletedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Completed",
-		Type:        "date",
+		Type:        "string",
+		Format:      "date-time",
 		Description: "The time at which the backup was completed",
 		Priority:    1,
 		JSONPath:    ".status.timeCompleted",
@@ -137,13 +139,15 @@ var (
 	restoreAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
 	restoreStartedColumn            = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Started",
-		Type:        "date",
+		Type:        "string",
+		Format:      "date-time",
 		Description: "The time at which the backup was started",
 		JSONPath:    ".status.timeStarted",
 	}
 	restoreCompletedColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Completed",
-		Type:        "date",
+		Type:        "string",
+		Format:      "date-time",
 		Description: "The time at which the restore was completed",
 		JSONPath:    ".status.timeCompleted",
 	}
