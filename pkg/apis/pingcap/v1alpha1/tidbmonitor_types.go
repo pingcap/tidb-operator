@@ -76,6 +76,10 @@ type TidbMonitorSpec struct {
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
 	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
+	// alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
+	// default to current tidb cluster version, for example: v3.0.15
+	// +optional
+	AlertManagerRulesVersion *string `json:"alertManagerRulesVersion,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
