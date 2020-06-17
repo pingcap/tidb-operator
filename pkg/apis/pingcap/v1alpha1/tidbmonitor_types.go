@@ -76,6 +76,9 @@ type TidbMonitorSpec struct {
 	// Ref: https://prometheus.io/docs/alerting/alertmanager/
 	// +optional
 	AlertmanagerURL *string `json:"alertmanagerURL,omitempty"`
+
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
@@ -93,8 +96,6 @@ type PrometheusSpec struct {
 	// +optional
 	Config *PrometheusConfiguration `json:"config,omitempty"`
 
-	// +optional
-	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 }
 
 // +k8s:openapi-gen=true

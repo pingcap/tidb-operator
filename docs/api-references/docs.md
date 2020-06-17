@@ -1714,6 +1714,19 @@ string
 Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometheus.io/docs/alerting/alertmanager/</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -7225,19 +7238,6 @@ IngressSpec
 <em>
 <a href="#prometheusconfiguration">
 PrometheusConfiguration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>additionalContainers</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
-[]Kubernetes core/v1.Container
 </a>
 </em>
 </td>
@@ -15831,6 +15831,19 @@ string
 <em>(Optional)</em>
 <p>alertmanagerURL is where tidb-monitoring push alerts to.
 Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometheus.io/docs/alerting/alertmanager/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

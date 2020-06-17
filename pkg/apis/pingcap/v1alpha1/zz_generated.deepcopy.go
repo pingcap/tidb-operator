@@ -2982,13 +2982,6 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 		*out = new(PrometheusConfiguration)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.AdditionalContainers != nil {
-		in, out := &in.AdditionalContainers, &out.AdditionalContainers
-		*out = make([]v1.Container, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	return
 }
 
@@ -6950,6 +6943,13 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		in, out := &in.AlertmanagerURL, &out.AlertmanagerURL
 		*out = new(string)
 		**out = **in
+	}
+	if in.AdditionalContainers != nil {
+		in, out := &in.AdditionalContainers, &out.AdditionalContainers
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
