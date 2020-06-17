@@ -278,15 +278,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		oa.CheckDisasterToleranceOrDie(&clusterA)
 		oa.CheckDisasterToleranceOrDie(&clusterB)
 
-		ginkgo.By(fmt.Sprintf("Begin inserting data into cluster %q", clusterA.ClusterName))
-		oa.BeginInsertDataToOrDie(&clusterA)
-
 		// backup and restore
 		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
 		oa.BackupRestoreOrDie(&clusterA, &clusterB)
 
-		ginkgo.By(fmt.Sprintf("Stop inserting data into cluster %q", clusterA.ClusterName))
-		oa.StopInsertDataTo(&clusterA)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
