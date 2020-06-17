@@ -14,24 +14,27 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"strconv"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	"github.com/pingcap/tidb-operator/tests/pkg/metrics"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	"github.com/robfig/cron"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 var cfg *tests.Config
@@ -88,8 +91,8 @@ func run() {
 
 	onePDCluster1 := newTidbClusterConfig("ns1", "one-pd-cluster-1")
 	onePDCluster2 := newTidbClusterConfig("ns2", "one-pd-cluster-2")
-	onePDCluster1.Resources["pd.replicas"] = "1"
-	onePDCluster2.Resources["pd.replicas"] = "1"
+	onePDCluster1.Clustrer.Spec.PD.Replicas = 1
+	onePDCluster2.Clustrer.Spec.PD.Replicas = 1
 
 	allClusters := []*tests.TidbClusterConfig{
 		cluster1,
@@ -124,29 +127,40 @@ func run() {
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
 
+	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, false)
 	klog.Infof(fmt.Sprintf("allclusters: %v", allClusters))
-	for _, cluster := range allClusters {
-		oa.CleanTidbClusterOrDie(cluster)
-	}
+	crdUtil.CleanResourcesOrDie("tc", "ns1")
+	crdUtil.CleanResourcesOrDie("tc", "ns2")
+	crdUtil.CleanResourcesOrDie("pvc", "ns1")
+	crdUtil.CleanResourcesOrDie("pvc", "ns2")
+	crdUtil.CleanResourcesOrDie("secret", "ns1")
+	crdUtil.CleanResourcesOrDie("secret", "ns2")
+	crdUtil.CleanResourcesOrDie("pod", "ns1")
+	crdUtil.CleanResourcesOrDie("pod", "ns2")
 
 	caseFn := func(clusters []*tests.TidbClusterConfig, onePDClsuter *tests.TidbClusterConfig, backupTargets []tests.BackupTarget, upgradeVersion string) {
 		// check env
 		fta.CheckAndRecoverEnvOrDie()
 		oa.CheckK8sAvailableOrDie(nil, nil)
 
-		// deploy and clean the one-pd-cluster
-		oa.DeployTidbClusterOrDie(onePDClsuter)
-		oa.CheckTidbClusterStatusOrDie(onePDClsuter)
-		oa.CleanTidbClusterOrDie(onePDClsuter)
+		//deploy and clean the one-pd-cluster
+		onePDTC := onePDClsuter.Clustrer
+		crdUtil.CreateTidbClusterOrDie(onePDTC)
+		crdUtil.WaitTidbClusterReadyOrDie(onePDTC, 60*time.Minute)
+		crdUtil.DeleteTidbClusterOrDie(onePDTC)
 
 		// deploy
 		for _, cluster := range clusters {
-			oa.DeployTidbClusterOrDie(cluster)
+			tc := cluster.Clustrer
+			crdUtil.CreateTidbClusterOrDie(tc)
+			secret := buildSecret(cluster)
+			crdUtil.CreateSecretOrDie(secret)
 			addDeployedClusterFn(cluster)
 		}
 		for _, cluster := range clusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
-			oa.CheckDisasterToleranceOrDie(cluster)
+			tc := cluster.Clustrer
+			crdUtil.WaitTidbClusterReadyOrDie(tc, 60*time.Minute)
+			crdUtil.CheckDisasterToleranceOrDie(tc)
 			oa.BeginInsertDataToOrDie(cluster)
 		}
 		klog.Infof("clusters deployed and checked")
@@ -155,58 +169,30 @@ func run() {
 		// upgrade
 		namespace := os.Getenv("NAMESPACE")
 		oa.RegisterWebHookAndServiceOrDie(ocfg.WebhookConfigName, namespace, ocfg.WebhookServiceName, certCtx)
-		ctx, cancel := context.WithCancel(context.Background())
 		for _, cluster := range clusters {
-			cluster.UpgradeAll(upgradeVersion)
-			oa.UpgradeTidbClusterOrDie(cluster)
-			oa.CheckUpgradeOrDie(ctx, cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
+			cluster.Clustrer.Spec.Version = upgradeVersion
+			crdUtil.UpdateTidbClusterOrDie(cluster.Clustrer)
+			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
 		klog.Infof("clusters upgraded in checked")
 
 		// configuration change
 		for _, cluster := range clusters {
-			// bad conf
-			cluster.TiDBPreStartScript = strconv.Quote("exit 1")
-			cluster.TiKVPreStartScript = strconv.Quote("exit 1")
-			cluster.PDPreStartScript = strconv.Quote("exit 1")
-			oa.UpgradeTidbClusterOrDie(cluster)
-			time.Sleep(30 * time.Second)
-			oa.CheckTidbClustersAvailableOrDie([]*tests.TidbClusterConfig{cluster})
-			// rollback conf
-			cluster.PDPreStartScript = strconv.Quote("")
-			cluster.TiKVPreStartScript = strconv.Quote("")
-			cluster.TiDBPreStartScript = strconv.Quote("")
-			oa.UpgradeTidbClusterOrDie(cluster)
-			// wait upgrade complete
-			oa.CheckUpgradeCompleteOrDie(cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
-
-			cluster.UpdatePdMaxReplicas(cfg.PDMaxReplicas).
-				UpdateTiKVGrpcConcurrency(cfg.TiKVGrpcConcurrency).
-				UpdateTiDBTokenLimit(cfg.TiDBTokenLimit)
-			oa.UpgradeTidbClusterOrDie(cluster)
-			// wait upgrade complete
-			oa.CheckUpgradeOrDie(ctx, cluster)
-			oa.CheckTidbClusterStatusOrDie(cluster)
+			cluster.Clustrer.Spec.PD.Replicas = int32(cfg.PDMaxReplicas)
+			grpcConcurrency := uint(cfg.TiKVGrpcConcurrency)
+			cluster.Clustrer.Spec.TiKV.Config.Server.GrpcConcurrency = &grpcConcurrency
+			tokenLimit := uint(cfg.TiDBTokenLimit)
+			cluster.Clustrer.Spec.TiDB.Config.TokenLimit = &tokenLimit
+			crdUtil.UpdateTidbClusterOrDie(cluster.Clustrer)
+			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}
-		cancel()
 		oa.CleanWebHookAndServiceOrDie(ocfg.WebhookConfigName)
 		klog.Infof("clusters configurations updated in checked")
 
 		for _, cluster := range clusters {
-			oa.CheckDisasterToleranceOrDie(cluster)
+			crdUtil.CheckDisasterToleranceOrDie(cluster.Clustrer)
 		}
 		klog.Infof("clusters DisasterTolerance checked")
-
-		// backup and restore
-		for i := range backupTargets {
-			oa.DeployTidbClusterOrDie(backupTargets[i].TargetCluster)
-			addDeployedClusterFn(backupTargets[i].TargetCluster)
-			oa.CheckTidbClusterStatusOrDie(backupTargets[i].TargetCluster)
-		}
-		oa.BackupAndRestoreToMultipleClustersOrDie(clusters[0], backupTargets)
-		klog.Infof("clusters backup and restore checked")
 
 		//stop node
 		physicalNode, node, faultTime := fta.StopNodeOrDie()
@@ -219,17 +205,20 @@ func run() {
 		oa.WaitPodOnNodeReadyOrDie(deployedClusters, node)
 		oa.CheckRecoverOrDie(deployedClusters)
 		for _, cluster := range deployedClusters {
-			oa.CheckTidbClusterStatusOrDie(cluster)
+			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 30*time.Minute)
 		}
-		klog.Infof("clusters node stopped and restarted, checked")
+		klog.Infof("clusters node stopped and restarted checked")
+		slack.NotifyAndCompletedf("stability test: clusters node stopped and restarted checked")
 
 		// truncate tikv sst file
 		oa.TruncateSSTFileThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("clusters truncate sst file and checked failover")
+		slack.NotifyAndCompletedf("stability test: clusters truncate sst file and checked failover")
 
 		// delete pd data
 		oa.DeletePDDataThenCheckFailoverOrDie(clusters[0], 5*time.Minute)
 		klog.Infof("cluster[%s/%s] DeletePDDataThenCheckFailoverOrDie success", clusters[0].Namespace, clusters[0].ClusterName)
+		slack.NotifyAndCompletedf("stability test: DeletePDDataThenCheckFailoverOrDie success")
 
 		// stop one etcd
 		faultEtcd := tests.SelectNode(cfg.ETCDs)
@@ -405,6 +394,10 @@ func newOperatorConfig() *tests.OperatorConfig {
 func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 	tidbVersion := cfg.GetTiDBVersionOrDie()
 	topologyKey := "rack"
+	tc := fixture.GetTidbCluster(ns, clusterName, tidbVersion)
+	tc.Spec.PD.StorageClassName = pointer.StringPtr("local-storage")
+	tc.Spec.TiKV.StorageClassName = pointer.StringPtr("local-storage")
+	tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 	return &tests.TidbClusterConfig{
 		Namespace:        ns,
 		ClusterName:      clusterName,
@@ -415,7 +408,7 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		PumpImage:        fmt.Sprintf("pingcap/tidb-binlog:%s", tidbVersion),
 		StorageClassName: "local-storage",
 		UserName:         "root",
-		Password:         "admin",
+		Password:         "",
 		InitSecretName:   fmt.Sprintf("%s-set-secret", clusterName),
 		BackupSecretName: fmt.Sprintf("%s-backup-secret", clusterName),
 		BackupName:       "backup",
@@ -447,5 +440,21 @@ func newTidbClusterConfig(ns, clusterName string) *tests.TidbClusterConfig {
 		TopologyKey:            topologyKey,
 		ClusterVersion:         tidbVersion,
 		EnableConfigMapRollout: true,
+		Clustrer:               tc,
 	}
+}
+
+func buildSecret(info *tests.TidbClusterConfig) *corev1.Secret {
+	backupSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      info.BackupSecretName,
+			Namespace: info.Namespace,
+		},
+		Data: map[string][]byte{
+			"user":     []byte(info.UserName),
+			"password": []byte(info.Password),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+	return &backupSecret
 }
