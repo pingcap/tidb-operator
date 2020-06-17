@@ -1,0 +1,20 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  prometheus:
+    baseImage: prom/prometheus
+    version: v2.18.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.0.1
+  initializer:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
+    version: v3.0.13
+  reloader:
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent
