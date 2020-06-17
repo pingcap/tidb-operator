@@ -61,6 +61,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		ReleaseNamespaces:  releaseNamespaces,
 		ReleaseTargetRegex: &targetPattern,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		Drainers:           monitor.Spec.DrainerRefs,
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
