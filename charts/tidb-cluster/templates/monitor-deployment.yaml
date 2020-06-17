@@ -67,7 +67,11 @@ spec:
         - name: PROM_PERSISTENT_DIR
           value: /data
         - name: TIDB_VERSION
+      {{- if .Values.monitor.prometheus.alertManagerRulesVersion }}
+          value: tidb:{{ .Values.monitor.prometheus.alertManagerRulesVersion }}
+      {{- else }}
           value: {{ .Values.tidb.image }}
+      {{- end }}
         - name: GF_K8S_PROMETHEUS_URL
           value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
         - name: GF_TIDB_PROMETHEUS_URL
