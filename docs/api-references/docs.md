@@ -7883,6 +7883,17 @@ string
 </tr>
 <tr>
 <td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Full path to file in S3, in the format s3://bucket/prefix/backup-date-time.tgz</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>bucket</code></br>
 <em>
 string
@@ -7945,7 +7956,7 @@ string
 </em>
 </td>
 <td>
-<p>Prefix of the data path.</p>
+<p>Prefix (subdirectory) for the backup file.</p>
 </td>
 </tr>
 <tr>
@@ -7967,7 +7978,7 @@ string
 </em>
 </td>
 <td>
-<p>Options Rclone options for backup and restore with mydumper and lightning.</p>
+<p>rclone options for backup and restore with mydumper and Lightning.</p>
 </td>
 </tr>
 </tbody>
