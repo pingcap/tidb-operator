@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
@@ -483,4 +484,55 @@ func GetRestoreCRDWithS3(tc *v1alpha1.TidbCluster, toSecretName, restoreType str
 		restore.Spec.S3.Path = fmt.Sprintf("s3://%s/%s", s3config.Bucket, s3config.Path)
 	}
 	return restore
+}
+
+func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
+	if tc.Spec.Pump != nil {
+		return tc
+	}
+	policy := corev1.PullIfNotPresent
+	tc.Spec.Pump = &v1alpha1.PumpSpec{
+		BaseImage: "pingcap/tidb-binlog",
+		ComponentSpec: v1alpha1.ComponentSpec{
+			Version:         &tc.Spec.Version,
+			ImagePullPolicy: &policy,
+			Affinity: &corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+						{
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								Namespaces:  []string{tc.Namespace},
+								TopologyKey: "rack",
+							},
+							Weight: 50,
+						},
+					},
+				},
+			},
+			Tolerations: []corev1.Toleration{
+				{
+					Effect:   corev1.TaintEffectNoSchedule,
+					Key:      "node-role",
+					Operator: corev1.TolerationOpEqual,
+					Value:    "tidb",
+				},
+			},
+			SchedulerName:        pointer.StringPtr("default-scheduler"),
+			ConfigUpdateStrategy: &tc.Spec.ConfigUpdateStrategy,
+		},
+		Replicas:         1,
+		StorageClassName: pointer.StringPtr("local-storage"),
+		ResourceRequirements: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("10Gi"),
+			},
+		},
+		GenericConfig: tcconfig.New(map[string]interface{}{
+			"addr":               "0.0.0.0:8250",
+			"gc":                 7,
+			"data-dir":           "/data",
+			"heartbeat-interval": 2,
+		}),
+	}
+	return tc
 }
