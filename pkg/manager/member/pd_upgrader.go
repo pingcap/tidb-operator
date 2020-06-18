@@ -52,6 +52,16 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed,can not to be upgraded", ns, tcName)
 	}
+	if tc.PDScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd is scaling, can not upgrade pd",
+			ns, tcName)
+		_, podSpec, err := GetLastAppliedConfig(oldSet)
+		if err != nil {
+			return err
+		}
+		newSet.Spec.Template.Spec = *podSpec
+		return nil
+	}
 
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
