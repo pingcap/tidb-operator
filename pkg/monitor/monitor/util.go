@@ -856,3 +856,12 @@ func prometheusName(monitor *v1alpha1.TidbMonitor) string {
 func grafanaName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-grafana", monitor.Name)
 }
+
+func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
+	for id, tcRef := range monitor.Spec.Clusters {
+		if len(tcRef.Namespace) < 1 {
+			tcRef.Namespace = monitor.Namespace
+		}
+		monitor.Spec.Clusters[id] = tcRef
+	}
+}
