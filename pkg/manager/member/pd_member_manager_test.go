@@ -317,7 +317,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.ClusterID).To(Equal("1"))
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.ScalePhase))
 				g.Expect(tc.Status.PD.StatefulSet.ObservedGeneration).To(Equal(int64(1)))
 				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
 				g.Expect(tc.Status.PD.Members["pd1"].Health).To(Equal(true))
@@ -727,7 +727,7 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 				g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
-				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.ScalePhase))
 			},
 		},
 	}
