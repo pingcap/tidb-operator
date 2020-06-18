@@ -2931,10 +2931,12 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	sets := map[string]string{
 		"binlog.pump.create":  "true",
 		"binlog.pump.storage": "1Gi",
+		"binlog.pump.image":   fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
 	}
 
 	if withDrainer {
 		sets["binlog.drainer.create"] = "true"
+		sets["binlog.drainer.image"] = fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion)
 		if isv1 {
 			sets["binlog.pump.create"] = "true"
 			sets["binlog.drainer.destDBType"] = "mysql"
