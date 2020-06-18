@@ -14,7 +14,6 @@
 package pod
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -28,14 +27,8 @@ import (
 )
 
 const (
-	tikvNotBootstrapped  = `TiKV cluster not bootstrapped, please start TiKV first"`
-	evictSchedulerLeader = "evict-leader-scheduler"
+	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
-
-// Payload only used to unmarshal the data from pdapi
-type Payload struct {
-	StoreIdRanges map[string]interface{} `json:"store-id-ranges"`
-}
 
 func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
 
@@ -67,9 +60,10 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 		return util.ARSuccess()
 	}
 
-	schedulerIds, err := filterLeaderEvictScheduler(evictLeaderSchedulers, pdClient)
-	if err != nil {
-		return util.ARFail(err)
+	schedulerIds := sets.String{}
+	for _, s := range evictLeaderSchedulers {
+		id := strings.Split(s, "-")[3]
+		schedulerIds.Insert(id)
 	}
 
 	// if the pod which is going to be created already have a store and was in evictLeaderSchedulers,
@@ -88,35 +82,4 @@ func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.Ti
 	}
 
 	return util.ARSuccess()
-}
-
-// This method is to make compatible between old pdapi version and 4.0 pdapi version.
-// To get more detail, see: https://github.com/pingcap/tidb-operator/pull/1831
-func filterLeaderEvictScheduler(evictLeaderSchedulers []string, pdClient pdapi.PDClient) (sets.String, error) {
-	schedulerIds := sets.String{}
-	if len(evictLeaderSchedulers) == 1 && evictLeaderSchedulers[0] == evictSchedulerLeader {
-		c, err := pdClient.GetConfig()
-		if err != nil {
-			return schedulerIds, err
-		}
-		if c.Schedule != nil && c.Schedule.SchedulersPayload != nil {
-			v, ok := c.Schedule.SchedulersPayload[evictSchedulerLeader]
-			if ok {
-				payload := &Payload{}
-				err := json.Unmarshal([]byte(v), payload)
-				if err != nil {
-					return schedulerIds, err
-				}
-				for k := range payload.StoreIdRanges {
-					schedulerIds.Insert(k)
-				}
-			}
-		}
-	} else {
-		for _, s := range evictLeaderSchedulers {
-			id := strings.Split(s, "-")[3]
-			schedulerIds.Insert(id)
-		}
-	}
-	return schedulerIds, nil
 }
