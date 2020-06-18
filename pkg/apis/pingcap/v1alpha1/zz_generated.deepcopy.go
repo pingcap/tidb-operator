@@ -6979,6 +6979,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AlertManagerRulesVersion != nil {
+		in, out := &in.AlertManagerRulesVersion, &out.AlertManagerRulesVersion
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
