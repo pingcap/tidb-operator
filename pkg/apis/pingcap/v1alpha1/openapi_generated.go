@@ -5979,6 +5979,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorReadPoolConfig(ref common.R
 							Format:      "",
 						},
 					},
+					"use-unified-pool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -6950,10 +6957,45 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref common.ReferenceCa
 							Format:      "int64",
 						},
 					},
+					"store-reschedule-duration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 3s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apply-yield-duration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 500ms",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"hibernate-regions": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},
 							Format: "",
+						},
+					},
+					"apply-early": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"perf-level": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"dev-assert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
@@ -7565,6 +7607,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageReadPoolConfig(ref common.Refer
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 10MB",
 							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"use-unified-pool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
