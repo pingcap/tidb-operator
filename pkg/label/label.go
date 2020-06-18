@@ -319,6 +319,10 @@ func (l Label) Monitor() Label {
 	return l
 }
 
+func (l Label) IsMonitor() bool {
+	return l[ComponentLabelKey] == TiDBMonitorVal
+}
+
 // Discovery assigns discovery to component key in label
 func (l Label) Discovery() Label {
 	l.Component(DiscoveryLabelVal)

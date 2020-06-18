@@ -723,7 +723,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
-		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimDelete
+		deletePVP := corev1.PersistentVolumeReclaimDelete
+		tm.Spec.PVReclaimPolicy = &deletePVP
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
@@ -764,7 +765,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
 		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
-		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimRetain
+		retainPVP := corev1.PersistentVolumeReclaimRetain
+		tm.Spec.PVReclaimPolicy = &retainPVP
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service type error")
 
@@ -840,6 +842,27 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
+
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if *tc.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+				framework.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
+				return true, nil
+			}
+			if *tm.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
+				framework.Logf("tidbmonitor PVReclaimPolicy changed into %v", *tm.Spec.PVReclaimPolicy)
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
 	})
 
 	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
