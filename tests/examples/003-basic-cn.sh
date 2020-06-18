@@ -22,7 +22,7 @@ source "${ROOT}/tests/examples/t.sh"
 NS=$(basename ${0%.*})
 
 function cleanup() {
-    kubectl -n $NS delete -f examples/basic-china/tidb-cluster.yaml
+    kubectl -n $NS delete -f examples/basic-cn/tidb-cluster.yaml
     kubectl delete ns $NS
 }
 
@@ -31,6 +31,6 @@ trap cleanup EXIT
 kubectl create ns $NS
 hack::wait_for_success 10 3 "t::ns_is_active $NS"
 
-kubectl -n $NS apply -f examples/basic-china/tidb-cluster.yaml
+kubectl -n $NS apply -f examples/basic-cn/tidb-cluster.yaml
 
 hack::wait_for_success 1800 30 "t::tc_is_ready $NS basic"
