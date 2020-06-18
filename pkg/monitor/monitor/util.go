@@ -864,8 +864,8 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		}
 		monitor.Spec.Clusters[id] = tcRef
 	}
-	recyclePVP := core.PersistentVolumeReclaimRecycle
+	retainPVP := core.PersistentVolumeReclaimRetain
 	if monitor.Spec.PVReclaimPolicy == nil {
-		monitor.Spec.PVReclaimPolicy = &recyclePVP
+		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 }

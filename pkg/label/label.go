@@ -314,6 +314,10 @@ func (l Label) Pump() Label {
 	return l
 }
 
+func (l Label) IsPump() bool {
+	return l[ComponentLabelKey] == PumpLabelVal
+}
+
 func (l Label) Monitor() Label {
 	l.Component(TiDBMonitorVal)
 	return l

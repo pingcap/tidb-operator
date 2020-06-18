@@ -77,7 +77,7 @@ func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaim
 		l := label.Label(pvc.Labels)
 		switch kind {
 		case v1alpha1.TiDBClusterKind:
-			if !l.IsPD() && !l.IsTiDB() && !l.IsTiKV() && !l.IsTiFlash() {
+			if !l.IsPD() && !l.IsTiDB() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsPump() {
 				continue
 			}
 		case v1alpha1.TiDBMonitorKind:
