@@ -163,6 +163,25 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
+			name: "pd scaling",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = true
+				tc.Status.PD.Phase = v1alpha1.ScalePhase
+			},
+			changePods: nil,
+			changeOldSet: func(set *apps.StatefulSet) {
+				set.Spec.Template.Spec.Containers[0].Image = "pd-test-image:old"
+			},
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.ScalePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(controller.Int32Ptr(3)))
+			},
+		},
+		{
 			name: "update revision equals current revision",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Synced = true

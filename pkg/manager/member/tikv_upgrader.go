@@ -55,7 +55,10 @@ func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
 func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
+
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
+			ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
