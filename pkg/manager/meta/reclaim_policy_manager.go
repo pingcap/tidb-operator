@@ -22,7 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog"
 )
 
 type reclaimPolicyManager struct {
@@ -101,7 +100,6 @@ func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaim
 		if pv.Spec.PersistentVolumeReclaimPolicy == policy {
 			continue
 		}
-		klog.Infof("kind[%s], pv[%s] start to patch, originPolicy = %v, targetPolicy = %v", kind, pv.Name, pv.Spec.PersistentVolumeReclaimPolicy, policy)
 		err = rpm.pvControl.PatchPVReclaimPolicy(obj, pv, policy)
 		if err != nil {
 			return err
