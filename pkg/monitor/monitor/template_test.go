@@ -644,7 +644,7 @@ scrape_configs:
 - job_name: pump
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -653,7 +653,10 @@ scrape_configs:
       - ns1
       - ns2
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
@@ -692,7 +695,7 @@ scrape_configs:
 - job_name: drainer
   honor_labels: true
   scrape_interval: 15s
-  scheme: http
+  scheme: https
   kubernetes_sd_configs:
   - api_server: null
     role: pod
@@ -701,7 +704,10 @@ scrape_configs:
       - ns1
       - ns2
   tls_config:
-    insecure_skip_verify: true
+    ca_file: /var/lib/cluster-client-tls/ca.crt
+    cert_file: /var/lib/cluster-client-tls/tls.crt
+    key_file: /var/lib/cluster-client-tls/tls.key
+    insecure_skip_verify: false
   relabel_configs:
   - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
     regex: target
