@@ -87,7 +87,6 @@ func NewMonitorManager(
 }
 
 func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
-
 	if monitor.DeletionTimestamp != nil {
 		return nil
 	}
@@ -95,6 +94,7 @@ func (mm *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		err := fmt.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return err
 	}
+	defaultTidbMonitor(monitor)
 	tcRef := monitor.Spec.Clusters[0]
 	if len(tcRef.Namespace) < 1 {
 		tcRef.Namespace = monitor.Namespace
