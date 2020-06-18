@@ -291,10 +291,10 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "tikv can not upgrade when it is scaling in",
+			name: "tikv can not upgrade when it is scaling",
 			changeFn: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.ScaleInPhase
+				tc.Status.TiKV.Phase = v1alpha1.ScalePhase
 				tc.Status.TiKV.Synced = true
 			},
 			changeOldSet: func(oldSet *apps.StatefulSet) {
@@ -308,29 +308,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 			},
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
-				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.ScaleInPhase))
-				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
-			},
-		},
-		{
-			name: "tikv can not upgrade when it is scaling out",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.ScaleOutPhase
-				tc.Status.TiKV.Synced = true
-			},
-			changeOldSet: func(oldSet *apps.StatefulSet) {
-				SetStatefulSetLastAppliedConfigAnnotation(oldSet)
-			},
-			changePods:          nil,
-			beginEvictLeaderErr: false,
-			endEvictLeaderErr:   false,
-			updatePodErr:        false,
-			errExpectFn: func(g *GomegaWithT, err error) {
-				g.Expect(err).NotTo(HaveOccurred())
-			},
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, pods map[string]*corev1.Pod) {
-				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.ScaleOutPhase))
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.ScalePhase))
 				g.Expect(*newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(3)))
 			},
 		},
