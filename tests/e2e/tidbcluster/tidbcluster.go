@@ -281,19 +281,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Backup and restore TiDB Cluster", func() {
-		clusterA := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster3", "admin", utilimage.TiDBV3Version)
-		clusterB := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster4", "admin", utilimage.TiDBV3Version)
-		oa.DeployTidbClusterOrDie(&clusterA)
-		oa.DeployTidbClusterOrDie(&clusterB)
-		oa.CheckTidbClusterStatusOrDie(&clusterA)
-		oa.CheckTidbClusterStatusOrDie(&clusterB)
-		oa.CheckDisasterToleranceOrDie(&clusterA)
-		oa.CheckDisasterToleranceOrDie(&clusterB)
+		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
+		clusterFrom.Resources["pd.replicas"] = "1"
+		clusterFrom.Resources["tidb.replicas"] = "1"
+		clusterFrom.Resources["tikv.replicas"] = "1"
+		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
+		clusterTo.Resources["pd.replicas"] = "1"
+		clusterTo.Resources["tidb.replicas"] = "1"
+		clusterTo.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&clusterFrom)
+		oa.DeployTidbClusterOrDie(&clusterTo)
+		oa.CheckTidbClusterStatusOrDie(&clusterFrom)
+		oa.CheckTidbClusterStatusOrDie(&clusterTo)
+		oa.CheckDisasterToleranceOrDie(&clusterFrom)
+		oa.CheckDisasterToleranceOrDie(&clusterTo)
 
 		// backup and restore
-		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
-		oa.BackupRestoreOrDie(&clusterA, &clusterB)
-
+		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterFrom.ClusterName, clusterTo.ClusterName))
+		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
