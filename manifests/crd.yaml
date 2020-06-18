@@ -635,7 +635,19 @@ spec:
                       type: string
                     cluster-version:
                       type: string
-                    dashboard: {}
+                    dashboard:
+                      properties:
+                        internal-proxy:
+                          type: boolean
+                        public-path-prefix:
+                          type: string
+                        tidb-cacert-path:
+                          type: string
+                        tidb-cert-path:
+                          type: string
+                        tidb-key-path:
+                          type: string
+                      type: object
                     election-interval:
                       type: string
                     enable-grpc-gateway:
@@ -817,6 +829,8 @@ spec:
                   type: string
                 dataSubDir:
                   type: string
+                enableDashboardInternalProxy:
+                  type: boolean
                 env:
                   items:
                     properties:
@@ -3636,18 +3650,24 @@ spec:
                           type: string
                         allow-remove-leader:
                           type: boolean
+                        apply-early:
+                          type: boolean
                         apply-max-batch-size:
                           format: int64
                           type: integer
                         apply-pool-size:
                           format: int64
                           type: integer
+                        apply-yield-duration:
+                          type: string
                         clean-stale-peer-delay:
                           type: string
                         cleanup-import-sst-interval:
                           type: string
                         consistency-check-interval:
                           type: string
+                        dev-assert:
+                          type: boolean
                         hibernate-regions:
                           type: boolean
                         leader-transfer-max-log-lag:
@@ -3678,6 +3698,9 @@ spec:
                           type: string
                         peer-stale-state-check-interval:
                           type: string
+                        perf-level:
+                          format: int64
+                          type: integer
                         prevote:
                           type: boolean
                         raft-base-tick-interval:
@@ -3742,6 +3765,8 @@ spec:
                         store-pool-size:
                           format: int64
                           type: integer
+                        store-reschedule-duration:
+                          type: string
                         sync-log:
                           type: boolean
                         use-delete-range:
@@ -3771,6 +3796,8 @@ spec:
                               type: integer
                             stack-size:
                               type: string
+                            use-unified-pool:
+                              type: boolean
                           type: object
                         storage:
                           properties:
@@ -3794,6 +3821,8 @@ spec:
                               type: integer
                             stack-size:
                               type: string
+                            use-unified-pool:
+                              type: boolean
                           type: object
                         unified:
                           properties:
@@ -4664,14 +4693,16 @@ spec:
     type: string
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
+    format: date-time
     name: Started
     priority: 1
-    type: date
+    type: string
   - JSONPath: .status.timeCompleted
     description: The time at which the backup was completed
+    format: date-time
     name: Completed
     priority: 1
-    type: date
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -5110,12 +5141,14 @@ spec:
   additionalPrinterColumns:
   - JSONPath: .status.timeStarted
     description: The time at which the backup was started
+    format: date-time
     name: Started
-    type: date
+    type: string
   - JSONPath: .status.timeCompleted
     description: The time at which the restore was completed
+    format: date-time
     name: Completed
-    type: date
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
@@ -6036,6 +6069,8 @@ spec:
           type: string
         spec:
           properties:
+            alertManagerRulesVersion:
+              type: string
             alertmanagerURL:
               type: string
             annotations:

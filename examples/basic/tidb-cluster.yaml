@@ -1,21 +1,18 @@
+# IT IS NOT SUITABLE FOR PRODUCTION USE.
+# This YAML describes a basic TiDB cluster with minimum resource requirements,
+# which should be able to run in any Kubernetes cluster with storage support.
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v3.0.13
+  version: v4.0.0
   timezone: UTC
   pvReclaimPolicy: Delete
-  discovery:
-    limits:
-      cpu: 250m
-      memory: 150Mi
-    requests:
-      cpu: 80m
-      memory: 50Mi
+  discovery: {}
   pd:
     baseImage: pingcap/pd
-    replicas: 3
+    replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
@@ -23,7 +20,7 @@ spec:
     config: {}
   tikv:
     baseImage: pingcap/tikv
-    replicas: 3
+    replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
@@ -31,7 +28,7 @@ spec:
     config: {}
   tidb:
     baseImage: pingcap/tidb
-    replicas: 2
+    replicas: 1
     service:
       type: ClusterIP
     config: {}

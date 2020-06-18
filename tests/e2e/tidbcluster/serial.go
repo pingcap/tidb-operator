@@ -15,6 +15,7 @@ package tidbcluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	_ "net/http/pprof"
 	"strconv"
@@ -141,8 +142,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			tc.Spec.PD.Replicas = 3
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 2
-			tests.CreateTidbClusterOrDie(cli, tc)
-			err := oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err)
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", utilimage.TiDBV3Version, utilimage.TiDBV3UpgradeVersion))
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
@@ -633,7 +635,9 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				return true, nil
 			})
 			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			framework.Logf("check tikv has ready-to-scale-timestamp")
+
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -656,10 +660,19 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					return false, nil
 				}
 				if tc.Annotations != nil && len(tc.Annotations) > 0 {
-					_, ok := tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals]
+					v, ok := tc.Annotations[label.AnnTiKVAutoScalingOutOrdinals]
 					if ok {
-						framework.Logf("tikv auto-scale out annotation still exists")
-						return false, nil
+						framework.Logf("tikv auto-scale out annotation still exist, value:%v", v)
+						var slice []int32
+						err := json.Unmarshal([]byte(v), &slice)
+						if err != nil {
+							framework.Logf("parse tikv auto-scale out annotation failed, err: %v", err)
+							return false, nil
+						}
+						if len(slice) > 0 {
+							framework.Logf("tikv auto-scale out annotation still exists")
+							return false, nil
+						}
 					}
 				}
 				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})

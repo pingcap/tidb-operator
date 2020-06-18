@@ -91,7 +91,6 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	// for unit test
 	skipReason := map[string]string{}
 
 	pvcs, err := rpc.listAllPVCs(tc)
@@ -198,7 +197,6 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[string]string, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	// for unit test
 	skipReason := map[string]string{}
 
 	pvcs, err := rpc.listAllPVCs(tc)
