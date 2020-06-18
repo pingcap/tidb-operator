@@ -194,6 +194,10 @@ func (tc *TidbCluster) PDUpgrading() bool {
 	return tc.Status.PD.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) PDScaling() bool {
+	return tc.Status.PD.Phase == ScalePhase
+}
+
 func (tc *TidbCluster) TiKVUpgrading() bool {
 	return tc.Status.TiKV.Phase == UpgradePhase
 }
