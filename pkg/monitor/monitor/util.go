@@ -273,6 +273,10 @@ chmod 777 /data/prometheus /data/grafana
 		"-c",
 		c,
 	}
+	alertManagerRulesVersion := tc.TiDBImage()
+	if monitor.Spec.AlertManagerRulesVersion != nil {
+		alertManagerRulesVersion = fmt.Sprintf("tidb:%s", *monitor.Spec.AlertManagerRulesVersion)
+	}
 	container := core.Container{
 		Name:  "monitor-initializer",
 		Image: fmt.Sprintf("%s:%s", monitor.Spec.Initializer.BaseImage, monitor.Spec.Initializer.Version),
@@ -295,7 +299,7 @@ chmod 777 /data/prometheus /data/grafana
 			},
 			{
 				Name:  "TIDB_VERSION",
-				Value: tc.TiDBImage(),
+				Value: alertManagerRulesVersion,
 			},
 			{
 				Name:  "GF_TIDB_PROMETHEUS_URL",
@@ -669,12 +673,15 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 		grafanaPortName = *monitor.BaseGrafanaSpec().PortName()
 	}
 
-	promethuesName := prometheusName(monitor)
+	prometheusName := prometheusName(monitor)
+	monitorLabel := label.NewMonitor().Instance(monitor.Name).Monitor()
+	promeLabel := monitorLabel.Copy().UsedBy("prometheus")
+	grafanaLabel := monitorLabel.Copy().UsedBy("grafana")
 	prometheusService := &core.Service{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            promethuesName,
+			Name:            prometheusName,
 			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
+			Labels:          promeLabel.Labels(),
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 			Annotations:     monitor.Spec.Prometheus.Service.Annotations,
 		},
@@ -737,7 +744,7 @@ func getMonitorService(monitor *v1alpha1.TidbMonitor) []*core.Service {
 			ObjectMeta: meta.ObjectMeta{
 				Name:            grafanaName(monitor),
 				Namespace:       monitor.Namespace,
-				Labels:          buildTidbMonitorLabel(monitor.Name),
+				Labels:          grafanaLabel.Labels(),
 				OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 				Annotations:     monitor.Spec.Grafana.Service.Annotations,
 			},
@@ -848,4 +855,13 @@ func prometheusName(monitor *v1alpha1.TidbMonitor) string {
 
 func grafanaName(monitor *v1alpha1.TidbMonitor) string {
 	return fmt.Sprintf("%s-grafana", monitor.Name)
+}
+
+func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
+	for id, tcRef := range monitor.Spec.Clusters {
+		if len(tcRef.Namespace) < 1 {
+			tcRef.Namespace = monitor.Namespace
+		}
+		monitor.Spec.Clusters[id] = tcRef
+	}
 }

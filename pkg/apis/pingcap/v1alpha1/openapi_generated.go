@@ -40,6 +40,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef":                  schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashboardConfig":               schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec":                 schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint":              schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref),
@@ -1244,6 +1245,49 @@ func schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref common.ReferenceCallback)
 							Description: "if the namespace is omitted, the operator controller would use the Tidbmonitor's namespace instead.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DashboardConfig is the configuration for tidb-dashboard.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"tidb-cacert-path": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"tidb-cert-path": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"tidb-key-path": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"public-path-prefix": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"internal-proxy": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 				},
@@ -3064,6 +3108,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 						SchemaProps: spec.SchemaProps{
 							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate which used by Dashboard.",
 							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"enableDashboardInternalProxy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
@@ -5928,6 +5979,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCoprocessorReadPoolConfig(ref common.R
 							Format:      "",
 						},
 					},
+					"use-unified-pool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -6899,10 +6957,45 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref common.ReferenceCa
 							Format:      "int64",
 						},
 					},
+					"store-reschedule-duration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 3s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apply-yield-duration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 500ms",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"hibernate-regions": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},
 							Format: "",
+						},
+					},
+					"apply-early": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"perf-level": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"dev-assert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
@@ -7514,6 +7607,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageReadPoolConfig(ref common.Refer
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 10MB",
 							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"use-unified-pool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to true",
+							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
@@ -8785,6 +8885,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 					"alertmanagerURL": {
 						SchemaProps: spec.SchemaProps{
 							Description: "alertmanagerURL is where tidb-monitoring push alerts to. Ref: https://prometheus.io/docs/alerting/alertmanager/",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"alertManagerRulesVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "alertManagerRulesVersion is the version of the tidb cluster that used for alert rules. default to current tidb cluster version, for example: v3.0.15",
 							Type:        []string{"string"},
 							Format:      "",
 						},

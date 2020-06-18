@@ -1186,6 +1186,7 @@ func TestGetNewServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tiflash",
+						"app.kubernetes.io/used-by":    "peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{

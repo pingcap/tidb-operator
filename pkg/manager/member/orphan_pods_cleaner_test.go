@@ -33,43 +33,15 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	tc := newTidbClusterForPD()
-	type testcase struct {
+
+	tests := []struct {
 		name            string
 		pods            []*corev1.Pod
 		apiPods         []*corev1.Pod
 		pvcs            []*corev1.PersistentVolumeClaim
 		deletePodFailed bool
 		expectFn        func(*GomegaWithT, map[string]string, *orphanPodsCleaner, error)
-	}
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-
-		opc, podIndexer, pvcIndexer, client, podControl := newFakeOrphanPodsCleaner()
-		if test.pods != nil {
-			for _, pod := range test.pods {
-				client.CoreV1().Pods(pod.Namespace).Create(pod)
-				podIndexer.Add(pod)
-			}
-		}
-		if test.apiPods != nil {
-			for _, pod := range test.apiPods {
-				client.CoreV1().Pods(pod.Namespace).Update(pod)
-			}
-		}
-		if test.pvcs != nil {
-			for _, pvc := range test.pvcs {
-				client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
-				pvcIndexer.Add(pvc)
-			}
-		}
-		if test.deletePodFailed {
-			podControl.SetDeletePodError(fmt.Errorf("delete pod failed"), 0)
-		}
-
-		skipReason, err := opc.Clean(tc)
-		test.expectFn(g, skipReason, opc, err)
-	}
-	tests := []testcase{
+	}{
 		{
 			name: "no pods",
 			pods: []*corev1.Pod{},
@@ -310,15 +282,14 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			},
 		},
 		{
-			name: "pvc is not found but pod changed in apiserver",
+			name: "pvc is not found but pod is recreated in apiserver",
 			pods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:            "pod-1",
-						UID:             "pod-1-uid",
-						ResourceVersion: "1",
-						Namespace:       metav1.NamespaceDefault,
-						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
+						Name:      "pod-1",
+						UID:       "pod-1-uid",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Spec: corev1.PodSpec{
 						Volumes: []corev1.Volume{
@@ -340,11 +311,10 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			apiPods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:            "pod-1",
-						UID:             "pod-1-uid",
-						ResourceVersion: "2",
-						Namespace:       metav1.NamespaceDefault,
-						Labels:          label.New().Instance(tc.GetInstanceName()).PD().Labels(),
+						Name:      "pod-1",
+						UID:       "pod-1-uid2",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
 					},
 					Spec: corev1.PodSpec{
 						Volumes: []corev1.Volume{
@@ -367,7 +337,67 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(1))
-				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodChanged))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodRecreated))
+			},
+		},
+		{
+			name: "pvc is not found but pod is scheduled",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						UID:       "pod-1-uid",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
+					},
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: "pd",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-1",
+									},
+								},
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+					},
+				},
+			},
+			apiPods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-1",
+						UID:       "pod-1-uid",
+						Namespace: metav1.NamespaceDefault,
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
+					},
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: "pd",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: "pvc-1",
+									},
+								},
+							},
+						},
+						NodeName: "foo",
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+					},
+				},
+			},
+			pvcs: []*corev1.PersistentVolumeClaim{},
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, opc *orphanPodsCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(1))
+				g.Expect(skipReason["pod-1"]).To(Equal(skipReasonOrphanPodsCleanerPodHasBeenScheduled))
 			},
 		},
 		{
@@ -529,8 +559,33 @@ func TestOrphanPodsCleanerClean(t *testing.T) {
 			},
 		},
 	}
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opc, podIndexer, pvcIndexer, client, podControl := newFakeOrphanPodsCleaner()
+			if tt.pods != nil {
+				for _, pod := range tt.pods {
+					client.CoreV1().Pods(pod.Namespace).Create(pod)
+					podIndexer.Add(pod)
+				}
+			}
+			if tt.apiPods != nil {
+				for _, pod := range tt.apiPods {
+					client.CoreV1().Pods(pod.Namespace).Update(pod)
+				}
+			}
+			if tt.pvcs != nil {
+				for _, pvc := range tt.pvcs {
+					client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+					pvcIndexer.Add(pvc)
+				}
+			}
+			if tt.deletePodFailed {
+				podControl.SetDeletePodError(fmt.Errorf("delete pod failed"), 0)
+			}
+
+			skipReason, err := opc.Clean(tc)
+			tt.expectFn(g, skipReason, opc, err)
+		})
 	}
 }
 

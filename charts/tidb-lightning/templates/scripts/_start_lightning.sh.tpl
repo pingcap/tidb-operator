@@ -42,7 +42,8 @@ fi
 {{- end }}
     --tidb-host={{ .Values.targetTidbCluster.name }}-tidb.{{ .Values.targetTidbCluster.namespace | default .Release.Namespace }} \
     --d=${data_dir} \
-    --config=/etc/tidb-lightning/tidb-lightning.toml
+    --config=/etc/tidb-lightning/tidb-lightning.toml \
+    --log-file=""
 
 if [ $? != 0 ]; then
     if [ ! -z ${FAIL_FAST} ]; then

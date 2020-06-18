@@ -61,6 +61,8 @@ const (
 	NormalPhase MemberPhase = "Normal"
 	// UpgradePhase represents the upgrade state of TiDB cluster.
 	UpgradePhase MemberPhase = "Upgrade"
+	// ScalePhase represents the scaling state of TiDB cluster.
+	ScalePhase MemberPhase = "Scale"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration
@@ -326,6 +328,10 @@ type PDSpec struct {
 	// which used by Dashboard.
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
+	// +optional
+	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
 }
 
 // +k8s:openapi-gen=true

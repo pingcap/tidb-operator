@@ -799,11 +799,15 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	status := apps.StatefulSetStatus{
 		Replicas: int32(3),
 	}
+	spec := apps.StatefulSetSpec{
+		Replicas: pointer.Int32Ptr(3),
+	}
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
+			Spec:   spec,
 			Status: status,
 		}
 		if test.updateTC != nil {
@@ -908,6 +912,42 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
 				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.NormalPhase))
+			},
+		},
+		{
+			name: "statefulset is scaling out",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.Replicas = 4
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores:          false,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn:               nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.ScalePhase))
+			},
+		},
+		{
+			name: "statefulset is scaling in",
+			updateTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiKV.Replicas = 2
+			},
+			upgradingFn: func(lister corelisters.PodLister, controlInterface pdapi.PDControlInterface, set *apps.StatefulSet, cluster *v1alpha1.TidbCluster) (bool, error) {
+				return false, nil
+			},
+			errWhenGetStores:          false,
+			storeInfo:                 nil,
+			errWhenGetTombstoneStores: false,
+			tombstoneStoreInfo:        nil,
+			errExpectFn:               nil,
+			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				g.Expect(tc.Status.TiKV.StatefulSet.Replicas).To(Equal(int32(3)))
+				g.Expect(tc.Status.TiKV.Phase).To(Equal(v1alpha1.ScalePhase))
 			},
 		},
 		{
@@ -1506,6 +1546,7 @@ func TestGetNewTiFlashServiceForTidbCluster(t *testing.T) {
 						"app.kubernetes.io/managed-by": "tidb-operator",
 						"app.kubernetes.io/instance":   "foo",
 						"app.kubernetes.io/component":  "tikv",
+						"app.kubernetes.io/used-by":    "peer",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
