@@ -60,7 +60,7 @@ Before deployment, make sure the following requirements are satisfied:
 
 - [Docker](https://docs.docker.com/install/): version >= 17.03
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl): version >= 1.12
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/): version >= 0.7.0 (the latest version recommended)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/): version >= 0.8.0
 - If using Linux, the value of the sysctl parameter [net.ipv4.ip_forward](https://linuxconfig.org/how-to-turn-on-off-ip-forwarding-in-linux) should be set to `1`
 
 The following is an example of using `kind` v0.8.1:
@@ -230,7 +230,7 @@ Before proceeding, make sure the following requirements are satisfied:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/crd.yaml
     ```
 
     Expected output:
@@ -317,6 +317,14 @@ Before proceeding, make sure the following requirements are satisfied:
             helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.0
             ```
 
+            If the network connection to the Docker Hub is slow, you can try images hosted in Alibaba Cloud:
+
+            ```
+            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.0 \
+              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.0 \
+              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.0
+            ```
+
             Expected output:
 
             ```
@@ -376,6 +384,14 @@ Before proceeding, make sure the following requirements are satisfied:
             helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.0
             ```
 
+            If the network connection to the Docker Hub is slow, you can try images hosted in Alibaba Cloud:
+
+            ```
+            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.0 \
+              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.0 \
+              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.0
+            ```
+
             Expected output:
 
             ```
@@ -421,7 +437,16 @@ Before proceeding, make sure the following requirements are satisfied:
 
     ``` shell
     kubectl create namespace tidb-cluster
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml -n tidb-cluster
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml
+    kubectl -n tidb-cluster apply -f tidb-cluster.yaml
+    ```
+
+    If the network connection to the Docker Hub is slow, you can try this example which uses images hosted in Alibaba Cloud:
+
+    ```
+    kubectl create namespace tidb-cluster
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic-cn/tidb-cluster.yaml
+    kubectl -n tidb-cluster apply -f tidb-cluster.yaml
     ```
 
     Expected output:
@@ -436,7 +461,15 @@ Before proceeding, make sure the following requirements are satisfied:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n tidb-cluster
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml
+    kubectl -n tidb-cluster apply -f tidb-monitor.yaml
+    ```
+
+    If the network connection to the Docker Hub is slow, you can try this example which uses images hosted in Alibaba Cloud:
+
+    ```
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic-cn/tidb-monitor.yaml
+    kubectl -n tidb-cluster apply -f tidb-monitor.yaml
     ```
 
     Expected output:
