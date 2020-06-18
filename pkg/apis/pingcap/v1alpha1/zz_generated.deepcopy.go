@@ -4821,6 +4821,11 @@ func (in *TiKVCoprocessorReadPoolConfig) DeepCopyInto(out *TiKVCoprocessorReadPo
 		*out = new(string)
 		**out = **in
 	}
+	if in.UseUnifiedPool != nil {
+		in, out := &in.UseUnifiedPool, &out.UseUnifiedPool
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -5609,8 +5614,33 @@ func (in *TiKVRaftstoreConfig) DeepCopyInto(out *TiKVRaftstoreConfig) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.StoreRescheduleDuration != nil {
+		in, out := &in.StoreRescheduleDuration, &out.StoreRescheduleDuration
+		*out = new(string)
+		**out = **in
+	}
+	if in.ApplyYieldDuration != nil {
+		in, out := &in.ApplyYieldDuration, &out.ApplyYieldDuration
+		*out = new(string)
+		**out = **in
+	}
 	if in.HibernateRegions != nil {
 		in, out := &in.HibernateRegions, &out.HibernateRegions
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ApplyEarly != nil {
+		in, out := &in.ApplyEarly, &out.ApplyEarly
+		*out = new(bool)
+		**out = **in
+	}
+	if in.PerfLevel != nil {
+		in, out := &in.PerfLevel, &out.PerfLevel
+		*out = new(int64)
+		**out = **in
+	}
+	if in.DevAssert != nil {
+		in, out := &in.DevAssert, &out.DevAssert
 		*out = new(bool)
 		**out = **in
 	}
@@ -6106,6 +6136,11 @@ func (in *TiKVStorageReadPoolConfig) DeepCopyInto(out *TiKVStorageReadPoolConfig
 	if in.StackSize != nil {
 		in, out := &in.StackSize, &out.StackSize
 		*out = new(string)
+		**out = **in
+	}
+	if in.UseUnifiedPool != nil {
+		in, out := &in.UseUnifiedPool, &out.UseUnifiedPool
+		*out = new(bool)
 		**out = **in
 	}
 	return
@@ -6941,6 +6976,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	if in.AlertmanagerURL != nil {
 		in, out := &in.AlertmanagerURL, &out.AlertmanagerURL
+		*out = new(string)
+		**out = **in
+	}
+	if in.AlertManagerRulesVersion != nil {
+		in, out := &in.AlertManagerRulesVersion, &out.AlertManagerRulesVersion
 		*out = new(string)
 		**out = **in
 	}

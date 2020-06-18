@@ -155,3 +155,21 @@ func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 
 	return nil
 }
+
+func (ops *TiKVOps) RemovePanicMark(ns, podName string) error {
+	annotateCmd := fmt.Sprintf("kubectl annotate pod %s -n %s runmode=debug --overwrite", podName, ns)
+	klog.Info(annotateCmd)
+	res, err := exec.Command("/bin/sh", "-c", annotateCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to annotation pod: %s/%s, %v, %s", ns, podName, err, string(res))
+	}
+
+	rmMarkCmd := "rm -f /var/lib/tikv/panic_mark_file"
+	rmCmd := fmt.Sprintf("kubectl exec -n %s %s -- %s", ns, podName, rmMarkCmd)
+	klog.Infof(rmCmd)
+	res, err = exec.Command("/bin/sh", "-c", rmCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to remove panic mark for pod[%s/%s],err:%v, resp:%v", ns, podName, err, string(res))
+	}
+	return nil
+}

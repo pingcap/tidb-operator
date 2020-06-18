@@ -58,6 +58,8 @@ func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	if tc.TiKVUpgrading() {
+		klog.Infof("TidbCluster: [%s/%s]'s tikv is upgrading, can not scale out until the upgrade completed",
+			tc.Namespace, tc.Name)
 		return nil
 	}
 
@@ -81,7 +83,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 
 	// tikv can not scale in when it is upgrading
 	if tc.TiKVUpgrading() {
-		klog.Infof("the TidbCluster: [%s/%s]'s tikv is upgrading,can not scale in until upgrade have completed",
+		klog.Infof("TidbCluster: [%s/%s]'s tikv is upgrading, can not scale in until upgrade completed",
 			ns, tcName)
 		return nil
 	}
