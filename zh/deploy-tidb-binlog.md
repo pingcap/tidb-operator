@@ -193,6 +193,8 @@ spec
     ```shell
     helm install pingcap/tidb-drainer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
+ 
+    如果服务器没有外网，请参考 [部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群) 在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
 
     > **注意：**
     >
