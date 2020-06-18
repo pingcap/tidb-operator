@@ -83,14 +83,45 @@ git clone --depth=1 https://github.com/pingcap/tidb-operator && \
 cd tidb-operator/deploy/aws
 ```
 
-默认部署会创建一个新的 VPC、一个 t2.micro 实例作为堡垒机，并包含以下 ec2 实例作为工作节点的 EKS 集群：
+EKS 部署脚本中提供两种部署方式：
 
-* 3 台 m5.xlarge 实例，部署 PD
-* 3 台 c5d.4xlarge 实例，部署 TiKV
-* 2 台 c5.4xlarge 实例，部署 TiDB
-* 1 台 c5.2xlarge 实例，部署监控组件
+* 部署一套快速体验的 Demo 集群。
 
-可以新建或者编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。例如，下面示例配置 EKS 集群名称，TiDB 集群名称，TiDB Operator 版本及 PD、TiKV 和 TiDB 节点的数量：
+    Demo 部署会创建一个新的 VPC、一个 t2.micro 实例作为堡垒机，并包含以下 ec2 实例作为工作节点的 EKS 集群：
+
+    * 1 台 c5.large 实例，部署 PD
+    * 3 台 c5d.large 实例，部署 TiKV
+    * 1 台 c5.large 实例，部署 TiDB
+    * 1 台 c5.large 实例，部署监控组件
+
+    执行如下命令使用 Demo 配置：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cp demo.tfvars terraform.tfvars
+    ```
+
+* 部署一套生产环境集群。
+
+    生产环境集群部署会创建一个新的 VPC、一个 t2.micro 实例作为堡垒机，并包含以下 ec2 实例作为工作节点的 EKS 集群：
+
+    * 3 台 c5.xlarge 实例，部署 PD
+    * 3 台 i3.4xlarge 实例，部署 TiKV
+    * 2 台 c5.2xlarge 实例，部署 TiDB
+    * 1 台 c5.2xlarge 实例，部署监控组件
+
+    执行如下命令使用生产环境配置：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cp prod.tfvars terraform.tfvars
+    ```
+
+除了上述配置，可以编辑 `terraform.tfvars`，在其中设置变量的值，按需配置集群，可以通过 `variables.tf` 查看有哪些变量可以设置以及各变量的详细描述。
+
+例如，下面示例配置 EKS 集群名称，TiDB 集群名称，TiDB Operator 版本及 PD、TiKV 和 TiDB 节点的数量：
 
 ```
 default_cluster_pd_count   = 3
@@ -98,7 +129,7 @@ default_cluster_tikv_count = 3
 default_cluster_tidb_count = 2
 default_cluster_name = "tidb"
 eks_name = "my-cluster"
-operator_version = "v1.1.0-rc.1"
+operator_version = "v1.1.0"
 ```
 
 如果需要在集群中部署 TiFlash，需要在 `terraform.tfvars` 中设置 `create_tiflash_node_pool = true`，也可以设置 `cluster_tiflash_count` 和 `cluster_tiflash_instance_type` 来配置 TiFlash 节点池的节点数量和实例类型，`cluster_tiflash_count` 默认为 `2`，`cluster_tiflash_instance_type` 默认为 `i3.4xlarge`。
