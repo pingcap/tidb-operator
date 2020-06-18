@@ -36,8 +36,14 @@ import (
 )
 
 const (
-	DefaultTimeout = 5 * time.Second
+	DefaultTimeout       = 5 * time.Second
+	evictSchedulerLeader = "evict-leader-scheduler"
 )
+
+// Payload only used to unmarshal the data from pdapi
+type Payload struct {
+	StoreIdRanges map[string]interface{} `json:"store-id-ranges"`
+}
 
 // Namespace is a newtype of a string
 type Namespace string
@@ -630,18 +636,52 @@ func (pc *pdClient) GetEvictLeaderSchedulers() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	schedulers := []string{}
+	var schedulers []string
 	err = json.Unmarshal(body, &schedulers)
 	if err != nil {
 		return nil, err
 	}
-	evicts := []string{}
+	var evicts []string
 	for _, scheduler := range schedulers {
 		if strings.HasPrefix(scheduler, "evict-leader-scheduler") {
 			evicts = append(evicts, scheduler)
 		}
 	}
-	return evicts, nil
+	evictSchedulers, err := pc.filterLeaderEvictScheduler(evicts)
+	if err != nil {
+		return nil, err
+	}
+	return evictSchedulers, nil
+}
+
+// This method is to make compatible between old pdapi version and 4.0 pdapi version.
+// To get more detail, see: https://github.com/pingcap/tidb-operator/pull/1831
+func (pc *pdClient) filterLeaderEvictScheduler(evictLeaderSchedulers []string) ([]string, error) {
+	var schedulerIds []string
+	if len(evictLeaderSchedulers) == 1 && evictLeaderSchedulers[0] == evictSchedulerLeader {
+		c, err := pc.GetConfig()
+		if err != nil {
+			return nil, err
+		}
+		if c.Schedule != nil && c.Schedule.SchedulersPayload != nil {
+			v, ok := c.Schedule.SchedulersPayload[evictSchedulerLeader]
+			if ok {
+				payload := &Payload{}
+				err := json.Unmarshal([]byte(v), payload)
+				if err != nil {
+					return nil, err
+				}
+				for k := range payload.StoreIdRanges {
+					schedulerIds = append(schedulerIds, fmt.Sprintf("%s-%v", evictSchedulerLeader, k))
+				}
+			}
+		}
+	} else {
+		for _, s := range evictLeaderSchedulers {
+			schedulerIds = append(schedulerIds, s)
+		}
+	}
+	return schedulerIds, nil
 }
 
 func (pc *pdClient) GetPDLeader() (*pdpb.Member, error) {

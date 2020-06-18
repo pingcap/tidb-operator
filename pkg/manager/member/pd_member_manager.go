@@ -315,6 +315,8 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 	if upgrading {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	} else if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.PD.Phase = v1alpha1.ScalePhase
 	} else {
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
