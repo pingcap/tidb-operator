@@ -42,58 +42,198 @@ Kubernetes 集群建议启用 [RBAC](https://kubernetes.io/docs/admin/authorizat
 
 ## 安装 TiDB Operator
 
+### 创建 CRD
+
 TiDB Operator 使用 [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) 扩展 Kubernetes，所以要使用 TiDB Operator，必须先创建 `TidbCluster` 自定义资源类型。只需要在你的 Kubernetes 集群上创建一次即可：
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
-kubectl get crd tidbclusters.pingcap.com
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/crd.yaml
 ```
 
-创建 `TidbCluster` 自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator。
+如果服务器没有外网，需要先用有外网的机器下载 `crd.yaml` 文件，然后再进行安装：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/crd.yaml
+kubectl apply -f ./crd.yaml
+```
+
+如果显示如下信息表示 CRD 安装成功：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get crd
+```
+
+```shell
+NAME                                 CREATED AT
+backups.pingcap.com                  2020-06-11T07:59:40Z
+backupschedules.pingcap.com          2020-06-11T07:59:41Z
+restores.pingcap.com                 2020-06-11T07:59:40Z
+tidbclusterautoscalers.pingcap.com   2020-06-11T07:59:42Z
+tidbclusters.pingcap.com             2020-06-11T07:59:38Z
+tidbinitializers.pingcap.com         2020-06-11T07:59:42Z
+tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
+```
+
+### 安装 
+
+创建以上各种自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator，有两种安装方式：在线和离线安装 TiDB Operator。
+
+#### 在线安装 TiDB Operator
 
 1. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p /home/tidb/tidb-operator && \
-    helm inspect values pingcap/tidb-operator --version=${chart_version} > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    mkdir -p ${HOME}/tidb-operator && \
+    helm inspect values pingcap/tidb-operator --version=${chart_version} > ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
 
     > **注意：**
     >
-    > `${chart_version}` 在后续文档中代表 chart 版本，例如 `v1.0.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
+    > `${chart_version}` 在后续文档中代表 chart 版本，例如 `v1.1.0`，可以通过 `helm search -l tidb-operator` 查看当前支持的版本。
 
 2. 配置 TiDB Operator
 
-    TiDB Operator 里面会用到 `k8s.gcr.io/kube-scheduler` 镜像，如果下载不了该镜像，可以修改 `/home/tidb/tidb-operator/values-tidb-operator.yaml` 文件中的 `scheduler.kubeSchedulerImageName` 为 `registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler`。
+    TiDB Operator 里面会用到 `k8s.gcr.io/kube-scheduler` 镜像，如果无法下载该镜像，可以修改 `${HOME}/tidb-operator/values-tidb-operator.yaml` 文件中的 `scheduler.kubeSchedulerImageName` 为 `registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler`。
+
+    其他项目例如：`limits`、`requests` 和 `replicas`，请根据需要进行修改。
 
 3. 安装 TiDB Operator
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=${chart_version} -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
+    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
     ```
 
-## 自定义 TiDB Operator
+4. 升级 TiDB Operator
 
-通过修改 `/home/tidb/tidb-operator/values-tidb-operator.yaml` 中的配置自定义 TiDB Operator。后续文档使用 `values.yaml` 指代 `/home/tidb/tidb-operator/values-tidb-operator.yaml`。
+    如果需要升级 TiDB Operator，请先修改 `${HOME}/tidb-operator/values-tidb-operator.yaml` 文件，然后执行下面的命令进行升级：
 
-TiDB Operator 有两个组件：
+    {{< copyable "shell-regular" >}}
 
-* tidb-controller-manager
-* tidb-scheduler
+    ```shell
+    helm upgrade tidb-operator pingcap/tidb-operator -f  ${HOME}/tidb-operator/values-tidb-operator.yaml
+    ```
 
-这两个组件是无状态的，通过 `Deployment` 部署。你可以在 `values.yaml` 中自定义资源 `limit`、`request` 和 `replicas`。
+#### 离线安装 TiDB Operator
 
-修改为 `values.yaml` 后，执行下面命令使配置生效：
+如果服务器没有外网，需要按照下面的步骤来离线安装 TiDB Operator：
 
-{{< copyable "shell-regular" >}}
+1. 下载 `tidb-operator` chart
 
-```shell
-helm upgrade tidb-operator pingcap/tidb-operator --version=${chart_version} -f /home/tidb/tidb-operator/values-tidb-operator.yaml
-```
+    如果服务器上没有外网，就无法通过配置 Helm repo 来安装 TiDB Operator 组件以及其他应用。这时，需要在有外网的机器上下载集群安装需用到的 chart 文件，再拷贝到服务器上。
+
+    通过以下命令，下载 `tidb-operator` chart 文件：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    wget http://charts.pingcap.org/tidb-operator-v1.1.0.tgz
+    ```
+
+    将 `tidb-operator-v1.1.0.tgz` 文件拷贝到服务器上并解压到当前目录：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    tar zxvf tidb-operator.v1.1.0.tgz
+    ```
+
+2. 下载 TiDB Operator 运行所需的 Docker 镜像
+
+    如果服务器没有外网，需要在有外网的机器上将 TiDB Operator 用到的所有 Docker 镜像下载下来并上传到服务器上，然后使用 `docker load` 将 Docker 镜像安装到服务器上。
+
+    TiDB Operator 用到的 Docker 镜像有：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    pingcap/tidb-operator:v1.1.0
+    pingcap/tidb-backup-manager:v1.1.0
+    bitnami/kubectl:latest
+    pingcap/advanced-statefulset:v0.3.3
+    k8s.gcr.io/kube-scheduler:v1.16.9
+    ```
+
+    其中 `k8s.gcr.io/kube-scheduler:v1.16.9` 请跟你的 Kubernetes 集群的版本保持一致即可，不用单独下载。
+
+    接下来通过下面的命令将所有这些镜像下载下来：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker pull pingcap/tidb-operator:v1.1.0
+    docker pull pingcap/tidb-backup-manager:v1.1.0
+    docker pull bitnami/kubectl:latest
+    docker pull pingcap/advanced-statefulset:v0.3.3
+
+    docker save -o tidb-operator-v1.1.0.tar pingcap/tidb-operator:v1.1.0
+    docker save -o tidb-backup-manager-v1.1.0.tar pingcap/tidb-backup-manager:v1.1.0
+    docker save -o bitnami-kubectl.tar bitnami/kubectl:latest
+    docker save -o advanced-statefulset-v0.3.3.tar pingcap/advanced-statefulset:v0.3.3
+    ```
+
+    接下来将这些 Docker 镜像上传到服务器上，并执行 `docker load` 将这些 Docker 镜像安装到服务器上：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker load -i tidb-operator-v1.1.0.tar
+    docker load -i tidb-backup-manager-v1.1.0.tar
+    docker load -i bitnami-kubectl.tar
+    docker load -i advanced-statefulset-v0.3.3.tar
+    ```
+
+3. 配置 TiDB Operator
+
+    TiDB Operator 内嵌了一个 `kube-scheduler` 用来实现自定义调度器，请修改 `./tidb-operator/values.yaml` 文件来配置这个内置 `kube-scheduler` 组件的 Docker 镜像名字和版本，例如你的 Kubernetes 集群中的 `kube-scheduler` 使用的镜像为 `k8s.gcr.io/kube-scheduler:v1.16.9`，请这样设置 `./tidb-operator/values.yaml`：
+
+    ```shell
+    ...
+    scheduler:
+      serviceAccount: tidb-scheduler
+      logLevel: 2
+      replicas: 1
+      schedulerName: tidb-scheduler
+      resources:
+        limits:
+          cpu: 250m
+          memory: 150Mi
+        requests:
+          cpu: 80m
+          memory: 50Mi
+      kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
+      kubeSchedulerImageTag: v1.16.9
+    ...
+    ```
+
+    其他项目例如：`limits`、`requests` 和 `replicas`，请根据需要进行修改。
+
+4. 安装 TiDB Operator
+
+    使用下面的命令安装 TiDB Operator：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install ./tidb-operator --name=tidb-operator --namespace=tidb-admin
+    ```
+
+5. 升级 TiDB Operator
+
+    如果需要升级 TiDB Operator，请先修改 `./tidb-operator/values.yaml` 文件，然后执行下面的命令进行升级：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm upgrade tidb-operator ./tidb-operator
+    ```
