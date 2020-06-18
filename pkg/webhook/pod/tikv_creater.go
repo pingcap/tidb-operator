@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	tikvNotBootstrapped  = `TiKV cluster not bootstrapped, please start TiKV first"`
+	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
 func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
