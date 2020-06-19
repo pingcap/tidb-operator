@@ -11286,6 +11286,18 @@ string
 <p>Optional: Defaults to 10MB</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>use-unified-pool</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvdbconfig">TiKVDbConfig</h3>
@@ -13010,6 +13022,30 @@ int64
 </tr>
 <tr>
 <td>
+<code>store-reschedule-duration</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>apply-yield-duration</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 500ms</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hibernate-regions</code></br>
 <em>
 bool
@@ -13017,6 +13053,42 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>apply-early</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>perf-level</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dev-assert</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -14174,6 +14246,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 10MB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>use-unified-pool</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
