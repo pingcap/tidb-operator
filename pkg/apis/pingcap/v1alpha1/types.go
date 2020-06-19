@@ -152,8 +152,8 @@ type TidbClusterSpec struct {
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-	// +kubebuilder:default=Recycle
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
 	// ImagePullPolicy of TiDB cluster Pods
 	// +kubebuilder:default=IfNotPresent
