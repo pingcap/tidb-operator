@@ -106,10 +106,6 @@ spec:
 
 ## 开启 Ingress TLS
 
-> **注意：**
->
-> 由于 Ingress 假定了 TLS 终止，所以当目前 TiDB 集群开启了 [TLS 验证](enable-tls-between-components.md)时，你将无法通过 Ingress 访问 Dashboard。
-
 Ingress 提供了 TLS 支持，你可以通过 [Ingress TLS](https://kubernetes.io/zh/docs/concepts/services-networking/ingress/#tls) 了解更多。以下是一个使用 Ingress TLS 的例子，其中 `testsecret-tls` 包含了 `exmaple.com` 所需要的 `tls.crt` 与 `tls.key`：
 
 ```yaml
@@ -148,3 +144,18 @@ type: kubernetes.io/tls
 ```
 
 当 Ingress 部署完成以后，你就可以通过 <https://{host}/dashboard> 访问 TiDB Dashboard。
+
+## 更新 TiDB 集群
+
+如果你是在一个已经运行的 TiDB 集群上进行更新来开启快捷访问 `Dashboard` 功能，以下两项配置都需要更新:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  configUpdateStrategy: RollingUpdate
+  pd:
+    enableDashboardInternalProxy: true
+```
