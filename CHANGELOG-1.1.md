@@ -1,3 +1,32 @@
+# TiDB Operator v1.1.1 Release Notes
+
+## Notable changes
+
+- Add `additionalContainers` and `additionalVolumes` fields so that Tidb-operator can support adding sidecars to `TiDB`, `TiKV`, `PD`, etc. ([#2229](https://github.com/pingcap/tidb-operator/pull/2229), [@yeya24](https://github.com/yeya24))
+- Do not scale or upgrade TiKV at the same time ([#2705](https://github.com/pingcap/tidb-operator/pull/2705), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Fix the bug TidbMonitor will scrape multi TidbCluster with same same in different namespace when then namespace in `ClusterRef` not set ([#2746](https://github.com/pingcap/tidb-operator/pull/2746), [@Yisaer](https://github.com/Yisaer))
+- TiDB Operator examples updated to deploy TiDB Cluster 4.0.0 images ([#2756](https://github.com/pingcap/tidb-operator/pull/2756), [@ti-srebot](https://github.com/ti-srebot))
+- Add alertMangerAlertVersion option to TidbMonitor ([#2744](https://github.com/pingcap/tidb-operator/pull/2744), [@weekface](https://github.com/weekface))
+- Fix alert rules lost after rolling upgrade ([#2715](https://github.com/pingcap/tidb-operator/pull/2715), [@weekface](https://github.com/weekface))
+- Fix an issue that pods may be stuck in pending for a long time in scale-out after a scale-in ([#2709](https://github.com/pingcap/tidb-operator/pull/2709), [@cofyc](https://github.com/cofyc))
+- Add `EnableDashboardInternalProxy` in `PDSpec` to let user directly visit PD Dashboard ([#2713](https://github.com/pingcap/tidb-operator/pull/2713), [@Yisaer](https://github.com/Yisaer))
+- Fix the pv syncing error when `TidbMonitor` and `TidbCluster` have different value in `reclaimPolicy` ([#2707](https://github.com/pingcap/tidb-operator/pull/2707), [@Yisaer](https://github.com/Yisaer))
+- Update Configuration to v4.0.1 ([#2702](https://github.com/pingcap/tidb-operator/pull/2702), [@Yisaer](https://github.com/Yisaer))
+- Change tidb-discovery strategy type to `Recreate` ([#2701](https://github.com/pingcap/tidb-operator/pull/2701), [@weekface](https://github.com/weekface))
+- Expose `Dashboard` service with `HTTP` endpoint whether `tlsCluster` is enabled ([#2684](https://github.com/pingcap/tidb-operator/pull/2684), [@Yisaer](https://github.com/Yisaer))
+- Add `.tikv.dataSubDir` field to specify subdirectory within the data volume to store TiKV data ([#2682](https://github.com/pingcap/tidb-operator/pull/2682), [@cofyc](https://github.com/cofyc))
+- Add `imagePullSecrets` attribute to all components ([#2679](https://github.com/pingcap/tidb-operator/pull/2679), [@weekface](https://github.com/weekface))
+- Make StatefulSet and Pod validation webhook could work at the same time ([#2664](https://github.com/pingcap/tidb-operator/pull/2664), [@Yisaer](https://github.com/Yisaer))
+- Emit an event if failed to sync labels to TiKV stores ([#2587](https://github.com/pingcap/tidb-operator/pull/2587), [@PengJi](https://github.com/PengJi))
+- Make`ldatasource` information hidden in log for `Backup` and `Restore` job ([#2652](https://github.com/pingcap/tidb-operator/pull/2652), [@Yisaer](https://github.com/Yisaer))
+- Support `DynamicConfiguration` in `TiDB Operator` feature gates ([#2539](https://github.com/pingcap/tidb-operator/pull/2539), [@Yisaer](https://github.com/Yisaer))
+- Support LoadBalancerSourceRanges in the ServiceSpec for the TidbCluster and TidbMonitor ([#2610](https://github.com/pingcap/tidb-operator/pull/2610), [@shonge](https://github.com/shonge))
+- Support `Dashboard` metrics ability for `TidbCluster` when `TidbMonitor` deployed ([#2483](https://github.com/pingcap/tidb-operator/pull/2483), [@Yisaer](https://github.com/Yisaer))
+- Bump dm version to v2.0.0-beta.1 ([#2615](https://github.com/pingcap/tidb-operator/pull/2615), [@tennix](https://github.com/tennix))
+- support setting discovery resources ([#2434](https://github.com/pingcap/tidb-operator/pull/2434), [@shonge](https://github.com/shonge))
+- User now can specify `ReadyToScaleThresholdSeconds` in `TidbClusterAutoScaler`, until cluster keep in ready to auto scale status for `ReadyToScaleThresholdSeconds` seconds, then cluster start auto scaling ([#2307](https://github.com/pingcap/tidb-operator/pull/2307), [@vincent178](https://github.com/vincent178))
+
+
 # TiDB Operator v1.1.0 Release Notes
 
 This is the GA release of TiDB Operator 1.1, which focuses on the usability, extensibility and security.
