@@ -1,18 +1,18 @@
 ---
-title: 管理 TiDB 集群的 Command Cheat Sheet
-summary: 介绍管理 TiDB 集群的 Command Cheat Sheet。
-category: how-to
+title: Command Cheat Sheet for TiDB Cluster Management
+summary: Learn the commonly used commands for managing TiDB clusters.
+category: reference
 ---
 
-# 管理 TiDB 集群的 Command Cheat Sheet
+# Command Cheat Sheet for TiDB Cluster Management
 
-本文提供管理 TiDB 集群的 Command Cheat Sheet。
+This document is an overview of the commands used for TiDB cluster management.
 
 ## kubectl
 
-### 查看资源
+### View resources
 
-* 查看 CRD：
+* View CRD:
 
     {{< copyable "shell-regular" >}}
 
@@ -20,7 +20,7 @@ category: how-to
     kubectl get crd
     ```
 
-* 查看 TidbCluster：
+* View TidbCluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -28,7 +28,7 @@ category: how-to
     kubectl -n ${namespace} get tc ${name}
     ```
 
-* 查看 TidbMonitor：
+* View TidbMonitor:
 
     {{< copyable "shell-regular" >}}
 
@@ -36,7 +36,7 @@ category: how-to
     kubectl -n ${namespace} get tidbmonitor ${name}
     ```
 
-* 查看 Backup：
+* View Backup:
 
     {{< copyable "shell-regular" >}}
 
@@ -44,7 +44,7 @@ category: how-to
     kubectl -n ${namespace} get bk ${name}
     ```
 
-* 查看 BackupSchedule：
+* View BackupSchedule:
 
     {{< copyable "shell-regular" >}}
 
@@ -52,7 +52,7 @@ category: how-to
     kubectl -n ${namespace} get bks ${name}
     ```
 
-* 查看 Restore：
+* View Restore:
 
     {{< copyable "shell-regular" >}}
 
@@ -60,7 +60,7 @@ category: how-to
     kubectl -n ${namespace} get restore ${name}
     ```
 
-* 查看 TidbClusterAutoScaler：
+* View TidbClusterAutoScaler:
 
     {{< copyable "shell-regular" >}}
 
@@ -68,7 +68,7 @@ category: how-to
     kubectl -n ${namespace} get tidbclusterautoscaler ${name}
     ```
 
-* 查看 TidbInitializer：
+* View TidbInitializer:
 
     {{< copyable "shell-regular" >}}
 
@@ -76,7 +76,7 @@ category: how-to
     kubectl -n ${namespace} get tidbinitializer ${name}
     ```
 
-* 查看 Advanced StatefulSet：
+* View Advanced StatefulSet:
 
     {{< copyable "shell-regular" >}}
 
@@ -84,7 +84,7 @@ category: how-to
     kubectl -n ${namespace} get asts ${name}
     ```
 
-* 查看 Pod：
+* View a Pod:
 
     {{< copyable "shell-regular" >}}
 
@@ -92,7 +92,7 @@ category: how-to
     kubectl -n ${namespace} get pod ${name}
     ```
 
-    查看 TiKV Pod：
+    View a TiKV Pod:
 
     {{< copyable "shell-regular" >}}
 
@@ -100,19 +100,19 @@ category: how-to
     kubectl -n ${namespace} get pod -l app.kubernetes.io/component=tikv
     ```
 
-    持续观察 Pod 状态变化：
+    View the continuous status change of a Pod:
 
     ```shell
     watch kubectl -n ${namespace} get pod
     ```
 
-    查看 Pod 详细信息：
+    View the detailed information of a Pod:
 
     ```shell
     kubectl -n ${namespace} describe pod ${name}
     ```
 
-* 查看 Pod 所在 Node：
+* View the node on which Pods are located:
 
     {{< copyable "shell-regular" >}}
 
@@ -120,7 +120,7 @@ category: how-to
     kubectl -n ${namespace} get pods -l "app.kubernetes.io/component=tidb,app.kubernetes.io/instance=${cluster_name}" -ojsonpath="{range .items[*]}{.spec.nodeName}{'\n'}{end}"
     ```
 
-* 查看 Service：
+* View Service:
 
     {{< copyable "shell-regular" >}}
 
@@ -128,7 +128,7 @@ category: how-to
     kubectl -n ${namespace} get service ${name}
     ```
 
-* 查看 ConfigMap：
+* View ConfigMap:
 
     {{< copyable "shell-regular" >}}
 
@@ -136,7 +136,7 @@ category: how-to
     kubectl -n ${namespace} get cm ${name}
     ```
 
-* 查看 PV：
+* View a PersistentVolume (PV):
 
     {{< copyable "shell-regular" >}}
 
@@ -144,7 +144,7 @@ category: how-to
     kubectl -n ${namespace} get pv ${name}
     ```
 
-    查看集群使用的 PV:
+    View the PV used by the cluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -152,7 +152,7 @@ category: how-to
     kubectl get pv -l app.kubernetes.io/namespace=${namespace},app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/instance=${cluster_name}
     ```
 
-* 查看 PVC：
+* View a PersistentVolumeClaim (PVC):
 
     {{< copyable "shell-regular" >}}
 
@@ -160,7 +160,7 @@ category: how-to
     kubectl -n ${namespace} get pvc ${name}
     ```
 
-* 查看 StorageClass：
+* View StorageClass:
 
     {{< copyable "shell-regular" >}}
 
@@ -168,7 +168,7 @@ category: how-to
     kubectl -n ${namespace} get sc
     ```
 
-* 查看 StatefulSet：
+* View StatefulSet:
 
     {{< copyable "shell-regular" >}}
 
@@ -176,7 +176,7 @@ category: how-to
     kubectl -n ${namespace} get sts ${name}
     ```
 
-    查看 StatefulSet 详细信息：
+    View the detailed information of StatefulSet:
 
     {{< copyable "shell-regular" >}}
 
@@ -184,9 +184,9 @@ category: how-to
     kubectl -n ${namespace} describe sts ${name}
     ```
 
-### 更新资源
+### Update resources
 
-* 为 TiDBCluster 增加 Annotation：
+* Add an annotation for TiDBCluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -194,7 +194,7 @@ category: how-to
     kubectl -n ${namespace} annotate tc ${cluster_name} ${key}=${value}
     ```
 
-    为 TiDBCluster 增加强制升级 Annotation：
+    Add a force-upgrade annotation for TiDBCluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -202,7 +202,7 @@ category: how-to
     kubectl -n ${namespace} annotate --overwrite tc ${cluster_name} tidb.pingcap.com/force-upgrade=true
     ```
 
-    为 TiDBCluster 删除强制升级 Annotation：
+    Delete a force-upgrade annotation for TiDBCluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -210,7 +210,7 @@ category: how-to
     kubectl -n ${namespace} annotate tc ${cluster_name} tidb.pingcap.com/force-upgrade-
     ```
 
-    为 Pod 开启 Debug 模式：
+    Enable the debug mode for Pods:
 
     {{< copyable "shell-regular" >}}
 
@@ -218,9 +218,9 @@ category: how-to
     kubectl -n ${namespace} annotate pod ${pod_name} runmode=debug
     ```
 
-### 编辑资源
+### Edit resources
 
-* 编辑 TidbCluster：
+* Edit TidbCluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -228,9 +228,9 @@ category: how-to
     kubectl -n ${namespace} edit tc ${name}
     ```
 
-### Patch 资源
+### Patch Resources
 
-* Patch PV ReclaimPolicy：
+* Patch PV ReclaimPolicy:
 
     {{< copyable "shell-regular" >}}
 
@@ -238,7 +238,7 @@ category: how-to
     kubectl patch pv ${name} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
     ```
 
-* Patch PVC：
+* Patch a PVC:
 
     {{< copyable "shell-regular" >}}
 
@@ -246,7 +246,7 @@ category: how-to
     kubectl -n ${namespace} patch pvc ${name} -p '{"spec": {"resources": {"requests": {"storage": "100Gi"}}}'
     ```
 
-* Patch StorageClass：
+* Patch StorageClass:
 
     {{< copyable "shell-regular" >}}
 
@@ -254,9 +254,9 @@ category: how-to
     kubectl patch storageclass ${name} -p '{"allowVolumeExpansion": true}'
     ```
 
-### 创建资源
+### Create resources
 
-* 通过 Yaml 文件创建集群：
+* Create a cluster using the YAML file:
 
     {{< copyable "shell-regular" >}}
 
@@ -264,7 +264,7 @@ category: how-to
     kubectl -n ${namespace} apply -f ${file}
     ```
 
-* 创建 Namespace：
+* Create Namespace:
 
     {{< copyable "shell-regular" >}}
 
@@ -272,9 +272,9 @@ category: how-to
     kubectl create ns ${namespace}
     ```
 
-* 创建 Secret：
+* Create Secret:
 
-    创建证书的 Secret：
+    Create Secret of the certificate:
 
     {{< copyable "shell-regular" >}}
 
@@ -282,7 +282,7 @@ category: how-to
     kubectl -n ${namespace} create secret generic ${secret_name} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
-    创建用户名、密码的 Secret：
+    Create Secret of the user id and password:
     
     {{< copyable "shell-regular" >}}
 
@@ -290,9 +290,9 @@ category: how-to
     kubectl -n ${namespace} create secret generic ${secret_name} --from-literal=user=${user} --from-literal=password=${password}
     ```
 
-### 与 Running Pod 交互
+### Interact with running Pods
 
-* 查看 PD 配置文件：
+* View the PD configuration file:
 
     {{< copyable "shell-regular" >}}
 
@@ -300,7 +300,7 @@ category: how-to
     kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/pd/pd.toml
     ```
 
-* 查看 TiDB 配置文件：
+* View the TiDB configuration file:
 
     {{< copyable "shell-regular" >}}
 
@@ -308,7 +308,7 @@ category: how-to
     kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/tidb/tidb.toml
     ```
 
-* 查看 TiKV 配置文件：
+* View the TiKV configuration file:
 
     {{< copyable "shell-regular" >}}
 
@@ -316,7 +316,7 @@ category: how-to
     kubectl -n ${namespace} -it exec ${pod_name} -- cat /etc/tikv/tikv.toml
     ```
 
-* 查看 Pod Log：
+* View Pod logs:
 
     {{< copyable "shell-regular" >}}
 
@@ -324,7 +324,7 @@ category: how-to
     kubectl -n ${namespace} logs ${pod_name} -f
     ```
 
-    查看上一次容器的 Log：
+    View logs of the previous container:
 
     {{< copyable "shell-regular" >}}
 
@@ -332,7 +332,7 @@ category: how-to
     kubectl -n ${namespace} logs ${pod_name} -p
     ```
 
-    如果 Pod 内有多个容器，查看某一个容器的 Log：
+    If there are multiple containers in a Pod, view logs of one container:
 
     {{< copyable "shell-regular" >}}
 
@@ -340,7 +340,7 @@ category: how-to
     kubectl -n ${namespace} logs ${pod_name} -c ${container_name}
     ```
 
-* 暴露服务：
+* Expose services:
 
     {{< copyable "shell-regular" >}}
 
@@ -348,7 +348,7 @@ category: how-to
     kubectl -n ${namespace} port-forward svc/${service_name} ${local_port}:${port_in_pod}
     ```
 
-    暴露 PD 服务：
+    Expose PD services:
 
     {{< copyable "shell-regular" >}}
 
@@ -356,9 +356,9 @@ category: how-to
     kubectl -n ${namespace} port-forward svc/${cluster_name}-pd 2379:2379
     ```
 
-### 与 Node 交互
+### Interact with nodes
 
-* 把 Node 设置为不可调度：
+* Mark the node as unschedulable:
 
     {{< copyable "shell-regular" >}}
 
@@ -366,7 +366,7 @@ category: how-to
     kubectl cordon ${node_name}
     ```
 
-* 取消 Node 不可调度：
+* Mark the node as schedulable:
 
     {{< copyable "shell-regular" >}}
 
@@ -374,9 +374,9 @@ category: how-to
     kubectl uncordon ${node_name}
     ```
 
-### 删除资源
+### Delete resources
 
-* 删除 Pod：
+* Delete a Pod:
 
     {{< copyable "shell-regular" >}}
 
@@ -384,7 +384,7 @@ category: how-to
     kubectl delete -n ${namespace} pod ${pod_name}
     ```
 
-* 删除 PVC：
+* Delete a PVC:
 
     {{< copyable "shell-regular" >}}
 
@@ -392,7 +392,7 @@ category: how-to
     kubectl delete -n ${namespace} pvc ${pvc_name}
     ```
 
-* 删除 TidbCluster：
+* Delete TidbCluster:
 
     {{< copyable "shell-regular" >}}
 
@@ -400,7 +400,7 @@ category: how-to
     kubectl delete -n ${namespace} tc ${tc_name}
     ```
 
-* 删除 TidbMonitor：
+* Delete TidbMonitor:
 
     {{< copyable "shell-regular" >}}
 
@@ -408,7 +408,7 @@ category: how-to
     kubectl delete -n ${namespace} tidbmonitor ${tidb_monitor_name}
     ```
 
-* 删除 TidbClusterAutoScaler：
+* Delete TidbClusterAutoScaler:
 
     {{< copyable "shell-regular" >}}
 
@@ -416,13 +416,13 @@ category: how-to
     kubectl -n ${namespace} delete tidbclusterautoscaler ${name}
     ```
 
-### 更多
+### More
 
-其他更多 kubectl 的使用，请参考 [Kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)。
+See [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/) for more kubectl usage.
 
 ## Helm
 
-### 安装 Tiller
+### Install Tiller
 
 {{< copyable "shell-regular" >}}
 
@@ -430,7 +430,7 @@ category: how-to
 helm init --service-account=tiller --upgrade
 ```
 
-### 添加 Helm Repo
+### Add Helm repository
 
 {{< copyable "shell-regular" >}}
 
@@ -438,7 +438,7 @@ helm init --service-account=tiller --upgrade
 helm repo add pingcap https://charts.pingcap.org/
 ```
 
-### 更新 Helm Repo
+### Update Helm repository
 
 {{< copyable "shell-regular" >}}
 
@@ -446,7 +446,7 @@ helm repo add pingcap https://charts.pingcap.org/
 helm repo update
 ```
 
-### 查看可用的 Helm Chart
+### View available Helm chart
 
 {{< copyable "shell-regular" >}}
 
@@ -454,7 +454,7 @@ helm repo update
 helm search ${chart_name} -l --devel
 ```
 
-示例：
+For example:
 
 {{< copyable "shell-regular" >}}
 
@@ -462,7 +462,7 @@ helm search ${chart_name} -l --devel
 helm search tidb-operator -l --devel
 ```
 
-### 获取 Helm Chart 默认 values.yaml
+### Get the default `values.yaml` of the Helm chart
 
 {{< copyable "shell-regular" >}}
 
@@ -470,7 +470,7 @@ helm search tidb-operator -l --devel
 helm inspect values ${chart_name} --version=${chart_version} > values.yaml
 ```
 
-示例：
+For example:
 
 {{< copyable "shell-regular" >}}
 
@@ -478,7 +478,7 @@ helm inspect values ${chart_name} --version=${chart_version} > values.yaml
 helm inspect values pingcap/tidb-operator --version=v1.1.0 > values-tidb-operator.yaml
 ```
 
-### 使用 Helm Chart 部署
+### Deploy using Helm chart
 
 {{< copyable "shell-regular" >}}
 
@@ -486,7 +486,7 @@ helm inspect values pingcap/tidb-operator --version=v1.1.0 > values-tidb-operato
 helm install ${chart_name} --name=${name} --namespace=${namespace} --version=${chart_version} -f ${values_file}
 ```
 
-示例：
+For example:
 
 {{< copyable "shell-regular" >}}
 
@@ -494,7 +494,7 @@ helm install ${chart_name} --name=${name} --namespace=${namespace} --version=${c
 helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0 -f values-tidb-operator.yaml
 ```
 
-### 查看已经部署的 Helm Release
+### View the deployed Helm release
 
 {{< copyable "shell-regular" >}}
 
@@ -502,7 +502,7 @@ helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin -
 helm ls
 ```
 
-### 升级 Helm Release
+### Update Helm release
 
 {{< copyable "shell-regular" >}}
 
@@ -510,7 +510,7 @@ helm ls
 helm upgrade ${name} ${chart_name} --version=${chart_version} -f ${values_file}
 ```
 
-示例：
+For example:
 
 {{< copyable "shell-regular" >}}
 
@@ -518,7 +518,7 @@ helm upgrade ${name} ${chart_name} --version=${chart_version} -f ${values_file}
 helm upgrade tidb-operator pingcap/tidb-operator --version=v1.1.0 -f values-tidb-operator.yaml
 ```
 
-### 删除 Helm Release
+### Delete Helm release
 
 {{< copyable "shell-regular" >}}
 
@@ -526,7 +526,7 @@ helm upgrade tidb-operator pingcap/tidb-operator --version=v1.1.0 -f values-tidb
 helm del --purge ${name}
 ```
 
-示例：
+For example:
 
 {{< copyable "shell-regular" >}}
 
@@ -534,6 +534,6 @@ helm del --purge ${name}
 helm del --purge tidb-operator
 ```
 
-### 更多
+### More
 
-其他更多 Helm 的使用，请参考 [Helm Commands](https://v2.helm.sh/docs/helm/#helm)。
+See [Helm Commands](https://v2.helm.sh/docs/helm/#helm) for more Helm usage.
