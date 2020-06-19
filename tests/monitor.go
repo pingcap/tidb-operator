@@ -232,7 +232,7 @@ func checkGrafanaDataCommon(name, namespace string, grafanaClient *metrics.Clien
 		datasourceID, err = getDatasourceID(addr)
 		if err != nil {
 			klog.Error(err)
-			return false, err
+			return false, nil
 		}
 		return true, nil
 	})
