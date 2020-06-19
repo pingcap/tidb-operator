@@ -105,7 +105,9 @@ eks_name = "my-cluster"
 operator_version = "v1.1.0-rc.1"
 ```
 
-If you need to deploy TiFlash in the cluster, set `create_tiflash_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiFlash node pool by modifying `cluster_tiflash_count` and `cluster_tiflash_instance_type`. By default, the value of `cluster_tiflash_count` is `2`, and the value of `cluster_tiflash_instance_type` is `i3.4xlarge`.
+* To deploy TiFlash in the cluster, set `create_tiflash_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiFlash node pool by modifying `cluster_tiflash_count` and `cluster_tiflash_instance_type`. By default, the value of `cluster_tiflash_count` is `2`, and the value of `cluster_tiflash_instance_type` is `i3.4xlarge`.
+
+* To deploy TiCDC in the cluster, set `create_cdc_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiCDC node pool by modifying `cluster_cdc_count` and `cluster_cdc_instance_type`. By default, the value of `cluster_cdc_count` is `3`, and the value of `cluster_cdc_instance_type` is `c5.2xlarge`.
 
 > **Note:**
 >
@@ -163,35 +165,54 @@ You can use the `terraform output` command to get the output again.
 
     To complete the CR file configuration, refer to [API documentation](api-references.md) and [Configure a TiDB Cluster Using TidbCluster](configure-a-tidb-cluster.md).
 
-    To deploy TiFlash, configure `spec.tiflash` in `db.yaml` as follows:
+    * To deploy TiFlash, configure `spec.tiflash` in `db.yaml` as follows:
 
-    ```yaml
-    spec:
-      ...
-      tiflash:
-        baseImage: pingcap/tiflash
-        maxFailoverCount: 3
-        nodeSelector:
-          dedicated: CLUSTER_NAME-tiflash
-        replicas: 1
-        storageClaims:
-        - resources:
-            requests:
-              storage: 100Gi
-          storageClassName: local-storage
-        tolerations:
-        - effect: NoSchedule
-          key: dedicated
-          operator: Equal
-          value: CLUSTER_NAME-tiflash
-    ```
+        ```yaml
+        spec:
+          ...
+          tiflash:
+            baseImage: pingcap/tiflash
+            maxFailoverCount: 3
+            nodeSelector:
+              dedicated: CLUSTER_NAME-tiflash
+            replicas: 1
+            storageClaims:
+            - resources:
+                requests:
+                  storage: 100Gi
+              storageClassName: local-storage
+            tolerations:
+            - effect: NoSchedule
+              key: dedicated
+              operator: Equal
+              value: CLUSTER_NAME-tiflash
+        ```
 
-    Modify `replicas`, `storageClaims[].resources.requests.storage`, and `storageClassName` according to your needs.
+        Modify `replicas`, `storageClaims[].resources.requests.storage`, and `storageClassName` according to your needs.
+
+    * To deploy TiCDC, configure `spec.ticdc` in `db.yaml` as follows:
+
+        ```yaml
+        spec:
+          ...
+          tiflash:
+            baseImage: pingcap/ticdc
+            nodeSelector:
+              dedicated: CLUSTER_NAME-cdc
+            replicas: 3
+            tolerations:
+            - effect: NoSchedule
+              key: dedicated
+              operator: Equal
+              value: CLUSTER_NAME-cdc
+        ```
+
+        Modify `replicas` according to your needs.
 
     > **Note:**
     >
     > * Replace all `CLUSTER_NAME` in `db.yaml` and `db-monitor.yaml` files with `default_cluster_name` configured during EKS deployment.
-    > * Make sure that during EKS deployment, the number of PD, TiKV, TiFlash, or TiDB nodes is >= the value of the `replicas` field of the corresponding component in `db.yaml`.
+    > * Make sure that during EKS deployment, the number of PD, TiKV, TiFlash, TiCDC, or TiDB nodes is >= the value of the `replicas` field of the corresponding component in `db.yaml`.
     > * Make sure that `spec.initializer.version` in `db-monitor.yaml` and `spec.version` in `db.yaml` are the same to ensure normal monitor display.
 
 2. Create `Namespace`:
@@ -457,7 +478,7 @@ The upgrading doesn't finish immediately. You can watch the upgrading progress b
 
 ## Scale
 
-To scale out the TiDB cluster, modify the `default_cluster_tikv_count`, `cluster_tiflash_count`, or `default_cluster_tidb_count` variable in the `terraform.tfvars` file to your desired count, and then run `terraform apply` to scale out the number of the corresponding component nodes.
+To scale out the TiDB cluster, modify the `default_cluster_tikv_count`, `cluster_tiflash_count`, `cluster_cdc_count`, or `default_cluster_tidb_count` variable in the `terraform.tfvars` file to your desired count, and then run `terraform apply` to scale out the number of the corresponding component nodes.
 
 After the scaling, modify the `replicas` of the corresponding component by the following command:
 
