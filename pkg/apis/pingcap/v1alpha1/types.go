@@ -61,6 +61,8 @@ const (
 	NormalPhase MemberPhase = "Normal"
 	// UpgradePhase represents the upgrade state of TiDB cluster.
 	UpgradePhase MemberPhase = "Upgrade"
+	// ScalePhase represents the scaling state of TiDB cluster.
+	ScalePhase MemberPhase = "Scale"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration
