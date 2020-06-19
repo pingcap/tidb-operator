@@ -1193,6 +1193,9 @@ type BackupStatus struct {
 	TimeStarted metav1.Time `json:"timeStarted"`
 	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// BackupSizeReadable is the data size of the backup.
+	// the difference with BackupSize is that its format is human readable
+	BackupSizeReadable string `json:"backupSizeReadable"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
 	// CommitTs is the snapshot time point of tidb cluster.
