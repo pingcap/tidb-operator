@@ -367,13 +367,9 @@ Before proceeding, make sure the following requirements are satisfied:
 
 
             NOTES:
-            1. Make sure tidb-operator components are running
-               kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
-            2. Install CRD
-               kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
-               kubectl get customresourcedefinitions
-            3. Modify tidb-cluster/values.yaml and create a TiDB cluster by installing tidb-cluster charts
-               helm install tidb-cluster
+            Make sure tidb-operator components are running:
+
+                kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
             ```
 
         - Helm 3:
@@ -402,13 +398,9 @@ Before proceeding, make sure the following requirements are satisfied:
             REVISION: 1
             TEST SUITE: None
             NOTES:
-            1. Make sure tidb-operator components are running
-               kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
-            2. Install CRD
-               kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
-               kubectl get customresourcedefinitions
-            3. Modify tidb-cluster/values.yaml and create a TiDB cluster by installing tidb-cluster charts
-               helm install tidb-cluster
+            Make sure tidb-operator components are running:
+
+                kubectl get pods --namespace tidb-admin -l app.kubernetes.io/instance=tidb-operator
             ```
 
         Confirm that the TiDB Operator components are running with this command:
