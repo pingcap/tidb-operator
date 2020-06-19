@@ -253,10 +253,10 @@ scrape_configs:
     target_label: __metrics_path__
     action: replace
   - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_pod_annotation_prometheus_io_port]
+      __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
     regex: (.+);(.+);(.+)
     target_label: __address__
-    replacement: $1.$2-tiflash-proxy-peer:$3
+    replacement: $1.$2-tiflash-peer:$3
     action: replace
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace
@@ -622,10 +622,10 @@ scrape_configs:
     target_label: __metrics_path__
     action: replace
   - source_labels: [__meta_kubernetes_pod_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance,
-      __meta_kubernetes_pod_annotation_prometheus_io_port]
+      __meta_kubernetes_pod_annotation_tiflash_proxy_prometheus_io_port]
     regex: (.+);(.+);(.+)
     target_label: __address__
-    replacement: $1.$2-tiflash-proxy-peer:$3
+    replacement: $1.$2-tiflash-peer:$3
     action: replace
   - source_labels: [__meta_kubernetes_namespace]
     target_label: kubernetes_namespace

@@ -165,7 +165,17 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	case "tiflash":
 		return f()
 	case "tiflash-proxy":
-		return f()
+		return &config.RelabelConfig{
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: "$1.$2-tiflash-peer:$3",
+			TargetLabel: "__address__",
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				model.LabelName(fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")),
+			},
+		}
 	case "pump":
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
