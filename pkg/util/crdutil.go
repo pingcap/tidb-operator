@@ -110,9 +110,9 @@ var (
 	}
 	backupBackupSizeColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupSize",
-		Type:        "integer",
+		Type:        "string",
 		Description: "The data size of the backup",
-		JSONPath:    ".status.backupSize",
+		JSONPath:    ".status.backupSizeReadable",
 	}
 	backupCommitTSColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "CommitTS",
