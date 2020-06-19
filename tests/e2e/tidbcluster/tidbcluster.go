@@ -829,20 +829,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
 
-		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
-		framework.ExpectNoError(err, "delete tidbmonitor failed")
-		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-			if err != nil {
-				return false, err
-			}
-			if tc.Status.Monitor != nil {
-				return false, nil
-			}
-			return true, nil
-		})
-		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
-
 		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
 			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
 			if err != nil {
@@ -863,6 +849,20 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return false, nil
 		})
 		framework.ExpectEqual(err, wait.ErrWaitTimeout, "verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
+
+		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "delete tidbmonitor failed")
+		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if tc.Status.Monitor != nil {
+				return false, nil
+			}
+			return true, nil
+		})
+		framework.ExpectNoError(err, "tc monitorRef status failed to clean after monitor deleted")
 	})
 
 	ginkgo.It("TiDB cluster can be paused and unpaused", func() {
