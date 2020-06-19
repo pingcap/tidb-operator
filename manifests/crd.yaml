@@ -10124,18 +10124,24 @@ spec:
                           type: string
                         allow-remove-leader:
                           type: boolean
+                        apply-early:
+                          type: boolean
                         apply-max-batch-size:
                           format: int64
                           type: integer
                         apply-pool-size:
                           format: int64
                           type: integer
+                        apply-yield-duration:
+                          type: string
                         clean-stale-peer-delay:
                           type: string
                         cleanup-import-sst-interval:
                           type: string
                         consistency-check-interval:
                           type: string
+                        dev-assert:
+                          type: boolean
                         hibernate-regions:
                           type: boolean
                         leader-transfer-max-log-lag:
@@ -10166,6 +10172,9 @@ spec:
                           type: string
                         peer-stale-state-check-interval:
                           type: string
+                        perf-level:
+                          format: int64
+                          type: integer
                         prevote:
                           type: boolean
                         raft-base-tick-interval:
@@ -10230,6 +10239,8 @@ spec:
                         store-pool-size:
                           format: int64
                           type: integer
+                        store-reschedule-duration:
+                          type: string
                         sync-log:
                           type: boolean
                         use-delete-range:
@@ -10259,6 +10270,8 @@ spec:
                               type: integer
                             stack-size:
                               type: string
+                            use-unified-pool:
+                              type: boolean
                           type: object
                         storage:
                           properties:
@@ -10282,6 +10295,8 @@ spec:
                               type: integer
                             stack-size:
                               type: string
+                            use-unified-pool:
+                              type: boolean
                           type: object
                         unified:
                           properties:
