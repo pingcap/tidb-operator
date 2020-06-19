@@ -1754,7 +1754,7 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
 			klog.Errorf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
-		} else if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
+		} else if pv.Spec.PersistentVolumeReclaimPolicy != *tc.Spec.PVReclaimPolicy {
 			klog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
 			return false, nil
 		}
