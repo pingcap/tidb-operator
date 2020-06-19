@@ -929,6 +929,24 @@ func testPDContainerEnv(t *testing.T, env []corev1.EnvVar) func(sts *apps.Statef
 	}
 }
 
+func testAdditionalContainers(t *testing.T, additionalContainers []corev1.Container) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		cs := sts.Spec.Template.Spec.Containers
+		if diff := cmp.Diff(additionalContainers, cs[len(cs)-len(additionalContainers):]); diff != "" {
+			t.Errorf("unexpected containers (-want, +got): %s", diff)
+		}
+	}
+}
+
+func testAdditionalVolumes(t *testing.T, additionalVolumes []corev1.Volume) func(sts *apps.StatefulSet) {
+	return func(sts *apps.StatefulSet) {
+		cs := sts.Spec.Template.Spec.Volumes
+		if diff := cmp.Diff(additionalVolumes, cs[len(cs)-len(additionalVolumes):]); diff != "" {
+			t.Errorf("unexpected (-want, +got): %s", diff)
+		}
+	}
+}
+
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
 	tests := []struct {
@@ -1251,6 +1269,40 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				g := NewGomegaWithT(t)
 				g.Expect(*sts.Spec.Replicas).To(Equal(int32(4)))
 			},
+		},
+		{
+			name: "PD additional containers",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
+						},
+					},
+				},
+			},
+			testSts: testAdditionalContainers(t, []corev1.Container{customSideCarContainers[0]}),
+		},
+		{
+			name: "PD additional volumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
+						},
+					},
+				},
+			},
+			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
 		// TODO add more tests
 	}

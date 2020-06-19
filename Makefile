@@ -141,7 +141,7 @@ check-setup:
 check: check-setup lint tidy check-static check-codegen check-terraform check-boilerplate check-openapi-spec check-crd-groups
 
 check-static:
-	@ # Not running vet and fmt through metalinter becauase it ends up looking at vendor
+	@ # Not running vet and fmt through metalinter because it ends up looking at vendor
 	@echo "gofmt checking"
 	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
 	@echo "go vet check"

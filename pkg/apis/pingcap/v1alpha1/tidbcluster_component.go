@@ -38,6 +38,8 @@ type ComponentAccessor interface {
 	ConfigUpdateStrategy() ConfigUpdateStrategy
 	BuildPodSpec() corev1.PodSpec
 	Env() []corev1.EnvVar
+	AdditionalContainers() []corev1.Container
+	AdditionalVolumes() []corev1.Volume
 }
 
 type componentAccessorImpl struct {
@@ -175,6 +177,14 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 
 func (a *componentAccessorImpl) Env() []corev1.EnvVar {
 	return a.ComponentSpec.Env
+}
+
+func (a *componentAccessorImpl) AdditionalContainers() []corev1.Container {
+	return a.ComponentSpec.AdditionalContainers
+}
+
+func (a *componentAccessorImpl) AdditionalVolumes() []corev1.Volume {
+	return a.ComponentSpec.AdditionalVolumes
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
