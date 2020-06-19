@@ -60,6 +60,10 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 		d := false
 		tc.Spec.EnablePVReclaim = &d
 	}
+	retainPVP := corev1.PersistentVolumeReclaimRetain
+	if tc.Spec.PVReclaimPolicy == nil {
+		tc.Spec.PVReclaimPolicy = &retainPVP
+	}
 }
 
 func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {

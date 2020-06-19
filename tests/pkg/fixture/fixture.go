@@ -84,7 +84,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
 		tikvStorageConfig = nil
 	}
-
+	deletePVP := corev1.PersistentVolumeReclaimDelete
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -93,7 +93,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 		Spec: v1alpha1.TidbClusterSpec{
 			Version:         version,
 			ImagePullPolicy: corev1.PullIfNotPresent,
-			PVReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
+			PVReclaimPolicy: &deletePVP,
 			SchedulerName:   "tidb-scheduler",
 			Timezone:        "Asia/Shanghai",
 
