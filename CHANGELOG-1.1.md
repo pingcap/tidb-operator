@@ -5,7 +5,7 @@
 - Add `additionalContainers` and `additionalVolumes` fields so that Tidb-operator can support adding sidecars to `TiDB`, `TiKV`, `PD`, etc. ([#2229](https://github.com/pingcap/tidb-operator/pull/2229), [@yeya24](https://github.com/yeya24))
 - Do not scale or upgrade TiKV at the same time ([#2705](https://github.com/pingcap/tidb-operator/pull/2705), [@DanielZhangQD](https://github.com/DanielZhangQD))
 - Fix the bug TidbMonitor will scrape multi TidbCluster with same same in different namespace when then namespace in `ClusterRef` not set ([#2746](https://github.com/pingcap/tidb-operator/pull/2746), [@Yisaer](https://github.com/Yisaer))
-- TiDB Operator examples updated to deploy TiDB Cluster 4.0.0 images ([#2756](https://github.com/pingcap/tidb-operator/pull/2756), [@ti-srebot](https://github.com/ti-srebot))
+- TiDB Operator examples updated to deploy TiDB Cluster 4.0.0 images ([#2600](https://github.com/pingcap/tidb-operator/pull/2600), [@kolbe](https://github.com/kolbe))
 - Add alertMangerAlertVersion option to TidbMonitor ([#2744](https://github.com/pingcap/tidb-operator/pull/2744), [@weekface](https://github.com/weekface))
 - Fix alert rules lost after rolling upgrade ([#2715](https://github.com/pingcap/tidb-operator/pull/2715), [@weekface](https://github.com/weekface))
 - Fix an issue that pods may be stuck in pending for a long time in scale-out after a scale-in ([#2709](https://github.com/pingcap/tidb-operator/pull/2709), [@cofyc](https://github.com/cofyc))
