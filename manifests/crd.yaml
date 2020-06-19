@@ -11157,10 +11157,10 @@ spec:
     description: The full path of backup data
     name: BackupPath
     type: string
-  - JSONPath: .status.backupSize
+  - JSONPath: .status.backupSizeReadable
     description: The data size of the backup
     name: BackupSize
-    type: integer
+    type: string
   - JSONPath: .status.commitTs
     description: The commit ts of tidb cluster dump
     name: CommitTS
