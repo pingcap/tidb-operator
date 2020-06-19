@@ -12,16 +12,39 @@ category: FAQ
 
 默认情况下，在 Kubernetes 集群上部署的 TiDB 集群各组件容器中的时区为 UTC，如果要修改时区配置，有下面两种情况：
 
-* 第一次部署集群
+### 第一次部署集群
 
-    在 TiDB 集群的 `values.yaml` 文件中，修改 `timezone` 配置，例如：`timezone: Asia/Shanghai`，然后部署 TiDB 集群。
+配置 TidbCluster CR 的 `.spec.timezone` 属性，例如：
 
-* 集群已经在运行
+```shell
+...
+spec:
+  timezone: Asia/Shanghai
+...
+```
 
-    如果 TiDB 集群已经在运行，需要做如下修改：
+然后部署 TiDB 集群。
 
-    * 在 TiDB 集群的 `values.yaml` 文件中，修改 `timezone` 配置，例如：`timezone: Asia/Shanghai`，然后升级 TiDB 集群。
-    * 参考[时区支持](https://pingcap.com/docs-cn/v3.0/how-to/configure/time-zone)，修改 TiDB 服务时区配置。
+### 集群已经在运行
+
+如果 TiDB 集群已经在运行，需要先升级 TiDB 集群，然后再配置 TiDB 集群支持新的时区。
+
+1. 升级 TiDB 集群
+
+    配置 TidbCluster CR 的 `.spec.timezone` 属性，例如：
+
+    ```shell
+    ...
+    spec:
+      timezone: Asia/Shanghai
+    ...
+    ```
+
+    然后升级 TiDB 集群。
+
+2. 修改 TiDB 支持新的时区
+
+    参考[时区支持](https://pingcap.com/docs-cn/v3.0/how-to/configure/time-zone)，修改 TiDB 服务时区配置。
 
 ## TiDB 相关组件可以配置 HPA 或 VPA 么？
 
