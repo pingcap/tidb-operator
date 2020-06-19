@@ -666,6 +666,20 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.AdditionalContainers != nil {
+		in, out := &in.AdditionalContainers, &out.AdditionalContainers
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.AdditionalVolumes != nil {
+		in, out := &in.AdditionalVolumes, &out.AdditionalVolumes
+		*out = make([]v1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
