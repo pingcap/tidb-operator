@@ -2409,6 +2409,18 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>backupSizeReadable</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BackupSizeReadable is the data size of the backup.
+the difference with BackupSize is that its format is human readable</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupSize</code></br>
 <em>
 int64
