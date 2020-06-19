@@ -76,7 +76,33 @@ Kubernetes 当前支持静态分配的本地存储。可使用 [local-static-pro
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml
+    ```
+
+    如果服务器没有外网，需要先用有外网的机器下载 `local-volume-provisioner.yaml` 文件，然后再进行安装：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml
+    kubectl apply -f ./local-volume-provisioner.yaml
+    ```
+
+    local-volume-provisioner 程序是一个 DaemonSet，会在每个 Kubernetes 工作节点上启动一个 Pod，这个 Pod 使用的镜像是 `quay.io/external_storage/local-volume-provisioner:v2.3.4`，如果服务器没有外网，需要先将此 Docker 镜像在有外网的机器下载下来：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    docker pull quay.io/external_storage/local-volume-provisioner:v2.3.4
+    docker save -o local-volume-provisioner-v2.3.4.tar quay.io/external_storage/local-volume-provisioner:v2.3.4
+    ```
+
+    将 `local-volume-provisioner-v2.3.4.tar` 文件拷贝到服务器上，执行 `docker load` 命令将其 load 到服务器上：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    docker load -i local-volume-provisioner-v2.3.4.tar
     ```
 
     通过下面命令查看 Pod 和 PV 状态：
@@ -221,7 +247,7 @@ data:
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml
 ```
 
 后续创建 TiDB 集群或备份等组件的时候，再配置相应的 `StorageClass` 供其使用。
@@ -260,7 +286,9 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/
 >
 > TiDB Operator 默认会自动将 PD 和 TiKV 的 PV 保留策略修改为 `Retain` 以确保数据安全。
 
-PV 保留策略是 `Retain` 时，如果确认某个 PV 的数据可以被删除，需要通过下面的操作来删除 PV 以及对应的数据：
+### 删除 PV 以及对应的数据
+
+PV 保留策略是 `Retain` 时，如果确认某个 PV 的数据可以被删除，需要严格按照下面的操作顺序来删除 PV 以及对应的数据：
 
 1. 删除 PV 对应的 PVC 对象：
 
