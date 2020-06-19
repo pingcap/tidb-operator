@@ -138,6 +138,8 @@ Before deployment, make sure the following requirements are satisfied:
 
 Execute the following command to start a minikube Kubernetes cluster:
 
+{{< copyable "shell-regular" >}}
+
 ```shell
 minikube start
 ```
@@ -171,11 +173,15 @@ You should see output like this, with some differences depending on your OS and 
 
 For Chinese mainland users, you may use local gcr.io mirrors such as `registry.cn-hangzhou.aliyuncs.com/google_containers`.
 
+{{< copyable "shell-regular" >}}
+
 ```shell
 minikube start --image-repository registry.cn-hangzhou.aliyuncs.com/google_containers
 ```
 
 Or you can configure HTTP/HTTPS proxy environments in your Docker:
+
+{{< copyable "shell-regular" >}}
 
 ```shell
 # change 127.0.0.1:1086 to your http/https proxy server IP:PORT
@@ -190,6 +196,8 @@ minikube start --docker-env https_proxy=http://127.0.0.1:1086 \
 See [minikube setup](https://kubernetes.io/docs/setup/minikube/) for more options to configure your virtual machine and Kubernetes cluster.
 
 Execute this command to check the status of your Kubernetes and make sure `kubectl` can connect to it:
+
+{{< copyable "shell-regular" >}}
 
 ```
 kubectl cluster-info
@@ -319,6 +327,8 @@ Before proceeding, make sure the following requirements are satisfied:
 
             If the network connection to the Docker Hub is slow, you can try images hosted in Alibaba Cloud:
 
+            {{< copyable "shell-regular" >}}
+
             ```
             helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.0 \
               --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.0 \
@@ -382,6 +392,8 @@ Before proceeding, make sure the following requirements are satisfied:
 
             If the network connection to the Docker Hub is slow, you can try images hosted in Alibaba Cloud:
 
+            {{< copyable "shell-regular" >}}
+
             ```
             helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.0 \
               --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.0 \
@@ -428,16 +440,18 @@ Before proceeding, make sure the following requirements are satisfied:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl create namespace tidb-cluster
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml
+    kubectl create namespace tidb-cluster && \
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml && \
     kubectl -n tidb-cluster apply -f tidb-cluster.yaml
     ```
 
     If the network connection to the Docker Hub is slow, you can try this example which uses images hosted in Alibaba Cloud:
 
+    {{< copyable "shell-regular" >}}
+
     ```
-    kubectl create namespace tidb-cluster
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic-cn/tidb-cluster.yaml
+    kubectl create namespace tidb-cluster && \
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic-cn/tidb-cluster.yaml && \
     kubectl -n tidb-cluster apply -f tidb-cluster.yaml
     ```
 
@@ -453,14 +467,16 @@ Before proceeding, make sure the following requirements are satisfied:
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml && \
     kubectl -n tidb-cluster apply -f tidb-monitor.yaml
     ```
 
     If the network connection to the Docker Hub is slow, you can try this example which uses images hosted in Alibaba Cloud:
 
+    {{< copyable "shell-regular" >}}
+
     ```
-    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic-cn/tidb-monitor.yaml
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic-cn/tidb-monitor.yaml && \
     kubectl -n tidb-cluster apply -f tidb-monitor.yaml
     ```
 
@@ -485,8 +501,6 @@ Before proceeding, make sure the following requirements are satisfied:
     basic-discovery-6bb656bfd-kjkxw   1/1     Running           0          29s
     basic-monitor-5fc8589c89-2mwx5    0/3     PodInitializing   0          20s
     basic-pd-0                        1/1     Running           0          29s
-    basic-pd-1                        1/1     Running           0          29s
-    basic-pd-2                        1/1     Running           0          29s
     ```
 
     Wait until all pods for all services have been started. As soon as you see pods of each type (`-pd`, `-tikv`, and `-tidb`) and all are in the "Running" state, you can hit Ctrl-C to get back to the command line and go on to [connect to your TiDB Cluster](#connect-to-tidb)!
@@ -498,13 +512,8 @@ Before proceeding, make sure the following requirements are satisfied:
     basic-discovery-6bb656bfd-xl5pb   1/1     Running   0          9m9s
     basic-monitor-5fc8589c89-gvgjj    3/3     Running   0          8m58s
     basic-pd-0                        1/1     Running   0          9m8s
-    basic-pd-1                        1/1     Running   0          9m8s
-    basic-pd-2                        1/1     Running   1          9m8s
     basic-tidb-0                      2/2     Running   0          7m14s
-    basic-tidb-1                      2/2     Running   0          7m14s
     basic-tikv-0                      1/1     Running   0          8m13s
-    basic-tikv-1                      1/1     Running   0          8m13s
-    basic-tikv-2                      1/1     Running   0          8m13s
     ```
 
 ## Connect to TiDB
@@ -622,26 +631,6 @@ Before proceeding, make sure the following requirements are satisfied:
     ```
     mysql> select * from information_schema.tikv_store_status\G
     *************************** 1. row ***************************
-             STORE_ID: 1
-              ADDRESS: basic-tikv-1.basic-tikv-peer.tidb-cluster.svc:20160
-          STORE_STATE: 0
-     STORE_STATE_NAME: Up
-                LABEL: null
-              VERSION: 4.0.0
-             CAPACITY: 58.42GiB
-            AVAILABLE: 36.18GiB
-         LEADER_COUNT: 6
-        LEADER_WEIGHT: 1
-         LEADER_SCORE: 6
-          LEADER_SIZE: 6
-         REGION_COUNT: 21
-        REGION_WEIGHT: 1
-         REGION_SCORE: 21
-          REGION_SIZE: 21
-             START_TS: 2020-05-28 22:47:41
-    LAST_HEARTBEAT_TS: 2020-05-28 22:52:01
-               UPTIME: 4m20.455396487s
-    *************************** 2. row ***************************
              STORE_ID: 4
               ADDRESS: basic-tikv-0.basic-tikv-peer.tidb-cluster.svc:20160
           STORE_STATE: 0
@@ -661,40 +650,12 @@ Before proceeding, make sure the following requirements are satisfied:
              START_TS: 2020-05-28 22:48:21
     LAST_HEARTBEAT_TS: 2020-05-28 22:52:01
                UPTIME: 3m40.598302151s
-    *************************** 3. row ***************************
-             STORE_ID: 5
-              ADDRESS: basic-tikv-2.basic-tikv-peer.tidb-cluster.svc:20160
-          STORE_STATE: 0
-     STORE_STATE_NAME: Up
-                LABEL: null
-              VERSION: 4.0.0
-             CAPACITY: 58.42GiB
-            AVAILABLE: 36.18GiB
-         LEADER_COUNT: 12
-        LEADER_WEIGHT: 1
-         LEADER_SCORE: 12
-          LEADER_SIZE: 12
-         REGION_COUNT: 21
-        REGION_WEIGHT: 1
-         REGION_SCORE: 21
-          REGION_SIZE: 21
-             START_TS: 2020-05-28 22:47:17
-    LAST_HEARTBEAT_TS: 2020-05-28 22:52:07
-               UPTIME: 4m50.214838934s
-    3 rows in set (0.01 sec)
+    1 rows in set (0.01 sec)
     ```
 
     ```
     mysql> select * from information_schema.cluster_info\G
     *************************** 1. row ***************************
-              TYPE: tidb
-          INSTANCE: basic-tidb-1.basic-tidb-peer.tidb-cluster.svc:4000
-    STATUS_ADDRESS: basic-tidb-1.basic-tidb-peer.tidb-cluster.svc:10080
-           VERSION: 5.7.25-TiDB-v4.0.0
-          GIT_HASH: 689a6b6439ae7835947fcaccf329a3fc303986cb
-        START_TIME: 2020-05-28T22:49:17Z
-            UPTIME: 4m15.459086883s
-    *************************** 2. row ***************************
               TYPE: tidb
           INSTANCE: basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:4000
     STATUS_ADDRESS: basic-tidb-0.basic-tidb-peer.tidb-cluster.svc:10080
@@ -702,7 +663,7 @@ Before proceeding, make sure the following requirements are satisfied:
           GIT_HASH: 689a6b6439ae7835947fcaccf329a3fc303986cb
         START_TIME: 2020-05-28T22:50:11Z
             UPTIME: 3m21.459090928s
-    *************************** 3. row ***************************
+    *************************** 2. row ***************************
               TYPE: pd
           INSTANCE: basic-pd:2379
     STATUS_ADDRESS: basic-pd:2379
@@ -710,15 +671,7 @@ Before proceeding, make sure the following requirements are satisfied:
           GIT_HASH: 56d4c3d2237f5bf6fb11a794731ed1d95c8020c2
         START_TIME: 2020-05-28T22:45:04Z
             UPTIME: 8m28.459091915s
-    *************************** 4. row ***************************
-              TYPE: tikv
-          INSTANCE: basic-tikv-1.basic-tikv-peer.tidb-cluster.svc:20160
-    STATUS_ADDRESS: 0.0.0.0:20180
-           VERSION: 4.0.0
-          GIT_HASH: 198a2cea01734ce8f46d55a29708f123f9133944
-        START_TIME: 2020-05-28T22:47:41Z
-            UPTIME: 5m51.45910075s
-    *************************** 5. row ***************************
+    *************************** 3. row ***************************
               TYPE: tikv
           INSTANCE: basic-tikv-0.basic-tikv-peer.tidb-cluster.svc:20160
     STATUS_ADDRESS: 0.0.0.0:20180
@@ -726,15 +679,7 @@ Before proceeding, make sure the following requirements are satisfied:
           GIT_HASH: 198a2cea01734ce8f46d55a29708f123f9133944
         START_TIME: 2020-05-28T22:48:21Z
             UPTIME: 5m11.459102648s
-    *************************** 6. row ***************************
-              TYPE: tikv
-          INSTANCE: basic-tikv-2.basic-tikv-peer.tidb-cluster.svc:20160
-    STATUS_ADDRESS: 0.0.0.0:20180
-           VERSION: 4.0.0
-          GIT_HASH: 198a2cea01734ce8f46d55a29708f123f9133944
-        START_TIME: 2020-05-28T22:47:17Z
-            UPTIME: 6m15.459103932s
-    6 rows in set (0.01 sec)
+    3 rows in set (0.01 sec)
     ```
 
 4. Load Grafana dashboard
@@ -797,13 +742,8 @@ Kubernetes makes it possible to both "edit" and "patch" deployed resources.
     NAME                              READY   STATUS        RESTARTS   AGE
     basic-discovery-6bb656bfd-7lbhx   1/1     Running       0          24m
     basic-pd-0                        1/1     Terminating   0          5m31s
-    basic-pd-1                        1/1     Running       0          8s
-    basic-pd-2                        1/1     Running       0          19s
     basic-tidb-0                      2/2     Running       0          2m19s
-    basic-tidb-1                      2/2     Running       0          3m29s
     basic-tikv-0                      1/1     Running       0          4m13s
-    basic-tikv-1                      1/1     Running       0          4m20s
-    basic-tikv-2                      1/1     Running       0          5m19s
     ```
 
 3. Forward port
