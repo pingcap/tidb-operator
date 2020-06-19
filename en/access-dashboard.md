@@ -10,13 +10,29 @@ TiDB Dashboard is a visualized tool in TiDB 4.0 used to monitor and diagnose the
 
 This document describes how to access TiDB Dashboard in Kubernetes.
 
+## Prerequisites
+
+To access TiDB Dashboard smoothly in Kubernetes, you need to use TiDB Operator v1.1.1 (or later versions) and the TiDB cluster (v4.0.1 or later versions).
+
+You need to configure the `TidbCluster` object file as follows to enable quick access to TiDB Dashboard:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  pd:
+    enableDashboardInternalProxy: true
+```
+
 ## Quick start
 
 > **Warning:**
 >
 > This guide shows how to quickly access TiDB Dashboard. Do **NOT** use this method in the production environment. For production environments, refer to [Access TiDB Dashboard by Ingress](#access-tidb-dashboard-by-ingress).
 
-TiDB Dashboard is built in the PD component in 4.0 versions. You can refer to the following example to quickly deploy a v4.0.0-rc TiDB cluster in Kubernetes.
+TiDB Dashboard is built in the PD component in TiDB 4.0 and later versions. You can refer to the following example to quickly deploy a v4.0.1 TiDB cluster in Kubernetes.
 
 1. Deploy the following `.yaml` file into the Kubernetes cluster by running the `kubectl apply -f` command:
 
@@ -24,28 +40,29 @@ TiDB Dashboard is built in the PD component in 4.0 versions. You can refer to th
     apiVersion: pingcap.com/v1alpha1
     kind: TidbCluster
     metadata:
-    name: basic
+      name: basic
     spec:
-    version: v4.0.0-rc
-    timezone: UTC
-    pvReclaimPolicy: Delete
-    pd:
+      version: v4.0.1
+      timezone: UTC
+      pvReclaimPolicy: Delete
+      pd:
+        enableDashboardInternalProxy: true
         baseImage: pingcap/pd
         replicas: 1
         requests:
-        storage: "1Gi"
+          storage: "1Gi"
         config: {}
-    tikv:
+      tikv:
         baseImage: pingcap/tikv
         replicas: 1
         requests:
-        storage: "1Gi"
+          storage: "1Gi"
         config: {}
-    tidb:
+      tidb:
         baseImage: pingcap/tidb
         replicas: 1
         service:
-        type: ClusterIP
+          type: ClusterIP
         config: {}
     ```
 
@@ -54,16 +71,14 @@ TiDB Dashboard is built in the PD component in 4.0 versions. You can refer to th
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl port-forward svc/tidb-pd -n ${namespace} 2379:2379
+    kubectl port-forward svc/basic-discovery -n ${namespace} 10262:10262
     ```
 
-3. Visit <http://localhost:2379/dashboard> in your browser to access TiDB Dashboard.
+3. Visit <http://localhost:10262/dashboard> in your browser to access TiDB Dashboard.
 
 ## Access TiDB Dashboard by Ingress
 
 In important production environments, it is recommended to expose the TiDB Dashboard service using Ingress.
-
-Because the built-in TiDB Dashboard uses the same port as PD APIs do, if you expose TiDB Dashboard in other methods, do not expose the interfaces related to PD APIs.
 
 ### Prerequisites
 
@@ -83,26 +98,22 @@ The following is an `.yaml` example of accessing TiDB Dashboard using Ingress:
     apiVersion: extensions/v1beta1
     kind: Ingress
     metadata:
-    name: access-dashboard
-    namespace: ${namespace}
+      name: access-dashboard
+      namespace: ${namespace}
     spec:
-    rules:
+      rules:
         - host: ${host}
-        http:
+          http:
             paths:
-            - backend:
-                serviceName: ${cluster_name}-pd
-                servicePort: 2379
+              - backend:
+                  serviceName: ${cluster_name}-discovery
+                  servicePort: 10262
                 path: /dashboard
     ```
 
 2. After Ingress is deployed, you can access TiDB Dashboard via <http://${host}/dashboard> outside the Kubernetes cluster.
 
 ## Enable Ingress TLS
-
-> **Note:**
->
-> Ingress presumes that Transport Layer Security (TLS) is terminated. Therefore, if the current TiDB cluster enables [TLS verification](enable-tls-between-components.md), you cannot access TiDB Dashboard by Ingress.
 
 Ingress supports TLS. See [Ingress TLS](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls). The following example shows how to use Ingress TLS:
 
@@ -122,8 +133,8 @@ spec:
       http:
         paths:
           - backend:
-              serviceName: ${cluster_name}-pd
-              servicePort: 2379
+              serviceName: ${cluster_name}-discovery
+              servicePort: 10262
             path: /dashboard
 ```
 
@@ -144,3 +155,18 @@ type: kubernetes.io/tls
 ```
 
 After Ingress is deployed, visit <https://{host}/dashboard> to access TiDB Dashboard.
+
+## Update TiDB cluster
+
+If you enable quick access to TiDB Dashboard by updating an existing TiDB cluster, you need update the following two configurations:
+
+```yaml
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  configUpdateStrategy: RollingUpdate
+  pd:
+    enableDashboardInternalProxy: true
+```
