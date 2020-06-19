@@ -15,47 +15,64 @@ The corresponding relationship between TiDB Operator and TiDB versions is as fol
 | v1.1 | v3.0, v3.1, v4.0 |
 | dev | v3.0, v3.1, v4.0, dev |
 
-TiDB Operator provides several ways to deploy TiDB clusters in Kubernetes:
+<NavColumns>
+<NavColumn>
+<ColumnTitle>About TiDB Operator</ColumnTitle>
 
-+ For test environment:
+- [TiDB Operator Overview](tidb-operator-overview.md)
+- [v1.1 Important Notes](notes-tidb-operator-v1.1.md)
 
-    - [Get Started](get-started.md) using kind, Minikube, or the Google Cloud Shell
+</NavColumn>
 
-+ For production environment:
+<NavColumn>
+<ColumnTitle>Quick Start</ColumnTitle>
 
-    + On public cloud:
-        - [Deploy TiDB on AWS EKS](deploy-on-aws-eks.md)
-        - [Deploy TiDB on GCP GKE (beta)](deploy-on-gcp-gke.md)
-        - [Deploy TiDB on Alibaba Cloud ACK](deploy-on-alibaba-cloud.md)
+- [kind](get-started.md#create-a-kubernetes-cluster-using-kind)
+- [Minikube](get-started.md#create-a-kubernetes-cluster-using-minikube)
+- [GKE](deploy-tidb-from-kubernetes-gke.md)
 
-    - In an existing Kubernetes cluster:
+</NavColumn>
 
-        First install TiDB Operator in a Kubernetes cluster according to [Deploy TiDB Operator in Kubernetes](deploy-tidb-operator.md), then deploy your TiDB clusters according to [Deploy TiDB in General Kubernetes](deploy-on-general-kubernetes.md).
+<NavColumn>
+<ColumnTitle>Deploy TiDB</ColumnTitle>
 
-        You also need to adjust the configuration of the Kubernetes cluster based on [Prerequisites for TiDB in Kubernetes](prerequisites.md) and configure the local PV for your Kubernetes cluster to achieve low latency of local storage for TiKV according to [Local PV Configuration](configure-storage-class.md#local-pv-configuration).
+- [On AWS EKS](deploy-on-aws-eks.md)
+- [On GCP GKE](deploy-on-gcp-gke.md)
+- [On Alibaba ACK](deploy-on-alibaba-cloud.md)
+- [On Self-managed Kubernetes](deploy-on-general-kubernetes.md)
+- [Deploy TiFlash](deploy-tiflash.md)
+- [Deploy Monitoring Services](monitor-a-tidb-cluster.md)
 
-Before deploying TiDB on any of the above two environments, you can always refer to [TiDB Cluster Configuration Document](configure-a-tidb-cluster.md) to customize TiDB configurations.
+</NavColumn>
 
-After the deployment is complete, see the following documents to use, operate, and maintain TiDB clusters in Kubernetes:
+<NavColumn>
+<ColumnTitle>Secure</ColumnTitle>
 
-+ [Access the TiDB Cluster](access-tidb.md)
-+ [Scale TiDB Cluster](scale-a-tidb-cluster.md)
-+ [Upgrade TiDB Cluster](upgrade-a-tidb-cluster.md#upgrade-the-version-of-tidb-cluster)
-+ [Change the Configuration of TiDB Cluster](upgrade-a-tidb-cluster.md#change-the-configuration-of-tidb-cluster)
-+ [Backup and Restore](backup-and-restore-using-helm-charts.md)
-+ [Automatic Failover](use-auto-failover.md)
-+ [Monitor a TiDB Cluster in Kubernetes](monitor-a-tidb-cluster.md)
-+ [Collect TiDB Logs in Kubernetes](collect-tidb-logs.md)
-+ [Maintain Kubernetes Nodes that Hold the TiDB Cluster](maintain-a-kubernetes-node.md)
+- [Enable TLS for the MySQL Client](enable-tls-for-mysql-client.md)
+- [Enable TLS between TiDB Components](enable-tls-between-components.md)
 
-When a problem occurs and the cluster needs diagnosis, you can:
+</NavColumn>
 
-+ See [TiDB FAQs in Kubernetes](faq.md) for any available solution;
-+ See [Troubleshoot TiDB in Kubernetes](troubleshoot.md) to shoot troubles.
+<NavColumn>
+<ColumnTitle>Maintain</ColumnTitle>
 
-TiDB in Kubernetes provides a dedicated command-line tool `tkctl` for cluster management and auxiliary diagnostics. Meanwhile, some of TiDB's tools are used differently in Kubernetes. You can:
+- [Upgrade a TiDB Cluster](upgrade-a-tidb-cluster.md)
+- [Upgrade TiDB Operator](upgrade-tidb-operator.md)
+- [Scale a TiDB Cluster](scale-a-tidb-cluster.md)
+- [Backup and Restore](backup-and-restore-using-helm-charts.md)
+- [Maintain Kubernetes Nodes](maintain-a-kubernetes-node.md)
+- [Use Automatic Failover](use-auto-failover.md)
 
-+ Use `tkctl` according to [`tkctl` Guide](use-tkctl.md );
-+ See [Tools in Kubernetes](tidb-toolkit.md) to understand how TiDB tools are used in Kubernetes.
+</NavColumn>
 
-Finally, when a new version of TiDB Operator is released, you can refer to [Upgrade TiDB Operator](upgrade-tidb-operator.md) to upgrade to the latest version.
+<NavColumn>
+<ColumnTitle>Reference</ColumnTitle>
+
+- [TiDB Scheduler](tidb-scheduler.md)
+- [API Docs](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)
+- [Use tkctl](use-tkctl.md)
+- [Confiure TiDB Binlog Drainer](configure-tidb-binlog-drainer.md)
+
+</NavColumn>
+
+</NavColumns>

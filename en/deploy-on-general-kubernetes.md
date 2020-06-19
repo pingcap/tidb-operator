@@ -10,6 +10,7 @@ This document describes how to deploy a TiDB cluster on general Kubernetes.
 
 ## Prerequisites
 
+- Meet [prerequisites](prerequisites.md).
 - Complete [deploying TiDB Operator](deploy-tidb-operator.md).
 
 ## Deploy TiDB cluster
