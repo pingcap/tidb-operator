@@ -25,6 +25,7 @@
 - Bump dm version to v2.0.0-beta.1 ([#2615](https://github.com/pingcap/tidb-operator/pull/2615), [@tennix](https://github.com/tennix))
 - support setting discovery resources ([#2434](https://github.com/pingcap/tidb-operator/pull/2434), [@shonge](https://github.com/shonge))
 - User now can specify `ReadyToScaleThresholdSeconds` in `TidbClusterAutoScaler`, until cluster keep in ready to auto scale status for `ReadyToScaleThresholdSeconds` seconds, then cluster start auto scaling ([#2307](https://github.com/pingcap/tidb-operator/pull/2307), [@vincent178](https://github.com/vincent178))
+- Support scraping `Pump` and `Drainer` metrics in TidbMonitor ([#2750](https://github.com/pingcap/tidb-operator/pull/2750), [@Yisaer](https://github.com/Yisaer))
 
 
 # TiDB Operator v1.1.0 Release Notes
