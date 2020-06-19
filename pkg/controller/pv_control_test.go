@@ -39,7 +39,7 @@ func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	err := control.PatchPVReclaimPolicy(tc, pv, tc.Spec.PVReclaimPolicy)
+	err := control.PatchPVReclaimPolicy(tc, pv, *tc.Spec.PVReclaimPolicy)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -56,7 +56,7 @@ func TestPVControlPatchPVReclaimPolicyFailed(t *testing.T) {
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.PatchPVReclaimPolicy(tc, pv, tc.Spec.PVReclaimPolicy)
+	err := control.PatchPVReclaimPolicy(tc, pv, *tc.Spec.PVReclaimPolicy)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -79,7 +79,7 @@ func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 		}
 		return true, nil, nil
 	})
-	err := control.PatchPVReclaimPolicy(tc, pv, tc.Spec.PVReclaimPolicy)
+	err := control.PatchPVReclaimPolicy(tc, pv, *tc.Spec.PVReclaimPolicy)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
