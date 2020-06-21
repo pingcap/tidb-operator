@@ -152,8 +152,8 @@ type TidbClusterSpec struct {
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-	// +kubebuilder:default=Recycle
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
 	// ImagePullPolicy of TiDB cluster Pods
 	// +kubebuilder:default=IfNotPresent
@@ -694,6 +694,15 @@ type ComponentSpec struct {
 	// - SLOW_LOG_FILE
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Additional containers of the component.
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
+
+	// Additional volumes of component pod. Currently this only
+	// supports additional volume mounts for sidecar containers.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1184,6 +1193,9 @@ type BackupStatus struct {
 	TimeStarted metav1.Time `json:"timeStarted"`
 	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// BackupSizeReadable is the data size of the backup.
+	// the difference with BackupSize is that its format is human readable
+	BackupSizeReadable string `json:"backupSizeReadable"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
 	// CommitTs is the snapshot time point of tidb cluster.
