@@ -497,8 +497,8 @@ func (in *CommonConfig) DeepCopyInto(out *CommonConfig) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Path != nil {
-		in, out := &in.Path, &out.Path
+	if in.FlashDataPath != nil {
+		in, out := &in.FlashDataPath, &out.FlashDataPath
 		*out = new(string)
 		**out = **in
 	}
