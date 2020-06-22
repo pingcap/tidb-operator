@@ -383,64 +383,6 @@ func TestDefaultTac(t *testing.T) {
 
 }
 
-func TestCheckAndUpdateTacAnn(t *testing.T) {
-	g := NewGomegaWithT(t)
-	tests := []struct {
-		name            string
-		haveScaling     bool
-		targetNamespace string
-		targetName      string
-		markedNamespace string
-		markedName      string
-	}{
-		{
-			name:            "first syncing",
-			haveScaling:     false,
-			markedName:      "",
-			markedNamespace: "",
-			targetName:      "foo",
-			targetNamespace: "bar",
-		},
-		{
-			name:            "second syncing",
-			haveScaling:     true,
-			markedName:      "foo",
-			markedNamespace: "bar",
-			targetName:      "foo",
-			targetNamespace: "bar",
-		},
-		{
-			name:            "change target",
-			haveScaling:     true,
-			markedName:      "foo",
-			markedNamespace: "bar",
-			targetName:      "foo2",
-			targetNamespace: "bar2",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tac := newTidbClusterAutoScaler()
-			tac.Annotations = nil
-			tac.Spec.Cluster.Name = tt.targetName
-			tac.Spec.Cluster.Namespace = tt.targetNamespace
-			if tt.haveScaling {
-				tac.Annotations = map[string]string{}
-				tac.Annotations[label.AnnAutoScalingTargetNamespace] = tt.targetNamespace
-				tac.Annotations[label.AnnAutoScalingTargetName] = tt.targetName
-			}
-			checkAndUpdateTacAnn(tac)
-			v, ok := tac.Annotations[label.AnnAutoScalingTargetNamespace]
-			g.Expect(ok).Should(Equal(ok))
-			g.Expect(v).Should(Equal(tt.targetNamespace))
-			v, ok = tac.Annotations[label.AnnAutoScalingTargetName]
-			g.Expect(ok).Should(Equal(ok))
-			g.Expect(v).Should(Equal(tt.targetName))
-		})
-	}
-}
-
 func TestGenMetricsEndpoint(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tac := newTidbClusterAutoScaler()

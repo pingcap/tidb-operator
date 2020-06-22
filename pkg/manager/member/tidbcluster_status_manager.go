@@ -55,7 +55,11 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.Tidb
 	if err != nil {
 		return err
 	}
-	return tcsm.syncDashboardMetricStorage(tc, tm)
+	err = tcsm.syncDashboardMetricStorage(tc, tm)
+	if err != nil {
+		return err
+	}
+	return tcsm.syncAutoScalerRef(tc)
 }
 
 func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbMonitor, error) {
@@ -115,6 +119,23 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	// sync grafana key
 	err = syncComponent(grafanaExist, tm, grafanaComponent, 3000, pdEtcdClient)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tcsm *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster) error {
+	if tc.Status.AutoScaler == nil {
+		return nil
+	}
+	tacNamespace := tc.Status.AutoScaler.Namespace
+	tacName := tc.Status.AutoScaler.Name
+	_, err := tcsm.cli.PingcapV1alpha1().TidbClusterAutoScalers(tacNamespace).Get(tacName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			tc.Status.AutoScaler = nil
+			err = nil
+		}
 		return err
 	}
 	return nil

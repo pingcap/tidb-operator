@@ -251,29 +251,6 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 	}
 }
 
-func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {
-	tac.Annotations[label.AnnAutoScalingTargetNamespace] = tac.Spec.Cluster.Namespace
-	tac.Annotations[label.AnnAutoScalingTargetName] = tac.Spec.Cluster.Name
-}
-
-// checkAndUpdateTacRef would compare the target tidbcluster ref stored in the annotations
-// and in the Spec. It not equal, the previous stored status would be empty and the stored Ref
-// would be updated.
-func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-		resetAutoScalingAnn(tac)
-		return
-	}
-	name := tac.Annotations[label.AnnAutoScalingTargetName]
-	namespace := tac.Annotations[label.AnnAutoScalingTargetNamespace]
-	if name == tac.Spec.Cluster.Name && namespace == tac.Spec.Cluster.Namespace {
-		return
-	}
-	// If not satisfied, reset tac Ann
-	resetAutoScalingAnn(tac)
-}
-
 func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 	if tac.Spec.MetricsUrl == nil && tac.Spec.Monitor == nil {
 		return "", fmt.Errorf("tac[%s/%s] metrics url or monitor should be defined explicitly", tac.Namespace, tac.Name)

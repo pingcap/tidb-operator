@@ -79,12 +79,18 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
-			resetAutoScalingAnn(tac)
 			return nil
 		}
 		return err
 	}
-	checkAndUpdateTacAnn(tac)
+	permitted, err := am.checkAutoScalerRef(tc, tac)
+	if err != nil {
+		return err
+	}
+	if !permitted {
+		return nil
+	}
+
 	oldTc := tc.DeepCopy()
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err
@@ -208,4 +214,39 @@ func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClust
 		}
 		return updateErr
 	})
+}
+
+// checkAutoScalerRef will first check whether the target tidbcluster's auto-scaler reference have been occupied.
+// If it has been, and the reference scaler is the current auto-scaler itself, the auto-scaler would be permitted,
+// otherwise the auto-scaling would be forbidden.
+// If the target tidbcluster's auto-scaler reference is empty, then the auto-scaler will try to patch itself to the
+// references, and if the patching is success, the auto-scaling would discard the current syncing and wait for the next
+// syncing round.
+func (am *autoScalerManager) checkAutoScalerRef(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) (bool, error) {
+	if tc.Status.AutoScaler != nil {
+		if tc.Status.AutoScaler.Name == tac.Name && tc.Status.AutoScaler.Namespace == tac.Namespace {
+			return true, nil
+		} else {
+			msg := fmt.Sprintf("tac[%s/%s]'s target tc[%s/%s] already controlled by another auto-scaler", tac.Namespace, tac.Name, tc.Namespace, tc.Name)
+			klog.Info(msg)
+			return false, nil
+		}
+	} else {
+		err := am.updateAutoScalerRef(tc, tac)
+		return true, err
+	}
+}
+
+func (am *autoScalerManager) updateAutoScalerRef(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+	newTc := tc.DeepCopy()
+	newTc.Status.AutoScaler = &v1alpha1.TidbClusterAutoScalerRef{
+		Name:      tac.Name,
+		Namespace: tac.Namespace,
+	}
+	_, err := am.tcControl.UpdateTidbCluster(newTc, &newTc.Status, &tc.Status)
+	if err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("tac[%s/%s] patch itself to tc[%s/%s] auto-scaler ref success, do auto-scaling in next round", tac.Namespace, tac.Name, tc.Namespace, tc.Name)
+	return controller.RequeueErrorf(msg)
 }
