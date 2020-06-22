@@ -12,9 +12,9 @@ spec:
     baseImage: grafana/grafana
     version: 6.0.1
   initializer:
-    baseImage: pingcap/tidb-monitor-initializer
-    version: v4.0.0
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
+    version: v4.0.1
   reloader:
-    baseImage: pingcap/tidb-monitor-reloader
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
     version: v1.0.1
   imagePullPolicy: IfNotPresent

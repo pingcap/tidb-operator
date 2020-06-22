@@ -666,6 +666,20 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.AdditionalContainers != nil {
+		in, out := &in.AdditionalContainers, &out.AdditionalContainers
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.AdditionalVolumes != nil {
+		in, out := &in.AdditionalVolumes, &out.AdditionalVolumes
+		*out = make([]v1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -4918,6 +4932,11 @@ func (in *TiKVCoprocessorReadPoolConfig) DeepCopyInto(out *TiKVCoprocessorReadPo
 		*out = new(string)
 		**out = **in
 	}
+	if in.UseUnifiedPool != nil {
+		in, out := &in.UseUnifiedPool, &out.UseUnifiedPool
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -5801,8 +5820,33 @@ func (in *TiKVRaftstoreConfig) DeepCopyInto(out *TiKVRaftstoreConfig) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.StoreRescheduleDuration != nil {
+		in, out := &in.StoreRescheduleDuration, &out.StoreRescheduleDuration
+		*out = new(string)
+		**out = **in
+	}
+	if in.ApplyYieldDuration != nil {
+		in, out := &in.ApplyYieldDuration, &out.ApplyYieldDuration
+		*out = new(string)
+		**out = **in
+	}
 	if in.HibernateRegions != nil {
 		in, out := &in.HibernateRegions, &out.HibernateRegions
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ApplyEarly != nil {
+		in, out := &in.ApplyEarly, &out.ApplyEarly
+		*out = new(bool)
+		**out = **in
+	}
+	if in.PerfLevel != nil {
+		in, out := &in.PerfLevel, &out.PerfLevel
+		*out = new(int64)
+		**out = **in
+	}
+	if in.DevAssert != nil {
+		in, out := &in.DevAssert, &out.DevAssert
 		*out = new(bool)
 		**out = **in
 	}
@@ -6300,6 +6344,11 @@ func (in *TiKVStorageReadPoolConfig) DeepCopyInto(out *TiKVStorageReadPoolConfig
 		*out = new(string)
 		**out = **in
 	}
+	if in.UseUnifiedPool != nil {
+		in, out := &in.UseUnifiedPool, &out.UseUnifiedPool
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -6759,6 +6808,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = new(HelperSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PVReclaimPolicy != nil {
+		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
+		*out = new(v1.PersistentVolumeReclaimPolicy)
+		**out = **in
+	}
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
@@ -7095,6 +7149,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	in.Reloader.DeepCopyInto(&out.Reloader)
 	in.Initializer.DeepCopyInto(&out.Initializer)
+	if in.PVReclaimPolicy != nil {
+		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
+		*out = new(v1.PersistentVolumeReclaimPolicy)
+		**out = **in
+	}
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
@@ -7133,6 +7192,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 	}
 	if in.AlertmanagerURL != nil {
 		in, out := &in.AlertmanagerURL, &out.AlertmanagerURL
+		*out = new(string)
+		**out = **in
+	}
+	if in.AlertManagerRulesVersion != nil {
+		in, out := &in.AlertManagerRulesVersion, &out.AlertManagerRulesVersion
 		*out = new(string)
 		**out = **in
 	}

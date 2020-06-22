@@ -100,10 +100,12 @@ func NewOperatorActions(cli versioned.Interface,
 	fw portforward.PortForward, f *framework.Framework) OperatorActions {
 
 	var tcStsGetter typedappsv1.StatefulSetsGetter
+	astsEnable := true
 	if operatorConfig != nil && operatorConfig.Enabled(features.AdvancedStatefulSet) {
 		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
 	} else {
 		tcStsGetter = kubeCli.AppsV1()
+		astsEnable = false
 	}
 
 	oa := &operatorActions{
@@ -118,6 +120,7 @@ func NewOperatorActions(cli versioned.Interface,
 		pollInterval: pollInterval,
 		cfg:          cfg,
 		fw:           fw,
+		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, astsEnable),
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()
@@ -139,7 +142,7 @@ func NewOperatorActions(cli versioned.Interface,
 
 const (
 	DefaultPollTimeout          time.Duration = 20 * time.Minute
-	DefaultPollInterval         time.Duration = 1 * time.Minute
+	DefaultPollInterval         time.Duration = 5 * time.Second
 	BackupAndRestorePollTimeOut time.Duration = 60 * time.Minute
 	grafanaUsername                           = "admin"
 	grafanaPassword                           = "admin"
@@ -256,6 +259,7 @@ type operatorActions struct {
 	lock               sync.Mutex
 	eventWorkerRunning bool
 	fw                 portforward.PortForward
+	crdUtil            *CrdTestUtil
 }
 
 type clusterEvent struct {
@@ -339,6 +343,8 @@ type TidbClusterConfig struct {
 
 	pumpConfig    []string
 	drainerConfig []string
+
+	Clustrer *v1alpha1.TidbCluster
 }
 
 func (tc *TidbClusterConfig) String() string {
@@ -946,6 +952,9 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
 	klog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
+	if info.Clustrer != nil {
+		return oa.crdUtil.WaitForTidbClusterReady(info.Clustrer, 120*time.Minute, 1*time.Minute)
+	}
 
 	ns := info.Namespace
 	tcName := info.ClusterName
@@ -1083,6 +1092,7 @@ func (oa *operatorActions) BeginInsertDataTo(info *TidbClusterConfig) error {
 	pod := oa.getBlockWriterPod(info, "sbtest")
 	pod, err := oa.kubeCli.CoreV1().Pods(info.Namespace).Create(pod)
 	if err != nil {
+		klog.Error(err)
 		return err
 	}
 	info.blockWriterPod = pod
@@ -1744,7 +1754,7 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
 			klog.Errorf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
-		} else if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
+		} else if pv.Spec.PersistentVolumeReclaimPolicy != *tc.Spec.PVReclaimPolicy {
 			klog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
 			return false, nil
 		}
@@ -2921,10 +2931,12 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 	sets := map[string]string{
 		"binlog.pump.create":  "true",
 		"binlog.pump.storage": "1Gi",
+		"binlog.pump.image":   fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion),
 	}
 
 	if withDrainer {
 		sets["binlog.drainer.create"] = "true"
+		sets["binlog.drainer.image"] = fmt.Sprintf("pingcap/tidb-binlog:%v", from.ClusterVersion)
 		if isv1 {
 			sets["binlog.pump.create"] = "true"
 			sets["binlog.drainer.destDBType"] = "mysql"

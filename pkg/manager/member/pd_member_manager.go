@@ -315,6 +315,8 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	}
 	if upgrading {
 		tc.Status.PD.Phase = v1alpha1.UpgradePhase
+	} else if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.PD.Phase = v1alpha1.ScalePhase
 	} else {
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
@@ -685,8 +687,8 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 		})
 	}
 	pdContainer.Env = util.AppendEnv(env, basePDSpec.Env())
-	podSpec.Volumes = vols
-	podSpec.Containers = []corev1.Container{pdContainer}
+	podSpec.Volumes = append(vols, basePDSpec.AdditionalVolumes()...)
+	podSpec.Containers = append([]corev1.Container{pdContainer}, basePDSpec.AdditionalContainers()...)
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

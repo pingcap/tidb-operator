@@ -1920,6 +1920,19 @@ string
 Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometheus.io/docs/alerting/alertmanager/</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>alertManagerRulesVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
+default to current tidb cluster version, for example: v3.0.15</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2602,6 +2615,18 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>backupSizeReadable</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BackupSizeReadable is the data size of the backup.
+the difference with BackupSize is that its format is human readable</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupSize</code></br>
 <em>
 int64
@@ -3257,6 +3282,35 @@ tidb-operator built envs.
 - POD_NAME
 - BINLOG_ENABLED
 - SLOW_LOG_FILE</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional containers of the component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod. Currently this only
+supports additional volume mounts for sidecar containers.</p>
 </td>
 </tr>
 </tbody>
@@ -11570,6 +11624,18 @@ string
 <p>Optional: Defaults to 10MB</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>use-unified-pool</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvdbconfig">TiKVDbConfig</h3>
@@ -13371,6 +13437,30 @@ int64
 </tr>
 <tr>
 <td>
+<code>store-reschedule-duration</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>apply-yield-duration</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 500ms</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hibernate-regions</code></br>
 <em>
 bool
@@ -13378,6 +13468,42 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>apply-early</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>perf-level</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dev-assert</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -14537,6 +14663,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 10MB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>use-unified-pool</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
@@ -16206,6 +16344,19 @@ string
 <em>(Optional)</em>
 <p>alertmanagerURL is where tidb-monitoring push alerts to.
 Ref: <a href="https://prometheus.io/docs/alerting/alertmanager/">https://prometheus.io/docs/alerting/alertmanager/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>alertManagerRulesVersion</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
+default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 </tr>
 </tbody>

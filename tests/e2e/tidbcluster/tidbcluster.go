@@ -88,6 +88,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	 * StatefulSet or AdvancedStatefulSet interface.
 	 */
 	var stsGetter func(namespace string) typedappsv1.StatefulSetInterface
+	var crdUtil *tests.CrdTestUtil
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -119,6 +120,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			stsGetter = c.AppsV1().StatefulSets
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, false)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -146,44 +148,54 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		for _, clusterCfg := range clusterCfgs {
 			localCfg := clusterCfg
 			ginkgo.It(fmt.Sprintf("[TiDB Version: %s] %s", localCfg.Version, localCfg.Name), func() {
-				cluster := fixture.GetTidbCluster(ns, localCfg.Name, localCfg.Version)
+				tc := fixture.GetTidbCluster(ns, localCfg.Name, localCfg.Version)
 				// support reclaim pv when scale in tikv or pd component
-				cluster.Spec.EnablePVReclaim = pointer.BoolPtr(true)
+				tc.Spec.EnablePVReclaim = pointer.BoolPtr(true)
 				// change tikv data directory to a subdirectory of data volume
-				cluster.Spec.TiKV.DataSubDir = "data"
+				tc.Spec.TiKV.DataSubDir = "data"
 
-				tests.CreateTidbClusterOrDie(cli, cluster)
-				err := oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 				framework.ExpectNoError(err)
-				tests.CheckDisasterToleranceOrDie(c, cluster)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				err = crdUtil.CheckDisasterTolerance(tc)
+				framework.ExpectNoError(err)
 
 				// scale
-				tc := tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
 				tc.Spec.TiDB.Replicas = 3
 				tc.Spec.TiKV.Replicas = 5
 				tc.Spec.PD.Replicas = 5
-				tests.UpdateTidbClusterOrDie(cli, tc)
-				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 				framework.ExpectNoError(err)
-				tests.CheckDisasterToleranceOrDie(c, cluster)
+				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				err = crdUtil.CheckDisasterTolerance(tc)
+				framework.ExpectNoError(err)
 
-				tc = tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
 				tc.Spec.TiDB.Replicas = 2
 				tc.Spec.TiKV.Replicas = 4
 				tc.Spec.PD.Replicas = 3
-				tests.UpdateTidbClusterOrDie(cli, tc)
-				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
 				framework.ExpectNoError(err)
-				tests.CheckDisasterToleranceOrDie(c, cluster)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+				framework.ExpectNoError(err)
+				err = crdUtil.CheckDisasterTolerance(tc)
+				framework.ExpectNoError(err)
 
 				// configuration change
-				tc = tests.GetTidbClusterOrDie(cli, cluster.Name, cluster.Namespace)
+				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				framework.ExpectNoError(err)
 				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
 				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
 				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
 				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
-				tests.UpdateTidbClusterOrDie(cli, tc)
-				err = oa.WaitForTidbClusterReady(cluster, 30*time.Minute, 15*time.Second)
+				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				framework.ExpectNoError(err)
+				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
 			})
 		}
@@ -269,19 +281,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.It("Backup and restore TiDB Cluster", func() {
-		clusterA := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster3", "admin", utilimage.TiDBV3Version)
-		clusterB := newTidbClusterConfig(e2econfig.TestConfig, ns, "cluster4", "admin", utilimage.TiDBV3Version)
-		oa.DeployTidbClusterOrDie(&clusterA)
-		oa.DeployTidbClusterOrDie(&clusterB)
-		oa.CheckTidbClusterStatusOrDie(&clusterA)
-		oa.CheckTidbClusterStatusOrDie(&clusterB)
-		oa.CheckDisasterToleranceOrDie(&clusterA)
-		oa.CheckDisasterToleranceOrDie(&clusterB)
+		clusterFrom := newTidbClusterConfig(e2econfig.TestConfig, ns, "from", "admin", utilimage.TiDBV3Version)
+		clusterFrom.Resources["pd.replicas"] = "1"
+		clusterFrom.Resources["tidb.replicas"] = "1"
+		clusterFrom.Resources["tikv.replicas"] = "1"
+		clusterTo := newTidbClusterConfig(e2econfig.TestConfig, ns, "to", "admin", utilimage.TiDBV3Version)
+		clusterTo.Resources["pd.replicas"] = "1"
+		clusterTo.Resources["tidb.replicas"] = "1"
+		clusterTo.Resources["tikv.replicas"] = "1"
+		oa.DeployTidbClusterOrDie(&clusterFrom)
+		oa.DeployTidbClusterOrDie(&clusterTo)
+		oa.CheckTidbClusterStatusOrDie(&clusterFrom)
+		oa.CheckTidbClusterStatusOrDie(&clusterTo)
+		oa.CheckDisasterToleranceOrDie(&clusterFrom)
+		oa.CheckDisasterToleranceOrDie(&clusterTo)
 
 		// backup and restore
-		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterA.ClusterName, clusterB.ClusterName))
-		oa.BackupRestoreOrDie(&clusterA, &clusterB)
-
+		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterFrom.ClusterName, clusterTo.ClusterName))
+		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
 	})
 
 	ginkgo.It("Test aggregated apiserver", func() {
@@ -700,12 +717,14 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc.Spec.PD.Replicas = 1
 		tc.Spec.TiKV.Replicas = 1
 		tc.Spec.TiDB.Replicas = 1
-		tests.CreateTidbClusterOrDie(cli, tc)
-		err := oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
+		tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		framework.ExpectNoError(err, "Expected create tidbcluster")
+		err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 5*time.Second)
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
-		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimDelete
+		deletePVP := corev1.PersistentVolumeReclaimDelete
+		tm.Spec.PVReclaimPolicy = &deletePVP
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
@@ -746,7 +765,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
 		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
-		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimRetain
+		retainPVP := corev1.PersistentVolumeReclaimRetain
+		tm.Spec.PVReclaimPolicy = &retainPVP
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service type error")
 
@@ -808,6 +828,27 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
+
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if *tc.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+				framework.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
+				return true, nil
+			}
+			if *tm.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
+				framework.Logf("tidbmonitor PVReclaimPolicy changed into %v", *tm.Spec.PVReclaimPolicy)
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
 
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")

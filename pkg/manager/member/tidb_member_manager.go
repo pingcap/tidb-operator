@@ -722,8 +722,8 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	})
 
 	podSpec := baseTiDBSpec.BuildPodSpec()
-	podSpec.Containers = containers
-	podSpec.Volumes = vols
+	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
+	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
 

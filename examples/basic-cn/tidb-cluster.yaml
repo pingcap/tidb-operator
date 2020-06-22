@@ -6,12 +6,12 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v4.0.0
+  version: v4.0.1
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
   pd:
-    baseImage: pingcap/pd
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/pd
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
@@ -19,7 +19,7 @@ spec:
       storage: "1Gi"
     config: {}
   tikv:
-    baseImage: pingcap/tikv
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tikv
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
@@ -27,7 +27,7 @@ spec:
       storage: "1Gi"
     config: {}
   tidb:
-    baseImage: pingcap/tidb
+    baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb
     replicas: 1
     service:
       type: ClusterIP
