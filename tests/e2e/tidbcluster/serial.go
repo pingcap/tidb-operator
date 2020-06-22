@@ -56,6 +56,7 @@ import (
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // Serial specs describe tests which cannot run in parallel.
@@ -84,7 +85,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
-		genericCli, err = client.New(config, client.Options{Scheme: scheme.Scheme})
+		mapper, err := apiutil.NewDynamicRESTMapper(config, apiutil.WithLazyDiscovery)
+		framework.ExpectNoError(err)
+		genericCli, err = client.New(config, client.Options{
+			Scheme: scheme.Scheme,
+			Mapper: mapper,
+		})
 		framework.ExpectNoError(err, "failed to create clientset")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
