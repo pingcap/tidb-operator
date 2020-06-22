@@ -16,26 +16,28 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 				sh "chown -R jenkins:jenkins ./"
 				deleteDir()
 
-				dir("${WORKSPACE}/operator"){
+				dir("${WORKSPACE}/operator") {
 					stage('Download tidb-operator binary'){
 						GITHASH = sh(returnStdout: true, script: "curl ${UCLOUD_OSS_URL}/refs/pingcap/operator/${BUILD_BRANCH}/centos7/sha1").trim()
 						sh "curl ${UCLOUD_OSS_URL}/builds/pingcap/operator/${GITHASH}/centos7/tidb-operator.tar.gz | tar xz"
 					}
-					stage('Push tidb-operator Docker Image'){
-						withDockerServer([uri: "${env.DOCKER_HOST}"]) {
-							docker.build("uhub.service.ucloud.cn/pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
-							docker.build("pingcap/tidb-operator:${RELEASE_TAG}", "images/tidb-operator").push()
-						}
-					}
 
-					stage('Push tidb-backup-manager Docker Image'){
-						withDockerServer([uri: "${env.DOCKER_HOST}"]) {
-							docker.build("uhub.service.ucloud.cn/pingcap/tidb-backup-manager:${RELEASE_TAG}", "images/tidb-backup-manager").push()
-							docker.build("pingcap/tidb-backup-manager:${RELEASE_TAG}", "images/tidb-backup-manager").push()
-						}
-					}
+                    def images = ["tidb-operator", "tidb-backup-manager"]
+                    images.each {
+                        stage("Build and push ${it} image") {
+                            withDockerServer([uri: "${env.DOCKER_HOST}"]) {
+                                docker.build("pingcap/${it}:${RELEASE_TAG}", "images/${it}").push()
+                                withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
+                                    sh """
+                                    docker tag pingcap/${it}:${RELEASE_TAG} registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
+                                    docker push registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
+                                    """
+                                }
+                            }
+                        }
+                    }
 
-					stage('Release charts to qiniu'){
+					stage('Publish charts to charts.pingcap.org') {
 						ansiColor('xterm') {
 						sh """
 						set +x
@@ -59,17 +61,21 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID, CHART_ITEMS) {
 							./upload.py \${chartPrefixName}.tgz \${chartPrefixName}.tgz
 							./upload.py \${chartPrefixName}.sha256 \${chartPrefixName}.sha256
 						done
-						#Generate index.yaml for helm repo
-						wget https://storage.googleapis.com/kubernetes-helm/helm-v2.14.1-linux-amd64.tar.gz
-						tar -zxvf helm-v2.14.1-linux-amd64.tar.gz
-						mv linux-amd64/helm /usr/local/bin/helm
-						chmod +x /usr/local/bin/helm
-						#ls
-						curl http://charts.pingcap.org/index.yaml -o index.yaml
-						cat index.yaml
-						helm repo index . --url http://charts.pingcap.org/ --merge index.yaml
-						cat index.yaml
-						./upload.py index.yaml index.yaml
+						# Generate index.yaml for helm repo if the version is not "latest" (not a valid semantic version)
+                        if [ "${RELEASE_TAG}" != "latest" ]; then
+                            wget https://storage.googleapis.com/kubernetes-helm/helm-v2.14.1-linux-amd64.tar.gz
+                            tar -zxvf helm-v2.14.1-linux-amd64.tar.gz
+                            mv linux-amd64/helm /usr/local/bin/helm
+                            chmod +x /usr/local/bin/helm
+                            #ls
+                            curl http://charts.pingcap.org/index.yaml -o index.yaml
+                            cat index.yaml
+                            helm repo index . --url http://charts.pingcap.org/ --merge index.yaml
+                            cat index.yaml
+                            ./upload.py index.yaml index.yaml
+                        else
+                            echo "info: RELEASE_TAG is ${RELEASE_TAG}, skip adding it into chart index file"
+                        fi
 						"""
 						}
 					}

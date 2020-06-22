@@ -66,8 +66,13 @@ def call(BUILD_BRANCH, RELEASE_TAG, CREDENTIALS_ID) {
 						stage('Push utility docker images') {
 							withDockerServer([uri: "${env.DOCKER_HOST}"]) {
 								DEBUG_LIST.each {
-									docker.build("uhub.service.ucloud.cn/pingcap/${it}:${RELEASE_TAG}", "misc/images/${it}").push()
 									docker.build("pingcap/${it}:${RELEASE_TAG}", "misc/images/${it}").push()
+                                    withDockerRegistry([url: "https://registry.cn-beijing.aliyuncs.com", credentialsId: "ACR_TIDB_ACCOUNT"]) {
+                                        sh """
+                                        docker tag pingcap/${it}:${RELEASE_TAG} registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
+                                        docker push registry.cn-beijing.aliyuncs.com/tidb/${it}:${RELEASE_TAG}
+                                        """
+                                    }
 								}
 							}
 						}
