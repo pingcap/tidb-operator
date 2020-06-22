@@ -157,7 +157,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 		}
 	}
 	if existed {
-		err = fmt.Errorf("pd scale in: failed to check member %s deleted after being deleted", memberName)
+		err = fmt.Errorf("pd scale in: member %s still exist after being deleted", memberName)
 		klog.Error(err)
 		return err
 	}
