@@ -104,7 +104,7 @@ When you find some network connection issues between Pods from the log or monito
     tkctl debug -n ${namespace} ${pod_name}
     ```
 
-    After the remote shell is started, use the `dig` command to diagnose the DNS resolution. If the DNS resolution is abnormal, refer to [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/) for troubleshooting.
+    After the remote shell is started, use the `dig` command to diagnose the DNS resolution. If the DNS resolution is abnormal, refer to [Debugging DNS Resolution](https://v1-18.docs.kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/) for troubleshooting.
 
     {{< copyable "shell-regular" >}}
 
