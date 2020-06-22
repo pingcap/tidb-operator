@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -85,9 +87,11 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	}
 	permitted, err := am.checkAutoScalerRef(tc, tac)
 	if err != nil {
+		klog.Error(err)
 		return err
 	}
 	if !permitted {
+		klog.Infof("tac[%s/%s]'s auto-scaling is no permitted", tac.Namespace, tac.Name)
 		return nil
 	}
 
@@ -226,25 +230,32 @@ func (am *autoScalerManager) checkAutoScalerRef(tc *v1alpha1.TidbCluster, tac *v
 	if tc.Status.AutoScaler != nil {
 		if tc.Status.AutoScaler.Name == tac.Name && tc.Status.AutoScaler.Namespace == tac.Namespace {
 			return true, nil
-		} else {
-			msg := fmt.Sprintf("tac[%s/%s]'s target tc[%s/%s] already controlled by another auto-scaler", tac.Namespace, tac.Name, tc.Namespace, tc.Name)
-			klog.Info(msg)
-			return false, nil
 		}
-	} else {
-		err := am.updateAutoScalerRef(tc, tac)
-		return true, err
+		msg := fmt.Sprintf("tac[%s/%s]'s target tc[%s/%s] already controlled by another auto-scaler", tac.Namespace, tac.Name, tc.Namespace, tc.Name)
+		klog.Info(msg)
+		return false, nil
 	}
+	klog.Infof("tac[%s/%s]'s tc[%s/%s] start to occupy the auto-scaler ref", tac.Namespace, tac.Name, tc.Namespace, tc.Name)
+	err := am.patchAutoScalerRef(tc, tac)
+	return true, err
 }
 
-func (am *autoScalerManager) updateAutoScalerRef(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
-	newTc := tc.DeepCopy()
-	newTc.Status.AutoScaler = &v1alpha1.TidbClusterAutoScalerRef{
-		Name:      tac.Name,
-		Namespace: tac.Namespace,
-	}
-	_, err := am.tcControl.UpdateTidbCluster(newTc, &newTc.Status, &tc.Status)
+func (am *autoScalerManager) patchAutoScalerRef(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+	mergePatch, err := json.Marshal(map[string]interface{}{
+		"status": map[string]interface{}{
+			"auto-scaler": map[string]interface{}{
+				"name":      tac.Name,
+				"namespace": tac.Namespace,
+			},
+		},
+	})
 	if err != nil {
+		klog.Error(err)
+		return err
+	}
+	_, err = am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
+	if err != nil {
+		klog.Error(err)
 		return err
 	}
 	msg := fmt.Sprintf("tac[%s/%s] patch itself to tc[%s/%s] auto-scaler ref success, do auto-scaling in next round", tac.Namespace, tac.Name, tc.Namespace, tc.Name)

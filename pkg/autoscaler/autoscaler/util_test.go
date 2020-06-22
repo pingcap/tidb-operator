@@ -422,10 +422,6 @@ func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
 	}
 	tac.Spec.TiKV = &v1alpha1.TikvAutoScalerSpec{}
 	tac.Spec.TiDB = &v1alpha1.TidbAutoScalerSpec{}
-	tac.Spec.TiKV.ScaleOutThreshold = pointer.Int32Ptr(2)
-	tac.Spec.TiKV.ScaleInThreshold = pointer.Int32Ptr(2)
-	tac.Spec.TiDB.ScaleOutThreshold = pointer.Int32Ptr(2)
-	tac.Spec.TiDB.ScaleInThreshold = pointer.Int32Ptr(2)
 	return tac
 }
 
