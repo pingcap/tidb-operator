@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -315,6 +316,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	backup.Status.TimeStarted = metav1.Time{Time: started}
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
 	backup.Status.BackupSize = size
+	backup.Status.BackupSizeReadable = humanize.Bytes(uint64(size))
 	backup.Status.CommitTs = fmt.Sprintf("%d", commitTs)
 
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{

@@ -868,4 +868,8 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		}
 		monitor.Spec.Clusters[id] = tcRef
 	}
+	retainPVP := core.PersistentVolumeReclaimRetain
+	if monitor.Spec.PVReclaimPolicy == nil {
+		monitor.Spec.PVReclaimPolicy = &retainPVP
+	}
 }

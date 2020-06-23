@@ -15,17 +15,20 @@ package monitor
 
 import (
 	"fmt"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"path"
-	"time"
 )
 
 const (
+	nameLabel                  = "__meta_kubernetes_pod_label_app_kubernetes_io_name"
 	instanceLabel              = "__meta_kubernetes_pod_label_app_kubernetes_io_instance"
 	componentLabel             = "__meta_kubernetes_pod_label_app_kubernetes_io_component"
 	scrapeLabel                = "__meta_kubernetes_pod_annotation_prometheus_io_scrape"
@@ -45,6 +48,8 @@ var (
 	tidbPattern     config.Regexp
 	addressPattern  config.Regexp
 	tiflashPattern  config.Regexp
+	pumpPattern     config.Regexp
+	drainerPattern  config.Regexp
 	dashBoardConfig = `{
     "apiVersion": 1,
     "providers": [
@@ -95,6 +100,14 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	pumpPattern, err = config.NewRegexp("pump")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	drainerPattern, err = config.NewRegexp("drainer")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
@@ -105,13 +118,6 @@ type MonitorConfigModel struct {
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
-	pdReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "pd")
-	tikvReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tikv")
-	tidbReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tidb")
-	tiflashReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tiflash")
-	tiflashProxyReplacement := fmt.Sprintf("$1.$2-%s-peer:$3", "tiflash")
-	tiflashProxyPortLabel := fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")
-
 	var c = config.Config{
 		GlobalConfig: config.GlobalConfig{
 			ScrapeInterval:     model.Duration(15 * time.Second),
@@ -121,29 +127,23 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			"/prometheus-rules/rules/*.rules.yml",
 		},
 		ScrapeConfigs: []*config.ScrapeConfig{
-			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfig(portLabel, pdReplacement, true)),
-			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfig(portLabel, tidbReplacement, true)),
-			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfig(portLabel, tikvReplacement, true)),
-			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfig(portLabel, tiflashReplacement, true)),
-			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfig(tiflashProxyPortLabel, tiflashProxyReplacement, true)),
+			scrapeJob("pd", pdPattern, cmodel, buildAddressRelabelConfigByComponent("pd")),
+			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb")),
+			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv")),
+			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash")),
+			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy")),
+			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump")),
+			scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer")),
 		},
 	}
 	return &c
 }
 
-func buildAddressRelabelConfig(portLabelName, replacement string, isTidbClusterComponent bool) *config.RelabelConfig {
-	addressRelabelConfig := &config.RelabelConfig{
-		SourceLabels: model.LabelNames{
-			"__address__",
-			model.LabelName(portLabelName),
-		},
-		Action:      config.RelabelReplace,
-		Regex:       portPattern,
-		Replacement: "$1:$2",
-		TargetLabel: "__address__",
-	}
-	if isTidbClusterComponent {
-		addressRelabelConfig = &config.RelabelConfig{
+func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
+	kind = strings.ToLower(kind)
+	replacement := fmt.Sprintf("$1.$2-%s-peer:$3", kind)
+	f := func() *config.RelabelConfig {
+		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
 			Replacement: replacement,
@@ -151,11 +151,67 @@ func buildAddressRelabelConfig(portLabelName, replacement string, isTidbClusterC
 			SourceLabels: model.LabelNames{
 				podNameLabel,
 				instanceLabel,
-				model.LabelName(portLabelName),
+				portLabel,
 			},
 		}
 	}
-	return addressRelabelConfig
+	switch strings.ToLower(kind) {
+	case "pd":
+		return f()
+	case "tidb":
+		return f()
+	case "tikv":
+		return f()
+	case "tiflash":
+		return f()
+	case "tiflash-proxy":
+		return &config.RelabelConfig{
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: "$1.$2-tiflash-peer:$3",
+			TargetLabel: "__address__",
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				model.LabelName(fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")),
+			},
+		}
+	case "pump":
+		return &config.RelabelConfig{
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: "$1.$2-pump:$3",
+			TargetLabel: "__address__",
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				portLabel,
+			},
+		}
+	case "drainer":
+		return &config.RelabelConfig{
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: "$1.$2:$3",
+			TargetLabel: "__address__",
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				nameLabel,
+				portLabel,
+			},
+		}
+	default:
+		return &config.RelabelConfig{
+			SourceLabels: model.LabelNames{
+				"__address__",
+				portLabel,
+			},
+			Action:      config.RelabelReplace,
+			Regex:       portPattern,
+			Replacement: "$1:$2",
+			TargetLabel: "__address__",
+		}
+	}
 }
 
 func scrapeJob(jobName string, componentPattern config.Regexp, cmodel *MonitorConfigModel, addressRelabelConfig *config.RelabelConfig) *config.ScrapeConfig {
@@ -273,7 +329,8 @@ func addTlsConfig(pc *config.Config) {
 
 	for id, sconfig := range pc.ScrapeConfigs {
 		// TODO support tiflash tls when it gets ready
-		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" {
+		if sconfig.JobName == "pd" || sconfig.JobName == "tidb" || sconfig.JobName == "tikv" ||
+			sconfig.JobName == "pump" || sconfig.JobName == "drainer" {
 			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
 				CAFile:   path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
 				CertFile: path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey),

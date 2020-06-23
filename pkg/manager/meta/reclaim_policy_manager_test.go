@@ -165,6 +165,7 @@ func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVCon
 }
 
 func newTidbClusterForMeta() *v1alpha1.TidbCluster {
+	pvp := corev1.PersistentVolumeReclaimRetain
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -177,7 +178,7 @@ func newTidbClusterForMeta() *v1alpha1.TidbCluster {
 			Labels:    label.New().Instance(controller.TestClusterName),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PVReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+			PVReclaimPolicy: &pvp,
 		},
 	}
 }
