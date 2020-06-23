@@ -71,7 +71,7 @@ TiDB Operator 与适用的 TiDB 版本的对应关系如下：
 <ColumnTitle>参考</ColumnTitle>
 
 - [架构](tidb-scheduler.md)
-- [API 参考文档](https://github.com/pingcap/docs-tidb-operator/blob/master/zh/api-references.md)
+- [API 参考文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)
 - [工具](use-tkctl.md)
 - [配置](configure-tidb-binlog-drainer.md)
 
