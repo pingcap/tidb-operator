@@ -162,24 +162,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				framework.ExpectNoError(err)
 
 				// scale
-				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
-				tc.Spec.TiDB.Replicas = 3
-				tc.Spec.TiKV.Replicas = 5
-				tc.Spec.PD.Replicas = 5
-				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.TiDB.Replicas = 3
+					tc.Spec.TiKV.Replicas = 5
+					tc.Spec.PD.Replicas = 5
+					return nil
+				})
 				framework.ExpectNoError(err)
 				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err)
 
-				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
-				tc.Spec.TiDB.Replicas = 2
-				tc.Spec.TiKV.Replicas = 4
-				tc.Spec.PD.Replicas = 3
-				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.TiDB.Replicas = 2
+					tc.Spec.TiKV.Replicas = 4
+					tc.Spec.PD.Replicas = 3
+					return nil
+				})
 				framework.ExpectNoError(err)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
@@ -187,13 +187,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				framework.ExpectNoError(err)
 
 				// configuration change
-				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
-				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
-				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
-				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
-				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
-				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+					tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+					tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
+					tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
+					return nil
+				})
 				framework.ExpectNoError(err)
 				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
