@@ -86,7 +86,7 @@ kubectl describe statefulsets -n ${namespace} ${release_name}-pd
     tkctl debug -n ${namespace} ${pod_name}
     ```
 
-    远端 shell 启动后，使用 `dig` 命令诊断 DNS 解析，假如 DNS 解析异常，请参照[诊断 Kubernetes DNS 解析](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/)进行故障排除：
+    远端 shell 启动后，使用 `dig` 命令诊断 DNS 解析，假如 DNS 解析异常，请参照[诊断 Kubernetes DNS 解析](https://kubernetes.io/zh/docs/tasks/administer-cluster/dns-debugging-resolution/)进行故障排除：
 
     {{< copyable "shell-regular" >}}
 
