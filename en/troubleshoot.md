@@ -52,18 +52,6 @@ To use the diagnostic mode for troubleshooting:
 
     After the Pod is rebuilt, it automatically returns to the normal mode.
 
-## Recover the cluster after accidental deletion
-
-TiDB Operator uses PV (Persistent Volume) and PVC (Persistent Volume Claim) to store persistent data. If you accidentally delete a cluster using `helm delete`, the PV/PVC objects and data are still retained to ensure data safety.
-
-To restore the cluster at this time, use the `helm install` command to create a cluster with the same name. The retained PV/PVC and data are reused.
-
-{{< copyable "shell-regular" >}}
-
-```shell
-helm install pingcap/tidb-cluster -n ${release_name} --namespace=${namespace} --version=${version} -f values.yaml
-```
-
 ## Pod is not created normally
 
 After creating a cluster using `helm install`, if the Pod is not created, you can diagnose it using the following commands:
