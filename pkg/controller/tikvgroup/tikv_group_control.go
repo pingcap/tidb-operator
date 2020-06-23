@@ -58,7 +58,9 @@ func (dtc *defaultTiKVGroupControl) reconcileTiKVGroup(tg *v1alpha1.TiKVGroup) e
 	var errs []error
 	oldStatus := tg.Status.DeepCopy()
 
-	// TODO: update tikvgroup
+	if err := dtc.updateTiKVGroup(tg); err != nil {
+		errs = append(errs, err)
+	}
 
 	// TODO: update conditionUpdater
 
