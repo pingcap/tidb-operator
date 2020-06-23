@@ -508,6 +508,24 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
 			framework.ExpectNoError(err, "Create TidbMonitorClusterAutoScaler error")
+
+			framework.Logf("start to check auto-scaler ref")
+			// check TidbCluster Status AutoScaler Ref
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Status.AutoScaler == nil {
+					return false, nil
+				}
+				if tc.Status.AutoScaler.Name != tac.Name || tc.Status.AutoScaler.Namespace != tac.Namespace {
+					return false, fmt.Errorf("wrong tidbcluster auto-scaler ref[%s/%s]", tc.Status.AutoScaler.Namespace, tc.Status.AutoScaler.Name)
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "Check Auto-Scaler Ref failed")
+
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
@@ -540,7 +558,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
 			framework.Logf("tikv has checked ready-to-scale-timestamp")
 
-			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -764,7 +782,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
 
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -818,7 +836,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "set tidb mock metrics error")
 
 			// Scale Tidb to 2 Replicas and Check
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, nil
@@ -864,6 +882,20 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 2 error")
 			framework.Logf("success to check auto scale-in tidb to 2 replicas")
+
+			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Delete(tac.Name, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "Expect to delete auto-scaler ref")
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Status.AutoScaler != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "expect auto-scaler ref empty after delete auto-scaler")
 		})
 	})
 
