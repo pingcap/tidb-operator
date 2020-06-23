@@ -27,7 +27,9 @@ import (
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
@@ -53,6 +55,8 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // Serial specs describe tests which cannot run in parallel.
@@ -63,6 +67,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var c clientset.Interface
 	var cli versioned.Interface
 	var asCli asclientset.Interface
+	var genericCli client.Client
 	var aggrCli aggregatorclient.Interface
 	var apiExtCli apiextensionsclientset.Interface
 	var cfg *tests.Config
@@ -79,6 +84,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		cli, err = versioned.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
 		asCli, err = asclientset.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create clientset")
+		mapper, err := apiutil.NewDynamicRESTMapper(config, apiutil.WithLazyDiscovery)
+		framework.ExpectNoError(err)
+		genericCli, err = client.New(config, client.Options{
+			Scheme: scheme.Scheme,
+			Mapper: mapper,
+		})
 		framework.ExpectNoError(err, "failed to create clientset")
 		aggrCli, err = aggregatorclient.NewForConfig(config)
 		framework.ExpectNoError(err, "failed to create clientset")
@@ -147,13 +159,15 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err)
 			ginkgo.By(fmt.Sprintf("Upgrading tidb cluster from %s to %s", utilimage.TiDBV3Version, utilimage.TiDBV3UpgradeVersion))
+			ginkgo.By("Set tikv partition annotation")
 			err = setPartitionAnnotation(ns, tc.Name, label.TiKVLabelVal, 1)
 			framework.ExpectNoError(err, "set tikv Partition annotation failed")
-			framework.Logf("set tikv Partition annotation")
-			tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err)
-			tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+
+			ginkgo.By("Upgrade TiDB version")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV3UpgradeVersion
+				return nil
+			})
 			framework.ExpectNoError(err)
 
 			err = wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
@@ -182,10 +196,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectEqual(err, wait.ErrWaitTimeout, "tikv Partition should remain 1 for 3 min")
 			framework.Logf("tikv Partition remain 1 for 3 min")
-			tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(tc.Name, metav1.GetOptions{})
-			framework.ExpectNoError(err)
-			tc.Annotations = nil
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+			ginkgo.By("Set annotations to nil")
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Annotations = nil
+				return nil
+			})
 			framework.ExpectNoError(err)
 			framework.Logf("tidbcluster annotation have been cleaned")
 			// TODO: find a more graceful way to check tidbcluster during upgrading
@@ -276,21 +291,27 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			ocfg.WebhookEnabled = true
 			oa.UpgradeOperatorOrDie(ocfg)
 			// now the webhook enabled
-			legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version)
-			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
+			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
+				legacyTc.Spec.TiDB.Image = fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version)
+				return nil
+			})
 			framework.ExpectNoError(err, "Update legacy tidbcluster should not be influenced by validating")
 			framework.ExpectEqual(legacyTc.Spec.TiDB.BaseImage, "", "Update legacy tidbcluster should not be influenced by defaulting")
 
 			ginkgo.By("Resources created before webhook will be checked if user migrate it to use new API")
-			legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
-			legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
-			legacyTc.Spec.PD.BaseImage = "pingcap/pd"
-			legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV3Version)
-			legacyTc, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
+			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
+				legacyTc.Spec.TiDB.BaseImage = "pingcap/tidb"
+				legacyTc.Spec.TiKV.BaseImage = "pingcap/tikv"
+				legacyTc.Spec.PD.BaseImage = "pingcap/pd"
+				legacyTc.Spec.PD.Version = pointer.StringPtr(utilimage.TiDBV3Version)
+				return nil
+			})
 			framework.ExpectNoError(err, "Expected update tidbcluster")
-			legacyTc.Spec.TiDB.BaseImage = ""
-			legacyTc.Spec.PD.Version = pointer.StringPtr("")
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(legacyTc)
+			err = controller.GuaranteedUpdate(genericCli, legacyTc, func() error {
+				legacyTc.Spec.TiDB.BaseImage = ""
+				legacyTc.Spec.PD.Version = pointer.StringPtr("")
+				return nil
+			})
 			framework.ExpectError(err,
 				"Validating should reject mandatory fields being empty if the resource has already been migrated to use the new API")
 
@@ -369,18 +390,22 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			}
 
 			ginkgo.By("Validating should reject illegal update")
-			newTC.Labels = map[string]string{
-				label.InstanceLabelKey: "some-insane-label-value",
-			}
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
+			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
+				newTC.Labels = map[string]string{
+					label.InstanceLabelKey: "some-insane-label-value",
+				}
+				return nil
+			})
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 
-			newTC.Spec.PD.Config = &v1alpha1.PDConfig{
-				Replication: &v1alpha1.PDReplicationConfig{
-					MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
-				},
-			}
-			_, err = cli.PingcapV1alpha1().TidbClusters(ns).Update(newTC)
+			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
+				newTC.Spec.PD.Config = &v1alpha1.PDConfig{
+					Replication: &v1alpha1.PDReplicationConfig{
+						MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
+					},
+				}
+				return nil
+			})
 			framework.ExpectError(err, "PD replication config is immutable through CR")
 		})
 	})
