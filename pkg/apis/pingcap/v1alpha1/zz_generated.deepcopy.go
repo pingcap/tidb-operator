@@ -7211,6 +7211,13 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AdditionalContainers != nil {
+		in, out := &in.AdditionalContainers, &out.AdditionalContainers
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

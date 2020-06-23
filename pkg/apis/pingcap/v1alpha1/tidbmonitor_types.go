@@ -80,6 +80,9 @@ type TidbMonitorSpec struct {
 	// default to current tidb cluster version, for example: v3.0.15
 	// +optional
 	AlertManagerRulesVersion *string `json:"alertManagerRulesVersion,omitempty"`
+
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus
