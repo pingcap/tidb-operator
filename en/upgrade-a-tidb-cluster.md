@@ -19,21 +19,13 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
 
 1. Modify the image configurations of all components in TidbCluster CR.
 
-    Note that TidbCluster CR has multiple parameters for the image configuration:
+    Usually, components in a cluster are in the same version. You can upgrade the TiDB cluster simply by modifying `spec.version`. If you need to use different versions for different components, configure `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`.
+
+    The `version` field has following formats:
 
     - `spec.version`: the format is `imageTag`, such as `v3.1.0`
 
-    - `spec.<pd/tidb/tikv/pump>.baseImage`: the format is `imageName`, such as `pingcap/tidb`
-
-    - `spec.<pd/tidb/tikv/pump>.version`: the format is `imageTag`, such as `v3.1.0`
-
-    - `spec.<pd/tidb/tikv/pump>.image`: the format is `imageName:imageTag`, such as `pingcap/tidb:v3.1.0`
-
-    The priority for acquiring image configuration is as follows:
-
-    `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.<pd/tidb/tikv/pump>.version` > `spec.<pd/tidb/tikv/pump>.baseImage` + `spec.version` > `spec.<pd/tidb/tikv/pump>.image`
-
-    Usually, components in a cluster are in the same version. It is recommended to configure `spec.<pd/tidb/tikv/pump>.baseImage` and `spec.version`. Therefore, you can upgrade the TiDB cluster simply by modifying `spec.version`.
+    - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`: the format is `imageTag`, such as `v3.1.0`
 
     {{< copyable "shell-regular" >}}
 
@@ -42,26 +34,6 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
     ```
 
 2. Check the upgrade progress:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    watch kubectl -n ${namespace} get pod -o wide
-    ```
-
-    After all the Pods finish rebuilding and become `Running`, the upgrade is completed.
-
-### Update the configuration of TiDB cluster using TidbCluster CR
-
-The modified configuration is not automatically applied to the TiDB cluster by default. The new configuration file is loaded only when the Pod restarts.
-
-It is recommended that you set `spec.configUpdateStrategy` to `RollingUpdate` to enable automatic update of configurations. This way, every time the configuration is updated, all components are rolling updated automatically, and the modified configuration is applied to the cluster.
-
-1. Set `spec.configUpdateStrategy` to `RollingUpdate`.
-
-2. Modify the configuration items of the cluster, as described in [Configure a TiDB Cluster](configure-a-tidb-cluster.md)
-
-3. View the update progress:
 
     {{< copyable "shell-regular" >}}
 
@@ -120,34 +92,6 @@ If you continue to manage your cluster using Helm, refer to the following steps 
     ```shell
     watch kubectl -n ${namespace} get pod -o wide
     ```
-
-### Change the configuration of TiDB cluster using Helm
-
-By default, changes to the configuration files are applied to the TiDB cluster automatically through a rolling update. You can disable this feature by setting the `enableConfigMapRollout` variable to `false` in the `values.yaml` file, if so, the change of configuration will be loaded until the server being restarted.
-
-You can change the configuration of TiDB cluster through the following steps:
-
-1. Make sure the `enableConfigMapRollout` feature is not disabled explicitly in the `values.yaml` file.
-2. Change the configurations in the `values.yaml` file as needed.
-3. Run the `helm upgrade` command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm upgrade ${release_name} pingcap/tidb-cluster -f values.yaml --version=${version}
-    ```
-
-4. Check the upgrade process:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    watch kubectl -n ${namespace} get pod -o wide
-    ```
-
-> **Note:**
->
-> Changing the `enableConfigMapRollout` variable against a running cluster will trigger a rolling update of PD, TiKV, TiDB servers even if there's no change to the configuration.
 
 ### Force an upgrade of TiDB cluster using Helm
 
