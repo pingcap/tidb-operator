@@ -130,6 +130,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbCluster":                   schema_pkg_apis_pingcap_v1alpha1_TidbCluster(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScaler":         schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerList":     schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerList(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerRef":      schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec":     schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoSclaerStatus":   schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoSclaerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterList":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterList(ref),
@@ -908,20 +909,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"scaleOutThreshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"scaleInThreshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
-							Type:        []string{"integer"},
-							Format:      "int32",
 						},
 					},
 					"externalEndpoint": {
@@ -8021,20 +8008,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
-					"scaleOutThreshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"scaleInThreshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
 					"externalEndpoint": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
@@ -8223,6 +8196,32 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerList(ref common.Refer
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScaler"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TidbClusterAutoScalerRef indicates to the target auto-scaler ref",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"name", "namespace"},
+			},
+		},
 	}
 }
 
@@ -9140,20 +9139,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"scaleOutThreshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleOutThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-out result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 3.",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"scaleInThreshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInThreshold describe the consecutive threshold for the auto-scaling, if the consecutive counts of the scale-in result in auto-scaling reach this number, the auto-scaling would be performed. If not set, the default value is 5.",
-							Type:        []string{"integer"},
-							Format:      "int32",
 						},
 					},
 					"externalEndpoint": {
