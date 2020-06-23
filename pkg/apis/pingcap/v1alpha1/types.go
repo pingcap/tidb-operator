@@ -236,6 +236,15 @@ type TidbClusterStatus struct {
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
+	// +optional
+	TiKVGroups []GroupRef `json:"tikv-groups,omitempty"`
+	// +optional
+	TiDBGroups []GroupRef `json:"tidb-groups,omitempty"`
+}
+
+type GroupRef struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
 }
 
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.

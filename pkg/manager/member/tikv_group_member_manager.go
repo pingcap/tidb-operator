@@ -11,20 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package member
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+import (
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/manager"
+	"k8s.io/klog"
+)
 
-// Manager implements the logic for syncing tidbcluster.
-type Manager interface {
-	// Sync	implements the logic for syncing tidbcluster.
-	Sync(*v1alpha1.TidbCluster) error
+type tikvGroupMemberManager struct {
 }
 
-type TiDBGroupManager interface {
-	Sync(*v1alpha1.TiDBGroup) error
+func NewTiKVGroupMemberManager() manager.TiKVGroupManager {
+	return &tikvGroupMemberManager{}
 }
 
-type TiKVGroupManager interface {
-	Sync(*v1alpha1.TiKVGroup) error
+func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
+	klog.Infof("start syncing tikvgroup member [%s/%s]", tg.Namespace, tg.Name)
+	return nil
 }

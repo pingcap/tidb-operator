@@ -4228,6 +4228,43 @@ IngressSpec
 </tr>
 </tbody>
 </table>
+<h3 id="groupref">GroupRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="helperspec">HelperSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -15880,6 +15917,32 @@ TidbMonitorRef
 <td>
 <em>(Optional)</em>
 <p>Represents the latest available observations of a tidb cluster&rsquo;s state.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikv-groups</code></br>
+<em>
+<a href="#groupref">
+[]GroupRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb-groups</code></br>
+<em>
+<a href="#groupref">
+[]GroupRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
