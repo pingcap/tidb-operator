@@ -54,3 +54,4 @@ spec:
     matchLabels:
       app.kubernetes.io/component: tidb
       app.kubernetes.io/instance: basic
+      app.kubernetes.io/used-by: "end-user"
