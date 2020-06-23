@@ -52,3 +52,4 @@ spec:
     matchLabels:
       app.kubernetes.io/component: tikv
       app.kubernetes.io/instance: basic
+      app.kubernetes.io/used-by: "end-user"
