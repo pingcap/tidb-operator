@@ -142,6 +142,28 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	}
 	klog.Infof("pd scale in: delete member %s successfully", memberName)
 
+	// double check whether member deleted after delete member
+	// The PD member could be remained after deleting API success, see https://github.com/pingcap/pd/issues/2541
+	// The bug still need to be investigated.
+	membersInfo, err := pdClient.GetMembers()
+	if err != nil {
+		klog.Errorf("pd scale in: failed to get members %s, %v", memberName, err)
+		return err
+	}
+
+	existed := false
+	for _, member := range membersInfo.Members {
+		if member.Name == memberName {
+			existed = true
+			break
+		}
+	}
+	if existed {
+		err = fmt.Errorf("pd scale in: member %s still exist after being deleted", memberName)
+		klog.Error(err)
+		return err
+	}
+
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
