@@ -12791,13 +12791,7 @@ spec:
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
-                scaleInThreshold:
-                  format: int32
-                  type: integer
                 scaleOutIntervalSeconds:
-                  format: int32
-                  type: integer
-                scaleOutThreshold:
                   format: int32
                   type: integer
               required:
@@ -12846,13 +12840,7 @@ spec:
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
-                scaleInThreshold:
-                  format: int32
-                  type: integer
                 scaleOutIntervalSeconds:
-                  format: int32
-                  type: integer
-                scaleOutThreshold:
                   format: int32
                   type: integer
               required:
