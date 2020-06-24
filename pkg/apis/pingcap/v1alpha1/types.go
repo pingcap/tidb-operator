@@ -244,7 +244,6 @@ type TidbClusterStatus struct {
 
 type GroupRef struct {
 	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
 }
 
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.
