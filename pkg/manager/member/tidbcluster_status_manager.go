@@ -60,6 +60,7 @@ func (tcsm *TidbClusterStatusManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (tcsm *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.TidbCluster) error {
+	tcsm.syncTikvGroupsStatus(tc)
 	tm, err := tcsm.syncTidbMonitorRef(tc)
 	if err != nil {
 		return err
@@ -100,7 +101,6 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluste
 	if tm.Spec.Grafana == nil {
 		tc.Status.Monitor.GrafanaEnabled = false
 	}
-	tcsm.syncTikvGroupsStatus(tc)
 
 	return tm, nil
 }
