@@ -4259,16 +4259,6 @@ string
 <td>
 </td>
 </tr>
-<tr>
-<td>
-<code>namespace</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="helperspec">HelperSpec</h3>
