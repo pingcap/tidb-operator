@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -173,13 +174,13 @@ func (tcsm *TidbClusterStatusManager) syncTikvGroupsStatus(tc *v1alpha1.TidbClus
 
 	var newGroups []v1alpha1.GroupRef
 	for _, group := range tc.Status.TiKVGroups {
-		tg, err := tcsm.tikvGroupLister.TiKVGroups(tc.Namespace).Get(group.Name)
+		tg, err := tcsm.tikvGroupLister.TiKVGroups(tc.Namespace).Get(group.Reference.Name)
 		// If we failed to fetch the information for the registered tikvgroups, we will directly discard it.
 		if err != nil {
 			klog.Error(err)
 			continue
 		}
-		newGroups = append(newGroups, v1alpha1.GroupRef{Name: tg.Name})
+		newGroups = append(newGroups, v1alpha1.GroupRef{Reference: corev1.LocalObjectReference{Name: tg.Name}})
 	}
 	tc.Status.TiKVGroups = newGroups
 }

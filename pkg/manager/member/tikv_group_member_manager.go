@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,7 +69,7 @@ func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup
 
 	for _, tikvGroup := range tc.Status.TiKVGroups {
 		// found tikvgroup in the tidbcluster's status, allowed to syncing
-		if tikvGroup.Name == tg.Name {
+		if tikvGroup.Reference.Name == tg.Name {
 			return nil
 		}
 	}
@@ -81,7 +82,7 @@ func (tgm *tikvGroupMemberManager) registerTiKVGroup(tg *v1alpha1.TiKVGroup, tc 
 	tcName := tg.Spec.ClusterName
 	tcNamespace := tg.Namespace
 	// register itself to the target tidbcluster
-	newGroups := append(tc.Status.TiKVGroups, v1alpha1.GroupRef{Name: tg.Name})
+	newGroups := append(tc.Status.TiKVGroups, v1alpha1.GroupRef{Reference: corev1.LocalObjectReference{Name: tg.Name}})
 	err := controller.GuaranteedUpdate(tgm.genericCli, tc, func() error {
 		tc.Status.TiKVGroups = newGroups
 		return nil

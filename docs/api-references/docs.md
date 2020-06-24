@@ -4251,12 +4251,17 @@ IngressSpec
 <tbody>
 <tr>
 <td>
-<code>name</code></br>
+<code>Reference</code></br>
 <em>
-string
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+Kubernetes core/v1.LocalObjectReference
+</a>
 </em>
 </td>
 <td>
+<p>
+(Members of <code>Reference</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
