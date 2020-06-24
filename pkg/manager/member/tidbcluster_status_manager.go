@@ -36,16 +36,22 @@ const (
 )
 
 type TidbClusterStatusManager struct {
-	cli          versioned.Interface
-	pdControl    pdapi.PDControlInterface
-	scalerLister listers.TidbClusterAutoScalerLister
+	cli             versioned.Interface
+	pdControl       pdapi.PDControlInterface
+	scalerLister    listers.TidbClusterAutoScalerLister
+	tikvGroupLister listers.TiKVGroupLister
 }
 
-func NewTidbClusterStatusManager(kubeCli kubernetes.Interface, cli versioned.Interface, scalerLister listers.TidbClusterAutoScalerLister) *TidbClusterStatusManager {
+func NewTidbClusterStatusManager(
+	kubeCli kubernetes.Interface,
+	cli versioned.Interface,
+	scalerLister listers.TidbClusterAutoScalerLister,
+	tikvGroupLister listers.TiKVGroupLister) *TidbClusterStatusManager {
 	return &TidbClusterStatusManager{
-		cli:          cli,
-		pdControl:    pdapi.NewDefaultPDControl(kubeCli),
-		scalerLister: scalerLister,
+		cli:             cli,
+		pdControl:       pdapi.NewDefaultPDControl(kubeCli),
+		scalerLister:    scalerLister,
+		tikvGroupLister: tikvGroupLister,
 	}
 }
 
@@ -94,6 +100,7 @@ func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluste
 	if tm.Spec.Grafana == nil {
 		tc.Status.Monitor.GrafanaEnabled = false
 	}
+	tcsm.syncTikvGroupsStatus(tc)
 
 	return tm, nil
 }
@@ -157,6 +164,24 @@ func (tcsm *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster
 		return nil
 	}
 	return nil
+}
+
+func (tcsm *TidbClusterStatusManager) syncTikvGroupsStatus(tc *v1alpha1.TidbCluster) {
+	if tc.Status.TiKVGroups == nil || len(tc.Status.TiKVGroups) < 1 {
+		return
+	}
+
+	var newGroups []v1alpha1.GroupRef
+	for _, group := range tc.Status.TiKVGroups {
+		tg, err := tcsm.tikvGroupLister.TiKVGroups(tc.Namespace).Get(group.Name)
+		// If we failed to fetch the information for the registered tikvgroups, we will directly discard it.
+		if err != nil {
+			klog.Error(err)
+			continue
+		}
+		newGroups = append(newGroups, v1alpha1.GroupRef{Name: tg.Name})
+	}
+	tc.Status.TiKVGroups = newGroups
 }
 
 func syncComponent(exist bool, tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {
