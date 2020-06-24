@@ -479,6 +479,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			},
 			TiFlash: &v1alpha1.TiFlashSpec{},
 		},
+		Status: v1alpha1.TidbClusterStatus{},
 	}
 }
 
