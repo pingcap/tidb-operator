@@ -1933,6 +1933,19 @@ string
 default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2774,36 +2787,6 @@ string
 <td>
 <em>(Optional)</em>
 <p>MetricsTimeDuration describe the Time duration to be queried in the Prometheus</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>scaleOutThreshold</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
-if the consecutive counts of the scale-out result in auto-scaling reach this number,
-the auto-scaling would be performed.
-If not set, the default value is 3.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>scaleInThreshold</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ScaleInThreshold describe the consecutive threshold for the auto-scaling,
-if the consecutive counts of the scale-in result in auto-scaling reach this number,
-the auto-scaling would be performed.
-If not set, the default value is 5.</p>
 </td>
 </tr>
 <tr>
@@ -3820,6 +3803,17 @@ int32
 </tr>
 <tr>
 <td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path indicates the external service&rsquo;s path</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsSecret</code></br>
 <em>
 <a href="#secretref">
@@ -4058,6 +4052,18 @@ string
 </td>
 <td>
 <p>Location in which the gcs bucket is located.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -4770,6 +4776,17 @@ string
 Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
 Optional: Default to plaintext
 optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Text file containing the key in hex form, end with &lsquo;\n&rsquo;</p>
 </td>
 </tr>
 </tbody>
@@ -8187,6 +8204,18 @@ string
 </td>
 <td>
 <p>Region in which the S3 compatible bucket is located.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -15150,6 +15179,44 @@ BasicAutoScalerStatus
 </tr>
 </tbody>
 </table>
+<h3 id="tidbclusterautoscalerref">TidbClusterAutoScalerRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TidbClusterAutoScalerRef indicates to the target auto-scaler ref</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -15907,6 +15974,18 @@ TidbMonitorRef
 </tr>
 <tr>
 <td>
+<code>auto-scaler,omitempyt</code></br>
+<em>
+<a href="#tidbclusterautoscalerref">
+TidbClusterAutoScalerRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>conditions</code></br>
 <em>
 <a href="#tidbclustercondition">
@@ -16420,6 +16499,19 @@ string
 <em>(Optional)</em>
 <p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
 default to current tidb cluster version, for example: v3.0.15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

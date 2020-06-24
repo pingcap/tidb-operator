@@ -20,21 +20,12 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
-)
-
-const (
-	annScaleOutSuffix = "tidb.pingcap.com/consecutive-scale-out-count"
-	annScaleInSuffix  = "tidb.pingcap.com/consecutive-scale-in-count"
-
-	invalidMemberTypeErrorMsg    = "tac[%s/%s] invalid set MemberType:%s"
-	invalidTacAnnotationErrorMsg = "tac[%s/%s] annotation invalid set,err:%v"
 )
 
 var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
@@ -57,36 +48,6 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 		return false
 	}
 	return true
-}
-
-func checkStsAutoScaling(tac *v1alpha1.TidbClusterAutoScaler, thresholdSeconds, intervalSeconds int32, memberType v1alpha1.MemberType) (bool, error) {
-	realClock := clockwork.NewRealClock()
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-	}
-	// 3*controller.ResyncDuration is maximum time allowed before reset phase status
-	ableToScale, err := checkLastSyncingTimestamp(tac, 3*controller.ResyncDuration, realClock)
-	if err != nil {
-		return false, err
-	}
-	if !ableToScale {
-		return false, nil
-	}
-	ableToScale, err = checkStsReadyAutoScalingTimestamp(tac, thresholdSeconds, realClock)
-	if err != nil {
-		return false, err
-	}
-	if !ableToScale {
-		return false, nil
-	}
-	ableToScale, err = checkStsAutoScalingInterval(tac, intervalSeconds, memberType)
-	if err != nil {
-		return false, err
-	}
-	if !ableToScale {
-		return false, nil
-	}
-	return true, nil
 }
 
 // checkLastSyncingTimestamp reset TiKV phase if last auto scaling timestamp is longer than thresholdSec
@@ -200,6 +161,9 @@ func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScal
 // If the Metrics not set, the default metric will be set to 80% average CPU utilization.
 // defaultTAC would default the omitted value
 func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
+	}
 	if tac.Spec.TiKV != nil {
 		if tac.Spec.TiKV.MinReplicas == nil {
 			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(1)
@@ -249,29 +213,6 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.Monitor.Namespace = tac.Namespace
 		}
 	}
-}
-
-func resetAutoScalingAnn(tac *v1alpha1.TidbClusterAutoScaler) {
-	tac.Annotations[label.AnnAutoScalingTargetNamespace] = tac.Spec.Cluster.Namespace
-	tac.Annotations[label.AnnAutoScalingTargetName] = tac.Spec.Cluster.Name
-}
-
-// checkAndUpdateTacRef would compare the target tidbcluster ref stored in the annotations
-// and in the Spec. It not equal, the previous stored status would be empty and the stored Ref
-// would be updated.
-func checkAndUpdateTacAnn(tac *v1alpha1.TidbClusterAutoScaler) {
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-		resetAutoScalingAnn(tac)
-		return
-	}
-	name := tac.Annotations[label.AnnAutoScalingTargetName]
-	namespace := tac.Annotations[label.AnnAutoScalingTargetNamespace]
-	if name == tac.Spec.Cluster.Name && namespace == tac.Spec.Cluster.Namespace {
-		return
-	}
-	// If not satisfied, reset tac Ann
-	resetAutoScalingAnn(tac)
 }
 
 func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {

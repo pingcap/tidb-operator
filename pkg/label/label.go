@@ -117,18 +117,6 @@ const (
 	// AnnLastSyncingTimestamp records last sync timestamp
 	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
 
-	// AnnTiDBConsecutiveScaleOutCount describes the least consecutive count to scale-out for tidb
-	AnnTiDBConsecutiveScaleOutCount = "tidb.tidb.pingcap.com/consecutive-scale-out-count"
-	// AnnTiDBConsecutiveScaleInCount describes the least consecutive count to scale-in for tidb
-	AnnTiDBConsecutiveScaleInCount = "tidb.tidb.pingcap.com/consecutive-scale-in-count"
-	// AnnTiKVConsecutiveScaleOutCount describes the least consecutive count to scale-out for tikv
-	AnnTiKVConsecutiveScaleOutCount = "tikv.tidb.pingcap.com/consecutive-scale-out-count"
-	// AnnTiKVConsecutiveScaleInCount describes the least consecutive count to scale-in for tikv
-	AnnTiKVConsecutiveScaleInCount = "tikv.tidb.pingcap.com/consecutive-scale-in-count"
-	// AnnAutoScalingTargetName describes the target TidbCluster Ref Name for the TidbCluserAutoScaler
-	AnnAutoScalingTargetName = "auto-scaling.tidb.pingcap.com/target-name"
-	// AnnAutoScalingTargetNamespace describes the target TidbCluster Ref Namespace for the TidbCluserAutoScaler
-	AnnAutoScalingTargetNamespace = "auto-scaling.tidb.pingcap.com/target-namespace"
 	// AnnTiKVAutoScalingOutOrdinals describe the tikv pods' ordinal list which is created by auto-scaling out
 	AnnTiKVAutoScalingOutOrdinals = "tikv.tidb.pingcap.com/scale-out-ordinals"
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
