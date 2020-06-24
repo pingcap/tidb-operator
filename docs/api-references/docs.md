@@ -1727,6 +1727,19 @@ string
 default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -15989,6 +16002,19 @@ string
 <em>(Optional)</em>
 <p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
 default to current tidb cluster version, for example: v3.0.15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
