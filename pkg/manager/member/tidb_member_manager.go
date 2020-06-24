@@ -691,7 +691,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
-	containers = append(containers, corev1.Container{
+	c := corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.TiDBImage(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
@@ -719,7 +719,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 			InitialDelaySeconds: int32(10),
 		},
-	})
+	}
+	if tc.Spec.TiDB.Lifecycle != nil {
+		c.Lifecycle = tc.Spec.TiDB.Lifecycle
+	}
+
+	containers = append(containers, c)
 
 	podSpec := baseTiDBSpec.BuildPodSpec()
 	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
@@ -759,6 +764,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		},
 	}
+
+	if tc.Spec.TiDB.TerminationGracePeriodSeconds != nil {
+		tidbSet.Spec.Template.Spec.TerminationGracePeriodSeconds = tc.Spec.TiDB.TerminationGracePeriodSeconds
+	}
+
 	return tidbSet
 }
 
