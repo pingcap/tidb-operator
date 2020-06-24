@@ -3573,6 +3573,17 @@ int32
 </tr>
 <tr>
 <td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path indicates the external service&rsquo;s path</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsSecret</code></br>
 <em>
 <a href="#secretref">
@@ -3811,6 +3822,18 @@ string
 </td>
 <td>
 <p>Location in which the gcs bucket is located.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
 <tr>
@@ -4486,6 +4509,17 @@ string
 Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
 Optional: Default to plaintext
 optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Text file containing the key in hex form, end with &lsquo;\n&rsquo;</p>
 </td>
 </tr>
 </tbody>
@@ -7903,6 +7937,18 @@ string
 </td>
 <td>
 <p>Region in which the S3 compatible bucket is located.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
 </td>
 </tr>
 <tr>
