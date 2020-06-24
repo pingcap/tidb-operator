@@ -48,6 +48,9 @@ func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
 	return nil
 }
 
+// checkWhetherRegistered will check whether the tikvgroup have already registered itself
+// to the target tidbcluster. If have already, the tikvgroup will be allowed to syncing.
+// If not, the tikvgroup will try to register itself to the tidbcluster and wait for the next round.
 func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup) error {
 	tcName := tg.Spec.ClusterName
 	tcNamespace := tg.Namespace
