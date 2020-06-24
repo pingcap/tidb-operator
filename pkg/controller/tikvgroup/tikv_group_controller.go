@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Controller struct {
@@ -46,6 +47,7 @@ type Controller struct {
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
+	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory) *Controller {
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
@@ -56,7 +58,7 @@ func NewController(
 
 	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
 	tgControl := controller.NewRealTiKVGroupControl(cli, tikvGroupInformer.Lister(), recorder)
-	tikvManager := member.NewTiKVGroupMemberManager()
+	tikvManager := member.NewTiKVGroupMemberManager(cli, genericCli)
 
 	tg := &Controller{
 		control:  NewDefaultTikvGroupControl(tgControl, tikvManager),
