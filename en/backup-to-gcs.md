@@ -2,6 +2,7 @@
 title: Back up Data to GCS
 summary: Learn how to back up the TiDB cluster to GCS.
 category: how-to
+aliases: ['/docs/tidb-in-kubernetes/dev/backup-to-gcs/']
 ---
 
 # Back up Data to GCS

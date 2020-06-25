@@ -2,6 +2,7 @@
 title: Recover the Deleted Cluster
 summary: Learn how to recover a TiDB cluster that has been deleted mistakenly.
 category: how-to
+aliases: ['/docs/tidb-in-kubernetes/dev/recover-deleted-cluster/']
 ---
 
 # Recover the Deleted Cluster

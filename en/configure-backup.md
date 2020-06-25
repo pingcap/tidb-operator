@@ -2,6 +2,7 @@
 title: Configuration of tidb-backup Chart
 summary: Learn the configurations of the tidb-backup chart.
 category: reference
+aliases: ['/docs/tidb-in-kubernetes/dev/configure-backup/']
 ---
 
 # Configuration of tidb-backup Chart

@@ -2,6 +2,7 @@
 title: Restore Data from S3-Compatible Storage Using TiDB Lightning
 summary: Learn how to restore data from the S3-compatible storage.
 category: how-to
+aliases: ['/docs/tidb-in-kubernetes/dev/restore-from-s3/']
 ---
 
 # Restore Data from S3-Compatible Storage Using TiDB Lightning

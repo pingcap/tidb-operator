@@ -2,6 +2,7 @@
 title: Restart a TiDB Cluster in Kubernetes
 summary: Learn how to restart a TiDB cluster in the Kubernetes cluster.
 category: how-to
+aliases: ['/docs/tidb-in-kubernetes/dev/restart-a-tidb-cluster/']
 ---
 
 # Restart a TiDB Cluster in Kubernetes

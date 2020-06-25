@@ -2,6 +2,7 @@
 title: Restore Data into TiDB in Kubernetes
 summary: Learn how to quickly restore data into a TiDB cluster in Kubernetes with TiDB Lightning.
 category: how-to
+aliases: ['/docs/tidb-in-kubernetes/dev/restore-data-using-tidb-lightning/']
 ---
 
 # Restore Data into TiDB in Kubernetes

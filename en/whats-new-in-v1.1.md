@@ -2,6 +2,7 @@
 title: What's New in v1.1
 summary: Learn the new features in TiDB Operator v1.1.
 category: introduction
+aliases: ['/docs/tidb-in-kubernetes/dev/whats-new-in-v1.1/']
 ---
 
 # What's New in v1.1

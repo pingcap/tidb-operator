@@ -2,6 +2,7 @@
 title: Use PD Recover to Recover the PD Cluster
 summary: Learn how to use PD Recover to recover the PD cluster.
 category: reference
+aliases: ['/docs/tidb-in-kubernetes/dev/pd-recover/']
 ---
 
 # Use PD Recover to Recover the PD Cluster
