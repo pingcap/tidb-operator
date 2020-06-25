@@ -12,7 +12,36 @@ TiDB Scheduler 是 [Kubernetes 调度器扩展](https://github.com/kubernetes/co
 
 TiDB 集群包括 PD，TiKV 以及 TiDB 三个核心组件，每个组件又是由多个节点组成，PD 是一个 Raft 集群，TiKV 是一个多 Raft Group 集群，并且这两个组件都是有状态的。默认 Kubernetes 的调度器的调度规则无法满足 TiDB 集群的高可用调度需求，需要扩展 Kubernetes 的调度规则。
 
-目前，TiDB Scheduler 实现了如下几种自定义的调度规则。
+目前，可通过修改 TidbCluster 的 `metadata.annotations` 来按照特定的维度进行调度，比如：
+
+{{< copyable "" >}}
+
+```yaml
+metadata:
+  annotations:
+    pingcap.com/ha-topology-key: kubernetes.io/hostname
+```
+
+或者修改 tidb-cluster chart 的 `values.yaml` ：
+
+{{< copyable "" >}}
+
+```yaml
+haTopologyKey: kubernetes.io/hostname
+```
+
+上述配置按照节点（默认值）维度进行调度，若要按照其他维度调度，比如: `pingcap.com/ha-topology-key: zone`，表示按照 zone 调度，
+还需给各节点打如下标签：
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl label nodes node1 zone=zone1
+```
+
+不同节点可有不同的标签，也可有相同的标签，如果某一个节点没有打该标签，则调度器不会调度 pod 到该节点。
+
+目前，TiDB Scheduler 实现了如下几种自定义的调度规则（下述示例基于节点调度，基于其他维度的调度规则相同）。
 
 ### PD 组件
 

@@ -13,7 +13,35 @@ TiDB Scheduler is a TiDB implementation of [Kubernetes scheduler extender](https
 
 A TiDB cluster includes three key components: PD, TiKV, and TiDB. Each consists of multiple nodes: PD is a Raft cluster, and TiKV is a multi-Raft group cluster. PD and TiKV components are stateful. The default scheduling rules of the Kubernetes scheduler cannot meet the high availability scheduling requirements of the TiDB cluster, so the Kubernetes scheduling rules need to be extended.
 
-TiDB Scheduler implements the following customized scheduling rules:
+Currently, pods can be scheduled according to specific dimensions by modifying `metadata.annotations` in TidbCluster, such as:
+
+{{< copyable "" >}}
+
+```yaml
+metadata:
+  annotations:
+    pingcap.com/ha-topology-key: kubernetes.io/hostname
+```
+
+Or by modifying tidb-cluster Chart `values.yaml`:
+
+{{< copyable "" >}}
+
+```yaml
+haTopologyKey: kubernetes.io/hostname
+```
+
+The configuration above indicates scheduling by the node dimension (default). If you want to schedule pods by other dimensions, such as `pingcap.com/ha-topology-key: zone`, which means scheduling by zone, each node should also be labeled as follows:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl label nodes node1 zone=zone1
+```
+
+Different nodes may have different labels or the same label, and if a node is not labeled, the scheduler will not schedule any pod to that node.
+
+TiDB Scheduler implements the following customized scheduling rules. The following example is based on node scheduling, scheduling rules based on other dimensions are the same.
 
 ### PD component
 
