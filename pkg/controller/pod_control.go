@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -37,8 +38,8 @@ import (
 type PodControlInterface interface {
 	// TODO change this to UpdatePod
 	UpdateMetaInfo(*v1alpha1.TidbCluster, *corev1.Pod) (*corev1.Pod, error)
-	DeletePod(*v1alpha1.TidbCluster, *corev1.Pod) error
-	UpdatePod(*v1alpha1.TidbCluster, *corev1.Pod) (*corev1.Pod, error)
+	DeletePod(runtime.Object, *corev1.Pod) error
+	UpdatePod(runtime.Object, *corev1.Pod) (*corev1.Pod, error)
 }
 
 type realPodControl struct {
@@ -63,9 +64,14 @@ func NewRealPodControl(
 	}
 }
 
-func (rpc *realPodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (rpc *realPodControl) UpdatePod(controller runtime.Object, pod *corev1.Pod) (*corev1.Pod, error) {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
+	}
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	name := controllerMo.GetName()
+	namespace := controllerMo.GetNamespace()
 	podName := pod.GetName()
 
 	labels := pod.GetLabels()
@@ -75,20 +81,20 @@ func (rpc *realPodControl) UpdatePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updatePod, updateErr = rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
+		updatePod, updateErr = rpc.kubeCli.CoreV1().Pods(namespace).Update(pod)
 		if updateErr == nil {
-			klog.Infof("Pod: [%s/%s] updated successfully, TidbCluster: [%s/%s]", ns, podName, ns, tcName)
+			klog.Infof("Pod: [%s/%s] updated successfully, %s: [%s/%s]", namespace, podName, kind, namespace, name)
 			return nil
 		}
-		klog.Errorf("failed to update Pod: [%s/%s], error: %v", ns, podName, updateErr)
+		klog.Errorf("failed to update Pod: [%s/%s], error: %v", namespace, podName, updateErr)
 
-		if updated, err := rpc.podLister.Pods(ns).Get(podName); err == nil {
+		if updated, err := rpc.podLister.Pods(namespace).Get(podName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			pod = updated.DeepCopy()
 			pod.Labels = labels
 			pod.Annotations = ann
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", namespace, podName, err))
 		}
 
 		return updateErr
@@ -187,34 +193,39 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	return updatePod, err
 }
 
-func (rpc *realPodControl) DeletePod(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (rpc *realPodControl) DeletePod(controller runtime.Object, pod *corev1.Pod) error {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
+	}
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	name := controllerMo.GetName()
+	namespace := controllerMo.GetNamespace()
+
 	podName := pod.GetName()
 	preconditions := metav1.Preconditions{UID: &pod.UID, ResourceVersion: &pod.ResourceVersion}
 	deleteOptions := metav1.DeleteOptions{Preconditions: &preconditions}
-	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, &deleteOptions)
+	err := rpc.kubeCli.CoreV1().Pods(namespace).Delete(podName, &deleteOptions)
 	if err != nil {
-		klog.Errorf("failed to delete Pod: [%s/%s], TidbCluster: %s, %v", ns, podName, tcName, err)
+		klog.Errorf("failed to delete Pod: [%s/%s], %s: %s, %v", namespace, podName, kind, namespace, err)
 	} else {
-		klog.V(4).Infof("delete Pod: [%s/%s] successfully, TidbCluster: %s", ns, podName, tcName)
+		klog.V(4).Infof("delete Pod: [%s/%s] successfully, %s: %s", namespace, podName, kind, namespace)
 	}
-	rpc.recordPodEvent("delete", tc, podName, err)
+	rpc.recordPodEvent("delete", kind, name, controller, podName, err)
 	return err
 }
 
-func (rpc *realPodControl) recordPodEvent(verb string, tc *v1alpha1.TidbCluster, podName string, err error) {
-	tcName := tc.GetName()
+func (rpc *realPodControl) recordPodEvent(verb, kind, name string, object runtime.Object, podName string, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Pod %s in TidbCluster %s successful",
-			strings.ToLower(verb), podName, tcName)
-		rpc.recorder.Event(tc, corev1.EventTypeNormal, reason, msg)
+		msg := fmt.Sprintf("%s Pod %s in %s %s successful",
+			strings.ToLower(verb), podName, kind, name)
+		rpc.recorder.Event(object, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Pod %s in TidbCluster %s failed error: %s",
-			strings.ToLower(verb), podName, tcName, err)
-		rpc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
+		msg := fmt.Sprintf("%s Pod %s in %s %s failed error: %s",
+			strings.ToLower(verb), podName, kind, name, err)
+		rpc.recorder.Event(object, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -313,7 +324,7 @@ func (fpc *FakePodControl) UpdateMetaInfo(_ *v1alpha1.TidbCluster, pod *corev1.P
 	return pod, fpc.PodIndexer.Update(pod)
 }
 
-func (fpc *FakePodControl) DeletePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+func (fpc *FakePodControl) DeletePod(_ runtime.Object, pod *corev1.Pod) error {
 	defer fpc.deletePodTracker.Inc()
 	if fpc.deletePodTracker.ErrorReady() {
 		defer fpc.deletePodTracker.Reset()
@@ -323,7 +334,7 @@ func (fpc *FakePodControl) DeletePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) e
 	return fpc.PodIndexer.Delete(pod)
 }
 
-func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.TidbCluster, pod *corev1.Pod) (*corev1.Pod, error) {
+func (fpc *FakePodControl) UpdatePod(_ runtime.Object, pod *corev1.Pod) (*corev1.Pod, error) {
 	defer fpc.updatePodTracker.Inc()
 	if fpc.updatePodTracker.ErrorReady() {
 		defer fpc.updatePodTracker.Reset()
