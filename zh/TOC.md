@@ -71,6 +71,7 @@
 - [常见问题](faq.md)
 + 参考
   + 架构
+    - [TiDB Operator 架构](architecture.md)
     - [TiDB Scheduler 扩展调度器](tidb-scheduler.md)
     - [增强型 StatefulSet 控制器](advanced-statefulset.md)
     - [准入控制器](enable-admission-webhook.md)

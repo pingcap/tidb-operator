@@ -61,6 +61,7 @@
 - [FAQs](faq.md)
 + Reference
   + Architecture
+    - [TiDB Operator](architecture.md)
     - [TiDB Scheduler](tidb-scheduler.md)
     - [Advanced StatefulSet Controller](advanced-statefulset.md)
     - [Admission Controller](enable-admission-webhook.md)
