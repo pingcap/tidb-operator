@@ -43,7 +43,9 @@ The above commands that destroy the cluster only remove the running Pod, but the
 
 > **Warning:**
 >
-> The following commands deletes your data completely. Please be cautious.
+> The following commands delete your data completely. Please be cautious.
+>
+> To ensure data safety, do not delete PVs on any circumstances, unless you are familiar with the working principles of PVs.
 
 {{< copyable "shell-regular" >}}
 
