@@ -193,7 +193,7 @@ type PDScheduleConfig struct {
 	Schedulers *PDSchedulerConfigs `toml:"schedulers,omitempty" json:"schedulers-v2,omitempty"` // json v2 is for the sake of compatible upgrade
 
 	// Only used to display
-	SchedulersPayload map[string]string `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
+	SchedulersPayload map[string]interface{} `toml:"schedulers-payload" json:"schedulers-payload,omitempty"`
 
 	// EnableOneWayMerge is the option to enable one way merge. This means a Region can only be merged into the next region of it.
 	// Imported from v3.1.0
@@ -262,4 +262,12 @@ func (s *StringSlice) UnmarshalJSON(text []byte) error {
 	}
 	*s = strings.Split(data, ",")
 	return nil
+}
+
+// evictLeaderSchedulerConfig holds configuration for evict leader
+// https://github.com/pingcap/pd/blob/b21855a3aeb787c71b0819743059e432be217dcd/server/schedulers/evict_leader.go#L81-L86
+// note that we use `interface{}` as the type of value because we don't care
+// about the value for now
+type evictLeaderSchedulerConfig struct {
+	StoreIDWithRanges map[uint64]interface{} `json:"store-id-ranges"`
 }
