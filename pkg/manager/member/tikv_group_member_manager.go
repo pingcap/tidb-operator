@@ -17,25 +17,24 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type tikvGroupMemberManager struct {
-	cli        versioned.Interface
 	genericCli client.Client
+	tcLister   listers.TidbClusterLister
 }
 
 func NewTiKVGroupMemberManager(
-	cli versioned.Interface,
-	genericCli client.Client) manager.TiKVGroupManager {
+	genericCli client.Client,
+	tcLister listers.TidbClusterLister) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
-		cli:        cli,
+		tcLister:   tcLister,
 		genericCli: genericCli,
 	}
 }
@@ -57,7 +56,7 @@ func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup
 	tcNamespace := tg.Namespace
 
 	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tcNamespace, tcName)
-	tc, err := tgm.cli.PingcapV1alpha1().TidbClusters(tcNamespace).Get(tcName, metav1.GetOptions{})
+	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcNamespace)
 	if err != nil {
 		klog.Error(err)
 		return err

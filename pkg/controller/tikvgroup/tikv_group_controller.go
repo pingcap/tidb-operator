@@ -57,8 +57,9 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tikvgroup-controller-manager"})
 
 	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	tgControl := controller.NewRealTiKVGroupControl(cli, tikvGroupInformer.Lister(), recorder)
-	tikvManager := member.NewTiKVGroupMemberManager(cli, genericCli)
+	tikvManager := member.NewTiKVGroupMemberManager(genericCli, tcInformer.Lister())
 
 	tg := &Controller{
 		control:  NewDefaultTikvGroupControl(tgControl, tikvManager),
