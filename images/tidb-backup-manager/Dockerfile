@@ -37,7 +37,8 @@ RUN \
   wget -nv https://download.pingcap.org/tidb-toolkit-${TOOLKIT_V40}-linux-amd64.tar.gz \
   && tar -xzf tidb-toolkit-${TOOLKIT_V40}-linux-amd64.tar.gz \
   && mv tidb-toolkit-${TOOLKIT_V40}-linux-amd64/bin/br /usr/local/bin/br40 \
-  && chmod 755 /usr/local/bin/br40 \
+  && mv tidb-toolkit-${TOOLKIT_V40}-linux-amd64/bin/mydumper /mydumper \
+  && chmod 755 /usr/local/bin/br40 /mydumper \
   && rm -rf tidb-toolkit-${TOOLKIT_V40}-linux-amd64.tar.gz \
   && rm -rf tidb-toolkit-${TOOLKIT_V40}-linux-amd64
 
