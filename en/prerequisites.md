@@ -17,212 +17,219 @@ This document introduces the hardware and software prerequisites for deploying a
 | Kubernetes | v1.12.5+ |
 | CentOS | 7.6 and kernel 3.10.0-957 or later |
 
-## The configuration of kernel parameters
+## Configure the firewall
 
-| Configuration Item | Value |
-| :--- | :--- |
-| net.core.somaxconn | 32768 |
-| vm.swappiness | 0 |
-| net.ipv4.tcp_syncookies | 0 |
-| net.ipv4.ip_forward | 1 |
-| fs.file-max | 1000000 |
-| fs.inotify.max_user_watches | 1048576 |
-| fs.inotify.max_user_instances | 1024 |
-| net.ipv4.conf.all.rp_filter | 1 |
-| net.ipv4.neigh.default.gc_thresh1 | 80000 |
-| net.ipv4.neigh.default.gc_thresh2 | 90000 |
-| net.ipv4.neigh.default.gc_thresh3 | 100000 |
-| net.bridge.bridge-nf-call-iptables | 1 |
-| net.bridge.bridge-nf-call-arptables | 1 |
-| net.bridge.bridge-nf-call-ip6tables | 1 |
-
-When you set `net.bridge.bridge-nf-call-*` parameters, and if your option reports an error, you can check whether this module is loaded by running the following command:
+It is recommended that you disable the firewall. 
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-lsmod|grep br_netfilter
+systemctl stop firewalld
+systemctl disable firewalld
 ```
 
-If this module is not loaded, run the following command to load it:
+If you cannot stop the firewalld service, to ensure the normal operation of Kubernetes, take the following steps:
+
+1. Enable the following ports on the master, and then restart the service:
+
+    {{< copyable "shell-regular" >}}
+    
+    ```shell
+    firewall-cmd --permanent --add-port=6443/tcp
+    firewall-cmd --permanent --add-port=2379-2380/tcp
+    firewall-cmd --permanent --add-port=10250/tcp
+    firewall-cmd --permanent --add-port=10251/tcp
+    firewall-cmd --permanent --add-port=10252/tcp
+    firewall-cmd --permanent --add-port=10255/tcp
+    firewall-cmd --permanent --add-port=8472/udp
+    firewall-cmd --add-masquerade --permanent
+    
+    # Set it when you need to expose NodePort on the master node.
+    firewall-cmd --permanent --add-port=30000-32767/tcp
+    systemctl restart firewalld
+    ```
+
+2. Enable the following ports on the nodes, and then restart the service:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    firewall-cmd --permanent --add-port=10250/tcp
+    firewall-cmd --permanent --add-port=10255/tcp
+    firewall-cmd --permanent --add-port=8472/udp
+    firewall-cmd --permanent --add-port=30000-32767/tcp
+    firewall-cmd --add-masquerade --permanent
+   
+    systemctl restart firewalld
+    ```
+
+## Configure Iptables
+
+The FORWARD chain is configured to `ACCEPT` by default and is set in the startup script:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-modprobe br_netfilter
+iptables -P FORWARD ACCEPT
 ```
 
-You also need to disable swap on each deployed Kubernetes node by running:
+## Disable SELinux
+
+{{< copyable "shell-regular" >}}
+
+```shell
+setenforce 0
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+```
+
+## Disable swap 
+
+To make kubelet work, you need to turn off swap and comment out the swap-related line in the `/etc/fstab` file.
 
 {{< copyable "shell-regular" >}}
 
 ```shell
 swapoff -a
+sed -i 's/^\(.*swap.*\)$/#\1/' /etc/fstab 
 ```
 
-To check whether swap is disabled:
+## Configure kernel parameters
+
+Configure the kernel parameters as follows. You can also adjust them according to your environment:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-free -m
+modprobe br_netfilter
+
+cat <<EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-arptables = 1
+net.core.somaxconn = 32768
+vm.swappiness = 0
+net.ipv4.tcp_syncookies = 0
+net.ipv4.ip_forward = 1
+fs.file-max = 1000000
+fs.inotify.max_user_watches = 1048576
+fs.inotify.max_user_instances = 1024
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.neigh.default.gc_thresh1 = 80000
+net.ipv4.neigh.default.gc_thresh2 = 90000
+net.ipv4.neigh.default.gc_thresh3 = 100000
+EOF
+
+sysctl --system
 ```
 
-If the above command shows that the swap column is all `0`, then swap is disabled.
+## Configure the Irqbalance service
 
-In addition, to permanently disable swaps, remove all the swap-related entries in `/etc/fstab`.
+The [Irqbalance](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/performance_tuning_guide/sect-red_hat_enterprise_linux-performance_tuning_guide-tool_reference-irqbalance) service binds the interrupts of each equipment to different CPUs respectively. This avoids the performance bottleneck when all interrupt requests are sent to the same CPU.
 
-After all above configurations are made, check whether you have configured [SMP IRQ Affinity](https://cs.uwaterloo.ca/~brecht/servers/apic/SMP-affinity.txt) on the machine. This configuration is to assign the interrupt of each device to different CPUs to prevent all interrupts from being sent to the same CPU, avoiding potential performance bottleneck and taking advantage of multiple cores to increase cluster throughput. For the TiDB cluster, the rate at which the network card processes packages has a great impact on the throughput of the cluster.
+{{< copyable "shell-regular" >}}
 
-Follow these steps to check whether you have configured SMP IRQ Affinity on the machine:
+```shell
+systemctl enable irqbalance
+systemctl start irqbalance
+```
 
-1. Execute the following command to check the interrupt of a network card:
+## Configure the CPUfreq governor mode
+
+To make full use of CPU performance, set the CPUfreq governor mode to `performance`. For details, see [Configure the CPUfreq governor mode on the target machine](https://docs.pingcap.com/tidb/v4.0/online-deployment-using-ansible#step-7-configure-the-cpufreq-governor-mode-on-the-target-machine).
+
+{{< copyable "shell-regular" >}}
+
+```shell
+cpupower frequency-set --governor performance
+```
+
+## Configure `ulimit`
+
+The TiDB cluster uses many file descriptors by default. The `ulimit` of the worker node must be greater than or equal to `1048576`.
+
+```shell
+cat <<EOF >>  /etc/security/limits.conf
+root        soft        nofile        1048576
+root        hard        nofile        1048576
+root        soft        stack         10240
+EOF
+sysctl --system
+```
+
+## Docker service
+
+It is recommended to install Docker CE 18.09.6 or later versions. See [Install Docker](https://docs.docker.com/engine/install/centos/) for details.
+
+After the installation, take the following steps:
+
+1. Save the Docker data to a separate disk. The data mainly contains images and the container logs. To implement this, set the [`--data-root`](https://docs.docker.com/config/daemon/systemd/#runtime-directory-and-storage-driver) parameter:
+
+    ```shell
+    cat > /etc/docker/daemon.json <<EOF
+    {
+      "exec-opts": ["native.cgroupdriver=systemd"],
+      "log-driver": "json-file",
+      "log-opts": {
+        "max-size": "100m"
+      },
+      "storage-driver": "overlay2",
+      "storage-opts": [
+        "overlay2.override_kernel_check=true"
+      ],
+      "data-root": "/data1/docker"
+    }
+    EOF
+    ```
+
+    The above command sets the data directory of Docker to `/data1/docker`.
+
+2. Set `ulimit` for the Docker daemon:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cat /proc/interrupts|grep ${iface_name}|awk '{print $1,$NF}'
+    vim /etc/systemd/system/docker.service
+    LimitNOFILE=1048576
     ```
 
-    In the output result of the above command, the first column indicates the interrupt and the second column indicates the device name. If it is a multi-queue network card, the above command outputs information in multiple rows and each queue corresponds to an interrupt.
-
-2. Execute either of the following commands to check this interrupt is assigned to which CPU.
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    cat /proc/irq/${ir_num}/smp_affinity
-    ```
-
-    The above command outputs the hexadecimal value corresponding to the CPU serial number, and the output result is not so intuitive. For the detailed calculation method, refer to [SMP IRQ Affinity](https://cs.uwaterloo.ca/~brecht/servers/apic/SMP-affinity.txt).
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    cat /proc/irq/${ir_num}/smp_affinity_list
-    ```
-
-    The above command outputs the decimal value corresponding to the CPU serial number. The result is more intuitive.
-
-If all interrupts of a network card are assigned to different CPUs, the SMP IRQ Affinity is correctly configured on the machine and you do not need further operation.
-
-If all interrupts are sent to the same CPU, configure SMP IRQ Affinity by the following steps:
-
-+ For the scenario of multi-queue network card and multiple cores:
-
-    - Method 1: Enable the [irqbalance](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/performance_tuning_guide/sect-red_hat_enterprise_linux-performance_tuning_guide-tool_reference-irqbalance) service. Use the following command to enable the service on CentOS 7:
-
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        systemctl start irqbalance
-        ```
-
-    - Method 2: Disable irqbalance and customize the binding relationship between interrupts and CPUs. Refer to the [set_irq_affinity.sh](https://gist.githubusercontent.com/SaveTheRbtz/8875474/raw/0c6e500e81e161505d9111ac77115a2367180d12/set_irq_affinity.sh) script for more details.
-
-+ For the scenario of single-queue network card and multiple cores:
-
-    To configure SMP IRQ Affinity in this scenario, you can use [RPS/RFS](https://www.kernel.org/doc/Documentation/networking/scaling.txt) to simulate the Receive Side Scaling (RSS) feature of the network card at the software level.
-
-    Do not use the irqbalance service as described in Method 1. Instead, use the [script](https://gist.githubusercontent.com/SaveTheRbtz/8875474/raw/0c6e500e81e161505d9111ac77115a2367180d12/set_irq_affinity.sh) provided in Method 2 to configure RPS. For the configuration of RFS, refer to [RFS configuration](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/performance_tuning_guide/sect-red_hat_enterprise_linux-performance_tuning_guide-networking-configuration_tools#sect-Red_Hat_Enterprise_Linux-Performance_Tuning_Guide-Configuration_tools-Configuring_Receive_Flow_Steering_RFS).
-
-## `ulimit` configuration
-
-The TiDB cluster uses many file descriptors by default. The `ulimit` of the worker node and the Docker process must be greater than or equal to `1048576`.
-
-* Set the `ulimit` value of the worker node. For details, refer to [How to set ulimit values](https://access.redhat.com/solutions/61334).
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    sudo vim /etc/security/limits.conf
-    ```
-
-    Set the `nofile` of `soft` and `hard` for the root user to be greater than or equal to `1048576`.
-
-* Set the `ulimit` value of the Docker service.
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    sudo vim /etc/systemd/system/docker.service
-    ```
-
-    Set `LimitNOFILE` to be greater than or equal to `1048576`.
+    Set `LimitNOFILE` as equal to or greater than `1048576`.
 
     > **Note:**
     >
     > `LimitNOFILE` must be explicitly set to `1048576` or a greater value, other than `infinity` by default. Due to [a bug of `systemd`](https://github.com/systemd/systemd/commit/6385cb31ef443be3e0d6da5ea62a267a49174688#diff-108b33cf1bd0765d116dd401376ca356L1186), the `infinity` value in some versions of `systemd` is `65536`.
 
-## Hardware and deployment requirements
+## Kubernetes service
 
-+ 64-bit generic hardware server platform in the Intel x86-64 architecture and 10 Gigabit NIC (network interface card), which are the same as the server requirements for deploying a TiDB cluster using binary. For details, refer to [Hardware recommendations](https://pingcap.com/docs/stable/how-to/deploy/hardware-recommendations/).
+To deploy a multi-master, highly available cluster, see [Kubernetes documentation](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/).
 
-+ The server's disk, memory and CPU choices depend on the capacity planning of the cluster and the deployment topology. It is recommended to deploy three master nodes, three etcd nodes, and several worker nodes to ensure high availability of the online Kubernetes cluster.
+The configuration of the Kubernetes master depends on the number of nodes. More nodes consumes more resources. You can adjust the number of nodes as needed.
 
-  Meanwhile, the master node often acts as a worker node (that is, load can also be scheduled to the master node) to make full use of resources. You can set [reserved resources](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/) by kubelet to ensure that the system processes on the machine and the core processes of Kubernetes have sufficient resources to run under high workloads. This ensures the stability of the entire system.
+| Nodes in a Kubernetes cluster | Kubernetes master configuration |
+| :--- | :--- |
+| 1-5 | 1vCPUs 4GB Memory|
+| 6-10 | 2vCPUs 8GB Memory|
+| 11-100 | 4vCPUs 16GB Memory|
+| 101-250 | 8vCPUs 32GB Memory|
+| 251-500 | 16vCPUs 64GB Memory|
+| 501-5000 | 32vCPUs 128GB Memory|
 
-The following text analyzes the deployment plan of three Kubernetes masters, three etcd and several worker nodes. To achieve a highly available deployment of multi-master nodes in Kubernetes, see [Kubernetes official documentation](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/).
+After Kubelet is installed, take the following steps:
 
-## Kubernetes requirements for system resources
+1. Save the Kubelet data to a separate disk (it can share the same disk with Docker). The data mainly contains the data used by [emptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir). To implement this, set the `--root-dir` parameter:
 
-- It is required on each machine to have a relatively large SAS disk (at least 1T) to store the data directories of Docker and kubelet.
+    {{< copyable "shell-regular" >}}
+    
+    ```shell
+    echo "KUBELET_EXTRA_ARGS=--root-dir=/data1/kubelet" > /etc/sysconfig/kubelet
+    systemctl restart kubelet
+    ```
 
-    > **Note:**
-    >
-    > The data from Docker mainly includes image and container logs. The data from kubelet are mainly data used in [emptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir).
+    The above command sets the data directory of Kubelet to `/data1/kubelet`.
 
-- If you need to deploy a monitoring system for the Kubernetes cluster and store the monitoring data on the disk, consider preparing a large SAS disk for Prometheus and also for the log monitoring system. This is also to guarantee that the purchased machines are homogeneous. For this reason, it is recommended to prepare two large SAS disks for each machine.
-
-    > **Note:**
-    >
-    > In a production environment, it is recommended to use RAID 5 for the two types of disks. You can decide how many disks for which you want to use RAID 5 as needed.
-
-- It is recommended that the number of etcd nodes be consistent with that of the Kubernetes master nodes, and you store the etcd data on the SSD disk.
+2. [Reserve compute resources](https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/) by using Kubelet, to ensure that the system process of the machine and the kernel process of Kubernetes have enough resources for operation in heavy workloads. This maintains the stability of the entire system.
 
 ## TiDB cluster's requirements for resources
 
-The TiDB cluster consists of three components: PD, TiKV and TiDB. The following recommendations on capacity planning is based on a standard TiDB cluster, namely three PDs, three TiKVs and two TiDBs:
+To determine the machine configuration, see [Server recommendations](https://docs.pingcap.com/tidb/v4.0/hardware-and-software-requirements#production-environment).
 
-- PD component: 2C 4GB. PD occupies relatively less resources and only a small portion of local disks.
-
-    > **Note:**
-    >
-    > For easier management, you can put the PDs of all clusters on the master node. For example, to support five TiDB clusters, you can deploy five PD instances on each of the 3 master nodes. These PD instances use the same SSD disk (200 to 300 GigaBytes disk) on which you can create five directories as a mount point by means of bind mount. For detailed operation, refer to the [documentation](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs).
-    >
-    > If more machines are added to support more TiDB clusters, you can continue to add PD instances in this way on the master. If the resources on the master are exhausted, you can add PDs on other worker nodes in the same way. This method facilitates the planning and management of PD instances, while the downside is that if two machines go down, all TiDB clusters become unavailable due to the concentration of PD instances.
-    >
-    > Therefore, it is recommended to take out an SSD disk from each machine in all clusters and use it to provide PD instances like the master node. If you need to increase the capacity of a cluster by adding machines, you only need to create PD instances on the newly added machines.
-
-- TiKV component: An NVMe disk of 8C 32GB for each TiKV instance. To deploy multiple TiKV instances on one machine, you must reserve enough buffers when planning capacity.
-
-- TiDB component: 8C 32 GB capacity. Because the TiDB component does not occupy the disk space, you only need to consider the CPU and memory resources when planning. The following example assumes that the capacity is 8C 32 GB.
-
-## A case of planning TiDB clusters
-
-This is an example of deploying five clusters (each cluster has 3 PDs, 3 TiKVs, and 2 TiDBs), where PD is configured as 2C 4GB, TiDB as 8C 32GB, and TiKV as 8C 32GB. There are seven Kubernetes nodes, three of which are both master and worker nodes, and the other four are purely worker nodes. The distribution of components on each node is as follows:
-
-+ Each master node:
-
-    - 1 etcd (2C 4GB) + 2 PDs (2 \* 2C 2 \* 4GB) + 3 TiKVs (3 \* 8C 3 \* 32GB) + 1 TiDB (8C 32GB), totalling 38C 140GB
-    - Two SSD disks, one for etcd and one for two PD instances
-    - The RAID5-applied SAS disk used for Docker and kubelet
-    - Three NVMe disks for TiKV instances
-
-+ Each worker node:
-
-    - 3 PDs (3 \* 2C 3 \* 4GB) + 2 TiKVs (2 \* 8C 2 \* 32GB) + 2 TiDBs (2 \* 8C 2 \* 32GB), totalling 38C 140GB
-    - One SSD disk for three PD instances
-    - The RAID5-applied SAS disk used for Docker and kubelet
-    - Two NVMe disks for TiKV instances
-
-From the above analysis, a total of seven physical machines are required to support five sets of TiDB clusters. Three of the machines are master and worker nodes, and the remaining four are worker nodes. The configuration requirements for the machines are as follows:
-
-- master and worker node: 48C 192GB, two SSD disks, one RAID5-applied SAS disk, three NVMe disks
-- worker node: 48C 192GB, one block SSD disk, one RAID5-applied SAS disk, two NVMe disks
-
-The above recommended configuration leaves plenty of available resources in addition to those taken by the components. If you want to add the monitoring and log components, use the same method to plan and purchase the type of machines with specific configurations.
-
-> **Note:**
->
-> In a production environment, avoid deploying TiDB instances on a master node due to the NIC bandwidth. If the NIC of the master node works at full capacity, the heartbeat report between the worker node and the master node will be affected and might lead to serious problems.
+In a production environment, avoid deploying TiDB instances on a kubernetes master, or deploy as few TiDB instances as possible. Due to the NIC bandwidth, if the NIC of the master node works at full capacity, the heartbeat report between the worker node and the master node will be affected and might lead to serious problems.
