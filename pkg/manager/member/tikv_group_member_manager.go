@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -38,31 +38,31 @@ import (
 )
 
 type tikvGroupMemberManager struct {
-	cli          versioned.Interface
 	genericCli   client.Client
 	svcLister    corelisters.ServiceLister
 	setLister    appslister.StatefulSetLister
 	svcControl   controller.ServiceControlInterface
 	setControl   controller.StatefulSetControlInterface
 	typedControl controller.TypedControlInterface
+	tcLister     listers.TidbClusterLister
 }
 
 func NewTiKVGroupMemberManager(
-	cli versioned.Interface,
 	genericCli client.Client,
 	svcLister corelisters.ServiceLister,
 	setLister appslister.StatefulSetLister,
 	svcControl controller.ServiceControlInterface,
 	setControl controller.StatefulSetControlInterface,
-	typedControl controller.TypedControlInterface) manager.TiKVGroupManager {
+	typedControl controller.TypedControlInterface,
+	tcLister listers.TidbClusterLister) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
-		cli:          cli,
 		genericCli:   genericCli,
 		svcLister:    svcLister,
 		setLister:    setLister,
 		svcControl:   svcControl,
 		setControl:   setControl,
 		typedControl: typedControl,
+		tcLister:     tcLister,
 	}
 }
 
@@ -92,7 +92,7 @@ func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup
 	tcNamespace := tg.Namespace
 
 	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tcNamespace, tcName)
-	tc, err := tgm.cli.PingcapV1alpha1().TidbClusters(tcNamespace).Get(tcName, metav1.GetOptions{})
+	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcNamespace)
 	if err != nil {
 		klog.Error(err)
 		return nil, err

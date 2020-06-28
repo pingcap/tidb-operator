@@ -59,13 +59,14 @@ func NewController(
 	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
 	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
+	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 
 	tgControl := controller.NewRealTiKVGroupControl(cli, tikvGroupInformer.Lister(), recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
-	tikvManager := member.NewTiKVGroupMemberManager(cli, genericCli, svcInformer.Lister(), setInformer.Lister(), svcControl, setControl, typedControl)
+	tikvManager := member.NewTiKVGroupMemberManager(genericCli, svcInformer.Lister(), setInformer.Lister(), svcControl, setControl, typedControl, tcInformer.Lister())
 
 	tg := &Controller{
 		control:  NewDefaultTikvGroupControl(tgControl, tikvManager),
