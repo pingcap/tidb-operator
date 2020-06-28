@@ -50,7 +50,7 @@
       - [Restore Data from S3-Compatible Storage Using BR](restore-from-aws-s3-using-br.md)
   - [Restart a TiDB Cluster](restart-a-tidb-cluster.md)
   - [Maintain a Kubernetes Node](maintain-a-kubernetes-node.md)
-  - [Collect TiDB Logs](collect-tidb-logs.md)
+  - [View TiDB Logs](view-logs.md)
   - [Enable Automatic Failover](use-auto-failover.md)
   - [Destroy a TiDB Cluster](destroy-a-tidb-cluster.md)
 + Disaster Recovery
@@ -74,3 +74,4 @@
     - [Configure tidb-drainer Chart](configure-tidb-binlog-drainer.md)
     - [Configure tidb-cluster Chart](tidb-cluster-chart-config.md)
     - [Configure tidb-backup Chart](configure-backup.md)
+  - [Log Collection](logs-collection.md)

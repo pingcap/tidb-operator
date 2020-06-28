@@ -87,7 +87,7 @@ After the deployment is complete, see the following documents to use, operate, a
 + [Restore a TiDB Cluster](restore-from-aws-s3-using-br.md)
 + [Automatic Failover](use-auto-failover.md)
 + [Monitor a TiDB Cluster in Kubernetes](monitor-a-tidb-cluster.md)
-+ [Collect TiDB Logs in Kubernetes](collect-tidb-logs.md)
++ [View TiDB Logs in Kubernetes](view-logs.md)
 + [Maintain Kubernetes Nodes that Hold the TiDB Cluster](maintain-a-kubernetes-node.md)
 
 When a problem occurs and the cluster needs diagnosis, you can:
