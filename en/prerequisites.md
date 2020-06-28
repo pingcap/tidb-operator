@@ -156,7 +156,7 @@ The TiDB cluster uses many file descriptors by default. The `ulimit` of the work
 
 ## Hardware and deployment requirements
 
-+ 64-bit generic hardware server platform in the Intel x86-64 architecture and 10 Gigabit NIC (network interface card), which are the same as the server requirements for deploying a TiDB cluster using binary. For details, refer to [Hardware recommendations](https://pingcap.com/docs/v3.0/how-to/deploy/hardware-recommendations/).
++ 64-bit generic hardware server platform in the Intel x86-64 architecture and 10 Gigabit NIC (network interface card), which are the same as the server requirements for deploying a TiDB cluster using binary. For details, refer to [Hardware recommendations](https://pingcap.com/docs/stable/how-to/deploy/hardware-recommendations/).
 
 + The server's disk, memory and CPU choices depend on the capacity planning of the cluster and the deployment topology. It is recommended to deploy three master nodes, three etcd nodes, and several worker nodes to ensure high availability of the online Kubernetes cluster.
 

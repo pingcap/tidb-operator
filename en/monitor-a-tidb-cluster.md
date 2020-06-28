@@ -20,7 +20,7 @@ You can monitor the TiDB cluster with Prometheus and Grafana. When you create a 
 
 The monitoring data is not persisted by default. To persist the monitoring data, you can set `spec.persistent` to `true` in `TidbMonitor`. When you enable this option, you need to set `spec.storageClassName` to an existing storage in the current cluster, and this storage is required to support persisting data; otherwise, there is a risk of data loss.
 
-For configuration details on the monitoring system, refer to [TiDB Cluster Monitoring](https://pingcap.com/docs/v3.0/how-to/monitor/monitor-a-cluster).
+For configuration details on the monitoring system, refer to [TiDB Cluster Monitoring](https://pingcap.com/docs/stable/how-to/monitor/monitor-a-cluster).
 
 ### View the monitoring dashboard
 
