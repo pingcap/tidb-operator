@@ -92,7 +92,7 @@ func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup
 	tcNamespace := tg.Namespace
 
 	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tcNamespace, tcName)
-	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcNamespace)
+	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcName)
 	if err != nil {
 		klog.Error(err)
 		return nil, err
