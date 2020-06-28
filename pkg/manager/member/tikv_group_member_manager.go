@@ -38,19 +38,31 @@ import (
 )
 
 type tikvGroupMemberManager struct {
-	cli        versioned.Interface
-	genericCli client.Client
-	svcControl controller.ServiceControlInterface
-	svcLister  corelisters.ServiceLister
-	setLister  appslister.StatefulSetLister
+	cli          versioned.Interface
+	genericCli   client.Client
+	svcLister    corelisters.ServiceLister
+	setLister    appslister.StatefulSetLister
+	svcControl   controller.ServiceControlInterface
+	setControl   controller.StatefulSetControlInterface
+	typedControl controller.TypedControlInterface
 }
 
 func NewTiKVGroupMemberManager(
 	cli versioned.Interface,
-	genericCli client.Client) manager.TiKVGroupManager {
+	genericCli client.Client,
+	svcLister corelisters.ServiceLister,
+	setLister appslister.StatefulSetLister,
+	svcControl controller.ServiceControlInterface,
+	setControl controller.StatefulSetControlInterface,
+	typedControl controller.TypedControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
-		cli:        cli,
-		genericCli: genericCli,
+		cli:          cli,
+		genericCli:   genericCli,
+		svcLister:    svcLister,
+		setLister:    setLister,
+		svcControl:   svcControl,
+		setControl:   setControl,
+		typedControl: typedControl,
 	}
 }
 
@@ -119,6 +131,7 @@ func (tgm *tikvGroupMemberManager) registerTiKVGroup(tg *v1alpha1.TiKVGroup, tc 
 
 func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGroup) error {
 	//TODO: support Pause
+
 	ns := tg.Namespace
 	tgName := tg.Name
 	svcName := fmt.Sprintf("%s-tikv-group-peer", tgName)
@@ -130,7 +143,7 @@ func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGrou
 		if err != nil {
 			return err
 		}
-		//TODO: create Service
+		return tgm.svcControl.CreateService(tg, newSvc)
 	}
 	if err != nil {
 		return err
@@ -144,13 +157,13 @@ func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGrou
 	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
-		// TODO add unit test
 		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
 		if err != nil {
 			return err
 		}
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		// TODO: update service
+		_, err = tgm.svcControl.UpdateService(tg, &svc)
+		return err
 	}
 
 	return nil
@@ -185,13 +198,12 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 		if err != nil {
 			return err
 		}
-		// TODO: create statefulset
-		//err = tgm.setControl.CreateStatefulSet(tc, newSet)
-		//if err != nil {
-		//	return err
-		//}
-		//tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
-		//return nil
+		err = tgm.setControl.CreateStatefulSet(tg, newSet)
+		if err != nil {
+			return err
+		}
+		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
+		return nil
 	}
 
 	// TODO: Failure Recover
@@ -204,8 +216,7 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 
 	// TODO: TiKVGroup Auto Failover
 
-	// TODO: Update StatefulSet
-	return nil
+	return updateStatefulSet(tgm.setControl, tg, newSet, oldSet)
 }
 
 func (tgm *tikvGroupMemberManager) syncTiKVConfigMap(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -225,8 +236,7 @@ func (tgm *tikvGroupMemberManager) syncTiKVConfigMap(tg *v1alpha1.TiKVGroup, tc 
 			newCm.Name = inUseName
 		}
 	}
-	//TODO: create configmap
-	return nil, nil
+	return tgm.typedControl.CreateOrUpdateConfigMap(tg, newCm)
 }
 
 func newServiceForTiKVGroup(tg *v1alpha1.TiKVGroup, svcName string) *corev1.Service {

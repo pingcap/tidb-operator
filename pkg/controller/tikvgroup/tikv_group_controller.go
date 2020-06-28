@@ -57,8 +57,15 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tikvgroup-controller-manager"})
 
 	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
+	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
+	svcInformer := kubeInformerFactory.Core().V1().Services()
+
 	tgControl := controller.NewRealTiKVGroupControl(cli, tikvGroupInformer.Lister(), recorder)
-	tikvManager := member.NewTiKVGroupMemberManager(cli, genericCli)
+	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
+	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
+	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+
+	tikvManager := member.NewTiKVGroupMemberManager(cli, genericCli, svcInformer.Lister(), setInformer.Lister(), svcControl, setControl, typedControl)
 
 	tg := &Controller{
 		control:  NewDefaultTikvGroupControl(tgControl, tikvManager),

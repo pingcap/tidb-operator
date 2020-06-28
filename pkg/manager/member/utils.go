@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 )
 
@@ -279,7 +280,7 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 }
 
 // updateStatefulSet is a template function to update the statefulset of components
-func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alpha1.TidbCluster, newSet, oldSet *apps.StatefulSet) error {
+func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
 	if newSet.Annotations == nil {
 		newSet.Annotations = map[string]string{}
@@ -314,7 +315,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 		if err != nil {
 			return err
 		}
-		_, err = setCtl.UpdateStatefulSet(tc, &set)
+		_, err = setCtl.UpdateStatefulSet(object, &set)
 		return err
 	}
 
