@@ -69,7 +69,7 @@ func NewController(
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
-	tikvManager := member.NewTiKVGroupMemberManager(
+	tikvManager := member.NewTiKVGroupMemberManager(genericCli,
 		svcInformer.Lister(),
 		setInformer.Lister(),
 		podInformer.Lister(),

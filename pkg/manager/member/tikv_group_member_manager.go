@@ -58,6 +58,7 @@ type tikvGroupMemberManager struct {
 }
 
 func NewTiKVGroupMemberManager(
+	genericCli client.Client,
 	svcLister corelisters.ServiceLister,
 	setLister appslister.StatefulSetLister,
 	podLister corelisters.PodLister,
@@ -67,6 +68,7 @@ func NewTiKVGroupMemberManager(
 	typedControl controller.TypedControlInterface,
 	pdControl pdapi.PDControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
+		genericCli:   genericCli,
 		svcLister:    svcLister,
 		setLister:    setLister,
 		podLister:    podLister,
