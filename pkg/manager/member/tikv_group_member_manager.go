@@ -42,7 +42,7 @@ import (
 const (
 
 	//find a better way to manage store only managed by tikv in Operator
-	tikvGroupStoreLimitPattern = `%s-group-tikv-\d+\.%s-tikv-group-peer\.%s\.svc\:\d+`
+	tikvGroupStoreLimitPattern = `%s-tikv-group-\d+\.%s-tikv-group-peer\.%s\.svc\:\d+`
 )
 
 type tikvGroupMemberManager struct {
@@ -144,7 +144,6 @@ func (tgm *tikvGroupMemberManager) registerTiKVGroup(tg *v1alpha1.TiKVGroup, tc 
 	return controller.RequeueErrorf(msg)
 }
 
-
 func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGroup) error {
 	//TODO: support Pause
 
@@ -197,7 +196,6 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 	setNotExist := errors.IsNotFound(err)
 	oldSet := oldSetTmp.DeepCopy()
 
-	//TODO: sync status
 	if err := tgm.syncTiKVGroupStatus(tg, tc, oldSet); err != nil {
 		klog.Error(err)
 		return err
@@ -273,6 +271,7 @@ func (tgm *tikvGroupMemberManager) syncTiKVGroupStatus(tg *v1alpha1.TiKVGroup, t
 	upgrading, err := tgm.tikvGroupStatefulSetIsUpgrading(tg, set)
 	if err != nil {
 		tg.Status.Synced = false
+		klog.Error(err)
 		return err
 	}
 	if upgrading {
@@ -292,12 +291,14 @@ func (tgm *tikvGroupMemberManager) syncTiKVGroupStatus(tg *v1alpha1.TiKVGroup, t
 	storesInfo, err := pdCli.GetStores()
 	if err != nil {
 		tg.Status.Synced = false
+		klog.Error(err)
 		return err
 	}
 
-	pattern, err := regexp.Compile(fmt.Sprintf(tikvGroupStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvGroupStoreLimitPattern, tg.Name, tg.Name, tg.Namespace))
 	if err != nil {
 		tg.Status.Synced = false
+		klog.Error(err)
 		return err
 	}
 
@@ -305,6 +306,7 @@ func (tgm *tikvGroupMemberManager) syncTiKVGroupStatus(tg *v1alpha1.TiKVGroup, t
 		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
 		// So we check the store owner to make sure it.
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			klog.V(4).Infof("discard store address %s", store.Store.Address)
 			continue
 		}
 		status := getTiKVStore(store)
