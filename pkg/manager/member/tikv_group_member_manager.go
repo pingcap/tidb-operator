@@ -58,7 +58,6 @@ type tikvGroupMemberManager struct {
 }
 
 func NewTiKVGroupMemberManager(
-	genericCli client.Client,
 	svcLister corelisters.ServiceLister,
 	setLister appslister.StatefulSetLister,
 	podLister corelisters.PodLister,
@@ -68,7 +67,6 @@ func NewTiKVGroupMemberManager(
 	typedControl controller.TypedControlInterface,
 	pdControl pdapi.PDControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
-		genericCli:   genericCli,
 		svcLister:    svcLister,
 		setLister:    setLister,
 		podLister:    podLister,
@@ -145,6 +143,7 @@ func (tgm *tikvGroupMemberManager) registerTiKVGroup(tg *v1alpha1.TiKVGroup, tc 
 	msg := fmt.Sprintf("tg[%s/%s] register itself to tc[%s/%s] successfully, requeue", tg.Namespace, tg.Name, tcNamespace, tcName)
 	return controller.RequeueErrorf(msg)
 }
+
 
 func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGroup) error {
 	//TODO: support Pause
