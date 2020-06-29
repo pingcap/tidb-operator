@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -24,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,47 +39,62 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+
+	//find a better way to manage store only managed by tikv in Operator
+	tikvGroupStoreLimitPattern = `%s-group-tikv-\d+\.%s-tikv-group-peer\.%s\.svc\:\d+`
+)
+
 type tikvGroupMemberManager struct {
 	genericCli   client.Client
 	svcLister    corelisters.ServiceLister
 	setLister    appslister.StatefulSetLister
+	podLister    corelisters.PodLister
+	tcLister     listers.TidbClusterLister
 	svcControl   controller.ServiceControlInterface
 	setControl   controller.StatefulSetControlInterface
 	typedControl controller.TypedControlInterface
-	tcLister     listers.TidbClusterLister
+	pdControl    pdapi.PDControlInterface
 }
 
 func NewTiKVGroupMemberManager(
 	genericCli client.Client,
 	svcLister corelisters.ServiceLister,
 	setLister appslister.StatefulSetLister,
+	podLister corelisters.PodLister,
+	tcLister listers.TidbClusterLister,
 	svcControl controller.ServiceControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	typedControl controller.TypedControlInterface,
-	tcLister listers.TidbClusterLister) manager.TiKVGroupManager {
+	pdControl pdapi.PDControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
 		genericCli:   genericCli,
 		svcLister:    svcLister,
 		setLister:    setLister,
+		podLister:    podLister,
+		tcLister:     tcLister,
 		svcControl:   svcControl,
 		setControl:   setControl,
 		typedControl: typedControl,
-		tcLister:     tcLister,
+		pdControl:    pdControl,
 	}
 }
 
 func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
 	tc, err := tgm.checkWhetherRegistered(tg)
 	if err != nil {
+		klog.Error(err)
 		return err
 	}
 	klog.V(4).Infof("tikvgroup member [%s/%s] allowed to syncing", tg.Namespace, tg.Name)
 
 	if err := tgm.syncServiceForTiKVGroup(tg); err != nil {
+		klog.Error(err)
 		return err
 	}
 
 	if err := tgm.syncStatefulSetForTiKVGroup(tg, tc); err != nil {
+		klog.Error(err)
 		return err
 	}
 
@@ -91,8 +108,6 @@ func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
 func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup) (*v1alpha1.TidbCluster, error) {
 	tcName := tg.Spec.ClusterName
 	tcNamespace := tg.Namespace
-
-	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tcNamespace, tcName)
 	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcName)
 	if err != nil {
 		klog.Error(err)
@@ -110,6 +125,7 @@ func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup
 		}
 	}
 
+	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tcNamespace, tcName)
 	return nil, tgm.registerTiKVGroup(tg, tc)
 }
 
@@ -174,33 +190,42 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 	ns := tg.GetNamespace()
 	tcName := tg.GetName()
 
-	oldSetTmp, err := tgm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
+	oldSetTmp, err := tgm.setLister.StatefulSets(ns).Get(controller.TiKVGroupMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
+		klog.Error(err)
 		return err
 	}
 	setNotExist := errors.IsNotFound(err)
 	oldSet := oldSetTmp.DeepCopy()
 
 	//TODO: sync status
+	if err := tgm.syncTiKVGroupStatus(tg, tc, oldSet); err != nil {
+		klog.Error(err)
+		return err
+	}
 
 	//TODO: support pause
 
 	cm, err := tgm.syncTiKVConfigMap(tg, tc, oldSet)
 	if err != nil {
+		klog.Error(err)
 		return err
 	}
 
 	newSet, err := getNewTiKVSetForTiKVGroup(tg, tc, cm)
 	if err != nil {
+		klog.Error(err)
 		return err
 	}
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newSet)
 		if err != nil {
+			klog.Error(err)
 			return err
 		}
 		err = tgm.setControl.CreateStatefulSet(tg, newSet)
 		if err != nil {
+			klog.Error(err)
 			return err
 		}
 		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
@@ -240,13 +265,122 @@ func (tgm *tikvGroupMemberManager) syncTiKVConfigMap(tg *v1alpha1.TiKVGroup, tc 
 	return tgm.typedControl.CreateOrUpdateConfigMap(tg, newCm)
 }
 
-func (tgm *tikvGroupMemberManager) syncTiKVGroupStatus(tg v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+func (tgm *tikvGroupMemberManager) syncTiKVGroupStatus(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
 	if set == nil {
 		// skip if not created yet
 		return nil
 	}
 	tg.Status.StatefulSet = &set.Status
+	upgrading, err := tgm.tikvGroupStatefulSetIsUpgrading(tg, set)
+	if err != nil {
+		tg.Status.Synced = false
+		return err
+	}
+	if upgrading {
+		tg.Status.Phase = v1alpha1.UpgradePhase
+	} else if tg.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
+		tg.Status.Phase = v1alpha1.ScalePhase
+	} else {
+		tg.Status.Phase = v1alpha1.NormalPhase
+	}
 
+	previousStores := tg.Status.Stores
+	stores := map[string]v1alpha1.TiKVStore{}
+	tombstoneStores := map[string]v1alpha1.TiKVStore{}
+
+	pdCli := controller.GetPDClient(tgm.pdControl, tc)
+	// This only returns Up/Down/Offline stores
+	storesInfo, err := pdCli.GetStores()
+	if err != nil {
+		tg.Status.Synced = false
+		return err
+	}
+
+	pattern, err := regexp.Compile(fmt.Sprintf(tikvGroupStoreLimitPattern, tc.Name, tc.Name, tc.Namespace))
+	if err != nil {
+		tg.Status.Synced = false
+		return err
+	}
+
+	for _, store := range storesInfo.Stores {
+		// In theory, the external tikv can join the cluster, and the operator would only manage the internal tikv.
+		// So we check the store owner to make sure it.
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
+		status := getTiKVStore(store)
+		if status == nil {
+			continue
+		}
+		// avoid LastHeartbeatTime be overwrite by zero time when pd lost LastHeartbeatTime
+		if status.LastHeartbeatTime.IsZero() {
+			if oldStatus, ok := previousStores[status.ID]; ok {
+				klog.V(4).Infof("the pod:%s's store LastHeartbeatTime is zero,so will keep in %v", status.PodName, oldStatus.LastHeartbeatTime)
+				status.LastHeartbeatTime = oldStatus.LastHeartbeatTime
+			}
+		}
+
+		oldStore, exist := previousStores[status.ID]
+
+		status.LastTransitionTime = metav1.Now()
+		if exist && status.State == oldStore.State {
+			status.LastTransitionTime = oldStore.LastTransitionTime
+		}
+
+		stores[status.ID] = *status
+	}
+
+	//this returns all tombstone stores
+	tombstoneStoresInfo, err := pdCli.GetTombStoneStores()
+	if err != nil {
+		tc.Status.TiKV.Synced = false
+		return err
+	}
+	for _, store := range tombstoneStoresInfo.Stores {
+		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
+			continue
+		}
+		status := getTiKVStore(store)
+		if status == nil {
+			continue
+		}
+		tombstoneStores[status.ID] = *status
+	}
+
+	tg.Status.Synced = true
+	tg.Status.Stores = stores
+	tg.Status.TombstoneStores = tombstoneStores
+	tg.Status.Image = ""
+	c := filterContainer(set, "tikv")
+	if c != nil {
+		tc.Status.TiKV.Image = c.Image
+	}
+	return nil
+}
+
+func (tgm *tikvGroupMemberManager) tikvGroupStatefulSetIsUpgrading(tg *v1alpha1.TiKVGroup, set *apps.StatefulSet) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+	selector, err := label.NewGroup().Instance(tg.Name).TiKV().Selector()
+	if err != nil {
+		return false, err
+	}
+	tikvPods, err := tgm.podLister.Pods(set.Namespace).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range tikvPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != tg.Status.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // TODO: add unit test

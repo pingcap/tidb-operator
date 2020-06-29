@@ -24,6 +24,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -56,17 +57,27 @@ func NewController(
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tikvgroup-controller-manager"})
 
+	pdControl := pdapi.NewDefaultPDControl(kubeCli)
 	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
 	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 
 	tgControl := controller.NewRealTiKVGroupControl(cli, tikvGroupInformer.Lister(), recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 
-	tikvManager := member.NewTiKVGroupMemberManager(genericCli, svcInformer.Lister(), setInformer.Lister(), svcControl, setControl, typedControl, tcInformer.Lister())
+	tikvManager := member.NewTiKVGroupMemberManager(genericCli,
+		svcInformer.Lister(),
+		setInformer.Lister(),
+		podInformer.Lister(),
+		tcInformer.Lister(),
+		svcControl,
+		setControl,
+		typedControl,
+		pdControl)
 
 	tg := &Controller{
 		control:  NewDefaultTikvGroupControl(tgControl, tikvManager),

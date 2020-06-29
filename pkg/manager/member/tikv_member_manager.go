@@ -661,7 +661,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := tkmm.getTiKVStore(store)
+		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}
@@ -693,7 +693,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := tkmm.getTiKVStore(store)
+		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}
@@ -711,7 +711,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	return nil
 }
 
-func (tkmm *tikvMemberManager) getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
+func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 	if store.Store == nil || store.Status == nil {
 		return nil
 	}
@@ -760,7 +760,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := tkmm.getTiKVStore(store)
+		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}

@@ -320,7 +320,7 @@ func AnnAdditionalProm(name string, port int32) map[string]string {
 }
 
 func TiKVGroupMemberName(groupName string) string {
-	return fmt.Sprintf("%s-group-tikv", groupName)
+	return fmt.Sprintf("%s-tikv-group", groupName)
 }
 
 func TiKVGroupPeerMemberName(groupName string) string {
