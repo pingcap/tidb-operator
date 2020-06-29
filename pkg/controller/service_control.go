@@ -17,11 +17,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -37,9 +37,9 @@ var ExternalTrafficPolicy string
 
 // ServiceControlInterface manages Services used in TidbCluster
 type ServiceControlInterface interface {
-	CreateService(*v1alpha1.TidbCluster, *corev1.Service) error
-	UpdateService(*v1alpha1.TidbCluster, *corev1.Service) (*corev1.Service, error)
-	DeleteService(*v1alpha1.TidbCluster, *corev1.Service) error
+	CreateService(runtime.Object, *corev1.Service) error
+	UpdateService(runtime.Object, *corev1.Service) (*corev1.Service, error)
+	DeleteService(runtime.Object, *corev1.Service) error
 }
 
 type realServiceControl struct {
@@ -57,29 +57,41 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 	}
 }
 
-func (sc *realServiceControl) CreateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
-	_, err := sc.kubeCli.CoreV1().Services(tc.Namespace).Create(svc)
-	sc.recordServiceEvent("create", tc, svc, err)
+func (sc *realServiceControl) CreateService(controller runtime.Object, svc *corev1.Service) error {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
+	}
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	name := controllerMo.GetName()
+	namespace := controllerMo.GetNamespace()
+	_, err := sc.kubeCli.CoreV1().Services(namespace).Create(svc)
+	sc.recordServiceEvent("create", name, kind, controller, svc, err)
 	return err
 }
 
-func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev1.Service) (*corev1.Service, error) {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (sc *realServiceControl) UpdateService(controller runtime.Object, svc *corev1.Service) (*corev1.Service, error) {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
+	}
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	name := controllerMo.GetName()
+	namespace := controllerMo.GetNamespace()
 	svcName := svc.GetName()
 	svcSpec := svc.Spec.DeepCopy()
 
 	var updateSvc *corev1.Service
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var updateErr error
-		updateSvc, updateErr = sc.kubeCli.CoreV1().Services(ns).Update(svc)
+		updateSvc, updateErr = sc.kubeCli.CoreV1().Services(namespace).Update(svc)
 		if updateErr == nil {
-			klog.Infof("update Service: [%s/%s] successfully, TidbCluster: %s", ns, svcName, tcName)
+			klog.Infof("update Service: [%s/%s] successfully, kind: %s, name: %s", namespace, svcName, kind, name)
 			return nil
 		}
 
-		if updated, err := sc.svcLister.Services(tc.Namespace).Get(svcName); err != nil {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", ns, svcName, err))
+		if updated, err := sc.svcLister.Services(namespace).Get(svcName); err != nil {
+			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", namespace, svcName, err))
 		} else {
 			svc = updated.DeepCopy()
 			svc.Spec = *svcSpec
@@ -90,25 +102,32 @@ func (sc *realServiceControl) UpdateService(tc *v1alpha1.TidbCluster, svc *corev
 	return updateSvc, err
 }
 
-func (sc *realServiceControl) DeleteService(tc *v1alpha1.TidbCluster, svc *corev1.Service) error {
-	err := sc.kubeCli.CoreV1().Services(tc.Namespace).Delete(svc.Name, nil)
-	sc.recordServiceEvent("delete", tc, svc, err)
+func (sc *realServiceControl) DeleteService(controller runtime.Object, svc *corev1.Service) error {
+	controllerMo, ok := controller.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call setControllerReference", controller)
+	}
+	kind := controller.GetObjectKind().GroupVersionKind().Kind
+	name := controllerMo.GetName()
+	namespace := controllerMo.GetNamespace()
+
+	err := sc.kubeCli.CoreV1().Services(namespace).Delete(svc.Name, nil)
+	sc.recordServiceEvent("delete", name, kind, controller, svc, err)
 	return err
 }
 
-func (sc *realServiceControl) recordServiceEvent(verb string, tc *v1alpha1.TidbCluster, svc *corev1.Service, err error) {
-	tcName := tc.GetName()
+func (sc *realServiceControl) recordServiceEvent(verb, name, kind string, object runtime.Object, svc *corev1.Service, err error) {
 	svcName := svc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Service %s in TidbCluster %s successful",
-			strings.ToLower(verb), svcName, tcName)
-		sc.recorder.Event(tc, corev1.EventTypeNormal, reason, msg)
+		msg := fmt.Sprintf("%s Service %s in %s %s successful",
+			strings.ToLower(verb), svcName, kind, name)
+		sc.recorder.Event(object, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Service %s in TidbCluster %s failed error: %s",
-			strings.ToLower(verb), svcName, tcName, err)
-		sc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
+		msg := fmt.Sprintf("%s Service %s in %s %s failed error: %s",
+			strings.ToLower(verb), svcName, kind, name, err)
+		sc.recorder.Event(object, corev1.EventTypeWarning, reason, msg)
 	}
 }
 
@@ -156,7 +175,7 @@ func (ssc *FakeServiceControl) SetDeleteServiceError(err error, after int) {
 }
 
 // CreateService adds the service to SvcIndexer
-func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) CreateService(_ runtime.Object, svc *corev1.Service) error {
 	defer ssc.createServiceTracker.Inc()
 	if ssc.createServiceTracker.ErrorReady() {
 		defer ssc.createServiceTracker.Reset()
@@ -181,7 +200,7 @@ func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.TidbCluster, svc *corev
 }
 
 // UpdateService updates the service of SvcIndexer
-func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev1.Service) (*corev1.Service, error) {
+func (ssc *FakeServiceControl) UpdateService(_ runtime.Object, svc *corev1.Service) (*corev1.Service, error) {
 	defer ssc.updateServiceTracker.Inc()
 	if ssc.updateServiceTracker.ErrorReady() {
 		defer ssc.updateServiceTracker.Reset()
@@ -204,7 +223,7 @@ func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.TidbCluster, svc *corev
 }
 
 // DeleteService deletes the service of SvcIndexer
-func (ssc *FakeServiceControl) DeleteService(_ *v1alpha1.TidbCluster, _ *corev1.Service) error {
+func (ssc *FakeServiceControl) DeleteService(_ runtime.Object, _ *corev1.Service) error {
 	return nil
 }
 
