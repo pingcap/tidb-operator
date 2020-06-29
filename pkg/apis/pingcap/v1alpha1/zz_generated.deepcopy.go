@@ -406,11 +406,6 @@ func (in *BasicAutoScalerStatus) DeepCopyInto(out *BasicAutoScalerStatus) {
 		*out = make([]MetricsStatus, len(*in))
 		copy(*out, *in)
 	}
-	if in.RecommendedReplicas != nil {
-		in, out := &in.RecommendedReplicas, &out.RecommendedReplicas
-		*out = new(int32)
-		**out = **in
-	}
 	if in.LastAutoScalingTimestamp != nil {
 		in, out := &in.LastAutoScalingTimestamp, &out.LastAutoScalingTimestamp
 		*out = (*in).DeepCopy()

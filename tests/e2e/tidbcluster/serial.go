@@ -565,7 +565,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiKV != nil && len(stac.Status.TiKV.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiKV.MetricsStatusList[0]
-					framework.Logf("tikv threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+					framework.Logf("tikv threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiKV.RecommendedReplicas)
 				}
 
 				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -687,7 +687,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiKV != nil && len(stac.Status.TiKV.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiKV.MetricsStatusList[0]
-					framework.Logf("tikv threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+					framework.Logf("tikv threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiKV.RecommendedReplicas)
 				}
 
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -789,7 +789,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiDB != nil && len(stac.Status.TiDB.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiDB.MetricsStatusList[0]
-					framework.Logf("tidb threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+					framework.Logf("tidb threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiDB.RecommendedReplicas)
 				}
 
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -843,7 +843,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiDB != nil && len(stac.Status.TiDB.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiDB.MetricsStatusList[0]
-					framework.Logf("tidb threshold value: %v, currentValue: %v", metrics.ThresholdValue, metrics.CurrentValue)
+					framework.Logf("tidb threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiDB.RecommendedReplicas)
 				}
 
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
