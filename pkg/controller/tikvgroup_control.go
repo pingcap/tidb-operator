@@ -61,7 +61,7 @@ func (rtc *realTiKVGroupControl) UpdateTiKVGroup(tg *v1alpha1.TiKVGroup, newStat
 			klog.Infof("TiKVGroup: [%s/%s] updated successfully", ns, name)
 			return nil
 		}
-		klog.Errorf("failed to update TiKVGroup: [%s/%s], error: %v", ns, name, updateErr)
+		klog.Warningf("failed to update TiKVGroup: [%s/%s], error: %v", ns, name, updateErr)
 
 		if updated, err := rtc.tgLister.TiKVGroups(ns).Get(name); err == nil {
 			// make a copy so we don't mutate the shared cache
