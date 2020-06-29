@@ -1716,6 +1716,8 @@ spec:
                       type: string
                     dashboard:
                       properties:
+                        disable-telemetry:
+                          type: boolean
                         internal-proxy:
                           type: boolean
                         public-path-prefix:
@@ -6467,6 +6469,8 @@ spec:
                     enable-streaming:
                       type: boolean
                     enable-table-lock:
+                      type: boolean
+                    enable-telemetry:
                       type: boolean
                     experimental:
                       properties:
