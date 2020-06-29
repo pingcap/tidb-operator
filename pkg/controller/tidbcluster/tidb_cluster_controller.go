@@ -93,6 +93,7 @@ func NewController(
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	scalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
+	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
 
 	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
 	pdControl := pdapi.NewDefaultPDControl(kubeCli)
@@ -228,7 +229,7 @@ func NewController(
 				setControl,
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
-			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
+			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()),
 			podRestarter,
 			&tidbClusterConditionUpdater{},
 			recorder,
