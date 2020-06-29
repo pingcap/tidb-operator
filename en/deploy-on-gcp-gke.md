@@ -179,7 +179,7 @@ This section describes how to deploy a TiDB cluster.
     sed 's/CLUSTER_NAME/${cluster_name}/g' db-monitor.yaml.example > db-monitor.yaml
     ```
 
-    To complete the CR file configuration, refer to [TiDB Operator API documentation](api-references.md) and [Configure Cluster using TidbCluster](configure-a-tidb-cluster.md).
+    To complete the CR file configuration, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure Cluster using TidbCluster](configure-a-tidb-cluster.md).
 
     > **Note:**
     >

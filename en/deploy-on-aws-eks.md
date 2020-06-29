@@ -164,7 +164,7 @@ You can use the `terraform output` command to get the output again.
     cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
-    To complete the CR file configuration, refer to [API documentation](api-references.md) and [Configure a TiDB Cluster Using TidbCluster](configure-a-tidb-cluster.md).
+    To complete the CR file configuration, refer to [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure a TiDB Cluster Using TidbCluster](configure-a-tidb-cluster.md).
 
     * To deploy TiFlash, configure `spec.tiflash` in `db.yaml` as follows:
 

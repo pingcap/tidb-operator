@@ -15,11 +15,11 @@ Since TiDB Operator v1.1.0, PingCAP no longer updates or maintains the tidb-clus
 
 | Components/Features | Managements in TiDB Operator v1.1 |
 | :--- | :--- |
-| TiDB Cluster (PD, TiDB, TiKV) | [TidbCluster CR](api-references.md) |
+| TiDB Cluster (PD, TiDB, TiKV) | [TidbCluster CR](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) |
 | TiDB Monitor | [TidbMonitor CR](https://github.com/pingcap/tidb-operator/blob/master/manifests/monitor/tidb-monitor.yaml) |
 | TiDB Initializer | [TidbInitializer CR](https://github.com/pingcap/tidb-operator/blob/master/manifests/initializer/tidb-initializer.yaml) |
 | Scheduled Backup | [BackupSchedule CR](https://github.com/pingcap/tidb-operator/blob/master/manifests/backup/backup-schedule-aws-s3-br.yaml) |
-| Pump | [TidbCluster CR](api-references.md) |
+| Pump | [TidbCluster CR](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) |
 | Drainer | [tidb-drainer chart](https://github.com/pingcap/tidb-operator/tree/master/charts/tidb-drainer) |
 | Importer | [tikv-importer chart](https://github.com/pingcap/tidb-operator/tree/master/charts/tikv-importer) |
 

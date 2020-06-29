@@ -33,4 +33,4 @@ TiDB Operator v1.1 在 v1.0 基础上新增 TiDB 4.0 功能特性支持，TiKV �
 - 新增可选的[增强型 StatefulSet 控制器](advanced-statefulset.md)，提供对指定 Pod 进行删除的功能（开启 `AdvancedStatefulSet` 特性开关后使用）
 
 完整发布日志参见 [1.1 CHANGE LOG](https://github.com/pingcap/tidb-operator/blob/master/CHANGELOG-1.1.md) 。
-TiDB Operator 在 Kubernetes 上部署参见[安装文档](deploy-tidb-operator.md)，CRD 文档参见 [API References](https://github.com/pingcap/docs-tidb-operator/blob/master/zh/api-references.md) 。
+TiDB Operator 在 Kubernetes 上部署参见[安装文档](deploy-tidb-operator.md)，CRD 文档参见 [API References](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)。

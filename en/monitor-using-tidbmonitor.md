@@ -294,4 +294,4 @@ type: kubernetes.io/tls
 
 ## References
 
-For more detailed API information of TidbMonitor, see [TiDB Operator API documentation](api-references.md).
+For more detailed API information of TidbMonitor, see [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md).
