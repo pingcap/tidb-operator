@@ -68,7 +68,7 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
-		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+		klog.V(4).Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
 		if updated, err := rtc.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -80,6 +80,9 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 
 		return updateErr
 	})
+	if err != nil {
+		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, err)
+	}
 	return updateTC, err
 }
 

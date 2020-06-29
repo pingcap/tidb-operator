@@ -201,23 +201,28 @@ func (am *autoScalerManager) updateTidbClusterAutoScaler(tac *v1alpha1.TidbClust
 	oldTac := tac.DeepCopy()
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
 		_, updateErr = am.cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 		if updateErr == nil {
 			klog.Infof("TidbClusterAutoScaler: [%s/%s] updated successfully", ns, tacName)
 			return nil
 		}
-		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
+		klog.V(4).Infof("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, updateErr)
 		if updated, err := am.taLister.TidbClusterAutoScalers(ns).Get(tacName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			tac = updated.DeepCopy()
 			tac.Annotations = oldTac.Annotations
+			tac.Status = oldTac.Status
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbClusterAutoScaler %s/%s from lister: %v", ns, tacName, err))
 		}
 		return updateErr
 	})
+	if err != nil {
+		klog.Errorf("failed to update TidbClusterAutoScaler: [%s/%s], error: %v", ns, tacName, err)
+	}
+	return err
 }
 
 // checkAutoScalerRef will first check whether the target tidbcluster's auto-scaler reference have been occupied.
