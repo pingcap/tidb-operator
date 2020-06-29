@@ -819,6 +819,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.DisableTelemetry != nil {
+		in, out := &in.DisableTelemetry, &out.DisableTelemetry
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -3989,6 +3994,11 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 	if in.DelayCleanTableLock != nil {
 		in, out := &in.DelayCleanTableLock, &out.DelayCleanTableLock
 		*out = new(uint64)
+		**out = **in
+	}
+	if in.EnableTelemetry != nil {
+		in, out := &in.EnableTelemetry, &out.EnableTelemetry
+		*out = new(bool)
 		**out = **in
 	}
 	return
