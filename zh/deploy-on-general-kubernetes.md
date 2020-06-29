@@ -69,6 +69,10 @@ TiFlash 支持挂载多个 PV，如果要为 TiFlash 配置多个 PV，可以在
       storageClassName: local-storage
 ```
 
+> **警告：**
+>
+> 由于 TiDB Operator 会按照 `storageClaims` 列表中的配置**按顺序**自动挂载 PV，如果需要为 TiFlash 增加磁盘，请确保只在列表原有配置**最后添加**，并且**不能**修改列表中原有配置的顺序。
+
 如果要在集群中开启 TiCDC，需要在 `${cluster_name}/tidb-cluster.yaml` 文件中配置 `spec.ticdc`：
 
 ```yaml

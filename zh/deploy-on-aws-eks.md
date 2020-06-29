@@ -219,6 +219,10 @@ region = us-west-21
 
     根据实际情况修改 `replicas`、`storageClaims[].resources.requests.storage`、`storageClassName`。
 
+    > **警告：**
+    >
+    > 由于 TiDB Operator 会按照 `storageClaims` 列表中的配置**按顺序**自动挂载 PV，如果需要为 TiFlash 增加磁盘，请确保只在列表原有配置**最后添加**，并且**不能**修改列表中原有配置的顺序。
+
     如果要部署 TiCDC，可以在 db.yaml 中配置 `spec.ticdc`，例如：
 
     ```yaml

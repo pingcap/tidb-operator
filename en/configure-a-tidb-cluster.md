@@ -113,6 +113,10 @@ TiFlash supports mounting multiple Persistent Volumes (PVs). If you want to conf
       storageClassName: local-storage
 ```
 
+> **Warning:**
+>
+> Since TiDB Operator will mount PVs automatically in the **order** of the items in the `storageClaims` list, if you need to add more disks to TiFlash, make sure to append the new item only to the **end** of the original items, and **DO NOT** modify the order of the original items.
+
 #### Enable TiCDC
 
 If you want to enable TiCDC in the cluster, you can add TiCDC spec to the `TiDBCluster` CR. For example:
