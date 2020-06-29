@@ -2915,7 +2915,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		return fmt.Errorf("Target cluster is nil when deploying drainer")
 	}
 	if withDrainer {
-		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
+		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: secondary: %s", to.ClusterName))
 		klog.Infof("begin to deploy incremental backup, source cluster[%s/%s], target cluster [%s/%s]",
 			from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
 	} else {

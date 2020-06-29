@@ -250,7 +250,7 @@ NOTE: In kind, nodes run docker network and cannot access host network.
 If you configured local HTTP proxy in your docker, images may cannot be pulled
 because http proxy is inaccessible.
 
-If you cannot remove http proxy settings, you can either whitelist image
+If you cannot remove http proxy settings, you can either allowlist image
 domains in NO_PROXY environment or use 'docker pull <image> && $KIND_BIN load
 docker-image <image>' command to load images into nodes.
 EOF
