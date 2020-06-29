@@ -84,6 +84,7 @@ func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
 	return nil
 }
 
+// TODO: add unit test
 // checkWhetherRegistered will check whether the tikvgroup have already registered itself
 // to the target tidbcluster. If have already, the tikvgroup will be allowed to syncing.
 // If not, the tikvgroup will try to register itself to the tidbcluster and wait for the next round.
@@ -239,6 +240,16 @@ func (tgm *tikvGroupMemberManager) syncTiKVConfigMap(tg *v1alpha1.TiKVGroup, tc 
 	return tgm.typedControl.CreateOrUpdateConfigMap(tg, newCm)
 }
 
+func (tgm *tikvGroupMemberManager) syncTiKVGroupStatus(tg v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster, set *apps.StatefulSet) error {
+	if set == nil {
+		// skip if not created yet
+		return nil
+	}
+	tg.Status.StatefulSet = &set.Status
+
+}
+
+// TODO: add unit test
 func newServiceForTiKVGroup(tg *v1alpha1.TiKVGroup, svcName string) *corev1.Service {
 	ns := tg.Namespace
 	tgName := tg.Name
@@ -267,6 +278,7 @@ func newServiceForTiKVGroup(tg *v1alpha1.TiKVGroup, svcName string) *corev1.Serv
 	return svc
 }
 
+// TODO: add unit test
 func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if tg.Spec.Config == nil {
 		tg.Spec.Config = &v1alpha1.TiKVConfig{}
@@ -320,6 +332,7 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 	return cm, nil
 }
 
+// TODO: add unit test
 func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
