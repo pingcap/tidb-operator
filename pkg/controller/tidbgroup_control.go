@@ -61,7 +61,7 @@ func (rtc *realTiDBGroupControl) UpdateTiDBGroup(tg *v1alpha1.TiDBGroup, newStat
 			klog.Infof("TiDBGroup: [%s/%s] updated successfully", ns, name)
 			return nil
 		}
-		klog.Errorf("failed to update TiDBGroup: [%s/%s], error: %v", ns, name, updateErr)
+		klog.Warningf("failed to update TiDBGroup: [%s/%s], error: %v", ns, name, updateErr)
 
 		if updated, err := rtc.tgLister.TiDBGroups(ns).Get(name); err == nil {
 			// make a copy so we don't mutate the shared cache
