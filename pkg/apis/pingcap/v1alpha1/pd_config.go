@@ -136,6 +136,10 @@ type DashboardConfig struct {
 	PublicPathPrefix *string `toml:"public-path-prefix,omitempty" json:"public-path-prefix,omitempty"`
 	// +optional
 	InternalProxy *bool `toml:"internal-proxy,omitempty" json:"internal-proxy,omitempty"`
+	// When not disabled, usage data will be sent to PingCAP for improving user experience.
+	// Optional: Defaults to false
+	// +optional
+	DisableTelemetry *bool `toml:"disable-telemetry,omitempty" json:"disable-telemetry,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.

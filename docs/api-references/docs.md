@@ -3683,6 +3683,19 @@ bool
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>disable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When not disabled, usage data will be sent to PingCAP for improving user experience.
+Optional: Defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="discoveryspec">DiscoverySpec</h3>
@@ -4230,6 +4243,38 @@ IngressSpec
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="groupref">GroupRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Reference</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Reference</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -9705,8 +9750,8 @@ bool
 </em>
 </td>
 <td>
-<p>imported from v3.1.0
-optional</p>
+<em>(Optional)</em>
+<p>imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -9717,8 +9762,24 @@ uint64
 </em>
 </td>
 <td>
-<p>imported from v3.1.0
-optional</p>
+<em>(Optional)</em>
+<p>imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics.
+If this config is set to <code>false</code> on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable <code>tidb_enable_telemetry</code>.
+See PingCAP privacy policy for details: <a href="https://pingcap.com/en/privacy-policy/">https://pingcap.com/en/privacy-policy/</a>.
+Imported from v4.0.2.
+Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
@@ -15959,6 +16020,32 @@ TidbClusterAutoScalerRef
 <td>
 <em>(Optional)</em>
 <p>Represents the latest available observations of a tidb cluster&rsquo;s state.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikv-groups</code></br>
+<em>
+<a href="#groupref">
+[]GroupRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb-groups</code></br>
+<em>
+<a href="#groupref">
+[]GroupRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
