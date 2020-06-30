@@ -6,7 +6,7 @@ category: how-to
 
 # TiDB Dashboard 指南
 
-TiDB Dashboard 是 TiDB 4.0 专门用来帮助观察与诊断整个 TiDB 集群的可视化面板，你可以在 [TiDB Dashboard](https://github.com/pingcap-incubator/tidb-dashboard) 了解详情。本篇文章将介绍如何在 Kubernetes 环境下访问 TiDB Dashboard。
+TiDB Dashboard 是 TiDB 4.0 专门用来帮助观察与诊断整个 TiDB 集群的可视化面板，你可以在 [TiDB Dashboard](https://docs.pingcap.com/zh/tidb/stable/dashboard-intro) 了解详情。本篇文章将介绍如何在 Kubernetes 环境下访问 TiDB Dashboard。
 
 ## 前置条件
 
@@ -26,7 +26,7 @@ spec:
 
 > **注意：**
 >
-> 以下教程仅为演示如何快速访问 TiDB Dashboard，请勿在生产环境中直接使用以下方法。 
+> 以下教程仅为演示如何快速访问 TiDB Dashboard，请勿在生产环境中直接使用以下方法。
 
 `TiDB Dashboard` 目前在 4.0.0 版本及以上中已经内嵌在了 PD 组件中，你可以通过以下的例子在 Kubernetes 环境下快速部署一个 4.0.1 版本的 TiDB 集群。运行 `kubectl apply -f` 命令，将以下 yaml 文件部署到 Kubernetes 集群中。
 
@@ -58,7 +58,6 @@ spec:
     service:
       type: ClusterIP
     config: {}
-
 ```
 
 当集群创建完毕时，你可以通过以下指令将 `TiDB Dashboard` 暴露在本地机器:

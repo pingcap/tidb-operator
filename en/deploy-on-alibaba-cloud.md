@@ -265,6 +265,10 @@ mysql -h ${tidb_lb_ip} -P 4000 -u root
 
 `tidb_lb_ip` is the LoadBalancer IP of the TiDB service.
 
+> **Note:**
+>
+> By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
+
 ## Monitor
 
 Visit `<monitor-lb>:3000` to view the Grafana dashboards. `monitor-lb` is the LoadBalancer IP of the Monitor service.

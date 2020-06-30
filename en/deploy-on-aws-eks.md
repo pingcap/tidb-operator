@@ -464,6 +464,10 @@ You can interact with the EKS cluster using `kubectl` and `helm` with the kubeco
     helm ls
     ```
 
+> **Note:**
+>
+> By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
+
 ## Monitor
 
 You can access the `<monitor-lb>:3000` address (printed in outputs) using your web browser to view monitoring metrics.

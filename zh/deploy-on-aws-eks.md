@@ -1,5 +1,5 @@
 ---
-title: 在 AWS EKS 上部署 TiDB 
+title: 在 AWS EKS 上部署 TiDB
 summary: 介绍如何在 AWS EKS (Elastic Kubernetes Service) 上部署 TiDB 集群。
 category: how-to
 ---
@@ -494,6 +494,10 @@ mysql -h ${tidb_lb} -P 4000 -u root
     helm ls
     ```
 
+> **注意：**
+>
+> TiDB（v4.0.2 起）默认会定期收集使用情况信息，并将这些信息分享给 PingCAP 用于改善产品。若要了解所收集的信息详情及如何禁用该行为，请参见[遥测](https://docs.pingcap.com/zh/tidb/stable/telemetry)。
+
 ## Grafana 监控
 
 你可以通过浏览器访问 `<monitor-lb>:3000` 地址查看 Grafana 监控指标。
@@ -692,7 +696,7 @@ module "tidb-cluster-b" {
   providers = {
     helm = "helm.eks"
   }
-  
+
   cluster_name = "tidb-cluster-b"
   eks          = module.tidb-operator.eks
   ssh_key_name = module.key-pair.key_name

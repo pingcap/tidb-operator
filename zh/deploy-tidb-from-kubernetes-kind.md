@@ -38,7 +38,7 @@ chmod +x ./kind
 测试集群是否创建成功：
 
 ```
-kubectl cluster-info 
+kubectl cluster-info
 ```
 
 ## 第 2 步：部署 TiDB Operator
@@ -183,6 +183,10 @@ kubectl -n pingcap get pods
     > ```
     >
     > 然后，在浏览器中打开 `http://<远程主机 IP>:3000` 访问 Grafana 监控面板。
+
+> **注意：**
+>
+> TiDB（v4.0.2 起）默认会定期收集使用情况信息，并将这些信息分享给 PingCAP 用于改善产品。若要了解所收集的信息详情及如何禁用该行为，请参见[遥测](https://docs.pingcap.com/zh/tidb/stable/telemetry)。
 
 ## 删除 TiDB 集群 与 Kubernetes 集群
 

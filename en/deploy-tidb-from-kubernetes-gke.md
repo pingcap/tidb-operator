@@ -187,6 +187,10 @@ SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
 
 Congratulations, you are now up and running with a distributed TiDB database compatible with MySQL!
 
+> **Note:**
+>
+> By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
+
 ## Scale out the TiDB cluster
 
 To scale out the TiDB cluster, modify `spec.pd.replicas`, `spec.tidb.replicas`, and `spec.tikv.replicas` in the `TidbCluster` object of the cluster to your desired value using kubectl.

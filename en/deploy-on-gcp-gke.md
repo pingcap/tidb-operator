@@ -207,6 +207,10 @@ This section describes how to deploy a TiDB cluster.
     kubectl --kubeconfig credentials/kubeconfig_${gke_name} create -f db-monitor.yaml -n ${namespace}
     ```
 
+> **Note:**
+>
+> By default, TiDB (starting from v4.0.2) periodically shares usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](https://docs.pingcap.com/tidb/stable/telemetry).
+
 ## Access the TiDB database
 
 After `terraform apply` is successful executed, perform the following steps to access the TiDB cluster. Replace the `${}` section with the output of running `terraform apply` above.
