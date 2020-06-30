@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -39,7 +38,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -559,25 +557,9 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 }
 
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	config := tc.Spec.TiKV.Config
 	if config == nil {
 		return nil, nil
-	}
-
-	// override CA if tls enabled
-	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-
-	confText, err := MarshalTOML(config)
-	if err != nil {
-		return nil, err
 	}
 	scriptModel := &TiKVStartScriptModel{
 		Scheme:                    tc.Scheme(),
@@ -588,23 +570,9 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
-	startScript, err := RenderTiKVStartScript(scriptModel)
+	cm, err := getTikVConfigMapForTiKVSpec(&tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
-	}
-	instanceName := tc.GetInstanceName()
-	tikvLabel := label.New().Instance(instanceName).TiKV().Labels()
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.TiKVMemberName(tc.Name),
-			Namespace:       tc.Namespace,
-			Labels:          tikvLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Data: map[string]string{
-			"config-file":    transformTiKVConfigMap(string(confText), tc),
-			"startup-script": startScript,
-		},
 	}
 
 	if tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
@@ -612,7 +580,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			return nil, err
 		}
 	}
-
 	return cm, nil
 }
 

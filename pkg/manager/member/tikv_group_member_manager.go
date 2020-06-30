@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -425,46 +424,25 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 	if tg.Spec.Config == nil {
 		tg.Spec.Config = &v1alpha1.TiKVConfig{}
 	}
-	config := tg.Spec.Config
-	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-	confText, err := MarshalTOML(config)
-	if err != nil {
-		return nil, err
-	}
 	scriptModel := &TiKVStartScriptModel{
 		Scheme:                    tc.Scheme(),
-		EnableAdvertiseStatusAddr: false,
-		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
+		EnableAdvertiseStatusAddr: true,
+		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tg.Spec.DataSubDir),
+		AdvertiseStatusAddr:       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
 	}
-	scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
-	scriptModel.EnableAdvertiseStatusAddr = true
-	startScript, err := RenderTiKVStartScript(scriptModel)
+	cm, err := getTikVConfigMapForTiKVSpec(&tg.Spec.TiKVSpec, tc, scriptModel)
 	if err != nil {
 		return nil, err
 	}
 	instanceName := tg.Name
 	tikvLabel := label.NewGroup().Instance(instanceName).TiKV().Labels()
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.TiKVGroupMemberName(tg.Name),
-			Namespace:       tg.Namespace,
-			Labels:          tikvLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetTiKVGroupOwnerRef(tg)},
-		},
-		Data: map[string]string{
-			"config-file":    transformTiKVConfigMap(string(confText), tc),
-			"startup-script": startScript,
-		},
+	cm.ObjectMeta = metav1.ObjectMeta{
+		Name:            controller.TiKVGroupMemberName(tg.Name),
+		Namespace:       tg.Namespace,
+		Labels:          tikvLabel,
+		OwnerReferences: []metav1.OwnerReference{controller.GetTiKVGroupOwnerRef(tg)},
 	}
-
-	if tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+	if tg.BaseTiKVSpec(tc).ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
 		if err := AddConfigMapDigestSuffix(cm); err != nil {
 			return nil, err
 		}
