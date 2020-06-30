@@ -408,7 +408,7 @@ func newServiceForTiKVGroup(tg *v1alpha1.TiKVGroup, svcName string) *corev1.Serv
 				{
 					Name:       "status",
 					Port:       20180,
-					TargetPort: intstr.FromInt(20160),
+					TargetPort: intstr.FromInt(20180),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
