@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"path"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -29,7 +30,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -279,7 +282,7 @@ func MapContainers(podSpec *corev1.PodSpec) map[string]corev1.Container {
 }
 
 // updateStatefulSet is a template function to update the statefulset of components
-func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alpha1.TidbCluster, newSet, oldSet *apps.StatefulSet) error {
+func updateStatefulSet(setCtl controller.StatefulSetControlInterface, object runtime.Object, newSet, oldSet *apps.StatefulSet) error {
 	isOrphan := metav1.GetControllerOf(oldSet) == nil
 	if newSet.Annotations == nil {
 		newSet.Annotations = map[string]string{}
@@ -314,7 +317,7 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 		if err != nil {
 			return err
 		}
-		_, err = setCtl.UpdateStatefulSet(tc, &set)
+		_, err = setCtl.UpdateStatefulSet(object, &set)
 		return err
 	}
 
@@ -344,4 +347,31 @@ func copyAnnotations(src map[string]string) map[string]string {
 		dst[k] = v
 	}
 	return dst
+}
+
+func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
+	config := tikvSpec.Config
+	if tc.IsTLSClusterEnabled() {
+		if config.Security == nil {
+			config.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
+		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
+		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
+	}
+	confText, err := MarshalTOML(config)
+	if err != nil {
+		return nil, err
+	}
+	startScript, err := RenderTiKVStartScript(scriptModel)
+	if err != nil {
+		return nil, err
+	}
+	cm := &corev1.ConfigMap{
+		Data: map[string]string{
+			"config-file":    transformTiKVConfigMap(string(confText), tc),
+			"startup-script": startScript,
+		},
+	}
+	return cm, nil
 }
