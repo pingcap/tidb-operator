@@ -21,7 +21,7 @@ PVs are created automatically by the system administrator or volume provisioner.
 
 > **Warning:**
 >
-> For data safety, do not delete a PV in any case unless you are familiar with the underlying volume provisioner.
+> Do not delete a PV in any case unless you are familiar with the underlying volume provisioner. Deleting a PV manually can cause orphaned volumes and unexpected behavior.
 
 ## Recommended storage classes for TiDB clusters
 
