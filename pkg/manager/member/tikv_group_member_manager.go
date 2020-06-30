@@ -150,7 +150,7 @@ func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGrou
 	//TODO: support Pause
 
 	ns := tg.Namespace
-	svcName := controller.TiKVGroupMemberName(tg.Name)
+	svcName := controller.TiKVGroupPeerMemberName(tg.Name)
 
 	newSvc := newServiceForTiKVGroup(tg, svcName)
 	oldSvcTmp, err := tgm.svcLister.Services(ns).Get(svcName)
