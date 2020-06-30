@@ -150,8 +150,7 @@ func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGrou
 	//TODO: support Pause
 
 	ns := tg.Namespace
-	tgName := tg.Name
-	svcName := fmt.Sprintf("%s-tikv-group-peer", tgName)
+	svcName := controller.TiKVGroupMemberName(tg.Name)
 
 	newSvc := newServiceForTiKVGroup(tg, svcName)
 	oldSvcTmp, err := tgm.svcLister.Services(ns).Get(svcName)
@@ -227,7 +226,7 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 			klog.Error(err)
 			return err
 		}
-		tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{}
+		tg.Status.StatefulSet = &apps.StatefulSetStatus{}
 		return nil
 	}
 
@@ -406,6 +405,12 @@ func newServiceForTiKVGroup(tg *v1alpha1.TiKVGroup, svcName string) *corev1.Serv
 					TargetPort: intstr.FromInt(20160),
 					Protocol:   corev1.ProtocolTCP,
 				},
+				{
+					Name:       "status",
+					Port:       20180,
+					TargetPort: intstr.FromInt(20160),
+					Protocol:   corev1.ProtocolTCP,
+				},
 			},
 			Selector:                 tgLabel.Labels(),
 			PublishNotReadyAddresses: true,
@@ -438,10 +443,8 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
 	}
-	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
-		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
-		scriptModel.EnableAdvertiseStatusAddr = true
-	}
+	scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
+	scriptModel.EnableAdvertiseStatusAddr = true
 	startScript, err := RenderTiKVStartScript(scriptModel)
 	if err != nil {
 		return nil, err
@@ -613,6 +616,11 @@ func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster,
 			{
 				Name:          "server",
 				ContainerPort: int32(20160),
+				Protocol:      corev1.ProtocolTCP,
+			},
+			{
+				Name:          "status",
+				ContainerPort: int32(20180),
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
