@@ -20,3 +20,11 @@ type Manager interface {
 	// Sync	implements the logic for syncing tidbcluster.
 	Sync(*v1alpha1.TidbCluster) error
 }
+
+type TiDBGroupManager interface {
+	Sync(*v1alpha1.TiDBGroup) error
+}
+
+type TiKVGroupManager interface {
+	Sync(*v1alpha1.TiKVGroup) error
+}

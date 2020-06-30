@@ -190,7 +190,7 @@ func main() {
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, cli, informerFactory, kubeInformerFactory)
 		tidbGroupController := tidbgroup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-		tikvGroupController := tikvgroup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+		tikvGroupController := tikvgroup.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 
 		var periodicityController *periodicity.Controller
 		if controller.PodWebhookEnabled {

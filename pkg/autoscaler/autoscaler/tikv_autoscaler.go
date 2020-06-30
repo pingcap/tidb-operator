@@ -129,7 +129,7 @@ func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAuto
 	tac.Status.TiKV.Phase = v1alpha1.NormalAutoScalerPhase
 	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 	tc.Spec.TiKV.Replicas = recommendedReplicas
-	tac.Status.TiKV.RecommendedReplicas = &recommendedReplicas
+	tac.Status.TiKV.RecommendedReplicas = recommendedReplicas
 	return nil
 }
 
