@@ -31,7 +31,7 @@ import (
 )
 
 // only allow pods to be delete when it is not ddlowner of tidb, not leader of pd and not
-// master of tikv.
+// leader of tikv.
 func (wh *webhook) admitPods(ar v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	klog.V(4).Infof("admitting pods")
 
