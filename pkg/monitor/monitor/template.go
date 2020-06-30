@@ -40,17 +40,20 @@ const (
 )
 
 var (
-	truePattern     config.Regexp
-	allMatchPattern config.Regexp
-	portPattern     config.Regexp
-	tikvPattern     config.Regexp
-	pdPattern       config.Regexp
-	tidbPattern     config.Regexp
-	addressPattern  config.Regexp
-	tiflashPattern  config.Regexp
-	pumpPattern     config.Regexp
-	drainerPattern  config.Regexp
-	dashBoardConfig = `{
+	truePattern      config.Regexp
+	allMatchPattern  config.Regexp
+	portPattern      config.Regexp
+	tikvPattern      config.Regexp
+	pdPattern        config.Regexp
+	tidbPattern      config.Regexp
+	addressPattern   config.Regexp
+	tiflashPattern   config.Regexp
+	pumpPattern      config.Regexp
+	drainerPattern   config.Regexp
+	cdcPattern       config.Regexp
+	importerPattern  config.Regexp
+	lightningPattern config.Regexp
+	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
         {
@@ -108,6 +111,18 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	cdcPattern, err = config.NewRegexp("ticdc")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	importerPattern, err = config.NewRegexp("importer")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
+	lightningPattern, err = config.NewRegexp("tidb-lightning")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
@@ -134,6 +149,9 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy")),
 			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump")),
 			scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer")),
+			scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc")),
+			scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer")),
+			scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning")),
 		},
 	}
 	return &c
@@ -164,6 +182,8 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return f()
 	case "tiflash":
 		return f()
+	case "ticdc":
+		return f()
 	case "tiflash-proxy":
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
@@ -188,11 +208,35 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 				portLabel,
 			},
 		}
+	case "importer":
+		return &config.RelabelConfig{
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: "$1.$2-importer:$3",
+			TargetLabel: "__address__",
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				instanceLabel,
+				portLabel,
+			},
+		}
 	case "drainer":
 		return &config.RelabelConfig{
 			Action:      config.RelabelReplace,
 			Regex:       addressPattern,
 			Replacement: "$1.$2:$3",
+			TargetLabel: "__address__",
+			SourceLabels: model.LabelNames{
+				podNameLabel,
+				nameLabel,
+				portLabel,
+			},
+		}
+	case "lightning":
+		return &config.RelabelConfig{
+			Action:      config.RelabelReplace,
+			Regex:       addressPattern,
+			Replacement: "$2:$3",
 			TargetLabel: "__address__",
 			SourceLabels: model.LabelNames{
 				podNameLabel,
