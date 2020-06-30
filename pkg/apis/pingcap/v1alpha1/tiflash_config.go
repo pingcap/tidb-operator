@@ -97,7 +97,7 @@ type CommonConfig struct {
 	// Optional: Defaults to "/data0/db"
 	// +optional
 	// +k8s:openapi-gen=false
-	Path *string `json:"path,omitempty" toml:"path,omitempty"`
+	FlashDataPath *string `json:"path,omitempty" toml:"path,omitempty"`
 
 	// Optional: Defaults to false
 	// +optional

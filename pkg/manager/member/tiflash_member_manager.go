@@ -35,6 +35,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -573,6 +574,19 @@ func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	config := tc.Spec.TiFlash.Config.DeepCopy()
 	if config == nil {
 		config = &v1alpha1.TiFlashConfig{}
+	}
+	var paths []string
+	for k := range tc.Spec.TiFlash.StorageClaims {
+		paths = append(paths, fmt.Sprintf("/data%d/db", k))
+	}
+	if len(paths) > 0 {
+		dataPath := strings.Join(paths, ",")
+		if config.CommonConfig == nil {
+			config.CommonConfig = &v1alpha1.CommonConfig{}
+		}
+		if config.CommonConfig.FlashDataPath == nil {
+			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
+		}
 	}
 	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
 
