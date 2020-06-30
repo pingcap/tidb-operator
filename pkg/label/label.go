@@ -30,7 +30,6 @@ const (
 	// ComponentLabelKey is Kubernetes recommended label key, it represents the component within the architecture
 	ComponentLabelKey string = "app.kubernetes.io/component"
 	// NameLabelKey is Kubernetes recommended label key, it represents the name of the application
-	// It should always be tidb-cluster in our case.
 	NameLabelKey string = "app.kubernetes.io/name"
 	// InstanceLabelKey is Kubernetes recommended label key, it represents a unique name identifying the instance of an application
 	// It's set by helm when installing a release
@@ -203,6 +202,13 @@ func NewMonitor() Label {
 	return Label{
 		// NameLabelKey is used to be compatible with helm monitor
 		NameLabelKey:      "tidb-cluster",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewGroup() Label {
+	return Label{
+		NameLabelKey:      "tidb-cluster-group",
 		ManagedByLabelKey: TiDBOperator,
 	}
 }
