@@ -14,7 +14,6 @@
 package autoscaler
 
 import (
-	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -97,7 +96,7 @@ func (tac *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbClusterAutoScaler: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("TidbClusterAutoScaler: %v, sync failed, err: %v", key.(string), err))
+			utilruntime.HandleError(perrors.Errorf("TidbClusterAutoScaler: %v, sync failed, err: %v", key.(string), err))
 		}
 		tac.queue.AddRateLimited(key)
 	} else {

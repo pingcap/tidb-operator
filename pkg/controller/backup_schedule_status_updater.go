@@ -17,17 +17,18 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/klog"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+
+	perrors "github.com/pingcap/errors"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog"
 )
 
 // BackupScheduleStatusUpdaterInterface is an interface used to update the BackupScheduleStatus associated with a BackupSchedule.
@@ -76,7 +77,7 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 			bs = updated.DeepCopy()
 			bs.Status = *newStatus
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backupSchedule %s/%s from lister: %v", ns, bsName, err))
+			utilruntime.HandleError(perrors.Errorf("error getting updated backupSchedule %s/%s from lister: %v", ns, bsName, err))
 		}
 
 		return updateErr

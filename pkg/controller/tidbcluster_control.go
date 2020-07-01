@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
@@ -75,7 +76,7 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 			tc = updated.DeepCopy()
 			tc.Status = *status
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))
+			utilruntime.HandleError(perrors.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))
 		}
 
 		return updateErr

@@ -14,7 +14,6 @@
 package tidbgroup
 
 import (
-	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -96,7 +95,7 @@ func (tgc *Controller) processNestWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TiDBGroup: %v, still need sync: %v, requeue", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("TiDBGroup: %v, sync failed, err: %v", key.(string), err))
+			utilruntime.HandleError(perrors.Errorf("TiDBGroup: %v, sync failed, err: %v", key.(string), err))
 		}
 		tgc.queue.AddRateLimited(key)
 	} else {

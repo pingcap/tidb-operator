@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -111,7 +112,7 @@ func (rpc *realPVCControl) UpdatePVC(controller runtime.Object, pvc *corev1.Pers
 			pvc.Labels = labels
 			pvc.Annotations = ann
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated PVC %s/%s from lister: %v", namespace, pvcName, err))
+			utilruntime.HandleError(perrors.Errorf("error getting updated PVC %s/%s from lister: %v", namespace, pvcName, err))
 		}
 
 		return updateErr
@@ -176,7 +177,7 @@ func (rpc *realPVCControl) UpdateMetaInfo(controller runtime.Object, pvc *corev1
 			pvc.Labels = labels
 			pvc.Annotations = ann
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated PVC %s/%s from lister: %v", namespace, pvcName, err))
+			utilruntime.HandleError(perrors.Errorf("error getting updated PVC %s/%s from lister: %v", namespace, pvcName, err))
 		}
 
 		return updateErr

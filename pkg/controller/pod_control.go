@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -94,7 +95,7 @@ func (rpc *realPodControl) UpdatePod(controller runtime.Object, pod *corev1.Pod)
 			pod.Labels = labels
 			pod.Annotations = ann
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", namespace, podName, err))
+			utilruntime.HandleError(perrors.Errorf("error getting updated Pod %s/%s from lister: %v", namespace, podName, err))
 		}
 
 		return updateErr
@@ -185,7 +186,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 			pod = updated.DeepCopy()
 			pod.Labels = labels
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
+			utilruntime.HandleError(perrors.Errorf("error getting updated Pod %s/%s from lister: %v", ns, podName, err))
 		}
 		return updateErr
 	})
