@@ -54,7 +54,8 @@ func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc contr
 		case v1alpha1.TiKVGroupKind:
 			podName = memberUtil.TiKVGroupPodName(controllerName, i)
 		default:
-			return fmt.Errorf("")
+			// unreachable
+			return fmt.Errorf("unknown controller[%s]", controllerKind)
 		}
 		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
@@ -164,5 +165,5 @@ func getStoreByPod(pod *core.Pod, storesInfo *pdapi.StoresInfo) (*pdapi.StoreInf
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find store in pod[%s/%s]", namespace, name)
+	return nil, fmt.Errorf("failed to find store for pod[%s/%s]", namespace, name)
 }

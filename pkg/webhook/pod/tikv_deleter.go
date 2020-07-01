@@ -78,6 +78,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 	case v1alpha1.TiKVGroupKind:
 		expectedAddress = fmt.Sprintf("%s.%s-tikv-group-peer.%s.svc:20160", name, controllerName, namespace)
 	default:
+		// unreachable
 		err := fmt.Errorf("tikv pod[%s/%s] controlled by unknown controllerKind[%s], forbid to delete", namespace, name, controllerKind)
 		return util.ARFail(err)
 	}
@@ -134,7 +135,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		if err != nil {
 			if errors.IsNotFound(err) {
 				pc.recorder.Event(payload.controller, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))
-				return util.ARFail(err)
+				return util.ARSuccess()
 			}
 			return util.ARFail(err)
 		}
@@ -196,6 +197,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 		}
 		specReplicas = tg.Spec.Replicas
 	} else {
+		// unreachable
 		err := fmt.Errorf("tikv pod[%s/%s] has unknown controller[%s], forbid to be deleted", namespace, name, controllerKind)
 		return util.ARFail(err)
 	}

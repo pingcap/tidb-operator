@@ -88,7 +88,7 @@ type admitPayload struct {
 	pod *core.Pod
 	// the ownerStatefulSet for target tidb component pod
 	ownerStatefulSet *apps.StatefulSet
-	// the owner tc for target tidb component pod
+	// the owner controller for target tidb component pod
 	controller runtime.Object
 	// the pdClient for target tc
 	pdClient pdapi.PDClient
