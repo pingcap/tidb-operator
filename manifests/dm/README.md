@@ -46,3 +46,7 @@ kubectl apply -k master -n <namespace>
 > - `3` replicas are deployed by default.
 > - `storageClassName` is set to `local-storage` for PVC by default.
 > - If PVCs are created, they are mounted to `/data` directory.
+
+## Create a Task
+
+After you've successfully deployed dm-master and dm-worker, you can define an upstream data source and create a data migration task: <https://docs.pingcap.com/tidb-data-migration/dev/manage-replication-tasks>.
