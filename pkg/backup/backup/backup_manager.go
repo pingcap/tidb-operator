@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 type backupManager struct {
@@ -254,7 +255,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(0),
+			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
 		},
 	}
@@ -384,7 +385,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(0),
+			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
 		},
 	}

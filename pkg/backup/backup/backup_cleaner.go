@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 // BackupCleaner implements the logic for cleaning backup
@@ -163,7 +164,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(constants.DefaultBackoffLimit),
+			BackoffLimit: pointer.Int32Ptr(constants.DefaultBackoffLimit),
 			Template:     *podSpec,
 		},
 	}
