@@ -369,11 +369,6 @@ func setIfNotEmpty(container map[string]string, key, value string) {
 	}
 }
 
-// Int32Ptr returns a pointer to an int32
-func Int32Ptr(i int32) *int32 {
-	return &i
-}
-
 // RequestTracker is used by unit test for mocking request error
 type RequestTracker struct {
 	requests int
