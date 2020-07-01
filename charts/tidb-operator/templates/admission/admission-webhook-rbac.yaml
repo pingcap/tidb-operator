@@ -37,7 +37,7 @@ rules:
     resources: ["statefulsets"]
     verbs: ["get", "list", "watch", "update"]
   - apiGroups: ["pingcap.com"]
-    resources:  ["tidbclusters"]
+    resources:  ["*"]
     verbs: ["*"]
   - apiGroups: ["apps.pingcap.com"]
     resources: ["statefulsets"]

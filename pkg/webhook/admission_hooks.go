@@ -103,7 +103,7 @@ func (a *AdmissionHook) Admit(ar *admission.AdmissionRequest) *admission.Admissi
 	name := ar.Name
 	namespace := ar.Namespace
 	kind := ar.Kind.Kind
-	klog.Infof("receive mutation request for %s[%s/%s]", kind, namespace, name)
+	klog.V(4).Infof("receive mutation request for %s[%s/%s]", kind, namespace, name)
 
 	resp := a.strategyAC.Mutate(ar)
 	if !resp.Allowed {

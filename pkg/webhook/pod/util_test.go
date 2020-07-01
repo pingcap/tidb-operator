@@ -159,7 +159,12 @@ func TestCheckTiKVFormerPodStatus(t *testing.T) {
 			pod.Labels[apps.ControllerRevisionHashLabelKey] = sts.Status.UpdateRevision
 			kubeCli.CoreV1().Pods(tc.Namespace).Create(pod)
 		}
-		err = checkFormerTiKVPodStatus(kubeCli, tc, test.targetOrdinal, sts, buildStoresInfo(tc, sts))
+		desc := controllerDesc{
+			name:      tc.Name,
+			namespace: tc.Namespace,
+			kind:      tc.Kind,
+		}
+		err = checkFormerTiKVPodStatus(kubeCli, desc, test.targetOrdinal, tc.Spec.TiKV.Replicas, sts, buildStoresInfo(tc, sts))
 		if test.permit {
 			g.Expect(err).NotTo(HaveOccurred())
 		} else {

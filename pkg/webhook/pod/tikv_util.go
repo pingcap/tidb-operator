@@ -29,38 +29,52 @@ import (
 	"k8s.io/klog"
 )
 
+type controllerDesc struct {
+	name      string
+	namespace string
+	kind      string
+}
+
 // checkFormerTiKVPodStatus would check all the former tikv pods whether their store state were UP during Upgrading
 // check need both  check former pod is ready ,store up, and no evict leader
-func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster, ordinal int32, set *apps.StatefulSet, storesInfo *pdapi.StoresInfo) error {
+func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc controllerDesc, ordinal, specReplicas int32, set *apps.StatefulSet, storesInfo *pdapi.StoresInfo) error {
+	controllerKind := controllerDesc.kind
+	controllerNamespace := controllerDesc.namespace
+	controllerName := controllerDesc.name
+	namespace := controllerDesc.namespace
 
-	tcName := tc.Name
-	namespace := tc.Namespace
-
-	for i := range helper.GetPodOrdinals(tc.Spec.TiKV.Replicas, set) {
+	for i := range helper.GetPodOrdinals(specReplicas, set) {
 		if i <= ordinal {
 			continue
 		}
-		podName := memberUtil.TikvPodName(tcName, i)
+		var podName string
+		switch controllerKind {
+		case v1alpha1.TiDBClusterKind:
+			podName = memberUtil.TikvPodName(controllerName, i)
+		case v1alpha1.TiKVGroupKind:
+			podName = memberUtil.TiKVGroupPodName(controllerName, i)
+		default:
+			return fmt.Errorf("")
+		}
 		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
 			return err
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return fmt.Errorf("tidbcluster: [%s/%s]'s pd pod: [%s] has no label: %s", namespace, tcName, podName, apps.ControllerRevisionHashLabelKey)
+			return fmt.Errorf("tikv pod[%s/%s] has no label: %s", namespace, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if revision != tc.Status.TiKV.StatefulSet.UpdateRevision {
-			return fmt.Errorf("tc[%s/%s]'s tikv pod[%s/%s] is not upgraded yet", namespace, tcName, namespace, podName)
+		if revision != set.Status.UpdateRevision {
+			return fmt.Errorf("tikv pod[%s/%s] is not upgraded yet", namespace, podName)
 		}
-
-		storeInfo, err := getStoreByPod(pod, tc, storesInfo)
+		storeInfo, err := getStoreByPod(pod, storesInfo)
 		if err != nil {
 			return err
 		}
 		klog.Infof("pod[%s/%s] store[%d]'s state is %s", namespace, podName, storeInfo.Store.Id, storeInfo.Store.StateName)
 		if storeInfo.Store.StateName != v1alpha1.TiKVStateUp {
-			return fmt.Errorf("tc[%s/%s]'s tikv pod[%s/%s] state is not up", namespace, tcName, namespace, podName)
+			return fmt.Errorf("%s[%s/%s]'s tikv pod[%s/%s] state is not up", controllerKind, controllerNamespace, controllerName, namespace, podName)
 		}
 	}
 	return nil
@@ -137,11 +151,10 @@ func endEvictLeader(storeInfo *pdapi.StoreInfo, pdClient pdapi.PDClient) error {
 	return nil
 }
 
-func getStoreByPod(pod *core.Pod, tc *v1alpha1.TidbCluster, storesInfo *pdapi.StoresInfo) (*pdapi.StoreInfo, error) {
+func getStoreByPod(pod *core.Pod, storesInfo *pdapi.StoresInfo) (*pdapi.StoreInfo, error) {
 
 	name := pod.Name
 	namespace := pod.Namespace
-	tcName := tc.Name
 
 	for _, store := range storesInfo.Stores {
 		ip := strings.Split(store.Store.GetAddress(), ":")[0]
@@ -151,5 +164,5 @@ func getStoreByPod(pod *core.Pod, tc *v1alpha1.TidbCluster, storesInfo *pdapi.St
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find store in tc[%s/%s] pod [%s/%s]", namespace, tcName, namespace, name)
+	return nil, fmt.Errorf("failed to find store in pod[%s/%s]", namespace, name)
 }

@@ -182,8 +182,13 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		payload := &admitPayload{
 			pod:              deleteTiKVPod,
 			ownerStatefulSet: ownerStatefulSet,
-			tc:               tc,
-			pdClient:         fakePDClient,
+			controller:       tc,
+			controllerDesc: controllerDesc{
+				name:      tc.Name,
+				namespace: tc.Namespace,
+				kind:      tc.Kind,
+			},
+			pdClient: fakePDClient,
 		}
 
 		response := podAdmissionControl.admitDeleteTiKVPods(payload)
