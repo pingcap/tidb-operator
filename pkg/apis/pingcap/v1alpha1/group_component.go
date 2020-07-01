@@ -1,4 +1,4 @@
-// Copyright 2018 PingCAP, Inc.
+// Copyright 2020 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,20 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package v1alpha1
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-
-// Manager implements the logic for syncing tidbcluster.
-type Manager interface {
-	// Sync	implements the logic for syncing tidbcluster.
-	Sync(*v1alpha1.TidbCluster) error
+// BaseTiKVSpec returns the base spec of TiKV servers
+func (tg *TiKVGroup) BaseTiKVSpec(tc *TidbCluster) ComponentAccessor {
+	return &componentAccessorImpl{&tc.Spec, &tg.Spec.ComponentSpec}
 }
 
-type TiDBGroupManager interface {
-	Sync(*v1alpha1.TiDBGroup) error
-}
-
-type TiKVGroupManager interface {
-	Sync(*v1alpha1.TiKVGroup) error
+func (tg *TiKVGroup) TiKVStsDesiredReplicas() int32 {
+	// TODO: support failover
+	return tg.Spec.Replicas
 }

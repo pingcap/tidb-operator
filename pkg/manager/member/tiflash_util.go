@@ -156,8 +156,8 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, n
 	if config.DefaultProfile == nil {
 		config.DefaultProfile = pointer.StringPtr("default")
 	}
-	if config.Path == nil {
-		config.Path = pointer.StringPtr("/data0/db")
+	if config.FlashDataPath == nil {
+		config.FlashDataPath = pointer.StringPtr("/data0/db")
 	}
 	if config.PathRealtimeMode == nil {
 		b := false
