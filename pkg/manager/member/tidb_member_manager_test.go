@@ -354,6 +354,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		tc.Spec.TiDB.Replicas = int32(3)
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
