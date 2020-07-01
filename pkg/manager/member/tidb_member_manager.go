@@ -743,7 +743,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -755,7 +755,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(tc.TiDBStsDesiredReplicas())},
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas())},
 			},
 		},
 	}
