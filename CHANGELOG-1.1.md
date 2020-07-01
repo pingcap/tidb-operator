@@ -2,7 +2,7 @@
 
 ## Action Required
 
-- An incompatible issue with PD 4.0.2 has been fixed, please upgrade tidb-operator to v1.1.2 before deploying the TiDB 4.0.2 and later versions ([#2809](https://github.com/pingcap/tidb-operator/pull/2809), [@cofyc](https://github.com/cofyc))
+- An incompatible issue with PD 4.0.2 has been fixed. Please upgrade TiDB Operator to v1.1.2 before deploying TiDB 4.0.2 and later versions ([#2809](https://github.com/pingcap/tidb-operator/pull/2809), [@cofyc](https://github.com/cofyc))
 
 ## Other Notable Changes
 
