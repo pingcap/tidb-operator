@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	batchlisters "k8s.io/client-go/listers/batch/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 type restoreManager struct {
@@ -240,7 +241,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(0),
+			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
 		},
 	}
@@ -368,7 +369,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: controller.Int32Ptr(0),
+			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
 		},
 	}

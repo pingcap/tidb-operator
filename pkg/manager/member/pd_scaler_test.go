@@ -31,6 +31,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestPDScalerScaleOut(t *testing.T) {
@@ -59,7 +60,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
-		newSet.Spec.Replicas = controller.Int32Ptr(7)
+		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 
 		scaler, _, pvcIndexer, pvcControl := newFakePDScaler()
 
@@ -255,7 +256,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 
 		oldSet := newStatefulSetForPDScale()
 		newSet := oldSet.DeepCopy()
-		newSet.Spec.Replicas = controller.Int32Ptr(3)
+		newSet.Spec.Replicas = pointer.Int32Ptr(3)
 
 		scaler, pdControl, pvcIndexer, pvcControl := newFakePDScaler()
 
@@ -442,7 +443,7 @@ func newStatefulSetForPDScale() *apps.StatefulSet {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(5),
+			Replicas: pointer.Int32Ptr(5),
 		},
 	}
 	return set

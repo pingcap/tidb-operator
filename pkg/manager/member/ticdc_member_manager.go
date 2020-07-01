@@ -32,6 +32,7 @@ import (
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 // ticdcMemberManager implements manager.Manager.
@@ -314,7 +315,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiCDCDeployDesiredReplicas()),
 			Selector: ticdcLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
