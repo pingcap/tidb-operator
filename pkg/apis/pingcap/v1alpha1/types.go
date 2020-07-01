@@ -704,6 +704,22 @@ type ComponentSpec struct {
 	// supports additional volume mounts for sidecar containers.
 	// +optional
 	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+
+	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
+	// Value must be non-negative integer. The value zero indicates delete immediately.
+	// If this value is nil, the default grace period will be used instead.
+	// The grace period is the duration in seconds after the processes running in the pod are sent
+	// a termination signal and the time when the processes are forcibly halted with a kill signal.
+	// Set this value longer than the expected cleanup time for your process.
+	// Defaults to 30 seconds.
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	// Lifecycle describes actions that the management system should take in response to container lifecycle
+	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
+	// until the action is complete, unless the container process fails, in which case the handler is aborted.
+	// +optional
+	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
 }
 
 // +k8s:openapi-gen=true
