@@ -633,7 +633,7 @@ func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster,
 			OwnerReferences: []metav1.OwnerReference{controller.GetTiKVGroupOwnerRef(tg)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tg.TiKVStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tg.TiKVStsDesiredReplicas()),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -650,7 +650,7 @@ func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: controller.Int32Ptr(tg.TiKVStsDesiredReplicas()),
+					Partition: pointer.Int32Ptr(tg.TiKVStsDesiredReplicas()),
 				},
 			},
 		},

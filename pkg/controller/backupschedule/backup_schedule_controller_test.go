@@ -18,19 +18,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
-
-	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	"github.com/pingcap/tidb-operator/pkg/controller"
+
+	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/pointer"
 )
 
 func TestBackupScheduleControllerEnqueueBackupSchedule(t *testing.T) {
@@ -179,7 +179,7 @@ func newBackupSchedule() *v1alpha1.BackupSchedule {
 		},
 		Spec: v1alpha1.BackupScheduleSpec{
 			Schedule:   "1 */10 * * *",
-			MaxBackups: controller.Int32Ptr(10),
+			MaxBackups: pointer.Int32Ptr(10),
 			BackupTemplate: v1alpha1.BackupSpec{
 				From: v1alpha1.TiDBAccessConfig{
 					Host:       "10.1.1.2",
