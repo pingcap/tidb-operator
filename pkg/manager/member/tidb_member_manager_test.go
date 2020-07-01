@@ -345,6 +345,9 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		errExpectFn func(*GomegaWithT, error)
 		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
+	spec := apps.StatefulSetSpec{
+		Replicas: pointer.Int32Ptr(3),
+	}
 	status := apps.StatefulSetStatus{
 		Replicas: int32(3),
 	}
@@ -355,6 +358,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{},
+			Spec:       spec,
 			Status:     status,
 		}
 		if test.updateTC != nil {
