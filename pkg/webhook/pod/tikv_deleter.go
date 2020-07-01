@@ -134,7 +134,7 @@ func (pc *PodAdmissionControl) admitDeleteUselessTiKVPod(payload *admitPayload) 
 		if err != nil {
 			if errors.IsNotFound(err) {
 				pc.recorder.Event(payload.controller, corev1.EventTypeNormal, tikvScaleInReason, podDeleteEventMessage(name))
-				return util.ARSuccess()
+				return util.ARFail(err)
 			}
 			return util.ARFail(err)
 		}

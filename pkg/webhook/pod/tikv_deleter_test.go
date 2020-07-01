@@ -71,6 +71,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 			ownerStatefulSet.Status.CurrentRevision = "1"
 			ownerStatefulSet.Status.UpdateRevision = "2"
 		}
+		storesInfo.Stores[1].Store.StateName = test.storeState
 
 		fakePDClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (i interface{}, e error) {
 			return storesInfo, nil
