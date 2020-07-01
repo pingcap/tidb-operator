@@ -210,6 +210,10 @@ func (tc *TidbCluster) TiDBUpgrading() bool {
 	return tc.Status.TiDB.Phase == UpgradePhase
 }
 
+func (tc *TidbCluster) TiDBScaling() bool {
+	return tc.Status.TiDB.Phase == ScalePhase
+}
+
 func (tc *TidbCluster) TiFlashUpgrading() bool {
 	return tc.Status.TiFlash.Phase == UpgradePhase
 }
