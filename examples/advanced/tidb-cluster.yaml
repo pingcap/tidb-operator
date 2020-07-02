@@ -244,8 +244,8 @@ spec:
   # Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
   enablePVReclaim: false
 
-  # Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-  pvReclaimPolicy: Recycle
+  ## Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster, default is Retain
+  # pvReclaimPolicy: Recycle
 
   # ** TLS related Configuration **
   # Whether enable the TLS connection between TiDB server components
