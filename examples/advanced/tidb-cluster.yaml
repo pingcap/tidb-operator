@@ -245,7 +245,9 @@ spec:
   enablePVReclaim: false
 
   ## Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster, default is Retain
-  # pvReclaimPolicy: Recycle
+  ## should be set to Retain when use local volume provisioner.
+  ## Ref: https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
+  # pvReclaimPolicy: Retain
 
   # ** TLS related Configuration **
   # Whether enable the TLS connection between TiDB server components
