@@ -162,24 +162,24 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				framework.ExpectNoError(err)
 
 				// scale
-				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
-				tc.Spec.TiDB.Replicas = 3
-				tc.Spec.TiKV.Replicas = 5
-				tc.Spec.PD.Replicas = 5
-				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.TiDB.Replicas = 3
+					tc.Spec.TiKV.Replicas = 5
+					tc.Spec.PD.Replicas = 5
+					return nil
+				})
 				framework.ExpectNoError(err)
 				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
 				err = crdUtil.CheckDisasterTolerance(tc)
 				framework.ExpectNoError(err)
 
-				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
-				tc.Spec.TiDB.Replicas = 2
-				tc.Spec.TiKV.Replicas = 4
-				tc.Spec.PD.Replicas = 3
-				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.TiDB.Replicas = 2
+					tc.Spec.TiKV.Replicas = 4
+					tc.Spec.PD.Replicas = 3
+					return nil
+				})
 				framework.ExpectNoError(err)
 				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
@@ -187,13 +187,13 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				framework.ExpectNoError(err)
 
 				// configuration change
-				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				framework.ExpectNoError(err)
-				tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
-				tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
-				tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
-				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
-				_, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(tc)
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyRollingUpdate
+					tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(4)
+					tc.Spec.TiKV.MaxFailoverCount = pointer.Int32Ptr(4)
+					tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(4)
+					return nil
+				})
 				framework.ExpectNoError(err)
 				err = crdUtil.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 				framework.ExpectNoError(err)
@@ -723,7 +723,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 
 		tm := fixture.NewTidbMonitor("e2e-monitor", tc.Namespace, tc, true, true)
-		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimDelete
+		deletePVP := corev1.PersistentVolumeReclaimDelete
+		tm.Spec.PVReclaimPolicy = &deletePVP
 		_, err = cli.PingcapV1alpha1().TidbMonitors(tc.Namespace).Create(tm)
 		framework.ExpectNoError(err, "Expected tidbmonitor deployed success")
 		err = tests.CheckTidbMonitor(tm, cli, c, fw)
@@ -764,7 +765,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "fetch latest tidbmonitor error")
 		tm.Spec.Prometheus.Service.Type = corev1.ServiceTypeNodePort
-		tm.Spec.PVReclaimPolicy = corev1.PersistentVolumeReclaimRetain
+		retainPVP := corev1.PersistentVolumeReclaimRetain
+		tm.Spec.PVReclaimPolicy = &retainPVP
 		tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
 		framework.ExpectNoError(err, "update tidbmonitor service type error")
 
@@ -826,6 +828,27 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			return true, nil
 		})
 		framework.ExpectNoError(err, "second update tidbmonitor service error")
+
+		err = wait.Poll(5*time.Second, 3*time.Minute, func() (done bool, err error) {
+			tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			tm, err = cli.PingcapV1alpha1().TidbMonitors(ns).Get(tm.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if *tc.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
+				framework.Logf("tidbcluster PVReclaimPolicy changed into %v", *tc.Spec.PVReclaimPolicy)
+				return true, nil
+			}
+			if *tm.Spec.PVReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
+				framework.Logf("tidbmonitor PVReclaimPolicy changed into %v", *tm.Spec.PVReclaimPolicy)
+				return true, nil
+			}
+			return false, nil
+		})
+		framework.ExpectEqual(err, wait.ErrWaitTimeout, "verify tidbmonitor and tidbcluster PVReclaimPolicy won't affect each other")
 
 		err = cli.PingcapV1alpha1().TidbMonitors(tm.Namespace).Delete(tm.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "delete tidbmonitor failed")

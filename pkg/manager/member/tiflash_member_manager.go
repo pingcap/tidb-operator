@@ -35,6 +35,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -512,11 +513,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		})
 	}
 	tiflashContainer.Env = util.AppendEnv(env, baseTiFlashSpec.Env())
-	podSpec.Volumes = vols
+	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
-	podSpec.Containers = []corev1.Container{tiflashContainer}
-	podSpec.Containers = append(podSpec.Containers, buildTiFlashSidecarContainers(tc)...)
+	podSpec.Containers = append([]corev1.Container{tiflashContainer}, buildTiFlashSidecarContainers(tc)...)
+	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 
 	tiflashset := &apps.StatefulSet{
@@ -528,7 +529,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiFlashStsDesiredReplicas()),
 			Selector: tiflashLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -573,6 +574,19 @@ func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	config := tc.Spec.TiFlash.Config.DeepCopy()
 	if config == nil {
 		config = &v1alpha1.TiFlashConfig{}
+	}
+	var paths []string
+	for k := range tc.Spec.TiFlash.StorageClaims {
+		paths = append(paths, fmt.Sprintf("/data%d/db", k))
+	}
+	if len(paths) > 0 {
+		dataPath := strings.Join(paths, ",")
+		if config.CommonConfig == nil {
+			config.CommonConfig = &v1alpha1.CommonConfig{}
+		}
+		if config.CommonConfig.FlashDataPath == nil {
+			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
+		}
 	}
 	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
 

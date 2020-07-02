@@ -17,10 +17,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
@@ -87,7 +89,7 @@ func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbCluster
 		}
 	}
 
-	ableToScale, err := checkStsAutoScaling(tac, *tac.Spec.TiKV.ReadyToScaleThresholdSeconds, *intervalSeconds, v1alpha1.TiKVMemberType)
+	ableToScale, err := checkTiKVStsAutoScaling(tac, *tac.Spec.TiKV.ReadyToScaleThresholdSeconds, *intervalSeconds)
 	if err != nil {
 		return err
 	}
@@ -127,7 +129,7 @@ func updateTcTiKVIfScale(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAuto
 	tac.Status.TiKV.Phase = v1alpha1.NormalAutoScalerPhase
 	tac.Annotations[label.AnnTiKVLastAutoScalingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
 	tc.Spec.TiKV.Replicas = recommendedReplicas
-	tac.Status.TiKV.RecommendedReplicas = &recommendedReplicas
+	tac.Status.TiKV.RecommendedReplicas = recommendedReplicas
 	return nil
 }
 
@@ -165,4 +167,34 @@ func calculateTikvMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 	default:
 		return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
+}
+
+func checkTiKVStsAutoScaling(tac *v1alpha1.TidbClusterAutoScaler, thresholdSeconds, intervalSeconds int32) (bool, error) {
+	realClock := clockwork.NewRealClock()
+	if tac.Annotations == nil {
+		tac.Annotations = map[string]string{}
+	}
+	// 3*controller.ResyncDuration is maximum time allowed before reset phase status
+	ableToScale, err := checkLastSyncingTimestamp(tac, 3*controller.ResyncDuration, realClock)
+	if err != nil {
+		return false, err
+	}
+	if !ableToScale {
+		return false, nil
+	}
+	ableToScale, err = checkStsReadyAutoScalingTimestamp(tac, thresholdSeconds, realClock)
+	if err != nil {
+		return false, err
+	}
+	if !ableToScale {
+		return false, nil
+	}
+	ableToScale, err = checkStsAutoScalingInterval(tac, intervalSeconds, v1alpha1.TiKVMemberType)
+	if err != nil {
+		return false, err
+	}
+	if !ableToScale {
+		return false, nil
+	}
+	return true, nil
 }

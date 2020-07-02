@@ -19,7 +19,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -35,14 +37,22 @@ const (
 )
 
 type TidbClusterStatusManager struct {
-	cli       versioned.Interface
-	pdControl pdapi.PDControlInterface
+	cli             versioned.Interface
+	pdControl       pdapi.PDControlInterface
+	scalerLister    listers.TidbClusterAutoScalerLister
+	tikvGroupLister listers.TiKVGroupLister
 }
 
-func NewTidbClusterStatusManager(kubeCli kubernetes.Interface, cli versioned.Interface) *TidbClusterStatusManager {
+func NewTidbClusterStatusManager(
+	kubeCli kubernetes.Interface,
+	cli versioned.Interface,
+	scalerLister listers.TidbClusterAutoScalerLister,
+	tikvGroupLister listers.TiKVGroupLister) *TidbClusterStatusManager {
 	return &TidbClusterStatusManager{
-		cli:       cli,
-		pdControl: pdapi.NewDefaultPDControl(kubeCli),
+		cli:             cli,
+		pdControl:       pdapi.NewDefaultPDControl(kubeCli),
+		scalerLister:    scalerLister,
+		tikvGroupLister: tikvGroupLister,
 	}
 }
 
@@ -51,11 +61,16 @@ func (tcsm *TidbClusterStatusManager) Sync(tc *v1alpha1.TidbCluster) error {
 }
 
 func (tcsm *TidbClusterStatusManager) syncTidbMonitorRefAndKey(tc *v1alpha1.TidbCluster) error {
+	tcsm.syncTikvGroupsStatus(tc)
 	tm, err := tcsm.syncTidbMonitorRef(tc)
 	if err != nil {
 		return err
 	}
-	return tcsm.syncDashboardMetricStorage(tc, tm)
+	err = tcsm.syncDashboardMetricStorage(tc, tm)
+	if err != nil {
+		return err
+	}
+	return tcsm.syncAutoScalerRef(tc)
 }
 
 func (tcsm *TidbClusterStatusManager) syncTidbMonitorRef(tc *v1alpha1.TidbCluster) (*v1alpha1.TidbMonitor, error) {
@@ -118,6 +133,56 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 		return err
 	}
 	return nil
+}
+
+func (tcsm *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster) error {
+	if tc.Status.AutoScaler == nil {
+		klog.V(4).Infof("tc[%s/%s] autoscaler is empty", tc.Namespace, tc.Name)
+		return nil
+	}
+	tacNamespace := tc.Status.AutoScaler.Namespace
+	tacName := tc.Status.AutoScaler.Name
+	tac, err := tcsm.scalerLister.TidbClusterAutoScalers(tacNamespace).Get(tacName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("tc[%s/%s] failed to find tac[%s/%s]", tc.Namespace, tc.Name, tacNamespace, tacName)
+			tc.Status.AutoScaler = nil
+			err = nil
+		}
+		return err
+	}
+	if tac.Spec.Cluster.Name != tc.Name {
+		klog.Infof("tc[%s/%s]'s target tac[%s/%s]'s cluster have been changed", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
+		tc.Status.AutoScaler = nil
+		return nil
+	}
+	if len(tac.Spec.Cluster.Namespace) < 1 {
+		return nil
+	}
+	if tac.Spec.Cluster.Namespace != tc.Namespace {
+		klog.Infof("tc[%s/%s]'s target tac[%s/%s]'s cluster namespace have been changed", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
+		tc.Status.AutoScaler = nil
+		return nil
+	}
+	return nil
+}
+
+func (tcsm *TidbClusterStatusManager) syncTikvGroupsStatus(tc *v1alpha1.TidbCluster) {
+	if tc.Status.TiKVGroups == nil || len(tc.Status.TiKVGroups) < 1 {
+		return
+	}
+
+	var newGroups []v1alpha1.GroupRef
+	for _, group := range tc.Status.TiKVGroups {
+		tg, err := tcsm.tikvGroupLister.TiKVGroups(tc.Namespace).Get(group.Reference.Name)
+		// If we failed to fetch the information for the registered tikvgroups, we will directly discard it.
+		if err != nil {
+			klog.Error(err)
+			continue
+		}
+		newGroups = append(newGroups, v1alpha1.GroupRef{Reference: corev1.LocalObjectReference{Name: tg.Name}})
+	}
+	tc.Status.TiKVGroups = newGroups
 }
 
 func syncComponent(exist bool, tm *v1alpha1.TidbMonitor, componentName string, port int, etcdClient pdapi.PDEtcdClient) error {

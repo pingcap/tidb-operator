@@ -110,9 +110,9 @@ var (
 	}
 	backupBackupSizeColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupSize",
-		Type:        "integer",
+		Type:        "string",
 		Description: "The data size of the backup",
-		JSONPath:    ".status.backupSize",
+		JSONPath:    ".status.backupSizeReadable",
 	}
 	backupCommitTSColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "CommitTS",
@@ -267,6 +267,10 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 		return v1alpha1.DefaultCrdKinds.TiDBInitializer, nil
 	case v1alpha1.TidbClusterAutoScalerKindKey:
 		return v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler, nil
+	case v1alpha1.TiKVGroupKindKey:
+		return v1alpha1.DefaultCrdKinds.TiKVGroup, nil
+	case v1alpha1.TiDBGroupKindKey:
+		return v1alpha1.DefaultCrdKinds.TiDBGroup, nil
 	default:
 		return v1alpha1.CrdKind{}, errors.New("unknown CrdKind Name")
 	}

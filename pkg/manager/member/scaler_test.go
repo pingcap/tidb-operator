@@ -34,6 +34,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
@@ -192,13 +193,13 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 				},
 			},
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 				},
 			},
 			[]scaleOp{
@@ -215,13 +216,13 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 				},
 			},
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			[]scaleOp{
@@ -238,13 +239,13 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(8),
+					Replicas: pointer.Int32Ptr(8),
 				},
 			},
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(6),
+					Replicas: pointer.Int32Ptr(6),
 				},
 			},
 			[]scaleOp{
@@ -267,13 +268,13 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 				},
 			},
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			[]scaleOp{
@@ -296,13 +297,13 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 				},
 			},
 			[]scaleOp{
@@ -319,13 +320,13 @@ func TestScaleOne(t *testing.T) {
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(3),
+					Replicas: pointer.Int32Ptr(3),
 				},
 			},
 			&apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(5),
+					Replicas: pointer.Int32Ptr(5),
 				},
 			},
 			[]scaleOp{
@@ -353,7 +354,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(5),
+					Replicas: pointer.Int32Ptr(5),
 				},
 			},
 			// 0, 4, 5
@@ -364,7 +365,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(3),
+					Replicas: pointer.Int32Ptr(3),
 				},
 			},
 			[]scaleOp{
@@ -392,7 +393,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 				},
 			},
 			// <none>
@@ -401,7 +402,7 @@ func TestScaleOne(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			[]scaleOp{
@@ -429,7 +430,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 				},
 			},
 			// <none>
@@ -440,7 +441,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			[]scaleOp{
@@ -466,7 +467,7 @@ func TestScaleOne(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			// 1,2
@@ -477,7 +478,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 				},
 			},
 			[]scaleOp{
@@ -505,7 +506,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(3),
+					Replicas: pointer.Int32Ptr(3),
 				},
 			},
 			// 0, 2, 3, 4, 5
@@ -516,7 +517,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(5),
+					Replicas: pointer.Int32Ptr(5),
 				},
 			},
 			[]scaleOp{
@@ -542,7 +543,7 @@ func TestScaleOne(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(0),
+					Replicas: pointer.Int32Ptr(0),
 				},
 			},
 			// 1,2
@@ -553,7 +554,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 				},
 			},
 			[]scaleOp{
@@ -581,7 +582,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(4),
+					Replicas: pointer.Int32Ptr(4),
 				},
 			},
 			&apps.StatefulSet{
@@ -591,7 +592,7 @@ func TestScaleOne(t *testing.T) {
 					},
 				},
 				Spec: apps.StatefulSetSpec{
-					Replicas: controller.Int32Ptr(4),
+					Replicas: pointer.Int32Ptr(4),
 				},
 			},
 			[]scaleOp{

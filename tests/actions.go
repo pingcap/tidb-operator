@@ -1754,7 +1754,7 @@ func (oa *operatorActions) reclaimPolicySyncFn(tc *v1alpha1.TidbCluster) (bool, 
 		if pv, err := oa.kubeCli.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{}); err != nil {
 			klog.Errorf("failed to get pv: %s, error: %v", pvName, err)
 			return false, nil
-		} else if pv.Spec.PersistentVolumeReclaimPolicy != tc.Spec.PVReclaimPolicy {
+		} else if pv.Spec.PersistentVolumeReclaimPolicy != *tc.Spec.PVReclaimPolicy {
 			klog.Errorf("pv: %s's reclaimPolicy is not Retain", pvName)
 			return false, nil
 		}
@@ -2915,7 +2915,7 @@ func (oa *operatorActions) DeployIncrementalBackup(from *TidbClusterConfig, to *
 		return fmt.Errorf("Target cluster is nil when deploying drainer")
 	}
 	if withDrainer {
-		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: slave: %s", to.ClusterName))
+		oa.EmitEvent(from, fmt.Sprintf("DeployIncrementalBackup: secondary: %s", to.ClusterName))
 		klog.Infof("begin to deploy incremental backup, source cluster[%s/%s], target cluster [%s/%s]",
 			from.Namespace, from.ClusterName, to.Namespace, to.ClusterName)
 	} else {

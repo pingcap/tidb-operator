@@ -345,16 +345,21 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		errExpectFn func(*GomegaWithT, error)
 		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)
 	}
+	spec := apps.StatefulSetSpec{
+		Replicas: pointer.Int32Ptr(3),
+	}
 	status := apps.StatefulSetStatus{
 		Replicas: int32(3),
 	}
 	now := metav1.Time{Time: time.Now()}
 	testFn := func(test *testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
+		tc.Spec.TiDB.Replicas = int32(3)
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{},
+			Spec:       spec,
 			Status:     status,
 		}
 		if test.updateTC != nil {
@@ -1070,6 +1075,40 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					},
 				}))
 			},
+		},
+		{
+			name: "TiDB additional containers",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
+						},
+					},
+				},
+			},
+			testSts: testAdditionalContainers(t, []corev1.Container{customSideCarContainers[0]}),
+		},
+		{
+			name: "TiDB additional volumes",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiDB: v1alpha1.TiDBSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
+						},
+					},
+				},
+			},
+			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
 		},
 		// TODO add more tests
 	}

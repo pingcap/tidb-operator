@@ -341,10 +341,14 @@ func collectEvents(source <-chan string) []string {
 }
 
 func newTidbCluster() *v1alpha1.TidbCluster {
+	retainPVP := corev1.PersistentVolumeReclaimRetain
 	tc := &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo",
 			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			PVReclaimPolicy: &retainPVP,
 		},
 	}
 	return tc

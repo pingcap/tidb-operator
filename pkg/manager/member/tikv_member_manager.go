@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -473,10 +472,10 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
-	podSpec.Volumes = vols
+	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
-	podSpec.Containers = []corev1.Container{tikvContainer}
+	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
 
 	tikvset := &apps.StatefulSet{
@@ -488,7 +487,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
 			Selector: tikvLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -505,7 +504,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: controller.Int32Ptr(tc.TiKVStsDesiredReplicas()),
+					Partition: pointer.Int32Ptr(tc.TiKVStsDesiredReplicas()),
 				},
 			},
 		},
@@ -559,25 +558,9 @@ func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
 }
 
 func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	config := tc.Spec.TiKV.Config
 	if config == nil {
 		return nil, nil
-	}
-
-	// override CA if tls enabled
-	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-
-	confText, err := MarshalTOML(config)
-	if err != nil {
-		return nil, err
 	}
 	scriptModel := &TiKVStartScriptModel{
 		Scheme:                    tc.Scheme(),
@@ -588,23 +571,17 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
-	startScript, err := RenderTiKVStartScript(scriptModel)
+	cm, err := getTikVConfigMapForTiKVSpec(&tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
 	}
 	instanceName := tc.GetInstanceName()
 	tikvLabel := label.New().Instance(instanceName).TiKV().Labels()
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.TiKVMemberName(tc.Name),
-			Namespace:       tc.Namespace,
-			Labels:          tikvLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
-		},
-		Data: map[string]string{
-			"config-file":    transformTiKVConfigMap(string(confText), tc),
-			"startup-script": startScript,
-		},
+	cm.ObjectMeta = metav1.ObjectMeta{
+		Name:            controller.TiKVMemberName(tc.Name),
+		Namespace:       tc.Namespace,
+		Labels:          tikvLabel,
+		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 	}
 
 	if tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
@@ -612,7 +589,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			return nil, err
 		}
 	}
-
 	return cm, nil
 }
 
@@ -633,6 +609,8 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	}
 	if upgrading && tc.Status.PD.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	} else if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
 	} else {
 		tc.Status.TiKV.Phase = v1alpha1.NormalPhase
 	}
@@ -659,7 +637,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := tkmm.getTiKVStore(store)
+		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}
@@ -691,7 +669,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := tkmm.getTiKVStore(store)
+		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}
@@ -709,7 +687,7 @@ func (tkmm *tikvMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	return nil
 }
 
-func (tkmm *tikvMemberManager) getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
+func getTiKVStore(store *pdapi.StoreInfo) *v1alpha1.TiKVStore {
 	if store.Store == nil || store.Status == nil {
 		return nil
 	}
@@ -758,7 +736,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 		if store.Store != nil && !pattern.Match([]byte(store.Store.Address)) {
 			continue
 		}
-		status := tkmm.getTiKVStore(store)
+		status := getTiKVStore(store)
 		if status == nil {
 			continue
 		}

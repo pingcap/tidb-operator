@@ -61,6 +61,8 @@ const (
 	NormalPhase MemberPhase = "Normal"
 	// UpgradePhase represents the upgrade state of TiDB cluster.
 	UpgradePhase MemberPhase = "Upgrade"
+	// ScalePhase represents the scaling state of TiDB cluster.
+	ScalePhase MemberPhase = "Scale"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration
@@ -150,8 +152,8 @@ type TidbClusterSpec struct {
 	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-	// +kubebuilder:default=Recycle
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
 	// ImagePullPolicy of TiDB cluster Pods
 	// +kubebuilder:default=IfNotPresent
@@ -223,17 +225,26 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string          `json:"clusterID,omitempty"`
-	PD        PDStatus        `json:"pd,omitempty"`
-	TiKV      TiKVStatus      `json:"tikv,omitempty"`
-	TiDB      TiDBStatus      `json:"tidb,omitempty"`
-	Pump      PumpStatus      `josn:"pump,omitempty"`
-	TiFlash   TiFlashStatus   `json:"tiflash,omitempty"`
-	TiCDC     TiCDCStatus     `json:"ticdc,omitempty"`
-	Monitor   *TidbMonitorRef `json:"monitor,omitempty"`
+	ClusterID  string                    `json:"clusterID,omitempty"`
+	PD         PDStatus                  `json:"pd,omitempty"`
+	TiKV       TiKVStatus                `json:"tikv,omitempty"`
+	TiDB       TiDBStatus                `json:"tidb,omitempty"`
+	Pump       PumpStatus                `josn:"pump,omitempty"`
+	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
+	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
+	Monitor    *TidbMonitorRef           `json:"monitor,omitempty"`
+	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempyt"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
+	// +optional
+	TiKVGroups []GroupRef `json:"tikv-groups,omitempty"`
+	// +optional
+	TiDBGroups []GroupRef `json:"tidb-groups,omitempty"`
+}
+
+type GroupRef struct {
+	Reference corev1.LocalObjectReference `json:",inline"`
 }
 
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.
@@ -692,6 +703,31 @@ type ComponentSpec struct {
 	// - SLOW_LOG_FILE
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Additional containers of the component.
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
+
+	// Additional volumes of component pod. Currently this only
+	// supports additional volume mounts for sidecar containers.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+
+	// Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
+	// Value must be non-negative integer. The value zero indicates delete immediately.
+	// If this value is nil, the default grace period will be used instead.
+	// The grace period is the duration in seconds after the processes running in the pod are sent
+	// a termination signal and the time when the processes are forcibly halted with a kill signal.
+	// Set this value longer than the expected cleanup time for your process.
+	// Defaults to 30 seconds.
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	// Lifecycle describes actions that the management system should take in response to container lifecycle
+	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
+	// until the action is complete, unless the container process fails, in which case the handler is aborted.
+	// +optional
+	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1182,6 +1218,9 @@ type BackupStatus struct {
 	TimeStarted metav1.Time `json:"timeStarted"`
 	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// BackupSizeReadable is the data size of the backup.
+	// the difference with BackupSize is that its format is human readable
+	BackupSizeReadable string `json:"backupSizeReadable"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize"`
 	// CommitTs is the snapshot time point of tidb cluster.

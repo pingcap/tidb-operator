@@ -23,6 +23,10 @@ type DataResourceExpansion interface{}
 
 type RestoreExpansion interface{}
 
+type TiDBGroupExpansion interface{}
+
+type TiKVGroupExpansion interface{}
+
 type TidbClusterExpansion interface{}
 
 type TidbClusterAutoScalerExpansion interface{}

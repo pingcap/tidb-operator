@@ -65,7 +65,7 @@ var (
 			},
 			MarkCacheSize:        pointer.Int64Ptr(5368709120),
 			MinmaxIndexCacheSize: pointer.Int64Ptr(5368709120),
-			Path:                 pointer.StringPtr("/data0/db"),
+			FlashDataPath:        pointer.StringPtr("/data0/db"),
 			PathRealtimeMode:     pointer.BoolPtr(false),
 			FlashProfile: &v1alpha1.FlashProfile{
 				Default: &v1alpha1.Profile{
@@ -163,7 +163,7 @@ var (
 			},
 			MarkCacheSize:        pointer.Int64Ptr(5368709121),
 			MinmaxIndexCacheSize: pointer.Int64Ptr(5368709121),
-			Path:                 pointer.StringPtr("/data1/db"),
+			FlashDataPath:        pointer.StringPtr("/data1/db"),
 			PathRealtimeMode:     pointer.BoolPtr(true),
 			FlashProfile: &v1alpha1.FlashProfile{
 				Default: &v1alpha1.Profile{
@@ -479,6 +479,7 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			},
 			TiFlash: &v1alpha1.TiFlashSpec{},
 		},
+		Status: v1alpha1.TidbClusterStatus{},
 	}
 }
 

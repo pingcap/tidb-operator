@@ -107,6 +107,9 @@ type TiKVStorageReadPoolConfig struct {
 	// Optional: Defaults to 10MB
 	// +optional
 	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
+	// Optional: Defaults to true
+	// +optional
+	UseUnifiedPool *bool `json:"use-unified-pool,omitempty" toml:"use-unified-pool,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -132,6 +135,9 @@ type TiKVCoprocessorReadPoolConfig struct {
 	// Optional: Defaults to 10MB
 	// +optional
 	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
+	// Optional: Defaults to true
+	// +optional
+	UseUnifiedPool *bool `json:"use-unified-pool,omitempty" toml:"use-unified-pool,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -825,8 +831,23 @@ type TiKVRaftstoreConfig struct {
 	// Optional: Defaults to 2
 	// +optional
 	StorePoolSize *int64 `json:"store-pool-size,omitempty" toml:"store-pool-size,omitempty"`
+	// Optional: Defaults to 3s
+	// +optional
+	StoreRescheduleDuration *string `json:"store-reschedule-duration,omitempty" toml:"store-reschedule-duration,omitempty"`
+	// Optional: Defaults to 500ms
+	// +optional
+	ApplyYieldDuration *string `json:"apply-yield-duration,omitempty" toml:"apply-yield-duration,omitempty"`
 	// +optional
 	HibernateRegions *bool `json:"hibernate-regions,omitempty" toml:"hibernate-regions,omitempty"`
+	// Optional: Defaults to false
+	// +optional
+	ApplyEarly *bool `json:"apply-early,omitempty" toml:"apply-early, omitempty"`
+	// Optional: Defaults to 0
+	// +optional
+	PerfLevel *int64 `json:"perf-level,omitempty" toml:"perf-level, omitempty"`
+	// Optional: Defaults to false
+	// +optional
+	DevAssert *bool `json:"dev-assert,omitempty" toml:"dev-assert, omitempty"`
 }
 
 // TiKVCoprocessorConfig is the configuration of TiKV Coprocessor component.

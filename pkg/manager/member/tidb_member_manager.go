@@ -691,7 +691,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
-	containers = append(containers, corev1.Container{
+	c := corev1.Container{
 		Name:            v1alpha1.TiDBMemberType.String(),
 		Image:           tc.TiDBImage(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tidb_start_script.sh"},
@@ -719,11 +719,16 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 			InitialDelaySeconds: int32(10),
 		},
-	})
+	}
+	if tc.Spec.TiDB.Lifecycle != nil {
+		c.Lifecycle = tc.Spec.TiDB.Lifecycle
+	}
+
+	containers = append(containers, c)
 
 	podSpec := baseTiDBSpec.BuildPodSpec()
-	podSpec.Containers = containers
-	podSpec.Volumes = vols
+	podSpec.Containers = append(containers, baseTiDBSpec.AdditionalContainers()...)
+	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
 
@@ -743,7 +748,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: controller.Int32Ptr(tc.TiDBStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas()),
 			Selector: tidbLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -755,10 +760,15 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			ServiceName:         controller.TiDBPeerMemberName(tcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: controller.Int32Ptr(tc.TiDBStsDesiredReplicas())},
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{Partition: pointer.Int32Ptr(tc.TiDBStsDesiredReplicas())},
 			},
 		},
 	}
+
+	if tc.Spec.TiDB.TerminationGracePeriodSeconds != nil {
+		tidbSet.Spec.Template.Spec.TerminationGracePeriodSeconds = tc.Spec.TiDB.TerminationGracePeriodSeconds
+	}
+
 	return tidbSet
 }
 
@@ -777,6 +787,8 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
 		tc.Status.PD.Phase != v1alpha1.UpgradePhase && tc.Status.Pump.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
+	} else if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}

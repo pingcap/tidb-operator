@@ -41,6 +41,14 @@ func (c *FakePingcapV1alpha1) Restores(namespace string) v1alpha1.RestoreInterfa
 	return &FakeRestores{c, namespace}
 }
 
+func (c *FakePingcapV1alpha1) TiDBGroups(namespace string) v1alpha1.TiDBGroupInterface {
+	return &FakeTiDBGroups{c, namespace}
+}
+
+func (c *FakePingcapV1alpha1) TiKVGroups(namespace string) v1alpha1.TiKVGroupInterface {
+	return &FakeTiKVGroups{c, namespace}
+}
+
 func (c *FakePingcapV1alpha1) TidbClusters(namespace string) v1alpha1.TidbClusterInterface {
 	return &FakeTidbClusters{c, namespace}
 }

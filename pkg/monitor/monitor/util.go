@@ -199,6 +199,10 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
+	additionalContainers := monitor.Spec.AdditionalContainers
+	if len(additionalContainers) > 0 {
+		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, additionalContainers...)
+	}
 	if monitor.Spec.Grafana != nil {
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, grafanaContainer)
@@ -863,5 +867,9 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 			tcRef.Namespace = monitor.Namespace
 		}
 		monitor.Spec.Clusters[id] = tcRef
+	}
+	retainPVP := core.PersistentVolumeReclaimRetain
+	if monitor.Spec.PVReclaimPolicy == nil {
+		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 }

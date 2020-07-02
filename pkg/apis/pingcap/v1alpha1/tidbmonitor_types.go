@@ -48,8 +48,8 @@ type TidbMonitorSpec struct {
 	Initializer InitializerSpec `json:"initializer"`
 
 	// Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster
-	// +kubebuilder:default=Recycle
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -80,6 +80,9 @@ type TidbMonitorSpec struct {
 	// default to current tidb cluster version, for example: v3.0.15
 	// +optional
 	AlertManagerRulesVersion *string `json:"alertManagerRulesVersion,omitempty"`
+
+	// +optional
+	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus

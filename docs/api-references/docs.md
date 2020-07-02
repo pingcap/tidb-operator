@@ -16,6 +16,10 @@ Resource Types:
 </li><li>
 <a href="#restore">Restore</a>
 </li><li>
+<a href="#tidbgroup">TiDBGroup</a>
+</li><li>
+<a href="#tikvgroup">TiKVGroup</a>
+</li><li>
 <a href="#tidbcluster">TidbCluster</a>
 </li><li>
 <a href="#tidbclusterautoscaler">TidbClusterAutoScaler</a>
@@ -684,6 +688,208 @@ RestoreStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbgroup">TiDBGroup</h3>
+<p>
+<p>TiDBGroup encode the spec and status of a Group of TiDB Instances</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+pingcap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>TiDBGroup</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tidbgroupspec">
+TiDBGroupSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec defines the desired state of TiDBGroup</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>TiDBSpec</code></br>
+<em>
+<a href="#tidbspec">
+TiDBSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiDBSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#tidbgroupstatus">
+TiDBGroupStatus
+</a>
+</em>
+</td>
+<td>
+<p>Most recently observed status of the TiDBGroup</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvgroup">TiKVGroup</h3>
+<p>
+<p>TiKVGroup encode the spec and status of a Group of TiKV Instances</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+pingcap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>TiKVGroup</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#tikvgroupspec">
+TiKVGroupSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec defines the desired state of TiKVGroup</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>TiKVSpec</code></br>
+<em>
+<a href="#tikvspec">
+TiKVSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#tikvgroupstatus">
+TiKVGroupStatus
+</a>
+</em>
+</td>
+<td>
+<p>Most recently observed status of the TiKVGroup</p>
 </td>
 </tr>
 </tbody>
@@ -1727,6 +1933,19 @@ string
 default to current tidb cluster version, for example: v3.0.15</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2409,6 +2628,18 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>backupSizeReadable</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BackupSizeReadable is the data size of the backup.
+the difference with BackupSize is that its format is human readable</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupSize</code></br>
 <em>
 int64
@@ -2556,36 +2787,6 @@ string
 <td>
 <em>(Optional)</em>
 <p>MetricsTimeDuration describe the Time duration to be queried in the Prometheus</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>scaleOutThreshold</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
-if the consecutive counts of the scale-out result in auto-scaling reach this number,
-the auto-scaling would be performed.
-If not set, the default value is 3.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>scaleInThreshold</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ScaleInThreshold describe the consecutive threshold for the auto-scaling,
-if the consecutive counts of the scale-in result in auto-scaling reach this number,
-the auto-scaling would be performed.
-If not set, the default value is 5.</p>
 </td>
 </tr>
 <tr>
@@ -3066,6 +3267,69 @@ tidb-operator built envs.
 - SLOW_LOG_FILE</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional containers of the component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod. Currently this only
+supports additional volume mounts for sidecar containers.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>terminationGracePeriodSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request.
+Value must be non-negative integer. The value zero indicates delete immediately.
+If this value is nil, the default grace period will be used instead.
+The grace period is the duration in seconds after the processes running in the pod are sent
+a termination signal and the time when the processes are forcibly halted with a kill signal.
+Set this value longer than the expected cleanup time for your process.
+Defaults to 30 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lifecycle</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#lifecycle-v1-core">
+Kubernetes core/v1.Lifecycle
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Lifecycle describes actions that the management system should take in response to container lifecycle
+events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
+until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="configmapref">ConfigMapRef</h3>
@@ -3356,6 +3620,30 @@ CrdKind
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>TiKVGroup</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>TiDBGroup</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="dashboardconfig">DashboardConfig</h3>
@@ -3427,6 +3715,19 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>disable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When not disabled, usage data will be sent to PingCAP for improving user experience.
+Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -3545,6 +3846,17 @@ int32
 </td>
 <td>
 <p>Port indicates the external service&rsquo;s port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path indicates the external service&rsquo;s path</p>
 </td>
 </tr>
 <tr>
@@ -3791,6 +4103,18 @@ string
 </tr>
 <tr>
 <td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>bucket</code></br>
 <em>
 string
@@ -3953,6 +4277,38 @@ IngressSpec
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="groupref">GroupRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Reference</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#localobjectreference-v1-core">
+Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Reference</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -4462,6 +4818,17 @@ string
 Possible values: plaintext, aes128-ctr, aes192-ctr, aes256-ctr
 Optional: Default to plaintext
 optional</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Text file containing the key in hex form, end with &lsquo;\n&rsquo;</p>
 </td>
 </tr>
 </tbody>
@@ -7883,6 +8250,18 @@ string
 </tr>
 <tr>
 <td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>bucket</code></br>
 <em>
 string
@@ -9405,8 +9784,8 @@ bool
 </em>
 </td>
 <td>
-<p>imported from v3.1.0
-optional</p>
+<em>(Optional)</em>
+<p>imported from v3.1.0</p>
 </td>
 </tr>
 <tr>
@@ -9417,8 +9796,24 @@ uint64
 </em>
 </td>
 <td>
-<p>imported from v3.1.0
-optional</p>
+<em>(Optional)</em>
+<p>imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics.
+If this config is set to <code>false</code> on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable <code>tidb_enable_telemetry</code>.
+See PingCAP privacy policy for details: <a href="https://pingcap.com/en/privacy-policy/">https://pingcap.com/en/privacy-policy/</a>.
+Imported from v4.0.2.
+Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
@@ -9459,6 +9854,83 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbgroupspec">TiDBGroupSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbgroup">TiDBGroup</a>)
+</p>
+<p>
+<p>TiDBGroupSpec describes the attributes that a user creates on a TiDBGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TiDBSpec</code></br>
+<em>
+<a href="#tidbspec">
+TiDBSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiDBSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbgroupstatus">TiDBGroupStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbgroup">TiDBGroup</a>)
+</p>
+<p>
+<p>Most recently observed status of the TiDBGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TiDBStatus</code></br>
+<em>
+<a href="#tidbstatus">
+TiDBStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiDBStatus</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -9644,6 +10116,7 @@ Deprecated, use TidbCluster.HelperImagePullPolicy instead</p>
 <h3 id="tidbspec">TiDBSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tidbgroupspec">TiDBGroupSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -9825,6 +10298,7 @@ TiDBConfig
 <h3 id="tidbstatus">TiDBStatus</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tidbgroupstatus">TiDBGroupStatus</a>, 
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
@@ -11274,6 +11748,18 @@ string
 <p>Optional: Defaults to 10MB</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>use-unified-pool</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvdbconfig">TiKVDbConfig</h3>
@@ -11786,6 +12272,83 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvgroupspec">TiKVGroupSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvgroup">TiKVGroup</a>)
+</p>
+<p>
+<p>TiKVGroupSpec describes the attributes that a user creates on a TiKVGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TiKVSpec</code></br>
+<em>
+<a href="#tikvspec">
+TiKVSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvgroupstatus">TiKVGroupStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvgroup">TiKVGroup</a>)
+</p>
+<p>
+<p>Most recently observed status of the TiKVGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TiKVStatus</code></br>
+<em>
+<a href="#tikvstatus">
+TiKVStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVStatus</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -12998,6 +13561,30 @@ int64
 </tr>
 <tr>
 <td>
+<code>store-reschedule-duration</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>apply-yield-duration</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 500ms</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hibernate-regions</code></br>
 <em>
 bool
@@ -13005,6 +13592,42 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>apply-early</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>perf-level</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dev-assert</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -13709,6 +14332,7 @@ string
 <h3 id="tikvspec">TiKVSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tikvgroupspec">TiKVGroupSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -13865,6 +14489,7 @@ TiKVConfig
 <h3 id="tikvstatus">TiKVStatus</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#tikvgroupstatus">TiKVGroupStatus</a>, 
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
@@ -14162,6 +14787,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 10MB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>use-unified-pool</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
@@ -14596,6 +15233,44 @@ BasicAutoScalerStatus
 <p>
 (Members of <code>BasicAutoScalerStatus</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbclusterautoscalerref">TidbClusterAutoScalerRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TidbClusterAutoScalerRef indicates to the target auto-scaler ref</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -15357,6 +16032,18 @@ TidbMonitorRef
 </tr>
 <tr>
 <td>
+<code>auto-scaler,omitempyt</code></br>
+<em>
+<a href="#tidbclusterautoscalerref">
+TidbClusterAutoScalerRef
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>conditions</code></br>
 <em>
 <a href="#tidbclustercondition">
@@ -15367,6 +16054,32 @@ TidbMonitorRef
 <td>
 <em>(Optional)</em>
 <p>Represents the latest available observations of a tidb cluster&rsquo;s state.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikv-groups</code></br>
+<em>
+<a href="#groupref">
+[]GroupRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>tidb-groups</code></br>
+<em>
+<a href="#groupref">
+[]GroupRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -15844,6 +16557,19 @@ string
 <em>(Optional)</em>
 <p>alertManagerRulesVersion is the version of the tidb cluster that used for alert rules.
 default to current tidb cluster version, for example: v3.0.15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalContainers</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#container-v1-core">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

@@ -38,7 +38,7 @@ services:
     type: ClusterIP
 
 discovery:
-  image: pingcap/tidb-operator:v1.1.0
+  image: pingcap/tidb-operator:v1.1.2
   imagePullPolicy: IfNotPresent
   resources:
     limits:
@@ -463,7 +463,7 @@ tidb:
     # the start argument to specify the folder containing
     directory: /plugins
     # the start argument to specify the plugin id (name "-" version) that needs to be loaded, e.g. 'conn_limit-1'.
-    list: ["whitelist-1"]
+    list: ["allowlist-1"]
 
   # Whether enable TLS connection between TiDB server and MySQL client.
   # https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/

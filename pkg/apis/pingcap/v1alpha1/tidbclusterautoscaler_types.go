@@ -135,21 +135,6 @@ type BasicAutoScalerSpec struct {
 	// MetricsTimeDuration describe the Time duration to be queried in the Prometheus
 	// +optional
 	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
-
-	// ScaleOutThreshold describe the consecutive threshold for the auto-scaling,
-	// if the consecutive counts of the scale-out result in auto-scaling reach this number,
-	// the auto-scaling would be performed.
-	// If not set, the default value is 3.
-	// +optional
-	ScaleOutThreshold *int32 `json:"scaleOutThreshold,omitempty"`
-
-	// ScaleInThreshold describe the consecutive threshold for the auto-scaling,
-	// if the consecutive counts of the scale-in result in auto-scaling reach this number,
-	// the auto-scaling would be performed.
-	// If not set, the default value is 5.
-	// +optional
-	ScaleInThreshold *int32 `json:"scaleInThreshold,omitempty"`
-
 	// ExternalEndpoint makes the auto-scaler controller able to query the external service
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
@@ -207,7 +192,7 @@ type BasicAutoScalerStatus struct {
 	CurrentReplicas int32 `json:"currentReplicas"`
 	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
 	// +optional
-	RecommendedReplicas *int32 `json:"recommendedReplicas,omitempty"`
+	RecommendedReplicas int32 `json:"recommendedReplicas,omitempty"`
 	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
 	// +optional
 	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`
@@ -243,6 +228,13 @@ type ExternalEndpoint struct {
 // +k8s:openapi-gen=true
 // SecretRef indicates to secret ref
 type SecretRef struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+// +k8s:openapi-gen=true
+// TidbClusterAutoScalerRef indicates to the target auto-scaler ref
+type TidbClusterAutoScalerRef struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 }

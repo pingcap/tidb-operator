@@ -52,6 +52,9 @@ var (
 	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
+	// tikvGroupControllerkind cotnains the schema.GroupVersionKind for TiKVGroup controller type.
+	tikvGroupControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")
+
 	// TidbBackupManagerImage is the image of tidb backup manager tool
 	TidbBackupManagerImage string
 
@@ -316,6 +319,27 @@ func AnnAdditionalProm(name string, port int32) map[string]string {
 	}
 }
 
+func TiKVGroupMemberName(groupName string) string {
+	return fmt.Sprintf("%s-tikv-group", groupName)
+}
+
+func TiKVGroupPeerMemberName(groupName string) string {
+	return fmt.Sprintf("%s-tikv-group-peer", groupName)
+}
+
+func GetTiKVGroupOwnerRef(tg *v1alpha1.TiKVGroup) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         tikvGroupControllerkind.GroupVersion().String(),
+		Kind:               tikvGroupControllerkind.Kind,
+		Name:               tg.GetName(),
+		UID:                tg.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
 func ParseStorageRequest(req corev1.ResourceList) (corev1.ResourceRequirements, error) {
 	if req == nil {
 		return corev1.ResourceRequirements{}, nil
@@ -367,11 +391,6 @@ func setIfNotEmpty(container map[string]string, key, value string) {
 	if value != "" {
 		container[key] = value
 	}
-}
-
-// Int32Ptr returns a pointer to an int32
-func Int32Ptr(i int32) *int32 {
-	return &i
 }
 
 // RequestTracker is used by unit test for mocking request error

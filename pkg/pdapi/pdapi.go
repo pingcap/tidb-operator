@@ -36,7 +36,8 @@ import (
 )
 
 const (
-	DefaultTimeout = 5 * time.Second
+	DefaultTimeout       = 5 * time.Second
+	evictSchedulerLeader = "evict-leader-scheduler"
 )
 
 // Namespace is a newtype of a string
@@ -200,6 +201,9 @@ var (
 	pdLeaderPrefix         = "pd/api/v1/leader"
 	pdLeaderTransferPrefix = "pd/api/v1/leader/transfer"
 	pdReplicationPrefix    = "pd/api/v1/config/replicate"
+	// evictLeaderSchedulerConfigPrefix is the prefix of evict-leader-scheduler
+	// config API, available since PD v3.1.0.
+	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
 )
 
 // pdClient is default implementation of PDClient
@@ -630,18 +634,64 @@ func (pc *pdClient) GetEvictLeaderSchedulers() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	schedulers := []string{}
+	var schedulers []string
 	err = json.Unmarshal(body, &schedulers)
 	if err != nil {
 		return nil, err
 	}
-	evicts := []string{}
+	var evicts []string
 	for _, scheduler := range schedulers {
-		if strings.HasPrefix(scheduler, "evict-leader-scheduler") {
+		if strings.HasPrefix(scheduler, evictSchedulerLeader) {
 			evicts = append(evicts, scheduler)
 		}
 	}
-	return evicts, nil
+	evictSchedulers, err := pc.filterLeaderEvictScheduler(evicts)
+	if err != nil {
+		return nil, err
+	}
+	return evictSchedulers, nil
+}
+
+// getEvictLeaderSchedulerConfig gets the config of PD scheduler "evict-leader-scheduler"
+// It's available since PD 3.1.0.
+// In the previous versions, PD API returns 404 and this function will return an error.
+func (pc *pdClient) getEvictLeaderSchedulerConfig() (*evictLeaderSchedulerConfig, error) {
+	apiURL := fmt.Sprintf("%s/%s", pc.url, evictLeaderSchedulerConfigPrefix)
+	body, err := httputil.GetBodyOK(pc.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	config := &evictLeaderSchedulerConfig{}
+	err = json.Unmarshal(body, config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+// This method is to make compatible between old pdapi version and versions after 3.1/4.0.
+// To get more detail, see:
+// - https://github.com/pingcap/tidb-operator/pull/1831
+// - https://github.com/pingcap/pd/issues/2550
+func (pc *pdClient) filterLeaderEvictScheduler(evictLeaderSchedulers []string) ([]string, error) {
+	var schedulerIds []string
+	if len(evictLeaderSchedulers) == 1 && evictLeaderSchedulers[0] == evictSchedulerLeader {
+		// If there is only one evcit scehduler entry without store ID postfix.
+		// We should get the store IDs via scheduler config API and append them
+		// to provide consistent results.
+		c, err := pc.getEvictLeaderSchedulerConfig()
+		if err != nil {
+			return nil, err
+		}
+		for k := range c.StoreIDWithRanges {
+			schedulerIds = append(schedulerIds, fmt.Sprintf("%s-%v", evictSchedulerLeader, k))
+		}
+	} else {
+		for _, s := range evictLeaderSchedulers {
+			schedulerIds = append(schedulerIds, s)
+		}
+	}
+	return schedulerIds, nil
 }
 
 func (pc *pdClient) GetPDLeader() (*pdpb.Member, error) {

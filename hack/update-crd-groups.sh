@@ -28,7 +28,7 @@ crd_target="$ROOT/manifests/crd.yaml"
 export GOBIN="${OUTPUT_BIN}"
 PATH="${GOBIN}:${PATH}"
 
-# Enable go modules explicilty.
+# Enable go modules explicitly.
 export GO111MODULE=on
 go install github.com/pingcap/tidb-operator/cmd/to-crdgen
 
@@ -39,6 +39,8 @@ to-crdgen generate backupschedule >> $crd_target
 to-crdgen generate tidbmonitor >> $crd_target
 to-crdgen generate tidbinitializer >> $crd_target
 to-crdgen generate tidbclusterautoscaler >> $crd_target
+to-crdgen generate tidbgroup >> $crd_target
+to-crdgen generate tikvgroup >> $crd_target
 
 
 
