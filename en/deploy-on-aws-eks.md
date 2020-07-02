@@ -86,14 +86,43 @@ git clone --depth=1 https://github.com/pingcap/tidb-operator && \
 cd tidb-operator/deploy/aws
 ```
 
-The default setup creates a new VPC and a `t2.micro` instance as the bastion machine, and an EKS cluster with following Amazon EC2 instances as worker nodes:
+The EKS deployment scripts provide two options:
 
-* 3 m5.xlarge instances for PD
-* 3 c5d.4xlarge instances for TiKV
-* 2 c5.4xlarge instances for TiDB
-* 1 c5.2xlarge instance for monitor
+* Deploy a cluster for demo or quick experience
 
-You can create or modify `terraform.tfvars` to set the value of variables and configure the cluster as needed. See the variables that can be set and their descriptions in `variables.tf`.
+    The demo deployment creates a new VPC, a t2.micro instance as the bastion host and an EKS cluster with the following Amazon EC2 instances as worker nodes:
+    
+    * 1 c5.large instance for PD
+    * 3 c5d.large instances for TiKV
+    * 1 c5.large instance for TiDB
+    * 1 c5.large instance for monitor
+
+    To use the demo setup, run the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cp demo.tfvars terraform.tfvars
+    ```
+
+* Deploy a cluster for the production environment
+
+    The production setup creates a new VPC, a t2.micro instance as the bastion host and an EKS cluster with the following Amazon EC2 instances as worker nodes:
+
+    * 3 c5.xlarge instances for PD
+    * 3 i3.4xlarge instances for TiKV
+    * 2 c5.2xlarge instances for TiDB
+    * 1 c5.2xlarge instances for monitor
+
+    To use the production setup, run the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cp prod.tfvars terraform.tfvars
+    ```
+
+In addition to the setups mentioned above, you can also modify `terraform.tfvars` to set the value of variables and configure the cluster as needed. See the configurable variables and their descriptions in `variables.tf`.
 
 The following is an example of how to configure the EKS cluster name, the TiDB cluster name, the TiDB Operator version, and the number of PD, TiKV and TiDB nodes:
 
@@ -103,7 +132,7 @@ default_cluster_tikv_count = 3
 default_cluster_tidb_count = 2
 default_cluster_name = "tidb"
 eks_name = "my-cluster"
-operator_version = "v1.1.0-rc.1"
+operator_version = "v1.1.0"
 ```
 
 * To deploy TiFlash in the cluster, set `create_tiflash_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiFlash node pool by modifying `cluster_tiflash_count` and `cluster_tiflash_instance_type`. By default, the value of `cluster_tiflash_count` is `2`, and the value of `cluster_tiflash_instance_type` is `i3.4xlarge`.
