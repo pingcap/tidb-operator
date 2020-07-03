@@ -2064,6 +2064,9 @@ spec:
                   type: object
                 storageClassName:
                   type: string
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
                 tlsClientSecretName:
                   type: string
                 tolerations:
@@ -3564,6 +3567,9 @@ spec:
                   type: string
                 storageClassName:
                   type: string
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
                 tolerations:
                   items:
                     properties:
@@ -5074,6 +5080,9 @@ spec:
                   type: string
                 serviceAccount:
                   type: string
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
                 tolerations:
                   items:
                     properties:
@@ -6853,6 +6862,105 @@ spec:
                         type: string
                     type: object
                   type: array
+                lifecycle:
+                  properties:
+                    postStart:
+                      properties:
+                        exec:
+                          properties:
+                            command:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        httpGet:
+                          properties:
+                            host:
+                              type: string
+                            httpHeaders:
+                              items:
+                                properties:
+                                  name:
+                                    type: string
+                                  value:
+                                    type: string
+                                required:
+                                - name
+                                - value
+                                type: object
+                              type: array
+                            path:
+                              type: string
+                            port:
+                              anyOf:
+                              - type: string
+                              - type: integer
+                            scheme:
+                              type: string
+                          required:
+                          - port
+                          type: object
+                        tcpSocket:
+                          properties:
+                            host:
+                              type: string
+                            port:
+                              anyOf:
+                              - type: string
+                              - type: integer
+                          required:
+                          - port
+                          type: object
+                      type: object
+                    preStop:
+                      properties:
+                        exec:
+                          properties:
+                            command:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        httpGet:
+                          properties:
+                            host:
+                              type: string
+                            httpHeaders:
+                              items:
+                                properties:
+                                  name:
+                                    type: string
+                                  value:
+                                    type: string
+                                required:
+                                - name
+                                - value
+                                type: object
+                              type: array
+                            path:
+                              type: string
+                            port:
+                              anyOf:
+                              - type: string
+                              - type: integer
+                            scheme:
+                              type: string
+                          required:
+                          - port
+                          type: object
+                        tcpSocket:
+                          properties:
+                            host:
+                              type: string
+                            port:
+                              anyOf:
+                              - type: string
+                              - type: integer
+                          required:
+                          - port
+                          type: object
+                      type: object
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -6940,6 +7048,9 @@ spec:
                     requests:
                       type: object
                   type: object
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
                 tlsClient: {}
                 tolerations:
                   items:
@@ -8506,6 +8617,9 @@ spec:
                         type: string
                     type: object
                   type: array
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
                 tolerations:
                   items:
                     properties:
@@ -11100,6 +11214,9 @@ spec:
                   type: string
                 storageClassName:
                   type: string
+                terminationGracePeriodSeconds:
+                  format: int64
+                  type: integer
                 tolerations:
                   items:
                     properties:
@@ -15204,6 +15321,105 @@ spec:
                     type: string
                 type: object
               type: array
+            lifecycle:
+              properties:
+                postStart:
+                  properties:
+                    exec:
+                      properties:
+                        command:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    httpGet:
+                      properties:
+                        host:
+                          type: string
+                        httpHeaders:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              value:
+                                type: string
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                        path:
+                          type: string
+                        port:
+                          anyOf:
+                          - type: string
+                          - type: integer
+                        scheme:
+                          type: string
+                      required:
+                      - port
+                      type: object
+                    tcpSocket:
+                      properties:
+                        host:
+                          type: string
+                        port:
+                          anyOf:
+                          - type: string
+                          - type: integer
+                      required:
+                      - port
+                      type: object
+                  type: object
+                preStop:
+                  properties:
+                    exec:
+                      properties:
+                        command:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    httpGet:
+                      properties:
+                        host:
+                          type: string
+                        httpHeaders:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              value:
+                                type: string
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                        path:
+                          type: string
+                        port:
+                          anyOf:
+                          - type: string
+                          - type: integer
+                        scheme:
+                          type: string
+                      required:
+                      - port
+                      type: object
+                    tcpSocket:
+                      properties:
+                        host:
+                          type: string
+                        port:
+                          anyOf:
+                          - type: string
+                          - type: integer
+                      required:
+                      - port
+                      type: object
+                  type: object
+              type: object
             limits:
               type: object
             maxFailoverCount:
@@ -15291,6 +15507,9 @@ spec:
                 requests:
                   type: object
               type: object
+            terminationGracePeriodSeconds:
+              format: int64
+              type: integer
             tlsClient: {}
             tolerations:
               items:
@@ -17909,6 +18128,9 @@ spec:
               type: string
             storageClassName:
               type: string
+            terminationGracePeriodSeconds:
+              format: int64
+              type: integer
             tolerations:
               items:
                 properties:
