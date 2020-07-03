@@ -18,15 +18,16 @@ import (
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+
+	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	. "github.com/onsi/gomega"
 )
 
 // TODO: more UTs
@@ -75,7 +76,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							DNSPolicy: corev1.DNSClusterFirst,
@@ -86,7 +87,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 			mergeFn: mergeFn,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, result *appsv1.Deployment, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(result.Spec.Replicas).To(Equal(Int32Ptr(1)))
+				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(1)))
 				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(0))
 			},
@@ -99,7 +100,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							DNSPolicy: corev1.DNSClusterFirst,
@@ -113,7 +114,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							DNSPolicy: corev1.DNSClusterFirstWithHostNet,
@@ -124,7 +125,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 			mergeFn: mergeFn,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, result *appsv1.Deployment, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(result.Spec.Replicas).To(Equal(Int32Ptr(2)))
+				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
 				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
@@ -138,7 +139,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 					Paused:   true,
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -153,7 +154,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 					Paused:   false,
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -165,7 +166,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 			mergeFn: mergeFn,
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, result *appsv1.Deployment, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(result.Spec.Replicas).To(Equal(Int32Ptr(2)))
+				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
 				g.Expect(result.Spec.Paused).To(BeTrue())
 				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
@@ -221,7 +222,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{
 				"k": "v",
 			}},
-			Replicas: Int32Ptr(1),
+			Replicas: pointer.Int32Ptr(1),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -244,7 +245,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 					Namespace: "default",
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							DNSPolicy: corev1.DNSClusterFirst,
@@ -271,7 +272,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{
 						"k": "v",
 					}},
-					Replicas: Int32Ptr(1),
+					Replicas: pointer.Int32Ptr(1),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -293,7 +294,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{
 						"k2": "v2",
 					}},
-					Replicas: Int32Ptr(2),
+					Replicas: pointer.Int32Ptr(2),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -308,7 +309,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 			},
 			expectFn: func(g *GomegaWithT, c *FakeClientWithTracker, result *appsv1.Deployment, err error) {
 				g.Expect(err).To(Succeed())
-				g.Expect(result.Spec.Replicas).To(Equal(Int32Ptr(2)))
+				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
 				g.Expect(result.Spec.Selector.MatchLabels["k"]).To(Equal("v"))
 				g.Expect(result.Spec.Template.Labels["k"]).To(Equal("v"))
