@@ -177,7 +177,7 @@ Client: &version.Version{SemVer:"v2.16.7", GitCommit:"5f2584fd3d35552c4af26036f0
 
 ### 安装 Helm 服务端
 
-### 安装 RBAC
+#### 安装 RBAC
 
 如果 Kubernetes 集群没有启用 `RBAC`，请跳过此小节，直接安装 Tiller 即可。
 
@@ -205,7 +205,7 @@ wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/ti
 kubectl apply -f tiller-rbac.yaml
 ```
 
-### 安装 Tiller
+#### 安装 Tiller
 
 Helm 服务端是一个名字叫 `tiller` 的服务，是作为一个 Pod 运行在 Kubernetes 集群里的。使用下面的命令安装 `tiller`：
 
@@ -249,7 +249,7 @@ helm init --service-account=tiller --skip-refresh
 kubectl get po -n kube-system -l name=tiller
 ```
 
-### 配置 Helm repo
+#### 配置 Helm repo
 
 Kubernetes 应用在 Helm 中被打包为 chart。PingCAP 针对 Kubernetes 上的 TiDB 部署运维提供了多个 Helm chart：
 
@@ -302,7 +302,7 @@ helm repo add pingcap https://charts.pingcap.org/
 helm repo update
 ```
 
-### Helm 常用操作
+#### Helm 常用操作
 
 Helm 的常用操作有部署（`helm install`）、升级（`helm upgrade`)、销毁（`helm del`)、查询（`helm ls`）。Helm chart 往往都有很多可配置参数，通过命令行进行配置比较繁琐，因此推荐使用 YAML 文件的形式来编写这些配置项。基于 Helm 社区约定俗称的命名方式，在文档中将用于配置 chart 的 YAML 文件称为 `values.yaml` 文件。
 
@@ -342,7 +342,7 @@ helm del --purge ${release_name}
 
 更多 helm 的相关文档，请参考 [Helm 官方文档](https://helm.sh/docs/)。
 
-### 离线情况下使用 Helm chart
+#### 离线情况下使用 Helm chart
 
 如果服务器上没有外网，就无法通过配置 Helm repo 来安装 TiDB Operator 组件以及其他应用。这时，需要在有外网的机器上下载集群安装需用到的 chart 文件，再拷贝到服务器上。
 

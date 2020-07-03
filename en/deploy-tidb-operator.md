@@ -39,37 +39,200 @@ Refer to [Local PV Configuration](configure-storage-class.md) to set up local pe
 
 ## Install TiDB Operator
 
+### Create CRD
+
 TiDB Operator uses [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` custom resource type, which is a one-time job in your Kubernetes cluster.
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
-kubectl get crd tidbclusters.pingcap.com
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/crd.yaml
 ```
 
-After `TidbCluster` custom resource type is created, install TiDB Operator in your Kubernetes cluster.
+If the server cannot access the Internet, you need to download the `crd.yaml` file on a machine with Internet access before installing:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/crd.yaml
+kubectl apply -f ./crd.yaml
+```
+
+If the following message is displayed, the CRD installation is successful:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get crd
+```
+
+```shell
+NAME                                 CREATED AT
+backups.pingcap.com                  2020-06-11T07:59:40Z
+backupschedules.pingcap.com          2020-06-11T07:59:41Z
+restores.pingcap.com                 2020-06-11T07:59:40Z
+tidbclusterautoscalers.pingcap.com   2020-06-11T07:59:42Z
+tidbclusters.pingcap.com             2020-06-11T07:59:38Z
+tidbinitializers.pingcap.com         2020-06-11T07:59:42Z
+tidbmonitors.pingcap.com             2020-06-11T07:59:41Z
+```
+
+### Installation
+
+After the various CRDs above are created, you can install TiDB Operator on your Kubernetes cluster. There are two installation methods: online and offline.
+
+#### Online installation
 
 1. Get the `values.yaml` file of the `tidb-operator` chart you want to install.
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    mkdir -p /home/tidb/tidb-operator && \
-    helm inspect values pingcap/tidb-operator --version=${chart_version} > /home/tidb/tidb-operator/values-tidb-operator.yaml
+    mkdir -p ${HOME}/tidb-operator && \
+    helm inspect values pingcap/tidb-operator --version=${chart_version} > ${HOME}/tidb-operator/values-tidb-operator.yaml
     ```
 
     > **Note:**
     >
-    > `${chart_version}` represents the chart version of TiDB Operator. For example, `v1.0.0`. You can view the currently supported versions by running the `helm search -l tidb-operator` command.
+    > `${chart_version}` represents the chart version of TiDB Operator. For example, `v1.1.0`. You can view the currently supported versions by running the `helm search -l tidb-operator` command.
 
-2. Install TiDB Operator.
+2. Configure TiDB Operator
+
+    TiDB Operator will use the `k8s.gcr.io/kube-scheduler` image. If you cannot download the image, you can modify the `scheduler.kubeSchedulerImageName` in the `${HOME}/tidb-operator/values-tidb-operator.yaml` file to `registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler`.
+
+    You can modify other items such as `limits`, `requests`, and `replicas` as needed.
+
+3. Install TiDB Operator.
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=${chart_version} -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
+    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=${chart_version} -f ${HOME}/tidb-operator/values-tidb-operator.yaml && \
     kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+    ```
+
+4. Upgrade TiDB Operator
+
+    If you need to upgrade the TiDB Operator, modify the `${HOME}/tidb-operator/values-tidb-operator.yaml` file, and then execute the following command to upgrade:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm upgrade tidb-operator pingcap/tidb-operator -f  ${HOME}/tidb-operator/values-tidb-operator.yaml
+    ```
+
+#### Offline installation
+
+If your server cannot access the Internet, install TiDB Operator offline by the following steps:
+
+1. Download the `tidb-operator` chart
+
+    If the server has no access to the Internet, you cannot configure the Helm repository to install the TiDB Operator component and other applications. At this time, you need to download the chart file needed for cluster installation on a machine with Internet access, and then copy it to the server.
+
+    Use the following command to download the `tidb-operator` chart file:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    wget http://charts.pingcap.org/tidb-operator-v1.1.0.tgz
+    ```
+
+    Copy the `tidb-operator-v1.1.0.tgz` file to the target server and extract it to the current directory:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    tar zxvf tidb-operator.v1.1.0.tgz
+    ```
+
+2. Download the Docker images used by TiDB Operator
+
+    If the server has no access to the Internet, you need to download all Docker images used by TiDB Operator on a machine with Internet access and upload them to the server, and then use `docker load` to install the Docker image on the server.
+
+    The Docker images used by TiDB Operator are:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    pingcap/tidb-operator:v1.1.0
+    pingcap/tidb-backup-manager:v1.1.0
+    bitnami/kubectl:latest
+    pingcap/advanced-statefulset:v0.3.3
+    k8s.gcr.io/kube-scheduler:v1.16.9
+    ```
+
+    Among them, `k8s.gcr.io/kube-scheduler:v1.16.9` should be consistent with the version of your Kubernetes cluster. You do not need to download it separately.
+
+    Next, download all these images using the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker pull pingcap/tidb-operator:v1.1.0
+    docker pull pingcap/tidb-backup-manager:v1.1.0
+    docker pull bitnami/kubectl:latest
+    docker pull pingcap/advanced-statefulset:v0.3.3
+
+    docker save -o tidb-operator-v1.1.0.tar pingcap/tidb-operator:v1.1.0
+    docker save -o tidb-backup-manager-v1.1.0.tar pingcap/tidb-backup-manager:v1.1.0
+    docker save -o bitnami-kubectl.tar bitnami/kubectl:latest
+    docker save -o advanced-statefulset-v0.3.3.tar pingcap/advanced-statefulset:v0.3.3
+    ```
+
+    Next, upload these Docker images to the server, and execute `docker load` to install these Docker images on the server:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker load -i tidb-operator-v1.1.0.tar
+    docker load -i tidb-backup-manager-v1.1.0.tar
+    docker load -i bitnami-kubectl.tar
+    docker load -i advanced-statefulset-v0.3.3.tar
+    ```
+
+3. Configure TiDB Operator
+
+    TiDB Operator embeds a `kube-scheduler` to implement a custom scheduler. To configure the Docker image's name and version of this built-in `kube-scheduler` component, modify the `./tidb-operator/values.yaml` file. For example, if `kube-scheduler` in your Kubernetes cluster uses the image `k8s.gcr.io/kube-scheduler:v1.16.9`, set `./tidb-operator/values.yaml` as follows:
+
+    ```shell
+    ...
+    scheduler:
+      serviceAccount: tidb-scheduler
+      logLevel: 2
+      replicas: 1
+      schedulerName: tidb-scheduler
+      resources:
+        limits:
+          cpu: 250m
+          memory: 150Mi
+        requests:
+          cpu: 80m
+          memory: 50Mi
+      kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
+      kubeSchedulerImageTag: v1.16.9
+    ...
+    ```
+
+    You can modify other items such as `limits`, `requests`, and `replicas` as needed.
+
+4. Install TiDB Operator
+
+    Install TiDB Operator using the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm install ./tidb-operator --name=tidb-operator --namespace=tidb-admin
+    ```
+
+5. Upgrade TiDB Operator
+
+    If you need to upgrade TiDB Operator, modify the `./tidb-operator/values.yaml` file, and then execute the following command to upgrade:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    helm upgrade tidb-operator ./tidb-operator
     ```
 
 ## Customize TiDB Operator
