@@ -85,6 +85,7 @@ type TidbClusterAutoScalerSpec struct {
 type TikvAutoScalerSpec struct {
 	BasicAutoScalerSpec `json:",inline"`
 
+	// Deprecated
 	// ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
 	// should last for before auto scaling.
 	// If not set, the default ReadyToScaleThresholdSeconds will be set to 30.
@@ -183,6 +184,7 @@ type TikvAutoScalerStatus struct {
 // +k8s:openapi-gen=true
 // BasicAutoScalerStatus describe the basic auto-scaling status
 type BasicAutoScalerStatus struct {
+	// Deprecated
 	// Phase describes cluster auto scaling phase
 	Phase AutoScalerPhase `json:"phase,omitempty"`
 	// MetricsStatusList describes the metrics status in the last auto-scaling reconciliation
@@ -193,6 +195,7 @@ type BasicAutoScalerStatus struct {
 	// RecommendedReplicas describes the calculated replicas in the last auto-scaling reconciliation for the component(tidb/tikv)
 	// +optional
 	RecommendedReplicas int32 `json:"recommendedReplicas,omitempty"`
+	// Deprecated
 	// LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)
 	// +optional
 	LastAutoScalingTimestamp *metav1.Time `json:"lastAutoScalingTimestamp,omitempty"`
