@@ -14,6 +14,7 @@
 package restore
 
 import (
+	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -146,7 +147,7 @@ func (rsc *Controller) processNextWorkItem() bool {
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Restore: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(perrors.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Restore: %v, sync failed, err: %v, requeuing", key.(string), err))
 			rsc.queue.AddRateLimited(key)
 		}
 	} else {
@@ -210,7 +211,7 @@ func (rsc *Controller) updateRestore(cur interface{}) {
 func (rsc *Controller) enqueueRestore(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(perrors.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 		return
 	}
 	rsc.queue.Add(key)

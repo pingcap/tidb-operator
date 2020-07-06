@@ -14,6 +14,7 @@
 package tidbinitializer
 
 import (
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -130,7 +131,7 @@ func (tic *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TiDBInitializer: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(perrors.Errorf("TiDBInitializer: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("TiDBInitializer: %v, sync failed, err: %v, requeuing", key.(string), err))
 		}
 		tic.queue.AddRateLimited(key)
 	} else {

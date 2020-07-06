@@ -14,6 +14,7 @@
 package tikvgroup
 
 import (
+	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -118,7 +119,7 @@ func (tgc *Controller) processNestWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TiKVGroup: %v, still need sync: %v, requeue", key.(string), err)
 		} else {
-			utilruntime.HandleError(perrors.Errorf("TiKVGroup: %v, sync failed, err: %v", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("TiKVGroup: %v, sync failed, err: %v", key.(string), err))
 		}
 		tgc.queue.AddRateLimited(key)
 	} else {

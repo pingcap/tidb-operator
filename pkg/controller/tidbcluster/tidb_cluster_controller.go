@@ -14,6 +14,7 @@
 package tidbcluster
 
 import (
+	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -296,7 +297,7 @@ func (tcc *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(perrors.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
 		}
 		tcc.queue.AddRateLimited(key)
 	} else {
@@ -314,7 +315,7 @@ func (tcc *Controller) sync(key string) error {
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return perrors.Trace(err)
+		return err
 	}
 	tc, err := tcc.tcLister.TidbClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
@@ -322,7 +323,7 @@ func (tcc *Controller) sync(key string) error {
 		return nil
 	}
 	if err != nil {
-		return perrors.Trace(err)
+		return err
 	}
 
 	return tcc.syncTidbCluster(tc.DeepCopy())
@@ -336,7 +337,7 @@ func (tcc *Controller) syncTidbCluster(tc *v1alpha1.TidbCluster) error {
 func (tcc *Controller) enqueueTidbCluster(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(perrors.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 		return
 	}
 	tcc.queue.Add(key)
@@ -397,12 +398,12 @@ func (tcc *Controller) deleteStatefulSet(obj interface{}) {
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(perrors.Errorf("couldn't get object from tombstone %+v", obj))
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %+v", obj))
 			return
 		}
 		set, ok = tombstone.Obj.(*apps.StatefulSet)
 		if !ok {
-			utilruntime.HandleError(perrors.Errorf("tombstone contained object that is not a statefuset %+v", obj))
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a statefuset %+v", obj))
 			return
 		}
 	}

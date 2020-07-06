@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	perrors "github.com/pingcap/errors"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -92,7 +91,7 @@ func (sc *realServiceControl) UpdateService(controller runtime.Object, svc *core
 		}
 
 		if updated, err := sc.svcLister.Services(namespace).Get(svcName); err != nil {
-			utilruntime.HandleError(perrors.Errorf("error getting updated Service %s/%s from lister: %v", namespace, svcName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated Service %s/%s from lister: %v", namespace, svcName, err))
 		} else {
 			svc = updated.DeepCopy()
 			svc.Spec = *svcSpec

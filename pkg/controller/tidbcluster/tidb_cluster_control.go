@@ -14,7 +14,6 @@
 package tidbcluster
 
 import (
-	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/defaulting"
 	v1alpha1validation "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/validation"
@@ -119,7 +118,7 @@ func (tcc *defaultTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster
 		errs = append(errs, err)
 	}
 
-	return perrors.Trace(errorutils.NewAggregate(errs))
+	return errorutils.NewAggregate(errs)
 }
 
 func (tcc *defaultTidbClusterControl) validate(tc *v1alpha1.TidbCluster) bool {

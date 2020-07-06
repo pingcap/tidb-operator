@@ -17,7 +17,8 @@ import (
 	"fmt"
 	"strings"
 
-	perrors "github.com/pingcap/errors"
+	"k8s.io/klog"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
@@ -27,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog"
 )
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -71,7 +71,7 @@ func (rcu *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condit
 				restore = updated.DeepCopy()
 				restore.Status = *oldStatus
 			} else {
-				utilruntime.HandleError(perrors.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
+				utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
 			}
 			return updateErr
 		}

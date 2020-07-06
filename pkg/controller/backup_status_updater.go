@@ -17,7 +17,8 @@ import (
 	"fmt"
 	"strings"
 
-	perrors "github.com/pingcap/errors"
+	"k8s.io/klog"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
@@ -27,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog"
 )
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -71,7 +71,7 @@ func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition
 				backup = updated.DeepCopy()
 				backup.Status = *oldStatus
 			} else {
-				utilruntime.HandleError(perrors.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+				utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			}
 			return updateErr
 		}

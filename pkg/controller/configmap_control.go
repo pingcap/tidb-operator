@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	perrors "github.com/pingcap/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,7 +80,7 @@ func (cc *realConfigMapControl) UpdateConfigMap(owner runtime.Object, cm *corev1
 		}
 
 		if updated, err := cc.kubeCli.CoreV1().ConfigMaps(cm.Namespace).Get(cmName, metav1.GetOptions{}); err != nil {
-			utilruntime.HandleError(perrors.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated ConfigMap %s/%s from lister: %v", ns, cmName, err))
 		} else {
 			cm = updated.DeepCopy()
 			cm.Data = cmData

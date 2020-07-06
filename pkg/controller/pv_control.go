@@ -15,14 +15,13 @@ package controller
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 
-	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -162,7 +161,7 @@ func (rpc *realPVControl) UpdateMetaInfo(obj runtime.Object, pv *corev1.Persiste
 			pv.Labels = labels
 			pv.Annotations = ann
 		} else {
-			utilruntime.HandleError(perrors.Errorf("error getting updated PV %s/%s from lister: %v", ns, pvName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated PV %s/%s from lister: %v", ns, pvName, err))
 		}
 		return updateErr
 	})

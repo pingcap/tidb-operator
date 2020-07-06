@@ -14,6 +14,7 @@
 package backup
 
 import (
+	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -147,7 +148,7 @@ func (bkc *Controller) processNextWorkItem() bool {
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(perrors.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
 			bkc.queue.AddRateLimited(key)
 		}
 	} else {
@@ -218,7 +219,7 @@ func (bkc *Controller) updateBackup(cur interface{}) {
 func (bkc *Controller) enqueueBackup(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(perrors.Errorf("cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
 		return
 	}
 	bkc.queue.Add(key)

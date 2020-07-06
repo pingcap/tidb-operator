@@ -14,6 +14,7 @@
 package tidbmonitor
 
 import (
+	"fmt"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -116,7 +117,7 @@ func (tmc *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbMonitor: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(perrors.Errorf("TidbMonitor: %v, sync failed, err: %v", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("TidbMonitor: %v, sync failed, err: %v", key.(string), err))
 		}
 		tmc.queue.AddRateLimited(key)
 	} else {

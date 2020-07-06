@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	perrors "github.com/pingcap/errors"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	v1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	apps "k8s.io/api/apps/v1"
@@ -101,7 +100,7 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(controller runtime.Object, s
 			set = updated.DeepCopy()
 			set.Spec = *setSpec
 		} else {
-			utilruntime.HandleError(perrors.Errorf("error getting updated StatefulSet %s/%s from lister: %v", namespace, setName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", namespace, setName, err))
 		}
 		return updateErr
 	})

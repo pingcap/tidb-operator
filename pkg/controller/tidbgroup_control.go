@@ -14,7 +14,8 @@
 package controller
 
 import (
-	perrors "github.com/pingcap/errors"
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -67,7 +68,7 @@ func (rtc *realTiDBGroupControl) UpdateTiDBGroup(tg *v1alpha1.TiDBGroup, newStat
 			tg = updated.DeepCopy()
 			tg.Status = *status
 		} else {
-			utilruntime.HandleError(perrors.Errorf("error getting updated TiDBGroup %s/%s from lister: %v", ns, name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated TiDBGroup %s/%s from lister: %v", ns, name, err))
 		}
 
 		return updateErr

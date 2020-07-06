@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -442,7 +441,7 @@ func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
 	enqueueFn := func(obj interface{}) {
 		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 		if err != nil {
-			utilruntime.HandleError(perrors.Errorf("Cound't get key for object %+v: %v", obj, err))
+			utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 			return
 		}
 		q.Add(key)
@@ -463,7 +462,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 	enqueueFn := func(obj interface{}) {
 		meta, ok := obj.(metav1.Object)
 		if !ok {
-			utilruntime.HandleError(perrors.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj))
+			utilruntime.HandleError(fmt.Errorf("%+v is not a runtime.Object, cannot get controller from it", obj))
 			return
 		}
 		if m != nil {
@@ -478,7 +477,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 		}
 		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
 		if err != nil {
-			utilruntime.HandleError(perrors.Errorf("cannot parse group version for the controller %v of %s/%s",
+			utilruntime.HandleError(fmt.Errorf("cannot parse group version for the controller %v of %s/%s",
 				ref, meta.GetNamespace(), meta.GetName()))
 			return
 		}
@@ -488,7 +487,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 				klog.V(4).Infof("controller %s/%s of %s/%s not found, ignore",
 					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName())
 			} else {
-				utilruntime.HandleError(perrors.Errorf("cannot get controller %s/%s of %s/%s",
+				utilruntime.HandleError(fmt.Errorf("cannot get controller %s/%s of %s/%s",
 					meta.GetNamespace(), ref.Name, meta.GetNamespace(), meta.GetName()))
 			}
 			return
@@ -498,7 +497,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
 			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(controllerObj)
 			if err != nil {
-				utilruntime.HandleError(perrors.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
+				utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
 				return
 			}
 			q.Add(key)
