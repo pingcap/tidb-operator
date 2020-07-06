@@ -39,8 +39,8 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	}
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbit to be deleted", namespace, name)
-		return util.ARFail(err)
+		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster, admit to be deleted", namespace, name)
+		return util.ARSuccess()
 	}
 
 	// If the pd pod is deleted by restarter, it is necessary to check former pd restart status
@@ -125,7 +125,7 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 	}
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbit to be deleted", namespace, name)
+		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbid to be deleted", namespace, name)
 		return util.ARFail(err)
 	}
 	tcName := tc.Name
@@ -180,7 +180,7 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 	namespace := payload.pod.Namespace
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbit to be deleted", namespace, name)
+		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbid to be deleted", namespace, name)
 		return util.ARFail(err)
 	}
 	tcName := tc.Name
@@ -216,7 +216,7 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	}
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbit to be deleted", namespace, name)
+		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbid to be deleted", namespace, name)
 		return util.ARFail(err)
 	}
 	tcName := tc.Name
