@@ -62,6 +62,9 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	if backup.Spec.Mydumper.TableRegex != nil && len(*backup.Spec.Mydumper.TableRegex) > 0 {
+		return "", fmt.Errorf("dumpling doesn't support tableRegex option, please use tableFilter instead")
+	}
 	args := []string{
 		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),
