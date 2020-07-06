@@ -40,6 +40,7 @@ type ComponentAccessor interface {
 	Env() []corev1.EnvVar
 	AdditionalContainers() []corev1.Container
 	AdditionalVolumes() []corev1.Volume
+	TerminationGracePeriodSeconds() *int64
 }
 
 type componentAccessorImpl struct {
@@ -172,6 +173,9 @@ func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	if a.ImagePullSecrets() != nil {
 		spec.ImagePullSecrets = a.ImagePullSecrets()
 	}
+	if a.TerminationGracePeriodSeconds() != nil {
+		spec.TerminationGracePeriodSeconds = a.TerminationGracePeriodSeconds()
+	}
 	return spec
 }
 
@@ -185,6 +189,10 @@ func (a *componentAccessorImpl) AdditionalContainers() []corev1.Container {
 
 func (a *componentAccessorImpl) AdditionalVolumes() []corev1.Volume {
 	return a.ComponentSpec.AdditionalVolumes
+}
+
+func (a *componentAccessorImpl) TerminationGracePeriodSeconds() *int64 {
+	return a.ComponentSpec.TerminationGracePeriodSeconds
 }
 
 // BaseTiDBSpec returns the base spec of TiDB servers
