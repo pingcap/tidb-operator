@@ -941,7 +941,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.Reference
 				Properties: map[string]spec.Schema{
 					"phase": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated Phase describes cluster auto scaling phase",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 Phase describes cluster auto scaling phase",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -975,7 +975,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.Reference
 					},
 					"lastAutoScalingTimestamp": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -8853,7 +8853,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceC
 				Properties: map[string]spec.Schema{
 					"phase": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated Phase describes cluster auto scaling phase",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 Phase describes cluster auto scaling phase",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -8887,7 +8887,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceC
 					},
 					"lastAutoScalingTimestamp": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -9982,7 +9982,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"readyToScaleThresholdSeconds": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase should last for before auto scaling. If not set, the default ReadyToScaleThresholdSeconds will be set to 30.",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase should last for before auto scaling. If not set, the default ReadyToScaleThresholdSeconds will be set to 30.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -10005,7 +10005,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerStatus(ref common.ReferenceC
 				Properties: map[string]spec.Schema{
 					"phase": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated Phase describes cluster auto scaling phase",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 Phase describes cluster auto scaling phase",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -10039,7 +10039,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerStatus(ref common.ReferenceC
 					},
 					"lastAutoScalingTimestamp": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
+							Description: "Deprecated in v1.1.3, planned for removal in v1.3 LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
