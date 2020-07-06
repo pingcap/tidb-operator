@@ -94,7 +94,7 @@ You can modify `version`, `replicas`, `storageClassName`, `requests.storage`, an
 After TiDB Operator is upgraded to v1.1, you can configure the scheduled full backup using BackupSchedule CR:
 
 - If the TiDB cluster version < v3.1, refer to [Scheduled backup using mydumper](backup-to-s3.md#scheduled-full-backup-to-s3-compatible-storage)
-- If the TiDB cluster version >= v3.1, refer to [Scheduled backup using BR](backup-to-aws-s3-using-br.md#scheduled-full-backup-to-s3-compatible-storage)
+- If the TiDB cluster version >= v3.1, refer to [Scheduled backup using BR](backup-to-aws-s3-using-br.md#scheduled-full-backup)
 
 > **Note:**
 >
@@ -103,7 +103,7 @@ After TiDB Operator is upgraded to v1.1, you can configure the scheduled full ba
 
 ### Drainer
 
-- If Drainer is not deployed before TiDB Operator is upgraded to v1.1, you can deploy Drainer as in [Deploy multiple drainers](deploy-tidb-binlog.md#deploy-multiple-drainers).
+- If Drainer is not deployed before TiDB Operator is upgraded to v1.1, you can deploy Drainer as in [Deploy multiple drainers](deploy-tidb-binlog.md#deploy-drainer).
 - If Drainer is already deployed using the tidb-drainer chart before TiDB Operator is upgraded to v1.1, it is recommended to continue managing Drainer using the tidb-drainer chart.
 - If Drainer is already deployed using the tidb-cluster chart before TiDB Operator is upgraded to v1.1, it is recommended to manage Drainer using kubectl.
 
@@ -120,7 +120,7 @@ This section describes how to switch other components and features managed by th
 
 After TiDB Operator is upgraded to v1.1, you can perform full backup using the Backup CR.
 
-- If the TiDB cluster version < v3.1, refer to [Ad-hoc full backup using Mydumper](backup-to-s3.md#ad-hoc-full-backup).
+- If the TiDB cluster version < v3.1, refer to [Ad-hoc full backup using Mydumper](backup-to-s3.md#ad-hoc-full-backup-to-s3-compatible-storage).
 - If the TiDB cluster version >= v3.1, refer to [Ad-hoc full backup using BR](backup-to-aws-s3-using-br.md#ad-hoc-full-backup).
 
 > **Note:**

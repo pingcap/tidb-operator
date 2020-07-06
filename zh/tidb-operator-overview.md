@@ -44,7 +44,7 @@ TiDB Operator 提供了多种方式来部署 Kubernetes 上的 TiDB 集群：
 + [访问 TiDB 集群](access-tidb.md)
 + [TiDB 集群扩缩容](scale-a-tidb-cluster.md)
 + [TiDB 集群升级](upgrade-a-tidb-cluster.md#升级-tidb-版本)
-+ [TiDB 集群配置变更](upgrade-a-tidb-cluster.md#更新-tidb-集群配置)
++ [TiDB 集群配置变更](configure-cluster-using-tidbcluster.md)
 + [TiDB 集群备份](backup-to-aws-s3-using-br.md)
 + [TiDB 集群备份恢复](restore-from-aws-s3-using-br.md)
 + [配置 TiDB 集群故障自动转移](use-auto-failover.md)

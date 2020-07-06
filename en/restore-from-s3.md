@@ -20,7 +20,7 @@ This document shows an example in which the backup data stored in the specified 
 
 ## Prerequisites
 
-Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites-for-ad-hoc-full-backup).
+Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites).
 
 ## Restoration process
 

@@ -575,7 +575,7 @@ module example-cluster {
 
 修改完成后，执行 `terraform init` 和 `terraform apply` 为集群创建节点池。
 
-最后，参考[部署 TiDB 集群和监控](#部署-TiDB-集群和监控) 部署新集群及其监控。
+最后，参考[部署 TiDB 集群和监控](#部署-tidb-集群和监控) 部署新集群及其监控。
 
 ## 销毁集群
 

@@ -112,8 +112,8 @@ spec
 
 升级到 TiDB Operator v1.1 之后，可以通过 Backup CR 进行全量备份：
 
-- 如果 TiDB 集群版本 < v3.1，可以参考 [mydumper Ad-hoc 全量备份](backup-to-s3.md#Ad-hoc-全量备份)
-- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR Ad-hoc 全量备份](backup-to-aws-s3-using-br.md#Ad-hoc-全量备份)
+- 如果 TiDB 集群版本 < v3.1，可以参考 [Mydumper Ad-hoc 全量备份](backup-to-s3.md#ad-hoc-全量备份)
+- 如果 TiDB 集群版本 >= v3.1，可以参考 [BR Ad-hoc 全量备份](backup-to-aws-s3-using-br.md#ad-hoc-全量备份)
 
 > **注意：**
 >
