@@ -2833,7 +2833,7 @@ AutoScalerPhase
 </em>
 </td>
 <td>
-<p>Deprecated
+<p>Deprecated in v1.1.3, planned for removal in v1.3
 Phase describes cluster auto scaling phase</p>
 </td>
 </tr>
@@ -2885,7 +2885,7 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated
+<p>Deprecated in v1.1.3, planned for removal in v1.3
 LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)</p>
 </td>
 </tr>
@@ -16624,7 +16624,7 @@ int32
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated
+<p>Deprecated in v1.1.3, planned for removal in v1.3
 ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
 should last for before auto scaling.
 If not set, the default ReadyToScaleThresholdSeconds will be set to 30.</p>
