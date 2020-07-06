@@ -3314,22 +3314,6 @@ Set this value longer than the expected cleanup time for your process.
 Defaults to 30 seconds.</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>lifecycle</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#lifecycle-v1-core">
-Kubernetes core/v1.Lifecycle
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Lifecycle describes actions that the management system should take in response to container lifecycle
-events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
-until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="configmapref">ConfigMapRef</h3>
@@ -10291,6 +10275,22 @@ TiDBConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidb-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lifecycle</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#lifecycle-v1-core">
+Kubernetes core/v1.Lifecycle
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Lifecycle describes actions that the management system should take in response to container lifecycle
+events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
+until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
 </td>
 </tr>
 </tbody>

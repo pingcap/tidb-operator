@@ -150,6 +150,7 @@ fi
 echo "info: loading images into cluster"
 images=(
     $DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
+    $DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
 )
 for n in ${images[@]}; do
     echo "info: loading image $n"
@@ -176,6 +177,7 @@ helm_args=(
     --name tidb-operator-dev
     --namespace "$NAMESPACE"
     --set-string operatorImage=$DOCKER_REGISTRY/pingcap/tidb-operator:${IMAGE_TAG}
+    --set-string tidbBackupManagerImage=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
     --set-string controllerManager.logLevel=4
     --set-string scheduler.logLevel=4
 )
