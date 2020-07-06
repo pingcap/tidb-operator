@@ -1774,6 +1774,11 @@ func (in *MydumperConfig) DeepCopyInto(out *MydumperConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.TableFilter != nil {
+		in, out := &in.TableFilter, &out.TableFilter
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
