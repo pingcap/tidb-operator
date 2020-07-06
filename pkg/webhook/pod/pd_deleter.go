@@ -14,8 +14,6 @@
 package pod
 
 import (
-	"fmt"
-
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -125,8 +123,8 @@ func (pc *PodAdmissionControl) admitDeleteNonPDMemberPod(payload *admitPayload) 
 	}
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbid to be deleted", namespace, name)
-		return util.ARFail(err)
+		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster", namespace, name)
+		return util.ARSuccess()
 	}
 	tcName := tc.Name
 	IsDeferDeleting := IsPodWithPDDeferDeletingAnnotations(payload.pod)
@@ -180,8 +178,8 @@ func (pc *PodAdmissionControl) admitDeleteExceedReplicasPDPod(payload *admitPayl
 	namespace := payload.pod.Namespace
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbid to be deleted", namespace, name)
-		return util.ARFail(err)
+		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster", namespace, name)
+		return util.ARSuccess()
 	}
 	tcName := tc.Name
 
@@ -216,8 +214,8 @@ func (pc *PodAdmissionControl) transferPDLeader(payload *admitPayload) *admissio
 	}
 	tc, ok := payload.controller.(*v1alpha1.TidbCluster)
 	if !ok {
-		err := fmt.Errorf("pd pod[%s/%s]'s controller is not tidbcluster, forbid to be deleted", namespace, name)
-		return util.ARFail(err)
+		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster", namespace, name)
+		return util.ARSuccess()
 	}
 	tcName := tc.Name
 	var targetName string

@@ -79,7 +79,7 @@ func (pc *PodAdmissionControl) admitDeleteTiKVPods(payload *admitPayload) *admis
 		expectedAddress = fmt.Sprintf("%s.%s-tikv-group-peer.%s.svc:20160", name, controllerName, namespace)
 	default:
 		// unreachable
-		klog.V(4).Infof("tikv pod[%s/%s] controlled by unknown controllerKind[%s], forbid to delete", namespace, name, controllerKind)
+		klog.V(4).Infof("tikv pod[%s/%s] controlled by unknown controllerKind[%s], admite to delete", namespace, name, controllerKind)
 		return util.ARSuccess()
 	}
 
@@ -198,7 +198,7 @@ func (pc *PodAdmissionControl) admitDeleteUpTiKVPod(payload *admitPayload, store
 		specReplicas = tg.Spec.Replicas
 	} else {
 		// unreachable
-		klog.V(4).Infof("tikv pod[%s/%s] has unknown controller[%s], forbid to be deleted", namespace, name, controllerKind)
+		klog.V(4).Infof("tikv pod[%s/%s] has unknown controller[%s], admit to be deleted", namespace, name, controllerKind)
 		return util.ARSuccess()
 	}
 

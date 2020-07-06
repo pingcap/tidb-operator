@@ -268,7 +268,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			return util.ARFail(err)
 		}
 		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTcName, tc.IsTLSClusterEnabled())
-		payload.controller = tc
+		payload.controller = tg
 		payload.controllerDesc = controllerDesc{
 			name:      tgName,
 			namespace: namespace,
