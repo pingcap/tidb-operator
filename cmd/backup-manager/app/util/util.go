@@ -45,9 +45,9 @@ var (
 		"--rows=10000",
 		"--skip-tz-utc",
 	}
-	defaultTableRegexOptions = []string{
-		"--regex",
-		constants.DefaultTableRegex,
+	defaultTableFilterOptions = []string{
+		"--filter",
+		fmt.Sprintf("/%s/.*", constants.DefaultTableRegex),
 	}
 )
 
@@ -185,7 +185,7 @@ func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
 	config := backup.Spec.Mydumper
 	if config == nil {
 		args = append(args, defaultOptions...)
-		args = append(args, defaultTableRegexOptions...)
+		args = append(args, defaultTableFilterOptions...)
 		return args
 	}
 
@@ -198,7 +198,7 @@ func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
 	if config.TableRegex != nil {
 		args = append(args, "--regex", *config.TableRegex)
 	} else {
-		args = append(args, defaultTableRegexOptions...)
+		args = append(args, defaultTableFilterOptions...)
 	}
 	return args
 }

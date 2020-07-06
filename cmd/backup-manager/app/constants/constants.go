@@ -28,7 +28,7 @@ const (
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 
-	// MetaDataFile is the file which store the mydumper's meta info
+	// MetaDataFile is the file which store the dumpling's meta info
 	MetaDataFile = "metadata"
 
 	// TikvGCLifeTime is the safe gc life time for dump tidb cluster data

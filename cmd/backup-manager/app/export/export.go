@@ -63,7 +63,7 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		return "", err
 	}
 	args := []string{
-		fmt.Sprintf("--outputdir=%s", bfPath),
+		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),
 		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
@@ -71,9 +71,9 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 	}
 	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
 
-	output, err := exec.Command("/mydumper", args...).CombinedOutput()
+	output, err := exec.Command("/dumpling", args...).CombinedOutput()
 	if err != nil {
-		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return bfPath, fmt.Errorf("cluster %s, execute dumpling command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}
 	return bfPath, nil
 }
@@ -131,7 +131,7 @@ func getCommitTsFromMetadata(backupPath string) (string, error) {
 		}
 		lineStrSlice := strings.Split(lineStr, ":")
 		if len(lineStrSlice) != 2 {
-			return commitTs, fmt.Errorf("parse mydumper's metadata file %s failed, str: %s", metaFile, lineStr)
+			return commitTs, fmt.Errorf("parse dumpling's metadata file %s failed, str: %s", metaFile, lineStr)
 		}
 		commitTs = strings.TrimSpace(lineStrSlice[1])
 		break
