@@ -62,7 +62,7 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			backup := newBackup()
 
-			customFilter := "mysql.*"
+			customFilter := []string{"mysql.*"}
 			customOptions := []string{"--consistency=snapshot"}
 
 			var expectArgs []string
@@ -76,11 +76,11 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 
 			if tt.hasFilter {
 				if backup.Spec.Mydumper == nil {
-					backup.Spec.Mydumper = &v1alpha1.MydumperConfig{TableRegex: &customFilter}
+					backup.Spec.Mydumper = &v1alpha1.MydumperConfig{TableFilter: customFilter}
 				} else {
-					backup.Spec.Mydumper.TableRegex = &customFilter
+					backup.Spec.Mydumper.TableFilter = customFilter
 				}
-				expectArgs = append(expectArgs, "--filter", customFilter)
+				expectArgs = append(expectArgs, "--filter", customFilter[0])
 			} else {
 				expectArgs = append(expectArgs, defaultTableFilterOptions...)
 			}

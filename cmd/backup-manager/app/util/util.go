@@ -191,8 +191,10 @@ func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
 		args = append(args, defaultOptions...)
 	}
 
-	if config.TableRegex != nil {
-		args = append(args, "--regex", *config.TableRegex)
+	if len(config.TableFilter) > 0 {
+		for _, tableFilter := range config.TableFilter {
+			args = append(args, "--filter", tableFilter)
+		}
 	} else {
 		args = append(args, defaultTableFilterOptions...)
 	}

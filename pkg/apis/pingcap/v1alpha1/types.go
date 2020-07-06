@@ -1147,6 +1147,8 @@ type MydumperConfig struct {
 	Options []string `json:"options,omitempty"`
 	// TableRegex means Regular expression for 'db.table' matching
 	TableRegex *string `json:"tableRegex,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching
+	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
 // +k8s:openapi-gen=true

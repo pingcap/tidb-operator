@@ -11660,6 +11660,10 @@ spec:
                   type: array
                 tableRegex:
                   type: string
+                tableFilter:
+                  items:
+                    type: string
+                  type: array
               type: object
             resources:
               properties:
@@ -12553,6 +12557,10 @@ spec:
                       type: array
                     tableRegex:
                       type: string
+                    tableFilter:
+                      items:
+                        type: string
+                      type: array
                   type: object
                 resources:
                   properties:
