@@ -13,14 +13,39 @@ This document collects frequently asked questions (FAQs) about the TiDB cluster 
 
 The default time zone setting for each component container of a TiDB cluster in Kubernetes is UTC. To modify this setting, take the steps below based on your cluster status:
 
-* If it is the first time you deploy the cluster:
+### For the first deployment
 
-    In the `values.yaml` file of the TiDB cluster, modify the `timezone` setting. For example, you can set it to `timezone: Asia/Shanghai` before you deploy the TiDB cluster.
+Configure the `.spec.timezone` attribute in the TidbCluster CR. For example:
 
-* If the cluster is running:
+```shell
+...
+spec:
+  timezone: Asia/Shanghai
+...
+```
 
-    * In the `values.yaml` file of the TiDB cluster, modify `timezone` settings in the `values.yaml` file of the TiDB cluster. For example, you can set it to `timezone: Asia/Shanghai` and then upgrade the TiDB cluster.
-    * Refer to [Time Zone Support](https://pingcap.com/docs/stable/how-to/configure/time-zone) to modify TiDB service time zone settings.
+Then deploy the TiDB cluster.
+
+### For a running cluster
+
+If the TiDB cluster is already running, first upgrade the cluster, and then configure it to support the new time zone.
+
+1. Upgrade the TiDB cluster:
+
+    Configure the `.spec.timezone` attribute in the TidbCluster CR. For example:
+
+    ```shell
+    ...
+    spec:
+      timezone: Asia/Shanghai
+    ...
+    ```
+
+    Then upgrade the TiDB cluster.
+
+2. Configure TiDB to support the new time zone:
+    
+    Refer to [Time Zone Support](https://docs.pingcap.com/tidb/v4.0/configure-time-zone) to modify TiDB service time zone settings.
 
 ## Can HPA or VPA be configured on TiDB components?
 

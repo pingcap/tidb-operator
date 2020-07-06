@@ -11,10 +11,6 @@ In TiDB Operator v1.1 or later versions, you can monitor a TiDB cluster on a Kub
 
 ## Quick start
 
-> **Warning:**
->
-> This quick start guide is only used for demonstration or testing purposes. Do not deploy the following configuration in your crucial production environment.
-
 ### Prerequisites
 
 - TiDB Operator **v1.1.0-beta.1** (or later versions) is installed, and the related Custom Resource Definition (CRD) file is updated.
