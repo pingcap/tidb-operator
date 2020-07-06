@@ -40,7 +40,7 @@ func init() {
 	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
 	flag.StringVar(&extraServiceAccounts, "extraServiceAccounts", "", "comma-separated, extra Service Accounts the Webhook should control. The full pattern for each common service account is system:serviceaccount:<namespace>:<serviceaccount-name>")
 	flag.DurationVar(&evictRegionLeaderTimeout, "evictRegionLeaderTimeout", 3*time.Minute, "TiKV evict region leader timeout period, default 3 min")
-	flag.DurationVar(&resyncDuration, "resync-duration", 30*time.Second, "Resync time of informer")
+	flag.DurationVar(&resyncDuration, "resync-duration", 12*time.Hour, "Resync time of informer")
 	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 }
 
