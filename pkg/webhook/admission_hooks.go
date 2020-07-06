@@ -167,6 +167,7 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 	informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, a.ResyncDuration, options...)
 
 	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout, informerFactory, recorder)
+	informerFactory.Start(stopCh)
 	a.podAC = pc
 	klog.Info("pod admission webhook initialized successfully")
 	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)
