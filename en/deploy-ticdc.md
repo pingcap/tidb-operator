@@ -67,3 +67,5 @@ To deploy TiCDC when deploying the TiDB cluster, refer to [Deploy TiDB in Genera
             }
     ]
     ```
+
+    If the server does not have an external network, refer to [deploy TiDB cluster](deploy-on-general-kubernetes.md#deploy-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.

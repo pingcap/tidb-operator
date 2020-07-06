@@ -44,6 +44,71 @@ After you configure TiDB cluster, deploy the TiDB cluster by the following steps
     >
     > It is recommended to organize configurations for a TiDB cluster under a directory of `cluster_name` and save it as `${cluster_name}/tidb-cluster.yaml`.
 
+    If the server does not have an external network, you need to download the Docker image used by the TiDB cluster on a machine with Internet access and upload it to the server, and then use `docker load` to install the Docker image on the server.
+
+    To deploy a TiDB cluster, you need the following Docker images (assuming the version of the TiDB cluster is v4.0.0):
+
+    ```shell
+    pingcap/pd:v4.0.0
+    pingcap/tikv:v4.0.0
+    pingcap/tidb:v4.0.0
+    pingcap/tidb-binlog:v4.0.0
+    pingcap/ticdc:v4.0.0
+    pingcap/tiflash:v4.0.0
+    pingcap/tidb-monitor-reloader:v1.0.1
+    pingcap/tidb-monitor-initializer:v4.0.0
+    grafana/grafana:6.0.1
+    prom/prometheus:v2.18.1
+    busybox:1.26.2
+    ```
+
+    Next, download all these images with the following command:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker pull pingcap/pd:v4.0.0
+    docker pull pingcap/tikv:v4.0.0
+    docker pull pingcap/tidb:v4.0.0
+    docker pull pingcap/tidb-binlog:v4.0.0
+    docker pull pingcap/ticdc:v4.0.0
+    docker pull pingcap/tiflash:v4.0.0
+    docker pull pingcap/tidb-monitor-reloader:v1.0.1
+    docker pull pingcap/tidb-monitor-initializer:v4.0.0
+    docker pull grafana/grafana:6.0.1
+    docker pull prom/prometheus:v2.18.1
+    docker pull busybox:1.26.2
+    docker save -o pd-v4.0.0.tar pingcap/pd:v4.0.0
+    docker save -o tikv-v4.0.0.tar pingcap/tikv:v4.0.0
+    docker save -o tidb-v4.0.0.tar pingcap/tidb:v4.0.0
+    docker save -o tidb-binlog-v4.0.0.tar pingcap/tidb-binlog:v4.0.0
+    docker save -o ticdc-v4.0.0.tar pingcap/ticdc:v4.0.0
+    docker save -o tiflash-v4.0.0.tar pingcap/tiflash:v4.0.0
+    docker save -o tidb-monitor-reloader-v1.0.1.tar pingcap/tidb-monitor-reloader:v1.0.1
+    docker save -o tidb-monitor-initializer-v4.0.0.tar pingcap/tidb-monitor-initializer:v4.0.0
+    docker save -o grafana-6.0.1.tar grafana/grafana:6.0.1
+    docker save -o prometheus-v2.18.1.tar prom/prometheus:v2.18.1
+    docker save -o busybox-1.26.2.tar busybox:1.26.2
+    ```
+
+    Next, upload these Docker images to the server, and execute `docker load` to install these Docker images on the server:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker load -i pd-v4.0.0.tar
+    docker load -i tikv-v4.0.0.tar
+    docker load -i tidb-v4.0.0.tar
+    docker load -i tidb-binlog-v4.0.0.tar
+    docker load -i ticdc-v4.0.0.tar
+    docker load -i tiflash-v4.0.0.tar
+    docker load -i tidb-monitor-reloader-v1.0.1.tar
+    docker load -i tidb-monitor-initializer-v4.0.0.tar
+    docker load -i grafana-6.0.1.tar
+    docker load -i prometheus-v2.18.1.tar
+    docker load -i busybox-1.26.2.tar
+    ```
+
 3. View the Pod status:
 
     {{< copyable "shell-regular" >}}

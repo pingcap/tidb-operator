@@ -73,6 +73,8 @@ You can also quickly deploy TidbMonitor using the following command:
 kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n ${namespace}
 ```
 
+If the server does not have an external network, refer to [deploy TiDB cluster](deploy-on-general-kubernetes.md#deploy-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.
+
 After the deployment is finished, you can check whether TidbMonitor is started by executing the `kubectl get pod` command:
 
 {{< copyable "shell-regular" >}}

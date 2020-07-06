@@ -201,6 +201,8 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
     helm install pingcap/tidb-drainer --name=${cluster_name} --namespace=${namespace} --version=${chart_version} -f values.yaml
     ```
 
+    If the server does not have an external network, refer to [deploy TiDB cluster](deploy-on-general-kubernetes.md#deploy-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.
+
     > **Note:**
     >
     > This chart must be installed to the same namespace as the source TiDB cluster.

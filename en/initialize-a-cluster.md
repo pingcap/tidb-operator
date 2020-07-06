@@ -75,3 +75,30 @@ kubectl apply -f ${cluster_name}/tidb-initializer.yaml --namespace=${namespace}
 The above command automatically creates an initialized Job. This Job tries to set the initial password for the `root` account using the `secret` object provided. It also tries to create other accounts and passwords, if they are specified.
 
 After the initialization, the Pod state becomes `Completed`. If you log in via MySQL client later, you need to specify the password created by the Job.
+
+If the server does not have an external network, you need to download the Docker image used for cluster initialization on a machine with an external network and upload it to the server, and then use `docker load` to install the Docker image on the server.
+
+The following Docker images are used to initialize a TiDB cluster:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+tnir/mysqlclient:latest
+```
+
+Next, download all these images with the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+docker pull tnir/mysqlclient:latest
+docker save -o mysqlclient-latest.tar tnir/mysqlclient:latest
+```
+
+Next, upload these Docker images to the server, and execute `docker load` to install these Docker images on the server:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+docker load -i mysqlclient-latest.tar
+```
