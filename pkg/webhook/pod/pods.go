@@ -20,6 +20,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -46,6 +48,10 @@ type PodAdmissionControl struct {
 	pdControl pdapi.PDControlInterface
 	// the map of the service account from the request which should be checked by webhook
 	serviceAccounts sets.String
+	// tc lister
+	tcLister v1alpha1listers.TidbClusterLister
+	// tikv group lister
+	tikvGroupLister v1alpha1listers.TiKVGroupLister
 	// recorder to send event
 	recorder record.EventRecorder
 }
@@ -63,7 +69,7 @@ var (
 	AstsControllerServiceAccounts string
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, recorder record.EventRecorder) *PodAdmissionControl {
+func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, informerFactory informers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
 
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
@@ -79,6 +85,8 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 		pdControl:       PdControl,
 		serviceAccounts: serviceAccounts,
 		recorder:        recorder,
+		tikvGroupLister: informerFactory.Pingcap().V1alpha1().TiKVGroups().Lister(),
+		tcLister:        informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
 	}
 }
 
@@ -193,7 +201,7 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		return util.ARSuccess()
 	}
 
-	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
@@ -232,7 +240,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 
 	if l.IsTidbClusterPod() {
 		tcName := controllerName
-		tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+		tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				klog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
@@ -251,7 +259,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 		return pc.admitDeleteTiKVPods(payload)
 	} else if l.IsGroupPod() {
 		tgName := controllerName
-		tg, err := pc.operatorCli.PingcapV1alpha1().TiKVGroups(namespace).Get(tgName, metav1.GetOptions{})
+		tg, err := pc.tikvGroupLister.TiKVGroups(namespace).Get(tgName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				klog.Infof("tikvgroup[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tgName, namespace, name)
@@ -261,7 +269,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			return util.ARFail(err)
 		}
 		ownerTcName := tg.Spec.ClusterName
-		tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(ownerTcName, metav1.GetOptions{})
+		tc, err := pc.tcLister.TidbClusters(namespace).Get(ownerTcName)
 		if err != nil {
 			// Event if the ownerTC is deleted, we won't delete the tikvgroup pod unless its owner controller is deleted
 			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerTcName, namespace, name)
@@ -315,7 +323,7 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 		if !exist {
 			return util.ARSuccess()
 		}
-		ownerTc, err = pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+		ownerTc, err = pc.tcLister.TidbClusters(namespace).Get(tcName)
 		if err != nil {
 			klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
@@ -325,13 +333,13 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 		if !exist {
 			return util.ARSuccess()
 		}
-		tg, err := pc.operatorCli.PingcapV1alpha1().TiKVGroups(namespace).Get(tgName, metav1.GetOptions{})
+		tg, err := pc.tikvGroupLister.TiKVGroups(namespace).Get(tgName)
 		if err != nil {
 			klog.Errorf("failed get tikvgroup[%s/%s],refuse to create pod[%s/%s],%v", namespace, tgName, namespace, name, err)
 			return util.ARFail(err)
 		}
 		tcName := tg.Spec.ClusterName
-		ownerTc, err = pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+		ownerTc, err = pc.tcLister.TidbClusters(namespace).Get(tcName)
 		if err != nil {
 			klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
