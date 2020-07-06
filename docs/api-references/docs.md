@@ -1966,10 +1966,6 @@ TidbMonitorStatus
 </table>
 <h3 id="autoscalerphase">AutoScalerPhase</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
-</p>
-<p>
 </p>
 <h3 id="brconfig">BRConfig</h3>
 <p>
@@ -2823,19 +2819,6 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>phase</code></br>
-<em>
-<a href="#autoscalerphase">
-AutoScalerPhase
-</a>
-</em>
-</td>
-<td>
-<p>Phase describes cluster auto scaling phase</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>metrics</code></br>
@@ -16611,20 +16594,6 @@ BasicAutoScalerSpec
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
 </p>
-</td>
-</tr>
-<tr>
-<td>
-<code>readyToScaleThresholdSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
-should last for before auto scaling.
-If not set, the default ReadyToScaleThresholdSeconds will be set to 30.</p>
 </td>
 </tr>
 </tbody>
