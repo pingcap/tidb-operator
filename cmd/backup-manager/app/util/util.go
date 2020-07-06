@@ -37,17 +37,13 @@ var (
 	// DefaultVersion is the default tikv and br version
 	DefaultVersion = "4.0"
 	defaultOptions = []string{
-		"--long-query-guard=3600",
-		"--tidb-force-priority=LOW_PRIORITY",
-		"--verbose=3",
-		"--compress-protocol",
+		// "--tidb-force-priority=LOW_PRIORITY",
 		"--threads=16",
 		"--rows=10000",
-		"--skip-tz-utc",
 	}
 	defaultTableFilterOptions = []string{
-		"--filter",
-		fmt.Sprintf("/%s/.*", constants.DefaultTableRegex),
+		"--filter", "*.*",
+		"--filter", constants.DefaultTableFilter,
 	}
 )
 

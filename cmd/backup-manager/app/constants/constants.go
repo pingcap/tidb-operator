@@ -65,4 +65,7 @@ const (
 
 	// DefaultTableRegex is the default regular expression for 'db.table' matching
 	DefaultTableRegex = "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+
+	// DefaultTableFilter is the default table filter 'db.table' matching
+	DefaultTableFilter = "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
 )
