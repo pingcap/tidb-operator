@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
@@ -30,7 +29,7 @@ const (
 	tikvNotBootstrapped = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
 
-func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, tc *v1alpha1.TidbCluster, pdClient pdapi.PDClient) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admitCreateTiKVPod(pod *core.Pod, pdClient pdapi.PDClient) *admission.AdmissionResponse {
 
 	name := pod.Name
 	namespace := pod.Namespace

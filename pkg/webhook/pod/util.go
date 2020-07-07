@@ -51,7 +51,7 @@ func IsPodInPdMembers(tc *v1alpha1.TidbCluster, pod *core.Pod, pdClient pdapi.PD
 // pd pod who would be deleted by statefulset controller
 // we add annotations to this pvc and delete it when we scale out the pd replicas
 // for the new pd pod need new pvc
-func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, kubeCli kubernetes.Interface, tc *v1alpha1.TidbCluster) error {
+func addDeferDeletingToPVC(pvc *core.PersistentVolumeClaim, kubeCli kubernetes.Interface) error {
 	if pvc.Annotations == nil {
 		pvc.Annotations = map[string]string{}
 	}
@@ -143,13 +143,16 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Inter
 // checkFormerPodRestartStatus checks whether there are any former pod is going to be restarted
 // return true if existed
 func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alpha1.MemberType, payload *admitPayload, ordinal int32) (bool, error) {
-	namespace := payload.tc.Namespace
-	tc := payload.tc
 	replicas := *payload.ownerStatefulSet.Spec.Replicas
+	controllerName := payload.controllerDesc.name
+	controllerKind := payload.controllerDesc.kind
 
-	f := func(name string, ordinal int32, memberType v1alpha1.MemberType) (bool, error) {
-		podName := memberUtil.MemberPodName(tc.Name, ordinal, memberType)
-		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
+	f := func(ordinal int32, memberType v1alpha1.MemberType) (bool, error) {
+		podName, err := memberUtil.MemberPodName(controllerName, controllerKind, ordinal, memberType)
+		if err != nil {
+			return false, err
+		}
+		pod, err := kubeCli.CoreV1().Pods(payload.pod.Namespace).Get(podName, meta.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -161,7 +164,7 @@ func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alph
 
 	for k := range helper.GetPodOrdinals(replicas, payload.ownerStatefulSet) {
 		if k > ordinal {
-			existed, err := f(tc.Name, k, memberType)
+			existed, err := f(k, memberType)
 			if err != nil {
 				return false, err
 			}
