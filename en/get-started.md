@@ -375,7 +375,6 @@ Before proceeding, make sure the following requirements are satisfied:
             tidb-operator:tidb-scheduler           ClusterRole/tidb-operator:tidb-scheduler           0s
             tidb-operator:volume-scheduler         ClusterRole/system:volume-scheduler                0s
 
-
             NOTES:
             Make sure tidb-operator components are running:
 
