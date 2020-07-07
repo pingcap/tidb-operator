@@ -6,7 +6,9 @@ category: how-to
 
 # 在 GCP 上通过 Kubernetes 部署 TiDB 集群
 
-本文介绍如何使用 [TiDB Operator](https://github.com/pingcap/tidb-operator) 在 GCP 上部署 TiDB 集群。本教程需要在 [Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/tidb-operator&tutorial=docs/google-kubernetes-tutorial.md) 上运行。
+本文介绍如何使用 [TiDB Operator](https://github.com/pingcap/tidb-operator) 在 GCP 上部署 TiDB 集群。本教程需要在 [Google Cloud Shell](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/pingcap/docs-tidb-operator&tutorial=zh/deploy-tidb-from-kubernetes-gke.md) 上运行。
+
+<a href="https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/pingcap/docs-tidb-operator&cloudshell_tutorial=zh/deploy-tidb-from-kubernetes-gke.md"><img src="https://gstatic.com/cloudssh/images/open-btn.png"/></a>
 
 所包含的步骤如下：
 
@@ -42,8 +44,6 @@ category: how-to
 
 这一步配置 glcoud 默认访问你要用的项目和[可用区](https://cloud.google.com/compute/docs/regions-zones/)，可以简化后面用到的命令：
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
 gcloud config set project {{project-id}} && \
 gcloud config set compute/zone us-west1-a
@@ -55,23 +55,17 @@ gcloud config set compute/zone us-west1-a
 
 命令执行需要几分钟时间：
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
 gcloud container clusters create tidb
 ```
 
 集群启动完成后，将其设置为默认集群：
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
 gcloud config set container/cluster tidb
 ```
 
 最后验证 `kubectl` 可以访问集群并且 3 个节点正常运行：
-
-{{< copyable "shell-regular" >}}
 
 ``` shell
 kubectl get nodes
@@ -81,84 +75,36 @@ kubectl get nodes
 
 ## 安装 Helm
 
-[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具，确保安装的 Helm 版本为 >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)。安装步骤如下：
+[Helm](https://helm.sh/) 是一个 Kubernetes 的包管理工具。
 
-1. 参考[官方文档](https://v2.helm.sh/docs/using_helm/#installing-helm)安装 Helm 客户端
-2. 安装 Helm 服务端
-
-    在集群中应用 Helm 服务端组件 `tiller` 所需的 `RBAC` 规则，并安装 `tiller`：
-
-    {{< copyable "shell-regular" >}}
+1. 安装 Helm 服务端
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/tiller-rbac.yaml && \
-    helm init --service-account=tiller --upgrade
+    curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
     ```
 
-    通过下面命令确认 `tiller` Pod 进入 running 状态：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl get po -n kube-system -l name=tiller
-    ```
-
-3. 通过下面的命令添加仓库：
-
-    {{< copyable "shell-regular" >}}
+2. 通过下面的命令添加仓库：
 
     ```shell
     helm repo add pingcap https://charts.pingcap.org/
-    ```
-
-    添加完成后，可以使用 `helm search` 搜索 PingCAP 提供的 chart：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm search pingcap -l
     ```
 
 ## 部署 TiDB Operator
 
 TiDB Operator 使用 [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) 扩展 Kubernetes，所以要使用 TiDB Operator，必须先创建 `TidbCluster` 等各种自定义资源类型：
 
-{{< copyable "shell-regular" >}}
-
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.2/manifests/crd.yaml && \
 kubectl get crd tidbclusters.pingcap.com
 ```
 
 创建 `TidbCluster` 自定义资源类型后，接下来在 Kubernetes 集群上安装 TiDB Operator。
 
-1. 获取你要安装的 `tidb-operator` chart 中的 `values.yaml` 文件：
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    mkdir -p /home/tidb/tidb-operator && \
-    helm inspect values pingcap/tidb-operator --version=v1.1.0-rc.1 > /home/tidb/tidb-operator/values-tidb-operator.yaml
-    ```
-
-    按需修改 `values.yaml` 文件中的配置。
-
-2. 安装 TiDB Operator
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    helm install pingcap/tidb-operator --name=tidb-operator --namespace=tidb-admin --version=v1.1.0-rc.1 -f /home/tidb/tidb-operator/values-tidb-operator.yaml && \
-    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
-    ```
-
-3. 创建 `pd-ssd` StorageClass：
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/gke/persistent-disk.yaml
-    ```
+```shell
+kubectl create namespace tidb-admin
+helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.2
+kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+```
 
 ## 部署 TiDB 集群
 
@@ -166,15 +112,11 @@ kubectl get crd tidbclusters.pingcap.com
 
 1. 创建 `Namespace`：
 
-    {{< copyable "shell-regular" >}}
-
     ```shell
     kubectl create namespace demo
     ```
 
 2. 部署 TiDB 集群：
-
-    {{< copyable "shell-regular" >}}
 
     ``` shell
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-cluster.yaml -n demo
@@ -182,15 +124,11 @@ kubectl get crd tidbclusters.pingcap.com
 
 3. 部署 TiDB 集群监控：
 
-    {{< copyable "shell-regular" >}}
-
     ``` shell
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/basic/tidb-monitor.yaml -n demo
     ```
 
 4. 通过下面命令查看 Pod 状态：
-
-    {{< copyable "shell-regular" >}}
 
     ``` shell
     kubectl get po -n demo
@@ -200,8 +138,6 @@ kubectl get crd tidbclusters.pingcap.com
 
 从 pod 启动、运行到服务可以访问有一些延时，可以通过下面命令查看服务：
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
 kubectl get svc -n demo --watch
 ```
@@ -210,15 +146,11 @@ kubectl get svc -n demo --watch
 
 要访问 Kubernetes 集群中的 TiDB 服务，可以在 TiDB 服务和 Google Cloud Shell 之间建立一条隧道。建议这种方式只用于调试，因为如果 Google Cloud Shell 重启，隧道不会自动重新建立。要建立隧道：
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
-kubectl -n demo port-forward svc/basic-tidb 4000:4000 &>/tmp/port-forward.log &
+kubectl -n demo port-forward svc/basic-tidb 4000:4000 &>/tmp/pf4000.log &
 ```
 
 在 Cloud Shell 上运行：
-
-{{< copyable "shell-regular" >}}
 
 ``` shell
 sudo apt-get install -y mysql-client && \
@@ -227,15 +159,11 @@ mysql -h 127.0.0.1 -u root -P 4000
 
 在 MySQL 终端中输入一条 MySQL 命令：
 
-{{< copyable "sql" >}}
-
 ``` sql
 select tidb_version();
 ```
 
 如果安装的过程中没有指定密码，现在可以设置：
-
-{{< copyable "sql" >}}
 
 ``` sql
 SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
@@ -255,31 +183,31 @@ SET PASSWORD FOR 'root'@'%' = '<change-to-your-password>';
 
 使用 kubectl 修改集群所对应的 `TidbCluster` 对象中的 `spec.pd.replicas`、`spec.tidb.replicas`、`spec.tikv.replicas` 至期望值进行水平扩容。
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
 kubectl -n demo edit tc basic
 ```
 
 ## 访问 Grafana 面板
 
-要访问 Grafana 面板，可以在 Grafana 服务和 shell 之间建立一条隧道，可以使用如下命令：
-
-{{< copyable "shell-regular" >}}
+要访问 Grafana 面板，可以在 Grafana 服务和 shell 之间建立一条隧道，可以使用如下命令（Cloud Shell 占用了 3000 端口，我们选择 8080 做映射）：
 
 ``` shell
-kubectl -n demo port-forward svc/basic-grafana 3000:3000 &>/dev/null &
+kubectl -n demo port-forward svc/basic-grafana 8080:3000 &>/tmp/pf8080.log &
 ```
 
-在 Cloud Shell 中，点击 Web Preview 按钮并输入端口 3000，将打开一个新的浏览器标签页访问 Grafana 面板。或者也可以在新浏览器标签或者窗口中直接访问 URL：<https://ssh.cloud.google.com/devshell/proxy?port=3000>。
+在 Cloud Shell 中，点击右上方的 Web Preview 按钮并修改端口为 8080 后点击预览，将打开一个新的浏览器标签页访问 Grafana 面板。或者也可以在新浏览器标签或者窗口中直接访问 URL：<https://ssh.cloud.google.com/devshell/proxy?port=8080>。
 
-如果没有使用 Cloud Shell，可以在浏览器中访问 `localhost:3000`。
+如果没有使用 Cloud Shell，可以在浏览器中访问 `localhost:8080`。
+
+默认用户名和密码为：admin / admin 。
+
+> **注意：**
+>
+> 默认会提醒修改账户密码，可点击 Skip 跳过。生产环境中建议配置安全密码。
 
 ## 销毁 TiDB 集群
 
 要删除 TiDB 集群，执行以下命令：
-
-{{< copyable "shell-regular" >}}
 
 ```shell
 kubectl delete tc basic -n demo
@@ -287,15 +215,11 @@ kubectl delete tc basic -n demo
 
 要删除监控组件，执行以下命令：
 
-{{< copyable "shell-regular" >}}
-
 ```shell
 kubectl delete tidbmonitor basic -n demo
 ```
 
 上面的命令只会删除运行的 Pod，但是数据还会保留。如果你不再需要那些数据，可以执行下面的命令清除数据和动态创建的持久化磁盘：
-
-{{< copyable "shell-regular" >}}
 
 ``` shell
 kubectl delete pvc -n demo -l app.kubernetes.io/instance=basic,app.kubernetes.io/managed-by=tidb-operator && \
@@ -306,12 +230,10 @@ kubectl get pv -l app.kubernetes.io/namespace=demo,app.kubernetes.io/managed-by=
 
 实验结束后，可以使用如下命令删除 Kubernetes 集群：
 
-{{< copyable "shell-regular" >}}
-
 ``` shell
 gcloud container clusters delete tidb
 ```
 
 ## 更多信息
 
-我们还提供[基于 Terraform 的部署方案](deploy-on-gcp-gke.md)。
+了解更多在 GKE 生成环境部署，可以参考我们的 [GKE 部署文档](https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-on-gcp-gke)。
