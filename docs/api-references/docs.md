@@ -5004,7 +5004,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>Resources</code></br>
+<code>ResourceRequirements</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -5013,7 +5013,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>
-(Members of <code>Resources</code> are embedded into this type.)
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
 </td>
 </tr>
