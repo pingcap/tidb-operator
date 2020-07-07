@@ -20,6 +20,7 @@ import (
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
@@ -46,6 +47,7 @@ type AdmissionHook struct {
 	podAC                    *pod.PodAdmissionControl
 	stsAC                    *statefulset.StatefulSetAdmissionControl
 	strategyAC               *strategy.AdmissionWebhook
+	ResyncDuration           time.Duration
 	ExtraServiceAccounts     string
 	EvictRegionLeaderTimeout time.Duration
 }
@@ -103,7 +105,7 @@ func (a *AdmissionHook) Admit(ar *admission.AdmissionRequest) *admission.Admissi
 	name := ar.Name
 	namespace := ar.Namespace
 	kind := ar.Kind.Kind
-	klog.Infof("receive mutation request for %s[%s/%s]", kind, namespace, name)
+	klog.V(4).Infof("receive mutation request for %s[%s/%s]", kind, namespace, name)
 
 	resp := a.strategyAC.Mutate(ar)
 	if !resp.Allowed {
@@ -160,7 +162,12 @@ func (a *AdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) err
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-admission-controller"})
 
-	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout, recorder)
+	var informerFactory informers.SharedInformerFactory
+	var options []informers.SharedInformerOption
+	informerFactory = informers.NewSharedInformerFactoryWithOptions(cli, a.ResyncDuration, options...)
+
+	pc := pod.NewPodAdmissionControl(kubeCli, cli, pdControl, strings.Split(a.ExtraServiceAccounts, ","), a.EvictRegionLeaderTimeout, informerFactory, recorder)
+	informerFactory.Start(stopCh)
 	a.podAC = pc
 	klog.Info("pod admission webhook initialized successfully")
 	a.stsAC = statefulset.NewStatefulSetAdmissionControl(cli)

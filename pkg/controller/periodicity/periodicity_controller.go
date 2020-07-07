@@ -78,7 +78,7 @@ func (c *Controller) run() {
 
 // in this sync function, we update all stateful sets the operator managed and log errors
 func (c *Controller) syncStatefulSetTimeStamp() error {
-	selector, err := label.New().Selector()
+	selector, err := label.NewOperatorManaged().Selector()
 	if err != nil {
 		return err
 	}
