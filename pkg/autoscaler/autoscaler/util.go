@@ -22,20 +22,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 )
-
-var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
-	Type: autoscalingv2beta2.ResourceMetricSourceType,
-	Resource: &autoscalingv2beta2.ResourceMetricSource{
-		Name: corev1.ResourceCPU,
-		Target: autoscalingv2beta2.MetricTarget{
-			AverageUtilization: pointer.Int32Ptr(80),
-		},
-	},
-}
 
 // checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
 // upgrading, scaling
@@ -132,11 +121,19 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		}
 		// If ExternalEndpoint is not provided, we would set default metrics
 		if tac.Spec.TiKV.ExternalEndpoint == nil {
-			if len(tac.Spec.TiKV.Metrics) == 0 {
-				tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
-			}
 			if tac.Spec.TiKV.MetricsTimeDuration == nil {
 				tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
+			}
+		}
+		for id, m := range tac.Spec.TiKV.Metrics {
+			if m.Resource != nil && m.Resource.Name == corev1.ResourceStorage {
+				if m.LeastStoragePressurePeriodSeconds == nil {
+					m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
+				}
+				if m.LeastRemainAvailableStoragePercent == nil {
+					m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
+				}
+				tac.Spec.TiKV.Metrics[id] = m
 			}
 		}
 	}
@@ -152,9 +149,6 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 		}
 		if tac.Spec.TiDB.ExternalEndpoint == nil {
-			if len(tac.Spec.TiDB.Metrics) == 0 {
-				tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
-			}
 			if tac.Spec.TiDB.MetricsTimeDuration == nil {
 				tac.Spec.TiDB.MetricsTimeDuration = pointer.StringPtr("3m")
 			}
@@ -176,4 +170,18 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 		return *tac.Spec.MetricsUrl, nil
 	}
 	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
+}
+
+func emptyStorageMetricsStatus(tac *v1alpha1.TidbClusterAutoScaler) {
+	for id, m := range tac.Status.TiKV.MetricsStatusList {
+		if m.Name == string(corev1.ResourceStorage) {
+			m.StoragePressure = nil
+			m.StoragePressureStartTime = nil
+			m.CapacityStorage = nil
+			m.AvailableStorage = nil
+			m.BaselineAvailableStorage = nil
+			tac.Status.TiKV.MetricsStatusList[id] = m
+			return
+		}
+	}
 }

@@ -483,12 +483,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 			framework.ExpectNoError(err, "set tikv mock metrics error")
 
-			var defaultMetricSpec = autoscalingv2beta2.MetricSpec{
-				Type: autoscalingv2beta2.ResourceMetricSourceType,
-				Resource: &autoscalingv2beta2.ResourceMetricSource{
-					Name: corev1.ResourceCPU,
-					Target: autoscalingv2beta2.MetricTarget{
-						AverageUtilization: pointer.Int32Ptr(80),
+			var defaultMetricSpec = v1alpha1.CustomMetric{
+				MetricSpec: autoscalingv2beta2.MetricSpec{
+					Type: autoscalingv2beta2.ResourceMetricSourceType,
+					Resource: &autoscalingv2beta2.ResourceMetricSource{
+						Name: corev1.ResourceCPU,
+						Target: autoscalingv2beta2.MetricTarget{
+							AverageUtilization: pointer.Int32Ptr(80),
+						},
 					},
 				},
 			}
@@ -502,7 +504,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
-			tac.Spec.TiKV.Metrics = []autoscalingv2beta2.MetricSpec{}
+			tac.Spec.TiKV.Metrics = []v1alpha1.CustomMetric{}
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
 
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Create(tac)
@@ -711,7 +713,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
 			}
-			tac.Spec.TiDB.Metrics = []autoscalingv2beta2.MetricSpec{}
+			tac.Spec.TiDB.Metrics = []v1alpha1.CustomMetric{}
 			tac.Spec.TiDB.Metrics = append(tac.Spec.TiDB.Metrics, defaultMetricSpec)
 			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
