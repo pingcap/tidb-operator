@@ -35,6 +35,16 @@ category: how-to
         replicas: 3
     ```
 
+   值得注意的是，如果需要部署企业版的 TiCDC，需要将 db.yaml 中 `spec.ticdc.baseImage` 配置为企业版镜像，格式为 `pingcap/ticdc-enterprise`。
+
+   例如:
+
+   ```yaml
+   spec:
+     ticdc:
+       baseImage: pingcap/ticdc-enterprise
+   ```
+
 3. 部署完成后，通过 `kubectl exec` 进入任意一个 TiCDC Pod 进行操作。
 
     {{< copyable "shell-regular" >}}

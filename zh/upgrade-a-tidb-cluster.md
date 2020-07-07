@@ -45,6 +45,12 @@ category: how-to
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
 
+> **注意：**
+>
+> 如果需要升级到企业版，需要将 db.yaml 中 `spec.<tidb/pd/tikv/tiflash/ticdc/pump>.baseImage` 配置为企业版镜像，格式为 `pingcap/<tidb/pd/tikv/tiflash/ticdc/tidb-binlog>-enterprise`。
+>
+> 例如将 `spec.pd.baseImage` 从 `pingcap/pd` 修改为 `pingcap/pd-enterprise`。
+
 ### 强制升级 TiDB 集群
 
 如果 PD 集群因为 PD 配置错误、PD 镜像 tag 错误、NodeAffinity 等原因不可用，[TiDB 集群扩缩容](scale-a-tidb-cluster.md)、[升级 TiDB 版本](#升级-tidb-版本)和更新 TiDB 集群配置这三种操作都无法成功执行。
@@ -94,6 +100,12 @@ kubectl annotate --overwrite tc ${cluster_name} -n ${namespace} tidb.pingcap.com
     ```
 
     当所有 Pod 都重建完毕进入 `Running` 状态后，升级完成。
+
+> **注意：**
+>
+> 如果需要升级到企业版，需要把 `<tidb/tikv/pd>.image` 的值改为企业版镜像。
+>
+> 例如将 `pd.image` 从 `pingcap/pd:v4.0.0` 修改为 `pingcap/pd-enterprise:v4.0.0`。
 
 ### 强制升级 TiDB 集群
 
