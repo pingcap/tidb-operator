@@ -13464,9 +13464,6 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
-                readyToScaleThresholdSeconds:
-                  format: int32
-                  type: integer
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
@@ -13504,8 +13501,6 @@ spec:
                     - thresholdValue
                     type: object
                   type: array
-                phase:
-                  type: string
                 recommendedReplicas:
                   format: int32
                   type: integer
@@ -13535,8 +13530,6 @@ spec:
                     - thresholdValue
                     type: object
                   type: array
-                phase:
-                  type: string
                 recommendedReplicas:
                   format: int32
                   type: integer
