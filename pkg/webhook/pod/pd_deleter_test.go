@@ -159,8 +159,13 @@ func TestPDDeleterDelete(t *testing.T) {
 		payload := &admitPayload{
 			pod:              deletePod,
 			ownerStatefulSet: ownerStatefulSet,
-			tc:               tc,
-			pdClient:         fakePDClient,
+			controller:       tc,
+			controllerDesc: controllerDesc{
+				name:      tc.Name,
+				namespace: tc.Namespace,
+				kind:      tc.Kind,
+			},
+			pdClient: fakePDClient,
 		}
 
 		response := podAdmissionControl.admitDeletePdPods(payload)

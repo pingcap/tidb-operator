@@ -360,7 +360,7 @@ func (tcc *Controller) addStatefulSet(obj interface{}) {
 	if tc == nil {
 		return
 	}
-	klog.V(4).Infof("StatefuSet %s/%s created, TidbCluster: %s/%s", ns, setName, ns, tc.Name)
+	klog.V(4).Infof("StatefulSet %s/%s created, TidbCluster: %s/%s", ns, setName, ns, tc.Name)
 	tcc.enqueueTidbCluster(tc)
 }
 
@@ -381,7 +381,7 @@ func (tcc *Controller) updateStatefuSet(old, cur interface{}) {
 	if tc == nil {
 		return
 	}
-	klog.V(4).Infof("StatefulSet %s/%s updated, %+v -> %+v.", ns, setName, oldSet.Spec, curSet.Spec)
+	klog.V(4).Infof("StatefulSet %s/%s updated, TidbCluster: %s/%s", ns, setName, ns, tc.Name)
 	tcc.enqueueTidbCluster(tc)
 }
 

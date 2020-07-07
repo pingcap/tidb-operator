@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jonboulle/clockwork"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
@@ -48,49 +47,6 @@ func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
 		return false
 	}
 	return true
-}
-
-// checkLastSyncingTimestamp reset TiKV phase if last auto scaling timestamp is longer than thresholdSec
-func checkLastSyncingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, thresholdSec time.Duration, clock clockwork.Clock) (bool, error) {
-	if tac.Annotations == nil {
-		tac.Annotations = map[string]string{}
-	}
-
-	lastAutoScalingTimestamp, existed := tac.Annotations[label.AnnLastSyncingTimestamp]
-	if !existed {
-		// NOTE: because record autoscaler sync timestamp happens after check auto scale,
-		// label will not exist during first sync, return allow auto scale in this case.
-		return true, nil
-	}
-	t, err := strconv.ParseInt(lastAutoScalingTimestamp, 10, 64)
-	if err != nil {
-		return false, err
-	}
-	// if there's no resync within thresholdSec, reset TiKV phase to Normal
-	if clock.Now().After(time.Unix(t, 0).Add(thresholdSec)) {
-		tac.Status.TiKV.Phase = v1alpha1.NormalAutoScalerPhase
-		return false, nil
-	}
-	return true, nil
-}
-
-// checkStsReadyAutoScalingTimestamp would check whether there is enough time window after ready to scale
-func checkStsReadyAutoScalingTimestamp(tac *v1alpha1.TidbClusterAutoScaler, thresholdSeconds int32, clock clockwork.Clock) (bool, error) {
-	readyAutoScalingTimestamp, existed := tac.Annotations[label.AnnTiKVReadyToScaleTimestamp]
-
-	if !existed {
-		tac.Annotations[label.AnnTiKVReadyToScaleTimestamp] = fmt.Sprintf("%d", clock.Now().Unix())
-		return false, nil
-	}
-	t, err := strconv.ParseInt(readyAutoScalingTimestamp, 10, 32)
-	if err != nil {
-		return false, err
-	}
-	readyAutoScalingSec := int32(clock.Now().Sub(time.Unix(t, 0)).Seconds())
-	if thresholdSeconds > readyAutoScalingSec {
-		return false, nil
-	}
-	return true, nil
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
@@ -182,9 +138,6 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			if tac.Spec.TiKV.MetricsTimeDuration == nil {
 				tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
 			}
-		}
-		if tac.Spec.TiKV.ReadyToScaleThresholdSeconds == nil {
-			tac.Spec.TiKV.ReadyToScaleThresholdSeconds = pointer.Int32Ptr(30)
 		}
 	}
 

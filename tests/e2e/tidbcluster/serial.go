@@ -501,7 +501,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					MetricsTimeDuration:    &duration,
 					ScaleInIntervalSeconds: pointer.Int32Ptr(100),
 				},
-				ReadyToScaleThresholdSeconds: pointer.Int32Ptr(40),
 			}
 			tac.Spec.TiKV.Metrics = []autoscalingv2beta2.MetricSpec{}
 			tac.Spec.TiKV.Metrics = append(tac.Spec.TiKV.Metrics, defaultMetricSpec)
@@ -530,34 +529,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
 			var firstScaleTimestamp int64
-			var readyToScaleTimestamp int64
-			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, nil
-				}
-				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					framework.Logf("tac haven't marked any annotation")
-					return false, nil
-				}
-				t, ok := tac.Annotations[label.AnnTiKVReadyToScaleTimestamp]
-				if !ok {
-					framework.Logf("tac has no tikv.tidb.pingcap.com/ready-to-scale-timestamp annotation")
-					return false, nil
-				}
-				readyToScaleTimestamp, err = strconv.ParseInt(t, 10, 64)
-				if err != nil {
-					return false, err
-				}
-				if tac.Status.TiKV.Phase != v1alpha1.ReadyToScaleOutAutoScalerPhase {
-					framework.Logf("tac dont' have the right ReadyToScale phase, expect: %s, got %s", v1alpha1.ReadyToScaleOutAutoScalerPhase, tac.Status.TiKV.Phase)
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
-			framework.Logf("tikv has checked ready-to-scale-timestamp")
 
+			// check tikv scale out to 4 and annotations
 			err = wait.Poll(10*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
@@ -603,13 +576,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				if err != nil {
 					return false, err
 				}
-				// check readyToScaleTimestamp
-				if time.Now().Sub(time.Unix(readyToScaleTimestamp, 0)).Seconds() < 40 {
-					return false, fmt.Errorf("tikv doesn't meet the ReadyToScale threshold")
-				}
-				if tac.Status.TiKV.Phase != v1alpha1.NormalAutoScalerPhase {
-					return false, fmt.Errorf("tikv don't have right ReadyToScale phase")
-				}
 				// check store label
 				storeId := ""
 				for k, v := range tc.Status.TiKV.Stores {
@@ -653,33 +619,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
 			framework.ExpectNoError(err, "set tikv mock metrics error")
 
-			err = wait.Poll(10*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tac, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, nil
-				}
-				if tac.Annotations == nil || len(tac.Annotations) < 1 {
-					framework.Logf("tac haven't marked any annotation")
-					return false, nil
-				}
-				t, ok := tac.Annotations[label.AnnTiKVReadyToScaleTimestamp]
-				if !ok {
-					framework.Logf("tac has no tikv.tidb.pingcap.com/ready-to-scale-timestamp annotation")
-					return false, nil
-				}
-				readyToScaleTimestamp, err = strconv.ParseInt(t, 10, 64)
-				if err != nil {
-					return false, err
-				}
-				if tac.Status.TiKV.Phase != v1alpha1.ReadyToScaleInAutoScalerPhase {
-					framework.Logf("tac dont' have the right ReadyToScale phase, expect: %s, got %s", v1alpha1.ReadyToScaleOutAutoScalerPhase, tac.Status.TiKV.Phase)
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "check tikv has ready-to-scale-timestamp")
-			framework.Logf("check tikv has ready-to-scale-timestamp")
-
+			// check tikv scale-in to 3
 			err = wait.Poll(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 				stac, err := cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Get(tac.Name, metav1.GetOptions{})
 				if err != nil {
@@ -741,12 +681,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if secondTs-firstScaleTimestamp < 100 {
 					return false, fmt.Errorf("tikv second scale's interval isn't meeting the interval requirement")
-				}
-				if time.Now().Sub(time.Unix(readyToScaleTimestamp, 0)).Seconds() < 40 {
-					return false, fmt.Errorf("tikv doesn't meet the ReadyToScale threshold")
-				}
-				if tac.Status.TiKV.Phase != v1alpha1.NormalAutoScalerPhase {
-					return false, fmt.Errorf("tikv don't have right ReadyToScale phase")
 				}
 				return true, nil
 			})
