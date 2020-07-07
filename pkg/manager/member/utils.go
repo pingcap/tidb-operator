@@ -162,8 +162,15 @@ func imagePullFailed(pod *corev1.Pod) bool {
 	return false
 }
 
-func MemberPodName(tcName string, ordinal int32, memberType v1alpha1.MemberType) string {
-	return fmt.Sprintf("%s-%s-%d", tcName, memberType.String(), ordinal)
+func MemberPodName(controllerName, controllerKind string, ordinal int32, memberType v1alpha1.MemberType) (string, error) {
+	switch controllerKind {
+	case v1alpha1.TiDBClusterKind:
+		return fmt.Sprintf("%s-%s-%d", controllerName, memberType.String(), ordinal), nil
+	case v1alpha1.TiKVGroupKind:
+		return fmt.Sprintf("%s-%s-group-%d", controllerName, memberType.String(), ordinal), nil
+	default:
+		return "", fmt.Errorf("unknown controller kind[%s]", controllerKind)
+	}
 }
 
 func TikvPodName(tcName string, ordinal int32) string {
@@ -176,6 +183,10 @@ func PdPodName(tcName string, ordinal int32) string {
 
 func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
+}
+
+func TiKVGroupPodName(tgName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.TiKVGroupMemberName(tgName), ordinal)
 }
 
 // CombineAnnotations merges two annotations maps
