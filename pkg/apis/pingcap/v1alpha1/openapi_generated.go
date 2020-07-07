@@ -2111,11 +2111,18 @@ func schema_pkg_apis_pingcap_v1alpha1_MydumperConfig(ref common.ReferenceCallbac
 							},
 						},
 					},
-					"tableRegex": {
+					"tableFilter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TableRegex means Regular expression for 'db.table' matching",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},

@@ -11658,8 +11658,6 @@ spec:
                   items:
                     type: string
                   type: array
-                tableRegex:
-                  type: string
                 tableFilter:
                   items:
                     type: string
@@ -12555,8 +12553,6 @@ spec:
                       items:
                         type: string
                       type: array
-                    tableRegex:
-                      type: string
                     tableFilter:
                       items:
                         type: string

@@ -5065,13 +5065,13 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<code>tableRegex</code></br>
+<code>tableFilter</code></br>
 <em>
-string
+[]string
 </em>
 </td>
 <td>
-<p>TableRegex means Regular expression for &lsquo;db.table&rsquo; matching</p>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>

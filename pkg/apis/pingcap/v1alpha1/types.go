@@ -1145,9 +1145,6 @@ type BackupSpec struct {
 type MydumperConfig struct {
 	// Options means options for backup data to remote storage with mydumper.
 	Options []string `json:"options,omitempty"`
-	// TableRegex means Regular expression for 'db.table' matching
-	// Deprecated: Dumpling doesn't support TableRegex, use TableFilter instead
-	TableRegex *string `json:"tableRegex,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
 }

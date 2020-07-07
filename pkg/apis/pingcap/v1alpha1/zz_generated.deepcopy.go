@@ -1769,11 +1769,6 @@ func (in *MydumperConfig) DeepCopyInto(out *MydumperConfig) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.TableRegex != nil {
-		in, out := &in.TableRegex, &out.TableRegex
-		*out = new(string)
-		**out = **in
-	}
 	if in.TableFilter != nil {
 		in, out := &in.TableFilter, &out.TableFilter
 		*out = make([]string, len(*in))
