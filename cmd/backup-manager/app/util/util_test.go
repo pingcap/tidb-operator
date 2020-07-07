@@ -68,17 +68,17 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 			var expectArgs []string
 
 			if tt.hasOptions {
-				backup.Spec.Mydumper = &v1alpha1.MydumperConfig{Options: customOptions}
+				backup.Spec.Dumpling = &v1alpha1.DumplingConfig{Options: customOptions}
 				expectArgs = append(expectArgs, customOptions...)
 			} else {
 				expectArgs = append(expectArgs, defaultOptions...)
 			}
 
 			if tt.hasFilter {
-				if backup.Spec.Mydumper == nil {
-					backup.Spec.Mydumper = &v1alpha1.MydumperConfig{TableFilter: customFilter}
+				if backup.Spec.Dumpling == nil {
+					backup.Spec.Dumpling = &v1alpha1.DumplingConfig{TableFilter: customFilter}
 				} else {
-					backup.Spec.Mydumper.TableFilter = customFilter
+					backup.Spec.Dumpling.TableFilter = customFilter
 				}
 				expectArgs = append(expectArgs, "--filter", customFilter[0])
 			} else {

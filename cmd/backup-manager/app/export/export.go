@@ -62,6 +62,12 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	if mydumper := backup.Spec.Mydumper; mydumper != nil {
+		if len(mydumper.Options) > 0 || (mydumper.TableRegex != nil && len(*mydumper.TableRegex) > 0) {
+			klog.Warningf("deprecated mydumper config %+v which won't take effect is still in use."+
+				" please transfer to dumpling config", mydumper)
+		}
+	}
 	args := []string{
 		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),

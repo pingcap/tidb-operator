@@ -29,7 +29,7 @@ echo "Increase TiKV GC life time to {{ .Values.scheduledBackup.tikvGCLifeTime | 
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
   --filter '*.*' \
-  --filter '!mysql.*' \
+  --filter '!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*' \
   {{ .Values.scheduledBackup.options }}
 
 echo "Reset TiKV GC life time to ${gc_life_time}"

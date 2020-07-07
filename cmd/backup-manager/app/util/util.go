@@ -178,7 +178,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 // ConstructMydumperOptionsForBackup constructs mydumper options for backup
 func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
-	config := backup.Spec.Mydumper
+	config := backup.Spec.Dumpling
 	if config == nil {
 		args = append(args, defaultOptions...)
 		args = append(args, defaultTableFilterOptions...)
