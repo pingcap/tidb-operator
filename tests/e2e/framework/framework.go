@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -36,8 +37,8 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 	ginkgo.AfterEach(func() {
 		// Dump all resources if the test failed.
 		if ginkgo.CurrentGinkgoTestDescription().Failed && framework.TestContext.DumpLogsOnFailure {
-			if !f.SkipNamespaceCreation {
-				dumpAllResourcesToArtifacts(f.Namespace.Name)
+			if !f.SkipNamespaceCreation && framework.TestContext.ReportDir != "" {
+				dumpAllResourcesToArtifacts(framework.TestContext.ReportDir, f.Namespace.Name)
 			}
 		}
 
@@ -96,8 +97,21 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 	return f
 }
 
-func dumpAllResourcesToArtifacts(ns string) {
-	file := filepath.Join(framework.TestContext.ReportDir, fmt.Sprintf("all-resources-%s.yaml", ns))
+func listAllResources() ([]string, error) {
+	output, err := framework.RunKubectl("api-resources", "--verbs=list", "--namespaced", "-o", "name")
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(strings.TrimSpace(output), "\n"), nil
+}
+
+func dumpAllResourcesToArtifacts(dir, ns string) {
+	allResources, err := listAllResources()
+	if err != nil {
+		framework.Logf("failed to list all resources: %v", err)
+		return
+	}
+	file := filepath.Join(dir, fmt.Sprintf("ns-%s-builtin-resources.yaml", ns))
 	output, err := framework.RunKubectl("-n", ns, "get", "all", "-o", "yaml")
 	if err != nil {
 		framework.Logf("failed to dump resources in namespace %s to %s: %v", ns, file, err)
