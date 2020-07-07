@@ -32,13 +32,15 @@ const (
 
 // currently, we only choose one metrics to be computed.
 // If there exists several metrics, we tend to choose ResourceMetricSourceType metric
-func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec) autoscalingv2beta2.MetricSpec {
+func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec, name corev1.ResourceName) []autoscalingv2beta2.MetricSpec {
+	var list []autoscalingv2beta2.MetricSpec
 	for _, m := range metrics {
-		if m.Type == autoscalingv2beta2.ResourceMetricSourceType && m.Resource != nil {
-			return m
+		if m.Type == autoscalingv2beta2.ResourceMetricSourceType && m.Resource != nil && m.Resource.Name == name {
+			list = append(list, m)
+			break
 		}
 	}
-	return metrics[0]
+	return list
 }
 
 // genMetricType return the supported MetricType in Operator by kubernetes auto-scaling MetricType
