@@ -109,6 +109,7 @@ func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup
 	tcNamespace := tg.Namespace
 	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcName)
 	if err != nil {
+		err = fmt.Errorf("checkWhetherRegistered: failed to get tidbclusters %s for tikvgroup %s/%s, error: %s", tcName, tcNamespace, tcName, err)
 		klog.Error(err)
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func (tgm *tikvGroupMemberManager) syncServiceForTiKVGroup(tg *v1alpha1.TiKVGrou
 		return tgm.svcControl.CreateService(tg, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncServiceForTiKVGroup: failed to get svc %s for tikvgroup %s/%s, error: %s", svcName, ns, tg.GetName(), err)
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
 
@@ -190,6 +191,7 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 
 	oldSetTmp, err := tgm.setLister.StatefulSets(ns).Get(controller.TiKVGroupMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
+		err = fmt.Errorf("syncStatefulSetForTiKVGroup: failed to get sts %s for tikvgroup %s/%s, error: %s", controller.TiKVGroupMemberName(tcName), ns, tcName, err)
 		klog.Error(err)
 		return err
 	}
@@ -369,7 +371,7 @@ func (tgm *tikvGroupMemberManager) tikvGroupStatefulSetIsUpgrading(tg *v1alpha1.
 	}
 	tikvPods, err := tgm.podLister.Pods(set.Namespace).List(selector)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("tikvGroupStatefulSetIsUpgrading: failed to list pods for tikvgroup %s/%s, selector %s, error: %s", tg.GetNamespace(), tg.GetName(), selector, err)
 	}
 	for _, pod := range tikvPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
