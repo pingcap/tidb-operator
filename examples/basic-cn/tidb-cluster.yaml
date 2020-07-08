@@ -25,7 +25,10 @@ spec:
     # storageClassName: local-storage
     requests:
       storage: "1Gi"
-    config: {}
+    config:
+      storage:
+        # In basic examples, we set this to avoid using too much storage.
+        reserve-space: "0MB"
   tidb:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb
     replicas: 1

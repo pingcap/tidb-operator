@@ -670,11 +670,6 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(int64)
 		**out = **in
 	}
-	if in.Lifecycle != nil {
-		in, out := &in.Lifecycle, &out.Lifecycle
-		*out = new(v1.Lifecycle)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
@@ -4264,6 +4259,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = new(TiDBConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Lifecycle != nil {
+		in, out := &in.Lifecycle, &out.Lifecycle
+		*out = new(v1.Lifecycle)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -7293,11 +7293,6 @@ func (in *TidbMonitorStatus) DeepCopy() *TidbMonitorStatus {
 func (in *TikvAutoScalerSpec) DeepCopyInto(out *TikvAutoScalerSpec) {
 	*out = *in
 	in.BasicAutoScalerSpec.DeepCopyInto(&out.BasicAutoScalerSpec)
-	if in.ReadyToScaleThresholdSeconds != nil {
-		in, out := &in.ReadyToScaleThresholdSeconds, &out.ReadyToScaleThresholdSeconds
-		*out = new(int32)
-		**out = **in
-	}
 	return
 }
 
