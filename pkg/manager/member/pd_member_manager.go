@@ -132,7 +132,7 @@ func (pmm *pdMemberManager) syncPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		return pmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncPDServiceForTidbCluster: failed to get svc for service %s/%s, error: %s", ns, controller.PDMemberName(tcName), err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -176,7 +176,7 @@ func (pmm *pdMemberManager) syncPDHeadlessServiceForTidbCluster(tc *v1alpha1.Tid
 		return pmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncPDHeadlessServiceForTidbCluster: failed to get svc for service %s/%s, error: %s", ns, controller.PDPeerMemberName(tcName), err)
 	}
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
@@ -203,7 +203,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 
 	oldPDSetTmp, err := pmm.setLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("syncPDStatefulSetForTidbCluster: fail to get sts from %s/%s, error: %s", ns, controller.PDMemberName(tcName), err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
@@ -329,7 +329,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		// get endpoints info
 		eps, epErr := pmm.epsLister.Endpoints(ns).Get(controller.PDMemberName(tcName))
 		if epErr != nil {
-			return fmt.Errorf("%s, %s", err, epErr)
+			return fmt.Errorf("syncTidbClusterStatus: failed to get endpoints for service %s/%s, err: %s, epErr %s", ns, controller.PDMemberName(tcName), err, epErr)
 		}
 		// pd service has no endpoints
 		if eps != nil && len(eps.Subsets) == 0 {
@@ -504,8 +504,9 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
+	instanceName := tc.GetInstanceName()
 	selector, err := label.New().
-		Instance(tc.GetInstanceName()).
+		Instance(instanceName).
 		PD().
 		Selector()
 	if err != nil {
@@ -513,7 +514,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	}
 	pdPods, err := pmm.podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("pdStatefulSetIsUpgrading: failed to list pods of instance %s, error: %v", instanceName, err)
 	}
 	for _, pod := range pdPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
@@ -828,7 +829,7 @@ func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set
 	}
 	pods, podErr := pmm.podLister.Pods(tc.Namespace).List(podSelector)
 	if podErr != nil {
-		return podErr
+		return fmt.Errorf("collectUnjoinedMembers: failed to list pods of instance %s, error %v", tc.GetInstanceName(), podErr)
 	}
 	for _, pod := range pods {
 		var joined = false
@@ -849,7 +850,7 @@ func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set
 			pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tc.Name), ordinal)
 			pvc, err := pmm.pvcLister.PersistentVolumeClaims(tc.Namespace).Get(pvcName)
 			if err != nil {
-				return err
+				return fmt.Errorf("collectUnjoinedMembers: failed to get pvc of instance %s, error %v", tc.GetInstanceName(), err)
 			}
 			tc.Status.PD.UnjoinedMembers[pod.Name] = v1alpha1.UnjoinedMember{
 				PodName:   pod.Name,

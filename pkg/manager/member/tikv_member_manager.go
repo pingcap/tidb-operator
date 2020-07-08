@@ -159,7 +159,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		return tkmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncServiceForTidbCluster: failed to get svc for service %s/%s, error: %s", ns, svcConfig.MemberName(tcName), err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -190,7 +190,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	oldSetTmp, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("syncStatefulSetForTidbCluster: failed to get sts for service %s/%s, error: %s", ns, controller.TiKVMemberName(tcName), err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
@@ -768,7 +768,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 
 		pod, err := tkmm.podLister.Pods(ns).Get(podName)
 		if err != nil {
-			return setCount, err
+			return setCount, fmt.Errorf("setStoreLabelsForTiKV: for service %s/%s, error: %s", ns, podName, err)
 		}
 
 		nodeName := pod.Spec.NodeName
@@ -845,7 +845,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	}
 	tikvPods, err := podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("tikvStatefulSetIsUpgrading: failed to get pods for instance %s, error: %s", instanceName, err)
 	}
 	for _, pod := range tikvPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
