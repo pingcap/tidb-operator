@@ -14,6 +14,8 @@
 package member
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -45,7 +47,7 @@ func (gr *podRestarter) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 	tcPods, err := gr.podLister.Pods(namespace).List(selector)
 	if err != nil {
-		return err
+		return fmt.Errorf("podRestarter.Sync: failed to get pods list for cluster %s/%s, selector %s, error: %s", namespace, tc.GetName(), selector, err)
 	}
 	requeue := false
 	for _, pod := range tcPods {

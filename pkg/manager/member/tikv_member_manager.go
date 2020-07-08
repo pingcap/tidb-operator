@@ -158,7 +158,7 @@ func (tkmm *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluste
 		return tkmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return fmt.Errorf("syncServiceForTidbCluster: failed to get svc for service %s/%s, error: %s", ns, svcConfig.MemberName(tcName), err)
+		return fmt.Errorf("syncServiceForTidbCluster: failed to get svc %s for cluster %s/%s, error: %s", svcConfig.MemberName(tcName), ns, tcName, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -189,7 +189,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	oldSetTmp, err := tkmm.setLister.StatefulSets(ns).Get(controller.TiKVMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("syncStatefulSetForTidbCluster: failed to get sts for service %s/%s, error: %s", ns, controller.TiKVMemberName(tcName), err)
+		return fmt.Errorf("syncStatefulSetForTidbCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.TiKVMemberName(tcName), ns, tcName, err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
@@ -744,7 +744,7 @@ func (tkmm *tikvMemberManager) setStoreLabelsForTiKV(tc *v1alpha1.TidbCluster) (
 
 		pod, err := tkmm.podLister.Pods(ns).Get(podName)
 		if err != nil {
-			return setCount, fmt.Errorf("setStoreLabelsForTiKV: for service %s/%s, error: %s", ns, podName, err)
+			return setCount, fmt.Errorf("setStoreLabelsForTiKV: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tc.GetName(), err)
 		}
 
 		nodeName := pod.Spec.NodeName
@@ -821,7 +821,7 @@ func tikvStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdapi
 	}
 	tikvPods, err := podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, fmt.Errorf("tikvStatefulSetIsUpgrading: failed to get pods for instance %s, error: %s", instanceName, err)
+		return false, fmt.Errorf("tikvStatefulSetIsUpgrading: failed to get pods for cluster %s/%s, selector %s, error: %s", tc.GetNamespace(), instanceName, selector, err)
 	}
 	for _, pod := range tikvPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
