@@ -171,7 +171,7 @@ func (tmm *tidbMemberManager) syncTiDBHeadlessServiceForTidbCluster(tc *v1alpha1
 		return tmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncTiDBHeadlessServiceForTidbCluster: failed to get svc for service %s/%s, error: %s", ns, controller.TiDBPeerMemberName(tcName), err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -200,7 +200,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 
 	oldTiDBSetTemp, err := tmm.setLister.StatefulSets(ns).Get(controller.TiDBMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("syncTiDBStatefulSetForTidbCluster: failed to get sts for service %s/%s, error: %s", ns, controller.TiDBMemberName(tcName), err)
 	}
 	setNotExist := errors.IsNotFound(err)
 
@@ -301,7 +301,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return tmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncTiDBService: failed to get svc for service %s/%s, error: %s", ns, newSvc.Name, err)
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
 	util.RetainManagedFields(newSvc, oldSvc)
@@ -811,7 +811,7 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 		}
 		pod, err := tmm.podLister.Pods(tc.GetNamespace()).Get(name)
 		if err != nil && !errors.IsNotFound(err) {
-			return err
+			return fmt.Errorf("syncTidbClusterStatus: failed to get pods for service %s/%s, error: %s", tc.GetNamespace(), name, err)
 		}
 		if pod != nil && pod.Spec.NodeName != "" {
 			// Update assiged node if pod exists and is scheduled
@@ -841,7 +841,7 @@ func tidbStatefulSetIsUpgrading(podLister corelisters.PodLister, set *apps.State
 	}
 	tidbPods, err := podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("tidbStatefulSetIsUpgrading: failed to get pods for instance %s, error: %s", tc.GetInstanceName(), err)
 	}
 	for _, pod := range tidbPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
