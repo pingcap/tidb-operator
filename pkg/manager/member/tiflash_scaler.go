@@ -88,7 +88,7 @@ func (tfs *tiflashScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 	podName := ordinalPodName(v1alpha1.TiFlashMemberType, tcName, ordinal)
 	pod, err := tfs.podLister.Pods(ns).Get(podName)
 	if err != nil {
-		return err
+		return fmt.Errorf("tiflashScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
 	// TODO: Update Webhook to support TiFlash
