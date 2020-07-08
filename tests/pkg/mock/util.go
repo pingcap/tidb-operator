@@ -27,11 +27,11 @@ import (
 
 type MonitorParams struct {
 	Name         string   `json:"name"`
-	MemberType   string   `json:"type"`
+	MemberType   string   `json:"memberType"`
 	Duration     string   `json:"duration"`
 	Value        string   `json:"value"`
 	InstancesPod []string `json:"instances"`
-	Type         string   `json:"type"`
+	QueryType         string   `json:"queryType"`
 	StorageType  string   `json:"storageType"`
 }
 

@@ -478,7 +478,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// The cpu requests of tikv is 100m, so the threshold value would be 60*0.1*3*0.8 = 14.4
 				// so we would set Value as "5" for each instance so that the sum in each auto-scaling calculating would be 15
 				Value:        "5.0",
-				Type:         "cpu",
+				QueryType:    "cpu",
 				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
@@ -617,7 +617,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// The cpu requests of tikv is 100m, so the threshold value would be 60*0.1*4*0.8 = 19.2
 				// so we would set Value as "1" for each instance so that the sum in each auto-scaling calculating would be 4
 				Value:        "1.0",
-				Type:         "cpu",
+				QueryType:    "cpu",
 				InstancesPod: []string{"auto-scaling-tikv-0", "auto-scaling-tikv-1", "auto-scaling-tikv-2", "auto-scaling-tikv-3"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
@@ -698,7 +698,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// The cpu requests of tidb is 100m, so the threshold value would be 60*0.1*2*0.8 = 9.6
 				// so we would set Value as "5" for each instance so that the sum in each auto-scaling calculating would be 10
 				Value:        "5.0",
-				Type:         "cpu",
+				QueryType:    "cpu",
 				InstancesPod: []string{"auto-scaling-tidb-0", "auto-scaling-tidb-1"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
@@ -769,7 +769,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				// The cpu requests of tidb is 100m, so the threshold value would be 60*0.1*2*0.8 = 9.6
 				// so we would set Value as "1" for each instance so that the sum in each auto-scaling calculating would be 3
 				Value:        "1.0",
-				Type:         "cpu",
+				QueryType:    "cpu",
 				InstancesPod: []string{"auto-scaling-tidb-0", "auto-scaling-tidb-1", "auto-scaling-tidb-2"},
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
@@ -843,7 +843,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				Name: tc.Name,
 				// The mock capacity size for the tikv storage
 				Value:       fmt.Sprintf("%v", 1024*1024*1024),
-				Type:        "storage",
+				QueryType:   "storage",
 				StorageType: "capacity",
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
@@ -853,7 +853,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				Name: tc.Name,
 				// The mock capacity size for the tikv storage
 				Value:       fmt.Sprintf("%v", 1024*1024),
-				Type:        "storage",
+				QueryType:   "storage",
 				StorageType: "available",
 			}
 			err = mock.SetPrometheusResponse(monitor.Name, monitor.Namespace, mp, fw)
