@@ -31,7 +31,7 @@ type MonitorParams struct {
 	Duration     string   `json:"duration"`
 	Value        string   `json:"value"`
 	InstancesPod []string `json:"instances"`
-	QueryType         string   `json:"queryType"`
+	QueryType    string   `json:"queryType"`
 	StorageType  string   `json:"storageType"`
 }
 
