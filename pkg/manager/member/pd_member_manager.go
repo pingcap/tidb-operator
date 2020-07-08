@@ -514,7 +514,7 @@ func (pmm *pdMemberManager) pdStatefulSetIsUpgrading(set *apps.StatefulSet, tc *
 	}
 	pdPods, err := pmm.podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, fmt.Errorf("pdStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", tc.GetNamespace(), tc.GetName(), selector, err)
+		return false, fmt.Errorf("pdStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %v", tc.GetNamespace(), instanceName, selector, err)
 	}
 	for _, pod := range pdPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
@@ -829,7 +829,7 @@ func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set
 	}
 	pods, podErr := pmm.podLister.Pods(tc.Namespace).List(podSelector)
 	if podErr != nil {
-		return fmt.Errorf("collectUnjoinedMembers: failed to list pods of cluster %s/%s, error %v", tc.GetNamespace(), tc.GetName(), podErr)
+		return fmt.Errorf("collectUnjoinedMembers: failed to list pods for cluster %s/%s, selector %s, error %v", tc.GetNamespace(), tc.GetName(), set.Spec.Selector, podErr)
 	}
 	for _, pod := range pods {
 		var joined = false
