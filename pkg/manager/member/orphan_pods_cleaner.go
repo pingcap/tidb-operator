@@ -14,6 +14,8 @@
 package member
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -75,7 +77,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 	}
 	pods, err := opc.podLister.Pods(ns).List(selector)
 	if err != nil {
-		return skipReason, err
+		return skipReason, fmt.Errorf("clean: failed to get pods list for cluster %s/%s, selector %s, error: %s", ns, tc.GetName(), selector, err)
 	}
 
 	for _, pod := range pods {
@@ -113,7 +115,7 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 				continue
 			}
 			if !errors.IsNotFound(err) {
-				return skipReason, err
+				return skipReason, fmt.Errorf("clean: failed to get pvc %s for cluster %s/%s, error: %s", p, ns, tc.GetName(), err)
 			}
 			// if PVC not found in cache, re-check from apiserver directly to make sure the PVC really not exist
 			_, err = opc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Get(p, metav1.GetOptions{})

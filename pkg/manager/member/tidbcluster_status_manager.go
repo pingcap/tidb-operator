@@ -148,6 +148,8 @@ func (tcsm *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster
 			klog.Infof("tc[%s/%s] failed to find tac[%s/%s]", tc.Namespace, tc.Name, tacNamespace, tacName)
 			tc.Status.AutoScaler = nil
 			err = nil
+		} else {
+			err = fmt.Errorf("syncAutoScalerRef: failed to get tac %s/%s for cluster %s/%s, error: %s", tacNamespace, tacName, tc.GetNamespace(), tc.GetName(), err)
 		}
 		return err
 	}
@@ -177,7 +179,7 @@ func (tcsm *TidbClusterStatusManager) syncTikvGroupsStatus(tc *v1alpha1.TidbClus
 		tg, err := tcsm.tikvGroupLister.TiKVGroups(tc.Namespace).Get(group.Reference.Name)
 		// If we failed to fetch the information for the registered tikvgroups, we will directly discard it.
 		if err != nil {
-			klog.Error(err)
+			klog.Error(fmt.Errorf("syncTikvGroupsStatus: failed to get tikvgroups %s for cluster %s/%s, error: %s", group.Reference.Name, tc.GetNamespace(), tc.GetName(), err))
 			continue
 		}
 		newGroups = append(newGroups, v1alpha1.GroupRef{Reference: corev1.LocalObjectReference{Name: tg.Name}})
