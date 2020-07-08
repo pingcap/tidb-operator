@@ -53,8 +53,8 @@ You can follow our [Get Started](https://docs.pingcap.com/tidb-in-kubernetes/sta
 
 You can see our documentation at PingCAP website for more in-depth installation and instructions for production:
 
-- [English](https://docs.pingcap.com/tidb-in-kubernetes/stable/tidb-operator-overview)
-- [简体中文](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable/tidb-operator-overview)
+- [English](https://docs.pingcap.com/tidb-in-kubernetes/stable)
+- [简体中文](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable)
 
 All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator). 
 
