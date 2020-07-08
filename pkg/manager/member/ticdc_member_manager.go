@@ -102,7 +102,7 @@ func (tcmm *ticdcMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error 
 
 	oldStsTmp, err := tcmm.stsLister.StatefulSets(ns).Get(controller.TiCDCMemberName(tcName))
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("syncStatefulSet: failed to get sts %s for cluster %s/%s, error: %s", controller.TiCDCMemberName(tcName), ns, tcName, err)
 	}
 
 	stsNotExist := errors.IsNotFound(err)
@@ -188,7 +188,7 @@ func (tcmm *ticdcMemberManager) syncCDCHeadlessService(tc *v1alpha1.TidbCluster)
 		return tcmm.svcControl.CreateService(tc, newSvc)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("syncCDCHeadlessService: failed to get svc %s for cluster %s/%s, error: %s", controller.TiCDCPeerMemberName(tcName), ns, tcName, err)
 	}
 
 	oldSvc := oldSvcTmp.DeepCopy()
@@ -350,7 +350,7 @@ func ticdcStatefulSetIsUpgrading(podLister corelisters.PodLister, pdControl pdap
 	}
 	ticdcPods, err := podLister.Pods(tc.GetNamespace()).List(selector)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("ticdcStatefulSetIsUpgrading: failed to list pods for cluster %s/%s, selector %s, error: %s", tc.GetNamespace(), tc.GetName(), selector, err)
 	}
 	for _, pod := range ticdcPods {
 		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]

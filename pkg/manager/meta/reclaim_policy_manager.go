@@ -14,6 +14,8 @@
 package meta
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -67,7 +69,7 @@ func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaim
 	}
 	pvcs, err := rpm.pvcLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
-		return err
+		return fmt.Errorf("reclaimPolicyManager.sync: failed to list pvc for cluster %s/%s, selector %s, error: %s", ns, instanceName, selector, err)
 	}
 
 	for _, pvc := range pvcs {
@@ -94,7 +96,7 @@ func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaim
 		}
 		pv, err := rpm.pvLister.Get(pvc.Spec.VolumeName)
 		if err != nil {
-			return err
+			return fmt.Errorf("reclaimPolicyManager.sync: failed to get pvc %s for cluster %s/%s, error: %s", pvc.Spec.VolumeName, ns, instanceName, err)
 		}
 
 		if pv.Spec.PersistentVolumeReclaimPolicy == policy {
