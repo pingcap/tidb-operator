@@ -3646,7 +3646,7 @@ If not set, the auto-scaling won&rsquo;t happen.</p>
 </tr>
 <tr>
 <td>
-<code>LeastStoragePressurePeriodSeconds</code></br>
+<code>leastStoragePressurePeriodSeconds</code></br>
 <em>
 int64
 </em>

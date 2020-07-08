@@ -31,6 +31,8 @@ type MonitorParams struct {
 	Duration     string   `json:"duration"`
 	Value        string   `json:"value"`
 	InstancesPod []string `json:"instances"`
+	Type         string   `json:"type"`
+	StorageType  string   `json:"storageType"`
 }
 
 type MonitorTargets struct {
@@ -84,7 +86,7 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 	return nil
 }
 
-func buildPrometheusResponse(instances []string, value string) *calculate.Response {
+func buildPrometheusResponse(instances []string, value, cluster string) *calculate.Response {
 	resp := &calculate.Response{}
 	resp.Status = "success"
 	resp.Data = calculate.Data{}
@@ -95,7 +97,7 @@ func buildPrometheusResponse(instances []string, value string) *calculate.Respon
 		r := calculate.Result{
 			Metric: calculate.Metric{
 				Instance:            instance,
-				Cluster:             "foo",
+				Cluster:             cluster,
 				Job:                 "foo",
 				KubernetesNamespace: "foo",
 				KubernetesNode:      "foo",
