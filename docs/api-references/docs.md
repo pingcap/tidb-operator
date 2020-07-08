@@ -1966,10 +1966,6 @@ TidbMonitorStatus
 </table>
 <h3 id="autoscalerphase">AutoScalerPhase</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
-</p>
-<p>
 </p>
 <h3 id="brconfig">BRConfig</h3>
 <p>
@@ -2825,19 +2821,6 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 <tbody>
 <tr>
 <td>
-<code>phase</code></br>
-<em>
-<a href="#autoscalerphase">
-AutoScalerPhase
-</a>
-</em>
-</td>
-<td>
-<p>Phase describes cluster auto scaling phase</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>metrics</code></br>
 <em>
 <a href="#metricsstatus">
@@ -3312,22 +3295,6 @@ The grace period is the duration in seconds after the processes running in the p
 a termination signal and the time when the processes are forcibly halted with a kill signal.
 Set this value longer than the expected cleanup time for your process.
 Defaults to 30 seconds.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>lifecycle</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#lifecycle-v1-core">
-Kubernetes core/v1.Lifecycle
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Lifecycle describes actions that the management system should take in response to container lifecycle
-events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
-until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
 </td>
 </tr>
 </tbody>
@@ -10293,6 +10260,22 @@ TiDBConfig
 <p>Config is the Configuration of tidb-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>lifecycle</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#lifecycle-v1-core">
+Kubernetes core/v1.Lifecycle
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Lifecycle describes actions that the management system should take in response to container lifecycle
+events. For the PostStart and PreStop lifecycle handlers, management of the container blocks
+until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -16611,20 +16594,6 @@ BasicAutoScalerSpec
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
 </p>
-</td>
-</tr>
-<tr>
-<td>
-<code>readyToScaleThresholdSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
-should last for before auto scaling.
-If not set, the default ReadyToScaleThresholdSeconds will be set to 30.</p>
 </td>
 </tr>
 </tbody>
