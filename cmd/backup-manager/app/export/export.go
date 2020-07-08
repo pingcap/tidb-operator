@@ -66,8 +66,8 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 	if mydumper := backup.Spec.Mydumper; mydumper != nil {
 		if len(mydumper.Options) > 0 || (mydumper.TableRegex != nil && len(*mydumper.TableRegex) > 0) {
 			mydumperJson, _ := json.Marshal(mydumper)
-			klog.Warningf("deprecated mydumper config %s which won't take effect is still in use."+
-				" please transfer to dumpling config", mydumperJson)
+			klog.Warningf("Deprecated mydumper config %s won't take effect."+
+				"Please update to dumpling config.", mydumperJson)
 		}
 	}
 	args := []string{
@@ -79,7 +79,7 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 	}
 	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
 
-	klog.Infof("the dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
+	klog.Infof("The dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
 
 	output, err := exec.Command("/dumpling", args...).CombinedOutput()
 	if err != nil {
