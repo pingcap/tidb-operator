@@ -191,3 +191,7 @@ More `Restore` CRs are described as follows:
 * `.spec.to.secretName`: the secret contains the password of the `.spec.to.user`.
 * `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration.
 * `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than the backup data size of the TiDB cluster.
+
+> **Note:**
+>
+> TiDB Operator creates a PVC for data recovery. The backup data is downloaded from the remote storage to the PV first, and then restored. If you want to delete this PVC after the recovery is completed, you can refer to [Delete Resource](cheat-sheet.md#delete-resources) to delete the recovery Pod first, and then delete the PVC.

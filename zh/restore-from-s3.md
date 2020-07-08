@@ -189,3 +189,7 @@ category: how-to
 * `.spec.to.secretName`：存储 `.spec.to.user` 用户的密码的 secret。
 * `.spec.storageClassName`：指定恢复时所需的 PV 类型。
 * `.spec.storageSize`：指定恢复集群时所需的 PV 大小。该值应大于 TiDB 集群备份的数据大小。
+
+> **注意：**
+>
+> TiDB Operator 会创建一个 PVC，用于数据恢复，备份数据会先从远端存储下载到 PV，然后再进行恢复。如果恢复完成后想要删掉这个 PVC，可以参考[删除资源](cheat-sheet.md#删除资源)先把恢复 Pod 删掉，然后再把 PVC 删掉。
