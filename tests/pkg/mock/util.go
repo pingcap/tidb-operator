@@ -86,17 +86,38 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 	return nil
 }
 
-func buildPrometheusResponse(instances []string, value, cluster string) *calculate.Response {
+func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 	resp := &calculate.Response{}
 	resp.Status = "success"
 	resp.Data = calculate.Data{}
-	if instances == nil {
-		return resp
-	}
-	for _, instance := range instances {
+	cluster := mp.Name
+	value := mp.Value
+	if mp.QueryType == "cpu" {
+		instances := mp.InstancesPod
+		if instances == nil {
+			return resp
+		}
+		for _, instance := range instances {
+			r := calculate.Result{
+				Metric: calculate.Metric{
+					Instance:            instance,
+					Cluster:             cluster,
+					Job:                 "foo",
+					KubernetesNamespace: "foo",
+					KubernetesNode:      "foo",
+					KubernetesPodIp:     "foo",
+				},
+				Value: []interface{}{
+					value,
+					value,
+				},
+			}
+			resp.Data.Result = append(resp.Data.Result, r)
+		}
+	} else if mp.QueryType == "storage" {
+		value := mp.Value
 		r := calculate.Result{
 			Metric: calculate.Metric{
-				Instance:            instance,
 				Cluster:             cluster,
 				Job:                 "foo",
 				KubernetesNamespace: "foo",
@@ -108,6 +129,7 @@ func buildPrometheusResponse(instances []string, value, cluster string) *calcula
 				value,
 			},
 		}
+		resp.Data.Result = append(resp.Data.Result, r)
 		resp.Data.Result = append(resp.Data.Result, r)
 	}
 	resp.Data.ResultType = "foo"

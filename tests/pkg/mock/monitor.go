@@ -39,7 +39,8 @@ func NewMockPrometheus() MonitorInterface {
 	mp := &mockPrometheus{
 		responses: map[string]string{},
 	}
-	upResp := buildPrometheusResponse(nil, "", "")
+	params := &MonitorParams{}
+	upResp := buildPrometheusResponse(params)
 	b, err := json.Marshal(upResp)
 	if err != nil {
 		klog.Fatal(err.Error())
@@ -83,7 +84,7 @@ func (m *mockPrometheus) SetResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := json.Marshal(buildPrometheusResponse(mp.InstancesPod, mp.Value, mp.Name))
+	b, err := json.Marshal(buildPrometheusResponse(mp))
 	if err != nil {
 		writeResponse(w, err.Error())
 		return
