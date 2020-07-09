@@ -887,7 +887,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				tac.Status = tacCopy.Status
 				return nil
 			})
-			_, err = cli.PingcapV1alpha1().TidbClusterAutoScalers(ns).Update(tac)
 			framework.ExpectNoError(err, "Update TidbMonitorClusterAutoScaler error")
 
 			// check tikv scale-out to 4
