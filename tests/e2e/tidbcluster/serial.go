@@ -541,7 +541,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiKV != nil && len(stac.Status.TiKV.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiKV.MetricsStatusList[0]
-					framework.Logf("tikv threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiKV.RecommendedReplicas)
+					framework.Logf("tikv threshold value: %v, currentValue: %v, recommended replicas: %v",
+						*metrics.ThresholdValue, *metrics.CurrentValue, stac.Status.TiKV.RecommendedReplicas)
 				}
 
 				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -631,7 +632,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiKV != nil && len(stac.Status.TiKV.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiKV.MetricsStatusList[0]
-					framework.Logf("tikv threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiKV.RecommendedReplicas)
+					framework.Logf("tikv threshold value: %v, currentValue: %v, recommended replicas: %v",
+						*metrics.ThresholdValue, *metrics.CurrentValue, stac.Status.TiKV.RecommendedReplicas)
 				}
 
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -728,7 +730,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiDB != nil && len(stac.Status.TiDB.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiDB.MetricsStatusList[0]
-					framework.Logf("tidb threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiDB.RecommendedReplicas)
+					framework.Logf("tidb threshold value: %v, currentValue: %v, recommended replicas: %v",
+						*metrics.ThresholdValue, *metrics.CurrentValue, stac.Status.TiDB.RecommendedReplicas)
 				}
 
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -783,7 +786,8 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				}
 				if stac.Status.TiDB != nil && len(stac.Status.TiDB.MetricsStatusList) > 0 {
 					metrics := stac.Status.TiDB.MetricsStatusList[0]
-					framework.Logf("tidb threshold value: %v, currentValue: %v, recommended replicas: %v", metrics.ThresholdValue, metrics.CurrentValue, stac.Status.TiDB.RecommendedReplicas)
+					framework.Logf("tidb threshold value: %v, currentValue: %v, recommended replicas: %v",
+						*metrics.ThresholdValue, *metrics.CurrentValue, stac.Status.TiDB.RecommendedReplicas)
 				}
 
 				tc, err = cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
@@ -822,20 +826,6 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "check tidb auto-scale to 2 error")
 			framework.Logf("success to check auto scale-in tidb to 2 replicas")
-
-			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Delete(tac.Name, &metav1.DeleteOptions{})
-			framework.ExpectNoError(err, "Expect to delete auto-scaler ref")
-			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
-				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, nil
-				}
-				if tc.Status.AutoScaler != nil {
-					return false, nil
-				}
-				return true, nil
-			})
-			framework.ExpectNoError(err, "expect auto-scaler ref empty after delete auto-scaler")
 
 			// Check Storage Auto-Scaling
 			framework.Logf("start to check tikv storage auto-scaling")
@@ -930,6 +920,22 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "check tikv auto-scale to 4 error")
 			framework.Logf("success to check tikv auto scale-in to 4 replicas")
+
+			// Clean scaler
+			err = cli.PingcapV1alpha1().TidbClusterAutoScalers(tac.Namespace).Delete(tac.Name, &metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "Expect to delete auto-scaler ref")
+			err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+				tc, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(tc.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, nil
+				}
+				if tc.Status.AutoScaler != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "expect auto-scaler ref empty after delete auto-scaler")
+			framework.Logf("clean scaler mark success")
 		})
 	})
 
