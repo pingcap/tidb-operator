@@ -418,7 +418,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 			return "CreatePVCFailed", errMsg
 		}
 	} else if pvcRs := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; pvcRs.Cmp(rs) == -1 {
-		return "", fmt.Errorf("%s/%s's restore pvc %s's storage size %s is lesson than expected storage size %s, please delete old pvc to continue", ns, name, pvc.GetName(), pvcRs.String(), rs.String())
+		return "", fmt.Errorf("%s/%s's restore pvc %s's storage size %s is less than expected storage size %s, please delete old pvc to continue", ns, name, pvc.GetName(), pvcRs.String(), rs.String())
 	}
 	return "", nil
 }
