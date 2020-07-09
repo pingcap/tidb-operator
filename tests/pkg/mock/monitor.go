@@ -118,7 +118,7 @@ func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
-	currentType := mp.Type
+	currentType := mp.QueryType
 	if currentType == "cpu" {
 		key := ""
 		name := mp.Name
