@@ -70,7 +70,7 @@ func (tf *tidbFailover) Failover(tc *v1alpha1.TidbCluster) error {
 			}
 			pod, err := tf.podLister.Pods(tc.Namespace).Get(tidbMember.Name)
 			if err != nil {
-				return err
+				return fmt.Errorf("tidbFailover.Failover: failed to get pods %s for cluster %s/%s, error: %s", tidbMember.Name, tc.GetNamespace(), tc.GetName(), err)
 			}
 			_, condition := podutil.GetPodCondition(&pod.Status, corev1.PodScheduled)
 			if condition == nil || condition.Status != corev1.ConditionTrue {
