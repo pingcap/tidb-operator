@@ -265,6 +265,17 @@ string
 <p>Specify service account of backup</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>cleanData</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CleanData denotes whether to clean backuped data after backup job is deleted</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2565,6 +2576,17 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanData</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CleanData denotes whether to clean backuped data after backup job is deleted</p>
 </td>
 </tr>
 </tbody>

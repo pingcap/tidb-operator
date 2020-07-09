@@ -11604,6 +11604,8 @@ spec:
               required:
               - cluster
               type: object
+            cleanData:
+              type: boolean
             from:
               properties:
                 host:
@@ -12497,6 +12499,8 @@ spec:
                   required:
                   - cluster
                   type: object
+                cleanData:
+                  type: boolean
                 from:
                   properties:
                     host:

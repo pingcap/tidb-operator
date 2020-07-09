@@ -854,6 +854,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"cleanData": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CleanData denotes whether to clean backuped data after backup job is deleted",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
