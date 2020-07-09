@@ -333,7 +333,7 @@ chmod 777 /data/prometheus /data/grafana
 				Name:      "monitor-data",
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.Initializer.Resources),
+		Resources: controller.ContainerResource(monitor.Spec.Initializer.ResourceRequirements),
 	}
 
 	if monitor.Spec.Initializer.ImagePullPolicy != nil {
@@ -377,7 +377,7 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
-		Resources: controller.ContainerResource(monitor.Spec.Prometheus.Resources),
+		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
 		Command: []string{
 			"/bin/prometheus",
 		},
@@ -443,7 +443,7 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	c := core.Container{
 		Name:      "grafana",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
-		Resources: controller.ContainerResource(monitor.Spec.Grafana.Resources),
+		Resources: controller.ContainerResource(monitor.Spec.Grafana.ResourceRequirements),
 		Ports: []core.ContainerPort{
 			{
 				Name:          "grafana",
@@ -547,7 +547,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 				MountPath: "/data",
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.Reloader.Resources),
+		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
 		Env: []core.EnvVar{
 			{
 				Name:  "TZ",
