@@ -1374,7 +1374,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"options": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Options means options for backup data to remote storage with mydumper.",
+							Description: "Options means options for backup data to remote storage with dumpling.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

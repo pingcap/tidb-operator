@@ -14,7 +14,6 @@
 package export
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
@@ -63,13 +62,6 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	if mydumper := backup.Spec.Mydumper; mydumper != nil {
-		if len(mydumper.Options) > 0 || (mydumper.TableRegex != nil && len(*mydumper.TableRegex) > 0) {
-			mydumperJson, _ := json.Marshal(mydumper)
-			klog.Warningf("Deprecated mydumper config %s won't take effect."+
-				"Please update to dumpling config.", mydumperJson)
-		}
-	}
 	args := []string{
 		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),
@@ -77,7 +69,7 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
 	}
-	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
+	args = append(args, util.ConstructDumplingOptionsForBackup(backup)...)
 
 	klog.Infof("The dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
 
@@ -111,7 +103,7 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 }
 
 /*
-	getCommitTsFromMetadata get commitTs from mydumper's metadata file
+	getCommitTsFromMetadata get commitTs from dumpling's metadata file
 
 	metadata file format is as follows:
 

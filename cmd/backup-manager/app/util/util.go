@@ -175,8 +175,8 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 	return args, nil
 }
 
-// ConstructMydumperOptionsForBackup constructs mydumper options for backup
-func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
+// ConstructDumplingOptionsForBackup constructs dumpling options for backup
+func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
 	config := backup.Spec.Dumpling
 	if config == nil {

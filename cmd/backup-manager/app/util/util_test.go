@@ -85,7 +85,7 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 				expectArgs = append(expectArgs, defaultTableFilterOptions...)
 			}
 
-			generateArgs := ConstructMydumperOptionsForBackup(backup)
+			generateArgs := ConstructDumplingOptionsForBackup(backup)
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}

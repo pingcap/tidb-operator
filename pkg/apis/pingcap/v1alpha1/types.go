@@ -1123,10 +1123,6 @@ type BackupSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
-	// MydumperConfig is the configs for mydumper
-	// Deprecated
-	// +k8s:openapi-gen=false
-	Mydumper *MydumperConfig `json:"mydumper,omitempty"`
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
@@ -1144,19 +1140,10 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
-// +k8s:openapi-gen=false
-// MydumperConfig contains config for mydumper
-type MydumperConfig struct {
-	// Options means options for backup data to remote storage with mydumper.
-	Options []string `json:"options,omitempty"`
-	// TableRegex means Regular expression for 'db.table' matching
-	TableRegex *string `json:"tableRegex,omitempty"`
-}
-
 // +k8s:openapi-gen=true
 // DumplingConfig contains config for dumpling
 type DumplingConfig struct {
-	// Options means options for backup data to remote storage with mydumper.
+	// Options means options for backup data to remote storage with dumpling.
 	Options []string `json:"options,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
