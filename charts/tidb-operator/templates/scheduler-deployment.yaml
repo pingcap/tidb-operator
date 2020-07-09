@@ -48,7 +48,7 @@ spec:
           value: {{ .Values.timezone | default "UTC" }}
       {{- end }}
       - name: kube-scheduler
-        image: {{ required "scheduler.kubeSchedulerImageName is required" .Values.scheduler.kubeSchedulerImageName }}:{{ .Values.scheduler.kubeSchedulerImageTag | default (split "-" .Capabilities.KubeVersion.GitVersion)._0 }}
+        image: {{ required "scheduler.kubeSchedulerImageName is required" .Values.scheduler.kubeSchedulerImageName }}:{{- template "kube-scheduler.image_tag" . }}
         imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
         resources:
 {{ toYaml .Values.scheduler.resources | indent 12 }}

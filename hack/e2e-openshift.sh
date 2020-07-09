@@ -41,6 +41,7 @@ else
 fi
 
 echo "info: install required software packages"
+sudo yum install -y NetworkManager
 sudo yum install -y jq git make golang
 sudo yum install -y yum-utils
 sudo yum-config-manager \
