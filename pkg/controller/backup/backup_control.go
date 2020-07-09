@@ -53,14 +53,12 @@ type defaultBackupControl struct {
 // UpdateBackup executes the core logic loop for a Backup.
 func (bc *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 	backup.SetGroupVersionKind(controller.BackupControllerKind)
-	if backup.Spec.CleanData {
-		if err := bc.addProtectionFinalizer(backup); err != nil {
-			return err
-		}
+	if err := bc.addProtectionFinalizer(backup); err != nil {
+		return err
+	}
 
-		if err := bc.removeProtectionFinalizer(backup); err != nil {
-			return err
-		}
+	if err := bc.removeProtectionFinalizer(backup); err != nil {
+		return err
 	}
 
 	return bc.updateBackup(backup)

@@ -273,7 +273,7 @@ bool
 </em>
 </td>
 <td>
-<p>CleanData denotes whether to clean backuped data after backup job is deleted</p>
+<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
 </td>
 </tr>
 </table>
@@ -2586,7 +2586,7 @@ bool
 </em>
 </td>
 <td>
-<p>CleanData denotes whether to clean backuped data after backup job is deleted</p>
+<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
 </td>
 </tr>
 </tbody>
