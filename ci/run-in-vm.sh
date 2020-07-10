@@ -50,8 +50,8 @@ echo "SYNC_FILES: $SYNC_FILES"
 
 # Pre-created nested virtualization enabled image with following commands:
 #
-#   gcloud compute disks create disk1 --image-project centos-cloud --image-family centos-8 --zone us-central1-b
-#   gcloud compute images create centos-8-nested-vm \
+#   gcloud compute disks create disk1 --image-project centos-cloud --image-family centos-7 --zone us-central1-b
+#   gcloud compute images create centos-7-nested-vm \
 #     --source-disk disk1 --source-disk-zone us-central1-b \
 #     --licenses "https://compute.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx"
 #   gcloud compute disks delete disk1
@@ -59,7 +59,7 @@ echo "SYNC_FILES: $SYNC_FILES"
 # Refer to
 # https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances
 # for more details.
-IMAGE=centos-8-nested-vm
+IMAGE=centos-7-nested-vm
 
 echo "info: configure gcloud"
 if [ -z "$GCP_PROJECT" ]; then
