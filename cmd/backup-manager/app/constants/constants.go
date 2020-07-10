@@ -28,7 +28,7 @@ const (
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 
-	// MetaDataFile is the file which store the mydumper's meta info
+	// MetaDataFile is the file which store the dumpling's meta info
 	MetaDataFile = "metadata"
 
 	// TikvGCLifeTime is the safe gc life time for dump tidb cluster data
@@ -65,4 +65,7 @@ const (
 
 	// DefaultTableRegex is the default regular expression for 'db.table' matching
 	DefaultTableRegex = "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+
+	// DefaultTableFilter is the default table filter 'db.table' matching
+	DefaultTableFilter = "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
 )
