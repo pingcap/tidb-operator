@@ -296,7 +296,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	}
 	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
 
-	commitTs, err := getCommitTs(backup)
+	commitTs, err := util.GetCommitTsFromBRMetaData(backup.Spec.StorageProvider, true)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)

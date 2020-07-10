@@ -38,7 +38,7 @@ func (bo *Options) String() string {
 
 // cleanBRRemoteBackupData clean the backup data from remote
 func (bo *Options) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
-	s, err := util.NewRemoteStorage(backup)
+	s, err := util.NewRemoteStorage(backup.Spec.StorageProvider, true)
 	if err != nil {
 		return err
 	}

@@ -23,9 +23,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
-	kvbackup "github.com/pingcap/kvproto/pkg/backup"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -108,35 +105,6 @@ func (bo *Options) backupData(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-// getCommitTs get backup position from `EndVersion` in BR backup meta
-func getCommitTs(backup *v1alpha1.Backup) (uint64, error) {
-	var commitTs uint64
-	s, err := backupUtil.NewRemoteStorage(backup)
-	if err != nil {
-		return commitTs, err
-	}
-	defer s.Close()
-	ctx := context.Background()
-	exist, err := s.Exists(ctx, constants.MetaFile)
-	if err != nil {
-		return commitTs, err
-	}
-	if !exist {
-		return commitTs, fmt.Errorf("%s not exist", constants.MetaFile)
-
-	}
-	metaData, err := s.ReadAll(ctx, constants.MetaFile)
-	if err != nil {
-		return commitTs, err
-	}
-	backupMeta := &kvbackup.BackupMeta{}
-	err = proto.Unmarshal(metaData, backupMeta)
-	if err != nil {
-		return commitTs, err
-	}
-	return backupMeta.EndVersion, nil
-}
-
 // constructOptions constructs options for BR and also return the remote path
 func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 	args, err := backupUtil.ConstructBRGlobalOptionsForBackup(backup)
@@ -162,7 +130,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 // getBackupSize get the backup data size from remote
 func getBackupSize(backup *v1alpha1.Backup) (int64, error) {
 	var size int64
-	s, err := backupUtil.NewRemoteStorage(backup)
+	s, err := backupUtil.NewRemoteStorage(backup.Spec.StorageProvider, true)
 	if err != nil {
 		return size, err
 	}

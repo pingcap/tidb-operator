@@ -14,6 +14,7 @@
 package util
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io/ioutil"
@@ -22,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/gogo/protobuf/proto"
+	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -307,6 +310,35 @@ func GetCommitTsFromMetadata(backupPath string) (string, error) {
 		break
 	}
 	return commitTs, nil
+}
+
+// GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
+func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider, fakeRegion bool) (uint64, error) {
+	var commitTs uint64
+	s, err := NewRemoteStorage(provider, fakeRegion)
+	if err != nil {
+		return commitTs, err
+	}
+	defer s.Close()
+	ctx := context.Background()
+	exist, err := s.Exists(ctx, constants.MetaFile)
+	if err != nil {
+		return commitTs, err
+	}
+	if !exist {
+		return commitTs, fmt.Errorf("%s not exist", constants.MetaFile)
+
+	}
+	metaData, err := s.ReadAll(ctx, constants.MetaFile)
+	if err != nil {
+		return commitTs, err
+	}
+	backupMeta := &kvbackup.BackupMeta{}
+	err = proto.Unmarshal(metaData, backupMeta)
+	if err != nil {
+		return commitTs, err
+	}
+	return backupMeta.EndVersion, nil
 }
 
 // ConstructArgs constructs the rclone args

@@ -247,9 +247,24 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	}
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
 
+	commitTs, err := util.GetCommitTsFromBRMetaData(restore.Spec.StorageProvider, false)
+	if err != nil {
+		errs = append(errs, err)
+		klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetCommitTsFailed",
+			Message: err.Error(),
+		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+
 	finish := time.Now()
 	restore.Status.TimeStarted = metav1.Time{Time: started}
 	restore.Status.TimeCompleted = metav1.Time{Time: finish}
+	restore.Status.CommitTs = commitTs
 
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreComplete,
