@@ -16,7 +16,9 @@ package util
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver"
@@ -266,6 +268,45 @@ func GetOptions(provider v1alpha1.StorageProvider) []string {
 	default:
 		return nil
 	}
+}
+
+/*
+	GetCommitTsFromMetadata get commitTs from mydumper's metadata file
+
+	metadata file format is as follows:
+
+		Started dump at: 2019-06-13 10:00:04
+		SHOW MASTER STATUS:
+			Log: tidb-binlog
+			Pos: 409054741514944513
+			GTID:
+
+		Finished dump at: 2019-06-13 10:00:04
+*/
+func GetCommitTsFromMetadata(backupPath string) (string, error) {
+	var commitTs string
+
+	metaFile := filepath.Join(backupPath, constants.MetaDataFile)
+	if exist := IsFileExist(metaFile); !exist {
+		return commitTs, fmt.Errorf("file %s does not exist or is not regular file", metaFile)
+	}
+	contents, err := ioutil.ReadFile(metaFile)
+	if err != nil {
+		return commitTs, fmt.Errorf("read metadata file %s failed, err: %v", metaFile, err)
+	}
+
+	for _, lineStr := range strings.Split(string(contents), "\n") {
+		if !strings.Contains(lineStr, "Pos") {
+			continue
+		}
+		lineStrSlice := strings.Split(lineStr, ":")
+		if len(lineStrSlice) != 2 {
+			return commitTs, fmt.Errorf("parse mydumper's metadata file %s failed, str: %s", metaFile, lineStr)
+		}
+		commitTs = strings.TrimSpace(lineStrSlice[1])
+		break
+	}
+	return commitTs, nil
 }
 
 // ConstructArgs constructs the rclone args

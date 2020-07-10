@@ -299,7 +299,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
 
-	commitTs, err := getCommitTsFromMetadata(backupFullPath)
+	commitTs, err := util.GetCommitTsFromMetadata(backupFullPath)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
