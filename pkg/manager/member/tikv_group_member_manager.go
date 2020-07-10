@@ -19,8 +19,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
@@ -44,16 +44,21 @@ const (
 	tikvGroupStoreLimitPattern = `%s-tikv-group-\d+\.%s-tikv-group-peer\.%s\.svc\:\d+`
 )
 
+var (
+	tidbV401Version = semver.MustParse("v4.0.1")
+)
+
 type tikvGroupMemberManager struct {
-	genericCli   client.Client
-	svcLister    corelisters.ServiceLister
-	setLister    appslister.StatefulSetLister
-	podLister    corelisters.PodLister
-	tcLister     listers.TidbClusterLister
-	svcControl   controller.ServiceControlInterface
-	setControl   controller.StatefulSetControlInterface
-	typedControl controller.TypedControlInterface
-	pdControl    pdapi.PDControlInterface
+	genericCli        client.Client
+	svcLister         corelisters.ServiceLister
+	setLister         appslister.StatefulSetLister
+	podLister         corelisters.PodLister
+	svcControl        controller.ServiceControlInterface
+	setControl        controller.StatefulSetControlInterface
+	typedControl      controller.TypedControlInterface
+	tikvGroupScaler   TiKVGroupScaler
+	tikvGroupUpgrader TiKVGroupUpgrader
+	pdControl         pdapi.PDControlInterface
 }
 
 func NewTiKVGroupMemberManager(
@@ -61,26 +66,28 @@ func NewTiKVGroupMemberManager(
 	svcLister corelisters.ServiceLister,
 	setLister appslister.StatefulSetLister,
 	podLister corelisters.PodLister,
-	tcLister listers.TidbClusterLister,
 	svcControl controller.ServiceControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	typedControl controller.TypedControlInterface,
+	tikvGroupScaler TiKVGroupScaler,
+	tikvUpgrader TiKVGroupUpgrader,
 	pdControl pdapi.PDControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
-		genericCli:   genericCli,
-		svcLister:    svcLister,
-		setLister:    setLister,
-		podLister:    podLister,
-		tcLister:     tcLister,
-		svcControl:   svcControl,
-		setControl:   setControl,
-		typedControl: typedControl,
-		pdControl:    pdControl,
+		genericCli:        genericCli,
+		svcLister:         svcLister,
+		setLister:         setLister,
+		podLister:         podLister,
+		svcControl:        svcControl,
+		setControl:        setControl,
+		typedControl:      typedControl,
+		tikvGroupScaler:   tikvGroupScaler,
+		tikvGroupUpgrader: tikvUpgrader,
+		pdControl:         pdControl,
 	}
 }
 
-func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
-	tc, err := tgm.checkWhetherRegistered(tg)
+func (tgm *tikvGroupMemberManager) SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error {
+	err := tgm.checkWhetherRegistered(tg, tc)
 	if err != nil {
 		klog.Error(err)
 		return err
@@ -104,29 +111,20 @@ func (tgm *tikvGroupMemberManager) Sync(tg *v1alpha1.TiKVGroup) error {
 // checkWhetherRegistered will check whether the tikvgroup have already registered itself
 // to the target tidbcluster. If have already, the tikvgroup will be allowed to syncing.
 // If not, the tikvgroup will try to register itself to the tidbcluster and wait for the next round.
-func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup) (*v1alpha1.TidbCluster, error) {
-	tcName := tg.Spec.ClusterName
-	tcNamespace := tg.Namespace
-	tc, err := tgm.tcLister.TidbClusters(tcNamespace).Get(tcName)
-	if err != nil {
-		err = fmt.Errorf("checkWhetherRegistered: failed to get tidbclusters %s for tikvgroup %s/%s, error: %s", tcName, tcNamespace, tcName, err)
-		klog.Error(err)
-		return nil, err
-	}
-
+func (tgm *tikvGroupMemberManager) checkWhetherRegistered(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiKVGroups == nil || len(tc.Status.TiKVGroups) < 1 {
-		return nil, tgm.registerTiKVGroup(tg, tc)
+		return tgm.registerTiKVGroup(tg, tc)
 	}
 
 	for _, tikvGroup := range tc.Status.TiKVGroups {
 		// found tikvgroup in the tidbcluster's status, allowed to syncing
 		if tikvGroup.Reference.Name == tg.Name {
-			return tc, nil
+			return nil
 		}
 	}
 
-	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tcNamespace, tcName)
-	return nil, tgm.registerTiKVGroup(tg, tc)
+	klog.Infof("start to register tikvGroup[%s/%s] to tc[%s/%s]", tg.Namespace, tg.Name, tc.Namespace, tc.Name)
+	return tgm.registerTiKVGroup(tg, tc)
 }
 
 // register itself to the target tidbcluster
@@ -235,11 +233,19 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 
 	// TODO: sync store Labels
 
-	// TODO: Upgrade TiKVGroup
-
-	// TODO: Scale TiKVGroup
+	// Scale TiKVGroup
+	if err := tgm.tikvGroupScaler.Scale(tg, oldSet, newSet); err != nil {
+		return err
+	}
 
 	// TODO: TiKVGroup Auto Failover
+
+	// Upgrade TiKVGroup
+	if !templateEqual(newSet, oldSet) || tg.Status.Phase == v1alpha1.UpgradePhase {
+		if err := tgm.tikvGroupUpgrader.Upgrade(tg, tc, oldSet, newSet); err != nil {
+			return err
+		}
+	}
 
 	return updateStatefulSet(tgm.setControl, tg, newSet, oldSet)
 }
@@ -426,9 +432,18 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 	if tg.Spec.Config == nil {
 		tg.Spec.Config = &v1alpha1.TiKVConfig{}
 	}
+	version, err := semver.Parse(tc.TiKVVersion())
+	if err != nil {
+		return nil, fmt.Errorf("tikvgroup[%s/%s] failed to parse version,err:%v", tg.Namespace, tg.Name, err)
+	}
+	enableAdvertiseStatusAddr := true
+	// For the version less than v4.0.1, don't use advertise-status-addr start arg
+	if version.LE(tidbV401Version) {
+		enableAdvertiseStatusAddr = false
+	}
 	scriptModel := &TiKVStartScriptModel{
 		Scheme:                    tc.Scheme(),
-		EnableAdvertiseStatusAddr: true,
+		EnableAdvertiseStatusAddr: enableAdvertiseStatusAddr,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tg.Spec.DataSubDir),
 		AdvertiseStatusAddr:       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
 	}
@@ -608,6 +623,8 @@ func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster,
 		Resources:    controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
 	}
 	podSpec := baseTiKVSpec.BuildPodSpec()
+	// TODO: make tidb-scheduler support TiKVGroup
+	podSpec.SchedulerName = "default-scheduler"
 	if baseTiKVSpec.HostNetwork() {
 		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 		env = append(env, corev1.EnvVar{

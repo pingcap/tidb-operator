@@ -22,3 +22,11 @@ func (tg *TiKVGroup) TiKVStsDesiredReplicas() int32 {
 	// TODO: support failover
 	return tg.Spec.Replicas
 }
+
+func (tg *TiKVGroup) Scaling() bool {
+	return tg.Status.Phase == ScalePhase
+}
+
+func (tg *TiKVGroup) Upgrading() bool {
+	return tg.Status.Phase == UpgradePhase
+}

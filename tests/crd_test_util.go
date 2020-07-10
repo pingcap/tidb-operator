@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -290,10 +291,22 @@ func (ctu *CrdTestUtil) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error)
 	return true, nil
 }
 
-func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
-	tcName := tc.GetName()
-	ns := tc.GetNamespace()
-	tikvSetName := controller.TiKVMemberName(tcName)
+func (ctu *CrdTestUtil) tikvMembersReadyFn(obj runtime.Object) (bool, error) {
+	meta, ok := obj.(metav1.Object)
+	if !ok {
+		return false, fmt.Errorf("failed to convert to meta.Object")
+	}
+	name := meta.GetName()
+	ns := meta.GetNamespace()
+	var tikvSetName string
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok {
+		tikvSetName = controller.TiKVMemberName(tc.Name)
+	} else if tg, ok := obj.(*v1alpha1.TiKVGroup); ok {
+		tikvSetName = controller.TiKVGroupMemberName(tg.Name)
+	}
+	if len(tikvSetName) < 1 {
+		return false, fmt.Errorf("failed to parse obj to TikvGroup or TidbCluster")
+	}
 
 	tikvSet, err := ctu.tcStsGetter.StatefulSets(ns).Get(tikvSetName, metav1.GetOptions{})
 	if err != nil {
@@ -308,13 +321,32 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(ctu.kubeCli, ctu.asCli), tikvSet) {
 		return false, nil
 	}
+	var tikvStatus v1alpha1.TiKVStatus
+	var replicas int32
+	var storeCounts int32
+	var image string
+	var stores map[string]v1alpha1.TiKVStore
+	var tikvPeerServiceName string
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok {
+		tikvStatus = tc.Status.TiKV
+		replicas = tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores))
+		storeCounts = int32(len(tc.Status.TiKV.Stores))
+		image = tc.TiKVImage()
+		stores = tc.Status.TiKV.Stores
+		tikvPeerServiceName = controller.TiKVPeerMemberName(tc.GetName())
+	} else if tg, ok := obj.(*v1alpha1.TiKVGroup); ok {
+		tikvStatus = tg.Status.TiKVStatus
+		replicas = tg.Spec.TiKVSpec.Replicas
+		storeCounts = int32(len(tg.Status.Stores))
+		image = tg.Spec.Image
+		stores = tg.Status.TiKVStatus.Stores
+		tikvPeerServiceName = controller.TiKVGroupPeerMemberName(tg.Name)
+	}
 
-	if tc.Status.TiKV.StatefulSet == nil {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.StatefulSet is nil", ns, tcName)
+	if tikvStatus.StatefulSet == nil {
+		klog.Infof("%s/%s .status.StatefulSet is nil", ns, name)
 		return false, nil
 	}
-	failureCount := len(tc.Status.TiKV.FailureStores)
-	replicas := tc.Spec.TiKV.Replicas + int32(failureCount)
 	if *tikvSet.Spec.Replicas != replicas {
 		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tikvSetName, *tikvSet.Spec.Replicas, replicas)
@@ -325,9 +357,9 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 			ns, tikvSetName, tikvSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
-	if len(tc.Status.TiKV.Stores) != int(replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiKV.Stores.count(%d) != %d",
-			ns, tcName, len(tc.Status.TiKV.Stores), replicas)
+	if storeCounts != replicas {
+		klog.Infof("%s/%s .status.TiKV.Stores.count(%d) != %d",
+			ns, name, storeCounts, replicas)
 		return false, nil
 	}
 	if tikvSet.Status.ReadyReplicas != tikvSet.Status.Replicas {
@@ -336,32 +368,29 @@ func (ctu *CrdTestUtil) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 		return false, nil
 	}
 
-	c, found := getMemberContainer(ctu.kubeCli, ctu.tcStsGetter, ns, tc.Name, label.TiKVLabelVal)
+	c, found := getStsContainer(ctu.kubeCli, tikvSet, label.TiKVLabelVal)
 	if !found {
 		klog.Infof("statefulset: %s/%s not found containers[name=tikv] or pod %s-0",
 			ns, tikvSetName, tikvSetName)
 		return false, nil
 	}
 
-	if tc.TiKVImage() != c.Image {
+	if image != c.Image {
 		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tikv].image(%s) != %s",
-			ns, tikvSetName, c.Image, tc.TiKVImage())
+			ns, tikvSetName, c.Image, image)
 		return false, nil
 	}
 
-	for _, store := range tc.Status.TiKV.Stores {
+	for _, store := range stores {
 		if store.State != v1alpha1.TiKVStateUp {
-			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			klog.Infof("%s/%s's store(%s) state != %s", ns, name, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
-
-	tikvPeerServiceName := controller.TiKVPeerMemberName(tcName)
 	if _, err := ctu.kubeCli.CoreV1().Services(ns).Get(tikvPeerServiceName, metav1.GetOptions{}); err != nil {
 		klog.Errorf("failed to get peer service: %s/%s", ns, tikvPeerServiceName)
 		return false, nil
 	}
-
 	return true, nil
 }
 
@@ -615,4 +644,23 @@ func (ctu *CrdTestUtil) CreateSecretOrDie(secret *corev1.Secret) {
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
+}
+
+func (ctu *CrdTestUtil) WaitForTiKVGroupReady(tg *v1alpha1.TiKVGroup, timeout, pollInterval time.Duration) error {
+	if tg == nil {
+		return fmt.Errorf("tikvgroup is nil, cannot call WaitForTiKVGroupReady")
+	}
+	err := wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+		var local *v1alpha1.TiKVGroup
+		var err error
+		if local, err = ctu.cli.PingcapV1alpha1().TiKVGroups(tg.Namespace).Get(tg.Name, metav1.GetOptions{}); err != nil {
+			klog.Errorf("failed to get tikvgroup: %s/%s, %v", tg.Namespace, tg.Name, err)
+			return false, nil
+		}
+		if b, err := ctu.tikvMembersReadyFn(local); !b && err == nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
 }

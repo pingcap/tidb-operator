@@ -80,6 +80,17 @@ func (tc *TidbCluster) TiKVImage() string {
 	return image
 }
 
+func (tc *TidbCluster) TiKVVersion() string {
+	image := tc.TiKVImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
+}
+
+
 func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
 	if tc.Spec.TiKV.Privileged == nil {
 		pri := false

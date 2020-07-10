@@ -58,6 +58,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/webhook"
 	"github.com/pingcap/tidb-operator/tests/slack"
 	admissionV1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1401,29 +1402,29 @@ func getMemberContainer(kubeCli kubernetes.Interface, stsGetter typedappsv1.Stat
 		klog.Errorf("failed to get sts for component %s of cluster %s/%s", component, namespace, tcName)
 		return nil, false
 	}
+	return getStsContainer(kubeCli, sts, component)
+}
+
+func getStsContainer(kubeCli kubernetes.Interface, sts *apps.StatefulSet, containerName string) (*corev1.Container, bool) {
 	listOption := metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(sts.Spec.Selector.MatchLabels).String(),
 	}
-	podList, err := kubeCli.CoreV1().Pods(namespace).List(listOption)
+	podList, err := kubeCli.CoreV1().Pods(sts.Namespace).List(listOption)
 	if err != nil {
-		klog.Errorf("fail to get pods for component %s of cluster %s/%s", component, namespace, tcName)
+		klog.Errorf("fail to get pods for container %s of sts %s/%s", containerName, sts.Namespace, sts.Name)
 		return nil, false
 	}
 	if len(podList.Items) == 0 {
-		klog.Errorf("no pods found for component %s of cluster %s/%s", component, namespace, tcName)
+		klog.Errorf("no pods found for component %s of cluster %s/%s", containerName, sts.Namespace, sts.Name)
 		return nil, false
 	}
 	pod := podList.Items[0]
 	if len(pod.Spec.Containers) == 0 {
-		klog.Errorf("no containers found for component %s of cluster %s/%s", component, namespace, tcName)
+		klog.Errorf("no containers found for component %s of cluster %s/%s", containerName, sts.Namespace, sts.Name)
 		return nil, false
 	}
-
 	for _, container := range pod.Spec.Containers {
-		if container.Name == v1alpha1.PDMemberType.String() ||
-			container.Name == v1alpha1.TiKVMemberType.String() ||
-			container.Name == v1alpha1.TiFlashMemberType.String() ||
-			container.Name == v1alpha1.TiDBMemberType.String() {
+		if container.Name == containerName {
 			return &container, true
 		}
 	}
