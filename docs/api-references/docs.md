@@ -186,15 +186,15 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>mydumper</code></br>
+<code>dumpling</code></br>
 <em>
-<a href="#mydumperconfig">
-MydumperConfig
+<a href="#dumplingconfig">
+DumplingConfig
 </a>
 </em>
 </td>
 <td>
-<p>MydumperConfig is the configs for mydumper</p>
+<p>DumplingConfig is the configs for dumpling</p>
 </td>
 </tr>
 <tr>
@@ -2286,15 +2286,15 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>mydumper</code></br>
+<code>dumpling</code></br>
 <em>
-<a href="#mydumperconfig">
-MydumperConfig
+<a href="#dumplingconfig">
+DumplingConfig
 </a>
 </em>
 </td>
 <td>
-<p>MydumperConfig is the configs for mydumper</p>
+<p>DumplingConfig is the configs for dumpling</p>
 </td>
 </tr>
 <tr>
@@ -3514,6 +3514,46 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dumplingconfig">DumplingConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>DumplingConfig contains config for dumpling</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options means options for backup data to remote storage with dumpling.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -4769,46 +4809,6 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="mydumperconfig">MydumperConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
-</p>
-<p>
-<p>MydumperConfig contains config for mydumper</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>options</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>Options means options for backup data to remote storage with mydumper.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tableRegex</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>TableRegex means Regular expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
