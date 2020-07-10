@@ -220,6 +220,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
 try {
 
     def GITHASH
+    def IMAGE_TAG
 
     def PROJECT_DIR = "go/src/github.com/pingcap/tidb-operator"
 
@@ -278,6 +279,7 @@ try {
                             ]
 
                         GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
+                        IMAGE_TAG = env.JOB_NAME + "-" + GITHASH.substring(0, 6)
                     }
 
                     stage("Build and Test") {
@@ -304,7 +306,7 @@ try {
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
                             echo "info: build and push images for e2e"
-                            NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} make docker-push e2e-docker-push
+                            NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
                             echo "info: download binaries for e2e"
                             SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
                             echo "info: change ownerships for jenkins"
@@ -320,7 +322,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${GITHASH} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/
