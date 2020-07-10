@@ -73,20 +73,46 @@ Kubernetes currently supports statically allocated local storage. To create a lo
 
 2. Deploy `local-volume-provisioner`.
 
-      {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-      ```shell
-     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
+    ```shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml
      ```
+
+    If the server have no access to the Internet, download the `local-volume-provisioner.yaml` file on a machine with Internet access and then install it.
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml &&
+    kubectl apply -f ./local-volume-provisioner.yaml
+    ```
+
+    `local-volume-provisioner` is a DaemonSet that starts a Pod on every Kubernetes worker node. The Pod uses the `quay.io/external_storage/local-volume-provisioner:v2.3.4` image. If the server does not have access to the Internet, download this Docker image on a machine with Internet access:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    docker pull quay.io/external_storage/local-volume-provisioner:v2.3.4
+    docker save -o local-volume-provisioner-v2.3.4.tar quay.io/external_storage/local-volume-provisioner:v2.3.4
+    ```
+
+    Copy the `local-volume-provisioner-v2.3.4.tar` file to the server, and execute the `docker load` command to load it on the server:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    docker load -i local-volume-provisioner-v2.3.4.tar
+    ```
 
     Check the Pod and PV status with the following commands:
 
-      {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-      ```shell
-     kubectl get po -n kube-system -l app=local-volume-provisioner && \
-     kubectl get pv | grep local-storage
-     ```
+    ```shell
+    kubectl get po -n kube-system -l app=local-volume-provisioner &&
+    kubectl get pv | grep local-storage
+    ```
 
     `local-volume-provisioner` creates a PV for each mounting point under discovery directory. Note that on GKE, `local-volume-provisioner` creates a local volume of only 375 GiB in size by default.
 
@@ -221,7 +247,7 @@ Finally, execute the `kubectl apply` command to deploy `local-volume-provisioner
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/local-dind/local-volume-provisioner.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml
 ```
 
 When you later deploy tidb clusters, deploy TiDB Binlog for incremental backups, or do full backups, configure the corresponding `StorageClass` for use.
@@ -260,7 +286,9 @@ In general, after a PVC is no longer used and deleted, the PV bound to it is rec
 >
 > By default, to ensure data safety, TiDB Operator automatically changes the reclaim policy of the PVs of PD and TiKV to `Retain`.
 
-When the reclaim policy of PVs is set to `Retain`, if the data of a PV can be deleted, delete this PV and the corresponding data according to the following steps:
+### Delete PV and data
+
+When the reclaim policy of PVs is set to `Retain`, if you have confirmed that the data of a PV can be deleted, you can delete this PV and the corresponding data by strictly taking the following steps:
 
 1. Delete the PVC object corresponding to the PV:
 
