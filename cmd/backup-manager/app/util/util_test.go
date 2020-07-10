@@ -26,35 +26,35 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func TestConstructMydumperOptionsForBackup(t *testing.T) {
+func TestConstructDumplingOptionsForBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
 		name       string
-		hasRegex   bool
+		hasFilter  bool
 		hasOptions bool
 	}
 
 	tests := []*testcase{
 		{
-			name:       "mydumper config is empty",
+			name:       "dumpling config is empty",
 			hasOptions: false,
-			hasRegex:   false,
+			hasFilter:  false,
 		},
 		{
-			name:       "customize mydumper options but not set table regex",
+			name:       "customize dumpling options but not set table regex",
 			hasOptions: true,
-			hasRegex:   false,
+			hasFilter:  false,
 		},
 		{
-			name:       "customize mydumper table regex but not customize options",
+			name:       "customize dumpling table regex but not customize options",
 			hasOptions: false,
-			hasRegex:   true,
+			hasFilter:  true,
 		},
 		{
-			name:       "customize mydumper table regex and customize options",
+			name:       "customize dumpling table regex and customize options",
 			hasOptions: true,
-			hasRegex:   true,
+			hasFilter:  true,
 		},
 	}
 
@@ -62,30 +62,30 @@ func TestConstructMydumperOptionsForBackup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			backup := newBackup()
 
-			customRegex := "^mysql"
-			customOptions := []string{"--long-query-guard=3000"}
+			customFilter := []string{"mysql.*"}
+			customOptions := []string{"--consistency=snapshot"}
 
 			var expectArgs []string
 
 			if tt.hasOptions {
-				backup.Spec.Mydumper = &v1alpha1.MydumperConfig{Options: customOptions}
+				backup.Spec.Dumpling = &v1alpha1.DumplingConfig{Options: customOptions}
 				expectArgs = append(expectArgs, customOptions...)
 			} else {
 				expectArgs = append(expectArgs, defaultOptions...)
 			}
 
-			if tt.hasRegex {
-				if backup.Spec.Mydumper == nil {
-					backup.Spec.Mydumper = &v1alpha1.MydumperConfig{TableRegex: &customRegex}
+			if tt.hasFilter {
+				if backup.Spec.Dumpling == nil {
+					backup.Spec.Dumpling = &v1alpha1.DumplingConfig{TableFilter: customFilter}
 				} else {
-					backup.Spec.Mydumper.TableRegex = &customRegex
+					backup.Spec.Dumpling.TableFilter = customFilter
 				}
-				expectArgs = append(expectArgs, "--regex", customRegex)
+				expectArgs = append(expectArgs, "--filter", customFilter[0])
 			} else {
-				expectArgs = append(expectArgs, defaultTableRegexOptions...)
+				expectArgs = append(expectArgs, defaultTableFilterOptions...)
 			}
 
-			generateArgs := ConstructMydumperOptionsForBackup(backup)
+			generateArgs := ConstructDumplingOptionsForBackup(backup)
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}
