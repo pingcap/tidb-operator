@@ -247,7 +247,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	}
 	klog.Infof("restore cluster %s from %s succeed", rm, restore.Spec.Type)
 
-	commitTs, err := util.GetCommitTsFromBRMetaData(restore.Spec.StorageProvider, false)
+	commitTs, err := util.GetCommitTsFromBRMetaData(restore.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)

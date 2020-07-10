@@ -130,7 +130,7 @@ func constructOptions(backup *v1alpha1.Backup) ([]string, error) {
 // getBackupSize get the backup data size from remote
 func getBackupSize(backup *v1alpha1.Backup) (int64, error) {
 	var size int64
-	s, err := backupUtil.NewRemoteStorage(backup.Spec.StorageProvider, true)
+	s, err := backupUtil.NewRemoteStorage(backup.Spec.StorageProvider)
 	if err != nil {
 		return size, err
 	}

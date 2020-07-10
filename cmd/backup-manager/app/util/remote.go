@@ -58,18 +58,18 @@ type gcsQuery struct {
 }
 
 // NewRemoteStorage creates new remote storage
-func NewRemoteStorage(provider v1alpha1.StorageProvider, fakeRegion bool) (*blob.Bucket, error) {
+func NewRemoteStorage(provider v1alpha1.StorageProvider) (*blob.Bucket, error) {
 	st := util.GetStorageType(provider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		qs := checkS3Config(provider.S3, fakeRegion)
+		qs := checkS3Config(provider.S3, true)
 		bucket, err := newS3Storage(qs)
 		if err != nil {
 			return nil, err
 		}
 		return bucket, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		qs := checkGcsConfig(provider.Gcs, fakeRegion)
+		qs := checkGcsConfig(provider.Gcs, true)
 		bucket, err := newGcsStorage(qs)
 		if err != nil {
 			return nil, err

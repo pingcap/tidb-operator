@@ -313,9 +313,9 @@ func GetCommitTsFromMetadata(backupPath string) (string, error) {
 }
 
 // GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
-func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider, fakeRegion bool) (uint64, error) {
+func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error) {
 	var commitTs uint64
-	s, err := NewRemoteStorage(provider, fakeRegion)
+	s, err := NewRemoteStorage(provider)
 	if err != nil {
 		return commitTs, err
 	}
