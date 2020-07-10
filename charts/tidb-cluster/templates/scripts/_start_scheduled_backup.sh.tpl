@@ -22,14 +22,15 @@ echo "Increase TiKV GC life time to {{ .Values.scheduledBackup.tikvGCLifeTime | 
 /usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "update mysql.tidb set variable_value='{{ .Values.scheduledBackup.tikvGCLifeTime | default "720h" }}' where variable_name='tikv_gc_life_time';"
 /usr/bin/mysql -h${host} -P4000 -u${TIDB_USER} ${password_str} -Nse "select variable_name,variable_value from mysql.tidb where variable_name='tikv_gc_life_time';"
 
-/dumpling \
-  --output=${backupPath} \
+/mydumper \
+  --outputdir=${backupPath} \
   --host=${host} \
   --port=4000 \
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
-  --filter '*.*' \
-  --filter '!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*' \
+  --long-query-guard=3600 \
+  --tidb-force-priority=LOW_PRIORITY \
+  --regex '^(?!(mysql\.))' \
   {{ .Values.scheduledBackup.options }}
 
 echo "Reset TiKV GC life time to ${gc_life_time}"

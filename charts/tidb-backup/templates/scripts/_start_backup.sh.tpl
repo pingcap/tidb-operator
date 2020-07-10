@@ -37,12 +37,14 @@ then
     cat ${dirname}/savepoint
 fi
 
-/dumpling \
-  --output=${dirname} \
+/mydumper \
+  --outputdir=${dirname} \
   --host=${host} \
   --port=4000 \
   --user=${TIDB_USER} \
   --password=${TIDB_PASSWORD} \
+  --long-query-guard=3600 \
+  --tidb-force-priority=LOW_PRIORITY \
   {{ .Values.backupOptions }} ${snapshot_args:-}
 
 
