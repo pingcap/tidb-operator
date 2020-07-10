@@ -63,17 +63,19 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		return "", err
 	}
 	args := []string{
-		fmt.Sprintf("--outputdir=%s", bfPath),
+		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),
 		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
 	}
-	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
+	args = append(args, util.ConstructDumplingOptionsForBackup(backup)...)
 
-	output, err := exec.Command("/mydumper", args...).CombinedOutput()
+	klog.Infof("The dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
+
+	output, err := exec.Command("/dumpling", args...).CombinedOutput()
 	if err != nil {
-		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return bfPath, fmt.Errorf("cluster %s, execute dumpling command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}
 	return bfPath, nil
 }
@@ -101,7 +103,7 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 }
 
 /*
-	getCommitTsFromMetadata get commitTs from mydumper's metadata file
+	getCommitTsFromMetadata get commitTs from dumpling's metadata file
 
 	metadata file format is as follows:
 
@@ -131,7 +133,7 @@ func getCommitTsFromMetadata(backupPath string) (string, error) {
 		}
 		lineStrSlice := strings.Split(lineStr, ":")
 		if len(lineStrSlice) != 2 {
-			return commitTs, fmt.Errorf("parse mydumper's metadata file %s failed, str: %s", metaFile, lineStr)
+			return commitTs, fmt.Errorf("parse dumpling's metadata file %s failed, str: %s", metaFile, lineStr)
 		}
 		commitTs = strings.TrimSpace(lineStrSlice[1])
 		break
