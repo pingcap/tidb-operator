@@ -81,7 +81,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 	pod, err := tsd.podLister.Pods(ns).Get(podName)
 	if err != nil {
-		return err
+		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
 	if controller.PodWebhookEnabled {
@@ -119,7 +119,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
 			pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
-				return err
+				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 			}
 			if pvc.Annotations == nil {
 				pvc.Annotations = map[string]string{}
@@ -150,7 +150,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
 		pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
-			return err
+			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
 		safeTimeDeadline := pod.CreationTimestamp.Add(5 * controller.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {

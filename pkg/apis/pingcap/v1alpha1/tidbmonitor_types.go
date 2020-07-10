@@ -153,7 +153,7 @@ type InitializerSpec struct {
 // +k8s:openapi-gen=true
 // MonitorContainer is the common attributes of the container of monitoring
 type MonitorContainer struct {
-	Resources corev1.ResourceRequirements `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
 
 	BaseImage string `json:"baseImage,omitempty"`
 	Version   string `json:"version,omitempty"`
