@@ -153,9 +153,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	klog.Infof("download cluster %s backup %s data success", rm, rm.BackupPath)
 
 	restoreDataDir := filepath.Dir(restoreDataPath)
-	defer os.RemoveAll(restoreDataPath)
 	unarchiveDataPath, err := unarchiveBackupData(restoreDataPath, restoreDataDir)
-	defer os.RemoveAll(unarchiveDataPath)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("unarchive cluster %s backup %s data failed, err: %s", rm, restoreDataPath, err)
@@ -169,6 +167,8 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
+	// unarchive succeed, origin archive can be deleted now
+	os.RemoveAll(restoreDataPath)
 
 	err = rm.loadTidbClusterData(unarchiveDataPath)
 	if err != nil {

@@ -236,9 +236,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 
 	backupFullPath, backupErr := bm.dumpTidbClusterData(backup)
-	if len(backupFullPath) > 0 {
-		defer os.RemoveAll(backupFullPath)
-	}
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
@@ -266,13 +263,14 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: backupErr.Error(),
 		})
 		errs = append(errs, uerr)
+		// just delete backupFullPath since it will never be used except for debug
+		os.RemoveAll(backupFullPath)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
 
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
 	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
-	defer os.RemoveAll(archiveBackupPath)
 	err = archiveBackupData(backupFullPath, archiveBackupPath)
 	if err != nil {
 		errs = append(errs, err)
@@ -287,6 +285,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("archive cluster %s backup data %s success", bm, archiveBackupPath)
+	// archive succeed, origin dir can be deleted safely
+	os.RemoveAll(backupFullPath)
 
 	opts := util.GetOptions(backup.Spec.StorageProvider)
 	size, err := getBackupSize(archiveBackupPath, opts)
@@ -335,6 +335,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
+	// backup to remote succeed, archive can be deleted now
+	os.RemoveAll(archiveBackupPath)
 
 	finish := time.Now()
 
