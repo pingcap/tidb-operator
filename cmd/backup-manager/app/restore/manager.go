@@ -264,7 +264,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	finish := time.Now()
 	restore.Status.TimeStarted = metav1.Time{Time: started}
 	restore.Status.TimeCompleted = metav1.Time{Time: finish}
-	restore.Status.CommitTs = commitTs
+	restore.Status.CommitTs = fmt.Sprintf("%d", commitTs)
 
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreComplete,
