@@ -11606,6 +11606,17 @@ spec:
               type: object
             cleanData:
               type: boolean
+            dumpling:
+              properties:
+                options:
+                  items:
+                    type: string
+                  type: array
+                tableFilter:
+                  items:
+                    type: string
+                  type: array
+              type: object
             from:
               properties:
                 host:
@@ -11654,15 +11665,6 @@ spec:
                     type: string
                 type: object
               type: array
-            mydumper:
-              properties:
-                options:
-                  items:
-                    type: string
-                  type: array
-                tableRegex:
-                  type: string
-              type: object
             resources:
               properties:
                 limits:
@@ -12501,6 +12503,17 @@ spec:
                   type: object
                 cleanData:
                   type: boolean
+                dumpling:
+                  properties:
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    tableFilter:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 from:
                   properties:
                     host:
@@ -12549,15 +12562,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                mydumper:
-                  properties:
-                    options:
-                      items:
-                        type: string
-                      type: array
-                    tableRegex:
-                      type: string
-                  type: object
                 resources:
                   properties:
                     limits:
