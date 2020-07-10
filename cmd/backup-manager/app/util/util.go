@@ -37,17 +37,13 @@ var (
 	// DefaultVersion is the default tikv and br version
 	DefaultVersion = "4.0"
 	defaultOptions = []string{
-		"--long-query-guard=3600",
-		"--tidb-force-priority=LOW_PRIORITY",
-		"--verbose=3",
-		"--compress-protocol",
+		// "--tidb-force-priority=LOW_PRIORITY",
 		"--threads=16",
 		"--rows=10000",
-		"--skip-tz-utc",
 	}
-	defaultTableRegexOptions = []string{
-		"--regex",
-		constants.DefaultTableRegex,
+	defaultTableFilterOptions = []string{
+		"--filter", "*.*",
+		"--filter", constants.DefaultTableFilter,
 	}
 )
 
@@ -179,13 +175,13 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 	return args, nil
 }
 
-// ConstructMydumperOptionsForBackup constructs mydumper options for backup
-func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
+// ConstructDumplingOptionsForBackup constructs dumpling options for backup
+func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
-	config := backup.Spec.Mydumper
+	config := backup.Spec.Dumpling
 	if config == nil {
 		args = append(args, defaultOptions...)
-		args = append(args, defaultTableRegexOptions...)
+		args = append(args, defaultTableFilterOptions...)
 		return args
 	}
 
@@ -195,10 +191,12 @@ func ConstructMydumperOptionsForBackup(backup *v1alpha1.Backup) []string {
 		args = append(args, defaultOptions...)
 	}
 
-	if config.TableRegex != nil {
-		args = append(args, "--regex", *config.TableRegex)
+	if len(config.TableFilter) > 0 {
+		for _, tableFilter := range config.TableFilter {
+			args = append(args, "--filter", tableFilter)
+		}
 	} else {
-		args = append(args, defaultTableRegexOptions...)
+		args = append(args, defaultTableFilterOptions...)
 	}
 	return args
 }
