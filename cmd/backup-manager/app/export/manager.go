@@ -263,8 +263,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 			Message: backupErr.Error(),
 		})
 		errs = append(errs, uerr)
-		// just delete backupFullPath since it will never be used except for debug
-		os.RemoveAll(backupFullPath)
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)

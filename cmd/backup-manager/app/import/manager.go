@@ -16,7 +16,6 @@ package _import
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -167,8 +166,6 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
-	// unarchive succeed, origin archive can be deleted now
-	os.RemoveAll(restoreDataPath)
 
 	err = rm.loadTidbClusterData(unarchiveDataPath)
 	if err != nil {
