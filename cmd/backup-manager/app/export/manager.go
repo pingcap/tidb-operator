@@ -15,6 +15,7 @@ package export
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 	"time"
 
@@ -235,6 +236,9 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 
 	backupFullPath, backupErr := bm.dumpTidbClusterData(backup)
+	if len(backupFullPath) > 0 {
+		defer os.RemoveAll(backupFullPath)
+	}
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = bm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
@@ -268,6 +272,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
 	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
+	defer os.RemoveAll(archiveBackupPath)
 	err = archiveBackupData(backupFullPath, archiveBackupPath)
 	if err != nil {
 		errs = append(errs, err)
