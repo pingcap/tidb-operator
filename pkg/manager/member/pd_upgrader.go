@@ -89,7 +89,7 @@ func (pu *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Sta
 		podName := PdPodName(tcName, i)
 		pod, err := pu.podLister.Pods(ns).Get(podName)
 		if err != nil {
-			return err
+			return fmt.Errorf("gracefulUpgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
 
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]

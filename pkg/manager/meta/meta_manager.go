@@ -15,6 +15,7 @@ package meta
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -65,7 +66,7 @@ func (pmm *metaManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 	pods, err := pmm.podLister.Pods(ns).List(l)
 	if err != nil {
-		return err
+		return fmt.Errorf("metaManager.Sync: failed to list pods for cluster %s/%s, selector: %s, error: %v", ns, instanceName, l, err)
 	}
 
 	for _, pod := range pods {
