@@ -167,7 +167,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, setName, ordinal)
 	pvc, err := psd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil {
-		return err
+		return fmt.Errorf("pdScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 	}
 
 	if pvc.Annotations == nil {
