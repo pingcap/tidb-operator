@@ -391,7 +391,7 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 	}
 
 	restorePVCName := restore.GetRestorePVCName()
-	_, err = rm.pvcLister.PersistentVolumeClaims(ns).Get(restorePVCName)
+	pvc, err := rm.pvcLister.PersistentVolumeClaims(ns).Get(restorePVCName)
 	if err != nil {
 		// get the object from the local cache, the error can only be IsNotFound,
 		// so we need to create PVC for restore job
@@ -417,6 +417,8 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 			errMsg := fmt.Errorf(" %s/%s create restore pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
 			return "CreatePVCFailed", errMsg
 		}
+	} else if pvcRs := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; pvcRs.Cmp(rs) == -1 {
+		return "PVCStorageSizeTooSmall", fmt.Errorf("%s/%s's restore pvc %s's storage size %s is less than expected storage size %s, please delete old pvc to continue", ns, name, pvc.GetName(), pvcRs.String(), rs.String())
 	}
 	return "", nil
 }
