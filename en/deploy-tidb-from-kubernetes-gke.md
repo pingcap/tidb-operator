@@ -98,25 +98,17 @@ If you see `Ready` for all nodes, congratulations! You've set up your first Kube
 TiDB Operator uses [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` CRD.
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml && \
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.2/manifests/crd.yaml && \
 kubectl get crd tidbclusters.pingcap.com
 ```
 
 After the `TidbCluster` CRD is created, install TiDB Operator in your Kubernetes cluster.
 
-1. Install TiDB Operator:
-
-    ```shell
-    kubectl create namespace tidb-admin
-    helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.0
-    kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
-    ```
-
-2. Create the `pd-ssd` StorageClass:
-
-    ``` shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/gke/persistent-disk.yaml
-    ```
+```shell
+kubectl create namespace tidb-admin
+helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.2
+kubectl get po -n tidb-admin -l app.kubernetes.io/name=tidb-operator
+```
 
 ## Deploy the TiDB cluster
 
@@ -201,15 +193,15 @@ kubectl -n demo edit tc basic
 
 ## Access the Grafana dashboard
 
-To access the Grafana dashboards, you can forward a port from the Cloud Shell to the Grafana service in Kubernetes. (Cloud Shell already uses port 3000 so we use port 3003 in this example instead.)
+To access the Grafana dashboards, you can forward a port from the Cloud Shell to the Grafana service in Kubernetes. (Cloud Shell already uses port 3000 so we use port 8080 in this example instead.)
 
 To do so, use the following command:
 
 ```shell
-kubectl -n demo port-forward svc/basic-grafana 3003:3000 &>/tmp/pf3003.log &
+kubectl -n demo port-forward svc/basic-grafana 8080:3000 &>/tmp/pf8080.log &
 ```
 
-Open this URL to view the Grafana dashboard: <https://ssh.cloud.google.com/devshell/proxy?port=3003> . (Alternatively, in Cloud Shell, click on the Web Preview button and enter 3003 for the port.  If not using Cloud Shell, point a browser to `localhost:3000`.
+Open this URL to view the Grafana dashboard: <https://ssh.cloud.google.com/devshell/proxy?port=8080> . (Alternatively, in Cloud Shell, click the Web Preview button on the upper right corner and change the port to 8080 if necessary.  If not using Cloud Shell, point a browser to `localhost:8080`.
 
 The default username and password are both "admin".
 
