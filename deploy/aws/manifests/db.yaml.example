@@ -4,7 +4,6 @@ metadata:
   name: CLUSTER_NAME
 spec:
   configUpdateStrategy: RollingUpdate
-  enableTLSCluster: false
   helper:
     image: busybox:1.31.1
   hostNetwork: false
@@ -78,6 +77,8 @@ spec:
       requests:
         cpu: 20m
         memory: 5Mi
+    tlsClient:
+      enabled: false
     tolerations:
     - effect: NoSchedule
       key: dedicated
@@ -106,5 +107,6 @@ spec:
       operator: Equal
       value: CLUSTER_NAME-tikv
   timezone: UTC
+  tlsCluster:
+    enabled: false
   version: v4.0.0
-
