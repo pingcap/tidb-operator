@@ -13493,16 +13493,25 @@ spec:
                 metrics:
                   items:
                     properties:
+                      availableStorage:
+                        type: string
+                      baselineAvailableStorage:
+                        type: string
+                      capacityStorage:
+                        type: string
                       currentValue:
                         type: string
                       name:
+                        type: string
+                      storagePressure:
+                        type: boolean
+                      storagePressureStartTime:
+                        format: date-time
                         type: string
                       thresholdValue:
                         type: string
                     required:
                     - name
-                    - currentValue
-                    - thresholdValue
                     type: object
                   type: array
                 recommendedReplicas:
@@ -13522,16 +13531,25 @@ spec:
                 metrics:
                   items:
                     properties:
+                      availableStorage:
+                        type: string
+                      baselineAvailableStorage:
+                        type: string
+                      capacityStorage:
+                        type: string
                       currentValue:
                         type: string
                       name:
+                        type: string
+                      storagePressure:
+                        type: boolean
+                      storagePressureStartTime:
+                        format: date-time
                         type: string
                       thresholdValue:
                         type: string
                     required:
                     - name
-                    - currentValue
-                    - thresholdValue
                     type: object
                   type: array
                 recommendedReplicas:

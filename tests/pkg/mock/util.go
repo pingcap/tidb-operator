@@ -27,10 +27,12 @@ import (
 
 type MonitorParams struct {
 	Name         string   `json:"name"`
-	MemberType   string   `json:"type"`
+	MemberType   string   `json:"memberType"`
 	Duration     string   `json:"duration"`
 	Value        string   `json:"value"`
 	InstancesPod []string `json:"instances"`
+	QueryType    string   `json:"queryType"`
+	StorageType  string   `json:"storageType"`
 }
 
 type MonitorTargets struct {
@@ -84,18 +86,39 @@ func SetPrometheusResponse(monitorName, monitorNamespace string, mp *MonitorPara
 	return nil
 }
 
-func buildPrometheusResponse(instances []string, value string) *calculate.Response {
+func buildPrometheusResponse(mp *MonitorParams) *calculate.Response {
 	resp := &calculate.Response{}
 	resp.Status = "success"
 	resp.Data = calculate.Data{}
-	if instances == nil {
-		return resp
-	}
-	for _, instance := range instances {
+	cluster := mp.Name
+	value := mp.Value
+	if mp.QueryType == "cpu" {
+		instances := mp.InstancesPod
+		if instances == nil {
+			return resp
+		}
+		for _, instance := range instances {
+			r := calculate.Result{
+				Metric: calculate.Metric{
+					Instance:            instance,
+					Cluster:             cluster,
+					Job:                 "foo",
+					KubernetesNamespace: "foo",
+					KubernetesNode:      "foo",
+					KubernetesPodIp:     "foo",
+				},
+				Value: []interface{}{
+					value,
+					value,
+				},
+			}
+			resp.Data.Result = append(resp.Data.Result, r)
+		}
+	} else if mp.QueryType == "storage" {
+		value := mp.Value
 		r := calculate.Result{
 			Metric: calculate.Metric{
-				Instance:            instance,
-				Cluster:             "foo",
+				Cluster:             cluster,
 				Job:                 "foo",
 				KubernetesNamespace: "foo",
 				KubernetesNode:      "foo",
@@ -106,6 +129,7 @@ func buildPrometheusResponse(instances []string, value string) *calculate.Respon
 				value,
 			},
 		}
+		resp.Data.Result = append(resp.Data.Result, r)
 		resp.Data.Result = append(resp.Data.Result, r)
 	}
 	resp.Data.ResultType = "foo"
