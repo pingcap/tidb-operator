@@ -20,12 +20,14 @@ import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/calculate"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
@@ -44,7 +46,7 @@ func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	instances := filterTiKVInstances(tc)
-	return calculateTiKVMetrics(tac, tc, sts, instances)
+	return calculateTiKVMetrics(tac, tc, sts, instances, am.kubecli)
 }
 
 //TODO: fetch tikv instances info from pdapi in future
@@ -58,7 +60,7 @@ func filterTiKVInstances(tc *v1alpha1.TidbCluster) []string {
 	return instances
 }
 
-func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet, instances []string) error {
+func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet, instances []string, kubecli kubernetes.Interface) error {
 	ep, err := genMetricsEndpoint(tac)
 	if err != nil {
 		return err
@@ -74,6 +76,20 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 	if len(tac.Spec.TiKV.Metrics) < 1 {
 		klog.V(4).Infof("tac[%s/%s] have no setting, skip auto-scaling", tac.Namespace, tac.Name)
 		return nil
+	}
+
+	//check externalEndpoint
+	if tac.Spec.TiKV.ExternalEndpoint != nil {
+		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.ExternalEndpoint, kubecli)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
+			return err
+		}
+		targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
+		if targetReplicas == tc.Spec.TiKV.Replicas {
+			return nil
+		}
+		return syncTiKVAfterQuery(tc, tac, tc.Spec.TiKV.Replicas, targetReplicas)
 	}
 
 	// check CPU
@@ -109,6 +125,21 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 
 	// none metrics selected, end auto-scaling
 	return nil
+}
+
+func syncTiKVAfterQuery(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
+	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
+	if recommendedReplicas > currentReplicas {
+		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
+	}
+	ableToScale, err := checkStsAutoScalingInterval(tac, *intervalSeconds, v1alpha1.TiKVMemberType)
+	if err != nil {
+		return err
+	}
+	if !ableToScale {
+		return nil
+	}
+	return updateTacIfTiKVScale(tc, tac, recommendedReplicas)
 }
 
 func calculateTiKVStorageMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster,
