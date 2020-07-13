@@ -1138,6 +1138,8 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// CleanData denotes whether to clean backup data before the object is deleted from the cluster
+	CleanData bool `json:"cleanData,omitempty"`
 }
 
 // +k8s:openapi-gen=true
