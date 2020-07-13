@@ -60,7 +60,7 @@ After the deployment is complete, see the following documents to use, operate, a
 When a problem occurs and the cluster needs diagnosis, you can:
 
 + See [TiDB FAQs in Kubernetes](faq.md) for any available solution;
-+ See [Troubleshoot TiDB in Kubernetes](troubleshoot.md) to shoot troubles.
++ See [Troubleshoot TiDB in Kubernetes](tips.md) to shoot troubles.
 
 TiDB in Kubernetes provides a dedicated command-line tool `tkctl` for cluster management and auxiliary diagnostics. Meanwhile, some of TiDB's tools are used differently in Kubernetes. You can:
 
