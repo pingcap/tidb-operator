@@ -127,7 +127,7 @@ func run() {
 	oa.CleanOperatorOrDie(ocfg)
 	oa.DeployOperatorOrDie(ocfg)
 
-	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, false)
+	crdUtil := tests.NewCrdTestUtil(cli, kubeCli, asCli, kubeCli.AppsV1())
 	klog.Infof(fmt.Sprintf("allclusters: %v", allClusters))
 	crdUtil.CleanResourcesOrDie("tc", "ns1")
 	crdUtil.CleanResourcesOrDie("tc", "ns2")
