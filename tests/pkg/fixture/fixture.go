@@ -437,6 +437,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 				ClusterNamespace: tc.GetNamespace(),
 				SendCredToTikv:   &sendCredToTikv,
 			},
+			CleanData: true,
 		},
 	}
 	if brType == DumperType {
