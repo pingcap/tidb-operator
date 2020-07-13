@@ -62,17 +62,19 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		return "", err
 	}
 	args := []string{
-		fmt.Sprintf("--outputdir=%s", bfPath),
+		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),
 		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
 	}
-	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
+	args = append(args, util.ConstructDumplingOptionsForBackup(backup)...)
 
-	output, err := exec.Command("/mydumper", args...).CombinedOutput()
+	klog.Infof("The dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
+
+	output, err := exec.Command("/dumpling", args...).CombinedOutput()
 	if err != nil {
-		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return bfPath, fmt.Errorf("cluster %s, execute dumpling command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}
 	return bfPath, nil
 }

@@ -96,7 +96,7 @@ func (bm *BackupManager) ProcessBackup() error {
 	reason, err := bm.setOptions(backup)
 	if err != nil {
 		errs = append(errs, err)
-		klog.Errorf("set mydumper backup %s option for cluster %s failed, err: %v", bm.ResourceName, bm, err)
+		klog.Errorf("set dumpling backup %s option for cluster %s failed, err: %v", bm.ResourceName, bm, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
