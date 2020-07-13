@@ -78,7 +78,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 		return nil
 	}
 
-	//check externalEndpoint
+	// check externalEndpoint
 	if tac.Spec.TiKV.ExternalEndpoint != nil {
 		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.ExternalEndpoint, kubecli)
 		if err != nil {
