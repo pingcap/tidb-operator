@@ -88,7 +88,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 		return calculateTiKVCPUMetrics(tac, tc, sts, sq, client, duration, metrics[0])
 	}
 
-	// check storage 
+	// check storage
 	metrics = calculate.FilterMetrics(tac.Spec.TiKV.Metrics, corev1.ResourceStorage)
 	if len(metrics) > 0 {
 		now := time.Now().Unix()
