@@ -76,7 +76,20 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 		return nil
 	}
 
-	metrics := calculate.FilterMetrics(tac.Spec.TiKV.Metrics, corev1.ResourceStorage)
+	// check CPU
+	metrics := calculate.FilterMetrics(tac.Spec.TiKV.Metrics, corev1.ResourceCPU)
+	if len(metrics) > 0 {
+		sq := &calculate.SingleQuery{
+			Endpoint:  ep,
+			Timestamp: time.Now().Unix(),
+			Instances: instances,
+			Quary:     fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiKV.MetricsTimeDuration),
+		}
+		return calculateTiKVCPUMetrics(tac, tc, sts, sq, client, duration, metrics[0])
+	}
+
+	// check storage 
+	metrics = calculate.FilterMetrics(tac.Spec.TiKV.Metrics, corev1.ResourceStorage)
 	if len(metrics) > 0 {
 		now := time.Now().Unix()
 		capacitySq := &calculate.SingleQuery{
@@ -92,18 +105,6 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 			Quary:     fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, tac.Spec.Cluster.Name, "available"),
 		}
 		return calculateTiKVStorageMetrics(tac, tc, capacitySq, availableSq, client, metrics[0])
-	}
-
-	// check CPU
-	metrics = calculate.FilterMetrics(tac.Spec.TiKV.Metrics, corev1.ResourceCPU)
-	if len(metrics) > 0 {
-		sq := &calculate.SingleQuery{
-			Endpoint:  ep,
-			Timestamp: time.Now().Unix(),
-			Instances: instances,
-			Quary:     fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiKV.MetricsTimeDuration),
-		}
-		return calculateTiKVCPUMetrics(tac, tc, sts, sq, client, duration, metrics[0])
 	}
 
 	// none metrics selected, end auto-scaling

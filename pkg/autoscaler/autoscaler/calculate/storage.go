@@ -18,11 +18,16 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+)
+
+const (
+	parseError = "tac[%s/%s] parse size failed,err:%v"
 )
 
 func CalculateWhetherStoragePressure(tac *v1alpha1.TidbClusterAutoScaler, capacitySq, availableSq *SingleQuery,
@@ -44,7 +49,7 @@ func CalculateWhetherStoragePressure(tac *v1alpha1.TidbClusterAutoScaler, capaci
 		if r.Metric.Cluster == tac.Spec.Cluster.Name {
 			availableSize, err = strconv.ParseUint(r.Value[1].(string), 10, 64)
 			if err != nil {
-				return false, err
+				return false, fmt.Errorf(parseError, tac.Namespace, tac.Name, err)
 			}
 		}
 	}
@@ -60,7 +65,7 @@ func CalculateWhetherStoragePressure(tac *v1alpha1.TidbClusterAutoScaler, capaci
 		if r.Metric.Cluster == tac.Spec.Cluster.Name {
 			capacitySize, err = strconv.ParseUint(r.Value[1].(string), 10, 64)
 			if err != nil {
-				return false, err
+				return false, fmt.Errorf(parseError, tac.Namespace, tac.Name, err)
 			}
 		}
 	}
@@ -80,9 +85,9 @@ func CalculateWhetherStoragePressure(tac *v1alpha1.TidbClusterAutoScaler, capaci
 	}
 	storageMetrics := v1alpha1.StorageMetricsStatus{
 		StoragePressure:          pointer.BoolPtr(storagePressure),
-		AvailableStorage:         pointer.StringPtr(byteCountDecimal(availableSize)),
-		CapacityStorage:          pointer.StringPtr(byteCountDecimal(capacitySize)),
-		BaselineAvailableStorage: pointer.StringPtr(byteCountDecimal(baselineAvailableSize)),
+		AvailableStorage:         pointer.StringPtr(humanize.Bytes(availableSize)),
+		CapacityStorage:          pointer.StringPtr(humanize.Bytes(capacitySize)),
+		BaselineAvailableStorage: pointer.StringPtr(humanize.Bytes(baselineAvailableSize)),
 	}
 	if oldStatus != nil {
 		oldStatus.StoragePressure = storageMetrics.StoragePressure
@@ -124,17 +129,4 @@ func isStoragePressureStartTimeRecordAlready(tacStatus v1alpha1.TidbClusterAutoS
 		}
 	}
 	return false
-}
-
-func byteCountDecimal(b uint64) string {
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

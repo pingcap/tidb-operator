@@ -118,7 +118,7 @@ type BasicAutoScalerSpec struct {
 	// +optional
 	Metrics []CustomMetric `json:"metrics,omitempty"`
 
-	// MetricsTimeDuration describe the Time duration to be queried in the Prometheus
+	// MetricsTimeDuration describes the Time duration to be queried in the Prometheus
 	// +optional
 	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
 	// ExternalEndpoint makes the auto-scaler controller able to query the external service
@@ -147,7 +147,7 @@ type CustomMetric struct {
 	// LeastRemainAvailableStoragePercent indicates the least remaining available storage percent compare to
 	// the capacity storage. If the available storage is lower than the capacity storage * LeastRemainAvailableStoragePercent,
 	// the storage status will become storage pressure and ready to be scaled out.
-	// LeastRemainAvailableStoragePercent should between 5 and 90. If note set, the default value would be 10
+	// LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the default value would be 10
 	// +optional
 	LeastRemainAvailableStoragePercent *int64 `json:"leastRemainAvailableStoragePercent,omitempty"`
 }
