@@ -288,6 +288,7 @@ func newBackup() *v1alpha1.Backup {
 			},
 			StorageClassName: pointer.StringPtr("local-storage"),
 			StorageSize:      "1Gi",
+			CleanData:        true,
 		},
 	}
 }
