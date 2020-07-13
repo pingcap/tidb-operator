@@ -261,6 +261,17 @@ string
 <p>Specify service account of backup</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>cleanData</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -2359,6 +2370,17 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanData</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
 </td>
 </tr>
 </tbody>
