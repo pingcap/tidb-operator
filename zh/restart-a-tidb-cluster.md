@@ -1,7 +1,6 @@
 ---
 title: 重启 Kubernetes 上的 TiDB 集群
 summary: 了解如何重启 Kubernetes 集群上的 TiDB 集群。
-category: how-to
 ---
 
 # 重启 Kubernetes 上的 TiDB 集群

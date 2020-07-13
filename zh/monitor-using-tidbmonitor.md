@@ -1,6 +1,5 @@
 ---
 title: 通过 TidbMonitor 监控 TiDB 集群
-category: how-to
 ---
 
 # 通过 TidbMonitor 监控 TiDB 集群

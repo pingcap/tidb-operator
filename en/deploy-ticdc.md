@@ -1,7 +1,6 @@
 ---
 title: Deploy TiCDC in Kubernetes
 summary: Learn how to deploy TiCDC in Kubernetes.
-category: how-to
 draft: false
 aliases: ['/docs/tidb-in-kubernetes/dev/deploy-ticdc/']
 ---

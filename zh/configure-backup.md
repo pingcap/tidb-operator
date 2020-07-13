@@ -1,7 +1,6 @@
 ---
 title: tidb-backup chart 配置
 summary: 介绍 tidb-backup chart 配置。
-category: reference
 ---
 
 # tidb-backup chart 配置

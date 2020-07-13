@@ -1,7 +1,6 @@
 ---
 title: Monitor a TiDB Cluster Using TidbMonitor
 summary: This document introduces how to monitor a TiDB cluster using TidbMonitor.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/monitor-using-tidbmonitor/']
 ---
 

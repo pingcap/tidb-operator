@@ -1,7 +1,6 @@
 ---
 title: Deploy TiDB Binlog
 summary: Learn how to deploy TiDB Binlog for a TiDB cluster in Kubernetes.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/deploy-tidb-binlog/']
 ---
 

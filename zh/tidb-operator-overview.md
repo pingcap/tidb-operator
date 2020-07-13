@@ -1,7 +1,6 @@
 ---
 title: TiDB Operator 简介
 summary: 介绍 TiDB Operator 的整体架构及使用方式。
-category: reference
 ---
 
 # TiDB Operator 简介

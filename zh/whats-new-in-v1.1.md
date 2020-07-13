@@ -1,6 +1,5 @@
 ---
 title: What's New in v1.1
-category: how-to
 ---
 
 # What's New in v1.1

@@ -1,6 +1,5 @@
 ---
 title: TiDB in Kubernetes Sysbench 性能测试
-category: benchmark
 ---
 
 # TiDB in Kubernetes Sysbench 性能测试

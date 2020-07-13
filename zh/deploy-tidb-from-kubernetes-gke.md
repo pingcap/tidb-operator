@@ -1,7 +1,6 @@
 ---
 title: 在 GCP 上通过 Kubernetes 部署 TiDB 集群
 summary: 在 GCP 上通过 Kubernetes 部署 TiDB 集群教程。
-category: how-to
 ---
 
 # 在 GCP 上通过 Kubernetes 部署 TiDB 集群

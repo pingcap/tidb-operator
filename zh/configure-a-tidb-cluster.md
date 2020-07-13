@@ -1,7 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB 集群的资源配置以及容灾配置
 summary: 介绍 Kubernetes 上 TiDB 集群的的资源配置以及容灾配置。
-category: reference
 ---
 
 <!-- markdownlint-disable MD007 -->

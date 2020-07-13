@@ -1,7 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB 集群环境需求
 summary: 介绍在 Kubernetes 上部署 TiDB 集群的软硬件环境需求。
-category: how-to
 ---
 
 # Kubernetes 上的 TiDB 集群环境需求

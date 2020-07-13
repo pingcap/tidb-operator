@@ -1,7 +1,6 @@
 ---
 title: 管理 TiDB 集群的 Command Cheat Sheet
 summary: 介绍管理 TiDB 集群的 Command Cheat Sheet。
-category: how-to
 ---
 
 # 管理 TiDB 集群的 Command Cheat Sheet

@@ -1,7 +1,6 @@
 ---
 title: Common Cluster Exceptions of TiDB in Kubernetes
 summary: Learn the common exceptions during the operation of TiDB clusters in Kubernetes and their solutions.
-category: troubleshoot
 ---
 
 # Common Cluster Exceptions of TiDB in Kubernetes

@@ -1,7 +1,6 @@
 ---
 title: Maintain Kubernetes Nodes that Hold the TiDB Cluster
 summary: Learn how to maintain Kubernetes nodes that hold the TiDB cluster.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/maintain-a-kubernetes-node/']
 ---
 

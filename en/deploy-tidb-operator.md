@@ -1,7 +1,6 @@
 ---
 title: Deploy TiDB Operator in Kubernetes
 summary: Learn how to deploy TiDB Operator in Kubernetes.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/deploy-tidb-operator/']
 ---
 

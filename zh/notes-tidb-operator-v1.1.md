@@ -1,6 +1,5 @@
 ---
 title: TiDB Operator v1.1 重要注意事项
-category: how-to
 ---
 
 # TiDB Operator v1.1 重要注意事项

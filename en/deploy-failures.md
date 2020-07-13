@@ -1,7 +1,6 @@
 ---
 title: Common Deployment Failures of TiDB in Kubernetes
 summary: Learn the common deployment failures of TiDB in Kubernetes and their solutions.
-category: troubleshoot
 ---
 
 # Common Deployment Failures of TiDB in Kubernetes

@@ -1,7 +1,6 @@
 ---
 title: tidb-cluster chart 配置
 summary: 介绍 tidb-cluster chart 配置。
-category: reference
 ---
 
 # tidb-cluster chart 配置

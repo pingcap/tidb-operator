@@ -1,7 +1,6 @@
 ---
 title: 在阿里云上部署 TiDB 集群
 summary: 介绍如何在阿里云上部署 TiDB 集群。
-category: how-to
 ---
 
 # 在阿里云上部署 TiDB 集群

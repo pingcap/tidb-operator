@@ -1,7 +1,6 @@
 ---
 title: 增强型 StatefulSet 控制器
 summary: 介绍如何开启、使用增强型 StatefulSet 控制器
-category: reference
 ---
 
 # 增强型 StatefulSet 控制器

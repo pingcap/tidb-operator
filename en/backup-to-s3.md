@@ -1,7 +1,6 @@
 ---
 title: Back up Data to S3-Compatible Storage Using Mydumper
 summary: Learn how to back up the TiDB cluster to the S3-compatible storage.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/backup-to-s3/']
 ---
 

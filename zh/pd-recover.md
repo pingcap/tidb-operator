@@ -1,7 +1,6 @@
 ---
 title: 使用 PD Recover 恢复 PD 集群
 summary: 了解如何使用 PD Recover 恢复 PD 集群。
-category: reference
 ---
 
 # 使用 PD Recover 恢复 PD 集群

@@ -1,7 +1,6 @@
 ---
 title: Enable TLS for the MySQL Client
 summary: Learn how to enable TLS for MySQL client of the TiDB cluster on Kubernetes.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/enable-tls-for-mysql-client/']
 ---
 

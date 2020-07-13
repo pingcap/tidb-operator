@@ -1,7 +1,6 @@
 ---
 title: 使用 Mydumper 备份 TiDB 集群数据到 GCS
 summary: 介绍如何使用 Mydumper 将 TiDB 集群数据备份到 Google Cloud Storage (GCS)。
-category: how-to
 ---
 
 # 使用 Mydumper 备份 TiDB 集群数据到 GCS

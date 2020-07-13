@@ -1,7 +1,6 @@
 ---
 title: 开启 TiDB Operator 准入控制器
 summary: 介绍如何开启 TiDB Operator 准入控制器以及它的作用。
-category: how-to
 ---
 
 # TiDB Operator 准入控制器

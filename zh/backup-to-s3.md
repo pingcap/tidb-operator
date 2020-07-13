@@ -1,7 +1,6 @@
 ---
 title: 使用 Mydumper 备份 TiDB 集群数据到兼容 S3 的存储
 summary: 介绍如何使用 Mydumper 备份 TiDB 集群数据到兼容 S3 的存储。
-category: how-to
 ---
 
 # 使用 Mydumper 备份 TiDB 集群数据到兼容 S3 的存储

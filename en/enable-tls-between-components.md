@@ -1,7 +1,6 @@
 ---
 title: Enable TLS between TiDB Components
 summary: Learn how to enable TLS between TiDB components on Kubernetes.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/enable-tls-between-components/']
 ---
 

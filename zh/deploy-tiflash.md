@@ -1,7 +1,6 @@
 ---
 title: 在 Kubernetes 上部署 TiFlash
 summary: 了解如何在 Kubernetes 上部署 TiFlash。
-category: how-to
 ---
 
 # 在 Kubernetes 上部署 TiFlash

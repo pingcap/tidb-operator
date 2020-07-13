@@ -1,7 +1,6 @@
 ---
 title: TiDB Scheduler 扩展调度器
 summary: 了解 TiDB Scheduler 扩展调度器及其工作原理。
-category: reference
 ---
 
 # TiDB Scheduler 扩展调度器

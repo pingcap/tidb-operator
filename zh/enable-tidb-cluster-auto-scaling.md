@@ -1,7 +1,6 @@
 ---
 title: 启用 TidbCluster 弹性伸缩
 summary: 介绍如何使用 TidbCluster 的弹性伸缩能力。
-category: how-to
 ---
 
 # 启用 TidbCluster 弹性伸缩

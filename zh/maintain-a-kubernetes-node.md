@@ -1,7 +1,6 @@
 ---
 title: 维护 TiDB 集群所在的 Kubernetes 节点
 summary: 介绍如何维护 TiDB 集群所在的 Kubernetes 节点。
-category: how-to
 ---
 
 # 维护 TiDB 集群所在的 Kubernetes 节点

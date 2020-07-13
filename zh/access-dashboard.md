@@ -1,7 +1,6 @@
 ---
 title: 访问 TiDB Dashboard
 summary: 介绍如何在 Kubernetes 环境下访问 TiDB Dashboard
-category: how-to
 ---
 
 # TiDB Dashboard 指南

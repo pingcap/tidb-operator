@@ -1,7 +1,6 @@
 ---
 title: 在 Kubernetes 上部署 TiCDC
 summary: 了解如何在 Kubernetes 上部署 TiCDC。
-category: how-to
 ---
 
 # 在 Kubernetes 上部署 TiCDC

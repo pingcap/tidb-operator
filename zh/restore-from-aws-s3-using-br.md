@@ -1,7 +1,6 @@
 ---
 title: 使用 BR 工具恢复 S3 兼容存储上的备份数据
 summary: 介绍如何使用 BR 工具恢复 Amazon S3 兼容存储上的备份数据。
-category: how-to
 ---
 
 # 使用 BR 工具恢复 S3 兼容存储上的备份数据

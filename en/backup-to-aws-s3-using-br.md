@@ -1,7 +1,6 @@
 ---
 title: Back up Data to S3-Compatible Storage Using BR
 summary: Learn how to back up data to Amazon S3 using BR.
-category: how-to
 aliases: ['/docs/tidb-in-kubernetes/dev/backup-to-aws-s3-using-br/']
 ---
 

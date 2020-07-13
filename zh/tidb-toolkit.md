@@ -1,7 +1,6 @@
 ---
 title: Kubernetes 上的 TiDB 工具指南
 summary: 详细介绍 Kubernetes 上的 TiDB 相关的工具及其使用方法。
-category: reference
 ---
 
 # Kubernetes 上的 TiDB 工具指南
