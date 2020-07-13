@@ -39,7 +39,8 @@ func NewMockPrometheus() MonitorInterface {
 	mp := &mockPrometheus{
 		responses: map[string]string{},
 	}
-	upResp := buildPrometheusResponse(nil, "")
+	params := &MonitorParams{}
+	upResp := buildPrometheusResponse(params)
 	b, err := json.Marshal(upResp)
 	if err != nil {
 		klog.Fatal(err.Error())
@@ -83,13 +84,13 @@ func (m *mockPrometheus) SetResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := json.Marshal(buildPrometheusResponse(mp.InstancesPod, mp.Value))
+	b, err := json.Marshal(buildPrometheusResponse(mp))
 	if err != nil {
 		writeResponse(w, err.Error())
 		return
 	}
 
-	m.addIntoMaps(mp.Name, mp.MemberType, mp.Duration, string(b))
+	m.addIntoMaps(mp, string(b))
 	writeResponse(w, "ok")
 	return
 }
@@ -117,16 +118,30 @@ func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
 	writeResponse(w, string(b))
 }
 
-func (m *mockPrometheus) addIntoMaps(name, memberType, duration, value string) {
-	key := ""
-	klog.Infof("name= %s , memberType = %s , duration = %s , value = %s", name, memberType, duration, value)
-	if memberType == "tidb" {
-		key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
-	} else if memberType == "tikv" {
-		key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
+func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
+	currentType := mp.QueryType
+	if currentType == "cpu" {
+		key := ""
+		name := mp.Name
+		memberType := mp.MemberType
+		duration := mp.Duration
+		klog.Infof("name=%s, memberType =%s, duration =%s, response =%s", name, memberType, duration, response)
+		if memberType == "tidb" {
+			key = fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, name, duration)
+		} else if memberType == "tikv" {
+			key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
+		}
+		m.responses[fmt.Sprintf("%s", key)] = response
+		klog.Infof("add key: %s with value: %s", key, response)
+	} else if currentType == "storage" {
+		key := ""
+		cluster := mp.Name
+		stype := mp.StorageType
+		klog.Infof("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
+		key = fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, cluster, stype)
+		m.responses[fmt.Sprintf("%s", key)] = response
+		klog.Infof("add key: %s with value: %s", key, response)
 	}
-	m.responses[fmt.Sprintf("%s", key)] = value
-	klog.Infof("add key: %s with value: %s", key, value)
 }
 
 func writeResponse(w http.ResponseWriter, msg string) {
