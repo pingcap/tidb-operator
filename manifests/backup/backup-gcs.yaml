@@ -5,6 +5,7 @@ metadata:
   name: demo1-backup-gcs
   namespace: test1
 spec:
+  # cleanData: true
   # resources:
   #   limits:
   #     cpu: 300m
