@@ -22,18 +22,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// MetricType describe the current Supported Metric Type to calculate the recommended Replicas
-type MetricType string
-
-const (
-	MetricTypeCPU MetricType = "cpu"
-	//metricTypeQPS MetricType = "qps"
-)
-
 // currently, we only choose one metrics to be computed.
 // If there exists several metrics, we tend to choose ResourceMetricSourceType metric
-func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec, name corev1.ResourceName) []autoscalingv2beta2.MetricSpec {
-	var list []autoscalingv2beta2.MetricSpec
+func FilterMetrics(metrics []v1alpha1.CustomMetric, name corev1.ResourceName) []v1alpha1.CustomMetric {
+	var list []v1alpha1.CustomMetric
 	for _, m := range metrics {
 		if m.Type == autoscalingv2beta2.ResourceMetricSourceType && m.Resource != nil && m.Resource.Name == name {
 			list = append(list, m)
@@ -41,14 +33,6 @@ func FilterMetrics(metrics []autoscalingv2beta2.MetricSpec, name corev1.Resource
 		}
 	}
 	return list
-}
-
-// genMetricType return the supported MetricType in Operator by kubernetes auto-scaling MetricType
-func GenMetricType(tac *v1alpha1.TidbClusterAutoScaler, metric autoscalingv2beta2.MetricSpec) (MetricType, error) {
-	if metric.Type == autoscalingv2beta2.ResourceMetricSourceType && metric.Resource != nil && metric.Resource.Name == corev1.ResourceCPU {
-		return MetricTypeCPU, nil
-	}
-	return "", fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 }
 
 // filterContainer is to filter the specific container from the given statefulset(tidb/tikv)

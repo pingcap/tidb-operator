@@ -24,12 +24,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 )
 
 const (
+	TikvSumStorageMetricsPattern = `sum(tikv_store_size_bytes{cluster="%s", type="%s"}) by (cluster)`
 	TikvSumCpuMetricsPattern     = `sum(increase(tikv_thread_cpu_seconds_total{cluster="%s"}[%s])) by (instance)`
 	TidbSumCpuMetricsPattern     = `sum(increase(process_cpu_seconds_total{cluster="%s",job="tidb"}[%s])) by (instance)`
 	InvalidTacMetricConfigureMsg = "tac[%s/%s] metric configuration invalid"
@@ -44,7 +44,6 @@ type SingleQuery struct {
 	Timestamp int64
 	Quary     string
 	Instances []string
-	Metric    autoscalingv2beta2.MetricSpec
 }
 
 func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, sq *SingleQuery, resp *Response) error {
@@ -92,6 +91,7 @@ func sumForEachInstance(instances []string, resp *Response) (float64, error) {
 	if len(resp.Data.Result) < 1 {
 		return 0, fmt.Errorf("metrics Response return zero info")
 	}
+
 	for _, r := range resp.Data.Result {
 		if s.Has(r.Metric.Instance) {
 			v, err := strconv.ParseFloat(r.Value[1].(string), 64)
