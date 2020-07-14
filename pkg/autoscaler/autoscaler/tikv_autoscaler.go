@@ -89,7 +89,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 		if targetReplicas == tc.Spec.TiKV.Replicas {
 			return nil
 		}
-		return syncTiKVAfterQuery(tc, tac, tc.Spec.TiKV.Replicas, targetReplicas)
+		return syncTiKVAfterCalculated(tc, tac, tc.Spec.TiKV.Replicas, targetReplicas)
 	}
 
 	// check CPU
@@ -127,7 +127,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 	return nil
 }
 
-func syncTiKVAfterQuery(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
+func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
 	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
 	if recommendedReplicas > currentReplicas {
 		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
