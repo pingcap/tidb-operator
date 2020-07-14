@@ -236,13 +236,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				ReleaseName:       "operator",
 				Image:             cfg.OperatorImage,
 				Tag:               cfg.OperatorTag,
-				SchedulerImage:    "k8s.gcr.io/kube-scheduler",
 				LogLevel:          "4",
-				ImagePullPolicy:   v1.PullIfNotPresent,
 				TestMode:          true,
 				WebhookEnabled:    true,
 				PodWebhookEnabled: true,
-				StsWebhookEnabled: true,
+				StsWebhookEnabled: false,
 			}
 			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 			ginkgo.By("Installing CRDs")

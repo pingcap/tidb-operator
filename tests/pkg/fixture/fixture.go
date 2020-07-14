@@ -30,6 +30,18 @@ import (
 )
 
 var (
+	tikvConfig = &v1alpha1.TiKVConfig{
+		LogLevel: pointer.StringPtr("info"),
+		Server:   &v1alpha1.TiKVServerConfig{},
+		Storage: &v1alpha1.TiKVStorageConfig{
+			// Don't reserve space in e2e tests, see
+			// https://github.com/pingcap/tidb-operator/issues/2509.
+			ReserveSpace: pointer.StringPtr("0MB"),
+		},
+	}
+)
+
+var (
 	BestEffort    = corev1.ResourceRequirements{}
 	BurstbleSmall = corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
@@ -74,15 +86,10 @@ var (
 
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
-	tikvStorageConfig := &v1alpha1.TiKVStorageConfig{
-		// Don't reserve space in e2e tests, see
-		// https://github.com/pingcap/tidb-operator/issues/2509.
-		ReserveSpace: pointer.StringPtr("0MB"),
-	}
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvStorageConfig = nil
+		tikvConfig.Storage = nil
 	}
 	deletePVP := corev1.PersistentVolumeReclaimDelete
 	return &v1alpha1.TidbCluster{
@@ -120,11 +127,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				BaseImage:            "pingcap/tikv",
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config: &v1alpha1.TiKVConfig{
-					LogLevel: pointer.StringPtr("info"),
-					Server:   &v1alpha1.TiKVServerConfig{},
-					Storage:  tikvStorageConfig,
-				},
+				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
@@ -156,15 +159,10 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 }
 
 func GetTiKVGroup(ns, name, clusterName, version string) *v1alpha1.TiKVGroup {
-	tikvStorageConfig := &v1alpha1.TiKVStorageConfig{
-		// Don't reserve space in e2e tests, see
-		// https://github.com/pingcap/tidb-operator/issues/2509.
-		ReserveSpace: pointer.StringPtr("0MB"),
-	}
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
 	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvStorageConfig = nil
+		tikvConfig.Storage = nil
 	}
 	tg := &v1alpha1.TiKVGroup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -176,11 +174,7 @@ func GetTiKVGroup(ns, name, clusterName, version string) *v1alpha1.TiKVGroup {
 				Replicas:             3,
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config: &v1alpha1.TiKVConfig{
-					LogLevel: pointer.StringPtr("info"),
-					Server:   &v1alpha1.TiKVServerConfig{},
-					Storage:  tikvStorageConfig,
-				},
+				Config:               tikvConfig,
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 					Image:    fmt.Sprintf("pingcap/tikv:%s", version),
