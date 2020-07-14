@@ -90,7 +90,6 @@ func (tc *TidbCluster) TiKVVersion() string {
 	return "latest"
 }
 
-
 func (tc *TidbCluster) TiKVContainerPrivilege() *bool {
 	if tc.Spec.TiKV.Privileged == nil {
 		pri := false
