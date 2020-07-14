@@ -64,8 +64,8 @@ type tikvGroupMemberManager struct {
 	svcControl        controller.ServiceControlInterface
 	setControl        controller.StatefulSetControlInterface
 	typedControl      controller.TypedControlInterface
-	tikvGroupScaler   TiKVGroupScaler
-	tikvGroupUpgrader TiKVGroupUpgrader
+	tikvGroupScaler   TiKVScaler
+	tikvGroupUpgrader *TikvGroupUpgrader
 	pdControl         pdapi.PDControlInterface
 }
 
@@ -77,8 +77,8 @@ func NewTiKVGroupMemberManager(
 	svcControl controller.ServiceControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	typedControl controller.TypedControlInterface,
-	tikvGroupScaler TiKVGroupScaler,
-	tikvUpgrader TiKVGroupUpgrader,
+	tikvGroupScaler TiKVScaler,
+	tikvUpgrader *TikvGroupUpgrader,
 	pdControl pdapi.PDControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
 		genericCli:        genericCli,

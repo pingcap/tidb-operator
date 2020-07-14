@@ -73,6 +73,7 @@ func NewController(
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
+	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 
 	tikvManager := member.NewTiKVGroupMemberManager(genericCli,
 		svcInformer.Lister(),
@@ -81,8 +82,8 @@ func NewController(
 		svcControl,
 		setControl,
 		typedControl,
-		member.NewTiKVGroupScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister()),
-		member.NewTiKVGroupUpgrader(),
+		member.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister()),
+		member.NewTiKVGroupUpgrader(member.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())),
 		pdControl)
 	reclaimPolicyManager := meta.NewReclaimPolicyTiKVGroupManager(
 		pvcInformer.Lister(),

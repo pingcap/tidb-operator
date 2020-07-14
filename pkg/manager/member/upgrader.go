@@ -23,8 +23,3 @@ type Upgrader interface {
 	// Upgrade upgrade the cluster
 	Upgrade(*v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }
-
-type TiKVGroupUpgrader interface {
-	// Upgrade upgrade the tikvgroup
-	Upgrade(*v1alpha1.TiKVGroup, *v1alpha1.TidbCluster, *apps.StatefulSet, *apps.StatefulSet) error
-}

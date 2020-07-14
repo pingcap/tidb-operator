@@ -63,23 +63,20 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 	skipReason := map[string]string{}
 	var podName, kind string
 	var l label.Label
-	_, ok := controller.(*v1alpha1.TidbCluster)
-	if ok {
+	switch controller.(type) {
+	case *v1alpha1.TidbCluster:
 		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
 		l = label.New().Instance(meta.GetName())
 		l[label.AnnPodNameKey] = podName
 		kind = v1alpha1.TiDBClusterKind
-	} else {
-		_, ok := controller.(*v1alpha1.TiKVGroup)
-		if ok {
-			podName = fmt.Sprintf("%s-%s-group-%d", meta.GetName(), memberType, ordinal)
-			l = label.NewGroup().Instance(meta.GetName())
-			// TODO: support sync meta info into TiKVGroup resources (pod/pvc)
-			kind = v1alpha1.TiKVGroupKind
-		} else {
-			kind = controller.GetObjectKind().GroupVersionKind().Kind
-			return nil, fmt.Errorf("%s[%s/%s] has unknown controller", kind, ns, meta.GetName())
-		}
+	case *v1alpha1.TiKVGroup:
+		podName = fmt.Sprintf("%s-%s-group-%d", meta.GetName(), memberType, ordinal)
+		l = label.NewGroup().Instance(meta.GetName())
+		// TODO: support sync meta info into TiKVGroup resources (pod/pvc)
+		kind = v1alpha1.TiKVGroupKind
+	default:
+		kind = controller.GetObjectKind().GroupVersionKind().Kind
+		return nil, fmt.Errorf("%s[%s/%s] has unknown controller", kind, ns, meta.GetName())
 	}
 	selector, err := l.Selector()
 	if err != nil {
