@@ -191,7 +191,7 @@ region = us-west-21
     cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
     ```
 
-    参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)和[集群配置文档](configure-cluster-using-tidbcluster.md)完成 CR 文件配置。
+    参考 [API 文档](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md)和[集群配置文档](configure-a-tidb-cluster.md)完成 CR 文件配置。
 
     如果要部署 TiFlash，可以在 db.yaml 中配置 `spec.tiflash`，例如：
 

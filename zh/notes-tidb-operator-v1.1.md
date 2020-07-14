@@ -35,7 +35,7 @@ Discovery 服务直接由 TiDB Operator 内部生成，不再需要用户做任�
 
 ### PD、TiDB、TiKV
 
-在 tidb-cluster chart 中，PD、TiDB、TiKV 配置由 Helm 渲染成 ConfigMap，从 TiDB Operator v1.1 开始，PD、TiDB、TiKV 配置也可以直接在 TiDBCluster CR 中配置，具体配置方法可以参考 [通过 TidbCluster 配置 TiDB 集群](configure-cluster-using-tidbcluster.md)。
+在 tidb-cluster chart 中，PD、TiDB、TiKV 配置由 Helm 渲染成 ConfigMap，从 TiDB Operator v1.1 开始，PD、TiDB、TiKV 配置也可以直接在 TiDBCluster CR 中配置，具体配置方法可以参考 [通过 TidbCluster 配置 TiDB 集群](configure-a-tidb-cluster.md)。
 
 > **注意：**
 >
