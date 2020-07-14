@@ -47,18 +47,11 @@ type CrdTestUtil struct {
 	asCli       asclientset.Interface
 }
 
-func NewCrdTestUtil(cli versioned.Interface, kubeCli kubernetes.Interface, asCli asclientset.Interface, astsEnabled bool) *CrdTestUtil {
-	var tcStsGetter typedappsv1.StatefulSetsGetter
-	if astsEnabled {
-		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
-	} else {
-		tcStsGetter = kubeCli.AppsV1()
-	}
-
+func NewCrdTestUtil(cli versioned.Interface, kubeCli kubernetes.Interface, asCli asclientset.Interface, stsGetter typedappsv1.StatefulSetsGetter) *CrdTestUtil {
 	return &CrdTestUtil{
 		cli:         cli,
 		kubeCli:     kubeCli,
-		tcStsGetter: tcStsGetter,
+		tcStsGetter: stsGetter,
 		asCli:       asCli,
 	}
 }

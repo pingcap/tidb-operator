@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/utils/pointer"
 )
 
@@ -259,13 +258,12 @@ func TestDefaultTac(t *testing.T) {
 	tac := newTidbClusterAutoScaler()
 	tac.Spec.TiDB = nil
 	tac.Spec.TiKV.MinReplicas = nil
-	tac.Spec.TiKV.Metrics = []autoscalingv2beta2.MetricSpec{}
+	tac.Spec.TiKV.Metrics = []v1alpha1.CustomMetric{}
 	tac.Spec.TiKV.MetricsTimeDuration = nil
 	tac.Spec.TiKV.ScaleOutIntervalSeconds = nil
 	tac.Spec.TiKV.ScaleInIntervalSeconds = nil
 	defaultTAC(tac)
 	g.Expect(*tac.Spec.TiKV.MinReplicas).Should(Equal(int32(1)))
-	g.Expect(len(tac.Spec.TiKV.Metrics)).Should(Equal(1))
 	g.Expect(*tac.Spec.TiKV.MetricsTimeDuration).Should(Equal("3m"))
 	g.Expect(*tac.Spec.TiKV.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
 	g.Expect(*tac.Spec.TiKV.ScaleInIntervalSeconds).Should(Equal(int32(500)))
@@ -273,13 +271,12 @@ func TestDefaultTac(t *testing.T) {
 	tac = newTidbClusterAutoScaler()
 	tac.Spec.TiKV = nil
 	tac.Spec.TiDB.MinReplicas = nil
-	tac.Spec.TiDB.Metrics = []autoscalingv2beta2.MetricSpec{}
+	tac.Spec.TiDB.Metrics = []v1alpha1.CustomMetric{}
 	tac.Spec.TiDB.MetricsTimeDuration = nil
 	tac.Spec.TiDB.ScaleOutIntervalSeconds = nil
 	tac.Spec.TiDB.ScaleInIntervalSeconds = nil
 	defaultTAC(tac)
 	g.Expect(*tac.Spec.TiDB.MinReplicas).Should(Equal(int32(1)))
-	g.Expect(len(tac.Spec.TiDB.Metrics)).Should(Equal(1))
 	g.Expect(*tac.Spec.TiDB.MetricsTimeDuration).Should(Equal("3m"))
 	g.Expect(*tac.Spec.TiDB.ScaleOutIntervalSeconds).Should(Equal(int32(300)))
 	g.Expect(*tac.Spec.TiDB.ScaleInIntervalSeconds).Should(Equal(int32(500)))

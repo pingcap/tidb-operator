@@ -42,6 +42,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef":                  schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DashboardConfig":               schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec":                 schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig":                schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint":              schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
@@ -58,7 +59,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterKeyKMSConfig":            schema_pkg_apis_pingcap_v1alpha1_MasterKeyKMSConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MetricsStatus":                 schema_pkg_apis_pingcap_v1alpha1_MetricsStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MonitorContainer":              schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MydumperConfig":                schema_pkg_apis_pingcap_v1alpha1_MydumperConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracing":                   schema_pkg_apis_pingcap_v1alpha1_OpenTracing(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracingReporter":           schema_pkg_apis_pingcap_v1alpha1_OpenTracingReporter(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.OpenTracingSampler":            schema_pkg_apis_pingcap_v1alpha1_OpenTracingSampler(ref),
@@ -91,6 +91,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Status":                        schema_pkg_apis_pingcap_v1alpha1_Status(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StmtSummary":                   schema_pkg_apis_pingcap_v1alpha1_StmtSummary(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageClaim":                  schema_pkg_apis_pingcap_v1alpha1_StorageClaim(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageMetricsStatus":          schema_pkg_apis_pingcap_v1alpha1_StorageMetricsStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageProvider":               schema_pkg_apis_pingcap_v1alpha1_StorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCConfig":                   schema_pkg_apis_pingcap_v1alpha1_TiCDCConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCSpec":                     schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref),
@@ -802,10 +803,10 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
 						},
 					},
-					"mydumper": {
+					"dumpling": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MydumperConfig is the configs for mydumper",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MydumperConfig"),
+							Description: "DumplingConfig is the configs for dumpling",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig"),
 						},
 					},
 					"tolerations": {
@@ -854,11 +855,18 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"cleanData": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CleanData denotes whether to clean backup data before the object is deleted from the cluster",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MydumperConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration"},
 	}
 }
 
@@ -899,12 +907,11 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
-							Description: "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization.",
-							Type:        []string{"array"},
+							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/autoscaling/v2beta2.MetricSpec"),
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric"),
 									},
 								},
 							},
@@ -912,7 +919,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -928,7 +935,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint", "k8s.io/api/autoscaling/v2beta2.MetricSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
 	}
 }
 
@@ -1362,6 +1369,47 @@ func schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DumplingConfig contains config for dumpling",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"options": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Options means options for backup data to remote storage with dumpling.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"tableFilter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -2015,10 +2063,44 @@ func schema_pkg_apis_pingcap_v1alpha1_MetricsStatus(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"storagePressure": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoragePressure indicates whether storage under pressure",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"storagePressureStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoragePressureStartTime indicates the timestamp of the StoragePressure fist become true from false or nil",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"availableStorage": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"capacityStorage": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"baselineAvailableStorage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BaselineAvailableStorage indicates the baseline for available storage size. This is calculated by the capacity storage size * storage auto-scaling baseline percent value If the AvailableStorage is less than the BaselineAvailableStorage, the database is under StoragePressure optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"name", "currentValue", "thresholdValue"},
+				Required: []string{"name"},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2080,40 +2162,6 @@ func schema_pkg_apis_pingcap_v1alpha1_MonitorContainer(ref common.ReferenceCallb
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_MydumperConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "MydumperConfig contains config for mydumper",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"options": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Options means options for backup data to remote storage with mydumper.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
-					"tableRegex": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TableRegex means Regular expression for 'db.table' matching",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
 	}
 }
 
@@ -4314,6 +4362,53 @@ func schema_pkg_apis_pingcap_v1alpha1_StorageClaim(ref common.ReferenceCallback)
 		},
 		Dependencies: []string{
 			"k8s.io/api/core/v1.ResourceRequirements"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_StorageMetricsStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "StorageMetricsStatus describe the storage metrics status in the last auto-scaling reconciliation",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"storagePressure": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoragePressure indicates whether storage under pressure",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"storagePressureStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoragePressureStartTime indicates the timestamp of the StoragePressure fist become true from false or nil",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"availableStorage": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"capacityStorage": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"baselineAvailableStorage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BaselineAvailableStorage indicates the baseline for available storage size. This is calculated by the capacity storage size * storage auto-scaling baseline percent value If the AvailableStorage is less than the BaselineAvailableStorage, the database is under StoragePressure optional",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -8762,12 +8857,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
-							Description: "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization.",
-							Type:        []string{"array"},
+							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/autoscaling/v2beta2.MetricSpec"),
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric"),
 									},
 								},
 							},
@@ -8775,7 +8869,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -8791,7 +8885,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint", "k8s.io/api/autoscaling/v2beta2.MetricSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
 	}
 }
 
@@ -9900,12 +9994,11 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
-							Description: "metrics contains the specifications for which to use to calculate the desired replica count (the maximum replica count across all metrics will be used).  The desired replica count is calculated multiplying the ratio between the target value and the current value by the current number of pods.  Ergo, metrics used must decrease as the pod count is increased, and vice-versa.  See the individual metric source types for more information about how each type of metric must respond. If not set, the default metric will be set to 80% average CPU utilization.",
-							Type:        []string{"array"},
+							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/autoscaling/v2beta2.MetricSpec"),
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric"),
 									},
 								},
 							},
@@ -9913,7 +10006,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeDuration describe the Time duration to be queried in the Prometheus",
+							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -9929,7 +10022,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint", "k8s.io/api/autoscaling/v2beta2.MetricSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
 	}
 }
 

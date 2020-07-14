@@ -101,12 +101,10 @@ func NewOperatorActions(cli versioned.Interface,
 	fw portforward.PortForward, f *framework.Framework) OperatorActions {
 
 	var tcStsGetter typedappsv1.StatefulSetsGetter
-	astsEnable := true
 	if operatorConfig != nil && operatorConfig.Enabled(features.AdvancedStatefulSet) {
 		tcStsGetter = helper.NewHijackClient(kubeCli, asCli).AppsV1()
 	} else {
 		tcStsGetter = kubeCli.AppsV1()
-		astsEnable = false
 	}
 
 	oa := &operatorActions{
@@ -121,7 +119,7 @@ func NewOperatorActions(cli versioned.Interface,
 		pollInterval: pollInterval,
 		cfg:          cfg,
 		fw:           fw,
-		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, astsEnable),
+		crdUtil:      NewCrdTestUtil(cli, kubeCli, asCli, tcStsGetter),
 	}
 	if fw != nil {
 		kubeCfg, err := framework.LoadConfig()

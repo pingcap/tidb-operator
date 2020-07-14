@@ -22,3 +22,12 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $wtf := $context.Template.Name | replace $last $name -}}
 {{ include $wtf $context }}
 {{- end }}
+
+{{/*
+By default, we extract the v<major>.<minor>.<patch> part from the KubeVersion, e.g.
+- v1.17.1+3f6f40d -> v1.17.1 (OpenShift)
+- v1.15.11-gke.15 -> v1.15.11 (GKE)
+*/}}
+{{- define "kube-scheduler.image_tag" -}}
+{{- default (regexFind "^v\\d+\\.\\d+\\.\\d+" .Capabilities.KubeVersion.GitVersion) .Values.scheduler.kubeSchedulerImageTag -}}
+{{- end -}}

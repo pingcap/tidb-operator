@@ -15,7 +15,6 @@ package export
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -63,17 +62,19 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		return "", err
 	}
 	args := []string{
-		fmt.Sprintf("--outputdir=%s", bfPath),
+		fmt.Sprintf("--output=%s", bfPath),
 		fmt.Sprintf("--host=%s", bo.Host),
 		fmt.Sprintf("--port=%d", bo.Port),
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
 	}
-	args = append(args, util.ConstructMydumperOptionsForBackup(backup)...)
+	args = append(args, util.ConstructDumplingOptionsForBackup(backup)...)
 
-	output, err := exec.Command("/mydumper", args...).CombinedOutput()
+	klog.Infof("The dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
+
+	output, err := exec.Command("/dumpling", args...).CombinedOutput()
 	if err != nil {
-		return bfPath, fmt.Errorf("cluster %s, execute mydumper command %v failed, output: %s, err: %v", bo, args, string(output), err)
+		return bfPath, fmt.Errorf("cluster %s, execute dumpling command %v failed, output: %s, err: %v", bo, args, string(output), err)
 	}
 	return bfPath, nil
 }
@@ -98,45 +99,6 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
 	}
 	return nil
-}
-
-/*
-	getCommitTsFromMetadata get commitTs from mydumper's metadata file
-
-	metadata file format is as follows:
-
-		Started dump at: 2019-06-13 10:00:04
-		SHOW MASTER STATUS:
-			Log: tidb-binlog
-			Pos: 409054741514944513
-			GTID:
-
-		Finished dump at: 2019-06-13 10:00:04
-*/
-func getCommitTsFromMetadata(backupPath string) (string, error) {
-	var commitTs string
-
-	metaFile := filepath.Join(backupPath, constants.MetaDataFile)
-	if exist := util.IsFileExist(metaFile); !exist {
-		return commitTs, fmt.Errorf("file %s does not exist or is not regular file", metaFile)
-	}
-	contents, err := ioutil.ReadFile(metaFile)
-	if err != nil {
-		return commitTs, fmt.Errorf("read metadata file %s failed, err: %v", metaFile, err)
-	}
-
-	for _, lineStr := range strings.Split(string(contents), "\n") {
-		if !strings.Contains(lineStr, "Pos") {
-			continue
-		}
-		lineStrSlice := strings.Split(lineStr, ":")
-		if len(lineStrSlice) != 2 {
-			return commitTs, fmt.Errorf("parse mydumper's metadata file %s failed, str: %s", metaFile, lineStr)
-		}
-		commitTs = strings.TrimSpace(lineStrSlice[1])
-		break
-	}
-	return commitTs, nil
 }
 
 // getBackupSize get the backup data size

@@ -16,6 +16,7 @@ package restore
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -135,6 +136,21 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	}
 
 	var errs []error
+
+	commitTs, err := util.GetCommitTsFromBRMetaData(restore.Spec.StorageProvider)
+	if err != nil {
+		errs = append(errs, err)
+		klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetCommitTsFailed",
+			Message: err.Error(),
+		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+
 	oldTikvGCTime, err := rm.GetTikvGCLifeTime(db)
 	if err != nil {
 		errs = append(errs, err)
@@ -250,6 +266,7 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	finish := time.Now()
 	restore.Status.TimeStarted = metav1.Time{Time: started}
 	restore.Status.TimeCompleted = metav1.Time{Time: finish}
+	restore.Status.CommitTs = strconv.FormatUint(commitTs, 10)
 
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   v1alpha1.RestoreComplete,
