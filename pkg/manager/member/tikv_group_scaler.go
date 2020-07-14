@@ -61,7 +61,6 @@ func (tsd *tikvGroupScaler) Scale(tc *v1alpha1.TiKVGroup, oldSet *apps.StatefulS
 func (tsd *tikvGroupScaler) ScaleOut(tg *v1alpha1.TiKVGroup, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	fmt.Println("here")
 	pvcName := fmt.Sprintf("tikv-%s-tikv-group-%d", tg.Name, ordinal)
 	_, err := tsd.pvcLister.PersistentVolumeClaims(tg.Namespace).Get(pvcName)
 	if err == nil {

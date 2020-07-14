@@ -24,10 +24,12 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -49,6 +51,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -74,7 +77,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
+	var ocfg *tests.OperatorConfig
 	var crdUtil *tests.CrdTestUtil
+	/**
+	 * StatefulSet or AdvancedStatefulSet getter interface.
+	 */
+	var stsGetter typedappsv1.StatefulSetsGetter
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -104,7 +112,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
-		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, false)
+		cfg = e2econfig.TestConfig
+		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsGetter = helper.NewHijackClient(c, asCli).AppsV1()
+		} else {
+			stsGetter = c.AppsV1()
+		}
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, stsGetter)
 	})
 
 	ginkgo.AfterEach(func() {
