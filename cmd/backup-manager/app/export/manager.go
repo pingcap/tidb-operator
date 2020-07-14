@@ -15,6 +15,7 @@ package export
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 	"time"
 
@@ -313,6 +314,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
+	// get commitTs succeed, origin dir can be deleted safely
+	os.RemoveAll(backupFullPath)
 
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
 	bucketURI := bm.getDestBucketURI(remotePath)
@@ -330,6 +333,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
+	// backup to remote succeed, archive can be deleted now
+	os.RemoveAll(archiveBackupPath)
 
 	finish := time.Now()
 
