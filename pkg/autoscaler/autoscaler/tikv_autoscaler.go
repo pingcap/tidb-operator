@@ -80,16 +80,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 
 	// check externalEndpoint
 	if tac.Spec.TiKV.ExternalEndpoint != nil {
-		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.ExternalEndpoint, kubecli)
-		if err != nil {
-			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
-		targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
-		if targetReplicas == tc.Spec.TiKV.Replicas {
-			return nil
-		}
-		return syncTiKVAfterCalculated(tc, tac, tc.Spec.TiKV.Replicas, targetReplicas)
+		return calculateTiKVExternalService(tc, tac, sts, kubecli)
 	}
 
 	// check CPU
@@ -127,19 +118,33 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 	return nil
 }
 
-func syncTiKVAfterCalculated(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, currentReplicas, recommendedReplicas int32) error {
+func calculateTiKVExternalService(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, kubecli kubernetes.Interface) error {
+	targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.ExternalEndpoint, kubecli)
+	if err != nil {
+		klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
+		return err
+	}
+	targetReplicas = limitTargetReplicas(targetReplicas, tac, v1alpha1.TiKVMemberType)
+	if targetReplicas == tc.Spec.TiKV.Replicas {
+		return nil
+	}
+	currentReplicas := tc.Spec.TiKV.Replicas
 	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
-	if recommendedReplicas > currentReplicas {
+	if targetReplicas > currentReplicas {
 		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
 	}
-	ableToScale, err := checkStsAutoScalingInterval(tac, *intervalSeconds, v1alpha1.TiKVMemberType)
+	ableToScale, err := checkTiKVAutoScalingInterval(tac, *intervalSeconds)
 	if err != nil {
 		return err
 	}
 	if !ableToScale {
 		return nil
 	}
-	return updateTacIfTiKVScale(tc, tac, recommendedReplicas)
+	err = updateTacIfTiKVScale(tc, tac, targetReplicas)
+	if err != nil {
+		return err
+	}
+	return addAnnotationMarkIfScaleOutDueToCPUMetrics(tc, currentReplicas, targetReplicas, sts)
 }
 
 func calculateTiKVStorageMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster,
@@ -189,6 +194,9 @@ func calculateTiKVCPUMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.T
 	}
 	currentReplicas := int32(len(sq.Instances))
 	intervalSeconds := tac.Spec.TiKV.ScaleInIntervalSeconds
+	if targetReplicas > currentReplicas {
+		intervalSeconds = tac.Spec.TiKV.ScaleOutIntervalSeconds
+	}
 	ableToScale, err := checkTiKVAutoScalingInterval(tac, *intervalSeconds)
 	if err != nil {
 		return err
