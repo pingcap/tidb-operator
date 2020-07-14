@@ -16,7 +16,6 @@ package autoscaler
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -147,47 +146,22 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
 	}
-	f := func(key string) (*time.Time, error) {
-		v, ok := tac.Annotations[key]
-		if ok {
-			ts, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				klog.Errorf("failed to convert label[%s] key to int64, err:%v", key, err)
-				return nil, err
-			}
-			t := time.Unix(ts, 0)
-			return &t, nil
-		}
-		return nil, nil
-	}
-
-	tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", time.Now().Unix())
-
+	now := time.Now()
+	tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", now.Unix())
 	if tac.Spec.TiKV != nil {
 		if oldTc.Status.TiKV.StatefulSet != nil {
 			tac.Status.TiKV.CurrentReplicas = oldTc.Status.TiKV.StatefulSet.CurrentReplicas
 		}
-		lastTimestamp, err := f(label.AnnTiKVLastAutoScalingTimestamp)
-		if err != nil {
-			return err
-		}
-		if lastTimestamp != nil {
-			tac.Status.TiKV.LastAutoScalingTimestamp = &metav1.Time{Time: *lastTimestamp}
-		}
+		tac.Status.TiKV.LastAutoScalingTimestamp = &metav1.Time{Time: now}
 	} else {
 		tac.Status.TiKV = nil
 	}
+
 	if tac.Spec.TiDB != nil {
 		if oldTc.Status.TiDB.StatefulSet != nil {
 			tac.Status.TiDB.CurrentReplicas = oldTc.Status.TiDB.StatefulSet.CurrentReplicas
 		}
-		lastTimestamp, err := f(label.AnnTiDBLastAutoScalingTimestamp)
-		if err != nil {
-			return err
-		}
-		if lastTimestamp != nil {
-			tac.Status.TiDB.LastAutoScalingTimestamp = &metav1.Time{Time: *lastTimestamp}
-		}
+		tac.Status.TiDB.LastAutoScalingTimestamp = &metav1.Time{Time: now}
 	} else {
 		tac.Status.TiDB = nil
 	}
