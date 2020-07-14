@@ -14,12 +14,17 @@
 package util
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/gogo/protobuf/proto"
+	kvbackup "github.com/pingcap/kvproto/pkg/backup"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
@@ -264,6 +269,74 @@ func GetOptions(provider v1alpha1.StorageProvider) []string {
 	default:
 		return nil
 	}
+}
+
+/*
+	GetCommitTsFromMetadata get commitTs from mydumper's metadata file
+
+	metadata file format is as follows:
+
+		Started dump at: 2019-06-13 10:00:04
+		SHOW MASTER STATUS:
+			Log: tidb-binlog
+			Pos: 409054741514944513
+			GTID:
+
+		Finished dump at: 2019-06-13 10:00:04
+*/
+func GetCommitTsFromMetadata(backupPath string) (string, error) {
+	var commitTs string
+
+	metaFile := filepath.Join(backupPath, constants.MetaDataFile)
+	if exist := IsFileExist(metaFile); !exist {
+		return commitTs, fmt.Errorf("file %s does not exist or is not regular file", metaFile)
+	}
+	contents, err := ioutil.ReadFile(metaFile)
+	if err != nil {
+		return commitTs, fmt.Errorf("read metadata file %s failed, err: %v", metaFile, err)
+	}
+
+	for _, lineStr := range strings.Split(string(contents), "\n") {
+		if !strings.Contains(lineStr, "Pos") {
+			continue
+		}
+		lineStrSlice := strings.Split(lineStr, ":")
+		if len(lineStrSlice) != 2 {
+			return commitTs, fmt.Errorf("parse mydumper's metadata file %s failed, str: %s", metaFile, lineStr)
+		}
+		commitTs = strings.TrimSpace(lineStrSlice[1])
+		break
+	}
+	return commitTs, nil
+}
+
+// GetCommitTsFromBRMetaData get backup position from `EndVersion` in BR backup meta
+func GetCommitTsFromBRMetaData(provider v1alpha1.StorageProvider) (uint64, error) {
+	var commitTs uint64
+	s, err := NewRemoteStorage(provider)
+	if err != nil {
+		return commitTs, err
+	}
+	defer s.Close()
+	ctx := context.Background()
+	exist, err := s.Exists(ctx, constants.MetaFile)
+	if err != nil {
+		return commitTs, err
+	}
+	if !exist {
+		return commitTs, fmt.Errorf("%s not exist", constants.MetaFile)
+
+	}
+	metaData, err := s.ReadAll(ctx, constants.MetaFile)
+	if err != nil {
+		return commitTs, err
+	}
+	backupMeta := &kvbackup.BackupMeta{}
+	err = proto.Unmarshal(metaData, backupMeta)
+	if err != nil {
+		return commitTs, err
+	}
+	return backupMeta.EndVersion, nil
 }
 
 // ConstructArgs constructs the rclone args
