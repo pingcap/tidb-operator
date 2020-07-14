@@ -19,7 +19,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -45,8 +45,16 @@ const (
 )
 
 var (
-	tidbV401Version = semver.MustParse("v4.0.1")
+	tikvV401Version *semver.Version
 )
+
+func init() {
+	var err error
+	tikvV401Version, err = semver.NewVersion("v4.0.1")
+	if err != nil {
+		klog.Fatal(err)
+	}
+}
 
 type tikvGroupMemberManager struct {
 	genericCli        client.Client
@@ -432,13 +440,13 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 	if tg.Spec.Config == nil {
 		tg.Spec.Config = &v1alpha1.TiKVConfig{}
 	}
-	version, err := semver.Parse(tc.TiKVVersion())
+	version, err := semver.NewVersion(tc.TiKVVersion())
 	if err != nil {
 		return nil, fmt.Errorf("tikvgroup[%s/%s] failed to parse version,err:%v", tg.Namespace, tg.Name, err)
 	}
 	enableAdvertiseStatusAddr := true
 	// For the version less than v4.0.1, don't use advertise-status-addr start arg
-	if version.LE(tidbV401Version) {
+	if version.LessThan(tikvV401Version) {
 		enableAdvertiseStatusAddr = false
 	}
 	scriptModel := &TiKVStartScriptModel{
