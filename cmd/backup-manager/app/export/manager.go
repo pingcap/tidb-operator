@@ -267,6 +267,21 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	klog.Infof("dump cluster %s data to %s success", bm, backupFullPath)
 
+	commitTs, err := util.GetCommitTsFromMetadata(backupFullPath)
+	if err != nil {
+		errs = append(errs, err)
+		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
+		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "GetCommitTsFailed",
+			Message: err.Error(),
+		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
+
 	// TODO: Concurrent get file size and upload backup data to speed up processing time
 	archiveBackupPath := backupFullPath + constants.DefaultArchiveExtention
 	err = archiveBackupData(backupFullPath, archiveBackupPath)
@@ -300,21 +315,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
 
-	commitTs, err := getCommitTsFromMetadata(backupFullPath)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetCommitTsFailed",
-			Message: err.Error(),
-		})
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("get cluster %s commitTs %s success", bm, commitTs)
-	// get commitTs succeed, origin dir can be deleted safely
+	// archive backup data successfully, origin dir can be deleted safely
 	os.RemoveAll(backupFullPath)
 
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
