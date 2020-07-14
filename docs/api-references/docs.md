@@ -8020,6 +8020,17 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>conditions</code></br>
 <em>
 <a href="#restorecondition">

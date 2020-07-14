@@ -1380,8 +1380,10 @@ type RestoreStatus struct {
 	// TimeStarted is the time at which the restore was started.
 	TimeStarted metav1.Time `json:"timeStarted"`
 	// TimeCompleted is the time at which the restore was completed.
-	TimeCompleted metav1.Time        `json:"timeCompleted"`
-	Conditions    []RestoreCondition `json:"conditions"`
+	TimeCompleted metav1.Time `json:"timeCompleted"`
+	// CommitTs is the snapshot time point of tidb cluster.
+	CommitTs   string             `json:"commitTs"`
+	Conditions []RestoreCondition `json:"conditions"`
 }
 
 // +k8s:openapi-gen=true
