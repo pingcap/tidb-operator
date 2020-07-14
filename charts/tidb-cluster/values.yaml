@@ -533,7 +533,7 @@ monitor:
       #  memory: 64Mi
   grafana:
     create: true
-    image: grafana/grafana:6.0.1
+    image: grafana/grafana:6.1.6
     imagePullPolicy: IfNotPresent
     logLevel: info
     resources:
