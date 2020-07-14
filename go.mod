@@ -14,7 +14,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/aws/aws-sdk-go v1.30.9
-	github.com/blang/semver v3.5.0+incompatible
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/coreos/etcd v3.3.15+incompatible
