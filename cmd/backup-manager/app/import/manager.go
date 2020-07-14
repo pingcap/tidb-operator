@@ -167,21 +167,6 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	}
 	klog.Infof("unarchive cluster %s backup %s data success", rm, restoreDataPath)
 
-	err = rm.loadTidbClusterData(unarchiveDataPath)
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
-		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "LoaderBackupDataFailed",
-			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
-		})
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
-	}
-	klog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
-
 	commitTs, err := util.GetCommitTsFromMetadata(unarchiveDataPath)
 	if err != nil {
 		errs = append(errs, err)
@@ -196,6 +181,21 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("get cluster %s commitTs %s success", rm, commitTs)
+
+	err = rm.loadTidbClusterData(unarchiveDataPath)
+	if err != nil {
+		errs = append(errs, err)
+		klog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
+		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LoaderBackupDataFailed",
+			Message: fmt.Sprintf("loader backup %s data failed, err: %v", restoreDataPath, err),
+		})
+		errs = append(errs, uerr)
+		return errorutils.NewAggregate(errs)
+	}
+	klog.Infof("restore cluster %s from backup %s success", rm, rm.BackupPath)
 
 	finish := time.Now()
 
