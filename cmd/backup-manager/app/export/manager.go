@@ -15,6 +15,7 @@ package export
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 	"time"
 
@@ -314,6 +315,9 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 	klog.Infof("get cluster %s archived backup file %s size %d success", bm, archiveBackupPath, size)
 
+	// archive backup data successfully, origin dir can be deleted safely
+	os.RemoveAll(backupFullPath)
+
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
 	bucketURI := bm.getDestBucketURI(remotePath)
 	err = bm.backupDataToRemote(archiveBackupPath, bucketURI, opts)
@@ -330,6 +334,8 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		return errorutils.NewAggregate(errs)
 	}
 	klog.Infof("backup cluster %s data to %s success", bm, bm.StorageType)
+	// backup to remote succeed, archive can be deleted now
+	os.RemoveAll(archiveBackupPath)
 
 	finish := time.Now()
 
