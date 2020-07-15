@@ -14663,14 +14663,14 @@ TiKVConfig
 </tr>
 <tr>
 <td>
-<code>initializeStoreLabel</code></br>
+<code>initializeStoreLabels</code></br>
 <em>
 map[string]string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>InitializeStoreLabel indicates the store label set during initialization</p>
+<p>InitializeStoreLabels indicates the store label set during initialization</p>
 </td>
 </tr>
 </tbody>

@@ -7238,9 +7238,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGroupSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
 						},
 					},
-					"initializeStoreLabel": {
+					"initializeStoreLabels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "InitializeStoreLabel indicates the store label set during initialization",
+							Description: "InitializeStoreLabels indicates the store label set during initialization",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,
@@ -8537,9 +8537,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
 						},
 					},
-					"initializeStoreLabel": {
+					"initializeStoreLabels": {
 						SchemaProps: spec.SchemaProps{
-							Description: "InitializeStoreLabel indicates the store label set during initialization",
+							Description: "InitializeStoreLabels indicates the store label set during initialization",
 							Type:        []string{"object"},
 							AdditionalProperties: &spec.SchemaOrBool{
 								Allows: true,

@@ -394,9 +394,9 @@ type TiKVSpec struct {
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
 
-	// InitializeStoreLabel indicates the store label set during initialization
+	// InitializeStoreLabels indicates the store label set during initialization
 	// +optional
-	InitializeStoreLabel map[string]string `json:"initializeStoreLabel,omitempty"`
+	InitializeStoreLabels map[string]string `json:"initializeStoreLabels,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members

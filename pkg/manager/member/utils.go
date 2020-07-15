@@ -406,5 +406,5 @@ func buildStableStoreLabelsValue(labels map[string]string) string {
 			s = fmt.Sprintf("%s,%s", s, fmt.Sprintf("%s=%s", key, v))
 		}
 	}
-	return s
+	return s[1:]
 }

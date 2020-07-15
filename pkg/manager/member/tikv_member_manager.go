@@ -480,8 +480,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
-	if len(tc.Spec.TiKV.InitializeStoreLabel) > 0 {
-		v := buildStableStoreLabelsValue(tc.Spec.TiKV.InitializeStoreLabel)
+	if len(tc.Spec.TiKV.InitializeStoreLabels) > 0 {
+		v := buildStableStoreLabelsValue(tc.Spec.TiKV.InitializeStoreLabels)
 		tikvContainer.Env = util.AppendEnv(tikvContainer.Env, []corev1.EnvVar{
 			{
 				Name:  "STORE_LABELS",

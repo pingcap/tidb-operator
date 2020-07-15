@@ -11141,7 +11141,7 @@ spec:
                         type: string
                     type: object
                   type: array
-                initializeStoreLabel:
+                initializeStoreLabels:
                   type: object
                 limits:
                   type: object
@@ -18076,7 +18076,7 @@ spec:
                     type: string
                 type: object
               type: array
-            initializeStoreLabel:
+            initializeStoreLabels:
               type: object
             limits:
               type: object
