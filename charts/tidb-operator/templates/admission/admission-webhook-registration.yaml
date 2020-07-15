@@ -40,7 +40,6 @@ webhooks:
     objectSelector:
       matchLabels:
         "app.kubernetes.io/managed-by": "tidb-operator"
-        "app.kubernetes.io/name": "tidb-cluster"
     {{- end }}
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Fail" }}
     clientConfig:
@@ -77,7 +76,6 @@ webhooks:
     objectSelector:
       matchLabels:
         "app.kubernetes.io/managed-by": "tidb-operator"
-        "app.kubernetes.io/name": "tidb-cluster"
     {{- end }}
     failurePolicy: {{ .Values.admissionWebhook.failurePolicy.validation | default "Ignore" }}
     clientConfig:

@@ -45,8 +45,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		changed       bool
 	}
 
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
+	testFn := func(test testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 
 		if test.tikvUpgrading {
@@ -105,7 +104,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			annoIsNil:     true,
 			pvcDeleteErr:  false,
 			errExpectFn:   errExpectNil,
-			changed:       false,
+			changed:       true,
 		},
 		{
 			name:          "cache don't have pvc",
@@ -138,8 +137,10 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
 	}
 }
 
@@ -161,8 +162,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 
 	controller.ResyncDuration = 0
 
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
+	testFn := func(test testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.storeFun(tc)
 
@@ -253,9 +253,9 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			changed:       false,
 		},
 		{
-			name:          "tikv is upgrading",
+			name:          "able to scale in while upgrading",
 			tikvUpgrading: true,
-			storeFun:      normalStoreFun,
+			storeFun:      tombstoneStoreFun,
 			delStoreErr:   false,
 			hasPVC:        true,
 			storeIDSynced: true,
@@ -263,7 +263,7 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 			hasSynced:     true,
 			pvcUpdateErr:  false,
 			errExpectFn:   errExpectNil,
-			changed:       false,
+			changed:       true,
 		},
 		{
 			name:          "status.TiKV.Stores is empty",
@@ -423,8 +423,10 @@ func TestTiKVScalerScaleIn(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
 	}
 }
 

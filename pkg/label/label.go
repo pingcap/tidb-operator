@@ -109,10 +109,6 @@ const (
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
 	// AnnTiKVLastAutoScalingTimestamp is annotation key of tidbclusterto which ordinal is created by tikv auto-scaling
 	AnnTiKVLastAutoScalingTimestamp = "tikv.tidb.pingcap.com/last-autoscaling-timestamp"
-
-	// AnnTiKVReadyToScaleTimestamp records timestamp when tikv ready to scale
-	AnnTiKVReadyToScaleTimestamp = "tikv.tidb.pingcap.com/ready-to-scale-timestamp"
-
 	// AnnLastSyncingTimestamp records last sync timestamp
 	AnnLastSyncingTimestamp = "tidb.pingcap.com/last-syncing-timestamp"
 
@@ -157,6 +153,12 @@ const (
 
 // Label is the label field in metadata
 type Label map[string]string
+
+func NewOperatorManaged() Label {
+	return Label{
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
 
 // New initialize a new Label for components of tidb cluster
 func New() Label {
@@ -414,4 +416,12 @@ func (l Label) String() string {
 // IsManagedByTiDBOperator returns whether label is a Managed by tidb-operator
 func (l Label) IsManagedByTiDBOperator() bool {
 	return l[ManagedByLabelKey] == TiDBOperator
+}
+
+func (l Label) IsTidbClusterPod() bool {
+	return l[NameLabelKey] == "tidb-cluster"
+}
+
+func (l Label) IsGroupPod() bool {
+	return l[NameLabelKey] == "tidb-cluster-group"
 }

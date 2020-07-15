@@ -151,7 +151,7 @@ func (pf *pdFailover) tryToMarkAPeerAsFailure(tc *v1alpha1.TidbCluster) error {
 		pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
 		pvc, err := pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
-			return err
+			return fmt.Errorf("tryToMarkAPeerAsFailure: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
 
 		msg := fmt.Sprintf("pd member[%s] is unhealthy", pdMember.ID)
@@ -213,7 +213,7 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	// and let StatefulSet create the new PD peer with the same ordinal, but don't use the tombstone PV
 	pod, err := pf.podLister.Pods(ns).Get(failurePodName)
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pods %s for cluster %s/%s, error: %s", failurePodName, ns, tcName, err)
 	}
 
 	ordinal, err := util.GetOrdinalFromPodName(failurePodName)
@@ -223,7 +223,7 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	pvcName := ordinalPVCName(v1alpha1.PDMemberType, controller.PDMemberName(tcName), ordinal)
 	pvc, err := pf.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 	if err != nil && !errors.IsNotFound(err) {
-		return err
+		return fmt.Errorf("tryToDeleteAFailureMember: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 	}
 
 	if pod != nil && pod.DeletionTimestamp == nil {

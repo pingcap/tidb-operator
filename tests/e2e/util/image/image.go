@@ -38,7 +38,7 @@ const (
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
 	TiDBMonitorInitializerVersion = "v3.0.8"
 	GrafanaImage                  = "grafana/grafana"
-	GrafanaVersion                = "6.0.1"
+	GrafanaVersion                = "6.1.6"
 )
 
 func ListImages() []string {

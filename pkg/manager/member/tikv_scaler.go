@@ -57,11 +57,6 @@ func (tsd *tikvScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 func (tsd *tikvScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	if tc.TiKVUpgrading() {
-		klog.Infof("TidbCluster: [%s/%s]'s tikv is upgrading, can not scale out until the upgrade completed",
-			tc.Namespace, tc.Name)
-		return nil
-	}
 
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := tsd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
@@ -81,19 +76,12 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 	resetReplicas(newSet, oldSet)
 	setName := oldSet.GetName()
 
-	// tikv can not scale in when it is upgrading
-	if tc.TiKVUpgrading() {
-		klog.Infof("TidbCluster: [%s/%s]'s tikv is upgrading, can not scale in until upgrade completed",
-			ns, tcName)
-		return nil
-	}
-
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 	pod, err := tsd.podLister.Pods(ns).Get(podName)
 	if err != nil {
-		return err
+		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 	}
 
 	if controller.PodWebhookEnabled {
@@ -115,7 +103,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 				}
 				klog.Infof("tikv scale in: delete store %d for tikv %s/%s successfully", id, ns, podName)
 			}
-			return controller.RequeueErrorf("TiKV %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
+			return controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
 	for id, store := range tc.Status.TiKV.TombstoneStores {
@@ -131,7 +119,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 			pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
 			pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 			if err != nil {
-				return err
+				return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 			}
 			if pvc.Annotations == nil {
 				pvc.Annotations = map[string]string{}
@@ -162,7 +150,7 @@ func (tsd *tikvScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		pvcName := ordinalPVCName(v1alpha1.TiKVMemberType, setName, ordinal)
 		pvc, err := tsd.pvcLister.PersistentVolumeClaims(ns).Get(pvcName)
 		if err != nil {
-			return err
+			return fmt.Errorf("tikvScaler.ScaleIn: failed to get pvc %s for cluster %s/%s, error: %s", pvcName, ns, tcName, err)
 		}
 		safeTimeDeadline := pod.CreationTimestamp.Add(5 * controller.ResyncDuration)
 		if time.Now().Before(safeTimeDeadline) {

@@ -7,7 +7,7 @@
 - [**Blog**](https://www.pingcap.com/blog/)
 - [**For support, please contact PingCAP**](http://bit.ly/contact_us_via_github)
 
-[![Build Status](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master_kind/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/build_tidb_operator_master_kind)
+[![Build Status](https://internal.pingcap.net/idc-jenkins/job/tidb-operator-master/badge/icon)](https://internal.pingcap.net/idc-jenkins/job/tidb-operator-master)
 [![codecov](https://codecov.io/gh/pingcap/tidb-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/pingcap/tidb-operator)
 [![LICENSE](https://img.shields.io/github/license/pingcap/tidb-operator.svg)](https://github.com/pingcap/tidb-operator/blob/master/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
@@ -45,20 +45,29 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 
     Automatically deploy Prometheus, Grafana for TiDB cluster monitoring.
 
-## Roadmap
+## Quick Start
 
-Read the [Roadmap](./ROADMAP.md).
-
-## Quick start
-
-Read the [Quick Start Guide](https://pingcap.com/docs/v3.0/tidb-in-kubernetes/tidb-operator-overview/), which includes all the guides for managing TiDB clusters in Kubernetes.
+You can follow our [Get Started](https://docs.pingcap.com/tidb-in-kubernetes/stable/get-started) guide to quickly start a testing Kubernetes cluster and play with TiDB Operator on your own machine.
 
 ## Documentation
 
-All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator). You can also see the documentation at PingCAP website:
+You can see our documentation at PingCAP website for more in-depth installation and instructions for production:
 
-- [English](https://pingcap.com/docs/tidb-in-kubernetes/stable/tidb-operator-overview/)
-- [简体中文](https://pingcap.com/docs-cn/tidb-in-kubernetes/stable/tidb-operator-overview/)
+- [English](https://docs.pingcap.com/tidb-in-kubernetes/stable)
+- [简体中文](https://docs.pingcap.com/zh/tidb-in-kubernetes/stable)
+
+All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator). 
+
+## Community
+
+Feel free to reach out if you have any questions. The maintainers of this project are reachable via:
+
+- [TiDB Community Slack](https://pingcap.com/tidbslack/) in the [#sig-k8s](https://tidbcommunity.slack.com/archives/CHD0HA3LZ) channel
+- [Filing an issue](https://github.com/pingcap/tidb-operator/issue) against this repo
+
+Pull Requests are welcome! Check the [issue tracker](https://github.com/pingcap/tidb-operator/issue) for `status/help-wanted` issues if you're unsure where to start.
+
+If you're planning a new feature, please file an issue or join [#sig-k8s](https://tidbcommunity.slack.com/archives/CHD0HA3LZ) channel to discuss first.
 
 ## Contributing
 

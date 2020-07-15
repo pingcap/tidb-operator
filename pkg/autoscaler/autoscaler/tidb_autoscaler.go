@@ -24,6 +24,7 @@ import (
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
@@ -97,29 +98,21 @@ func calculateTidbMetrics(tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.State
 	if err != nil {
 		return -1, err
 	}
-	metric := calculate.FilterMetrics(tac.Spec.TiDB.Metrics)
-	mType, err := calculate.GenMetricType(tac, metric)
-	if err != nil {
-		return -1, err
-	}
 	duration, err := time.ParseDuration(*tac.Spec.TiDB.MetricsTimeDuration)
 	if err != nil {
 		return -1, err
 	}
-	sq := &calculate.SingleQuery{
-		Endpoint:  ep,
-		Timestamp: time.Now().Unix(),
-		Instances: instances,
-		Metric:    metric,
-		Quary:     fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiDB.MetricsTimeDuration),
+	metrics := calculate.FilterMetrics(tac.Spec.TiDB.Metrics, corev1.ResourceCPU)
+	if len(metrics) > 0 {
+		sq := &calculate.SingleQuery{
+			Endpoint:  ep,
+			Timestamp: time.Now().Unix(),
+			Instances: instances,
+			Quary:     fmt.Sprintf(calculate.TidbSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiDB.MetricsTimeDuration),
+		}
+		return calculate.CalculateRecomendedReplicasByCpuCosts(tac, sq, sts, client, v1alpha1.TiDBMemberType, duration, metrics[0].MetricSpec)
 	}
-
-	switch mType {
-	case calculate.MetricTypeCPU:
-		return calculate.CalculateRecomendedReplicasByCpuCosts(tac, sq, sts, client, v1alpha1.TiDBMemberType, duration)
-	default:
-		return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
-	}
+	return -1, fmt.Errorf(calculate.InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 }
 
 func filterTidbInstances(tc *v1alpha1.TidbCluster) []string {

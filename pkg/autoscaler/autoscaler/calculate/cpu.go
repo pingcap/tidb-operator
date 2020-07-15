@@ -20,7 +20,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -29,10 +31,8 @@ const (
 
 //TODO: create issue to explain how auto-scaling algorithm based on cpu metrics work
 func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, sq *SingleQuery, sts *appsv1.StatefulSet,
-	client promClient.Client, memberType v1alpha1.MemberType, duration time.Duration) (int32, error) {
-	metric := sq.Metric
+	client promClient.Client, memberType v1alpha1.MemberType, duration time.Duration, metric autoscalingv2beta2.MetricSpec) (int32, error) {
 	instances := sq.Instances
-
 	if metric.Resource == nil || metric.Resource.Target.AverageUtilization == nil {
 		return -1, fmt.Errorf(InvalidTacMetricConfigureMsg, tac.Namespace, tac.Name)
 	}
@@ -66,9 +66,9 @@ func CalculateRecomendedReplicasByCpuCosts(tac *v1alpha1.TidbClusterAutoScaler, 
 		return -1, err
 	}
 	metrics := v1alpha1.MetricsStatus{
-		Name:           string(MetricTypeCPU),
-		CurrentValue:   fmt.Sprintf("%v", cpuSecsTotal),
-		ThresholdValue: fmt.Sprintf("%v", expectedCpuSecsTotal),
+		Name:           string(corev1.ResourceCPU),
+		CurrentValue:   pointer.StringPtr(fmt.Sprintf("%v", cpuSecsTotal)),
+		ThresholdValue: pointer.StringPtr(fmt.Sprintf("%v", expectedCpuSecsTotal)),
 	}
 	if memberType == v1alpha1.TiKVMemberType {
 		addMetricsStatusIntoMetricsStatusList(metrics, &tac.Status.TiKV.BasicAutoScalerStatus)

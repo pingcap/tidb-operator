@@ -190,15 +190,15 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>mydumper</code></br>
+<code>dumpling</code></br>
 <em>
-<a href="#mydumperconfig">
-MydumperConfig
+<a href="#dumplingconfig">
+DumplingConfig
 </a>
 </em>
 </td>
 <td>
-<p>MydumperConfig is the configs for mydumper</p>
+<p>DumplingConfig is the configs for dumpling</p>
 </td>
 </tr>
 <tr>
@@ -263,6 +263,17 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanData</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
 </td>
 </tr>
 </table>
@@ -1966,10 +1977,6 @@ TidbMonitorStatus
 </table>
 <h3 id="autoscalerphase">AutoScalerPhase</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#basicautoscalerstatus">BasicAutoScalerStatus</a>)
-</p>
-<p>
 </p>
 <h3 id="brconfig">BRConfig</h3>
 <p>
@@ -2496,15 +2503,15 @@ BRConfig
 </tr>
 <tr>
 <td>
-<code>mydumper</code></br>
+<code>dumpling</code></br>
 <em>
-<a href="#mydumperconfig">
-MydumperConfig
+<a href="#dumplingconfig">
+DumplingConfig
 </a>
 </em>
 </td>
 <td>
-<p>MydumperConfig is the configs for mydumper</p>
+<p>DumplingConfig is the configs for dumpling</p>
 </td>
 </tr>
 <tr>
@@ -2569,6 +2576,17 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanData</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
 </td>
 </tr>
 </tbody>
@@ -2760,21 +2778,13 @@ If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
 <td>
 <code>metrics</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#metricspec-v2beta2-autoscaling">
-[]Kubernetes autoscaling/v2beta2.MetricSpec
+<a href="#custommetric">
+[]CustomMetric
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>metrics contains the specifications for which to use to calculate the
-desired replica count (the maximum replica count across all metrics will
-be used).  The desired replica count is calculated multiplying the
-ratio between the target value and the current value by the current
-number of pods.  Ergo, metrics used must decrease as the pod count is
-increased, and vice-versa.  See the individual metric source types for
-more information about how each type of metric must respond.
-If not set, the default metric will be set to 80% average CPU utilization.</p>
 </td>
 </tr>
 <tr>
@@ -2786,7 +2796,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>MetricsTimeDuration describe the Time duration to be queried in the Prometheus</p>
+<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus</p>
 </td>
 </tr>
 <tr>
@@ -2823,19 +2833,6 @@ to fetch the recommended replicas for TiKV/TiDB</p>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>phase</code></br>
-<em>
-<a href="#autoscalerphase">
-AutoScalerPhase
-</a>
-</em>
-</td>
-<td>
-<p>Phase describes cluster auto scaling phase</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>metrics</code></br>
@@ -3630,6 +3627,77 @@ CrdKind
 </tr>
 </tbody>
 </table>
+<h3 id="custommetric">CustomMetric</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>MetricSpec</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#metricspec-v2beta2-autoscaling">
+Kubernetes autoscaling/v2beta2.MetricSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>MetricSpec</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>metrics contains the specifications for which to use to calculate the
+desired replica count (the maximum replica count across all metrics will
+be used).  The desired replica count is calculated multiplying the
+ratio between the target value and the current value by the current
+number of pods.  Ergo, metrics used must decrease as the pod count is
+increased, and vice-versa.  See the individual metric source types for
+more information about how each type of metric must respond.
+If not set, the auto-scaling won&rsquo;t happen.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>leastStoragePressurePeriodSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LeastStoragePressurePeriodSeconds is only for the storage auto-scaling case when the resource name in the metricSpec
+is <code>Storage</code>. When the Storage metrics meet the pressure, Operator would wait
+LeastStoragePressurePeriodSeconds duration then able to scale out.
+If not set, the default value is <code>300</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>leastRemainAvailableStoragePercent</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LeastRemainAvailableStoragePercent indicates the least remaining available storage percent compare to
+the capacity storage. If the available storage is lower than the capacity storage * LeastRemainAvailableStoragePercent,
+the storage status will become storage pressure and ready to be scaled out.
+LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the default value would be 10</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="dashboardconfig">DashboardConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -3745,6 +3813,46 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dumplingconfig">DumplingConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>DumplingConfig contains config for dumpling</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options means options for backup data to remote storage with dumpling.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -4948,6 +5056,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>CurrentValue indicates the value calculated in the last auto-scaling reconciliation</p>
 </td>
 </tr>
@@ -4959,7 +5068,24 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TargetValue indicates the threshold value for this metrics in auto-scaling</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageMetricsStatus</code></br>
+<em>
+<a href="#storagemetricsstatus">
+StorageMetricsStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageMetricsStatus</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -4988,7 +5114,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>Resources</code></br>
+<code>ResourceRequirements</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -4997,7 +5123,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>
-(Members of <code>Resources</code> are embedded into this type.)
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -5032,46 +5158,6 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="mydumperconfig">MydumperConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
-</p>
-<p>
-<p>MydumperConfig contains config for mydumper</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>options</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>Options means options for backup data to remote storage with mydumper.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tableRegex</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>TableRegex means Regular expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -8180,6 +8266,17 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>conditions</code></br>
 <em>
 <a href="#restorecondition">
@@ -8826,6 +8923,86 @@ string
 <em>(Optional)</em>
 <p>Name of the StorageClass required by the claim.
 More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1">https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storagemetricsstatus">StorageMetricsStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#metricsstatus">MetricsStatus</a>)
+</p>
+<p>
+<p>StorageMetricsStatus describe the storage metrics status in the last auto-scaling reconciliation</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>storagePressure</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoragePressure indicates whether storage under pressure</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storagePressureStartTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoragePressureStartTime indicates the timestamp of the StoragePressure fist become true from false or nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>availableStorage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>capacityStorage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>baselineAvailableStorage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BaselineAvailableStorage indicates the baseline for available storage size.
+This is calculated by the capacity storage size * storage auto-scaling baseline percent value
+If the AvailableStorage is less than the BaselineAvailableStorage, the database is under StoragePressure
+optional</p>
 </td>
 </tr>
 </tbody>
@@ -16611,20 +16788,6 @@ BasicAutoScalerSpec
 <p>
 (Members of <code>BasicAutoScalerSpec</code> are embedded into this type.)
 </p>
-</td>
-</tr>
-<tr>
-<td>
-<code>readyToScaleThresholdSeconds</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ReadyToScaleThresholdSeconds represents duration that the ReadyToScale phase
-should last for before auto scaling.
-If not set, the default ReadyToScaleThresholdSeconds will be set to 30.</p>
 </td>
 </tr>
 </tbody>
