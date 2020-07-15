@@ -553,7 +553,7 @@ func TestTiKVUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func newTiKVUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
+func newTiKVUpgrader() (TiKVUpgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	kubeCli := kubefake.NewSimpleClientset()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
 	podControl := controller.NewFakePodControl(podInformer)

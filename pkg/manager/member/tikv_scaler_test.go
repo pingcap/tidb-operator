@@ -53,6 +53,7 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 		}
 
 		oldSet := newStatefulSetForPDScale()
+		oldSet.Name = fmt.Sprintf("%s-tikv", tc.Name)
 		newSet := oldSet.DeepCopy()
 		newSet.Spec.Replicas = pointer.Int32Ptr(7)
 
@@ -93,8 +94,8 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasDeferAnn:   false,
 			annoIsNil:     true,
 			pvcDeleteErr:  false,
-			errExpectFn:   errExpectNil,
-			changed:       true,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "tikv is upgrading",
@@ -103,8 +104,8 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasDeferAnn:   false,
 			annoIsNil:     true,
 			pvcDeleteErr:  false,
-			errExpectFn:   errExpectNil,
-			changed:       true,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "cache don't have pvc",
@@ -123,8 +124,8 @@ func TestTiKVScalerScaleOut(t *testing.T) {
 			hasDeferAnn:   false,
 			annoIsNil:     false,
 			pvcDeleteErr:  false,
-			errExpectFn:   errExpectNil,
-			changed:       true,
+			errExpectFn:   errExpectNotNil,
+			changed:       false,
 		},
 		{
 			name:          "pvc annotations defer deletion is not nil, pvc delete failed",

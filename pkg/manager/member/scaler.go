@@ -24,6 +24,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
@@ -53,29 +55,42 @@ type generalScaler struct {
 	pvcControl controller.PVCControlInterface
 }
 
-func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
+func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 	setName string, memberType v1alpha1.MemberType, ordinal int32) (map[string]string, error) {
-	ns := tc.GetNamespace()
+	meta := controller.(metav1.Object)
+	ns := meta.GetNamespace()
 	// for unit test
 	skipReason := map[string]string{}
-
-	// pvcName := ordinalPVCName(memberType, setName, ordinal)
-	podName := ordinalPodName(memberType, tc.Name, ordinal)
-	l := label.New().Instance(tc.GetInstanceName())
-	l[label.AnnPodNameKey] = podName
+	var podName, kind string
+	var l label.Label
+	switch controller.(type) {
+	case *v1alpha1.TidbCluster:
+		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
+		l = label.New().Instance(meta.GetName())
+		l[label.AnnPodNameKey] = podName
+		kind = v1alpha1.TiDBClusterKind
+	case *v1alpha1.TiKVGroup:
+		podName = fmt.Sprintf("%s-%s-group-%d", meta.GetName(), memberType, ordinal)
+		l = label.NewGroup().Instance(meta.GetName())
+		// TODO: support sync meta info into TiKVGroup resources (pod/pvc)
+		kind = v1alpha1.TiKVGroupKind
+	default:
+		kind = controller.GetObjectKind().GroupVersionKind().Kind
+		return nil, fmt.Errorf("%s[%s/%s] has unknown controller", kind, ns, meta.GetName())
+	}
 	selector, err := l.Selector()
 	if err != nil {
-		return skipReason, fmt.Errorf("cluster %s/%s assemble label selector failed, err: %v", ns, tc.Name, err)
+		return skipReason, fmt.Errorf("%s %s/%s assemble label selector failed, err: %v", kind, ns, meta.GetName(), err)
 	}
 
 	pvcs, err := gs.pvcLister.PersistentVolumeClaims(ns).List(selector)
 	if err != nil {
-		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
+		msg := fmt.Sprintf("%s %s/%s list pvc failed, selector: %s, err: %v", kind, ns, meta.GetName(), selector, err)
 		klog.Errorf(msg)
 		return skipReason, fmt.Errorf(msg)
 	}
 	if len(pvcs) == 0 {
-		klog.Infof("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
+		klog.Infof("%s %s/%s list pvc not found, selector: %s", kind, ns, meta.GetName(), selector)
 		skipReason[podName] = skipReasonScalerPVCNotFound
 		return skipReason, nil
 	}
@@ -91,7 +106,7 @@ func (gs *generalScaler) deleteDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 			continue
 		}
 
-		err = gs.pvcControl.DeletePVC(tc, pvc)
+		err = gs.pvcControl.DeletePVC(controller, pvc)
 		if err != nil {
 			klog.Errorf("Scale out: failed to delete pvc %s/%s, %v", ns, pvcName, err)
 			return skipReason, err
