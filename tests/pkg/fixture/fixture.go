@@ -233,18 +233,18 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 					Annotations: map[string]string{},
 				},
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       utilimage.PrometheusImage,
-					Version:         utilimage.PrometheusVersion,
-					ImagePullPolicy: &imagePullPolicy,
-					Resources:       corev1.ResourceRequirements{},
+					BaseImage:            utilimage.PrometheusImage,
+					Version:              utilimage.PrometheusVersion,
+					ImagePullPolicy:      &imagePullPolicy,
+					ResourceRequirements: corev1.ResourceRequirements{},
 				},
 			},
 			Reloader: v1alpha1.ReloaderSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       utilimage.TiDBMonitorReloaderImage,
-					Version:         utilimage.TiDBMonitorReloaderVersion,
-					ImagePullPolicy: &imagePullPolicy,
-					Resources:       corev1.ResourceRequirements{},
+					BaseImage:            utilimage.TiDBMonitorReloaderImage,
+					Version:              utilimage.TiDBMonitorReloaderVersion,
+					ImagePullPolicy:      &imagePullPolicy,
+					ResourceRequirements: corev1.ResourceRequirements{},
 				},
 				Service: v1alpha1.ServiceSpec{
 					Type:        "ClusterIP",
@@ -253,10 +253,10 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 			},
 			Initializer: v1alpha1.InitializerSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
-					BaseImage:       utilimage.TiDBMonitorInitializerImage,
-					Version:         utilimage.TiDBMonitorInitializerVersion,
-					ImagePullPolicy: &imagePullPolicy,
-					Resources:       corev1.ResourceRequirements{},
+					BaseImage:            utilimage.TiDBMonitorInitializerImage,
+					Version:              utilimage.TiDBMonitorInitializerVersion,
+					ImagePullPolicy:      &imagePullPolicy,
+					ResourceRequirements: corev1.ResourceRequirements{},
 				},
 				Envs: map[string]string{},
 			},
@@ -266,10 +266,10 @@ func NewTidbMonitor(name, namespace string, tc *v1alpha1.TidbCluster, grafanaEna
 	if grafanaEnabled {
 		monitor.Spec.Grafana = &v1alpha1.GrafanaSpec{
 			MonitorContainer: v1alpha1.MonitorContainer{
-				BaseImage:       utilimage.GrafanaImage,
-				Version:         utilimage.GrafanaVersion,
-				ImagePullPolicy: &imagePullPolicy,
-				Resources:       corev1.ResourceRequirements{},
+				BaseImage:            utilimage.GrafanaImage,
+				Version:              utilimage.GrafanaVersion,
+				ImagePullPolicy:      &imagePullPolicy,
+				ResourceRequirements: corev1.ResourceRequirements{},
 			},
 			Username: "admin",
 			Password: "admin",
@@ -437,6 +437,7 @@ func GetBackupCRDWithS3(tc *v1alpha1.TidbCluster, fromSecretName, brType string,
 				ClusterNamespace: tc.GetNamespace(),
 				SendCredToTikv:   &sendCredToTikv,
 			},
+			CleanData: true,
 		},
 	}
 	if brType == DumperType {

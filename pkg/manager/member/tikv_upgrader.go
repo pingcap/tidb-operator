@@ -101,7 +101,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 		podName := TikvPodName(tcName, i)
 		pod, err := tku.podLister.Pods(ns).Get(podName)
 		if err != nil {
-			return err
+			return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
@@ -137,7 +137,7 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 	upgradePodName := TikvPodName(tcName, ordinal)
 	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
-		return err
+		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {

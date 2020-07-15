@@ -16,6 +16,7 @@ package backup
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -296,7 +297,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	}
 	klog.Infof("Get size %d for backup files in %s of cluster %s success", size, backupFullPath, bm)
 
-	commitTs, err := getCommitTs(backup)
+	commitTs, err := util.GetCommitTsFromBRMetaData(backup.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("get cluster %s commitTs failed, err: %s", bm, err)
@@ -317,7 +318,7 @@ func (bm *Manager) performBackup(backup *v1alpha1.Backup, db *sql.DB) error {
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
 	backup.Status.BackupSize = size
 	backup.Status.BackupSizeReadable = humanize.Bytes(uint64(size))
-	backup.Status.CommitTs = fmt.Sprintf("%d", commitTs)
+	backup.Status.CommitTs = strconv.FormatUint(commitTs, 10)
 
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupComplete,

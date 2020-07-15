@@ -11604,6 +11604,19 @@ spec:
               required:
               - cluster
               type: object
+            cleanData:
+              type: boolean
+            dumpling:
+              properties:
+                options:
+                  items:
+                    type: string
+                  type: array
+                tableFilter:
+                  items:
+                    type: string
+                  type: array
+              type: object
             from:
               properties:
                 host:
@@ -11652,15 +11665,6 @@ spec:
                     type: string
                 type: object
               type: array
-            mydumper:
-              properties:
-                options:
-                  items:
-                    type: string
-                  type: array
-                tableRegex:
-                  type: string
-              type: object
             resources:
               properties:
                 limits:
@@ -12497,6 +12501,19 @@ spec:
                   required:
                   - cluster
                   type: object
+                cleanData:
+                  type: boolean
+                dumpling:
+                  properties:
+                    options:
+                      items:
+                        type: string
+                      type: array
+                    tableFilter:
+                      items:
+                        type: string
+                      type: array
+                  type: object
                 from:
                   properties:
                     host:
@@ -12545,15 +12562,6 @@ spec:
                         type: string
                     type: object
                   type: array
-                mydumper:
-                  properties:
-                    options:
-                      items:
-                        type: string
-                      type: array
-                    tableRegex:
-                      type: string
-                  type: object
                 resources:
                   properties:
                     limits:
@@ -13460,9 +13468,6 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
-                readyToScaleThresholdSeconds:
-                  format: int32
-                  type: integer
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
@@ -13488,20 +13493,27 @@ spec:
                 metrics:
                   items:
                     properties:
+                      availableStorage:
+                        type: string
+                      baselineAvailableStorage:
+                        type: string
+                      capacityStorage:
+                        type: string
                       currentValue:
                         type: string
                       name:
+                        type: string
+                      storagePressure:
+                        type: boolean
+                      storagePressureStartTime:
+                        format: date-time
                         type: string
                       thresholdValue:
                         type: string
                     required:
                     - name
-                    - currentValue
-                    - thresholdValue
                     type: object
                   type: array
-                phase:
-                  type: string
                 recommendedReplicas:
                   format: int32
                   type: integer
@@ -13519,20 +13531,27 @@ spec:
                 metrics:
                   items:
                     properties:
+                      availableStorage:
+                        type: string
+                      baselineAvailableStorage:
+                        type: string
+                      capacityStorage:
+                        type: string
                       currentValue:
                         type: string
                       name:
+                        type: string
+                      storagePressure:
+                        type: boolean
+                      storagePressureStartTime:
+                        format: date-time
                         type: string
                       thresholdValue:
                         type: string
                     required:
                     - name
-                    - currentValue
-                    - thresholdValue
                     type: object
                   type: array
-                phase:
-                  type: string
                 recommendedReplicas:
                   format: int32
                   type: integer
