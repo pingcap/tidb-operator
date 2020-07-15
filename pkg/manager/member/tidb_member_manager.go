@@ -304,7 +304,7 @@ func (tmm *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 		return fmt.Errorf("syncTiDBService: failed to get svc %s for cluster %s/%s, error: %s", newSvc.Name, ns, tc.GetName(), err)
 	}
 	oldSvc := oldSvcTmp.DeepCopy()
-	util.RetainManagedFields(newSvc, oldSvc)
+	util.RetainManagedFields(newSvc, oldSvc, tc.Spec.TiDB.Service)
 
 	equal, err := controller.ServiceEqual(newSvc, oldSvc)
 	if err != nil {

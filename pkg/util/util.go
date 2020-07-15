@@ -231,7 +231,7 @@ func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
 }
 
 // RetainManagedFields retains the fields in the old object that are managed by kube-controller-manager, such as node ports
-func RetainManagedFields(desiredSvc, existedSvc *corev1.Service) {
+func RetainManagedFields(desiredSvc, existedSvc *corev1.Service, tidbSvcSpec *v1alpha1.TiDBServiceSpec) {
 	// Retain healthCheckNodePort if it has been filled by controller
 	desiredSvc.Spec.HealthCheckNodePort = existedSvc.Spec.HealthCheckNodePort
 	if desiredSvc.Spec.Type != corev1.ServiceTypeNodePort && desiredSvc.Spec.Type != corev1.ServiceTypeLoadBalancer {
@@ -240,6 +240,13 @@ func RetainManagedFields(desiredSvc, existedSvc *corev1.Service) {
 	// Retain NodePorts
 	for id, dport := range desiredSvc.Spec.Ports {
 		for _, eport := range existedSvc.Spec.Ports {
+			if tidbSvcSpec != nil {
+				if dport.Name == "mysql-client" && tidbSvcSpec.GetMySQLNodePort() != 0 {
+					continue
+				} else if dport.Name == "status" && tidbSvcSpec.GetStatusNodePort() != 0 {
+					continue
+				}
+			}
 			if dport.Port == eport.Port && dport.Protocol == eport.Protocol {
 				dport.NodePort = eport.NodePort
 				desiredSvc.Spec.Ports[id] = dport
