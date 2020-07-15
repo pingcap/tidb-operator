@@ -393,6 +393,10 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
+
+	// InitializeStoreLabel indicates the store label set during initialization
+	// +optional
+	InitializeStoreLabel map[string]string `json:"initializeStoreLabel,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members

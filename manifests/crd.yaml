@@ -11141,6 +11141,8 @@ spec:
                         type: string
                     type: object
                   type: array
+                initializeStoreLabel:
+                  type: object
                 limits:
                   type: object
                 maxFailoverCount:
@@ -18074,6 +18076,8 @@ spec:
                     type: string
                 type: object
               type: array
+            initializeStoreLabel:
+              type: object
             limits:
               type: object
             maxFailoverCount:

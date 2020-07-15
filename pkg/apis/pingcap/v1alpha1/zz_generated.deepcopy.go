@@ -6301,6 +6301,13 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(TiKVConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.InitializeStoreLabel != nil {
+		in, out := &in.InitializeStoreLabel, &out.InitializeStoreLabel
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

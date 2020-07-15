@@ -14661,6 +14661,18 @@ TiKVConfig
 <p>Config is the Configuration of tikv-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initializeStoreLabel</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>InitializeStoreLabel indicates the store label set during initialization</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>

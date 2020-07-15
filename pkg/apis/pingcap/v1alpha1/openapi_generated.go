@@ -7238,6 +7238,21 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGroupSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
 						},
 					},
+					"initializeStoreLabel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitializeStoreLabel indicates the store label set during initialization",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 					"clusterName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName describe the target TidbCluster in the same namespace",
@@ -8520,6 +8535,21 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of tikv-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
+						},
+					},
+					"initializeStoreLabel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitializeStoreLabel indicates the store label set during initialization",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},

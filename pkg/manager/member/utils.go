@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"sort"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
@@ -385,4 +386,25 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 		},
 	}
 	return cm, nil
+}
+
+// buildStableStoreLabelsValue transform map[string]string into key1=value1,key2=value2
+// with a stable order
+func buildStableStoreLabelsValue(labels map[string]string) string {
+	if len(labels) < 1 {
+		return ""
+	}
+	s := ""
+	var keys []string
+	for k := range labels {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		v, ok := labels[key]
+		if ok {
+			s = fmt.Sprintf("%s,%s", s, fmt.Sprintf("%s=%s", key, v))
+		}
+	}
+	return s
 }

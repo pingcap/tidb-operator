@@ -645,6 +645,15 @@ func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster,
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
+	storeLabels := tg.Spec.InitializeStoreLabel
+	storeLabels["groupName"] = tg.Name
+	storeLabelsEnvValue := buildStableStoreLabelsValue(storeLabels)
+	tikvContainer.Env = util.AppendEnv(tikvContainer.Env, []corev1.EnvVar{
+		{
+			Name:  "STORE_LABELS",
+			Value: storeLabelsEnvValue,
+		},
+	})
 	podSpec.Volumes = append(vols, baseTiKVSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
