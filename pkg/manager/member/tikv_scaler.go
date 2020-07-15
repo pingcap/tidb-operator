@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -71,11 +72,25 @@ func (tsd *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, ne
 		return fmt.Errorf("cluster[%s/%s] can't conver to runtime.Object", meta.GetNamespace(), meta.GetName())
 	}
 	klog.Infof("scaling out tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
-	_, err := tsd.deleteDeferDeletingPVC(obj, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
-	if err != nil {
-		return err
+	var pvcName string
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		pvcName = fmt.Sprintf("tikv-%s-tikv-%d", meta.GetName(), ordinal)
+	case *v1alpha1.TiKVGroup:
+		pvcName = fmt.Sprintf("tikv-%s-tikv-group-%d", meta.GetName(), ordinal)
+	default:
+		return fmt.Errorf("tikv.ScaleOut, failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
-
+	_, err := tsd.pvcLister.PersistentVolumeClaims(meta.GetNamespace()).Get(pvcName)
+	if err == nil {
+		_, err = tsd.deleteDeferDeletingPVC(obj, oldSet.GetName(), v1alpha1.TiKVMemberType, ordinal)
+		if err != nil {
+			return err
+		}
+		return controller.RequeueErrorf("tikv.ScaleOut, cluster %s/%s ready to scale out, wait for next round", meta.GetNamespace(), meta.GetName())
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("tikv.ScaleOut, cluster %s/%s failed to fetch pvc informaiton, err:%v", meta.GetNamespace(), meta.GetName(), err)
+	}
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
@@ -90,7 +105,16 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need remove member from cluster before reducing statefulset replicas
-	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+	var podName string
+
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
+	case *v1alpha1.TiKVGroup:
+		podName = TiKVGroupPodName(meta.GetName(), ordinal)
+	default:
+		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
+	}
 	pod, err := tsd.podLister.Pods(ns).Get(podName)
 	if err != nil {
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
