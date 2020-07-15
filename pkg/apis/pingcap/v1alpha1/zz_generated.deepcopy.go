@@ -4253,6 +4253,16 @@ func (in *TiDBServiceSpec) DeepCopyInto(out *TiDBServiceSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.MySQLNodePort != nil {
+		in, out := &in.MySQLNodePort, &out.MySQLNodePort
+		*out = new(int)
+		**out = **in
+	}
+	if in.StatusNodePort != nil {
+		in, out := &in.StatusNodePort, &out.StatusNodePort
+		*out = new(int)
+		**out = **in
+	}
 	return
 }
 

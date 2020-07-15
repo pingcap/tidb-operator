@@ -5419,6 +5419,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"mysqlNodePort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expose the tidb cluster mysql port to MySQLNodePort Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"statusNodePort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expose the tidb status node port to StatusNodePort Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 			},
 		},
