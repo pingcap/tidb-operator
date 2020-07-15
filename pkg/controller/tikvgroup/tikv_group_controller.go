@@ -24,6 +24,7 @@ import (
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -63,24 +64,34 @@ func NewController(
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
+	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
+	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 
 	tgControl := controller.NewRealTiKVGroupControl(cli, tikvGroupInformer.Lister(), recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
+	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
+	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
 
 	tikvManager := member.NewTiKVGroupMemberManager(genericCli,
 		svcInformer.Lister(),
 		setInformer.Lister(),
 		podInformer.Lister(),
-		tcInformer.Lister(),
 		svcControl,
 		setControl,
 		typedControl,
+		member.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister()),
+		member.NewTiKVGroupUpgrader(member.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())),
 		pdControl)
-
+	reclaimPolicyManager := meta.NewReclaimPolicyTiKVGroupManager(
+		pvcInformer.Lister(),
+		pvInformer.Lister(),
+		pvControl,
+	)
 	tg := &Controller{
-		control:  NewDefaultTikvGroupControl(tgControl, tikvManager),
+		control:  NewDefaultTikvGroupControl(tgControl, tikvManager, reclaimPolicyManager, tcInformer.Lister()),
 		tgLister: tikvGroupInformer.Lister(),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
