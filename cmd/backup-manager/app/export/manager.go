@@ -219,7 +219,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 	}
 
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
-		err = bm.SetTikvGCLifeTime(db, constants.TikvGCLifeTime)
+		err = bm.SetTikvGCLifeTime(db, tikvGCLifeTime)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, constants.TikvGCLifeTime, err)
