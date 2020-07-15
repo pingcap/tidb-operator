@@ -33,5 +33,8 @@ spec:
     baseImage: pingcap/tidb
     replicas: 1
     service:
-      type: ClusterIP
+      type: NodePort
+      exposeStatus: true
+      mysqlNodePort: 30002
+      statusNodePort: 30004
     config: {}
