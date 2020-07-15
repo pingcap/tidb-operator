@@ -10,7 +10,7 @@ spec:
     version: v2.18.1
   grafana:
     baseImage: grafana/grafana
-    version: 6.0.1
+    version: 6.1.6
     service:
       type: NodePort
   initializer:

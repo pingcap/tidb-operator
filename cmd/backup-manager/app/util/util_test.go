@@ -14,9 +14,13 @@
 package util
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	corev1 "k8s.io/api/core/v1"
@@ -89,6 +93,30 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}
+}
+
+func TestGetCommitTsFromMetadata(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tmpdir, err := ioutil.TempDir("", "test-get-commitTs-metadata")
+	g.Expect(err).To(Succeed())
+
+	defer os.RemoveAll(tmpdir)
+	metaDataFileName := filepath.Join(tmpdir, appconstant.MetaDataFile)
+	metaDataFile, err := os.Open(metaDataFileName)
+	g.Expect(err).To(Succeed())
+
+	_, err = metaDataFile.WriteString(`Started dump at: 2019-06-13 10:00:04
+		SHOW MASTER STATUS:
+			Log: tidb-binlog
+			Pos: 409054741514944513
+			GTID:
+
+		Finished dump at: 2019-06-13 10:00:04`)
+	g.Expect(err).To(Succeed())
+
+	commitTs, err := GetCommitTsFromMetadata(tmpdir)
+	g.Expect(err).To(Succeed())
+	g.Expect(commitTs).To(Equal("409054741514944513"))
 }
 
 func newBackup() *v1alpha1.Backup {
