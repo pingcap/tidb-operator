@@ -645,7 +645,12 @@ func getNewTiKVSetForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster,
 		})
 	}
 	tikvContainer.Env = util.AppendEnv(env, baseTiKVSpec.Env())
-	storeLabels := tg.Spec.InitializeStoreLabels
+	var storeLabels map[string]string
+	if tg.Spec.InitializeStoreLabels != nil {
+		storeLabels = tg.Spec.InitializeStoreLabels
+	} else {
+		storeLabels = map[string]string{}
+	}
 	storeLabels["groupName"] = tg.Name
 	storeLabelsEnvValue := buildStableStoreLabelsValue(storeLabels)
 	tikvContainer.Env = util.AppendEnv(tikvContainer.Env, []corev1.EnvVar{
