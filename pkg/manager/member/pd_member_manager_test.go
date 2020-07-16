@@ -1503,7 +1503,6 @@ func TestGetPDConfigMap(t *testing.T) {
   tidb-cacert-path = "/var/lib/tidb-client-tls/ca.crt"
   tidb-cert-path = "/var/lib/tidb-client-tls/tls.crt"
   tidb-key-path = "/var/lib/tidb-client-tls/tls.key"
-  enable-telemetry = true
 `,
 				},
 			},
@@ -1560,7 +1559,6 @@ func TestGetPDConfigMap(t *testing.T) {
   tidb-cacert-path = "/var/lib/tidb-client-tls/ca.crt"
   tidb-cert-path = "/var/lib/tidb-client-tls/tls.crt"
   tidb-key-path = "/var/lib/tidb-client-tls/tls.key"
-  enable-telemetry = true
 `,
 				},
 			},

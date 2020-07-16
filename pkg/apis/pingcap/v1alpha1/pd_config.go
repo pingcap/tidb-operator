@@ -145,25 +145,12 @@ type DashboardConfig struct {
 	// Optional: Defaults to false
 	// +optional
 	//+k8s:openapi-gen=false
+	// Deprecated in PD v4.0.3, use EnableTelemetry instead
 	DisableTelemetry *bool `toml:"disable-telemetry,omitempty" json:"disable-telemetry,omitempty"`
 	// When enabled, usage data will be sent to PingCAP for improving user experience.
 	// Optional: Defaults to true
 	// +optional
 	EnableTelemetry *bool `toml:"enable-telemetry,omitempty" json:"enable-telemetry,omitempty" default:"true"`
-}
-
-func (in *DashboardConfig) GetDisableTelemetry() bool {
-	if in.DisableTelemetry == nil {
-		return defaultDisableTelemetry
-	}
-	return *in.DisableTelemetry
-}
-
-func (in *DashboardConfig) GetEnableTelemetry() bool {
-	if in.EnableTelemetry == nil {
-		return defaultEnableTelemetry
-	}
-	return *in.EnableTelemetry
 }
 
 // PDLogConfig serializes log related config in toml/json.

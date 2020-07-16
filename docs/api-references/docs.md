@@ -3779,7 +3779,8 @@ bool
 <td>
 <em>(Optional)</em>
 <p>When not disabled, usage data will be sent to PingCAP for improving user experience.
-Optional: Defaults to false</p>
+Optional: Defaults to false
+Deprecated in PD v4.0.3, use EnableTelemetry instead</p>
 </td>
 </tr>
 <tr>
