@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
@@ -35,6 +36,10 @@ const (
 	EvictLeaderTimeout = 3 * time.Minute
 )
 
+type TiKVUpgrader interface {
+	Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error
+}
+
 type tikvUpgrader struct {
 	pdControl  pdapi.PDControlInterface
 	podControl controller.PodControlInterface
@@ -44,7 +49,7 @@ type tikvUpgrader struct {
 // NewTiKVUpgrader returns a tikv Upgrader
 func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
 	podControl controller.PodControlInterface,
-	podLister corelisters.PodLister) Upgrader {
+	podLister corelisters.PodLister) TiKVUpgrader {
 	return &tikvUpgrader{
 		pdControl:  pdControl,
 		podControl: podControl,
@@ -52,31 +57,42 @@ func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
 	}
 }
 
-func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
+func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := meta.GetNamespace()
+	tcName := meta.GetName()
 
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
-			ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
+	var status *v1alpha1.TiKVStatus
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		tc := meta.(*v1alpha1.TidbCluster)
+		if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
+			klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
+				ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+			_, podSpec, err := GetLastAppliedConfig(oldSet)
+			if err != nil {
+				return err
+			}
+			newSet.Spec.Template.Spec = *podSpec
+			return nil
 		}
-		newSet.Spec.Template.Spec = *podSpec
-		return nil
+		status = &tc.Status.TiKV
+	case *v1alpha1.TiDBGroup:
+		tg := meta.(*v1alpha1.TiKVGroup)
+		status = &tg.Status.TiKVStatus
+	default:
+		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}
 
-	if !tc.Status.TiKV.Synced {
-		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
+	if !status.Synced {
+		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 	}
 
-	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
+	status.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
 	}
 
-	if tc.Status.TiKV.StatefulSet.UpdateRevision == tc.Status.TiKV.StatefulSet.CurrentRevision {
+	if status.StatefulSet.UpdateRevision == status.StatefulSet.CurrentRevision {
 		return nil
 	}
 
@@ -94,7 +110,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
 		i := podOrdinals[_i]
-		store := tku.getStoreByOrdinal(tc, i)
+		store := tku.getStoreByOrdinal(meta.GetName(), *status, i)
 		if store == nil {
 			continue
 		}
@@ -108,7 +124,7 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if revision == tc.Status.TiKV.StatefulSet.UpdateRevision {
+		if revision == status.StatefulSet.UpdateRevision {
 
 			if pod.Status.Phase != corev1.PodRunning {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not running", ns, tcName, podName)
@@ -124,7 +140,10 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			setUpgradePartition(newSet, i)
 			return nil
 		}
-
+		tc, ok := meta.(*v1alpha1.TidbCluster)
+		if !ok {
+			return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to not tidbcluster and not enabled pod webhook", meta.GetNamespace(), meta.GetName())
+		}
 		return tku.upgradeTiKVPod(tc, i, newSet)
 	}
 
@@ -215,7 +234,7 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	if controller.TestMode {
 		time.Sleep(5 * time.Second)
 	}
-	store := tku.getStoreByOrdinal(tc, ordinal)
+	store := tku.getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
@@ -230,9 +249,9 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 	return nil
 }
 
-func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
-	podName := TikvPodName(tc.GetName(), ordinal)
-	for _, store := range tc.Status.TiKV.Stores {
+func (tku *tikvUpgrader) getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
+	podName := TikvPodName(name, ordinal)
+	for _, store := range status.Stores {
 		if store.PodName == podName {
 			return &store
 		}
@@ -243,11 +262,12 @@ func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int
 type fakeTiKVUpgrader struct{}
 
 // NewFakeTiKVUpgrader returns a fake tikv upgrader
-func NewFakeTiKVUpgrader() Upgrader {
+func NewFakeTiKVUpgrader() TiKVUpgrader {
 	return &fakeTiKVUpgrader{}
 }
 
-func (tku *fakeTiKVUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (tku *fakeTiKVUpgrader) Upgrade(meta metav1.Object, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	tc := meta.(*v1alpha1.TidbCluster)
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	return nil
 }
