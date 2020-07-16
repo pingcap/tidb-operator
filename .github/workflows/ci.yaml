@@ -41,10 +41,17 @@ jobs:
         elif [[ "$job" == "build" ]]; then
           make docker e2e-docker cli debug-build-docker
         elif [[ "$job" == "test" ]]; then
-          make test GOFLAGS=-race
+          make test GOFLAGS=-race GO_COVER=y
         else
           make $job
         fi
       working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       env:
         job: ${{ matrix.job }}
+
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v1.0.10
+      with:
+        file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/coverage.txt
+        flags: unittest
+      if: ${{ matrix.job == 'test' }}
