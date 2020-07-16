@@ -54,6 +54,16 @@ func NewReclaimPolicyMonitorManager(pvcLister corelisters.PersistentVolumeClaimL
 	}
 }
 
+func NewReclaimPolicyTiKVGroupManager(pvcLister corelisters.PersistentVolumeClaimLister,
+	pvLister corelisters.PersistentVolumeLister,
+	pvControl controller.PVControlInterface) manager.TiKVGroupManager {
+	return &reclaimPolicyManager{
+		pvcLister,
+		pvLister,
+		pvControl,
+	}
+}
+
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	return rpm.sync(v1alpha1.TiDBClusterKind, tc.GetNamespace(), tc.GetInstanceName(), tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy, tc)
 }
@@ -62,41 +72,58 @@ func (rpm *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
 	return rpm.sync(v1alpha1.TiDBMonitorKind, tm.GetNamespace(), tm.GetName(), false, *tm.Spec.PVReclaimPolicy, tm)
 }
 
-func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy, obj runtime.Object) error {
-	selector, err := label.New().Instance(instanceName).Selector()
-	if err != nil {
-		return err
-	}
-	pvcs, err := rpm.pvcLister.PersistentVolumeClaims(ns).List(selector)
-	if err != nil {
-		return fmt.Errorf("reclaimPolicyManager.sync: failed to list pvc for cluster %s/%s, selector %s, error: %s", ns, instanceName, selector, err)
-	}
+func (rpm *reclaimPolicyManager) SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error {
+	return rpm.sync(v1alpha1.TiKVGroupKind, tg.GetName(), tg.GetName(), tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy, tc)
+}
 
+func (rpm *reclaimPolicyManager) sync(kind, ns, instanceName string, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy, obj runtime.Object) error {
+	var pvcs []*corev1.PersistentVolumeClaim
+	if kind == v1alpha1.TiDBClusterKind {
+		selector, err := label.New().Instance(instanceName).Selector()
+		if err != nil {
+			return err
+		}
+		tcPvcs, err := rpm.pvcLister.PersistentVolumeClaims(ns).List(selector)
+		if err != nil {
+			return fmt.Errorf("reclaimPolicyManager.sync: failed to list pvc for cluster %s/%s, selector %s, error: %s", ns, instanceName, selector, err)
+		}
+		for _, pvc := range tcPvcs {
+			l := label.Label(pvc.Labels)
+			if !l.IsPD() && !l.IsTiDB() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsPump() {
+				continue
+			}
+			pvcs = append(pvcs, pvc)
+		}
+	} else if kind == v1alpha1.TiDBMonitorKind {
+		selector, err := label.NewMonitor().Instance(instanceName).Monitor().Selector()
+		if err != nil {
+			return err
+		}
+		pvcs, err = rpm.pvcLister.PersistentVolumeClaims(ns).List(selector)
+		if err != nil {
+			return fmt.Errorf("reclaimPolicyManager.sync: failed to list pvc for cluster %s/%s, selector %s, error: %s", ns, instanceName, selector, err)
+		}
+	} else if kind == v1alpha1.TiKVGroupKind {
+		selector, err := label.NewGroup().Instance(instanceName).TiKV().Selector()
+		if err != nil {
+			return err
+		}
+		pvcs, err = rpm.pvcLister.PersistentVolumeClaims(ns).List(selector)
+		if err != nil {
+			return fmt.Errorf("reclaimPolicyManager.sync: failed to list pvc for tikvgroup %s/%s, selector %s, error: %s", ns, instanceName, selector, err)
+		}
+	}
 	for _, pvc := range pvcs {
 		if pvc.Spec.VolumeName == "" {
 			continue
 		}
-		l := label.Label(pvc.Labels)
-		switch kind {
-		case v1alpha1.TiDBClusterKind:
-			if !l.IsPD() && !l.IsTiDB() && !l.IsTiKV() && !l.IsTiFlash() && !l.IsPump() {
-				continue
-			}
-		case v1alpha1.TiDBMonitorKind:
-			if !l.IsMonitor() {
-				continue
-			}
-		default:
-			continue
-		}
-
 		if isPVReclaimEnabled && len(pvc.Annotations[label.AnnPVCDeferDeleting]) != 0 {
 			// If the pv reclaim function is turned on, and when pv is the candidate pv to be reclaimed, skip patch this pv.
 			continue
 		}
 		pv, err := rpm.pvLister.Get(pvc.Spec.VolumeName)
 		if err != nil {
-			return fmt.Errorf("reclaimPolicyManager.sync: failed to get pvc %s for cluster %s/%s, error: %s", pvc.Spec.VolumeName, ns, instanceName, err)
+			return fmt.Errorf("reclaimPolicyManager.sync: failed to get pvc %s for %s %s/%s, error: %s", pvc.Spec.VolumeName, kind, ns, instanceName, err)
 		}
 
 		if pv.Spec.PersistentVolumeReclaimPolicy == policy {
