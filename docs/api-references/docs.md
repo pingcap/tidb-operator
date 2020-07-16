@@ -3782,6 +3782,19 @@ bool
 Optional: Defaults to false</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, usage data will be sent to PingCAP for improving user experience.
+Optional: Defaults to true</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="discoveryspec">DiscoverySpec</h3>
@@ -10785,6 +10798,34 @@ LogTailerSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tikvbackupconfig">TiKVBackupConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvconfig">TiKVConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>num-threads</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tikvblockcacheconfig">TiKVBlockCacheConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -11711,6 +11752,19 @@ TiKVSecurityConfig
 <em>
 <a href="#tikvpessimistictxn">
 TiKVPessimisticTxn
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>backup</code></br>
+<em>
+<a href="#tikvbackupconfig">
+TiKVBackupConfig
 </a>
 </em>
 </td>
