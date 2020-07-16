@@ -29,6 +29,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         ref: ${{ github.event.pull_request.head.sha }}
+        path: go/src/github.com/${{ github.repository }}
 
     - name: ${{ matrix.job }}
       run: |
@@ -44,12 +45,13 @@ jobs:
         else
           make $job
         fi
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       env:
         job: ${{ matrix.job }}
 
     - name: Upload test coverage
       uses: codecov/codecov-action@v1.0.10
       with:
-        file: coverage.txt
+        file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/coverage.txt
         flags: unittest
       if: ${{ matrix.job == 'test' }}
