@@ -765,10 +765,6 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		},
 	}
 
-	if tc.Spec.TiDB.TerminationGracePeriodSeconds != nil {
-		tidbSet.Spec.Template.Spec.TerminationGracePeriodSeconds = tc.Spec.TiDB.TerminationGracePeriodSeconds
-	}
-
 	return tidbSet
 }
 

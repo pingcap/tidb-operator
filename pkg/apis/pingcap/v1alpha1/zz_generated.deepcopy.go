@@ -671,11 +671,6 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(int64)
 		**out = **in
 	}
-	if in.Lifecycle != nil {
-		in, out := &in.Lifecycle, &out.Lifecycle
-		*out = new(v1.Lifecycle)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
@@ -4227,6 +4222,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = new(TiDBConfig)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Lifecycle != nil {
+		in, out := &in.Lifecycle, &out.Lifecycle
+		*out = new(v1.Lifecycle)
 		(*in).DeepCopyInto(*out)
 	}
 	return
