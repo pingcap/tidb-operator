@@ -15,6 +15,7 @@ package tikvgroup
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -29,17 +30,23 @@ type ControlInterface interface {
 
 func NewDefaultTikvGroupControl(
 	tgControl controller.TiKVGroupControlInterface,
-	manager manager.TiKVGroupManager) ControlInterface {
+	manager manager.TiKVGroupManager,
+	reclaimPolicyTiKVGroupManager manager.TiKVGroupManager,
+	tcLister listers.TidbClusterLister) ControlInterface {
 	return &defaultTiKVGroupControl{
-		tgControl: tgControl,
-		manager:   manager,
+		tgControl:                     tgControl,
+		manager:                       manager,
+		reclaimPolicyTiKVGroupManager: reclaimPolicyTiKVGroupManager,
+		tcLister:                      tcLister,
 	}
 }
 
 type defaultTiKVGroupControl struct {
 	// TODO: sync manager who control the TiKVGroup
-	tgControl controller.TiKVGroupControlInterface
-	manager   manager.TiKVGroupManager
+	tgControl                     controller.TiKVGroupControlInterface
+	manager                       manager.TiKVGroupManager
+	reclaimPolicyTiKVGroupManager manager.TiKVGroupManager
+	tcLister                      listers.TidbClusterLister
 }
 
 func (dtc *defaultTiKVGroupControl) ReconcileTiKVGroup(tg *v1alpha1.TiKVGroup) error {
@@ -76,13 +83,22 @@ func (dtc *defaultTiKVGroupControl) reconcileTiKVGroup(tg *v1alpha1.TiKVGroup) e
 }
 
 func (dtc *defaultTiKVGroupControl) updateTiKVGroup(tg *v1alpha1.TiKVGroup) error {
+	tcNamespace := tg.Namespace
+	tcName := tg.Spec.ClusterName
+	tc, err := dtc.tcLister.TidbClusters(tcNamespace).Get(tcName)
+	if err != nil {
+		return err
+	}
+
 	// TODO: sync PV
+	if err := dtc.reclaimPolicyTiKVGroupManager.SyncTiKVGroup(tg, tc); err != nil {
+		return err
+	}
 
 	// TODO: clean orphan Pods
 
 	// TODO: syncing restart pods
-
-	if err := dtc.manager.Sync(tg); err != nil {
+	if err := dtc.manager.SyncTiKVGroup(tg, tc); err != nil {
 		return err
 	}
 

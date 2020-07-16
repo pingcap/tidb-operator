@@ -26,5 +26,5 @@ type TiDBGroupManager interface {
 }
 
 type TiKVGroupManager interface {
-	Sync(*v1alpha1.TiKVGroup) error
+	SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error
 }

@@ -24,10 +24,12 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -49,6 +51,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog"
 	aggregatorclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -74,6 +77,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 	var config *restclient.Config
 	var fw portforward.PortForward
 	var fwCancel context.CancelFunc
+	var ocfg *tests.OperatorConfig
+	var crdUtil *tests.CrdTestUtil
+	/**
+	 * StatefulSet or AdvancedStatefulSet getter interface.
+	 */
+	var stsGetter typedappsv1.StatefulSetsGetter
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -103,6 +112,14 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		framework.ExpectNoError(err, "failed to create port forwarder")
 		fwCancel = cancel
 		cfg = e2econfig.TestConfig
+		cfg = e2econfig.TestConfig
+		ocfg = e2econfig.NewDefaultOperatorConfig(cfg)
+		if ocfg.Enabled(features.AdvancedStatefulSet) {
+			stsGetter = helper.NewHijackClient(c, asCli).AppsV1()
+		} else {
+			stsGetter = c.AppsV1()
+		}
+		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, stsGetter)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -207,6 +224,79 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
 			framework.ExpectNoError(err)
 		})
+	})
+
+	ginkgo.Context("[Feature: TiKVGroup]", func() {
+		var ocfg *tests.OperatorConfig
+		var oa tests.OperatorActions
+
+		ginkgo.BeforeEach(func() {
+			ocfg = &tests.OperatorConfig{
+				Namespace:         ns,
+				ReleaseName:       "operator",
+				Image:             cfg.OperatorImage,
+				Tag:               cfg.OperatorTag,
+				LogLevel:          "4",
+				TestMode:          true,
+				WebhookEnabled:    true,
+				PodWebhookEnabled: true,
+				StsWebhookEnabled: false,
+			}
+			oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
+			ginkgo.By("Installing CRDs")
+			oa.CleanCRDOrDie()
+			oa.InstallCRDOrDie(ocfg)
+			ginkgo.By("Installing tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			oa.DeployOperatorOrDie(ocfg)
+		})
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Uninstall tidb-operator")
+			oa.CleanOperatorOrDie(ocfg)
+			ginkgo.By("Uninstalling CRDs")
+			oa.CleanCRDOrDie()
+		})
+
+		ginkgo.It("[Feature: TiKVGroup]", func() {
+			tc := fixture.GetTidbCluster(ns, "tc", utilimage.TiDBV4UpgradeVersion)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 1
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+			tg := fixture.GetTiKVGroup(ns, "tg", "tc", utilimage.TiDBV4UpgradeVersion)
+			tg.Spec.Replicas = 1
+			err = genericCli.Create(context.TODO(), tg)
+			framework.ExpectNoError(err)
+			err = crdUtil.WaitForTiKVGroupReady(tg, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected TiKVGroup ready")
+			err = controller.GuaranteedUpdate(genericCli, tg, func() error {
+				tg.Spec.Replicas = 2
+				return nil
+			})
+			framework.ExpectNoError(err)
+			err = crdUtil.WaitForTiKVGroupReady(tg, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+			err = controller.GuaranteedUpdate(genericCli, tg, func() error {
+				tg.Spec.Replicas = 1
+				return nil
+			})
+			framework.ExpectNoError(err, "Expected TiKVGroup ready")
+			err = crdUtil.WaitForTiKVGroupReady(tg, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err, "Expected TiKVGroup ready")
+			err = controller.GuaranteedUpdate(genericCli, tg, func() error {
+				tg.Spec.Replicas = 2
+				return nil
+			})
+			framework.ExpectNoError(err)
+			err = crdUtil.WaitForTiKVGroupReady(tg, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+		})
+
 	})
 
 	ginkgo.Context("[Feature: Defaulting and Validating]", func() {
