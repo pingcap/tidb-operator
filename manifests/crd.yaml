@@ -13228,9 +13228,6 @@ spec:
             pvReclaimPolicy:
               type: string
             reloader: {}
-            replicas:
-              format: int32
-              type: integer
             storage:
               type: string
             storageClassName:

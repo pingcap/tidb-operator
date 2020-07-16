@@ -83,9 +83,6 @@ type TidbMonitorSpec struct {
 
 	// +optional
 	AdditionalContainers []corev1.Container `json:"additionalContainers,omitempty"`
-
-	//
-	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // PrometheusSpec is the desired state of prometheus

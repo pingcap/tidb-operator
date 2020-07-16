@@ -9948,12 +9948,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							},
 						},
 					},
-					"replicas": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int32",
-						},
-					},
 				},
 				Required: []string{"clusters", "prometheus", "reloader", "initializer"},
 			},
