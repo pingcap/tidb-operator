@@ -50,8 +50,7 @@ jobs:
         job: ${{ matrix.job }}
 
     - name: Upload test coverage
-      uses: codecov/codecov-action@v1.0.10
-      with:
-        file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/coverage.txt
-        flags: unittest
+      run: |
+        curl -s https://codecov.io/bash | bash -s - -F unittest
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       if: ${{ matrix.job == 'test' }}
