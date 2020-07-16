@@ -779,6 +779,11 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		}
 	}
 
+	if config.Dashboard != nil {
+		enableTelemetry := config.Dashboard.GetEnableTelemetry() && !config.Dashboard.GetDisableTelemetry()
+		config.Dashboard.EnableTelemetry = &enableTelemetry
+	}
+
 	confText, err := MarshalTOML(config)
 	if err != nil {
 		return nil, err
