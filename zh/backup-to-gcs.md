@@ -1,11 +1,11 @@
 ---
-title: 使用 Mydumper 备份 TiDB 集群数据到 GCS
-summary: 介绍如何使用 Mydumper 将 TiDB 集群数据备份到 Google Cloud Storage (GCS)。
+title: 使用 Dumpling 备份 TiDB 集群数据到 GCS
+summary: 介绍如何使用 Dumpling 将 TiDB 集群数据备份到 Google Cloud Storage (GCS)。
 ---
 
-# 使用 Mydumper 备份 TiDB 集群数据到 GCS
+# 使用 Dumpling 备份 TiDB 集群数据到 GCS
 
-本文档详细描述了如何将 Kubernetes 上 TiDB 集群的数据备份到 [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/) 上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份），底层通过使用 [`mydumper`](https://pingcap.com/docs-cn/v3.0/reference/tools/mydumper) 获取集群的逻辑备份，然后再将备份数据上传到远端 GCS。
+本文档详细描述了如何将 Kubernetes 上 TiDB 集群的数据备份到 [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/) 上。本文档中的“备份”，均是指全量备份（Ad-hoc 全量备份和定时全量备份），底层通过使用 [`Dumpling`](https://docs.pingcap.com/zh/tidb/stable/dumpling-overview) 获取集群的逻辑备份，然后再将备份数据上传到远端 GCS。
 
 本文使用的备份方式基于 TiDB Operator 新版（v1.1 及以上）的 CustomResourceDefinition (CRD) 实现。基于 Helm Charts 的备份和恢复方式可参考[基于 Helm Charts 实现的 TiDB 集群备份与恢复](backup-and-restore-using-helm-charts.md)。
 
@@ -75,15 +75,12 @@ spec:
     # storageClass: STANDARD_IA
     # objectAcl: private
     # bucketAcl: private
-# mydumper:
+# dumpling:
 #  options:
-#  - --tidb-force-priority=LOW_PRIORITY
-#  - --long-query-guard=3600
 #  - --threads=16
 #  - --rows=10000
-#  - --skip-tz-utc
-#  - --verbose=3
-#  tableRegex: "^test"
+#  tableFilter:
+#  - "test.*"
   storageClassName: local-storage
   storageSize: 10Gi
 ```
@@ -134,27 +131,36 @@ GCS 支持以下几种 bucket ACL 策略：
 更多 `Backup` CR 字段的详细解释：
 
 * `.spec.metadata.namespace`：`Backup` CR 所在的 namespace。
+* `.spec.cleanData`：设置为 true 时删除该 Backup CR 时会同时清除该 CR 备份出的数据，默认为 false。值得注意的是，在 v1.1.2 以及之前版本不存在该字段，且默认在删除 CR 的同时删除备份的文件。若 v1.1.3 及之后版本的用户希望保持该行为，需要设置该字段为 true。
 * `.spec.from.host`：待备份 TiDB 集群的访问地址，为需要导出的 TiDB 的 service name，例如 `basic-tidb`。
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
 * `.spec.from.tidbSecretName`：待备份 TiDB 集群所需凭证的 secret。
 * `.spec.gcs.bucket`：存储数据的 bucket 名字。
 * `.spec.gcs.prefix`：这个字段可以省略，如果设置了这个字段，则会使用这个字段来拼接在远端存储的存储路径 `s3://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`。
-* `.spec.mydumper`：Mydumper 相关的配置，主要有两个字段：一个是 [`options`](https://pingcap.com/docs-cn/stable/reference/tools/mydumper/) 字段，里面可以指定 mydumper 需要的一些参数；一个是 `tableRegex` 字段，可以指定让 Mydumper 备份符合这个正则表达式的表。默认情况下 Mydumper 这个字段可以不用配置。当不指定 Mydumper 的配置时，`options` 和 `tableRegex` 字段的默认值如下：
+* `.spec.dumpling`：Dumpling 相关的配置，主要有两个字段：一个是 `options` 字段，里面可以指定 Dumpling 的运行参数，详情见 [Dumpling 使用文档](https://docs.pingcap.com/zh/tidb/dev/dumpling-overview#dumpling-主要参数表)；一个是 `tableFilter` 字段，可以指定让 Dumpling 备份符合 [table-filter 规则](https://docs.pingcap.com/zh/tidb/stable/table-filter/) 的表。默认情况下 dumpling 这个字段可以不用配置。当不指定 dumpling 的配置时，`options` 和 `tableFilter` 字段的默认值如下：
 
     ```
     options:
-    --tidb-force-priority=LOW_PRIORITY
-    --long-query-guard=3600
-    --threads=16
-    --rows=10000
-    --skip-tz-utc
-    --verbose=3
-   tableRegex: "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
-   ```
+    - --threads=16
+    - --rows=10000
+    tableFilter:
+    - "*.*"
+    - "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
+    ```
+
+    > **注意：**
+    >
+    > tableFilter 如果要写排除规则导出除 db.table 的所有表 "!db.table" 必须先添加 `*.*` 规则来导出所有表，如下面例子所示：
+
+    ```
+    tableFilter:
+    - "*.*"
+    - "!db.table"
+    ```
 
 * `.spec.storageClassName`：备份时指定所需的 persistent volume (PV) 类型。如果不指定该项，则默认使用 TiDB Operator 启动参数中 `default-backup-storage-class-name` 指定的值，该值默认为 `standard`。
-* `.spec.storageSize`：备份时指定所需的 PV 大小。该值应大于备份 TiDB 集群数据的大小。
+* `.spec.storageSize`：备份时指定所需的 PV 大小，默认为 100 Gi。该值应大于备份 TiDB 集群数据的大小。一个 TiDB 集群的 Backup CR 对应的 PVC 名字是确定的，如果集群命名空间中已存在该 PVC 并且其大小小于 `.spec.storageSize`，这时需要先删除该 PVC 再运行 Backup job。
 
 ## 定时全量备份
 
@@ -203,15 +209,12 @@ spec:
       # storageClass: STANDARD_IA
       # objectAcl: private
       # bucketAcl: private
-  # mydumper:
+  # dumpling:
   #  options:
-  #  - --tidb-force-priority=LOW_PRIORITY
-  #  - --long-query-guard=3600
   #  - --threads=16
   #  - --rows=10000
-  #  - --skip-tz-utc
-  #  - --verbose=3
-  #  tableRegex: "^test"
+  #  tableFilter:
+  #  - "test.*"
     storageClassName: local-storage
     storageSize: 10Gi
 ```

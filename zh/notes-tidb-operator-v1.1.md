@@ -86,12 +86,12 @@ spec
 
 升级到 TiDB Operator v1.1 之后，可以通过 BackupSchedule CR 配置定时全量备份：
 
-- 如果 TiDB 集群版本 < v3.1，可以参考 [mydumper 定时全量备份](backup-to-s3.md#定时全量备份)
+- 如果 TiDB 集群版本 < v3.1，可以参考 [Dumpling 定时全量备份](backup-to-s3.md#定时全量备份)
 - 如果 TiDB 集群版本 >= v3.1，可以参考 [BR 定时全量备份](backup-to-aws-s3-using-br.md#定时全量备份)
 
 > **注意：**
 >
-> * BackupSchedule CR mydumper 方式目前只支持备份到 s3、gcs，BR 方式只支持备份到 s3，如果升级之前的定时全量备份是备份到本地 PVC，则升级后不能切换到 CR 方式管理。
+> * BackupSchedule CR Dumpling 方式目前只支持备份到 s3、gcs，BR 方式只支持备份到 s3，如果升级之前的定时全量备份是备份到本地 PVC，则升级后不能切换到 CR 方式管理。
 > * 如果切换到 CR 方式管理，请删除原有定时全量备份的 Cronjob，以防止重复备份。
 
 ### Drainer
@@ -111,12 +111,12 @@ spec
 
 升级到 TiDB Operator v1.1 之后，可以通过 Backup CR 进行全量备份：
 
-- 如果 TiDB 集群版本 < v3.1，可以参考 [Mydumper Ad-hoc 全量备份](backup-to-s3.md#ad-hoc-全量备份)
+- 如果 TiDB 集群版本 < v3.1，可以参考 [Dumpling Ad-hoc 全量备份](backup-to-s3.md#ad-hoc-全量备份)
 - 如果 TiDB 集群版本 >= v3.1，可以参考 [BR Ad-hoc 全量备份](backup-to-aws-s3-using-br.md#ad-hoc-全量备份)
 
 > **注意：**
 >
-> Backup CR mydumper 方式目前只支持备份到 S3、GCS，BR 方式只支持备份到 S3。如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
+> Backup CR Dumpling 方式目前只支持备份到 S3、GCS，BR 方式只支持备份到 S3。如果升级之前的 Ad-hoc 全量备份是备份到本地 PVC，则不能切换到 CR 方式管理。
 
 ### 备份恢复
 
