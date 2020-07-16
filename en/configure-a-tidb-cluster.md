@@ -147,7 +147,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap.com/tidb:v4.0.0
+    image: pingcap/tidb:v4.0.0
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -179,7 +179,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap.com/tikv:v4.0.0
+    image: pingcap/tikv:v4.0.0
     config:
       log-level: "info"
       slow-log-threshold: "1s"
@@ -208,7 +208,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap.com/pd:v4.0.0
+    image: pingcap/pd:v4.0.0
     config:
       lease: 3
       enable-prevote: true

@@ -157,7 +157,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap.com/tidb:v4.0.2
+    image: pingcap/tidb:v4.0.2
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -187,7 +187,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap.com/tikv:v4.0.2
+    image: pingcap/tikv:v4.0.2
     config: {}
     replicas: 1
     requests:
@@ -212,7 +212,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap.com/pd:v4.0.2
+    image: pingcap/pd:v4.0.2
     config:
       lease: 3
       enable-prevote: true
