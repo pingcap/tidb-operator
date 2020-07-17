@@ -19,7 +19,7 @@ storage: 10Gi
 # disbale detect causality
 disableDetect: false
 # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
-initialCommitTs: 0
+initialCommitTs: "-1"
 
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
 config: |

@@ -30,6 +30,6 @@ done
 -addr=`echo ${HOSTNAME}`.{{ include "drainer.name" . }}:8249 \
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.disableDetect | default false }} \
--initial-commit-ts={{ .Values.initialCommitTs | default 0 }} \
+-initial-commit-ts={{ .Values.initialCommitTs | default -1 }} \
 -data-dir=/data \
 -log-file=""
