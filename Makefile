@@ -23,7 +23,7 @@ PACKAGE_LIST := go list ./... | grep -vE "client/(clientset|informers|listers)"
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
 FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
-TEST_COVER_PACKAGES:=go list ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+TEST_COVER_PACKAGES:=go list ./cmd/backup-manager/app/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
 default: build
 
@@ -125,11 +125,11 @@ fault-trigger:
 ifeq ($(GO_COVER),y)
 test:
 	@echo "Run unit tests"
-	@go test -cover ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
+	@go test -cover ./cmd/backup-manager/app/... ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo "\nUnit tests run successfully!"
 else
 test:
 	@echo "Run unit tests"
-	@go test ./pkg/... && echo "\nUnit tests run successfully!"
+	@go test ./cmd/backup-manager/app/... ./pkg/... && echo "\nUnit tests run successfully!"
 endif
 
 check-all: lint check-static check-shadow check-gosec staticcheck errcheck
