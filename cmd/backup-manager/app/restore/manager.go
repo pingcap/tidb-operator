@@ -235,6 +235,9 @@ func (rm *Manager) performRestore(restore *v1alpha1.Restore, db *sql.DB) error {
 	if oldTikvGCTimeDuration < tikvGCTimeDuration {
 		err = rm.SetTikvGCLifeTime(db, oldTikvGCTime)
 		if err != nil {
+			if restoreErr != nil {
+				errs = append(errs, restoreErr)
+			}
 			errs = append(errs, err)
 			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", rm, oldTikvGCTime, err)
 			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
