@@ -2196,6 +2196,36 @@ func TestTransformTiKVConfigMap(t *testing.T) {
 	}
 }
 
+func TestTiKVBackupConfig(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name       string
+		numThreads int64
+		result     string
+	}
+	tests := []testcase{
+		{
+			name:       "4.0.3",
+			numThreads: 24,
+			result: `[backup]
+  num-threads = 24
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc := newTidbClusterForTiKV()
+			tc.Spec.TiKV.Config.Backup = &v1alpha1.TiKVBackupConfig{
+				NumThreads: pointer.Int64Ptr(test.numThreads),
+			}
+			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(test.result).Should(Equal(string(confText)))
+		})
+	}
+}
+
 func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
