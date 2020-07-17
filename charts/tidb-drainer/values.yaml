@@ -48,6 +48,15 @@ tlsCluster:
   certAllowedCN: []
   #  - TiDB
 
+# The tls config between drainer and the downstream database server (MySQL/TiDB)
+tlsSyncer:
+  # tlsClientSecretName:
+
+  # certAllowedCN is the Common Name that allowed
+  # certAllowedCN: []
+  #  - TiDB
+
+
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
 # [security] section will be generated automatically if tlsCluster.enabled is set to true so users do not need to configure it.
 config: |

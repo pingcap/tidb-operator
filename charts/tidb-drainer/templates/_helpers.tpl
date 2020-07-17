@@ -27,6 +27,15 @@ config-file: |-
   cert-allowed-cn = {{ .Values.tlsCluster.certAllowedCN | toJson }}
   {{- end -}}
     {{- end -}}
+    {{- if and .Values.tlsSyncer .Values.tlsSyncer.tlsClientSecretName }}
+  [syncer.to.security]
+  ssl-ca = "/var/lib/drainer-syncer-tls/ca.crt"
+  ssl-cert = "/var/lib/drainer-syncer-tls/tls.crt"
+  ssl-key = "/var/lib/drainer-syncer-tls/tls.key"
+  {{- if .Values.tlsSyncer.certAllowedCN }}
+  cert-allowed-cn = {{ .Values.tlsSyncer.certAllowedCN | toJson }}
+  {{- end -}}
+    {{- end -}}
 {{- end -}}
 
 {{- define "drainer-configmap.name" -}}
