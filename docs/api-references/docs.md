@@ -16759,6 +16759,51 @@ default to current tidb cluster version, for example: v3.0.15</p>
 <p>
 <p>TODO: sync status</p>
 </p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ready</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#conditionstatus-v1-core">
+Kubernetes core/v1.ConditionStatus
+</a>
+</em>
+</td>
+<td>
+<p>Ready is the number of ready containers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>updatedReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Total number of non-terminated pods targeted by this deployment that have the desired template spec.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>availableReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Total number of available pods (ready for at least minReadySeconds) targeted by this tidbMonitor.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tikvautoscalerspec">TikvAutoScalerSpec</h3>
 <p>
 (<em>Appears on:</em>

@@ -12662,6 +12662,19 @@ metadata:
   creationTimestamp: null
   name: tidbmonitors.pingcap.com
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.ready
+    name: READY
+    type: string
+  - JSONPath: .status.updatedReplicas
+    name: UP-TO-DATE
+    type: string
+  - JSONPath: .status.availableReplicas
+    name: AVAILABLE
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
   group: pingcap.com
   names:
     kind: TidbMonitor

@@ -224,6 +224,24 @@ var (
 		Type:     "date",
 		JSONPath: ".metadata.creationTimestamp",
 	}
+	tidbMonitorAdditionalPrinterColumns      []extensionsobj.CustomResourceColumnDefinition
+	readyTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "READY",
+		Type:     "string",
+		JSONPath: ".status.ready",
+	}
+
+	statusTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "UP-TO-DATE",
+		Type:     "string",
+		JSONPath: ".status.updatedReplicas",
+	}
+
+	restartTiDBMonitorAdditionalPrinterColumns = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "AVAILABLE",
+		Type:     "string",
+		JSONPath: ".status.availableReplicas",
+	}
 )
 
 func init() {
@@ -238,6 +256,8 @@ func init() {
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
 		autoScalerTiKVMaxReplicasColumn, autoScalerTiKVMinReplicasColumn, ageColumn)
+	tidbMonitorAdditionalPrinterColumns = append(tidbMonitorAdditionalPrinterColumns, readyTiDBMonitorAdditionalPrinterColumns,
+		statusTiDBMonitorAdditionalPrinterColumns, restartTiDBMonitorAdditionalPrinterColumns, ageColumn)
 }
 
 func NewCustomResourceDefinition(crdKind v1alpha1.CrdKind, group string, labels map[string]string, validation bool) *extensionsobj.CustomResourceDefinition {
@@ -297,7 +317,7 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
 		break
 	case v1alpha1.DefaultCrdKinds.TiDBMonitor.Kind:
-		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
+		crd.Spec.AdditionalPrinterColumns = tidbMonitorAdditionalPrinterColumns
 		break
 	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns

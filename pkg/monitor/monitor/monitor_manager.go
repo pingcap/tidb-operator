@@ -239,6 +239,13 @@ func (mm *MonitorManager) syncTidbMonitorDeployment(tc *v1alpha1.TidbCluster, mo
 		klog.Errorf("tm[%s/%s]'s deployment failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return err
 	}
+
+	err = mm.syncTidbMonitorStatus(monitor)
+	if err != nil {
+		klog.Errorf("tm[%s/%s]'s tidbmonitor failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
+		return err
+	}
+
 	klog.V(4).Infof("tm[%s/%s]'s deployment synced", monitor.Namespace, monitor.Name)
 	return nil
 }
@@ -414,4 +421,29 @@ func (mm *MonitorManager) patchTidbClusterStatus(tcRef *v1alpha1.TidbClusterRef,
 	}
 	_, err = mm.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Patch(tc.Name, types.MergePatchType, mergePatch)
 	return err
+}
+
+func (mm *MonitorManager) syncTidbMonitorStatus(monitor *v1alpha1.TidbMonitor) error {
+	deployment, err := mm.deploymentLister.Deployments(monitor.Namespace).Get(GetMonitorObjectName(monitor))
+	if err != nil {
+		return err
+	}
+	if deployment == nil {
+		return nil
+	}
+	updatedReplicas := deployment.Status.UpdatedReplicas
+	readyReplicas := deployment.Status.ReadyReplicas
+	availableReplicas := deployment.Status.AvailableReplicas
+
+	monitor.Status.AvailableReplicas = availableReplicas
+	// default
+	if readyReplicas == int32(1) {
+		monitor.Status.Ready = corev1.ConditionTrue
+	} else {
+		monitor.Status.Ready = corev1.ConditionFalse
+	}
+
+	monitor.Status.UpdatedReplicas = updatedReplicas
+	return nil
+
 }

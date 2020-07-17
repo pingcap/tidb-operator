@@ -175,6 +175,15 @@ type TidbClusterRef struct {
 
 // TODO: sync status
 type TidbMonitorStatus struct {
+
+	// Ready is the number of ready containers
+	Ready corev1.ConditionStatus `json:"ready,omitempty"`
+
+	// Total number of non-terminated pods targeted by this deployment that have the desired template spec.
+	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
+
+	// Total number of available pods (ready for at least minReadySeconds) targeted by this tidbMonitor.
+	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
