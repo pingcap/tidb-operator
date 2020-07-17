@@ -1716,7 +1716,7 @@ spec:
                       type: string
                     dashboard:
                       properties:
-                        disable-telemetry:
+                        enable-telemetry:
                           type: boolean
                         internal-proxy:
                           type: boolean
@@ -9983,6 +9983,12 @@ spec:
                   type: string
                 config:
                   properties:
+                    backup:
+                      properties:
+                        num-threads:
+                          format: int64
+                          type: integer
+                      type: object
                     coprocessor:
                       properties:
                         batch-split-limit:
@@ -16933,6 +16939,12 @@ spec:
               type: string
             config:
               properties:
+                backup:
+                  properties:
+                    num-threads:
+                      format: int64
+                      type: integer
+                  type: object
                 coprocessor:
                   properties:
                     batch-split-limit:
