@@ -33,6 +33,5 @@ spec:
     baseImage: pingcap/tidb
     replicas: 1
     service:
-      type: NodePort
-      exposeStatus: true
+      type: ClusterIP
     config: {}
