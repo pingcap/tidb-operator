@@ -5050,6 +5050,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"mysqlNodePort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expose the tidb cluster mysql port to MySQLNodePort Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"statusNodePort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expose the tidb status node port to StatusNodePort Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 			},
 		},
@@ -5378,51 +5392,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 	}
 }
 
-<<<<<<< HEAD
 func schema_pkg_apis_pingcap_v1alpha1_TiFlashConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
-=======
-func schema_pkg_apis_pingcap_v1alpha1_TiDBServiceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"externalTrafficPolicy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ExternalTrafficPolicy of the service Optional: Defaults to omitted",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"exposeStatus": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Whether expose the status port Optional: Defaults to true",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"mysqlNodePort": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Expose the tidb cluster mysql port to MySQLNodePort Optional: Defaults to 0",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"statusNodePort": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Expose the tidb status node port to StatusNodePort Optional: Defaults to 0",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
->>>>>>> 29bc884... support  mysqlNodePort and statusNodePort (#2941)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
