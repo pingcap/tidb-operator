@@ -11754,6 +11754,10 @@ spec:
     format: date-time
     name: Completed
     type: string
+  - JSONPath: .status.commitTs
+    description: The commit ts of tidb cluster restore
+    name: CommitTS
+    type: string
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
