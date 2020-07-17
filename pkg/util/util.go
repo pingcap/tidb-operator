@@ -239,6 +239,9 @@ func RetainManagedFields(desiredSvc, existedSvc *corev1.Service) {
 	}
 	// Retain NodePorts
 	for id, dport := range desiredSvc.Spec.Ports {
+		if dport.NodePort != 0 {
+			continue
+		}
 		for _, eport := range existedSvc.Spec.Ports {
 			if dport.Port == eport.Port && dport.Protocol == eport.Protocol {
 				dport.NodePort = eport.NodePort
