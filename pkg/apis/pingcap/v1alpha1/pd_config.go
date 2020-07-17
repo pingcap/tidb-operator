@@ -25,6 +25,11 @@ package v1alpha1
 
 // initially copied from PD v3.0.6
 
+const (
+	defaultEnableTelemetry  = true
+	defaultDisableTelemetry = false
+)
+
 // PDConfig is the configuration of pd-server
 // +k8s:openapi-gen=true
 type PDConfig struct {
@@ -139,7 +144,13 @@ type DashboardConfig struct {
 	// When not disabled, usage data will be sent to PingCAP for improving user experience.
 	// Optional: Defaults to false
 	// +optional
+	//+k8s:openapi-gen=false
+	// Deprecated in PD v4.0.3, use EnableTelemetry instead
 	DisableTelemetry *bool `toml:"disable-telemetry,omitempty" json:"disable-telemetry,omitempty"`
+	// When enabled, usage data will be sent to PingCAP for improving user experience.
+	// Optional: Defaults to true
+	// +optional
+	EnableTelemetry *bool `toml:"enable-telemetry,omitempty" json:"enable-telemetry,omitempty" default:"true"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
