@@ -2196,7 +2196,7 @@ func TestTransformTiKVConfigMap(t *testing.T) {
 	}
 }
 
-func TestTransformTiKVBackupConfig(t *testing.T) {
+func TestTiKVBackupConfig(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name       string
@@ -2204,13 +2204,6 @@ func TestTransformTiKVBackupConfig(t *testing.T) {
 		result     string
 	}
 	tests := []testcase{
-		{
-			name:       "under 4.0",
-			numThreads: 24,
-			result: `[backup]
-  num-threads = 24
-`,
-		},
 		{
 			name:       "4.0.3",
 			numThreads: 24,
@@ -2228,7 +2221,7 @@ func TestTransformTiKVBackupConfig(t *testing.T) {
 			}
 			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(string(confText), tc)))
+			g.Expect(test.result).Should(Equal(string(confText)))
 		})
 	}
 }
