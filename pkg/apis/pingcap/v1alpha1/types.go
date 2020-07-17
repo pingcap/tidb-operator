@@ -768,6 +768,16 @@ type TiDBServiceSpec struct {
 	// Optional: Defaults to true
 	// +optional
 	ExposeStatus *bool `json:"exposeStatus,omitempty"`
+
+	// Expose the tidb cluster mysql port to MySQLNodePort
+	// Optional: Defaults to 0
+	// +optional
+	MySQLNodePort *int `json:"mysqlNodePort,omitempty"`
+
+	// Expose the tidb status node port to StatusNodePort
+	// Optional: Defaults to 0
+	// +optional
+	StatusNodePort *int `json:"statusNodePort,omitempty"`
 }
 
 // +k8s:openapi-gen=false
