@@ -173,7 +173,7 @@ type TidbClusterRef struct {
 	Name string `json:"name"`
 }
 
-// TidbMonitorStatus is the current status of
+// TidbMonitorStatus represents information about the status of a TidbMonitor.
 type TidbMonitorStatus struct {
 
 	// Ready is the number of ready containers
