@@ -151,6 +151,12 @@ var (
 		Description: "The time at which the restore was completed",
 		JSONPath:    ".status.timeCompleted",
 	}
+	restoreCommitTSColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "CommitTS",
+		Type:        "string",
+		Description: "The commit ts of tidb cluster restore",
+		JSONPath:    ".status.commitTs",
+	}
 	bksAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
 	bksScheduleColumn           = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Schedule",
@@ -246,7 +252,7 @@ func init() {
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, tidbClusterStatusMessageColumn, ageColumn)
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
-	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, ageColumn)
+	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
 	tidbInitializerPrinterColumns = append(tidbInitializerPrinterColumns, tidbInitializerPhase, ageColumn)
 	autoScalerPrinterColumns = append(autoScalerPrinterColumns, autoScalerTiDBMaxReplicasColumn, autoScalerTiDBMinReplicasColumn,
