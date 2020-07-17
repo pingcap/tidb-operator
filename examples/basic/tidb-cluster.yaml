@@ -35,6 +35,4 @@ spec:
     service:
       type: NodePort
       exposeStatus: true
-      mysqlNodePort: 30002
-      statusNodePort: 30004
     config: {}
