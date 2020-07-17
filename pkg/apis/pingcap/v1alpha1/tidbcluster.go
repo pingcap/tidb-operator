@@ -561,6 +561,22 @@ func (tidbSvc *TiDBServiceSpec) ShouldExposeStatus() bool {
 	return *exposeStatus
 }
 
+func (tidbSvc *TiDBServiceSpec) GetMySQLNodePort() int32 {
+	mysqlNodePort := tidbSvc.MySQLNodePort
+	if mysqlNodePort == nil {
+		return 0
+	}
+	return int32(*mysqlNodePort)
+}
+
+func (tidbSvc *TiDBServiceSpec) GetStatusNodePort() int32 {
+	statusNodePort := tidbSvc.StatusNodePort
+	if statusNodePort == nil {
+		return 0
+	}
+	return int32(*statusNodePort)
+}
+
 func (tc *TidbCluster) GetInstanceName() string {
 	labels := tc.ObjectMeta.GetLabels()
 	// Keep backward compatibility for helm.
