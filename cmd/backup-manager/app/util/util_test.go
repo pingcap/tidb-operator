@@ -102,16 +102,14 @@ func TestGetCommitTsFromMetadata(t *testing.T) {
 
 	defer os.RemoveAll(tmpdir)
 	metaDataFileName := filepath.Join(tmpdir, appconstant.MetaDataFile)
-	metaDataFile, err := os.Open(metaDataFileName)
-	g.Expect(err).To(Succeed())
 
-	_, err = metaDataFile.WriteString(`Started dump at: 2019-06-13 10:00:04
+	err = ioutil.WriteFile(metaDataFileName, []byte(`Started dump at: 2019-06-13 10:00:04
 		SHOW MASTER STATUS:
 			Log: tidb-binlog
 			Pos: 409054741514944513
 			GTID:
 
-		Finished dump at: 2019-06-13 10:00:04`)
+		Finished dump at: 2019-06-13 10:00:04`), 0644)
 	g.Expect(err).To(Succeed())
 
 	commitTs, err := GetCommitTsFromMetadata(tmpdir)
