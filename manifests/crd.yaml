@@ -1716,7 +1716,7 @@ spec:
                       type: string
                     dashboard:
                       properties:
-                        disable-telemetry:
+                        enable-telemetry:
                           type: boolean
                         internal-proxy:
                           type: boolean
@@ -7040,6 +7040,12 @@ spec:
                       type: boolean
                     externalTrafficPolicy:
                       type: string
+                    mysqlNodePort:
+                      format: int32
+                      type: integer
+                    statusNodePort:
+                      format: int32
+                      type: integer
                   type: object
                 slowLogTailer:
                   properties:
@@ -9983,6 +9989,12 @@ spec:
                   type: string
                 config:
                   properties:
+                    backup:
+                      properties:
+                        num-threads:
+                          format: int64
+                          type: integer
+                      type: object
                     coprocessor:
                       properties:
                         batch-split-limit:
@@ -15522,6 +15534,12 @@ spec:
                   type: boolean
                 externalTrafficPolicy:
                   type: string
+                mysqlNodePort:
+                  format: int32
+                  type: integer
+                statusNodePort:
+                  format: int32
+                  type: integer
               type: object
             slowLogTailer:
               properties:
@@ -16920,6 +16938,12 @@ spec:
               type: string
             config:
               properties:
+                backup:
+                  properties:
+                    num-threads:
+                      format: int64
+                      type: integer
+                  type: object
                 coprocessor:
                   properties:
                     batch-split-limit:

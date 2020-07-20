@@ -110,9 +110,12 @@ spec:
     ## Service defines a Kubernetes service of TiDB cluster.
     ## If you are in a public cloud environment, you can use cloud LB to access the TiDB service
     ## if you are in a private cloud environment, you can use ingress
+    ## you can set mysqlNodePort and statusNodePort to expose server/status service to given NodePort
     # service:
     #   externalTrafficPolicy: Local
     #   type: LoadBalancer
+    #   mysqlNodePort: 30020
+    #   statusNodePort: 30040
 
     ## Affinity for pod assignment
     ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity

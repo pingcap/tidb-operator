@@ -60,6 +60,8 @@ type TiKVConfig struct {
 	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
 	// +optional
 	TiKVPessimisticTxn *TiKVPessimisticTxn `json:"pessimistic-txn,omitempty" toml:"pessimistic-txn,omitempty"`
+	// +optional
+	Backup *TiKVBackupConfig `json:"backup,omitempty" toml:"backup,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -983,4 +985,10 @@ type TiKVPessimisticTxn struct {
 	WakeUpDelayDuration *string `json:"wake-up-delay-duration,omitempty" toml:"wake-up-delay-duration,omitempty"`
 	// +optional
 	Pipelined *bool `json:"pipelined,omitempty" toml:"pipelined,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type TiKVBackupConfig struct {
+	// +optional
+	NumThreads *int64 `json:"num-threads,omitempty" toml:"num-threads,omitempty"`
 }

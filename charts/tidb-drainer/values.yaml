@@ -28,7 +28,7 @@ storage: 10Gi
 # disbale detect causality
 disableDetect: false
 # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
-initialCommitTs: 0
+initialCommitTs: "-1"
 
 # Whether enable the TLS connection between TiDB server components
 tlsCluster:

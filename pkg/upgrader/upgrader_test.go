@@ -178,8 +178,10 @@ func TestUpgrade(t *testing.T) {
 		name                     string
 		tidbClusters             []v1alpha1.TidbCluster
 		statefulsets             []appsv1.StatefulSet
+		advancedStatefulsets     []asappsv1.StatefulSet
 		feature                  string
 		ns                       string
+		apiResourceList          []*metav1.APIResourceList
 		wantAdvancedStatefulsets []asappsv1.StatefulSet
 		wantStatefulsets         []appsv1.StatefulSet
 		wantErr                  bool
@@ -238,6 +240,12 @@ func TestUpgrade(t *testing.T) {
 				},
 			},
 			wantStatefulsets: nil,
+		},
+		{
+			name:    "no sts to migrate",
+			feature: "AdvancedStatefulSet=true",
+			ns:      metav1.NamespaceAll,
+			wantErr: false,
 		},
 		{
 			name: "other namespaces should not be affected if not cluster scoped",
@@ -489,6 +497,132 @@ func TestUpgrade(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:         "[AdvancedStatefulSet=false] API group not registered",
+			tidbClusters: nil,
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+			feature: "AdvancedStatefulSet=false",
+			ns:      metav1.NamespaceAll,
+			wantErr: false,
+			wantStatefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+		},
+		{
+			name:         "[AdvancedStatefulSet=false] API group registered and no asts exist",
+			tidbClusters: nil,
+			feature:      "AdvancedStatefulSet=false",
+			statefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+			ns: metav1.NamespaceAll,
+			apiResourceList: []*metav1.APIResourceList{
+				{
+					GroupVersion: "apps.pingcap.com/v1",
+					APIResources: []metav1.APIResource{
+						{
+							Kind: "StatefulSet",
+						},
+					},
+				},
+			},
+			wantErr: false,
+			wantStatefulsets: []appsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+		},
+		{
+			name: "[AdvancedStatefulSet=false] API group registered and asts exist",
+			tidbClusters: []v1alpha1.TidbCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      ownerTCName,
+						Namespace: "sts",
+					},
+				},
+			},
+			feature: "AdvancedStatefulSet=false",
+			advancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+			ns: metav1.NamespaceAll,
+			apiResourceList: []*metav1.APIResourceList{
+				{
+					GroupVersion: "apps.pingcap.com/v1",
+					APIResources: []metav1.APIResource{
+						{
+							Kind: "StatefulSet",
+						},
+					},
+				},
+			},
+			wantErr: true,
+			wantAdvancedStatefulsets: []asappsv1.StatefulSet{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "StatefulSet",
+						APIVersion: "apps.pingcap.com/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:            "sts1",
+						Namespace:       "sts",
+						OwnerReferences: validOwnerRefs,
+					},
+				},
+			},
+		},
 	}
 
 	// these tests must run serially, because we share features.DefaultFeatureGate
@@ -499,6 +633,7 @@ func TestUpgrade(t *testing.T) {
 
 		var err error
 		kubeCli := fake.NewSimpleClientset()
+		kubeCli.Resources = tt.apiResourceList
 		asCli := asclientsetfake.NewSimpleClientset()
 		cli := versionedfake.NewSimpleClientset()
 
@@ -511,6 +646,13 @@ func TestUpgrade(t *testing.T) {
 
 		for _, sts := range tt.statefulsets {
 			_, err = kubeCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		for _, sts := range tt.advancedStatefulsets {
+			_, err = asCli.AppsV1().StatefulSets(sts.Namespace).Create(&sts)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -3779,7 +3779,21 @@ bool
 <td>
 <em>(Optional)</em>
 <p>When not disabled, usage data will be sent to PingCAP for improving user experience.
-Optional: Defaults to false</p>
+Optional: Defaults to false
+Deprecated in PD v4.0.3, use EnableTelemetry instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, usage data will be sent to PingCAP for improving user experience.
+Optional: Defaults to true</p>
 </td>
 </tr>
 </tbody>
@@ -10213,6 +10227,32 @@ bool
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>mysqlNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Expose the tidb cluster mysql port to MySQLNodePort
+Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Expose the tidb status node port to StatusNodePort
+Optional: Defaults to 0</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec</h3>
@@ -10781,6 +10821,34 @@ LogTailerSpec
 <td>
 <em>(Optional)</em>
 <p>LogTailer is the configurations of the log tailers for TiFlash</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvbackupconfig">TiKVBackupConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvconfig">TiKVConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>num-threads</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -11711,6 +11779,19 @@ TiKVSecurityConfig
 <em>
 <a href="#tikvpessimistictxn">
 TiKVPessimisticTxn
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>backup</code></br>
+<em>
+<a href="#tikvbackupconfig">
+TiKVBackupConfig
 </a>
 </em>
 </td>
