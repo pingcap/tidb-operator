@@ -5,7 +5,7 @@ summary: 了解如何在 Kubernetes 上部署 TiDB 集群的 TiDB Binlog。
 
 # 部署 TiDB Binlog
 
-本文档介绍如何在 Kubernetes 上部署 TiDB 集群的 [TiDB Binlog](https://pingcap.com/docs-cn/v3.0/reference/tidb-binlog/overview)。
+本文档介绍如何在 Kubernetes 上部署 TiDB 集群的 [TiDB Binlog](https://pingcap.com/docs-cn/stable/tidb-binlog/tidb-binlog-overview/)。
 
 ## 部署准备
 

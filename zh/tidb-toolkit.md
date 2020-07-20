@@ -9,7 +9,7 @@ Kubernetes 上的 TiDB 运维管理需要使用一些开源工具。同时，在
 
 ## 在 Kubernetes 上使用 PD Control
 
-[PD Control](https://pingcap.com/docs-cn/v3.0/reference/tools/pd-control) 是 PD 的命令行工具，在使用 PD Control 操作 Kubernetes 上的 TiDB 集群时，需要先使用 `kubectl port-forward` 打开本地到 PD 服务的连接：
+[PD Control](https://pingcap.com/docs-cn/stable/pd-control/) 是 PD 的命令行工具，在使用 PD Control 操作 Kubernetes 上的 TiDB 集群时，需要先使用 `kubectl port-forward` 打开本地到 PD 服务的连接：
 
 {{< copyable "shell-regular" >}}
 
@@ -43,7 +43,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
 ## 在 Kubernetes 上使用 TiKV Control
 
-[TiKV Control](https://pingcap.com/docs-cn/v3.0/reference/tools/tikv-control) 是 TiKV 的命令行工具。在使用 TiKV Control 操作 Kubernetes 上的 TiDB 集群时，针对 TiKV Control 的不同操作模式，有不同的操作步骤。
+[TiKV Control](https://pingcap.com/docs-cn/stable/tikv-control/) 是 TiKV 的命令行工具。在使用 TiKV Control 操作 Kubernetes 上的 TiDB 集群时，针对 TiKV Control 的不同操作模式，有不同的操作步骤。
 
 * **远程模式**：此模式下 `tikv-ctl` 命令需要通过网络访问 TiKV 服务或 PD 服务，因此需要先使用 `kubectl port-forward` 打开本地到 PD 服务以及目标 TiKV 节点的连接：
 
@@ -111,7 +111,7 @@ pd-ctl -u 127.0.0.1:${local_port} -d config show
 
 ## 在 Kubernetes 上使用 TiDB Control
 
-[TiDB Control](https://pingcap.com/docs-cn/v3.0/reference/tools/tidb-control) 是 TiDB 的命令行工具，使用 TiDB Control 时，需要从本地访问 TiDB 节点和 PD 服务，因此建议使用 `kubectl port-forward` 打开到集群中 TiDB 节点和 PD 服务的连接：
+[TiDB Control](https://pingcap.com/docs-cn/stable/tidb-control/) 是 TiDB 的命令行工具，使用 TiDB Control 时，需要从本地访问 TiDB 节点和 PD 服务，因此建议使用 `kubectl port-forward` 打开到集群中 TiDB 节点和 PD 服务的连接：
 
 {{< copyable "shell-regular" >}}
 

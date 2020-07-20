@@ -231,7 +231,7 @@ tidb-lightning Helm chart 支持恢复本地或远程的备份数据。
 
 4. 运行 `cat /proc/1/cmdline`，获得启动脚本。
 
-5. 参考[故障排除指南](https://pingcap.com/docs-cn/v3.0/how-to/troubleshoot/tidb-lightning/#tidb-lightning-troubleshooting)，对 lightning 进行诊断。
+5. 参考[故障排除指南](https://pingcap.com/docs-cn/stable/troubleshoot-tidb-lightning/)，对 lightning 进行诊断。
 
 ## 销毁 TiDB Lightning
 

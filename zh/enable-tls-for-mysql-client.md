@@ -638,4 +638,4 @@ kubectl get secret -n ${namespace} ${cluster_name}-tidb-client-secret  -ojsonpat
 mysql -uroot -p -P 4000 -h ${tidb_host} --ssl-cert=client-tls.crt --ssl-key=client-tls.key --ssl-ca=client-ca.crt
 ```
 
-最后请参考 [官网文档](https://pingcap.com/docs-cn/v3.1/how-to/secure/enable-tls-clients/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。
+最后请参考 [官网文档](https://pingcap.com/docs-cn/stable/enable-tls-between-clients-and-servers/#检查当前连接是否是加密连接) 来验证是否正确开启了 TLS。

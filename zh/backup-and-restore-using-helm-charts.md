@@ -1,5 +1,5 @@
 ---
-title: 基于 Helm Charts 实现的 TiDB 集群备份恢复
+title: 基于 Helm Charts 实现的 TiDB 集群备份与恢复
 summary: 介绍如何基于 Helm Charts 实现 TiDB 集群的备份与恢复。
 aliases: ['/docs-cn/dev/tidb-in-kubernetes/maintain/backup-and-restore/','/docs-cn/v3.0/tidb-in-kubernetes/maintain/backup-and-restore/','/docs-cn/v3.1/tidb-in-kubernetes/maintain/backup-and-restore/']
 ---
@@ -15,14 +15,16 @@ TiDB Operator 1.1 及以上版本推荐使用基于 CustomResourceDefinition (CR
     - [使用 TiDB Lightning 恢复 GCS 上的备份数据](restore-from-gcs.md)
     - [使用 Dumpling 备份 TiDB 集群到兼容 S3 的存储](backup-to-s3.md)
     - [使用 TiDB Lightning 恢复 S3 兼容存储上的备份数据](restore-from-s3.md)
+
 + 如果 TiDB 集群版本 >= v3.1，可以参考以下文档：
+
     - [使用 BR 备份 TiDB 集群到兼容 S3 的存储](backup-to-aws-s3-using-br.md)
     - [使用 BR 恢复 S3 兼容存储上的备份数据](restore-from-aws-s3-using-br.md)
 
 Kubernetes 上的 TiDB 集群支持两种备份策略：
 
-* [全量备份](#全量备份)（定时执行或 Ad-hoc）：使用 [`mydumper`](https://pingcap.com/docs-cn/v3.0/reference/tools/mydumper) 获取集群的逻辑备份；
-* [增量备份](#增量备份)：使用 [`TiDB Binlog`](https://pingcap.com/docs-cn/v3.0/reference/tidb-binlog/overview) 将 TiDB 集群的数据实时复制到其它数据库中或实时获得增量数据备份；
+* [全量备份](#全量备份)（定时执行或 Ad-hoc）：使用 [`mydumper`](https://pingcap.com/docs-cn/stable/mydumper-overview/) 获取集群的逻辑备份；
+* [增量备份](#增量备份)：使用 [`TiDB Binlog`](https://pingcap.com/docs-cn/stable/tidb-binlog/tidb-binlog-overview/) 将 TiDB 集群的数据实时复制到其它数据库中或实时获得增量数据备份；
 
 目前，Kubernetes 上的 TiDB 集群只对 `mydumper` 获取的全量备份数据提供自动化的数据恢复操作。恢复 `TiDB-Binlog` 获取的增量数据需要手动进行。
 
@@ -134,7 +136,7 @@ kubectl get pvc -n ${namespace} -l app.kubernetes.io/component=backup,pingcap.co
 
 ## 增量备份
 
-增量备份使用 [TiDB Binlog](https://pingcap.com/docs-cn/v3.0/reference/tidb-binlog/overview) 工具从 TiDB 集群收集 Binlog，并提供实时备份和向其它数据库的实时同步能力。
+增量备份使用 [TiDB Binlog](https://pingcap.com/docs-cn/stable/reference/tidb-binlog/overview) 工具从 TiDB 集群收集 Binlog，并提供实时备份和向其它数据库的实时同步能力。
 
 有关 Kubernetes 上运维 TiDB Binlog 的详细指南，可参阅 [TiDB Binlog](deploy-tidb-binlog.md)。
 

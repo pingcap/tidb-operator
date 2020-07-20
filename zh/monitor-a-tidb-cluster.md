@@ -13,7 +13,7 @@ TiDB 通过 Prometheus 和 Grafana 监控 TiDB 集群。在通过 TiDB Operator 
 
 可以在 `TidbMonitor` 中设置 `spec.persistent` 为 `true` 来持久化监控数据。开启此选项时应将 `spec.storageClassName` 设置为一个当前集群中已有的存储，并且此存储应当支持将数据持久化，否则会存在数据丢失的风险。
 
-在 [TiDB 集群监控](https://pingcap.com/docs-cn/v3.0/how-to/monitor/monitor-a-cluster/)中有一些监控系统配置的细节可供参考。
+在 [TiDB 集群监控](https://pingcap.com/docs-cn/stable/deploy-monitoring-services/)中有一些监控系统配置的细节可供参考。
 
 ### 查看监控面板
 
