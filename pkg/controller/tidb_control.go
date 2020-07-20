@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/httputil"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb/config"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
