@@ -22,12 +22,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	k8sCAFile  = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	clientCert = "/var/lib/tls/client.crt"
-	clientKey  = "/var/lib/tls/client.key"
-)
-
 // DeferClose captures and prints the error from closing (if an error occurs).
 // This is designed to be used in a defer statement.
 func DeferClose(c io.Closer) {

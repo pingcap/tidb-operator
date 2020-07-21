@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -33,8 +34,7 @@ const (
 )
 
 func getClientServer(h func(http.ResponseWriter, *http.Request)) *httptest.Server {
-	srv := httptest.NewServer(http.HandlerFunc(h))
-	return srv
+	return httptest.NewServer(http.HandlerFunc(h))
 }
 
 func TestHealth(t *testing.T) {
@@ -647,4 +647,167 @@ func readJSON(r io.ReadCloser, data interface{}) error {
 	}
 
 	return nil
+}
+
+func checkNoError(t *testing.T, results []reflect.Value) {
+	lastVal := results[len(results)-1].Interface()
+	v, ok := lastVal.(error)
+	if !ok {
+		return
+	}
+	if v != nil {
+		t.Errorf("expects no error, got %v", v)
+	}
+}
+
+func checkError(t *testing.T, results []reflect.Value) {
+	lastVal := results[len(results)-1].Interface()
+	if v, ok := lastVal.(error); !ok || v == nil {
+		t.Errorf("expects error, got nil")
+	}
+}
+
+// TestGeneric is a generic test to test methods of PD Client.
+func TestGeneric(t *testing.T) {
+	tests := []struct {
+		name        string
+		method      string
+		args        []reflect.Value
+		resp        []byte
+		statusCode  int
+		wantMethod  string
+		wantPath    string
+		wantQuery   string
+		checkResult func(t *testing.T, results []reflect.Value)
+	}{
+		{
+			name:   "GetTombStoneStores",
+			method: "GetTombStoneStores",
+			resp: []byte(`{
+	"count": 1,
+	"stores": [
+		{
+			"store": {
+			},
+			"status": {
+			}
+		}
+	]
+}
+`),
+			statusCode:  http.StatusOK,
+			wantMethod:  "GET",
+			wantPath:    fmt.Sprintf("/%s", storesPrefix),
+			wantQuery:   fmt.Sprintf("state=%d", metapb.StoreState_Tombstone),
+			checkResult: checkNoError,
+		},
+		{
+			name:   "UpdateReplicationConfig",
+			method: "UpdateReplicationConfig",
+			args: []reflect.Value{
+				reflect.ValueOf(PDReplicationConfig{}),
+			},
+			resp:        []byte(``),
+			statusCode:  http.StatusOK,
+			wantMethod:  "POST",
+			wantPath:    fmt.Sprintf("/%s", pdReplicationPrefix),
+			checkResult: checkNoError,
+		},
+		{
+			name:   "BeginEvictLeader",
+			method: "BeginEvictLeader",
+			args: []reflect.Value{
+				reflect.ValueOf(uint64(1)),
+			},
+			statusCode:  http.StatusOK,
+			wantMethod:  "POST",
+			wantPath:    fmt.Sprintf("/%s", schedulersPrefix),
+			checkResult: checkNoError,
+		},
+		{
+			name:   "EndEvictLeader",
+			method: "EndEvictLeader",
+			args: []reflect.Value{
+				reflect.ValueOf(uint64(1)),
+			},
+			statusCode:  http.StatusNotFound,
+			wantMethod:  "DELETE",
+			wantPath:    fmt.Sprintf("/%s/evict-leader-scheduler-1", schedulersPrefix),
+			checkResult: checkNoError,
+		},
+		{
+			name:   "GetEvictLeaderSchedulers",
+			method: "GetEvictLeaderSchedulers",
+			resp: []byte(`
+[
+	"evict-leader-scheduler-1"	
+]
+`),
+			statusCode:  http.StatusOK,
+			wantMethod:  "GET",
+			wantPath:    fmt.Sprintf("/%s", schedulersPrefix),
+			checkResult: checkNoError,
+		},
+		// TODO test the fix https://github.com/pingcap/tidb-operator/pull/2809
+		// {
+		// name:        "GetEvictLeaderSchedulers for the new PD versions",
+		// method:      "GetEvictLeaderSchedulers",
+		// },
+		{
+			name:   "GetPDLeader",
+			method: "GetPDLeader",
+			resp: []byte(`
+{
+	"name": "pd-leader",
+	"member_id": 1
+}
+`),
+			statusCode:  http.StatusOK,
+			wantMethod:  "GET",
+			wantPath:    fmt.Sprintf("/%s", pdLeaderPrefix),
+			checkResult: checkNoError,
+		},
+		{
+			name:   "TransferPDLeader",
+			method: "TransferPDLeader",
+			args: []reflect.Value{
+				reflect.ValueOf("foo"),
+			},
+			resp: []byte(`
+`),
+
+			statusCode:  http.StatusOK,
+			wantMethod:  "POST",
+			wantPath:    fmt.Sprintf("/%s/%s", pdLeaderTransferPrefix, "foo"),
+			checkResult: checkNoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			server := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+				g.Expect(request.Method).To(Equal(tt.wantMethod), "check method")
+				g.Expect(request.URL.Path).To(Equal(tt.wantPath), "check path")
+				g.Expect(request.URL.RawQuery).To(Equal(tt.wantQuery), "check query")
+
+				w.Header().Set("Content-Type", ContentTypeJSON)
+				w.WriteHeader(tt.statusCode)
+				w.Write(tt.resp)
+			})
+			defer server.Close()
+
+			pdClient := NewPDClient(server.URL, DefaultTimeout, &tls.Config{})
+			args := []reflect.Value{
+				reflect.ValueOf(pdClient),
+			}
+			args = append(args, tt.args...)
+			method, ok := reflect.TypeOf(pdClient).MethodByName(tt.method)
+			if !ok {
+				t.Fatalf("method %q not found", tt.method)
+			}
+			results := method.Func.Call(args)
+			tt.checkResult(t, results)
+		})
+	}
 }
