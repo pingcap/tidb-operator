@@ -50,16 +50,18 @@ tlsCluster:
 
 # The tls config between drainer and the downstream database server (MySQL/TiDB)
 tlsSyncer:
-  # tlsClientSecretName:
+  tlsClientSecretName:
 
   # certAllowedCN is the Common Name that allowed
-  # certAllowedCN: []
+  certAllowedCN: []
   #  - TiDB
 
-  # checkpoint:
-  #  tlsClientSecretName:
-  #
-  #  certAllowedCN: []
+  # checkpoint is the tls config for the database we save binlog checkpoint
+  # Omit this part if you just want to save checkpoint in downstream database
+  checkpoint:
+    tlsClientSecretName:
+  # certAllowedCN is the Common Name that allowed
+    certAllowedCN: []
   #  - TiDB
 
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml

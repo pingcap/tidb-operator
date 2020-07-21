@@ -62,7 +62,7 @@ spec:
           readOnly: true
       {{- end }}
       {{- if and .Values.tlsSyncer.checkpoint .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
-        - name: drainer-syncer-tls
+        - name: drainer-syncer-checkpoint-tls
           mountPath: /var/lib/drainer-syncer-checkpoint-tls
           readOnly: true
       {{- end }}
