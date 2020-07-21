@@ -1,0 +1,47 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+spec:
+  version: v4.0.2
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  pd:
+    baseImage: pingcap/pd
+    replicas: 1
+    requests:
+      storage: "10Gi"
+    config: {}
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: pd
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 3
+    requests:
+      storage: "100Gi"
+    config: {}
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: tikv
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 1
+    service:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
+        service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb 
+      exposeStatus: true
+      externalTrafficPolicy: Local
+      type: LoadBalancer
+    config: {}
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: tidb
