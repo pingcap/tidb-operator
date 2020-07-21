@@ -27,7 +27,8 @@ config-file: |-
   cert-allowed-cn = {{ .Values.tlsCluster.certAllowedCN | toJson }}
   {{- end -}}
     {{- end -}}
-    {{- if and .Values.tlsSyncer .Values.tlsSyncer.tlsClientSecretName }}
+  {{- if .Values.tlsSyncer }}
+    {{- if .Values.tlsSyncer.tlsClientSecretName }}
   [syncer.to.security]
   ssl-ca = "/var/lib/drainer-syncer-tls/ca.crt"
   ssl-cert = "/var/lib/drainer-syncer-tls/tls.crt"
@@ -36,6 +37,16 @@ config-file: |-
   cert-allowed-cn = {{ .Values.tlsSyncer.certAllowedCN | toJson }}
   {{- end -}}
     {{- end -}}
+    {{- if and .Values.tlsSyncer.checkpoint .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+  [syncer.to.checkpoint.security]
+  ssl-ca = "/var/lib/drainer-syncer-checkpoint-tls/ca.crt"
+  ssl-cert = "/var/lib/drainer-syncer-checkpoint-tls/tls.crt"
+  ssl-key = "/var/lib/drainer-syncer-checkpoint-tls/tls.key"
+  {{- if .Values.tlsSyncer.checkpoint.certAllowedCN }}
+  cert-allowed-cn = {{ .Values.tlsSyncer.checkpoint.certAllowedCN | toJson }}
+  {{- end -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "drainer-configmap.name" -}}
