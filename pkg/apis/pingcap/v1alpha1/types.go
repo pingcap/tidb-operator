@@ -1116,11 +1116,11 @@ type TiDBAccessConfig struct {
 type CleanPolicyType string
 
 const (
-	// CleanPolicyTypeRetain represents the clean policy is retain
+	// CleanPolicyTypeRetain represents the clean policy is to retain S3 backup files at any time
 	CleanPolicyTypeRetain CleanPolicyType = "Retain"
-	// CleanPolicyTypeOnFailure represents the clean policy is on failure
+	// CleanPolicyTypeOnFailure represents the clean policy is to clean S3 backup files on failure
 	CleanPolicyTypeOnFailure CleanPolicyType = "OnFailure"
-	// CleanPolicyTypeIfFailed represents the clean policy is delete
+	// CleanPolicyTypeIfFailed represents the clean policy is to clean S3 backup files at any time
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
@@ -1161,7 +1161,7 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// CleanPolicy denotes whether to clean backup data before the object is deleted from the cluster
+	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 }
 

@@ -121,3 +121,13 @@ func IsBackupClean(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
+
+// ShouldCleanData returns true if a Backup should be cleaned up according to cleanPolicy
+func ShouldCleanData(backup *Backup) bool {
+	switch backup.Spec.CleanPolicy {
+	case CleanPolicyTypeDelete, CleanPolicyTypeOnFailure:
+		return true
+	default:
+		return false
+	}
+}

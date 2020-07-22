@@ -99,18 +99,7 @@ func (bc *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backu
 }
 
 func needToAddFinalizer(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp == nil && shouldCleanData(backup) && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
-}
-
-func shouldCleanData(backup *v1alpha1.Backup) bool {
-	switch backup.Spec.CleanPolicy {
-	case v1alpha1.CleanPolicyTypeDelete, v1alpha1.CleanPolicyTypeOnFailure:
-		return true
-	case v1alpha1.CleanPolicyTypeRetain:
-		return false
-	default:
-		return false
-	}
+	return backup.DeletionTimestamp == nil && v1alpha1.ShouldCleanData(backup) && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 }
 
 func isDeletionCandidate(backup *v1alpha1.Backup) bool {
