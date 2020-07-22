@@ -5384,6 +5384,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBGroupSpec(ref common.ReferenceCallback
 							Ref:         ref("k8s.io/api/core/v1.Lifecycle"),
 						},
 					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path configuration of tidb-server",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"clusterName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName describe the target TidbCluster in the same namespace",
@@ -5737,6 +5744,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Lifecycle describes actions that the management system should take in response to container lifecycle events. For the PostStart and PreStop lifecycle handlers, management of the container blocks until the action is complete, unless the container process fails, in which case the handler is aborted.",
 							Ref:         ref("k8s.io/api/core/v1.Lifecycle"),
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path configuration of tidb-server",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -7262,6 +7276,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGroupSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
 						},
 					},
+					"pdAddress": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PdAddress is the pd address of TIDB",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"clusterName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName describe the target TidbCluster in the same namespace",
@@ -8544,6 +8565,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of tikv-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
+						},
+					},
+					"pdAddress": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PdAddress is the pd address of TIDB",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},

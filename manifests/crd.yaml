@@ -6968,6 +6968,8 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
+                path:
+                  type: string
                 plugins:
                   items:
                     type: string
@@ -11154,6 +11156,8 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
+                pdAddress:
+                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -15456,6 +15460,8 @@ spec:
               type: integer
             nodeSelector:
               type: object
+            path:
+              type: string
             plugins:
               items:
                 type: string
@@ -18097,6 +18103,8 @@ spec:
               type: integer
             nodeSelector:
               type: object
+            pdAddress:
+              type: string
             podSecurityContext:
               properties:
                 fsGroup:

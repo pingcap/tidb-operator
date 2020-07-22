@@ -10484,6 +10484,18 @@ events. For the PostStart and PreStop lifecycle handlers, management of the cont
 until the action is complete, unless the container process fails, in which case the handler is aborted.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Path is the path configuration of tidb-server</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -14714,6 +14726,18 @@ TiKVConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tikv-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pdAddress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PdAddress is the pd address of TIDB</p>
 </td>
 </tr>
 </tbody>
