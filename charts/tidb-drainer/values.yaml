@@ -48,20 +48,34 @@ tlsCluster:
   certAllowedCN: []
   #  - TiDB
 
-# The tls config between drainer and the downstream database server (MySQL/TiDB)
-tlsSyncer:
-  tlsClientSecretName:
+# The TLS config between drainer and the downstream database server (MySQL/TiDB)
+tlsSyncer: {}
+  # The steps to enable this feature:
+  #   1. Generate MySQL Client certificate.
+  #      There are documents help to generate these certificates:
+  #        - enable TLS for the MySQL Client through cfssl or cert-manager: https://docs.pingcap.com/tidb-in-kubernetes/stable/enable-tls-for-mysql-client
+  #        - check and enble TLS for the MySQL Client: https://docs.pingcap.com/tidb/stable/enable-tls-between-clients-and-servers
+  #   2. Create one secret object for Drainer which contains the certificates created above.
+  #      Suggest the name of this Secret is <downstream_database_secret_name>.
+  #        For Drainer: kubectl create secret generic ${downstream_database_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+  #   3. Then create the Drainer cluster with `tlsSyncer.tlsClientSecretName` set to `<downstream_database_secret_name>`.
+  # tlsClientSecretName: demo-tidb-client-secret
 
   # certAllowedCN is the Common Name that allowed
-  certAllowedCN: []
+  # certAllowedCN: []
   #  - TiDB
 
-  # checkpoint is the tls config for the database we save binlog checkpoint
-  # Omit this part if you just want to save checkpoint in downstream database
-  checkpoint:
-    tlsClientSecretName:
+  # checkpoint is the TLS config for the database we save binlog checkpoint
+  # In most cases, you needn't to specify [syncer.to.checkpoint.type].
+  # Drainer will use downstream to save binlog checkpoint and you can just left this field commented.
+  # You have to fill this field only if you want to save binlog checkpoint to ** another database which has enabled TLS **.
+  # The steps to enable this feature is similar like enable tlsSyncer.tlsClientSecretName,
+  # which means you need to Generate MySQL Client certificate, create one secret object and then set tlsClientSecretName
+  # to your checkpoint database secret name like above.
+  # checkpoint: {}
+  # tlsClientSecretName: checkpoint-tidb-client-secret
   # certAllowedCN is the Common Name that allowed
-    certAllowedCN: []
+  # certAllowedCN: []
   #  - TiDB
 
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml

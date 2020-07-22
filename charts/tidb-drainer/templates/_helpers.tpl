@@ -37,11 +37,13 @@ config-file: |-
   cert-allowed-cn = {{ .Values.tlsSyncer.certAllowedCN | toJson }}
   {{- end -}}
     {{- end -}}
-    {{- if and .Values.tlsSyncer.checkpoint .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+    {{- if .Values.tlsSyncer.checkpoint }}
+  {{- if .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
   [syncer.to.checkpoint.security]
   ssl-ca = "/var/lib/drainer-syncer-checkpoint-tls/ca.crt"
   ssl-cert = "/var/lib/drainer-syncer-checkpoint-tls/tls.crt"
   ssl-key = "/var/lib/drainer-syncer-checkpoint-tls/tls.key"
+  {{- end -}}
   {{- if .Values.tlsSyncer.checkpoint.certAllowedCN }}
   cert-allowed-cn = {{ .Values.tlsSyncer.checkpoint.certAllowedCN | toJson }}
   {{- end -}}
