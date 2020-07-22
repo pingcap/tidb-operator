@@ -81,6 +81,15 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 			Status: corev1.ConditionTrue,
 		})
 	}
+
+	if backup.Spec.CleanPolicy == v1alpha1.CleanPolicyTypeOnFailure && !v1alpha1.IsBackupFailed(backup) {
+		// the backup policy is on failure but backup CR succeeds, skip clean-up.
+		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:   v1alpha1.BackupClean,
+			Status: corev1.ConditionTrue,
+		})
+	}
+
 	// not found clean job, create it
 	job, reason, err := bc.makeCleanJob(backup)
 	if err != nil {

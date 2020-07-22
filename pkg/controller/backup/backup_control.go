@@ -104,12 +104,10 @@ func needToAddFinalizer(backup *v1alpha1.Backup) bool {
 
 func shouldCleanData(backup *v1alpha1.Backup) bool {
 	switch backup.Spec.CleanPolicy {
-	case v1alpha1.CleanPolicyTypeDelete:
+	case v1alpha1.CleanPolicyTypeDelete, v1alpha1.CleanPolicyTypeOnFailure:
 		return true
 	case v1alpha1.CleanPolicyTypeRetain:
 		return false
-	case v1alpha1.CleanPolicyTypeOnFailure:
-		return v1alpha1.IsBackupFailed(backup)
 	default:
 		return false
 	}
