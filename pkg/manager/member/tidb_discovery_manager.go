@@ -46,7 +46,10 @@ func NewTidbDiscoveryManager(typedControl controller.TypedControlInterface) Tidb
 }
 
 func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
-
+	// If pd replica less than zero, discovery deployment needn't to start.
+	if tc.Spec.PD.Replicas <= 0 {
+		return nil
+	}
 	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
 
 	// Ensure RBAC

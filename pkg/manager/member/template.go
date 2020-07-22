@@ -52,7 +52,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
 --host=0.0.0.0 \
---path=${CLUSTER_NAME}-pd:2379 \
+--path={{ .Path }} \
 --config=/etc/tidb/tidb.toml
 "
 
@@ -77,10 +77,10 @@ exec /tidb-server ${ARGS}
 `))
 
 type TidbStartScriptModel struct {
-	ClusterName     string
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
+	Path            string
 }
 
 func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
@@ -220,7 +220,7 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
+ARGS="--pd={{ .PdAddress }} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
@@ -241,10 +241,10 @@ exec /tikv-server ${ARGS}
 `))
 
 type TiKVStartScriptModel struct {
-	Scheme                    string
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
+	PdAddress                 string
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
