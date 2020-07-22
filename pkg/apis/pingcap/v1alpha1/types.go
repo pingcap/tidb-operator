@@ -1112,6 +1112,19 @@ type TiDBAccessConfig struct {
 }
 
 // +k8s:openapi-gen=true
+// CleanPolicyType represents the specific delete cloud data policy
+type CleanPolicyType string
+
+const (
+	// CleanPolicyTypeRetain represents the clean policy is retain
+	CleanPolicyTypeRetain CleanPolicyType = "Retain"
+	// CleanPolicyTypeOnFailure represents the clean policy is on failure
+	CleanPolicyTypeOnFailure CleanPolicyType = "OnFailure"
+	// CleanPolicyTypeIfFailed represents the clean policy is delete
+	CleanPolicyTypeDelete CleanPolicyType = "Delete"
+)
+
+// +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -1148,8 +1161,8 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// CleanData denotes whether to clean backup data before the object is deleted from the cluster
-	CleanData bool `json:"cleanData,omitempty"`
+	// CleanPolicy denotes whether to clean backup data before the object is deleted from the cluster
+	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true

@@ -858,7 +858,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"cleanData": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CleanData denotes whether to clean backup data before the object is deleted from the cluster",
+							Description: "CleanPolicy denotes whether to clean backup data before the object is deleted from the cluster",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
