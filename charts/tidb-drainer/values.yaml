@@ -48,6 +48,32 @@ tlsCluster:
   certAllowedCN: []
   #  - TiDB
 
+# The TLS config between drainer and the downstream database server (MySQL/TiDB)
+tlsSyncer: {}
+  # The steps to enable this feature:
+  #   1. Create one secret object which contains the certificates for the downstream database server.
+  #      For example: kubectl create secret generic ${downstream_database_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+  #   2. Then set `tlsSyncer.tlsClientSecretName` to `${downstream_database_secret_name}`.
+  # tlsClientSecretName: ${downstream_database_secret_name}
+  # certAllowedCN is the Common Name that allowed
+  # certAllowedCN:
+  #  - TiDB
+
+  # checkpoint is the TLS config for the database you save binlog checkpoint.
+  # By default, Drainer will use downstream to save binlog checkpoint,
+  # so you do not need to configure [syncer.to.checkpoint.type] and
+  # you do not need to configure the `checkpoint` below.
+  # You have to configure this field only if you want to save binlog checkpoint
+  # to ** another database which has enabled TLS **.
+  # The steps to enable this feature is similar with those to enable tlsSyncer.tlsClientSecretName,
+  # which means you need to create one secret object containing the certificates for
+  # the checkpoint database and then set `checkpoint.tlsClientSecretName`.
+  # checkpoint:
+  #   tlsClientSecretName: ${checkpoint_tidb_client_secret}
+  # certAllowedCN is the Common Name that allowed
+  # certAllowedCN:
+  #  - TiDB
+
 # Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
 # [security] section will be generated automatically if tlsCluster.enabled is set to true so users do not need to configure it.
 config: |
