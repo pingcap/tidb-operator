@@ -55,6 +55,20 @@ spec:
           mountPath: /var/lib/drainer-tls
           readOnly: true
       {{- end }}
+      {{- if .Values.tlsSyncer }}
+      {{- if .Values.tlsSyncer.tlsClientSecretName }}
+        - name: drainer-syncer-tls
+          mountPath: /var/lib/drainer-syncer-tls
+          readOnly: true
+      {{- end }}
+      {{- if .Values.tlsSyncer.checkpoint }}
+        {{- if .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+        - name: drainer-syncer-checkpoint-tls
+          mountPath: /var/lib/drainer-syncer-checkpoint-tls
+          readOnly: true
+        {{- end }}
+      {{- end }}
+      {{- end }}
       {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
         env:
         - name: TZ
@@ -73,6 +87,20 @@ spec:
       - name: drainer-tls
         secret:
           secretName: {{ include "drainer.tlsSecretName" . }}
+    {{- end }}
+    {{- if .Values.tlsSyncer }}
+    {{- if .Values.tlsSyncer.tlsClientSecretName }}
+      - name: drainer-syncer-tls
+        secret:
+          secretName: {{ .Values.tlsSyncer.tlsClientSecretName }}
+    {{- end }}
+    {{- if .Values.tlsSyncer.checkpoint }}
+      {{- if .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+      - name: drainer-syncer-checkpoint-tls
+        secret:
+          secretName: {{ .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+      {{- end }}
+    {{- end }}
     {{- end }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
