@@ -681,7 +681,7 @@ binlog:
     workerCount: 16
     # the interval time (in seconds) of detect pumps' status (default 10)
     detectInterval: 10
-    # disbale detect causality
+    # disable detect causality
     disableDetect: false
     # disable dispatching sqls that in one same binlog; if set true, work-count and txn-batch would be useless
     disableDispatch: false

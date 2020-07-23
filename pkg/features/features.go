@@ -33,7 +33,7 @@ var (
 		AutoScaling:         false,
 	}
 	// DefaultFeatureGate is a shared global FeatureGate.
-	DefaultFeatureGate FeatureGate = NewFeatureGate()
+	DefaultFeatureGate FeatureGate = NewDefaultFeatureGate()
 )
 
 const (
@@ -57,6 +57,8 @@ type FeatureGate interface {
 	Set(value string) error
 	// SetFromMap stores flag gates for enabled features from a map[string]bool
 	SetFromMap(m map[string]bool)
+	// String returns a string representation of feature gate.
+	String() string
 }
 
 var _ flag.Value = &featureGate{}
@@ -124,8 +126,11 @@ func NewFeatureGate() FeatureGate {
 	f := &featureGate{
 		enabledFeatures: make(map[string]bool),
 	}
-	for k, v := range defaultFeatures {
-		f.enabledFeatures[k] = v
-	}
+	return f
+}
+
+func NewDefaultFeatureGate() FeatureGate {
+	f := NewFeatureGate()
+	f.SetFromMap(defaultFeatures)
 	return f
 }

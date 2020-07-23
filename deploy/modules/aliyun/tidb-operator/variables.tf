@@ -72,12 +72,12 @@ variable "key_pair_name" {
 }
 
 variable "vpc_id" {
-  description = "VPC id, specify this variable to use an exsiting VPC and the vswitches in the VPC. Note that when using existing vpc, it is recommended to use a existing security group too. Otherwise you have to set vpc_cidr according to the existing VPC settings to get correct in-cluster security rule."
+  description = "VPC id, specify this variable to use an existing VPC and the vswitches in the VPC. Note that when using existing vpc, it is recommended to use a existing security group too. Otherwise you have to set vpc_cidr according to the existing VPC settings to get correct in-cluster security rule."
   default     = ""
 }
 
 variable "group_id" {
-  description = "Security group id, specify this variable to use and exising security group"
+  description = "Security group id, specify this variable to use and existing security group"
   default     = ""
 }
 

@@ -7044,6 +7044,12 @@ spec:
                       type: boolean
                     externalTrafficPolicy:
                       type: string
+                    mysqlNodePort:
+                      format: int32
+                      type: integer
+                    statusNodePort:
+                      format: int32
+                      type: integer
                   type: object
                 slowLogTailer:
                   properties:
@@ -15532,6 +15538,12 @@ spec:
                   type: boolean
                 externalTrafficPolicy:
                   type: string
+                mysqlNodePort:
+                  format: int32
+                  type: integer
+                statusNodePort:
+                  format: int32
+                  type: integer
               type: object
             slowLogTailer:
               properties:
