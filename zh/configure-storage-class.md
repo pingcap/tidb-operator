@@ -20,7 +20,7 @@ PV 一般由系统管理员或 volume provisioner 自动创建，PV 与 Pod 是�
 
 > **警告：**
 >
-> 为了数据安全，任何情况下都不要直接删除 PV，除非对 volume provisioner 原理非常清楚。
+> 为了数据安全，任何情况下都不要直接删除 PV，除非对 volume provisioner 原理非常清楚。手动删除 PV 可能导致非预期的行为。
 
 ## TiDB 集群推荐存储类型
 
