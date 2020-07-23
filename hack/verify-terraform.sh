@@ -18,28 +18,29 @@ set -o nounset
 set -o pipefail
 
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
+cd $ROOT
+
 source $ROOT/hack/lib.sh
 
 hack::ensure_terraform
 
-terraform_modules=$(find ${ROOT}/deploy -mindepth 1 -maxdepth 1 -type d -a -not -name 'modules')
+terraform_modules=$(find ./deploy -mindepth 1 -maxdepth 1 -type d -a -not -name 'modules')
 
 for module in $terraform_modules; do
     echo "Checking module ${module}"
-    cd ${module}
+    pushd ${module} >/dev/null
     if ${TERRAFORM_BIN} fmt -check >/dev/null; then
-	echo "Initialize module ${module}..."
-	${TERRAFORM_BIN} init >/dev/null
-	if ${TERRAFORM_BIN} validate > /dev/null; then
-	    continue
-	else
-	    echo "terraform validate failed for ${module}"
-	    exit 1
-	fi
+        echo "Initialize module ${module}..."
+        ${TERRAFORM_BIN} init >/dev/null
+        if ! ${TERRAFORM_BIN} validate > /dev/null; then
+            echo "terraform validate failed for ${module}"
+            exit 1
+        fi
     else
-	echo "terraform fmt -check failed for ${module}"
-	${TERRAFORM_BIN} fmt
+        echo "terraform fmt -check failed for ${module}"
+        ${TERRAFORM_BIN} fmt
     fi
+    popd >/dev/null
 done
 
 git diff --quiet deploy
