@@ -59,7 +59,7 @@ resource "alicloud_ess_scaling_group" "workers" {
   }
 }
 
-# Create the cooresponding auto-scaling configurations
+# Create the corresponding auto-scaling configurations
 resource "alicloud_ess_scaling_configuration" "workers" {
   count                      = length(local.tidb_cluster_worker_groups)
   scaling_group_id           = element(alicloud_ess_scaling_group.workers.*.id, count.index)

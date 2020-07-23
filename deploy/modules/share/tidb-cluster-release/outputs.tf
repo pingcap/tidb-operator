@@ -1,6 +1,6 @@
 locals {
   tidb_hostname    = var.create ? lookup(data.external.tidb_hostname[0].result, var.service_ingress_key, "empty") : "not_created"
-  monitor_hostname = var.create ? lookup(data.external.monitor_hostname[0].result, var.service_ingress_key, "emtpy") : "not_created"
+  monitor_hostname = var.create ? lookup(data.external.monitor_hostname[0].result, var.service_ingress_key, "empty") : "not_created"
 }
 
 output "tidb_hostname" {

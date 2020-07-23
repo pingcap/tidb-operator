@@ -29,7 +29,7 @@ KUBECTL_BIN=$OUTPUT_BIN/kubectl
 HELM_BIN=$OUTPUT_BIN/helm
 DOCS_BIN=$OUTPUT_BIN/gen-crd-api-reference-docs
 #
-# Don't ugprade to 2.15.x/2.16.x until this issue
+# Don't upgrade to 2.15.x/2.16.x until this issue
 # (https://github.com/helm/helm/issues/6361) has been fixed.
 #
 HELM_VERSION=${HELM_VERSION:-2.9.1}

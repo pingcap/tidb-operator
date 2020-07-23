@@ -98,17 +98,17 @@ variable "tikv_instance_type" {}
 variable "tidb_instance_type" {}
 
 variable "pd_image_type" {
-  description = "PD image type, avaiable: UBUNTU/COS"
+  description = "PD image type, available: UBUNTU/COS"
   default     = "COS"
 }
 
 variable "tidb_image_type" {
-  description = "TiDB image type, avaiable: UBUNTU/COS"
+  description = "TiDB image type, available: UBUNTU/COS"
   default     = "COS"
 }
 
 variable "tikv_image_type" {
-  description = "TiKV image type, avaiable: UBUNTU/COS"
+  description = "TiKV image type, available: UBUNTU/COS"
   default     = "COS"
 }
 

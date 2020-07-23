@@ -2,7 +2,7 @@
 data "template_file" "kubeconfig_filename" {
   template = var.kubeconfig_file
   vars = {
-    kubernetes_depedency = alicloud_cs_managed_kubernetes.k8s.client_cert
+    kubernetes_dependency = alicloud_cs_managed_kubernetes.k8s.client_cert
   }
 }
 
