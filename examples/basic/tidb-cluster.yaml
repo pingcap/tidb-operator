@@ -10,9 +10,6 @@ spec:
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
-  pdAddress:
-    - 127.0.0.1:1087
-    - 127.0.0.1:108
   pd:
     baseImage: pingcap/pd
     replicas: 1
