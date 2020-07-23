@@ -1,6 +1,6 @@
 # Stability Test Cookbook
 
-> Important notes: this guide is under heavy development and have complicated enviroment pre-requesites, things are ought to change in the future.
+> Important notes: this guide is under heavy development and have complicated environment pre-requesites, things are ought to change in the future.
 
 ## Run stability test
 

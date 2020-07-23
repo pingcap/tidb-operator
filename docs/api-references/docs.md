@@ -10231,6 +10231,32 @@ bool
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>mysqlNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Expose the tidb cluster mysql port to MySQLNodePort
+Optional: Defaults to 0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Expose the tidb status node port to StatusNodePort
+Optional: Defaults to 0</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbslowlogtailerspec">TiDBSlowLogTailerSpec</h3>

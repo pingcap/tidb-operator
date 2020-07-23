@@ -454,6 +454,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Port:       4000,
 			TargetPort: intstr.FromInt(4000),
 			Protocol:   corev1.ProtocolTCP,
+			NodePort:   svcSpec.GetMySQLNodePort(),
 		},
 	}
 	if svcSpec.ShouldExposeStatus() {
@@ -462,6 +463,7 @@ func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
 			Port:       10080,
 			TargetPort: intstr.FromInt(10080),
 			Protocol:   corev1.ProtocolTCP,
+			NodePort:   svcSpec.GetStatusNodePort(),
 		})
 	}
 

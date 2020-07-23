@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 )
 
-func buildUrl(tcName string, tlsEnabled bool) (*url.URL, error) {
+func buildUrl(tcName string, tlsEnabled bool) *url.URL {
 	url := &url.URL{
 		Host:   fmt.Sprintf("%s-pd:2379", tcName),
 		Scheme: "http",
@@ -36,15 +36,10 @@ func buildUrl(tcName string, tlsEnabled bool) (*url.URL, error) {
 	if tlsEnabled {
 		url.Scheme = "https"
 	}
-	return url, nil
+	return url
 }
 
-func buildProxy(tcName string, tlsEnabled bool) (*httputil.ReverseProxy, error) {
-	url, err := buildUrl(tcName, tlsEnabled)
-	if err != nil {
-		klog.Error(err)
-		return nil, err
-	}
+func buildProxy(url *url.URL, tlsEnabled bool) (*httputil.ReverseProxy, error) {
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	if tlsEnabled {
 		// load crt and key
@@ -80,21 +75,20 @@ func buildProxy(tcName string, tlsEnabled bool) (*httputil.ReverseProxy, error) 
 	return proxy, nil
 }
 
-type handler struct {
-	tcName       string
-	namespace    string
+type proxyServer struct {
+	proxyTo      *url.URL
 	tcTlsEnabled bool
 }
 
-func NewHandler(tcName string, tcTlsEnabled bool) *handler {
-	return &handler{
-		tcName:       tcName,
+func NewProxyServer(tcName string, tcTlsEnabled bool) Server {
+	return &proxyServer{
+		proxyTo:      buildUrl(tcName, tcTlsEnabled),
 		tcTlsEnabled: tcTlsEnabled,
 	}
 }
 
-func (handler *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	proxy, err := buildProxy(handler.tcName, handler.tcTlsEnabled)
+func (p *proxyServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	proxy, err := buildProxy(p.proxyTo, p.tcTlsEnabled)
 	if err != nil {
 		msg := fmt.Sprintf("Error Happed, err:%v", err)
 		w.Write([]byte(msg))
@@ -103,8 +97,6 @@ func (handler *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
-func StartProxyServer(tcName string, tcTlsEnabled bool, port int) {
-	handler := NewHandler(tcName, tcTlsEnabled)
-	klog.Infof("start proxy-server")
-	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), handler))
+func (p *proxyServer) ListenAndServe(addr string) {
+	klog.Fatal(http.ListenAndServe(addr, p))
 }

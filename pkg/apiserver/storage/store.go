@@ -293,7 +293,6 @@ func (s *store) GuaranteedUpdate(ctx context.Context,
 				}
 				return err
 			}
-			shouldRefresh = false
 		}
 		if err := precondtions.Check(key, origState.obj); err != nil {
 			return err

@@ -15,34 +15,43 @@ package server
 
 import (
 	"encoding/base64"
-	"fmt"
 	"io"
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
 type server struct {
 	discovery discovery.TiDBDiscovery
+	container *restful.Container
 }
 
-// StartServer starts a TiDB Discovery server
-func StartServer(cli versioned.Interface, kubeCli kubernetes.Interface, port int) {
-	svr := &server{discovery.NewTiDBDiscovery(cli, kubeCli)}
+// NewServer creates a new server.
+func NewServer(pdControl pdapi.PDControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) Server {
+	s := &server{
+		discovery: discovery.NewTiDBDiscovery(pdControl, cli, kubeCli),
+		container: restful.NewContainer(),
+	}
+	s.registerHandlers()
+	return s
+}
 
+func (s *server) registerHandlers() {
 	ws := new(restful.WebService)
-	ws.Route(ws.GET("/new/{advertise-peer-url}").To(svr.newHandler))
-	restful.Add(ws)
-
-	klog.Infof("starting TiDB Discovery server, listening on 0.0.0.0:%d", port)
-	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	ws.Route(ws.GET("/new/{advertise-peer-url}").To(s.newHandler))
+	s.container.Add(ws)
 }
 
-func (svr *server) newHandler(req *restful.Request, resp *restful.Response) {
+func (s *server) ListenAndServe(addr string) {
+	klog.Fatal(http.ListenAndServe(addr, s.container.ServeMux))
+}
+
+func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	encodedAdvertisePeerURL := req.PathParameter("advertise-peer-url")
 	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
 	if err != nil {
@@ -54,7 +63,7 @@ func (svr *server) newHandler(req *restful.Request, resp *restful.Response) {
 	}
 	advertisePeerURL := string(data)
 
-	result, err := svr.discovery.Discover(advertisePeerURL)
+	result, err := s.discovery.Discover(advertisePeerURL)
 	if err != nil {
 		klog.Errorf("failed to discover: %s, %v", advertisePeerURL, err)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
