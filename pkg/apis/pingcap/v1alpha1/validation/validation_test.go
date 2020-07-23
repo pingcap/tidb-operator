@@ -43,15 +43,15 @@ func TestValidateAnnotations(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
 						Config:    &v1alpha1.TiKVConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
 						Config:    &v1alpha1.TiDBConfig{},
 					},
@@ -67,15 +67,15 @@ func TestValidateAnnotations(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
 						Config:    &v1alpha1.TiKVConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
 						Config:    &v1alpha1.TiDBConfig{},
 					},
@@ -108,15 +108,15 @@ func TestValidateAnnotations(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
 						Config:    &v1alpha1.TiKVConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
 						Config:    &v1alpha1.TiDBConfig{},
 					},
@@ -144,15 +144,15 @@ func TestValidateAnnotations(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						BaseImage: "pingcap/pd",
 						Config:    &v1alpha1.PDConfig{},
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						BaseImage: "pingcap/tikv",
 						Config:    &v1alpha1.TiKVConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						BaseImage: "pingcap/tidb",
 						Config:    &v1alpha1.TiDBConfig{},
 					},

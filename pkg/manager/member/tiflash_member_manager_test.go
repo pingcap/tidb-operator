@@ -1300,7 +1300,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
@@ -1328,7 +1328,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
@@ -1359,7 +1359,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 					TiFlash: &v1alpha1.TiFlashSpec{
 						StorageClaims: []v1alpha1.StorageClaim{
 							{

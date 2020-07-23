@@ -110,16 +110,20 @@ type TidbClusterList struct {
 // TidbClusterSpec describes the attributes that a user creates on a tidb cluster
 type TidbClusterSpec struct {
 	// Discovery spec
-	Discovery DiscoverySpec `json:"discovery,omitempty"`
+	// +optional
+	Discovery *DiscoverySpec `json:"discovery,omitempty"`
 
 	// PD cluster spec
-	PD PDSpec `json:"pd"`
+	// +optional
+	PD *PDSpec `json:"pd"`
 
 	// TiDB cluster spec
-	TiDB TiDBSpec `json:"tidb"`
+	// +optional
+	TiDB *TiDBSpec `json:"tidb"`
 
 	// TiKV cluster spec
-	TiKV TiKVSpec `json:"tikv"`
+	// +optional
+	TiKV *TiKVSpec `json:"tikv"`
 
 	// TiFlash cluster spec
 	// +optional
