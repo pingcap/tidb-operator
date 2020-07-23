@@ -348,6 +348,10 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
+			PD:              &v1alpha1.PDSpec{},
+			TiKV:            &v1alpha1.TiKVSpec{},
+			TiDB:            &v1alpha1.TiDBSpec{},
+			Discovery:       &v1alpha1.DiscoverySpec{},
 			PVReclaimPolicy: &retainPVP,
 		},
 	}

@@ -301,7 +301,14 @@ func TestValidateTidbMonitor(t *testing.T) {
 }
 
 func newTidbCluster() *v1alpha1.TidbCluster {
-	tc := &v1alpha1.TidbCluster{}
+	tc := &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			PD:        &v1alpha1.PDSpec{},
+			TiKV:      &v1alpha1.TiKVSpec{},
+			TiDB:      &v1alpha1.TiDBSpec{},
+			Discovery: &v1alpha1.DiscoverySpec{},
+		},
+	}
 	tc.Name = "test-validate-requests-storage"
 	tc.Namespace = "default"
 	return tc

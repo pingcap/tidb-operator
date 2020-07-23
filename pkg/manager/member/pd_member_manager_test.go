@@ -815,6 +815,8 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
+			TiDB:      &v1alpha1.TiDBSpec{},
+			Discovery: &v1alpha1.DiscoverySpec{},
 		},
 	}
 }
@@ -962,6 +964,11 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Name:      "tc",
 					Namespace: "ns",
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
 			},
 			testSts: testHostNetwork(t, false, ""),
 		},
@@ -978,6 +985,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							HostNetwork: &enable,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
@@ -995,6 +1004,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							HostNetwork: &enable,
 						},
 					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1012,6 +1023,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							HostNetwork: &enable,
 						},
 					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1039,6 +1052,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1093,6 +1108,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testPDContainerEnv(t, []corev1.EnvVar{
@@ -1150,6 +1167,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1176,6 +1194,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1202,6 +1221,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1224,6 +1244,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 						Replicas: 3,
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 				Status: v1alpha1.TidbClusterStatus{
 					PD: v1alpha1.PDStatus{
@@ -1254,6 +1276,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 						},
 						Replicas: 3,
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 				Status: v1alpha1.TidbClusterStatus{
 					PD: v1alpha1.PDStatus{
@@ -1283,6 +1307,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testAdditionalContainers(t, []corev1.Container{customSideCarContainers[0]}),
@@ -1300,6 +1326,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
@@ -1333,6 +1361,11 @@ func TestGetPDConfigMap(t *testing.T) {
 					Name:      "foo",
 					Namespace: "ns",
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
 			},
 			expected: nil,
 		},
@@ -1359,6 +1392,8 @@ func TestGetPDConfigMap(t *testing.T) {
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1418,6 +1453,7 @@ func TestGetPDConfigMap(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1470,6 +1506,7 @@ func TestGetPDConfigMap(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1526,6 +1563,7 @@ func TestGetPDConfigMap(t *testing.T) {
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1599,6 +1637,14 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeClusterIP)},
 					},
+
+					PD: &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -1660,6 +1706,12 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{ClusterIP: pointer.StringPtr("172.20.10.1")},
 					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -1722,6 +1774,12 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{LoadBalancerIP: pointer.StringPtr("172.20.10.1")},
 					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -1781,6 +1839,12 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
 							ClusterIP: pointer.StringPtr("172.20.10.1")},
@@ -1850,6 +1914,13 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 							PortName:  pointer.StringPtr("http-pd"),
 						},
 					},
+
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
