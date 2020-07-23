@@ -97,7 +97,6 @@ You can now edit the code on the `myfeature` branch.
 Run following commands to check your code change.
 
 ```
-$ make check-setup
 $ make check
 ```
 
