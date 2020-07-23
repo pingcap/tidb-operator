@@ -20,4 +20,15 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
-make check
+pushd "${ROOT}/hack/tools" >/dev/null
+    GO111MODULE=on go install github.com/client9/misspell/cmd/misspell
+popd >/dev/null
+
+ret=0
+git ls-files | xargs misspell -error -o stderr || ret=$?
+if [ $ret -eq 0 ]; then
+    echo "Spellings all good!"
+else
+    echo "Found some typos, please fix them!"
+    exit 1
+fi
