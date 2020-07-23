@@ -89,7 +89,7 @@ variable "vpc_id" {
 }
 
 variable "group_id" {
-  description = "Security group id, specify this variable to use and exising security group"
+  description = "Security group id, specify this variable to use and existing security group"
   default     = ""
 }
 

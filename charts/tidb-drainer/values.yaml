@@ -25,7 +25,7 @@ logLevel: info
 # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
 storageClassName: local-storage
 storage: 10Gi
-# disbale detect causality
+# disable detect causality
 disableDetect: false
 # if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
 initialCommitTs: "-1"

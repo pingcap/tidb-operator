@@ -18,26 +18,10 @@ set -o nounset
 set -o pipefail
 
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
-source $ROOT/hack/lib.sh
+cd $ROOT
 
-hack::ensure_terraform
+pushd "${ROOT}/hack/tools" >/dev/null
+    GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint
+popd >/dev/null
 
-terraform_modules=$(find ${ROOT}/deploy -mindepth 1 -maxdepth 1 -type d -a -not -name 'modules')
-
-for module in $terraform_modules; do
-    echo "Checking module ${module}"
-    cd ${module}
-    if ${TERRAFORM_BIN} fmt -check >/dev/null; then
-	echo "Initialize module ${module}..."
-	${TERRAFORM_BIN} init >/dev/null
-	if ${TERRAFORM_BIN} validate > /dev/null; then
-	    continue
-	else
-	    echo "terraform validate failed for ${module}"
-	    exit 1
-	fi
-    else
-	echo "terraform fmt -check failed for ${module}"
-	${TERRAFORM_BIN} fmt
-    fi
-done
+golangci-lint run $(go list ./... | sed 's|github.com/pingcap/tidb-operator/||')
