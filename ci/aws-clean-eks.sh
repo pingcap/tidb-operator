@@ -33,7 +33,7 @@ function delete_security_group() {
     done
     aws ec2 delete-security-group --group-id "$sgId"
     if [ $? -eq 0 ]; then
-        echo "info: succesfully deleted security group '$sgId'"
+        echo "info: successfully deleted security group '$sgId'"
     else
         echo "error: failed to deleted security group '$sgId'"
     fi
@@ -47,7 +47,7 @@ function delete_vpc() {
     done
     aws ec2 delete-vpc --vpc-id "$vpcId"
     if [ $? -eq 0 ]; then
-        echo "info: succesfully deleted vpc '$vpcId'"
+        echo "info: successfully deleted vpc '$vpcId'"
     else
         echo "error: failed to deleted vpc '$vpcId'"
     fi
@@ -130,7 +130,7 @@ for CLUSTER in $@; do
     echo "info: start to clean eks test cluster '$CLUSTER'"
     clean_eks "$CLUSTER"
     if [ $? -eq 0 ]; then
-        echo "info: succesfully cleaned the eks test cluster '$CLUSTER'"
+        echo "info: successfully cleaned the eks test cluster '$CLUSTER'"
     else
         echo "fatal: failed to clean the eks test cluster '$CLUSTER'"
         exit 1

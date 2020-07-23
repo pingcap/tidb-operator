@@ -28,15 +28,15 @@ cred_file=credentials.auto.tfvars
 
 if cred_path=$( echo var.GCP_CREDENTIALS_PATH | terraform console 2>/dev/null ) && [[ $cred_path ]]; then
     if ! command -v jq >/dev/null; then
-        echo "GCP_CREDENTAILS_PATH already set to $cred_path and jq(1) is not installed to ensure it is for project $project" >&2
+        echo "GCP_CREDENTIALS_PATH already set to $cred_path and jq(1) is not installed to ensure it is for project $project" >&2
         exit 1
     elif cred_project=$(jq -r .project_id "$cred_path" 2>/dev/null) && [[ $cred_project != "$project" ]]; then
-        echo "GCP_CREDENTAILS_PATH already set to $cred_path but credentials project $cred_project does not match current project $project" >&2
+        echo "GCP_CREDENTIALS_PATH already set to $cred_path but credentials project $cred_project does not match current project $project" >&2
         exit 1
     elif ! [[ -f $cred_path ]]; then
-        echo "GCP_CREDENTAILS_PATH already set, but $cred_path doesn't exist" >&2
+        echo "GCP_CREDENTIALS_PATH already set, but $cred_path doesn't exist" >&2
     else
-        echo "GCP_CREDENTAILS_PATH already set to $cred_path for project $project" >&2
+        echo "GCP_CREDENTIALS_PATH already set to $cred_path for project $project" >&2
         exit
     fi
 fi

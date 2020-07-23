@@ -10,7 +10,7 @@ The following steps will create a TiDB cluster with TiFlash deployed and monitor
 - TiDB operator `v1.1.0-rc.3` or higher version installed. [Doc](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/tidb-operator/)
 - Available `StorageClass` configured, and there are enough PVs (by default, 9 PVs are required) of that storageClass:
   
-  The availabe `StorageClass` can by checked with the following command:
+  The available `StorageClass` can by checked with the following command:
   
   ```bash
   > kubectl get storageclass
