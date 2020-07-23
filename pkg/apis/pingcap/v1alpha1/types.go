@@ -221,6 +221,10 @@ type TidbClusterSpec struct {
 	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
+
+	// PdAddress is the pd address of TIDB
+	// +optional
+	PdAddress []string `json:"pdAddress,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -393,10 +397,6 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
-
-	// PdAddress is the pd address of TIDB
-	// +optional
-	PdAddress *string `json:"pdAddress,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -567,10 +567,6 @@ type TiDBSpec struct {
 	// until the action is complete, unless the container process fails, in which case the handler is aborted.
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
-
-	// Path is the path configuration of tidb-server
-	// +optional
-	Path *string `json:"path,omitempty"`
 }
 
 // +k8s:openapi-gen=true

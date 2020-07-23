@@ -118,7 +118,7 @@ func (tkmm *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if !tc.PDIsAvailable() || !(tc.Spec.TiKV.PdAddress != nil) {
+	if !tc.PDIsAvailable() && !(len(tc.Spec.PdAddress) > 0) {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
@@ -580,8 +580,8 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.Spec.TiKV.PdAddress != nil {
-		scriptModel.PdAddress = *tc.Spec.TiKV.PdAddress
+	if len(tc.Spec.PdAddress) > 0 {
+		scriptModel.PdAddress = strings.Join(tc.Spec.PdAddress, ",")
 	} else {
 		scriptModel.PdAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
 	}

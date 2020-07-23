@@ -2090,6 +2090,10 @@ spec:
               required:
               - replicas
               type: object
+            pdAddress:
+              items:
+                type: string
+              type: array
             priorityClassName:
               type: string
             pump:
@@ -6968,8 +6972,6 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
-                path:
-                  type: string
                 plugins:
                   items:
                     type: string
@@ -11156,8 +11158,6 @@ spec:
                   type: integer
                 nodeSelector:
                   type: object
-                pdAddress:
-                  type: string
                 podSecurityContext:
                   properties:
                     fsGroup:
@@ -15460,8 +15460,6 @@ spec:
               type: integer
             nodeSelector:
               type: object
-            path:
-              type: string
             plugins:
               items:
                 type: string
@@ -18103,8 +18101,6 @@ spec:
               type: integer
             nodeSelector:
               type: object
-            pdAddress:
-              type: string
             podSecurityContext:
               properties:
                 fsGroup:
