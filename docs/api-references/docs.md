@@ -267,13 +267,15 @@ string
 </tr>
 <tr>
 <td>
-<code>cleanData</code></br>
+<code>cleanPolicy</code></br>
 <em>
-bool
+<a href="#cleanpolicytype">
+CleanPolicyType
+</a>
 </em>
 </td>
 <td>
-<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
 </table>
@@ -2580,13 +2582,15 @@ string
 </tr>
 <tr>
 <td>
-<code>cleanData</code></br>
+<code>cleanPolicy</code></br>
 <em>
-bool
+<a href="#cleanpolicytype">
+CleanPolicyType
+</a>
 </em>
 </td>
 <td>
-<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
 </tbody>
@@ -2965,6 +2969,14 @@ Optional: Defaults to range</p>
 </tr>
 </tbody>
 </table>
+<h3 id="cleanpolicytype">CleanPolicyType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
+</p>
 <h3 id="commonconfig">CommonConfig</h3>
 <p>
 (<em>Appears on:</em>

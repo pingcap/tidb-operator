@@ -323,6 +323,15 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	remotePath := strings.TrimPrefix(archiveBackupPath, constants.BackupRootPath+"/")
 	bucketURI := bm.getDestBucketURI(remotePath)
+	backup.Status.BackupPath = bucketURI
+	err = bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupPrepare,
+		Status: corev1.ConditionTrue,
+	})
+	if err != nil {
+		return err
+	}
+
 	err = bm.backupDataToRemote(archiveBackupPath, bucketURI, opts)
 	if err != nil {
 		errs = append(errs, err)
@@ -342,7 +351,6 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 
 	finish := time.Now()
 
-	backup.Status.BackupPath = bucketURI
 	backup.Status.TimeStarted = metav1.Time{Time: started}
 	backup.Status.TimeCompleted = metav1.Time{Time: finish}
 	backup.Status.BackupSize = size
