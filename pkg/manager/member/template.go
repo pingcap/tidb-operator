@@ -220,7 +220,7 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd={{ .PdAddress }} \
+ARGS="--pd={{ .PDAddress }} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
@@ -244,7 +244,7 @@ type TiKVStartScriptModel struct {
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
-	PdAddress                 string
+	PDAddress                 string
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {

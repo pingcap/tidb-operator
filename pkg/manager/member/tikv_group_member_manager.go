@@ -450,7 +450,7 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 		enableAdvertiseStatusAddr = false
 	}
 	scriptModel := &TiKVStartScriptModel{
-		PdAddress:                 tc.Scheme() + "://${CLUSTER_NAME}-pd:2379",
+		PDAddress:                 tc.Scheme() + "://${CLUSTER_NAME}-pd:2379",
 		EnableAdvertiseStatusAddr: enableAdvertiseStatusAddr,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tg.Spec.DataSubDir),
 		AdvertiseStatusAddr:       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",

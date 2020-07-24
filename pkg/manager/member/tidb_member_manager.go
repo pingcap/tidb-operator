@@ -103,7 +103,7 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if !tc.TiKVIsAvailable() && !(len(tc.Spec.PdAddress) > 0) {
+	if len(tc.Spec.PDAddress) == 0 && !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 	if tc.Spec.Pump != nil {
@@ -396,8 +396,14 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		PluginList:      strings.Join(plugins, ","),
 	}
 
-	if len(tc.Spec.PdAddress) > 0 {
-		tidbStartScriptModel.Path = strings.Join(tc.Spec.PdAddress, ",")
+	if len(tc.Spec.PDAddress) > 0 {
+		pdAddress := ""
+		for _, address := range tc.Spec.PDAddress {
+			removeHttpAddress := strings.ReplaceAll(address, "http", "")
+			removeHttpsAddress := strings.ReplaceAll(removeHttpAddress, "https", "")
+			pdAddress += removeHttpsAddress + ","
+		}
+		tidbStartScriptModel.Path = strings.TrimSuffix(pdAddress, ",")
 	} else {
 		tidbStartScriptModel.Path = tc.Name + "-pd:2379"
 	}
