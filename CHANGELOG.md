@@ -152,7 +152,7 @@ ACTION REQUIRED: This release adds the `timezone` support for [all charts](https
 
 For existing TiDB clusters. If the `timezone` in `tidb-cluster/values.yaml` has been customized to other timezones instead of the default `UTC`, then upgrading tidb-operator will trigger a rolling update for the related pods.
 
-The related pods include `pump`, `drainer`, `dicovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
+The related pods include `pump`, `drainer`, `discovery`, `monitor`, `scheduled backup`, `tidb-initializer`, and `tikv-importer`.
 
 The time zone for all images maintained by `tidb-operator` should be `UTC`. If you use your own images, you need to make sure that the corresponding time zones are `UTC`.
 
@@ -717,13 +717,13 @@ Please check [cluster configuration](https://pingcap.com/docs/v3.0/tidb-in-kuber
 - fix dind doc ([#352](https://github.com/pingcap/tidb-operator/pull/352))
 - Add additionalPrintColumns for TidbCluster CRD ([#361](https://github.com/pingcap/tidb-operator/pull/361))
 - refactor stability main function ([#363](https://github.com/pingcap/tidb-operator/pull/363))
-- enable admin privelege for prom ([#360](https://github.com/pingcap/tidb-operator/pull/360))
+- enable admin privilege for prom ([#360](https://github.com/pingcap/tidb-operator/pull/360))
 - Updated Readme with New Info ([#365](https://github.com/pingcap/tidb-operator/pull/365))
 - Build CLI ([#357](https://github.com/pingcap/tidb-operator/pull/357))
 - add extraLabels variable in tidb-cluster chart ([#373](https://github.com/pingcap/tidb-operator/pull/373))
 - fix tikv failover ([#368](https://github.com/pingcap/tidb-operator/pull/368))
 - Separate and ensure setup before e2e-build ([#375](https://github.com/pingcap/tidb-operator/pull/375))
-- Fix codegen.sh and lock related depedencies ([#371](https://github.com/pingcap/tidb-operator/pull/371))
+- Fix codegen.sh and lock related dependencies ([#371](https://github.com/pingcap/tidb-operator/pull/371))
 - stability: add sst-file-corruption case ([#382](https://github.com/pingcap/tidb-operator/pull/382))
 - use release name as default clusterName ([#354](https://github.com/pingcap/tidb-operator/pull/354))
 - Add util class to support to add annotations to Grafana ([#378](https://github.com/pingcap/tidb-operator/pull/378))

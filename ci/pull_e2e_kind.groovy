@@ -2,7 +2,7 @@
 // Jenkins pipeline for e2e kind job.
 //
 // We uses ghprb plugin to build pull requests and report results. Some special
-// environment variables will be avaiable for jobs that are triggered by GitHub
+// environment variables will be available for jobs that are triggered by GitHub
 // Pull Request events.
 //
 // - ghprbActualCommit
@@ -235,7 +235,7 @@ try {
 
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
-        // increase verison in pod label when we update pod template
+        // increase version in pod label when we update pod template
         def buildPodLabel = "tidb-operator-build-v1"
         def resources = [
             requests: [
