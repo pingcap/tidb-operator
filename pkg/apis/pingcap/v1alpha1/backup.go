@@ -122,12 +122,17 @@ func IsBackupClean(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// ShouldCleanData returns true if a Backup should be cleaned up according to cleanPolicy
-func ShouldCleanData(backup *Backup) bool {
+// IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
+func IsCleanCandidate(backup *Backup) bool {
 	switch backup.Spec.CleanPolicy {
 	case CleanPolicyTypeDelete, CleanPolicyTypeOnFailure:
 		return true
 	default:
 		return false
 	}
+}
+
+// NeedNotClean returns true if a Backup need not to be cleaned up according to cleanPolicy
+func NeedNotClean(backup *Backup) bool {
+	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
 }

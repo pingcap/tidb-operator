@@ -275,7 +275,7 @@ CleanPolicyType
 </em>
 </td>
 <td>
-<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
 </table>
@@ -2590,7 +2590,7 @@ CleanPolicyType
 </em>
 </td>
 <td>
-<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
 </tbody>

@@ -1161,7 +1161,7 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster
+	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 }
 

@@ -57,8 +57,7 @@ func NewBackupCleaner(
 }
 
 func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
-	if backup.DeletionTimestamp == nil || !v1alpha1.ShouldCleanData(backup) ||
-		backup.Spec.CleanPolicy == v1alpha1.CleanPolicyTypeOnFailure && !v1alpha1.IsBackupFailed(backup) {
+	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedNotClean(backup) {
 		// The backup object has not been deleted or we need to retain backup data，do nothing
 		return nil
 	}

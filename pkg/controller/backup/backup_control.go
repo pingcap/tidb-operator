@@ -86,8 +86,7 @@ func (bc *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backu
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	if v1alpha1.ShouldCleanData(backup) && isDeletionCandidate(backup) &&
-		(v1alpha1.IsBackupClean(backup) || (backup.Spec.CleanPolicy == v1alpha1.CleanPolicyTypeOnFailure && !v1alpha1.IsBackupFailed(backup))) {
+	if needToRemoveFinalizer(backup) {
 		backup.Finalizers = slice.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 		_, err := bc.cli.PingcapV1alpha1().Backups(ns).Update(backup)
 		if err != nil {
@@ -99,7 +98,12 @@ func (bc *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backu
 }
 
 func needToAddFinalizer(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp == nil && v1alpha1.ShouldCleanData(backup) && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+	return backup.DeletionTimestamp == nil && v1alpha1.IsCleanCandidate(backup) && !slice.ContainsString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
+}
+
+func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
+	return v1alpha1.IsCleanCandidate(backup) && isDeletionCandidate(backup) &&
+		(v1alpha1.IsBackupClean(backup) || v1alpha1.NeedNotClean(backup))
 }
 
 func isDeletionCandidate(backup *v1alpha1.Backup) bool {
