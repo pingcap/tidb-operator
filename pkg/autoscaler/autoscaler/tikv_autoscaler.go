@@ -90,7 +90,7 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 			Endpoint:  ep,
 			Timestamp: time.Now().Unix(),
 			Instances: instances,
-			Quary:     fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiKV.MetricsTimeDuration),
+			Query:     fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, tac.Spec.Cluster.Name, *tac.Spec.TiKV.MetricsTimeDuration),
 		}
 		return calculateTiKVCPUMetrics(tac, tc, sts, sq, client, duration, metrics[0])
 	}
@@ -103,13 +103,13 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 			Endpoint:  ep,
 			Timestamp: now,
 			Instances: instances,
-			Quary:     fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, tac.Spec.Cluster.Name, "capacity"),
+			Query:     fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, tac.Spec.Cluster.Name, "capacity"),
 		}
 		availableSq := &calculate.SingleQuery{
 			Endpoint:  ep,
 			Timestamp: now,
 			Instances: instances,
-			Quary:     fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, tac.Spec.Cluster.Name, "available"),
+			Query:     fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, tac.Spec.Cluster.Name, "available"),
 		}
 		return calculateTiKVStorageMetrics(tac, tc, capacitySq, availableSq, client, metrics[0])
 	}

@@ -42,12 +42,12 @@ const (
 type SingleQuery struct {
 	Endpoint  string
 	Timestamp int64
-	Quary     string
+	Query     string
 	Instances []string
 }
 
 func queryMetricsFromPrometheus(tac *v1alpha1.TidbClusterAutoScaler, client promClient.Client, sq *SingleQuery, resp *Response) error {
-	query := sq.Quary
+	query := sq.Query
 	timestamp := sq.Timestamp
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*httpRequestTimeout)
