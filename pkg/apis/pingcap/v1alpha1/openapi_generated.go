@@ -9468,7 +9468,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"pdAddress": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PdAddress is the pd address of TIDB",
+							Description: "// PdAddress is the PD address of this TiDB cluster",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

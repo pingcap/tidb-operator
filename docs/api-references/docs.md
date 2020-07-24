@@ -1318,7 +1318,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>PdAddress is the pd address of TIDB</p>
+<p>// PdAddress is the PD address of this TiDB cluster</p>
 </td>
 </tr>
 </table>
@@ -16197,7 +16197,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>PdAddress is the pd address of TIDB</p>
+<p>// PdAddress is the PD address of this TiDB cluster</p>
 </td>
 </tr>
 </tbody>
