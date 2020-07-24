@@ -7035,7 +7035,9 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 	if in.PDAddress != nil {
 		in, out := &in.PDAddress, &out.PDAddress
 		*out = make([]string, len(*in))
-		**out = **in
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }
