@@ -6,6 +6,7 @@ spec:
   version: v3.0.8
   timezone: UTC
   pvReclaimPolicy: Delete
+  discovery: {}
   pd:
     baseImage: pingcap/pd
     replicas: 3

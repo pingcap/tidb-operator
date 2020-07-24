@@ -6,6 +6,7 @@ spec:
   configUpdateStrategy: RollingUpdate
   enablePVReclaim: false
   imagePullPolicy: IfNotPresent
+  discovery: {}
   pd:
     baseImage: pingcap/pd
     config:
