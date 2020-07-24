@@ -26,13 +26,11 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage      = "busybox:1.26.2"
-	defaultTimeZone         = "UTC"
-	defaultEnableTLSCluster = false
-	defaultEnableTLSClient  = false
-	defaultExposeStatus     = true
-	defaultSeparateSlowLog  = true
-	defaultEnablePVReclaim  = false
+	defaultHelperImage     = "busybox:1.26.2"
+	defaultTimeZone        = "UTC"
+	defaultExposeStatus    = true
+	defaultSeparateSlowLog = true
+	defaultEnablePVReclaim = false
 )
 
 var (

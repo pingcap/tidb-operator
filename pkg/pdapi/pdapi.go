@@ -622,23 +622,6 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 	return fmt.Errorf("failed %v to transfer pd leader to %s,error: %v", res.StatusCode, memberName, err2)
 }
 
-func (pc *pdClient) getBodyOK(apiURL string) ([]byte, error) {
-	res, err := pc.httpClient.Get(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	defer httputil.DeferClose(res.Body)
-	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
-		return nil, errMsg
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, err
-}
-
 func getLeaderEvictSchedulerInfo(storeID uint64) *schedulerInfo {
 	return &schedulerInfo{"evict-leader-scheduler", storeID}
 }

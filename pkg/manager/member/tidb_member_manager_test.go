@@ -1777,7 +1777,6 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 		name                     string
 		setStatus                func(cluster *v1alpha1.TidbCluster)
 		errWhenUpdateStatefulSet bool
-		statusChange             func(*apps.StatefulSet)
 		err                      bool
 		expectStatefulSetFn      func(*GomegaWithT, *apps.StatefulSet, *v1alpha1.TidbCluster, error)
 	}

@@ -431,7 +431,6 @@ func TestHAFilter(t *testing.T) {
 		podFn              func(string, string, int32) *apiv1.Pod
 		nodesFn            func() []apiv1.Node
 		podListFn          func(string, string, string) (*apiv1.PodList, error)
-		podGetFn           func(string, string) (*apiv1.Pod, error)
 		pvcGetFn           func(string, string) (*apiv1.PersistentVolumeClaim, error)
 		tcGetFn            func(string, string) (*v1alpha1.TidbCluster, error)
 		scheduledNodeGetFn func(string) (*apiv1.Node, error)

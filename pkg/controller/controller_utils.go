@@ -73,11 +73,6 @@ var (
 	PodWebhookEnabled bool
 )
 
-const (
-	// defaultTiDBSlowLogImage is default image of tidb log tailer
-	defaultTiDBLogTailerImage = "busybox:1.26.2"
-)
-
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
 type RequeueError struct {
 	s string
