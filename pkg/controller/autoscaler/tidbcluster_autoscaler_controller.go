@@ -83,7 +83,6 @@ func (tac *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (tac *Controller) worker() {
 	for tac.processNextWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 
