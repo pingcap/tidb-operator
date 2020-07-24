@@ -68,13 +68,13 @@ func (bo *Options) cleanRemoteBackupData(bucket string, opts []string) error {
 	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "delete", destBucket, "")
 	output, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
 	}
 
 	args = util.ConstructArgs(constants.RcloneConfigArg, opts, "delete", fmt.Sprintf("%s.tmp", destBucket), "")
 	output, err = exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
 	}
 
 	klog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)

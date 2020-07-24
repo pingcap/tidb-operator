@@ -329,15 +329,7 @@ func (bm *BackupManager) performBackup(backup *v1alpha1.Backup, db *sql.DB) erro
 		Status: corev1.ConditionTrue,
 	})
 	if err != nil {
-		errs = append(errs, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "UpdateBackupPathFailed",
-			Message: err.Error(),
-		})
-		errs = append(errs, uerr)
-		return errorutils.NewAggregate(errs)
+		return err
 	}
 
 	err = bm.backupDataToRemote(archiveBackupPath, bucketURI, opts)
