@@ -16,7 +16,6 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"k8s.io/client-go/kubernetes"
@@ -34,14 +33,14 @@ type TiCDCControlInterface interface {
 
 // defaultTiCDCControl is default implementation of TiCDCControlInterface.
 type defaultTiCDCControl struct {
-	kubeCli kubernetes.Interface
+	httpClient
 	// for unit test only
 	testURL string
 }
 
 // NewDefaultTiCDCControl returns a defaultTiCDCControl instance
 func NewDefaultTiCDCControl(kubeCli kubernetes.Interface) *defaultTiCDCControl {
-	return &defaultTiCDCControl{kubeCli: kubeCli}
+	return &defaultTiCDCControl{httpClient: httpClient{kubeCli: kubeCli}}
 }
 
 func (tcc *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int32) (*CaptureStatus, error) {
@@ -60,10 +59,6 @@ func (tcc *defaultTiCDCControl) GetStatus(tc *v1alpha1.TidbCluster, ordinal int3
 	status := CaptureStatus{}
 	err = json.Unmarshal(body, &status)
 	return &status, err
-}
-
-func (tcc *defaultTiCDCControl) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, error) {
-	return &http.Client{Timeout: timeout}, nil
 }
 
 func (tcc *defaultTiCDCControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {
