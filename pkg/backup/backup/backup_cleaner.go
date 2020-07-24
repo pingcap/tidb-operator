@@ -57,7 +57,8 @@ func NewBackupCleaner(
 }
 
 func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
-	if backup.DeletionTimestamp == nil || !v1alpha1.ShouldCleanData(backup) {
+	if backup.DeletionTimestamp == nil || !v1alpha1.ShouldCleanData(backup) ||
+		backup.Spec.CleanPolicy == v1alpha1.CleanPolicyTypeOnFailure && !v1alpha1.IsBackupFailed(backup) {
 		// The backup object has not been deleted or we need to retain backup data，do nothing
 		return nil
 	}
@@ -75,14 +76,6 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:   v1alpha1.BackupClean,
-			Status: corev1.ConditionTrue,
-		})
-	}
-
-	if backup.Spec.CleanPolicy == v1alpha1.CleanPolicyTypeOnFailure && !v1alpha1.IsBackupFailed(backup) {
-		// the backup policy is on failure but backup CR succeeds, skip clean-up.
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:   v1alpha1.BackupClean,
 			Status: corev1.ConditionTrue,

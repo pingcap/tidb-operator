@@ -275,7 +275,7 @@ CleanPolicyType
 </em>
 </td>
 <td>
-<p>CleanPolicy denotes whether to clean backup data before the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster</p>
 </td>
 </tr>
 </table>
@@ -2590,7 +2590,7 @@ CleanPolicyType
 </em>
 </td>
 <td>
-<p>CleanPolicy denotes whether to clean backup data before the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster</p>
 </td>
 </tr>
 </tbody>
@@ -2975,7 +2975,7 @@ Optional: Defaults to range</p>
 <a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
-<p>CleanPolicyType represents the specific delete cloud data policy</p>
+<p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
 </p>
 <h3 id="commonconfig">CommonConfig</h3>
 <p>

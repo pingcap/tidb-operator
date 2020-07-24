@@ -1112,15 +1112,15 @@ type TiDBAccessConfig struct {
 }
 
 // +k8s:openapi-gen=true
-// CleanPolicyType represents the specific delete cloud data policy
+// CleanPolicyType represents the clean policy of backup data in remote storage
 type CleanPolicyType string
 
 const (
-	// CleanPolicyTypeRetain represents the clean policy is to retain S3 backup files at any time
+	// CleanPolicyTypeRetain represents that the backup data in remote storage will be retained when the Backup CR is deleted
 	CleanPolicyTypeRetain CleanPolicyType = "Retain"
-	// CleanPolicyTypeOnFailure represents the clean policy is to clean S3 backup files on failure
+	// CleanPolicyTypeOnFailure represents that the backup data in remote storage will be cleaned only for the failed backups when the Backup CR is deleted
 	CleanPolicyTypeOnFailure CleanPolicyType = "OnFailure"
-	// CleanPolicyTypeIfFailed represents the clean policy is to clean S3 backup files at any time
+	// CleanPolicyTypeIfFailed represents that the backup data in remote storage will be cleaned when the Backup CR is deleted
 	CleanPolicyTypeDelete CleanPolicyType = "Delete"
 )
 
