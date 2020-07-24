@@ -19,10 +19,6 @@ GO_BUILD := $(GO) build -trimpath
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
-PACKAGE_LIST := go list ./... | grep -vE "client/(clientset|informers|listers)"
-PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/pingcap/tidb-operator/||'
-FILES := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
-FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
 TEST_COVER_PACKAGES:=go list ./cmd/backup-manager/app/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
 
 default: build
@@ -132,76 +128,20 @@ test:
 	@go test ./cmd/backup-manager/app/... ./pkg/... && echo "\nUnit tests run successfully!"
 endif
 
-check-all: lint check-static check-shadow check-gosec staticcheck errcheck
+ALL_CHECKS = EOF codegen terraform boilerplate openapi-spec crd-groups spelling
 
-check-setup:
-	@which retool >/dev/null 2>&1 || GO111MODULE=off go get github.com/twitchtv/retool
-	@GO111MODULE=off retool sync
+check: $(addprefix check-,$(ALL_CHECKS)) lint tidy 
 
-check: check-setup lint tidy check-static check-codegen check-terraform check-boilerplate check-openapi-spec check-crd-groups
-
-check-static:
-	@ # Not running vet and fmt through metalinter because it ends up looking at vendor
-	@echo "gofmt checking"
-	gofmt -s -l -w $(FILES) 2>&1| $(FAIL_ON_STDOUT)
-	@echo "go vet check"
-	@go vet -all $$($(PACKAGE_LIST)) 2>&1
-	@echo "mispell and ineffassign checking"
-	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
-	  --enable misspell \
-	  --enable ineffassign \
-	  $$($(PACKAGE_DIRECTORIES))
-	@echo "end-of-file checking"
-	./hack/check-EOF.sh
-
-check-codegen:
-	./hack/verify-codegen.sh
-
-check-terraform:
-	./hack/check-terraform.sh
-	git diff --quiet deploy
-
-check-boilerplate:
-	./hack/verify-boilerplate.sh
-
-check-openapi-spec:
-	./hack/verify-openapi-spec.sh
-
-check-crd-groups:
-	./hack/verify-crd-groups.sh
-
-# TODO: staticcheck is too slow currently
-staticcheck:
-	@echo "gometalinter staticcheck"
-	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
-	  --enable staticcheck \
-	  $$($(PACKAGE_DIRECTORIES))
-
-# TODO: errcheck is too slow currently
-errcheck:
-	@echo "gometalinter errcheck"
-	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
-	  --enable errcheck \
-	  $$($(PACKAGE_DIRECTORIES))
-
-# TODO: shadow check fails at the moment
-check-shadow:
-	@echo "go vet shadow checking"
-	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	@go vet -vettool=$(which shadow) $$($(PACKAGE_LIST))
+check-%:
+	./hack/verify-$*.sh
 
 lint:
-	@echo "linting"
-	CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $$($(PACKAGE_LIST))
+	./hack/verify-lint.sh
 
 tidy:
 	@echo "go mod tidy"
 	go mod tidy
 	git diff -U --exit-code go.mod go.sum
-
-check-gosec:
-	@echo "security checking"
-	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
 cli:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tkctl cmd/tkctl/main.go
@@ -219,4 +159,4 @@ debug-build-docker: debug-build
 debug-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o misc/images/debug-launcher/bin/debug-launcher misc/cmd/debug-launcher/main.go
 
-.PHONY: check check-setup check-all build e2e-build debug-build cli e2e test docker e2e-docker debug-build-docker
+.PHONY: check check-setup build e2e-build debug-build cli e2e test docker e2e-docker debug-build-docker

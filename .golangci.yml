@@ -1,0 +1,15 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - gofmt
+  disable:
+    # Enable once related errors are fixed or ignored explicitly 
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - errcheck
+    - deadcode
+    - varcheck
