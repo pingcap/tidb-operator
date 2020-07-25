@@ -3,7 +3,6 @@ kind: TidbMonitor
 metadata:
   name: basic
 spec:
-  discovery: {}
   clusters:
     - name: basic
   prometheus:
