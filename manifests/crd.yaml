@@ -11612,8 +11612,8 @@ spec:
               required:
               - cluster
               type: object
-            cleanData:
-              type: boolean
+            cleanPolicy:
+              type: string
             dumpling:
               properties:
                 options:
@@ -12513,8 +12513,8 @@ spec:
                   required:
                   - cluster
                   type: object
-                cleanData:
-                  type: boolean
+                cleanPolicy:
+                  type: string
                 dumpling:
                   properties:
                     options:
