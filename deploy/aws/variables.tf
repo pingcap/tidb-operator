@@ -19,7 +19,7 @@ variable "eks_version" {
 
 variable "operator_version" {
   description = "TiDB operator version"
-  default     = "v1.1.2"
+  default     = "v1.1.3"
 }
 
 variable "operator_values" {
