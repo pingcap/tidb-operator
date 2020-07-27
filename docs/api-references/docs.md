@@ -974,7 +974,6 @@ DiscoverySpec
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>Discovery spec</p>
 </td>
 </tr>
@@ -15855,7 +15854,6 @@ DiscoverySpec
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>Discovery spec</p>
 </td>
 </tr>
