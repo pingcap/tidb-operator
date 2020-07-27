@@ -5,7 +5,7 @@ metadata:
   name: demo1-backup-s3
   namespace: test1
 spec:
-  # cleanData: true
+  # cleanPolicy: OnFailure
   from:
     host: 10.233.10.242
     port: 4000
