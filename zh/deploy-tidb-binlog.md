@@ -142,7 +142,7 @@ spec:
 >
 > 如果更新了 TiDB 组件的亲和性配置，将引起 TiDB 组件滚动更新。
 
-### 部署 drainer
+### 部署 Drainer
 
 可以通过 `tidb-drainer` Helm chart 来为 TiDB 集群部署多个 drainer，示例如下：
 
@@ -207,7 +207,7 @@ spec:
     ...
     ```
 
-4. 部署 drainer：
+4. 部署 Drainer：
 
     {{< copyable "shell-regular" >}}
 
@@ -223,4 +223,57 @@ spec:
 
 ## 开启 TLS
 
+### 为 TiDB 组件间开启 TLS
+
 如果要为 TiDB 集群及 TiDB Binlog 开启 TLS，请参考[为 TiDB 组件间开启 TLS](enable-tls-between-components.md) 进行配置。
+
+创建 secret 并启动包含 Pump 的 TiDB 集群后，修改 `values.yaml` 将 `tlsCluster.enabled` 设置为 true，并配置相应的 `certAllowedCN`：
+
+```yaml
+...
+tlsCluster:
+  enabled: true
+  # certAllowedCN:
+  #  - TiDB
+...
+```
+
+### 为 Drainer 和下游数据库间开启 TLS
+
+如果 `tidb-drainer` 的写入下游设置为 `mysql/tidb`，并且希望为 `drainer` 和下游数据库间开启 TLS，可以参考下面步骤进行配置。
+
+首先我们需要创建一个包含下游数据库 TLS 信息的 secret，创建方式如下：
+
+```bash
+kubectl create secret generic ${downstream_database_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+```
+
+默认情况下，`tidb-drainer` 会将 checkpoint 保存到下游数据库中，所以仅需配置 `tlsSyncer.tlsClientSecretName` 并配置相应的 `certAllowedCN` 即可。
+
+```yaml
+tlsSyncer:
+  tlsClientSecretName: ${downstream_database_secret_name}
+  # certAllowedCN:
+  #  - TiDB
+```
+
+如果需要将 `tidb-drainer` 的 checkpoint 保存到其他**开启 TLS** 的数据库，需要创建一个包含 checkpoint 数据库的 TLS 信息的 secret，创建方式为：
+
+```bash
+kubectl create secret generic ${checkpoint_tidb_client_secret} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+```
+
+修改 `values.yaml` 将 `tlsSyncer.checkpoint.tlsClientSecretName` 设置为 `${checkpoint_tidb_client_secret}`，并配置相应的 `certAllowedCN`：
+
+```yaml
+...
+tlsSyncer: {}
+  tlsClientSecretName: ${downstream_database_secret_name}
+  # certAllowedCN:
+  #  - TiDB
+  checkpoint:
+    tlsClientSecretName: ${checkpoint_tidb_client_secret}
+    # certAllowedCN:
+    #  - TiDB
+...
+```
