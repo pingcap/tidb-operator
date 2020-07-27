@@ -25,7 +25,7 @@
 - Fail the backup job if existing PVC size is smaller than the storage request in the backup job ([#2894](https://github.com/pingcap/tidb-operator/pull/2894), [@lichunzhu](https://github.com/lichunzhu))
 - Support scaling and auto-failover even if a TiKV store fails in upgrading ([#2886](https://github.com/pingcap/tidb-operator/pull/2886), [@cofyc](https://github.com/cofyc))
 - Fixed a bug where TidbMonitor resource could not be set ([#2878](https://github.com/pingcap/tidb-operator/pull/2878), [@weekface](https://github.com/weekface))
-- <(.Values.monitor.create) and (.Values.monitor.grafana.create)>: can't give argument to non-function .Values.monitor.create ([#2869](https://github.com/pingcap/tidb-operator/pull/2869), [@8398a7](https://github.com/8398a7))
+- Fix an error for the monitor creation in the tidb-cluster chart ([#2869](https://github.com/pingcap/tidb-operator/pull/2869), [@8398a7](https://github.com/8398a7))
 - Remove  `readyToScaleThresholdSeconds` in `TidbClusterAutoScaler`, Operator won't support de-noise in `TidbClusterAutoScaler` ([#2862](https://github.com/pingcap/tidb-operator/pull/2862), [@Yisaer](https://github.com/Yisaer))
 - Update the lightning used in tidb-backup-manager from v3.0.15 to v4.0.2 ([#2865](https://github.com/pingcap/tidb-operator/pull/2865), [@lichunzhu](https://github.com/lichunzhu))
 
