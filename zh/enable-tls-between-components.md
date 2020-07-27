@@ -341,6 +341,47 @@ summary: 在 Kubernetes 上如何为 TiDB 集群组件间开启 TLS。
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal drainer-server.json | cfssljson -bare drainer-server
         ```
 
+    - TiCDC Server 端证书
+
+        首先生成默认的 `ticdc-server.json` 文件：
+
+        {{< copyable "shell-regular" >}}
+
+        ``` shell
+        cfssl print-defaults csr > ticdc-server.json
+        ```
+
+        然后编辑这个文件，修改 `CN`，`hosts` 属性：
+
+        ``` json
+        ...
+            "CN": "TiDB",
+            "hosts": [
+              "127.0.0.1",
+              "::1",
+              "${cluster_name}-ticdc",
+              "${cluster_name}-ticdc.${namespace}",
+              "${cluster_name}-ticdc.${namespace}.svc",
+              "${cluster_name}-ticdc-peer",
+              "${cluster_name}-ticdc-peer.${namespace}",
+              "${cluster_name}-ticdc-peer.${namespace}.svc",
+              "*.${cluster_name}-ticdc-peer",
+              "*.${cluster_name}-ticdc-peer.${namespace}",
+              "*.${cluster_name}-ticdc-peer.${namespace}.svc"
+            ],
+        ...
+        ```
+
+        其中 `${cluster_name}` 为集群的名字，`${namespace}` 为 TiDB 集群部署的命名空间，用户也可以添加自定义 `hosts`。
+
+        最后生成 TiCDC Server 端证书：
+
+        {{< copyable "shell-regular" >}}
+
+        ``` shell
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal ticdc-server.json | cfssljson -bare ticdc-server
+        ```
+
 6. 生成 Client 端证书。
 
     首先生成默认的 `client.json` 文件：
@@ -806,6 +847,67 @@ summary: 在 Kubernetes 上如何为 TiDB 集群组件间开启 TLS。
         - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
 
         创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-drainer-cluster-secret` 的 Secret 对象供 TiDB 集群的 Drainer 组件使用。
+
+    - TiCDC 组件的 Server 端证书。
+
+      TiCDC 从 v4.0.3 版本开始支持 TLS，TiDB Operator v1.1.3 版本同步支持 TiCDC 开启 TLS 功能。
+
+        ``` yaml
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+          name: ${cluster_name}-ticdc-cluster-secret
+          namespace: ${namespace}
+        spec:
+          secretName: ${cluster_name}-ticdc-cluster-secret
+          duration: 8760h # 365d
+          renewBefore: 360h # 15d
+          organization:
+          - PingCAP
+          commonName: "TiDB"
+          usages:
+            - server auth
+            - client auth
+          dnsNames:
+          - "${cluster_name}-ticdc"
+          - "${cluster_name}-ticdc.${namespace}"
+          - "${cluster_name}-ticdc.${namespace}.svc"
+          - "${cluster_name}-ticdc-peer"
+          - "${cluster_name}-ticdc-peer.${namespace}"
+          - "${cluster_name}-ticdc-peer.${namespace}.svc"
+          - "*.${cluster_name}-ticdc-peer"
+          - "*.${cluster_name}-ticdc-peer.${namespace}"
+          - "*.${cluster_name}-ticdc-peer.${namespace}.svc"
+          ipAddresses:
+          - 127.0.0.1
+          - ::1
+          issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ```
+
+        其中 `${cluster_name}` 为集群的名字：
+
+        - `spec.secretName` 请设置为 `${cluster_name}-ticdc-cluster-secret`；
+        - `usages` 请添加上 `server auth` 和 `client auth`；
+        - `dnsNames` 需要填写这些 DNS，根据需要可以填写其他 DNS：
+          - `${cluster_name}-ticdc`
+          - `${cluster_name}-ticdc.${namespace}`
+          - `${cluster_name}-ticdc.${namespace}.svc`
+          - `${cluster_name}-ticdc-peer`
+          - `${cluster_name}-ticdc-peer.${namespace}`
+          - `${cluster_name}-ticdc-peer.${namespace}.svc`
+          - `*.${cluster_name}-ticdc-peer`
+          - `*.${cluster_name}-ticdc-peer.${namespace}`
+          - `*.${cluster_name}-ticdc-peer.${namespace}.svc`
+        - `ipAddresses` 需要填写这两个 IP，根据需要可以填写其他 IP：
+          - `127.0.0.1`
+          - `::1`
+        - `issuerRef` 请填写上面创建的 Issuer；
+        - 其他属性请参考 [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec)。
+
+        创建这个对象以后，`cert-manager` 会生成一个名字为 `${cluster_name}-ticdc-cluster-secret` 的 Secret 对象供 TiDB 集群的 TiCDC 组件使用。
 
     - 一套 TiDB 集群组件的 Client 端证书。
 

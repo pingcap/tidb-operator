@@ -57,7 +57,7 @@ summary: 了解如何在 Kubernetes 上部署 TiCDC。
     {{< copyable "shell-regular" >}}
 
     ```shell
-    /cdc cli capture list --pd=${pd_address}:2379
+    /cdc cli capture list --pd=http://${cluster_name}-pd:2379
     ```
 
     ```shell
@@ -71,6 +71,16 @@ summary: 了解如何在 Kubernetes 上部署 TiCDC。
                     "is-owner": false
             }
     ]
+    ```
+
+    TiCDC 从 v4.0.3 版本开始支持 TLS，TiDB Operator v1.1.3 版本同步支持 TiCDC 开启 TLS 功能。
+
+    如果在创建 TiDB 集群时开启了 TLS，使用 `cdc cli` 请携带 TLS 证书相关参数：
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    /cdc cli capture list --pd=https://${cluster_name}-pd:2379 --ca=/var/lib/cluster-client-tls/ca.crt --cert=/var/lib/cluster-client-tls/tls.crt --key=/var/lib/cluster-client-tls/tls.key
     ```
 
 如果服务器没有外网，请参考 [部署 TiDB 集群](deploy-on-general-kubernetes.md#部署-tidb-集群) 在有外网的机器上将用到的 Docker 镜像下载下来并上传到服务器上。
