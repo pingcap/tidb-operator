@@ -28,10 +28,6 @@
 - <(.Values.monitor.create) and (.Values.monitor.grafana.create)>: can't give argument to non-function .Values.monitor.create ([#2869](https://github.com/pingcap/tidb-operator/pull/2869), [@8398a7](https://github.com/8398a7))
 - Remove  `readyToScaleThresholdSeconds` in `TidbClusterAutoScaler`, Operator won't support de-noise in `TidbClusterAutoScaler` ([#2862](https://github.com/pingcap/tidb-operator/pull/2862), [@Yisaer](https://github.com/Yisaer))
 - Update the lightning used in tidb-backup-manager from v3.0.15 to v4.0.2 ([#2865](https://github.com/pingcap/tidb-operator/pull/2865), [@lichunzhu](https://github.com/lichunzhu))
-- Collect metrics for TiCDC, TiDB Lightning and TiKV Importer ([#2835](https://github.com/pingcap/tidb-operator/pull/2835), [@weekface](https://github.com/weekface))
-- Update PD/TiDB/TiKV config to v4.0.2 ([#2828](https://github.com/pingcap/tidb-operator/pull/2828), [@DanielZhangQD](https://github.com/DanielZhangQD))
-- Fix the bug that `PD` Member may still be remained after scaling-in ([#2793](https://github.com/pingcap/tidb-operator/pull/2793), [@Yisaer](https://github.com/Yisaer))
-- Support Auto-Scaler Reference in `TidbCluster` Status when there existed `TidbClusterAutoScaler` ([#2791](https://github.com/pingcap/tidb-operator/pull/2791), [@Yisaer](https://github.com/Yisaer))
 
 
 # TiDB Operator v1.1.2 Release Notes
