@@ -463,13 +463,13 @@ func insertIntoDataToSourceDB(fw portforward.PortForward, c clientset.Interface,
 		defer db.Close()
 		defer cancel()
 
-		res, err := db.Exec("CREATE TABLE city (name VARCHAR(64) PRIMARY KEY)")
+		res, err := db.Exec("CREATE TABLE test.city (name VARCHAR(64) PRIMARY KEY)")
 		if err != nil {
 			framework.Logf("can't create table in source db: %v, %v", res, err)
 			return false, nil
 		}
 
-		res, err = db.Exec("INSERT INTO city (name) VALUES (\"beijing\")")
+		res, err = db.Exec("INSERT INTO test.city (name) VALUES (\"beijing\")")
 		if err != nil {
 			framework.Logf("can't insert into table tls in source db: %v, %v", res, err)
 			return false, nil
@@ -489,7 +489,7 @@ func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, n
 		defer db.Close()
 		defer cancel()
 
-		rows, err := db.Query("SELECT name from city limit 1")
+		rows, err := db.Query("SELECT name from test.city limit 1")
 		if err != nil {
 			framework.Logf("can't select from %s/%s, %v", ns, tcName, err)
 			return false, nil

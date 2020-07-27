@@ -3016,7 +3016,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 		isv1 := info.OperatorTag == "v1.0.0"
 
 		for _, pod := range pods.Items {
-			if !oa.pumpHealth(info, pod.Name) {
+			if !oa.pumpHealth(info.ClusterName, info.Namespace, pod.Name, false) {
 				klog.Errorf("some pods is not health %s", pumpStatefulSetName)
 				return false, nil
 			}
@@ -3186,23 +3186,36 @@ type nodeStatus struct {
 	State string `json:"state"`
 }
 
-func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, podName string) bool {
+func (oa *operatorActions) pumpHealth(tcName, ns, podName string, tlsEnabled bool) bool {
+	var err error
 	var addr string
 	if oa.fw != nil {
-		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, info.Namespace, fmt.Sprintf("pod/%s", podName), 8250)
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8250)
 		if err != nil {
-			klog.Errorf("failed to forward port %d for %s/%s", 8250, info.Namespace, podName)
+			klog.Errorf("failed to forward port %d for %s/%s", 8250, ns, podName)
 			return false
 		}
 		defer cancel()
 		addr = fmt.Sprintf("%s:%d", localHost, localPort)
 	} else {
-		addr = fmt.Sprintf("%s.%s-pump.%s:8250", podName, info.ClusterName, info.Namespace)
+		addr = fmt.Sprintf("%s.%s-pump.%s:8250", podName, tcName, ns)
 	}
-	pumpHealthURL := fmt.Sprintf("http://%s/status", addr)
-	res, err := http.Get(pumpHealthURL)
+	var tlsConfig *tls.Config
+	scheme := "http"
+	if tlsEnabled {
+		tlsConfig, err = pdapi.GetTLSConfig(oa.kubeCli, pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, label.PumpLabelVal))
+		if err != nil {
+			return false
+		}
+		scheme = "https"
+	}
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+	}
+	pumpHealthURL := fmt.Sprintf("%s://%s/status", scheme, addr)
+	res, err := client.Get(pumpHealthURL)
 	if err != nil {
-		klog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, pumpHealthURL, err)
+		klog.Errorf("cluster:[%s] call %s failed,error:%v", tcName, pumpHealthURL, err)
 		return false
 	}
 	if res.StatusCode >= 400 {
@@ -3211,18 +3224,18 @@ func (oa *operatorActions) pumpHealth(info *TidbClusterConfig, podName string) b
 	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		klog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
+		klog.Errorf("cluster:[%s] read response body failed,error:%v", tcName, err)
 		return false
 	}
 	healths := pumpStatus{}
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
-		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
+		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", tcName, err)
 		return false
 	}
 	for _, status := range healths.StatusMap {
 		if status.State != "online" {
-			klog.Errorf("cluster:[%s] pump's state is not online", info.ClusterName)
+			klog.Errorf("cluster:[%s] pump's state is not online", tcName)
 			return false
 		}
 	}
@@ -3531,6 +3544,36 @@ func (oa *operatorActions) CheckInitSQLOrDie(info *TidbClusterConfig) {
 	}
 }
 
+func (oa *operatorActions) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	tcName := tc.GetName()
+	ns := tc.GetNamespace()
+	ssName := controller.PumpMemberName(tcName)
+
+	ss, err := oa.tcStsGetter.StatefulSets(ns).Get(ssName, metav1.GetOptions{})
+	if err != nil {
+		klog.Infof("failed to get statefulset: %s/%s, %v", ns, ssName, err)
+		return false, nil
+	}
+
+	if ss.Status.CurrentRevision != ss.Status.UpdateRevision {
+		return false, nil
+	}
+
+	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), ss) {
+		return false, nil
+	}
+
+	// check all pump replicas are online
+	for i := 0; i < int(*ss.Spec.Replicas); i++ {
+		podName := fmt.Sprintf("%s-%d", ssName, i)
+		if !oa.pumpHealth(tc.Name, tc.Namespace, podName, tc.IsTLSClusterEnabled()) {
+			klog.Infof("%s is not health yet", podName)
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, timeout, pollInterval time.Duration) error {
 	if tc == nil {
 		return fmt.Errorf("tidbcluster is nil, cannot call WaitForTidbClusterReady")
@@ -3557,6 +3600,11 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 				return false, nil
 			}
 		}
+		if tc.Spec.Pump != nil {
+			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
+				return false, nil
+			}
+		}
 		return true, nil
 	})
 }
@@ -3565,9 +3613,7 @@ var dummyCancel = func() {}
 
 func (oa *operatorActions) getPDClient(tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	if oa.fw != nil {
-		cfg, err := framework.LoadConfig()
-		framework.ExpectNoError(err)
-		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc, cfg.TLSClientConfig.CAData)
+		return proxiedpdclient.NewProxiedPDClientFromTidbCluster(oa.kubeCli, oa.fw, tc)
 	}
 	return controller.GetPDClient(oa.pdControl, tc), dummyCancel, nil
 }
