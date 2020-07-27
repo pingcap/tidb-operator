@@ -94,10 +94,9 @@ func TestSetTidbSpecDefault(t *testing.T) {
 func newTidbCluster() *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		Spec: v1alpha1.TidbClusterSpec{
-			PD:        &v1alpha1.PDSpec{},
-			TiKV:      &v1alpha1.TiKVSpec{},
-			TiDB:      &v1alpha1.TiDBSpec{},
-			Discovery: &v1alpha1.DiscoverySpec{},
+			PD:   &v1alpha1.PDSpec{},
+			TiKV: &v1alpha1.TiKVSpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}
 }

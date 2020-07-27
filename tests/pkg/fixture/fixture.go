@@ -103,7 +103,6 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			PVReclaimPolicy: &deletePVP,
 			SchedulerName:   "tidb-scheduler",
 			Timezone:        "Asia/Shanghai",
-			Discovery:       &v1alpha1.DiscoverySpec{},
 			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",

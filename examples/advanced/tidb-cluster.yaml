@@ -29,7 +29,7 @@ spec:
   # Image used to tail slow log and set kernel parameters if necessary, must have `tail` and `sysctl` installed
   # helper:
   #   image: busybox:1.31.1
-  discovery: {}
+
   pd:
     # Base image of the component
     baseImage: pingcap/pd

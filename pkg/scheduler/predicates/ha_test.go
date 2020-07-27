@@ -1134,10 +1134,9 @@ func tcGetFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 			Annotations: map[string]string{"pingcap.com/ha-topology-key": "zone"},
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD:        &v1alpha1.PDSpec{Replicas: 3},
-			TiKV:      &v1alpha1.TiKVSpec{},
-			TiDB:      &v1alpha1.TiDBSpec{},
-			Discovery: &v1alpha1.DiscoverySpec{},
+			PD:   &v1alpha1.PDSpec{Replicas: 3},
+			TiKV: &v1alpha1.TiKVSpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}, nil
 }

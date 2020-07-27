@@ -111,19 +111,19 @@ type TidbClusterList struct {
 type TidbClusterSpec struct {
 	// Discovery spec
 	// +optional
-	Discovery *DiscoverySpec `json:"discovery,omitempty"`
+	Discovery DiscoverySpec `json:"discovery,omitempty"`
 
 	// PD cluster spec
 	// +optional
-	PD *PDSpec `json:"pd"`
+	PD *PDSpec `json:"pd,omitempty"`
 
 	// TiDB cluster spec
 	// +optional
-	TiDB *TiDBSpec `json:"tidb"`
+	TiDB *TiDBSpec `json:"tidb,omitempty"`
 
 	// TiKV cluster spec
 	// +optional
-	TiKV *TiKVSpec `json:"tikv"`
+	TiKV *TiKVSpec `json:"tikv,omitempty"`
 
 	// TiFlash cluster spec
 	// +optional

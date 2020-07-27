@@ -29,7 +29,6 @@ spec:
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
-  discovery: {}
   pd:
     replicas: {{ .Values.pd.replicas }}
     image: {{ .Values.pd.image }}

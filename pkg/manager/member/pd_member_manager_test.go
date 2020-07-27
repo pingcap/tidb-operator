@@ -815,8 +815,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
-			TiDB:      &v1alpha1.TiDBSpec{},
-			Discovery: &v1alpha1.DiscoverySpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}
 }

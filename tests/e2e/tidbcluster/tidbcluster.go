@@ -1329,5 +1329,4 @@ func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVers
 		EnableConfigMapRollout: true,
 		ClusterVersion:         tidbVersion,
 	}
-
 }
