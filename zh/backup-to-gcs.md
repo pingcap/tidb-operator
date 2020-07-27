@@ -143,9 +143,16 @@ GCS 支持以下几种 bucket ACL 策略：
     select VARIABLE_NAME, VARIABLE_VALUE from mysql.tidb where VARIABLE_NAME like "tikv_gc_life_time";
     ```
 
-    如果发现 `tikv_gc_lifetime` 值发现过大（通常为 10m），则需要按照[调节 `tikv_gc_lifetime`](https://docs.pingcap.com/zh/tidb/stable/dumpling-overview#导出大规模数据时的-tidb-gc-设置) 将 `tikv_gc_lifetime` 调回原样。
+    如果发现 `tikv_gc_lifetime` 值过大（通常为 10m），则需要按照[调节 `tikv_gc_lifetime`](https://docs.pingcap.com/zh/tidb/stable/dumpling-overview#导出大规模数据时的-tidb-gc-设置) 将 `tikv_gc_lifetime` 调回原样。
 
-* `.spec.cleanData`：设置为 true 时删除该 Backup CR 时会同时清除该 CR 备份出的数据，默认为 false。值得注意的是，在 v1.1.2 以及之前版本不存在该字段，且默认在删除 CR 的同时删除备份的文件。若 v1.1.3 及之后版本的用户希望保持该行为，需要设置该字段为 true。
+* `.spec.cleanPolicy`：备份集群后删除备份 CR 时的备份文件清理策略。目前支持三种清理策略：
+
+    * `Retain`：任何情况下，删除备份 CR 时会保留备份出的文件
+    * `Delete`：任何情况下，删除备份 CR 时会删除备份出的文件
+    * `OnFailure`：如果备份中失败，删除备份 CR 时会删除备份出的文件
+    
+    如果不配置该字段，或者配置该字段的值为上述三种以外的值，均会保留备份出的文件。值得注意的是，在 v1.1.2 以及之前版本不存在该字段，且默认在删除 CR 的同时删除备份的文件。若 v1.1.3 及之后版本的用户希望保持该行为，需要设置该字段为 `Delete`。
+
 * `.spec.from.host`：待备份 TiDB 集群的访问地址，为需要导出的 TiDB 的 service name，例如 `basic-tidb`。
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
@@ -273,7 +280,7 @@ kubectl delete backup ${name} -n ${namespace}
 kubectl delete backupschedule ${name} -n ${namespace}
 ```
 
-如果你使用 v1.1.2 及以前版本，或使用 v1.1.3 及以后版本并将 `spec.cleanData` 设置为 true 时，TiDB Operator 在删除 CR 时会同时删除备份文件。
+如果你使用 v1.1.2 及以前版本，或使用 v1.1.3 及以后版本并将 `spec.cleanPolicy` 设置为 `Delete` 时，TiDB Operator 在删除 CR 时会同时删除备份文件。
 
 在满足上述条件时，如果需要删除 namespace，建议首先删除所有的 Backup/BackupSchedule CR，再删除 namespace。
 
