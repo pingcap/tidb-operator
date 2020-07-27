@@ -2,26 +2,26 @@
 
 ## Action Required
 
-- Add a field `cleanData` in `BackupSpec` to denote whether to clean backup data before the object is deleted from the cluster (defaults to false). If you want to clean backup data as before, please set `spec.cleanData` in `Backup` yaml or `spec.backupTemplate.cleanData` in `BackupSchedule` yaml to true. ([#2892](https://github.com/pingcap/tidb-operator/pull/2892), [@lichunzhu](https://github.com/lichunzhu))
+- Add a field `cleanPolicy` in `BackupSpec` to denote clean policy for backup data before the object is deleted from the cluster (defaults to `Retain`). If you want to clean backup data as before, please set `spec.cleanPolicy` in `Backup` yaml or `spec.backupTemplate.cleanPolicy` in `BackupSchedule` yaml to `Delete`. ([#3002](https://github.com/pingcap/tidb-operator/pull/3002), [@lichunzhu](https://github.com/lichunzhu))
 - Replace `mydumper` with `dumpling` for backup.
   If `spec.mydumper` is configured in the Backup CR or `spec.backupTemplate.mydumper` is configured in the BackupSchedule CR, please migrate it to `spec.dumpling` or `spec.backupTemplate.dumpling` after you upgrade TiDB Operator to v1.1.3, please note that the `spec.mydumper` or `spec.backupTemplate.mydumper` will be lost after the upgrade. ([#2870](https://github.com/pingcap/tidb-operator/pull/2870), [@lichunzhu](https://github.com/lichunzhu))
 
 
 ## Other Notable Changes
 
-- update tools in backup manager to v4.0.3 ([#3019](https://github.com/pingcap/tidb-operator/pull/3019), [@lichunzhu](https://github.com/lichunzhu))
-- support cleanPolicy for backup CR ([#3002](https://github.com/pingcap/tidb-operator/pull/3002), [@lichunzhu](https://github.com/lichunzhu))
+- Update tools in backup manager to v4.0.3 ([#3019](https://github.com/pingcap/tidb-operator/pull/3019), [@lichunzhu](https://github.com/lichunzhu))
+- Support cleanPolicy for backup CR to define the clean behavior of the backup data in the remote storage when the backup CR is deleted ([#3002](https://github.com/pingcap/tidb-operator/pull/3002), [@lichunzhu](https://github.com/lichunzhu))
 - TLS support for TiCDC ([#3011](https://github.com/pingcap/tidb-operator/pull/3011), [@weekface](https://github.com/weekface))
 - Add TLS support between drainer and downstream database server ([#2993](https://github.com/pingcap/tidb-operator/pull/2993), [@lichunzhu](https://github.com/lichunzhu))
 - Support specifying mysqlNodePort and statusNodePort for TiDB Service Spec. ([#2941](https://github.com/pingcap/tidb-operator/pull/2941), [@lichunzhu](https://github.com/lichunzhu))
 - Fix drainer values.yaml `initialCommitTs` bug ([#2857](https://github.com/pingcap/tidb-operator/pull/2857), [@weekface](https://github.com/weekface))
-- add `backup` config for tikv server, add `enable-telemetry` and deprecate `disable-telemetry` config for pd server ([#2964](https://github.com/pingcap/tidb-operator/pull/2964), [@lichunzhu](https://github.com/lichunzhu))
-- add commitTS info column in `get restore` command ([#2926](https://github.com/pingcap/tidb-operator/pull/2926), [@lichunzhu](https://github.com/lichunzhu))
+- Add `backup` config for TiKV server, add `enable-telemetry` and deprecate `disable-telemetry` config for PD server ([#2964](https://github.com/pingcap/tidb-operator/pull/2964), [@lichunzhu](https://github.com/lichunzhu))
+- Add commitTS info column in `get restore` command ([#2926](https://github.com/pingcap/tidb-operator/pull/2926), [@lichunzhu](https://github.com/lichunzhu))
 - Update used grafana version from v6.0.1 to v6.1.6 ([#2923](https://github.com/pingcap/tidb-operator/pull/2923), [@lichunzhu](https://github.com/lichunzhu))
 - Support show commitTS in restore status. ([#2899](https://github.com/pingcap/tidb-operator/pull/2899), [@lichunzhu](https://github.com/lichunzhu))
-- Exit without error if we clean not found backup data ([#2916](https://github.com/pingcap/tidb-operator/pull/2916), [@lichunzhu](https://github.com/lichunzhu))
+- Exit without error if the backup data we try to clean does not exist ([#2916](https://github.com/pingcap/tidb-operator/pull/2916), [@lichunzhu](https://github.com/lichunzhu))
 - Support Auto-scaling by Storage for TiKV in TidbClusterAutoScaler ([#2884](https://github.com/pingcap/tidb-operator/pull/2884), [@Yisaer](https://github.com/Yisaer))
-- Clean temporary files in `Backup` export job to save space ([#2897](https://github.com/pingcap/tidb-operator/pull/2897), [@lichunzhu](https://github.com/lichunzhu))
+- Clean temporary files in `Backup` job with `Dumpling` to save space ([#2897](https://github.com/pingcap/tidb-operator/pull/2897), [@lichunzhu](https://github.com/lichunzhu))
 - Fail the backup job if existing PVC size is smaller than the storage request in the backup job ([#2894](https://github.com/pingcap/tidb-operator/pull/2894), [@lichunzhu](https://github.com/lichunzhu))
 - Support scaling and auto-failover even if a TiKV store fails in upgrading ([#2886](https://github.com/pingcap/tidb-operator/pull/2886), [@cofyc](https://github.com/cofyc))
 - Fixed a bug where TidbMonitor resource could not be set ([#2878](https://github.com/pingcap/tidb-operator/pull/2878), [@weekface](https://github.com/weekface))
