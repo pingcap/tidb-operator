@@ -139,7 +139,7 @@ TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster
     >
     > If you update the affinity configuration of the TiDB components, it will cause rolling updates of the TiDB components in the cluster.
 
-## Deploy drainer
+## Deploy Drainer
 
 To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB cluster, take the following steps:
 
@@ -192,7 +192,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
 
     For complete configuration details, refer to [TiDB Binlog Drainer Configurations in Kubernetes](configure-tidb-binlog-drainer.md).
 
-4. Deploy the drainer:
+4. Deploy Drainer:
 
     {{< copyable "shell-regular" >}}
 
@@ -208,4 +208,57 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
 
 ## Enable TLS
 
+### Enable TLS between TiDB components
+
 If you want to enable TLS for the TiDB cluster and TiDB Binlog, refer to [Enable TLS between Components](enable-tls-between-components.md).
+
+After you have created a secret and started a TiDB cluster with Pump, edit the `values.yaml` file to set the `tlsCluster.enabled` value to `true`, and configure the corresponding `certAllowedCN`:
+
+```yaml
+...
+tlsCluster:
+  enabled: true
+  # certAllowedCN:
+  #  - TiDB
+...
+```
+
+### Enable TLS between Drainer and the downstream database
+
+If you set the downstream database of `tidb-drainer` to `mysql/tidb`, and if you want to enable TLS between Drainer and the downstream database, take the following steps.
+
+1. Create a secret that contains the TLS information of the downstream database.
+
+    ```bash
+    kubectl create secret generic ${downstream_database_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+    ```
+
+    `tidb-drainer` saves the checkpoint in the downstream database by default, so you only need to configure `tlsSyncer.tlsClientSecretName` and the corresponding `cerAllowedCN`:
+
+    ```yaml
+    tlsSyncer:
+      tlsClientSecretName: ${downstream_database_secret_name}
+      # certAllowedCN:
+      #  - TiDB
+    ```
+
+2. To save the checkpoint of `tidb-drainer` to **other databases that have enabled TLS**, create a secret that contains the TLS information of the checkpoint database:
+
+    ```bash
+    kubectl create secret generic ${checkpoint_tidb_client_secret} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+    ```
+
+    Edit the `values.yaml` file to set the `tlsSyncer.checkpoint.tlsClientSecretName` value to `${checkpoint_tidb_client_secret}`, and configure the corresponding `certAllowedCN`:
+
+    ```yaml
+    ...
+    tlsSyncer: {}
+      tlsClientSecretName: ${downstream_database_secret_name}
+      # certAllowedCN:
+      #  - TiDB
+      checkpoint:
+        tlsClientSecretName: ${checkpoint_tidb_client_secret}
+        # certAllowedCN:
+        #  - TiDB
+    ...
+    ```
