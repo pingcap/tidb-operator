@@ -3072,7 +3072,7 @@ func (oa *operatorActions) CheckIncrementalBackup(info *TidbClusterConfig, withD
 			return false, nil
 		}
 		for _, pod := range pods.Items {
-			if !oa.drainerHealth(info, pod.Name) {
+			if !oa.drainerHealth(info.ClusterName, info.Namespace, pod.Name, false) {
 				klog.Errorf("some pods is not health %s", drainerStatefulSetName)
 				return false, nil
 			}
@@ -3249,51 +3249,52 @@ type drainerStatus struct {
 	TsMap   string           `json:"TsMap"`
 }
 
-func (oa *operatorActions) drainerHealth(info *TidbClusterConfig, podName string) bool {
+func (oa *operatorActions) drainerHealth(tcName, ns, podName string, tlsEnabled bool) bool {
 	var body []byte
 	var err error
-	addr := fmt.Sprintf("%s.%s-drainer.%s:8249", podName, info.ClusterName, info.Namespace)
-	drainerHealthURL := fmt.Sprintf("http://%s/status", addr)
-	if oa.framework != nil {
-		// K8S hard coded remote address to localhost in port forwarding, and
-		// drainer does not listen on localhost.
-		// Alternatively, we exec into the pod to access drainer API.
-		cmd := fmt.Sprintf("wget -q -O - '%s'", drainerHealthURL)
-		stdout, _, err := oa.framework.ExecWithOptions(framework.ExecOptions{
-			Command:            []string{"sh", "-c", cmd},
-			Namespace:          info.Namespace,
-			PodName:            podName,
-			ContainerName:      "drainer",
-			Stdin:              nil,
-			CaptureStdout:      true,
-			CaptureStderr:      true,
-			PreserveWhitespace: false,
-		})
+	var addr string
+	if oa.fw != nil {
+		localHost, localPort, cancel, err := portforward.ForwardOnePort(oa.fw, ns, fmt.Sprintf("pod/%s", podName), 8249)
 		if err != nil {
-			klog.Errorf("failed to run command '%s' in pod %s/%q", cmd, info.Namespace, podName)
+			klog.Errorf("failed to forward port %d for %s/%s", 8249, ns, podName)
 			return false
 		}
-		body = []byte(stdout)
+		defer cancel()
+		addr = fmt.Sprintf("%s:%d", localHost, localPort)
 	} else {
-		res, err := http.Get(drainerHealthURL)
+		addr = fmt.Sprintf("%s.%s-drainer.%s:8249", podName, tcName, ns)
+	}
+	var tlsConfig *tls.Config
+	scheme := "http"
+	if tlsEnabled {
+		tlsConfig, err = pdapi.GetTLSConfig(oa.kubeCli, pdapi.Namespace(ns), tcName, util.ClusterTLSSecretName(tcName, "drainer"))
 		if err != nil {
-			klog.Errorf("cluster:[%s] call %s failed,error:%v", info.ClusterName, drainerHealthURL, err)
 			return false
 		}
-		if res.StatusCode >= 400 {
-			klog.Errorf("Error response %v", res.StatusCode)
-			return false
-		}
-		body, err = ioutil.ReadAll(res.Body)
-		if err != nil {
-			klog.Errorf("cluster:[%s] read response body failed,error:%v", info.ClusterName, err)
-			return false
-		}
+		scheme = "https"
+	}
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+	}
+	drainerHealthURL := fmt.Sprintf("%s://%s/status", scheme, addr)
+	res, err := client.Get(drainerHealthURL)
+	if err != nil {
+		klog.Errorf("cluster:[%s] call %s failed,error:%v", tcName, drainerHealthURL, err)
+		return false
+	}
+	if res.StatusCode >= 400 {
+		klog.Errorf("Error response %v", res.StatusCode)
+		return false
+	}
+	body, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		klog.Errorf("cluster:[%s] read response body failed,error:%v", tcName, err)
+		return false
 	}
 	healths := drainerStatus{}
 	err = json.Unmarshal(body, &healths)
 	if err != nil {
-		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", info.ClusterName, err)
+		klog.Errorf("cluster:[%s] unmarshal failed,error:%v", tcName, err)
 		return false
 	}
 	return len(healths.PumpPos) > 0

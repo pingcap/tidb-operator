@@ -327,6 +327,13 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 				ns, sts.Name, sts.Status.ReadyReplicas, DrainerReplicas)
 			return false, nil
 		}
+		for i := 0; i < int(*sts.Spec.Replicas); i++ {
+			podName := fmt.Sprintf("%s-%d", stsName, i)
+			if !oa.drainerHealth(source.ClusterName, source.Namespace, podName, info.TLSCluster) {
+				klog.Infof("%s is not health yet", podName)
+				return false, nil
+			}
+		}
 		return true, nil
 	}
 
