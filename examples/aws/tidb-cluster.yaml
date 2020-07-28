@@ -5,6 +5,7 @@ metadata:
 spec:
   version: v4.0.2
   timezone: UTC
+  configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
   pd:
     baseImage: pingcap/pd
