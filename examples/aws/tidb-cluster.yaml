@@ -8,7 +8,7 @@ spec:
   pvReclaimPolicy: Delete
   pd:
     baseImage: pingcap/pd
-    replicas: 1
+    replicas: 3
     requests:
       storage: "10Gi"
     config: {}
