@@ -9467,7 +9467,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"pd", "tidb", "tikv"},
 			},
 		},
 		Dependencies: []string{
