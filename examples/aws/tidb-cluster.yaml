@@ -7,12 +7,19 @@ spec:
   timezone: UTC
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
+  schedulerName: tidb-scheduler
   pd:
     baseImage: pingcap/pd
     replicas: 3
     requests:
       storage: "10Gi"
-    config: {}
+    config:
+      log:
+        level: info
+      replication:
+        location-labels:
+        - zone
+        max-replicas: 3
     tolerations:
     - effect: NoSchedule
       key: dedicated
@@ -31,7 +38,7 @@ spec:
       value: tikv
   tidb:
     baseImage: pingcap/tidb
-    replicas: 1
+    replicas: 2
     service:
       annotations:
         service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
@@ -40,7 +47,23 @@ spec:
       exposeStatus: true
       externalTrafficPolicy: Local
       type: LoadBalancer
-    config: {}
+    config:
+      log:
+        level: info
+      performance:
+        max-procs: 0
+        tcp-keep-alive: true
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
+    podSecurityContext:
+      sysctls:
+      - name: net.ipv4.tcp_keepalive_time
+        value: "300"
+      - name: net.ipv4.tcp_keepalive_intvl
+        value: "75"
+      - name: net.core.somaxconn
+        value: "32768"
+    separateSlowLog: true
     tolerations:
     - effect: NoSchedule
       key: dedicated
