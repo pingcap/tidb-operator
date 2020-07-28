@@ -325,6 +325,7 @@ func (oa *operatorActions) CheckDrainer(info *DrainerConfig, source *TidbCluster
 		if sts.Status.ReadyReplicas != DrainerReplicas {
 			klog.Infof("StatefulSet: %s/%s .state.ReadyReplicas(%d) != %d",
 				ns, sts.Name, sts.Status.ReadyReplicas, DrainerReplicas)
+			return false, nil
 		}
 		return true, nil
 	}
