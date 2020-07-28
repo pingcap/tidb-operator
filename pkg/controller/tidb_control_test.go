@@ -317,7 +317,7 @@ func getTidbCluster() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			TiDB: v1alpha1.TiDBSpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}
 }
