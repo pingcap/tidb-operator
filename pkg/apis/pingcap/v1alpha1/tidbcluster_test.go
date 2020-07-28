@@ -489,7 +489,7 @@ func newTidbCluster() *TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: TidbClusterSpec{
-			PD: PDSpec{
+			PD: &PDSpec{
 				Replicas: 3,
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -497,7 +497,7 @@ func newTidbCluster() *TidbCluster {
 					},
 				},
 			},
-			TiKV: TiKVSpec{
+			TiKV: &TiKVSpec{
 				Replicas: 3,
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -505,7 +505,7 @@ func newTidbCluster() *TidbCluster {
 					},
 				},
 			},
-			TiDB: TiDBSpec{
+			TiDB: &TiDBSpec{
 				Replicas: 1,
 			},
 		},

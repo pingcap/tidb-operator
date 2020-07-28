@@ -89,7 +89,7 @@ func TestGetPodOrdinals(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 3,
 					},
 				},
@@ -106,7 +106,7 @@ func TestGetPodOrdinals(t *testing.T) {
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 3,
 					},
 				},

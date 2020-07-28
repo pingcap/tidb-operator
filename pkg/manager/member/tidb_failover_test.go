@@ -517,7 +517,7 @@ func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {
 			UID:       types.UID("failover"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			TiDB: v1alpha1.TiDBSpec{
+			TiDB: &v1alpha1.TiDBSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},

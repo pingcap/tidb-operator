@@ -115,6 +115,11 @@ type SvcConfig struct {
 
 // Sync fulfills the manager.Manager interface
 func (tkmm *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	// If tikv is not specified return
+	if tc.Spec.TiKV == nil {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -579,7 +584,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
-	cm, err := getTikVConfigMapForTiKVSpec(&tc.Spec.TiKV, tc, scriptModel)
+	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
 	}

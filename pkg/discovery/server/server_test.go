@@ -43,7 +43,7 @@ var (
 			ResourceVersion: "1",
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 3},
+			PD: &v1alpha1.PDSpec{Replicas: 3},
 		},
 	}
 )

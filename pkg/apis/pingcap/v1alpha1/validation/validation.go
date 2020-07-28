@@ -66,9 +66,15 @@ func validateAnnotations(anns map[string]string, fldPath *field.Path) field.Erro
 
 func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validatePDSpec(&spec.PD, fldPath.Child("pd"))...)
-	allErrs = append(allErrs, validateTiKVSpec(&spec.TiKV, fldPath.Child("tikv"))...)
-	allErrs = append(allErrs, validateTiDBSpec(&spec.TiDB, fldPath.Child("tidb"))...)
+	if spec.PD != nil {
+		allErrs = append(allErrs, validatePDSpec(spec.PD, fldPath.Child("pd"))...)
+	}
+	if spec.TiKV != nil {
+		allErrs = append(allErrs, validateTiKVSpec(spec.TiKV, fldPath.Child("tikv"))...)
+	}
+	if spec.TiDB != nil {
+		allErrs = append(allErrs, validateTiDBSpec(spec.TiDB, fldPath.Child("tidb"))...)
+	}
 	if spec.Pump != nil {
 		allErrs = append(allErrs, validatePumpSpec(spec.Pump, fldPath.Child("pump"))...)
 	}
