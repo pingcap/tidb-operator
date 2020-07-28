@@ -6943,9 +6943,21 @@ func (in *TidbClusterRef) DeepCopy() *TidbClusterRef {
 func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 	*out = *in
 	in.Discovery.DeepCopyInto(&out.Discovery)
-	in.PD.DeepCopyInto(&out.PD)
-	in.TiDB.DeepCopyInto(&out.TiDB)
-	in.TiKV.DeepCopyInto(&out.TiKV)
+	if in.PD != nil {
+		in, out := &in.PD, &out.PD
+		*out = new(PDSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.TiDB != nil {
+		in, out := &in.TiDB, &out.TiDB
+		*out = new(TiDBSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.TiKV != nil {
+		in, out := &in.TiKV, &out.TiKV
+		*out = new(TiKVSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.TiFlash != nil {
 		in, out := &in.TiFlash, &out.TiFlash
 		*out = new(TiFlashSpec)

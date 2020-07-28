@@ -10,7 +10,7 @@ spec:
   # backupType: full
   # useKMS: false
   # serviceAccount: myServiceAccount
-  # cleanData: true
+  # cleanPolicy: OnFailure
   # resources:
   #   limits:
   #     cpu: 300m

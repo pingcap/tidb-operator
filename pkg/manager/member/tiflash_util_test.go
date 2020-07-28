@@ -462,17 +462,17 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{
+			PD: &v1alpha1.PDSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 			},
-			TiKV: v1alpha1.TiKVSpec{
+			TiKV: &v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 			},
-			TiDB: v1alpha1.TiDBSpec{
+			TiDB: &v1alpha1.TiDBSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},

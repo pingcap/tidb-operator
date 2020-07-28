@@ -15,7 +15,7 @@ spec:
     #backupType: full
     # useKMS: false
     # serviceAccount: myServiceAccount
-    # cleanData: true
+    # cleanPolicy: OnFailure
     br:
       cluster: myCluster
       # clusterNamespce: backupNamespace

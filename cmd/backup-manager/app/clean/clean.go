@@ -65,16 +65,16 @@ func (bo *Options) cleanBRRemoteBackupData(backup *v1alpha1.Backup) error {
 
 func (bo *Options) cleanRemoteBackupData(bucket string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
-	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "deletefile", destBucket, "")
+	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "delete", destBucket, "")
 	output, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			if code := exitError.ExitCode(); code == 3 || code == 4 {
-				klog.Infof("cluster %s backup %s has already been deleted before", bo, bucket)
-				return nil
-			}
-		}
-		return fmt.Errorf("cluster %s, execute rclone deletefile command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
+	}
+
+	args = util.ConstructArgs(constants.RcloneConfigArg, opts, "delete", fmt.Sprintf("%s.tmp", destBucket), "")
+	output, err = exec.Command("rclone", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
 	}
 
 	klog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)

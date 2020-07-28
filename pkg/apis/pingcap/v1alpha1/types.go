@@ -113,13 +113,16 @@ type TidbClusterSpec struct {
 	Discovery DiscoverySpec `json:"discovery,omitempty"`
 
 	// PD cluster spec
-	PD PDSpec `json:"pd"`
+	// +optional
+	PD *PDSpec `json:"pd,omitempty"`
 
 	// TiDB cluster spec
-	TiDB TiDBSpec `json:"tidb"`
+	// +optional
+	TiDB *TiDBSpec `json:"tidb,omitempty"`
 
 	// TiKV cluster spec
-	TiKV TiKVSpec `json:"tikv"`
+	// +optional
+	TiKV *TiKVSpec `json:"tikv,omitempty"`
 
 	// TiFlash cluster spec
 	// +optional
@@ -1116,6 +1119,19 @@ type TiDBAccessConfig struct {
 }
 
 // +k8s:openapi-gen=true
+// CleanPolicyType represents the clean policy of backup data in remote storage
+type CleanPolicyType string
+
+const (
+	// CleanPolicyTypeRetain represents that the backup data in remote storage will be retained when the Backup CR is deleted
+	CleanPolicyTypeRetain CleanPolicyType = "Retain"
+	// CleanPolicyTypeOnFailure represents that the backup data in remote storage will be cleaned only for the failed backups when the Backup CR is deleted
+	CleanPolicyTypeOnFailure CleanPolicyType = "OnFailure"
+	// CleanPolicyTypeIfFailed represents that the backup data in remote storage will be cleaned when the Backup CR is deleted
+	CleanPolicyTypeDelete CleanPolicyType = "Delete"
+)
+
+// +k8s:openapi-gen=true
 // BackupSpec contains the backup specification for a tidb cluster.
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -1152,8 +1168,8 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// CleanData denotes whether to clean backup data before the object is deleted from the cluster
-	CleanData bool `json:"cleanData,omitempty"`
+	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
+	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 }
 
 // +k8s:openapi-gen=true
