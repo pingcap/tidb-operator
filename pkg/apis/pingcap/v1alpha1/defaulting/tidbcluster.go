@@ -34,9 +34,15 @@ var (
 
 func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
 	setTidbClusterSpecDefault(tc)
-	setPdSpecDefault(tc)
-	setTikvSpecDefault(tc)
-	setTidbSpecDefault(tc)
+	if tc.Spec.PD != nil {
+		setPdSpecDefault(tc)
+	}
+	if tc.Spec.TiKV != nil {
+		setTikvSpecDefault(tc)
+	}
+	if tc.Spec.TiDB != nil {
+		setTidbSpecDefault(tc)
+	}
 	if tc.Spec.Pump != nil {
 		setPumpSpecDefault(tc)
 	}
