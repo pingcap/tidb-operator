@@ -528,7 +528,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			})
 			framework.ExpectNoError(err, "Check Auto-Scaler Ref failed")
 
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
 			framework.ExpectNoError(err, "create pdapi error")
 			defer cancel()
 			var firstScaleTimestamp int64

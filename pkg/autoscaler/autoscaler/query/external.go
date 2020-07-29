@@ -108,5 +108,5 @@ func loadTLSConfig(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Inter
 		klog.Error(err)
 		return nil, err
 	}
-	return crypto.LoadTlsConfigFromSecret(secret, nil)
+	return crypto.LoadTlsConfigFromSecret(secret)
 }

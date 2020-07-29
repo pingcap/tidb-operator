@@ -107,15 +107,11 @@ func ReadCACerts() (*x509.CertPool, error) {
 	return rootCAs, nil
 }
 
-func LoadTlsConfigFromSecret(secret *corev1.Secret, caCert []byte) (*tls.Config, error) {
+func LoadTlsConfigFromSecret(secret *corev1.Secret) (*tls.Config, error) {
 	rootCAs := x509.NewCertPool()
 	var tlsCert tls.Certificate
 
-	if len(caCert) > 0 {
-		rootCAs.AppendCertsFromPEM(caCert)
-	} else {
-		rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey])
-	}
+	rootCAs.AppendCertsFromPEM(secret.Data[corev1.ServiceAccountRootCAKey])
 
 	clientCert, certExists := secret.Data[corev1.TLSCertKey]
 	clientKey, keyExists := secret.Data[corev1.TLSPrivateKeyKey]
