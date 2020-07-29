@@ -219,6 +219,20 @@ All the instances except ACK mandatory workers are deployed across availability 
 
         Modify `replicas` according to your needs.
 
+    To deploy the enterprise version of TiDB/PD/TiKV/TiFlash/TiCDC, edit the `db.yaml` file to set `spec.<tidb/pd/tikv/tiflash/ticdc>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv/tiflash/ticdc>-enterprise`).
+
+    For example:
+
+    ```yaml
+    spec:
+      ...
+      pd:
+        baseImage: pingcap/pd-enterprise
+      ...
+      tikv:
+        baseImage: pingcap/tikv-enterprise
+    ```
+
     > **Note:**
     >
     > * Replace all the `TIDB_CLUSTER_NAME` in the `db.yaml` and `db-monitor.yaml` files with `tidb_cluster_name` configured in the deployment of ACK.

@@ -41,6 +41,16 @@ spec:
       storageClassName: local-storage
 ```
 
+To deploy the enterprise version of TiFlash, edit the `dm.yaml` file above to set `spec.tiflash.baseImage` to the enterprise image (`pingcap/tiflash-enterprise`).
+
+For example:
+
+```yaml
+spec:
+  tiflash:
+    baseImage: pingcap/tiflash-enterprise
+```
+
 TiFlash supports mounting multiple Persistent Volumes (PVs). If you want to configure multiple PVs for TiFlash, configure multiple `resources` in `tiflash.storageClaims`, each `resources` with a separate `storage request` and `storageClassName`. For example:
 
 ```yaml
