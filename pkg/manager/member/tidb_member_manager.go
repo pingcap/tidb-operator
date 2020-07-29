@@ -401,7 +401,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		PluginList:      strings.Join(plugins, ","),
 	}
 
-	if len(tc.Spec.PDAddress) > 0 {
+	if len(tc.Spec.PDAddress) > 0 && tc.Spec.PD == nil {
 		pdAddress := ""
 		for _, address := range tc.Spec.PDAddress {
 			removeHttpAddress := strings.ReplaceAll(address, "http", "")
