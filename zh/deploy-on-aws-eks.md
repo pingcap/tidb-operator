@@ -260,6 +260,7 @@ region = us-west-21
     > * 请使用 EKS 部署过程中配置的 `default_cluster_name` 替换 `db.yaml` 和 `db-monitor.yaml` 文件中所有的 `CLUSTER_NAME`。
     > * 请确保 EKS 部署过程中 PD、TiKV、TiFlash、TiCDC 或者 TiDB 节点的数量的值大于等于 `db.yaml` 中对应组件的 `replicas`。
     > * 请确保 `db-monitor.yaml` 中 `spec.initializer.version` 和 `db.yaml` 中 `spec.version` 一致，以保证监控显示正常。
+    > * 由于 EKS 升级过程中，节点上的本地盘数据会[丢失](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime)，因此生产环境不建议使用本地盘作为 TiKV 存储，建议使用 EBS，可以参考[文档](https://kubernetes.io/docs/concepts/storage/storage-classes/#aws-ebs) 根据需要创建适用的 `StorageClass`，并修改 `db.yaml` 中 `spec.tikv.storageClassName`。
 
 2. 创建 `Namespace`：
 
