@@ -156,9 +156,9 @@ type: kubernetes.io/tls
 
 After Ingress is deployed, visit <https://{host}/dashboard> to access TiDB Dashboard.
 
-## Update TiDB cluster
+## Update the TiDB cluster
 
-If you enable quick access to TiDB Dashboard by updating an existing TiDB cluster, you need update the following two configurations:
+To enable quick access to TiDB Dashboard by updating an existing TiDB cluster, update the following two configurations:
 
 ```yaml
 apiVersion: pingcap.com/v1alpha1

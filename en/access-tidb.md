@@ -30,13 +30,13 @@ If there is no LoadBalancer, expose the TiDB service port in the following two m
 
 - `externalTrafficPolicy=Cluster`: All machines in the Kubernetes cluster assign a NodePort to TiDB Pod, which is the default mode.
 
-    When using the `Cluster` mode, you can access the TiDB service by using the IP address of any machine plus a same port. If there is no TiDB Pod on the machine, the corresponding request is forwarded to the machine with a TiDB Pod.
+    When using the `Cluster` mode, you can access the TiDB service by using the IP address of any machine plus the same port. If there is no TiDB Pod on the machine, the corresponding request is forwarded to the machine with a TiDB Pod.
 
     > **Note:**
     >
     > In this mode, the request's source IP obtained by the TiDB server is the node IP, not the real client's source IP. Therefore, the access control based on the client's source IP is not available in this mode.
 
-- `externalTrafficPolicy=Local`: Only those machines that runs TiDB assign NodePort to TiDB Pod so that you can access local TiDB instances.
+- `externalTrafficPolicy=Local`: Only those machines that run TiDB assign NodePort to TiDB Pod so that you can access local TiDB instances.
 
     When you use the `Local` mode, it is recommended to enable the `StableScheduling` feature of `tidb-scheduler`. `tidb-scheduler` tries to schedule the newly added TiDB instances to the existing machines during the upgrade process. With such scheduling, client outside the Kubernetes cluster does not need to upgrade configuration after TiDB is restarted.
 

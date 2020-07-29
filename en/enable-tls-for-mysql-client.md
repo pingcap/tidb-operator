@@ -19,11 +19,11 @@ To enable TLS for the MySQL client, perform the following steps:
 
 2. [Deploy the cluster](#deploy-the-tidb-cluster), and set `.spec.tidb.tlsClient.enabled` to `true`.
 
-3. [Configure the MySQL client to use encrypted connection](#configure-the-mysql-client-to-use-encrypted-connection).
+3. [Configure the MySQL client to use an encrypted connection](#configure-the-mysql-client-to-use-an-encrypted-connection).
 
 ## Issue two sets of certificates for the TiDB cluster
 
-This section describe how to issue certificates for the TiDB cluster using two methods: `cfssl` and `cert-manager`.
+This section describes how to issue certificates for the TiDB cluster using two methods: `cfssl` and `cert-manager`.
 
 ### Using `cfssl`
 
@@ -187,7 +187,7 @@ This section describe how to issue certificates for the TiDB cluster using two m
     - The TiDB server loads one Secret object when it starts
     - The MySQL client uses another Secret object when it connects to the TiDB cluster
 
-You can generate multiple sets of client-side certificates. At least one set of client-side certificate is needed for the internal components of TiDB Operator to access the TiDB server. Currently, TidbInitializer access the TiDB server to set the password or perform initialization.
+You can generate multiple sets of client-side certificates. At least one set of client-side certificates is needed for the internal components of TiDB Operator to access the TiDB server. Currently, `TidbInitializer` accesses the TiDB server to set the password or perform initialization.
 
 ### Using `cert-manager`
 
@@ -487,10 +487,10 @@ You can generate multiple sets of client-side certificates. At least one set of 
 In this step, you create a TiDB cluster and perform the following operations:
 
 - Enable TLS for the MySQL client
-- Initialize the cluster (an `app` database is created for the purpose of demonstration)
+- Initialize the cluster (an `app` database is created for demonstration)
 - Create a Backup object to back up the cluster
 - Create a Restore object to restore the cluster
-- Use separate client-side certificates for TidbInitializer, PD Dashboard, Backup, and Restore (specified by `tlsClientSecretName`)
+- Use separate client-side certificates for `TidbInitializer`, PD Dashboard, Backup, and Restore (specified by `tlsClientSecretName`)
 
 1. Create three `.yaml` files:
 
@@ -625,7 +625,7 @@ In this step, you create a TiDB cluster and perform the following operations:
     kubectl apply -f restore.yaml
     ```
 
-## Configure the MySQL client to use encrypted connection
+## Configure the MySQL client to use an encrypted connection
 
 To connect the MySQL client with the TiDB cluster, use the client-side certificate created above and take the following methods. For details, refer to [Configure the MySQL client to use encrypted connections](https://pingcap.com/docs/stable/how-to/secure/enable-tls-clients/#configure-the-mysql-client-to-use-encrypted-connections).
 

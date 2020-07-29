@@ -6,7 +6,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/benchmark-sysbench/']
 
 # TiDB in Kubernetes Sysbench Performance Test
 
-Since the release of [TiDB Operator GA](https://pingcap.com/blog/database-cluster-deployment-and-management-made-easy-with-kubernetes/), more users begin to deploy and manage the TiDB cluster in Kubernetes using TiDB Operator. In this report, an in-depth and comprehensive test of TiDB has been conducted on GKE, which offers insight into the influencing factors that affects the performance of TiDB in Kubernetes.
+Since the release of [TiDB Operator GA](https://pingcap.com/blog/database-cluster-deployment-and-management-made-easy-with-kubernetes/), more users begin to deploy and manage the TiDB cluster in Kubernetes using TiDB Operator. In this report, an in-depth and comprehensive test of TiDB has been conducted on GKE, which offers insight into the influencing factors that affect the performance of TiDB in Kubernetes.
 
 ## Test purpose
 
@@ -20,7 +20,7 @@ Since the release of [TiDB Operator GA](https://pingcap.com/blog/database-cluste
 In this test:
 
 - TiDB 3.0.1 and TiDB Operator 1.0.0 are used.
-- Three instances are deployed for PD, TiDB and TiKV respectively.
+- Three instances are deployed for PD, TiDB, and TiKV respectively.
 - Each component is configured as below. Unconfigured components use the default values.
 
 PD:
@@ -97,7 +97,7 @@ Sysbench, the pressure test platform, has a high demand on CPU in the high concu
 
 > **Note:**
 >
-> The usable machine types vary among GCP Regions. In the test, disk also performs differently. Therefore, only the machines in us-central1 are applied for test.
+> The usable machine types vary among GCP Regions. In the test, the disk also performs differently. Therefore, only the machines in us-central1 are applied for test.
 
 #### Disk
 
@@ -113,8 +113,8 @@ GKE uses a more scalable and powerful [VPC-Native](https://cloud.google.com/kube
 
 #### CPU
 
-- In the test on single AZ cluster, the c2-standard-16 machine mode is chosen for TiDB/TiKV.
-- In the comparison test on single AZ cluster and on multiple AZs cluster, the c2-standard-16 machine type cannot be simultaneously adopted in three AZs within the same GCP Region, so n1-standard-16 machine type is chosen.
+- In the test on a single AZ cluster, the c2-standard-16 machine mode is chosen for TiDB/TiKV.
+- In the comparison test on a single AZ cluster and on multiple AZs cluster, the c2-standard-16 machine type cannot be simultaneously adopted in three AZs within the same GCP Region, so n1-standard-16 machine type is chosen.
 
 ### Operation system and parameters
 
@@ -160,7 +160,7 @@ sysbench \
   prepare
 ```
 
-`${tidb_host}` is the address of TiDB database, which is specified according to actual test needs. For example, Pod IP, Service domain name, Host IP, and Load Balancer IP (the same below).
+`${tidb_host}` is the address of the TiDB database, which is specified according to actual test needs. For example, Pod IP, Service domain name, Host IP, and Load Balancer IP (the same below).
 
 #### Warming-up
 
@@ -290,7 +290,7 @@ From the images above, TiDB performs better on Ubuntu than on COS in the Point S
 
 > **Note:**
 >
-> - This test is conducted only for the single test case and indicates that the performance might be affected by different operating systems, different optimization and default settings. Therefore, PingCAP makes no recommendation for the operating system.
+> - This test is conducted only for the single test case and indicates that the performance might be affected by different operating systems, different optimization, and default settings. Therefore, PingCAP makes no recommendation for the operating system.
 > - COS is officially recommended by GKE, because it is optimized for containers and improved substantially on security and disk performance.
 
 #### Kubernetes Service vs GCP LoadBalancer
@@ -335,7 +335,7 @@ From the images above, TiDB performs better when accessed via Kubernetes Service
 
 In the Point Select read test, TiDB's CPU usage exceeds 1400% (16 cores) while TiKV's CPU usage is about 1000% (16 cores).
 
-The test compares the TiDB performance on general machine types with that on machines which are optimized for computing. In this performance comparison, the frequency of n1-stadnard-16 is about 2.3G, and the frequency of c2-standard-16 is about 3.1G.
+The test compares the TiDB performance on general machine types with that on machines which are optimized for computing. In this performance comparison, the frequency of n1-standard-16 is about 2.3G, and the frequency of c2-standard-16 is about 3.1G.
 
 In this test, the operating system is Ubuntu and the Pod network is Host. TiDB is accessed via Kubernetes Service.
 
@@ -463,6 +463,6 @@ This is a test of TiDB using sysbench running in Kubernetes deployed on a typica
 
 > **Note:**
 >
-> - The factors above might change over time. The TiDB performance might varies on different cloud platforms. In the future, more tests will be conducted on more dimensions.
+> - The factors above might change over time. The TiDB performance might vary on different cloud platforms. In the future, more tests will be conducted on more dimensions.
 >
-> - The sysbench test case cannot fully represent the actual business scenarios. It is recommended that you simulate the actual business for test and make consideration based on all the costs behind (machines, difference between operating systems, the limit of Host network, and so on).
+> - The sysbench test case cannot fully represent the actual business scenarios. It is recommended that you simulate the actual business for test and make consideration based on all the costs behind (machines, the difference between operating systems, the limit of Host network, and so on).

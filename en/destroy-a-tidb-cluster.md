@@ -8,9 +8,9 @@ aliases: ['/docs/tidb-in-kubernetes/dev/destroy-a-tidb-cluster/']
 
 This document describes how to deploy TiDB clusters in Kubernetes.
 
-## Destroy TiDB clusters managed by TidbCluster
+## Destroy a TiDB cluster managed by `TidbCluster`
 
-To destroy a TiDB cluster managed by TidbCluster, run the following command:
+To destroy a TiDB cluster managed by `TidbCluster`, run the following command:
 
 {{< copyable "shell-regular" >}}
 
@@ -18,7 +18,7 @@ To destroy a TiDB cluster managed by TidbCluster, run the following command:
 kubectl delete tc ${cluster_name} -n ${namespace}
 ```
 
-If you deploy the monitor in the cluster using `TidbMonitor`, run the folowing command to delete the monitor component:
+If you deploy the monitor in the cluster using `TidbMonitor`, run the following command to delete the monitor component:
 
 {{< copyable "shell-regular" >}}
 
@@ -26,7 +26,7 @@ If you deploy the monitor in the cluster using `TidbMonitor`, run the folowing c
 kubectl delete tidbmonitor ${tidb_monitor_name} -n ${namespace}
 ```
 
-## Destroy TiDB clusters managed by Helm
+## Destroy a TiDB cluster managed by Helm
 
 To destroy a TiDB cluster managed by Helm, run the following command:
 
@@ -38,7 +38,7 @@ helm delete ${cluster_name} --purge
 
 ## Delete data
 
-The above commands that destroy the cluster only remove the running Pod, but the data is still retained. If you want the data to be deleted as well, you can use the following commands:
+The above commands that destroy the cluster only remove the running Pod, but the data is still retained. If you want to delete the data as well, use the following commands:
 
 > **Warning:**
 >

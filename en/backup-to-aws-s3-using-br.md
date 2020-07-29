@@ -37,7 +37,7 @@ In the AWS cloud environment, different types of Kubernetes clusters provide dif
 
     > **Note:**
     >
-    > When you use this method, refer to [AWS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/create-cluster.html) for instructions on how to create a EKS cluster, and then deploy TiDB Operator and the TiDB cluster.
+    > When you use this method, refer to [AWS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/create-cluster.html) for instructions on how to create an EKS cluster, and then deploy TiDB Operator and the TiDB cluster.
 
 ## Ad-hoc full backup
 
@@ -357,7 +357,7 @@ You can set a backup policy to perform scheduled backups of the TiDB cluster, an
 
 ### Prerequisites for scheduled full backup
 
-The prerequisites for the scheduled full backup is the same with the [prerequisites for ad-hoc full backup](#prerequisites-for-ad-hoc-full-backup).
+The prerequisites for the scheduled full backup is the same as the [prerequisites for ad-hoc full backup](#prerequisites-for-ad-hoc-full-backup).
 
 ### Process of scheduled full backup
 

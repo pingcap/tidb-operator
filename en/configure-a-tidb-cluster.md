@@ -16,7 +16,7 @@ This document introduces how to configure a TiDB cluster for production deployme
 
 ## Configure resources
 
-Before deploying a TiDB cluster, it is necessary to configure the resources for each component of the cluster depending on your needs. PD, TiKV and TiDB are the core service components of a TiDB cluster. In a production environment, you need to configure resources of these components according to their needs. For details, refer to [Hardware Recommendations](https://pingcap.com/docs/stable/hardware-and-software-requirements/).
+Before deploying a TiDB cluster, it is necessary to configure the resources for each component of the cluster depending on your needs. PD, TiKV, and TiDB are the core service components of a TiDB cluster. In a production environment, you need to configure resources of these components according to their needs. For details, refer to [Hardware Recommendations](https://pingcap.com/docs/stable/hardware-and-software-requirements/).
 
 To ensure the proper scheduling and stable operation of the components of the TiDB cluster in Kubernetes, it is recommended to set Guaranteed-level quality of service (QoS) by making `limits` equal to `requests` when configuring resources. For details, refer to [Configure Quality of Service for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/).
 
@@ -56,7 +56,7 @@ Different components of a TiDB cluster have different disk requirements. Before 
 
 For the production environment, local storage is recommended for TiKV. The actual local storage in Kubernetes clusters might be sorted by disk types, such as `nvme-disks` and `sas-disks`.
 
-For demonstration environment or functional verification, you can use network storage, such as `ebs` and `nfs`.
+For the demonstration environment or functional verification, you can use network storage, such as `ebs` and `nfs`.
 
 > **Note:**
 >
@@ -269,13 +269,13 @@ For all configurable start parameters of TiCDC, see [TiCDC start parameters](htt
 
 > **Note:**
 >
-> TiDB Operator provides a custom scheduler that guarantees TiDB service can tolerate host level failures through the specified scheduling algorithm. Currently, the TiDB cluster uses this scheduler as the default scheduler, which is configured through the item `spec.schedulerName`. This section focuses on configuring a TiDB cluster to tolerate failures at other levels such as rack, zone or region. This section is optional.
+> TiDB Operator provides a custom scheduler that guarantees TiDB service can tolerate host-level failures through the specified scheduling algorithm. Currently, the TiDB cluster uses this scheduler as the default scheduler, which is configured through the item `spec.schedulerName`. This section focuses on configuring a TiDB cluster to tolerate failures at other levels such as rack, zone, or region. This section is optional.
 
 TiDB is a distributed database and its high availability must ensure that when any physical topology node fails, not only the service is unaffected, but also the data is complete and available. The two configurations of high availability are described separately as follows.
 
-### High avalability of TiDB service
+### High availability of TiDB service
 
-High availability at other levels (such as rack, zone, region) are guaranteed by Affinity's `PodAntiAffinity`. `PodAntiAffinity` can avoid the situation where different instances of the same component are deployed on the same physical topology node. In this way, disaster recovery is achieved. Detailed user guide for Affinity: [Affinity & AntiAffinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity).
+High availability at other levels (such as rack, zone, region) is guaranteed by Affinity's `PodAntiAffinity`. `PodAntiAffinity` can avoid the situation where different instances of the same component are deployed on the same physical topology node. In this way, disaster recovery is achieved. Detailed user guide for Affinity: [Affinity & AntiAffinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity).
 
 The following is an example of a typical service high availability setup:
 

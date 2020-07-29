@@ -33,7 +33,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
 
     > **Note:**
     >
-    > The access key must have at least permissions to: create VPC, create EBS, create EC2 and create role.
+    > The access key must have at least permissions to create VPC, EBS, EC2, and role.
 
 * [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) >= 0.12
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
@@ -70,7 +70,7 @@ Before deploying a TiDB cluster on AWS EKS, make sure the following requirements
 
 ## Deploy
 
-This section describes how to deploy EKS, TiDB operator, TiDB cluster and monitor.
+This section describes how to deploy EKS, TiDB operator, the TiDB cluster, and the monitoring component.
 
 ### Deploy EKS, TiDB Operator, and TiDB cluster node pool
 
@@ -111,7 +111,7 @@ The EKS deployment scripts provide two options:
     * 3 c5.xlarge instances for PD
     * 3 i3.4xlarge instances for TiKV
     * 2 c5.2xlarge instances for TiDB
-    * 1 c5.2xlarge instances for monitor
+    * 1 c5.2xlarge instance for monitor
 
     To use the production setup, run the following command:
 
@@ -628,7 +628,7 @@ The Terraform module in our case typically combines several sub-modules:
 - A `tidb-cluster` module, which creates the resource pool required by the TiDB cluster
 - A `VPC` module, a `bastion` module and a `key-pair` module that are dedicated to TiDB on AWS
 
-The best practice for managing multiple Kubernetes clusters is creating a new directory for each of your Kubernetes clusters, and combine the above modules according to your needs via Terraform scripts, so that the Terraform states among clusters do not interfere with each other, and it is convenient to expand. Here's an example:
+The best practice for managing multiple Kubernetes clusters is creating a new directory for each of your Kubernetes clusters, and combine the above modules according to your needs via Terraform scripts so that the Terraform states among clusters do not interfere with each other, and it is convenient to expand. Here's an example:
 
 {{< copyable "shell-regular" >}}
 

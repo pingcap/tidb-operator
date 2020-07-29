@@ -483,7 +483,7 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         secretName: ${cluster_name}-ca-secret
     ```
 
-    `${cluster_name}` is the name of the cluster. The above yaml file creates three objects:
+    `${cluster_name}` is the name of the cluster. The above YAML file creates three objects:
 
     - An Issuer object of the SelfSigned type, used to generate the CA certificate needed by Issuer of the CA type;
     - A Certificate object, whose `isCa` is set to `true`.

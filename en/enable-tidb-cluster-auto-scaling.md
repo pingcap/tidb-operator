@@ -6,7 +6,7 @@ aliases: ['/docs/tidb-in-kubernetes/dev/enable-tidb-cluster-auto-scaling/']
 
 # Enable TidbCluster Auto-scaling
 
-Kubernetes provides [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), a native API based on CPU utilization. Correspondingly, in TiDB Operator 1.1 and later versions, you can enable the auto-scaling feature in a TiDB cluster based on the features of Kubernetes. This document introduces how to enable and use the auto-scaling feature of TidbCluster.
+Kubernetes provides [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), a native API based on CPU utilization. Correspondingly, in TiDB Operator 1.1 and later versions, you can enable the auto-scaling feature in a TiDB cluster based on the features of Kubernetes. This document introduces how to enable and use the auto-scaling feature of `TidbCluster`.
 
 ## Enable the auto-scaling feature
 
@@ -55,7 +55,7 @@ To turn this feature on, you need to enable some related configurations in TiDB 
           cpu: "1"
     ```
 
-## TidbClusterAutoScaler
+## `TidbClusterAutoScaler`
 
 The `TidbClusterAutoScaler` CR object is used to control the behavior of the auto-scaling in the TiDB cluster. If you have used [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), presumably you are familiar with the notion `TidbClusterAutoScaler`. The following is an auto-scaling example in TiKV.
 
@@ -109,19 +109,19 @@ spec:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster.yaml -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-monitor.yaml -n ${namespace}
     ```
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    $ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/auto-scale/tidb-cluster-auto-scaler.yaml  -n ${namespace}
     ```
 
 2. After the TiDB cluster is created, expose the TiDB cluster service to the local machine by running the following command:
@@ -214,8 +214,8 @@ spec:
     auto-scaling-demo-tikv-2                      1/1     Running   0          15m
     ```
 
-    View the changing status of Pods and the TPS and QPS of sysbench. When new Pods are created in TiKV and TiDB, the TPS and QPS of sysbench increase significantly. 
-    
+    View the changing status of Pods and the TPS and QPS of sysbench. When new Pods are created in TiKV and TiDB, the TPS and QPS of sysbench increase significantly.
+
     After sysbench finishes the test, the newly created Pods in TiKV and TiDB disappear automatically.
 
 5. Destroy the environment by running the following commands:
@@ -228,7 +228,7 @@ spec:
     kubectl delete tidbclusterautoscaler auto-scaling-demo -n ${namespace}
     ```
 
-## TidbClusterAutoScaler configurations
+## `TidbClusterAutoScaler` configurations
 
 1. Set the auto-scaling interval.
 
@@ -239,7 +239,7 @@ spec:
     apiVersion: pingcap.com/v1alpha1
     kind: TidbClusterAutoScaler
     metadata:
-      name: auto-sclaer
+      name: auto-scaler
     spec:
       tidb:
         scaleInIntervalSeconds: 500
@@ -289,7 +289,7 @@ spec:
                 averageUtilization: 80
     ```
 
-4. Set the time window configurations
+4. Set the time window configurations.
 
     The CPU utilization based auto-scaling allows `TidbClusterAutoScaler` to get the CPU metrics of `TiDB` and `TiKV` from the specified monitoring system. You can specify the time window of metrics collection.
 

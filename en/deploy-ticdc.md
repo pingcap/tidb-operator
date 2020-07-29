@@ -19,9 +19,9 @@ TiDB Operator is [deployed](deploy-tidb-operator.md).
 
 To deploy TiCDC when deploying the TiDB cluster, refer to [Deploy TiDB in General Kubernetes](deploy-on-general-kubernetes.md).
 
-## Add TiCDC component to an existing TiDB cluster
+## Add TiCDC to an existing TiDB cluster
 
-1. Edit TidbCluster Custom Resource:
+1. Edit `TidbCluster` Custom Resource:
 
     {{< copyable "shell-regular" >}}
 
@@ -67,4 +67,4 @@ To deploy TiCDC when deploying the TiDB cluster, refer to [Deploy TiDB in Genera
     ]
     ```
 
-    If the server does not have an external network, refer to [deploy TiDB cluster](deploy-on-general-kubernetes.md#deploy-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.
+    If the server does not have an external network, refer to [deploy TiDB cluster](deploy-on-general-kubernetes.md#deploy-the-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.

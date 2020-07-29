@@ -6,15 +6,15 @@ aliases: ['/docs/tidb-in-kubernetes/dev/configure-storage-class/','/docs/dev/tid
 
 # Persistent Storage Class Configuration in Kubernetes
 
-TiDB cluster components such as PD, TiKV, TiDB monitoring, TiDB Binlog and `tidb-backup` require the persistent storage of data. To persist the data in Kubernetes, you need to use [PersistentVolume (PV)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/). Kubernetes supports several types of [storage classes](https://kubernetes.io/docs/concepts/storage/volumes/), which are mainly divided into two parts:
+TiDB cluster components such as PD, TiKV, TiDB monitoring, TiDB Binlog, and `tidb-backup` require the persistent storage of data. To persist the data in Kubernetes, you need to use [PersistentVolume (PV)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/). Kubernetes supports several types of [storage classes](https://kubernetes.io/docs/concepts/storage/volumes/), which are mainly divided into two parts:
 
 - Network storage
 
-    The network storage medium is not on the current node, but is mounted to the node through the network. Generally, there are redundant replicas to guarantee high availability. When the node fails, the corresponding network storage can be re-mounted to another node for further use.
+    The network storage medium is not on the current node but is mounted to the node through the network. Generally, there are redundant replicas to guarantee high availability. When the node fails, the corresponding network storage can be re-mounted to another node for further use.
 
 - Local storage
 
-    The local storage medium is on the current node, and typically can provide lower latency than the network storage. Because there are no redundant replicas, once the node fails, data might be lost. If it is an IDC server, data can be restored to a certain extent. If it is a virtual machine using the local disk on the public cloud, data **cannot** be retrieved after the node fails.
+    The local storage medium is on the current node and typically can provide lower latency than the network storage. Because there are no redundant replicas, once the node fails, data might be lost. If it is an IDC server, data can be restored to a certain extent. If it is a virtual machine using the local disk on the public cloud, data **cannot** be retrieved after the node fails.
 
 PVs are created automatically by the system administrator or volume provisioner. PVs and Pods are bound by [PersistentVolumeClaim (PVC)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims). Users request for using a PV through a PVC instead of creating a PV directly. The corresponding volume provisioner creates a PV that meets the requirements of PVC and then binds the PV to the PVC.
 
@@ -28,7 +28,7 @@ TiKV uses the Raft protocol to replicate data. When a node fails, PD automatical
 
 PD also uses Raft to replicate data. PD is not an I/O-intensive application, but a database for storing cluster meta information, so a local SAS disk or network SSD storage such as EBS General Purpose SSD (gp2) volumes on AWS or SSD persistent disks on GCP can meet the requirements.
 
-To ensure availability, it is recommended to use network storage for components such as TiDB monitoring, TiDB Binlog and `tidb-backup` because they do not have redundant replicas. TiDB Binlog's Pump and Drainer components are I/O-intensive applications that require low read and write latency, so it is recommended to use high-performance network storage such as EBS Provisioned IOPS SSD (io1) volumes on AWS or SSD persistent disks on GCP.
+To ensure availability, it is recommended to use network storage for components such as TiDB monitoring, TiDB Binlog, and `tidb-backup` because they do not have redundant replicas. TiDB Binlog's Pump and Drainer components are I/O-intensive applications that require low read and write latency, so it is recommended to use high-performance network storage such as EBS Provisioned IOPS SSD (io1) volumes on AWS or SSD persistent disks on GCP.
 
 When deploying TiDB clusters or `tidb-backup` with TiDB Operator, you can configure `StorageClass` for the components that require persistent storage via the corresponding `storageClassName` field in the `values.yaml` configuration file. The `StorageClassName` is set to `local-storage` by default.
 
@@ -78,7 +78,7 @@ Kubernetes currently supports statically allocated local storage. To create a lo
     kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/local-dind/local-volume-provisioner.yaml
      ```
 
-    If the server have no access to the Internet, download the `local-volume-provisioner.yaml` file on a machine with Internet access and then install it.
+    If the server has no access to the Internet, download the `local-volume-provisioner.yaml` file on a machine with Internet access and then install it.
 
     {{< copyable "shell-regular" >}}
 
@@ -113,7 +113,7 @@ Kubernetes currently supports statically allocated local storage. To create a lo
     kubectl get pv | grep local-storage
     ```
 
-    `local-volume-provisioner` creates a PV for each mounting point under discovery directory. Note that on GKE, `local-volume-provisioner` creates a local volume of only 375 GiB in size by default.
+    `local-volume-provisioner` creates a PV for each mounting point under the discovery directory. Note that on GKE, `local-volume-provisioner` creates a local volume of only 375 GiB in size by default.
 
 For more information, refer to [Kubernetes local storage](https://kubernetes.io/docs/concepts/storage/volumes/#local) and [local-static-provisioner document](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner#overview).
 
@@ -129,19 +129,19 @@ Refer to [Best Practices](https://github.com/kubernetes-sigs/sig-storage-local-s
 
 If the components such as monitoring, TiDB Binlog, and `tidb-backup` use local disks to store data, you can mount SAS disks and create separate `StorageClass` for them to use. Procedures are as follows:
 
-- For a disk storing monitoring data, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in disk, and bind mount them into `/mnt/disks` directory. Then, create `local-storage` `StorageClass` for them to use.
+- For a disk storing monitoring data, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in the disk, and bind mount them into `/mnt/disks` directory. Then, create `local-storage` `StorageClass` for them to use.
 
     >**Note:**
     >
     > The number of directories you create depends on the planned number of TiDB clusters. For each directory, a corresponding PV will be created. The monitoring data in each TiDB cluster uses one PV.
 
-- For a disk storing TiDB Binlog and backup data, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in disk, and bind mount them into `/mnt/backup` directory. Then, create `backup-storage` `StorageClass` for them to use.
+- For a disk storing TiDB Binlog and backup data, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in the disk, and bind mount them into `/mnt/backup` directory. Then, create `backup-storage` `StorageClass` for them to use.
 
     >**Note:**
     >
     > The number of directories you create depends on the planned number of TiDB clusters, the number of Pumps in each cluster, and your backup method. For each directory, a corresponding PV will be created. Each Pump uses one PV and each Drainer uses one PV. Each [Ad-hoc full backup](backup-and-restore-using-helm-charts.md#ad-hoc-full-backup) task uses one PV, and all [scheduled full backup](backup-and-restore-using-helm-charts.md#scheduled-full-backup) tasks share one PV.
 
-- For a disk storing data in PD, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in disk, and bind mount them into `/mnt/sharedssd` directory. Then, create `shared-ssd-storage` `StorageClass` for them to use.
+- For a disk storing data in PD, follow the [steps](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/operations.md#sharing-a-disk-filesystem-by-multiple-filesystem-pvs) to mount the disk. First, create multiple directories in the disk, and bind mount them into `/mnt/sharedssd` directory. Then, create `shared-ssd-storage` `StorageClass` for them to use.
 
     >**Note:**
     >

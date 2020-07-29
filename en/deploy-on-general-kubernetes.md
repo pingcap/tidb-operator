@@ -1,23 +1,20 @@
 ---
-title: Deploy TiDB on General Kubernetes
+title: Deploy TiDB in General Kubernetes
 summary: Learn how to deploy a TiDB cluster on general Kubernetes.
 aliases: ['/docs/tidb-in-kubernetes/dev/deploy-on-general-kubernetes/']
 ---
 
-# Deploy TiDB on General Kubernetes
+# Deploy TiDB in General Kubernetes
 
-This document describes how to deploy a TiDB cluster on general Kubernetes.
+This document describes how to deploy a TiDB cluster in general Kubernetes.
 
 ## Prerequisites
 
 - Meet [prerequisites](prerequisites.md).
 - Complete [deploying TiDB Operator](deploy-tidb-operator.md).
+- [Configure the TiDB cluster](configure-a-tidb-cluster.md)
 
-## Deploy TiDB cluster
-
-Before you deploy TiDB cluster, you should configure the TiDB cluster. Refer to [Configure a TiDB Cluster in Kubernetes](configure-a-tidb-cluster.md)
-
-After you configure TiDB cluster, deploy the TiDB cluster by the following steps:
+## Deploy the TiDB cluster
 
 1. Create `Namespace`:
 
@@ -120,7 +117,7 @@ You can use TiDB Operator to deploy and manage multiple TiDB clusters in a singl
 
 Different clusters can be in the same or different `namespace`, which is based on your actual needs.
 
-## Initialize TiDB cluster
+## Initialize the TiDB cluster
 
 If you want to initialize your cluster after deployment, refer to [Initialize a TiDB Cluster in Kubernetes](initialize-a-cluster.md).
 

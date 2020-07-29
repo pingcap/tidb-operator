@@ -47,7 +47,7 @@ With a default installation, TiDB Operator disables the admission controller. Ta
 
     Prior to Kubernetes v1.15, the management mechanism of the dynamic admission control is coarser-grained and is inconvenient to use. To prevent the impact of the dynamic admission control on the global cluster, you need to configure the [Failure Policy](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy).
 
-    * For Kubernetes versions earlier than v1.15, it is recommended to set the `failurePolicy` of TiDB Operator to `Ignore`. This avoids the influence on the global cluster in case of `admission webhook` exception in TiDB Operator .
+    * For Kubernetes versions earlier than v1.15, it is recommended to set the `failurePolicy` of TiDB Operator to `Ignore`. This avoids the influence on the global cluster in case of `admission webhook` exception in TiDB Operator.
 
         ```yaml
         ......
@@ -56,7 +56,7 @@ With a default installation, TiDB Operator disables the admission controller. Ta
             mutation: Ignore
         ```
 
-    * For Kubernetes v1.15 and later versions, it is recommended to set the `failurePolicy` of TiDB Operator to `Failure`. The exception occurs in `admission webhook` does not effect the whole cluster, because the dynamic admission control supports the label-based filtering mechanism.
+    * For Kubernetes v1.15 and later versions, it is recommended to set the `failurePolicy` of TiDB Operator to `Failure`. The exception occurs in `admission webhook` does not affect the whole cluster, because the dynamic admission control supports the label-based filtering mechanism.
 
         ```yaml
         ......
@@ -191,7 +191,7 @@ By default, the admission controller and Kubernetes api-server skip the [TLS ver
 
     After configuring the items, install or upgrade TiDB Operator. For installation, see [Deploy TiDB Operator](deploy-tidb-operator.md). For upgrade, see [Upgrade TiDB Operator](upgrade-tidb-operator.md).
 
-## Functionality of admission controller
+## Functionality of the admission controller
 
 TiDB Operator implements many functions using the admission controller. This section introduces the admission controller for each resource and its corresponding functions.
 
@@ -245,7 +245,7 @@ TiDB Operator implements many functions using the admission controller. This sec
         pingcapResources: false
     ```
 
-    For example, regarding `TidbCluster` resources, the admission controller for TiDB Operator resources validation checks the required fields of the `spec` field. When you create or update `TidbCluster`, if the check is not passed (for example, neither of the `spec.pd.image` filed and the `spec.pd.baseImage` field are defined), this admission controller refuses the request.
+    For example, regarding `TidbCluster` resources, the admission controller for TiDB Operator resources validation checks the required fields of the `spec` field. When you create or update `TidbCluster`, if the check is not passed (for example, neither of the `spec.pd.image` filed and the `spec.pd.baseImage` field is defined), this admission controller refuses the request.
 
 * Admission controller for Pod modification
 

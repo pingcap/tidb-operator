@@ -75,7 +75,7 @@ Normally, when a TiKV Pod is in a healthy state (`Running`), the corresponding T
 
 ## Persistent connections are abnormally terminated in TiDB
 
-Load balancers often set the idle connection timeout. If no data is sent via a connection for a specific period of time, load balancer closes the connection.
+Load balancers often set the idle connection timeout. If no data is sent via a connection for a specific period of time, the load balancer closes the connection.
 
 - If a persistent connection is terminated when you use TiDB, check the middleware program between the client and the TiDB server.
 - If the idle timeout is not long enough for your query, try to set the timeout to a larger value. If you cannot reset it, enable the `tcp-keep-alive` option in TiDB.

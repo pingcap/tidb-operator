@@ -18,19 +18,19 @@ Before deploying TiDB Operator, make sure the following items are installed on y
 * [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) enabled (optional)
 * [Helm](https://helm.sh) version >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
 
-## Deploy Kubernetes cluster
+### Deploy the Kubernetes cluster
 
-TiDB Operator runs in Kubernetes cluster. You can refer to [the document of how to set up Kubernetes](https://kubernetes.io/docs/setup/) to set up a Kubernetes cluster. Make sure that the Kubernetes version is v1.12 or higher. If you want to deploy a very simple Kubernetes cluster for testing purposes, consult the [Get Started](get-started.md) document.
+TiDB Operator runs in the Kubernetes cluster. You can refer to [the document of how to set up Kubernetes](https://kubernetes.io/docs/setup/) to set up a Kubernetes cluster. Make sure that the Kubernetes version is v1.12 or higher. If you want to deploy a very simple Kubernetes cluster for testing purposes, consult the [Get Started](get-started.md) document.
 
-TiDB Operator uses [Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to persist the data of TiDB cluster (including the database, monitoring data, and backup data), so the Kubernetes cluster must provide at least one kind of persistent volume. For better performance, it is recommended to use local SSD disk as the volumes. Follow [this step](#configure-local-persistent-volume) to provision local persistent volumes.
+TiDB Operator uses [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) to persist the data of TiDB cluster (including the database, monitoring data, and backup data), so the Kubernetes cluster must provide at least one kind of persistent volumes. For better performance, it is recommended to use local SSD disks as the volumes. Follow [this step](#configure-local-persistent-volumes) to provision local persistent volumes.
 
 It is recommended to enable [RBAC](https://kubernetes.io/docs/admin/authorization/rbac) in the Kubernetes cluster.
 
-## Install Helm
+### Install Helm
 
-Refer to [Use Helm](tidb-toolkit.md#use-helm) to install Helm and configre it with the official PingCAP chart Repo.
+Refer to [Use Helm](tidb-toolkit.md#use-helm) to install Helm and configure it with the official PingCAP chart Repo.
 
-## Configure local persistent volume
+## Configure local persistent volumes
 
 ### Prepare local volumes
 
@@ -40,7 +40,7 @@ Refer to [Local PV Configuration](configure-storage-class.md) to set up local pe
 
 ### Create CRD
 
-TiDB Operator uses [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` custom resource type, which is a one-time job in your Kubernetes cluster.
+TiDB Operator uses [Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions) to extend Kubernetes. Therefore, to use TiDB Operator, you must first create the `TidbCluster` CRD, which is a one-time job in your Kubernetes cluster.
 
 {{< copyable "shell-regular" >}}
 
