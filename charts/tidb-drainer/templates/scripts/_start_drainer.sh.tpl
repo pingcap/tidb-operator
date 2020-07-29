@@ -27,7 +27,8 @@ done
 /drainer \
 -L={{ .Values.logLevel | default "info" }} \
 -pd-urls={{ include "cluster.scheme" . }}://{{ .Values.clusterName }}-pd:2379 \
--addr=`echo ${HOSTNAME}`.{{ include "drainer.name" . }}:8249 \
+-addr=0.0.0.0:8249 \
+-advertise-addr=`echo ${HOSTNAME}`.{{ include "drainer.name" . }}:8249 \
 -config=/etc/drainer/drainer.toml \
 -disable-detect={{ .Values.disableDetect | default false }} \
 -initial-commit-ts={{ .Values.initialCommitTs | default -1 }} \

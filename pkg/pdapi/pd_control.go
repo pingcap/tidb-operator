@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
@@ -56,7 +57,7 @@ func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string,
 	var err error
 
 	if tlsEnabled {
-		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
 			return nil, err
@@ -85,7 +86,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, nil)
+		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
