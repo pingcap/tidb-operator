@@ -221,7 +221,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
 					},
-					Env:       envVars,
+					Env:       util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources: backup.Spec.ResourceRequirements,
 				},
 			},
@@ -360,7 +360,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
-					Env:             envVars,
+					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},

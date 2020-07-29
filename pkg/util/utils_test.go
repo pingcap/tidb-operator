@@ -14,6 +14,7 @@
 package util
 
 import (
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -181,6 +182,97 @@ func TestAppendEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := AppendEnv(tt.a, tt.b)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unwant (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestAppendEnvIfPresent(t *testing.T) {
+	tests := []struct {
+		name string
+		a    []corev1.EnvVar
+		envs map[string]string
+		n    string
+		want []corev1.EnvVar
+	}{
+		{
+			"does not exist",
+			[]corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+			},
+			nil,
+			"TEST_ENV",
+			[]corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+			},
+		},
+		{
+			"does exist",
+			[]corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+			},
+			map[string]string{
+				"TEST_ENV": "TEST_VAL",
+			},
+			"TEST_ENV",
+			[]corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+				{
+					Name:  "TEST_ENV",
+					Value: "TEST_VAL",
+				},
+			},
+		},
+		{
+			"already exist",
+			[]corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+				{
+					Name:  "TEST_ENV",
+					Value: "TEST_OLD_VAL",
+				},
+			},
+			map[string]string{
+				"TEST_ENV": "TEST_VAL",
+			},
+			"TEST_ENV",
+			[]corev1.EnvVar{
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
+				{
+					Name:  "TEST_ENV",
+					Value: "TEST_OLD_VAL",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tt.envs {
+				os.Setenv(k, v)
+			}
+			got := AppendEnvIfPresent(tt.a, tt.n)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("unwant (-want, +got): %s", diff)
 			}
