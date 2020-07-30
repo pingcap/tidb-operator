@@ -207,7 +207,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
 					},
-					Env:       envVars,
+					Env:       util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources: restore.Spec.ResourceRequirements,
 				},
 			},
@@ -346,7 +346,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
-					Env:             envVars,
+					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},
