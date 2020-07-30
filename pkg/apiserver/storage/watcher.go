@@ -27,3 +27,5 @@ func (w *informerBasedWatcher) ResultChan() <-chan watch.Event {
 	// TODO: implementation
 	return w.resultChan
 }
+
+var _ = &informerBasedWatcher{}

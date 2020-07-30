@@ -25,11 +25,6 @@ package v1alpha1
 
 // initially copied from PD v3.0.6
 
-const (
-	defaultEnableTelemetry  = true
-	defaultDisableTelemetry = false
-)
-
 // PDConfig is the configuration of pd-server
 // +k8s:openapi-gen=true
 type PDConfig struct {

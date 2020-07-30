@@ -15,19 +15,16 @@ package controller
 
 import (
 	"fmt"
-	"strings"
-
-	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog"
 )
 
 // BackupScheduleStatusUpdaterInterface is an interface used to update the BackupScheduleStatus associated with a BackupSchedule.
@@ -82,21 +79,6 @@ func (bss *realBackupScheduleStatusUpdater) UpdateBackupScheduleStatus(
 		return updateErr
 	})
 	return err
-}
-
-func (bss *realBackupScheduleStatusUpdater) recordBackupScheduleEvent(verb string, bs *v1alpha1.BackupSchedule, err error) {
-	bsName := bs.GetName()
-	if err == nil {
-		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s BackupSchedule %s successful",
-			strings.ToLower(verb), bsName)
-		bss.recorder.Event(bs, corev1.EventTypeNormal, reason, msg)
-	} else {
-		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s BackupSchedule %s failed error: %s",
-			strings.ToLower(verb), bsName, err)
-		bss.recorder.Event(bs, corev1.EventTypeWarning, reason, msg)
-	}
 }
 
 var _ BackupScheduleStatusUpdaterInterface = &realBackupScheduleStatusUpdater{}

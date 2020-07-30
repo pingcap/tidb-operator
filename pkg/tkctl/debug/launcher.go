@@ -16,14 +16,15 @@ package debug
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/spf13/cobra"
-	"io"
-	"strings"
 )
 
 const (
