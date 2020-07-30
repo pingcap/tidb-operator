@@ -1323,7 +1323,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>// PdAddress is the PD address of this TiDB cluster</p>
+<p>PdAddress is the PD address of this TiDB cluster, if configured, the components in this TidbCluster will join to this configured PD cluster.</p>
 </td>
 </tr>
 </table>
@@ -16216,7 +16216,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>// PdAddress is the PD address of this TiDB cluster</p>
+<p>PdAddress is the PD address of this TiDB cluster, if configured, the components in this TidbCluster will join to this configured PD cluster.</p>
 </td>
 </tr>
 </tbody>
