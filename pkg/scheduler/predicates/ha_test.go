@@ -1133,7 +1133,9 @@ func tcGetFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 			Annotations: map[string]string{"pingcap.com/ha-topology-key": "zone"},
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 3},
+			PD:   &v1alpha1.PDSpec{Replicas: 3},
+			TiKV: &v1alpha1.TiKVSpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}, nil
 }
@@ -1146,7 +1148,7 @@ func tcGetOneReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error)
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 1},
+			PD: &v1alpha1.PDSpec{Replicas: 1},
 		},
 	}, nil
 }
@@ -1159,7 +1161,7 @@ func tcGetTwoReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error)
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 2},
+			PD: &v1alpha1.PDSpec{Replicas: 2},
 		},
 	}, nil
 }

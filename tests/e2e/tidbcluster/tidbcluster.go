@@ -980,15 +980,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
+		ginkgo.BeforeEach(func() {
 			ginkgo.By("Installing cert-manager")
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
+		})
 
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Deleting cert-manager")
+			err := deleteCertManager(f.ClientSet)
+			framework.ExpectNoError(err, "failed to delete cert-manager")
+		})
+
+		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
 			ginkgo.By("Installing tidb issuer")
-			err = installTiDBIssuer(ns, tcName)
+			err := installTiDBIssuer(ns, tcName)
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 			ginkgo.By("Installing tidb server and client certificate")
@@ -1017,10 +1025,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
-				Replicas:             2,
+				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig:        tcconfig.New(map[string]interface{}{}),
+				GenericConfig: tcconfig.New(map[string]interface{}{
+					"addr": "0.0.0.0:8250",
+				}),
 			}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
@@ -1129,10 +1139,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
-
-			ginkgo.By("Deleting cert-manager")
-			err = deleteCertManager(f.ClientSet)
-			framework.ExpectNoError(err, "failed to delete cert-manager")
 		})
 	})
 

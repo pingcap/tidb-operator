@@ -98,6 +98,11 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 }
 
 func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	// If tikv is not specified return
+	if tc.Spec.TiDB == nil {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
