@@ -42,6 +42,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
         resources:
 {{ toYaml .Values.advancedStatefulset.resources | indent 12 }}
     {{- with .Values.advancedStatefulset.nodeSelector }}
