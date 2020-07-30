@@ -274,7 +274,7 @@ More `Restore` CR fields are described as follows:
 * `.spec.to.port`: the port of the TiDB cluster to be restored.
 * `.spec.to.user`: the accessing user of the TiDB cluster to be restored.
 * `.spec.to.tidbSecretName`: the secret of the user password of the `.spec.to.tidbSecretName` TiDB cluster.
-* `.spec.to.tlsClient.tlsSecret`: the secret of the certificate used during the restoration.
+* `.spec.to.tlsClientSecretName`: the secret of the certificate used during the restoration.
 
     If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to restore data using the `${cluster_name}-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the restoration. To generate the secret, run the following command:
 

@@ -167,7 +167,7 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` custom resource (CR) 
 * `.spec.from.port`：待备份 TiDB 集群的访问端口。
 * `.spec.from.user`：待备份 TiDB 集群的访问用户。
 * `.spec.gcs.bucket`：存储数据的 bucket 名字。
-* `.spec.gcs.prefix`：这个字段可以省略，如果设置了这个字段，则会使用这个字段来拼接在远端存储的存储路径 `s3://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`。
+* `.spec.gcs.prefix`：这个字段可以省略，如果设置了这个字段，则会使用这个字段来拼接在远端存储的存储路径 `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`。
 * `.spec.from.tidbSecretName`：待备份 TiDB 集群 `.spec.from.user` 用户的密码所对应的 secret。
 * `.spec.from.tlsClientSecretName`：指定备份使用的存储证书的 Secret。
 

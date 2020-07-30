@@ -330,7 +330,7 @@ More `Backup` CR fields are described as follows:
 - `.spec.from.port`: the port of the TiDB cluster to be backed up.
 - `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
 - `.spec.from.tidbSecretName`: the secret of the user password of the `.spec.from.user` TiDB cluster.
-- `.spec.from.tlsClient.tlsSecret`: the secret of the certificate used during the backup.
+- `.spec.from.tlsClientSecretName`: the secret of the certificate used during the backup.
 
     If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to back up data using the `${cluster_name}-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.from.tlsClient.tlsSecret` parameter to specify a secret for the backup. To generate the secret, run the following command:
 
