@@ -149,16 +149,6 @@ func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }
 
-func imagePullFailed(pod *corev1.Pod) bool {
-	for _, container := range pod.Status.ContainerStatuses {
-		if container.State.Waiting != nil && container.State.Waiting.Reason != "" &&
-			(container.State.Waiting.Reason == ImagePullBackOff || container.State.Waiting.Reason == ErrImagePull) {
-			return true
-		}
-	}
-	return false
-}
-
 func MemberPodName(tcName string, ordinal int32, memberType v1alpha1.MemberType) string {
 	return fmt.Sprintf("%s-%s-%d", tcName, memberType.String(), ordinal)
 }
@@ -319,10 +309,6 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 	}
 
 	return nil
-}
-
-func clusterSecretName(tc *v1alpha1.TidbCluster, component string) string {
-	return fmt.Sprintf("%s-%s-cluster-secret", tc.Name, component)
 }
 
 // filter targetContainer by  containerName, If not find, then return nil

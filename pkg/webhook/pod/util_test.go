@@ -15,11 +15,11 @@ package pod
 
 import (
 	"fmt"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"

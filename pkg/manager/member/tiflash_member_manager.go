@@ -39,9 +39,6 @@ import (
 )
 
 const (
-	// tiflashClusterCertPath is where the cert for inter-cluster communication stored (if any)
-	tiflashClusterCertPath = "/var/lib/tiflash-tls"
-
 	//find a better way to manage store only managed by tiflash in Operator
 	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc\:\d+`
 )

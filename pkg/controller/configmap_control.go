@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigMapControlInterface manages configmaps used by TiDB clusters
@@ -43,7 +42,6 @@ type ConfigMapControlInterface interface {
 }
 
 type realConfigMapControl struct {
-	client   client.Client
 	kubeCli  kubernetes.Interface
 	recorder record.EventRecorder
 }

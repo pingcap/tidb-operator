@@ -24,12 +24,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	admission "k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8sTesting "k8s.io/client-go/testing"
@@ -302,15 +300,6 @@ func newOwnerStatefulsetForTikv() *apps.StatefulSet {
 	sts.Status.CurrentRevision = "1"
 	sts.Status.UpdateRevision = "1"
 	return &sts
-}
-
-func newPVCForTikv(ordinal int32) *core.PersistentVolumeClaim {
-	return &core.PersistentVolumeClaim{
-		ObjectMeta: meta.ObjectMeta{
-			Name:      operatorUtils.OrdinalPVCName(v1alpha1.TiKVMemberType, tiKVStsName, ordinal),
-			Namespace: namespace,
-		},
-	}
 }
 
 func newTiKVStoresInfo() *pdapi.StoresInfo {

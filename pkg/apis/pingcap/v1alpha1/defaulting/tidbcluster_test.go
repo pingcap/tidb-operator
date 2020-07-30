@@ -14,9 +14,10 @@
 package defaulting
 
 import (
+	"testing"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"testing"
 )
 
 func TestSetTidbSpecDefault(t *testing.T) {
