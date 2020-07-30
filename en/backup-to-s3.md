@@ -255,7 +255,7 @@ After creating the `Backup` CR, you can use the following command to check the b
  ```
 
 <details>
-<summary>More <code>Backup<code> CR parameter description</summary>
+<summary>More <code>Backup</code> CR parameter description</summary>
 
 * `.spec.metadata.namespace`: the namespace where the `Backup` CR is located.
 * `.spec.tikvGCLifeTime`: the temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
