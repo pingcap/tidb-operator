@@ -1236,6 +1236,48 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
 	})
 
+	ginkgo.It("Add heterogeneous cluster into a existing cluster  ", func() {
+		// Create TidbCluster with NodePort to check whether node port would change
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV3Version)
+		originTc.Spec.PD.Replicas = 1
+		originTc.Spec.TiKV.Replicas = 1
+		originTc.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), originTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV3Version)
+		heterogeneousTc.Spec.PD = nil
+		heterogeneousTc.Spec.TiKV.Replicas = 1
+		heterogeneousTc.Spec.TiDB.Replicas = 1
+		heterogeneousTc.Spec.PDAddress = []string{originTc.Scheme() + "://" + controller.PDMemberName(originTc.Name) + ":2379"}
+		err = genericCli.Create(context.TODO(), heterogeneousTc)
+		err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected heterogeneous TiDB cluster created")
+
+		err = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
+			var tc *v1alpha1.TidbCluster
+			var err error
+			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+				return false, nil
+			}
+			if tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
+				e2elog.Logf("failed to create heterogeneous cluster,tikv  (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
+				return false, nil
+			}
+			if tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
+				e2elog.Logf("failed to create heterogeneous cluster,tidb  (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				return false, nil
+			}
+			e2elog.Logf("create heterogeneous tc successfully")
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+
+	})
+
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
 		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)

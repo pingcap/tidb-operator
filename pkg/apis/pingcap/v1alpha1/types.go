@@ -225,7 +225,7 @@ type TidbClusterSpec struct {
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 
-	// // PdAddress is the PD address of this TiDB cluster
+	// PdAddress is the PD address of this TiDB cluster, if configured, the components in this TidbCluster will join to this configured PD cluster.
 	// +optional
 	PDAddress []string `json:"pdAddress,omitempty"`
 }

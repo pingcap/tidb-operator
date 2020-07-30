@@ -404,13 +404,13 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if len(tc.Spec.PDAddress) > 0 && tc.Spec.PD == nil {
 		pdAddress := ""
 		for _, address := range tc.Spec.PDAddress {
-			removeHttpAddress := strings.ReplaceAll(address, "http", "")
-			removeHttpsAddress := strings.ReplaceAll(removeHttpAddress, "https", "")
+			removeHttpAddress := strings.ReplaceAll(address, "http://", "")
+			removeHttpsAddress := strings.ReplaceAll(removeHttpAddress, "https://", "")
 			pdAddress += removeHttpsAddress + ","
 		}
 		tidbStartScriptModel.Path = strings.TrimSuffix(pdAddress, ",")
 	} else {
-		tidbStartScriptModel.Path = tc.Name + "-pd:2379"
+		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"
 	}
 	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
 	if err != nil {
