@@ -24,8 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	clientv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
-	informerv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
-	listerv1alpha1 "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
@@ -39,8 +37,6 @@ import (
 
 // store implements a ConfigMap backed storage.Interface
 type store struct {
-	lister    listerv1alpha1.DataResourceLister
-	informer  informerv1alpha1.DataResourceInformer
 	client    clientv1alpha1.DataResourceInterface
 	codec     runtime.Codec
 	versioner storage.Versioner

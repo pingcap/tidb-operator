@@ -101,7 +101,6 @@ func (tmc *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (tmc *Controller) worker() {
 	for tmc.processNextWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 
