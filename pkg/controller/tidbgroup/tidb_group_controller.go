@@ -82,7 +82,6 @@ func (tgc *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (tgc *Controller) worker() {
 	for tgc.processNestWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 

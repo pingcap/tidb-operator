@@ -14,8 +14,9 @@
 package calculate
 
 import (
-	. "github.com/onsi/gomega"
 	"testing"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestCalculate(t *testing.T) {
