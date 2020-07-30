@@ -65,6 +65,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: TZ
+            value: {{ .Values.timezone | default "UTC" }}
           volumeMounts:
           {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
             - mountPath: /var/serving-cert

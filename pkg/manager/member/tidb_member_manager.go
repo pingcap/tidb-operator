@@ -47,8 +47,6 @@ const (
 	clusterCertPath = "/var/lib/tidb-tls"
 	// serverCertPath is where the tidb-server cert stored (if any)
 	serverCertPath = "/var/lib/tidb-server-tls"
-	// serviceAccountCAPath is where is CABundle of serviceaccount locates
-	serviceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	// tlsSecretRootCAKey is the key used in tls secret for the root CA.
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.

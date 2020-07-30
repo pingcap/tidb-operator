@@ -3925,7 +3925,8 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable the syntax like <code>auto_random(3)</code> on the primary key column.
-imported from TiDB v3.1.0</p>
+Imported from TiDB v3.1.0.
+Deprecated in TiDB v4.0.3, please check detail in <a href="https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements">https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements</a>.</p>
 </td>
 </tr>
 <tr>
