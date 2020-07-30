@@ -92,12 +92,12 @@ You can modify `version`, `replicas`, `storageClassName`, `requests.storage`, an
 
 After TiDB Operator is upgraded to v1.1, you can configure the scheduled full backup using BackupSchedule CR:
 
-- If the TiDB cluster version < v3.1, refer to [Scheduled backup using mydumper](backup-to-s3.md#scheduled-full-backup-to-s3-compatible-storage)
+- If the TiDB cluster version < v3.1, refer to [Scheduled backup using Dumpling](backup-to-s3.md#scheduled-full-backup-to-s3-compatible-storage)
 - If the TiDB cluster version >= v3.1, refer to [Scheduled backup using BR](backup-to-aws-s3-using-br.md#scheduled-full-backup)
 
 > **Note:**
 >
-> - Currently, with BackupSchedule CR, you can back up data only to S3 and GCS using Mydumper, and back up data to S3 using BR. If you perform the scheduled full backup and send data to local Persistent Volume Claim (PVC) before the upgrade, you cannot switch to the CR management after the upgrade.
+> - Currently, with BackupSchedule CR, you can back up data only to S3 and GCS using Dumpling, and back up data to S3 using BR. If you perform the scheduled full backup and send data to local Persistent Volume Claim (PVC) before the upgrade, you cannot switch to the CR management after the upgrade.
 > - If you switch to the CR management, to avoid repeated backup, delete the Cronjob of the previous scheduled full backup.
 
 ### Drainer
@@ -119,12 +119,12 @@ This section describes how to switch other components and features managed by th
 
 After TiDB Operator is upgraded to v1.1, you can perform full backup using the Backup CR.
 
-- If the TiDB cluster version < v3.1, refer to [Ad-hoc full backup using Mydumper](backup-to-s3.md#ad-hoc-full-backup-to-s3-compatible-storage).
+- If the TiDB cluster version < v3.1, refer to [Ad-hoc full backup using Dumpling](backup-to-s3.md#ad-hoc-full-backup-to-s3-compatible-storage).
 - If the TiDB cluster version >= v3.1, refer to [Ad-hoc full backup using BR](backup-to-aws-s3-using-br.md#ad-hoc-full-backup).
 
 > **Note:**
 >
-> Currently, with Backup CR, you can back up data only to S3 and GCS using Mydumper, and back up data to S3 using BR. If you perform the scheduled full backup and send data to local Persistent Volume Claim (PVC) before the upgrade, you cannot switch to the CR management after the upgrade.
+> Currently, with Backup CR, you can back up data only to S3 and GCS using Dumpling, and back up data to S3 using BR. If you perform the scheduled full backup and send data to local Persistent Volume Claim (PVC) before the upgrade, you cannot switch to the CR management after the upgrade.
 
 ## Restoration
 

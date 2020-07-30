@@ -1,12 +1,12 @@
 ---
-title: Back up Data to GCS
-summary: Learn how to back up the TiDB cluster to GCS.
+title: Back up Data to GCS Using Dumpling
+summary: Learn how to back up the TiDB cluster to GCS (Google Cloud Storage) using Dumpling.
 aliases: ['/docs/tidb-in-kubernetes/dev/backup-to-gcs/']
 ---
 
-# Back up Data to GCS
+# Back up Data to GCS Using Dumpling
 
-This document describes how to back up the data of the TiDB cluster in Kubernetes to [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/). "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). [`mydumper`](https://pingcap.com/docs/stable/reference/tools/mydumper) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the remote GCS.
+This document describes how to back up the data of the TiDB cluster in Kubernetes to [Google Cloud Storage (GCS)](https://cloud.google.com/storage/docs/). "Backup" in this document refers to full backup (ad-hoc full backup and scheduled full backup). [Dumpling](https://docs.pingcap.com/tidb/dev/export-or-backup-using-dumpling) is used to get the logic backup of the TiDB cluster, and then this backup data is sent to the remote GCS.
 
 The backup method described in this document is implemented using CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the backup method implemented using Helm Charts, refer to [Back up and Restore TiDB Cluster Data Using Helm Charts](backup-and-restore-using-helm-charts.md).
 
@@ -70,20 +70,17 @@ To better explain how to perform the backup operation, this document shows an ex
         # storageClass: STANDARD_IA
         # objectAcl: private
         # bucketAcl: private
-    # mydumper:
+    # dumpling:
     #  options:
-    #  - --tidb-force-priority=LOW_PRIORITY
-    #  - --long-query-guard=3600
     #  - --threads=16
     #  - --rows=10000
-    #  - --skip-tz-utc
-    #  - --verbose=3
-    #  tableRegex: "^test"
+    #  tableFilter:
+    #  - "test.*"
     storageClassName: local-storage
     storageSize: 10Gi
     ```
 
-2. Create the `Backup` CR and back up data to GSC:
+2. Create the `Backup` CR and back up data to GCS:
 
     {{< copyable "shell-regular" >}}
 
@@ -95,6 +92,9 @@ In the above example, all data of the TiDB cluster is exported and backed up to 
 
 `projectId` in the configuration is the unique identifier of the user project on GCP. To learn how to get this identifier, refer to the [GCP documentation](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
 
+<details>
+<summary>Configure <code>storageClass</code></summary>
+
 GCS supports the following `storageClass` types:
 
 * `MULTI_REGIONAL`
@@ -105,7 +105,12 @@ GCS supports the following `storageClass` types:
 
 If `storageClass` is not configured, `COLDLINE` is used by default. For the detailed description of these storage types, refer to [GCS documentation](https://cloud.google.com/storage/docs/storage-classes).
 
-GCS supports the following object access-control list (ACL) polices:
+</details>
+
+<details>
+<summary>Configure the access-control list (ACL) policy</summary>
+
+GCS supports the following object ACL polices:
 
 * `authenticatedRead`
 * `bucketOwnerFullControl`
@@ -126,6 +131,8 @@ GCS supports the following bucket ACL policies:
 
 If the bucket ACL policy is not configured, the `private` policy is used by default. For the detailed description of these access control policies, refer to [GCS documentation](https://cloud.google.com/storage/docs/access-control/lists).
 
+</details>
+
 After creating the `Backup` CR, you can use the following command to check the backup status:
 
 {{< copyable "shell-regular" >}}
@@ -134,30 +141,76 @@ After creating the `Backup` CR, you can use the following command to check the b
 kubectl get bk -n test1 -owide
 ```
 
-More `Backup` CRs are described as follows:
+<details>
+<summary>More parameter description</summary>
 
 * `.spec.metadata.namespace`: the namespace where the `Backup` CR is located.
+* `.spec.tikvGCLifeTime`: the temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
+
+    Before the backup begins, if the `tikv_gc_lifetime` setting in the TiDB cluster is smaller than `spec.tikvGCLifeTime` set by the user, TiDB Operator adjusts the value of `tikv_gc_lifetime` to the value of `spec.tikvGCLifeTime`. This operation makes sure that the backup data is not garbage-collected by TiKV.
+
+    After the backup, no matter whether the backup is successful or not, as long as the previous `tikv_gc_lifetime` is smaller than `.spec.tikvGCLifeTime`, TiDB Operator will try to set `tikv_gc_lifetime` to the previous value.
+
+    In extreme cases, if TiDB Operator fails to access the database, TiDB Operator cannot automatically recover the value of `tikv_gc_lifetime` and treats the backup as failed. At this time, you can view `tikv_gc_lifetime` of the current TiDB cluster using the following statement:
+
+    {{< copyable "sql" >}}
+
+    ```sql
+    select VARIABLE_NAME, VARIABLE_VALUE from mysql.tidb where VARIABLE_NAME like "tikv_gc_life_time";
+    ```
+
+    In the output of the command above, if the value of `tikv_gc_lifetime` is still larger than expected (10m by default), it means TiDB Operator failed to automatically recover the value. Therefore, you need to set `tikv_gc_lifetime` back to the previous value manually:
+
+    {{< copyable "sql" >}}
+
+    ```sql
+    update mysql.tidb set VARIABLE_VALUE = '10m' where VARIABLE_NAME = 'tikv_gc_life_time';
+
+* `.spec.cleanPolicy`: The clean policy of the backup data when the backup CR is deleted.
+
+    Three clean policies are supported:
+
+    * `Retain`: On any circumstances, retain the backup data when deleting the backup CR.
+    * `Delete`: On any circumstances, delete the backup data when deleting the backup CR.
+    * `OnFailure`: If the backup fails, delete the backup data when deleting the backup CR.
+
+    If this field is not configured, or if you configure a value other than the three policies above, the backup data is retained.
+
+    Note that in v1.1.2 and earlier versions, this field does not exist. The backup data is deleted along with the CR by default. For v1.1.3 or later versions, if you want to keep this behavior, set this field to `Delete`.
+
 * `.spec.from.host`: the address of the TiDB cluster to be backed up.
 * `.spec.from.port`: the port of the TiDB cluster to be backed up.
 * `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
 * `.spec.from.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be backed up.
 * `.spec.gcs.bucket`: the name of the bucket that stores data.
-* `.spec.gcs.prefix`: this field can be ignored. If you set this field, it will be used to make up the remote storage path `s3://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`.
-* `.spec.mydumper`: Mydumper-related configurations, with two major fields. One is the [`options`](https://pingcap.com/docs/stable/reference/tools/mydumper/) field, which specifies some parameters needed by Mydumper, and the other is the `tableRegex` field, which allows Mydumper to back up a table that matches this regular expression. These configuration items of Mydumper can be ignored by default. When not specified, the values of `options` and `tableRegex` (by default) are as follows:
+* `.spec.gcs.prefix`: this field can be ignored. If you set this field, it will be used to make up the remote storage path `gcs://${.spec.gcs.bucket}/${.spec.gcs.prefix}/backupName`.
+* `.spec.dumpling`: Dumpling-related configurations, with two major fields. One is the `options` field, which specifies some parameters needed by Dumpling, and the other is the `tableFilter` field, which allows Dumpling to back up a table that matches the [table filter rule](https://docs.pingcap.com/tidb/stable/table-filter/). These configuration items of Dumpling can be ignored by default. When not specified, the values of `options` and `tableFilter` (by default) are as follows:
 
     ```
     options:
-    --tidb-force-priority=LOW_PRIORITY
-    --long-query-guard=3600
-    --threads=16
-    --rows=10000
-    --skip-tz-utc
-    --verbose=3
-   tableRegex: "^(?!(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA))"
+    - --threads=16
+    - --rows=10000
+    tableFilter:
+    - "*.*"
+    - "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
+    ```
+
+    > **Note:**
+    >
+    > To use the table filter to exclude `db.table`, you need to add the `*.*` rule to include all tables first. For example:
+
+    ```
+    tableFilter:
+    - "*.*"
+    - "!db.table"
     ```
 
 * `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation. If this item is not specified, the value of the `default-backup-storage-class-name` parameter is used by default. This parameter is specified when TiDB Operator is started, and is set to `standard` by default.
-* `.spec.storageSize`: the PV size specified for the backup operation. This value must be greater than the size of the TiDB cluster to be backed up.
+* `.spec.storageSize`: the PV size specified for the backup operation (`100 Gi` by default). This value must be greater than the data size of the TiDB cluster to be backed up.
+
+    The PVC name corresponding to the `Backup` CR of a TiDB cluster is fixed. If the PVC already exists in the cluster namespace and the size is smaller than `spec.storageSize`, you need to delete this PVC and then run the Backup job.
+
+</details>
 
 ## Scheduled full backup to GCS
 
@@ -200,15 +253,12 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
           # storageClass: STANDARD_IA
           # objectAcl: private
           # bucketAcl: private
-      # mydumper:
+      # dumpling:
       #  options:
-      #  - --tidb-force-priority=LOW_PRIORITY
-      #  - --long-query-guard=3600
       #  - --threads=16
       #  - --rows=10000
-      #  - --skip-tz-utc
-      #  - --verbose=3
-      #  tableRegex: "^test"
+      #  tableFilter:
+      #  - "test.*"
         storageClassName: local-storage
         storageSize: 10Gi
     ```

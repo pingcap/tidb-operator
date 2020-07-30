@@ -86,17 +86,17 @@ TiDB Lightning Helm chart supports both local and remote data sources.
 
 * Local
 
-    The local mode requires Mydumper backup data to be on one of the Kubernetes node. This mode can be enabled by setting `dataSource.local.nodeName` to the node name and `dataSource.local.hostPath` to Mydumper backup data directory path which contains a file named `metadata`.
+    In the local mode, the backup data must be on one of the Kubernetes node. To enable this mode, set `dataSource.local.nodeName` to the node name and `dataSource.local.hostPath` to the path of the backup data. The path should contain a file named `metadata`.
 
 * Remote
 
-    Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download Mydumper backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [Amazon S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
+    Unlike the local mode, the remote mode needs to use [rclone](https://rclone.org) to download the backup tarball file from a network storage to a PV. Any cloud storage supported by rclone should work, but currently only the following have been tested: [Google Cloud Storage (GCS)](https://cloud.google.com/storage/), [Amazon S3](https://aws.amazon.com/s3/), [Ceph Object Storage](https://ceph.com/ceph-storage/object-storage/).
 
     To restore backup data from the remote source, take the following steps:
 
     1. Make sure that `dataSource.local.nodeName` and `dataSource.local.hostPath` in `values.yaml` are commented out.
 
-    2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, refer to [rclone documentation](https://rclone.org/). Using Amazon S3 as the storage is the same as restoring data using BR and Mydumper.
+    2. Create a `Secret` containing the rclone configuration. A sample configuration is listed below. Only one cloud storage configuration is required. For other cloud storages, refer to [rclone documentation](https://rclone.org/). Using Amazon S3 as the storage is the same as restoring data using BR and Dumpling.
 
         There are three methods to grant permissions. The configuration varies with different methods. For details, see [Backup the TiDB Cluster on AWS using BR](backup-to-aws-s3-using-br.md#three-methods-to-grant-aws-account-permissions).
 
