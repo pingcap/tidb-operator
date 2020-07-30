@@ -171,17 +171,3 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 	}
 	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
 }
-
-func emptyStorageMetricsStatus(tac *v1alpha1.TidbClusterAutoScaler) {
-	for id, m := range tac.Status.TiKV.MetricsStatusList {
-		if m.Name == string(corev1.ResourceStorage) {
-			m.StoragePressure = nil
-			m.StoragePressureStartTime = nil
-			m.CapacityStorage = nil
-			m.AvailableStorage = nil
-			m.BaselineAvailableStorage = nil
-			tac.Status.TiKV.MetricsStatusList[id] = m
-			return
-		}
-	}
-}

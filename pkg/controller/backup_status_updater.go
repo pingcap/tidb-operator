@@ -15,7 +15,6 @@ package controller
 
 import (
 	"fmt"
-	"strings"
 
 	"k8s.io/klog"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -78,21 +76,6 @@ func (bcu *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition
 		return nil
 	})
 	return err
-}
-
-func (bcu *realBackupConditionUpdater) recordBackupEvent(verb string, backup *v1alpha1.Backup, err error) {
-	backupName := backup.GetName()
-	if err == nil {
-		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Backup %s successful",
-			strings.ToLower(verb), backupName)
-		bcu.recorder.Event(backup, corev1.EventTypeNormal, reason, msg)
-	} else {
-		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Backup %s failed error: %s",
-			strings.ToLower(verb), backupName, err)
-		bcu.recorder.Event(backup, corev1.EventTypeWarning, reason, msg)
-	}
 }
 
 var _ BackupConditionUpdaterInterface = &realBackupConditionUpdater{}

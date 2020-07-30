@@ -149,6 +149,7 @@ func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
 }
 
+<<<<<<< HEAD
 func imagePullFailed(pod *corev1.Pod) bool {
 	for _, container := range pod.Status.ContainerStatuses {
 		if container.State.Waiting != nil && container.State.Waiting.Reason != "" &&
@@ -161,6 +162,17 @@ func imagePullFailed(pod *corev1.Pod) bool {
 
 func MemberPodName(tcName string, ordinal int32, memberType v1alpha1.MemberType) string {
 	return fmt.Sprintf("%s-%s-%d", tcName, memberType.String(), ordinal)
+=======
+func MemberPodName(controllerName, controllerKind string, ordinal int32, memberType v1alpha1.MemberType) (string, error) {
+	switch controllerKind {
+	case v1alpha1.TiDBClusterKind:
+		return fmt.Sprintf("%s-%s-%d", controllerName, memberType.String(), ordinal), nil
+	case v1alpha1.TiKVGroupKind:
+		return fmt.Sprintf("%s-%s-group-%d", controllerName, memberType.String(), ordinal), nil
+	default:
+		return "", fmt.Errorf("unknown controller kind[%s]", controllerKind)
+	}
+>>>>>>> 2f790ec... Enable goimports, unused, deadcode, and varcheck linters in CI (#3016)
 }
 
 func TikvPodName(tcName string, ordinal int32) string {
@@ -319,10 +331,6 @@ func updateStatefulSet(setCtl controller.StatefulSetControlInterface, tc *v1alph
 	}
 
 	return nil
-}
-
-func clusterSecretName(tc *v1alpha1.TidbCluster, component string) string {
-	return fmt.Sprintf("%s-%s-cluster-secret", tc.Name, component)
 }
 
 // filter targetContainer by  containerName, If not find, then return nil

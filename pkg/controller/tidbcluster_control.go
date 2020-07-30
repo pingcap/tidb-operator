@@ -15,13 +15,11 @@ package controller
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	tcinformers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -84,21 +82,6 @@ func (rtc *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, n
 		klog.Errorf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, err)
 	}
 	return updateTC, err
-}
-
-func (rtc *realTidbClusterControl) recordTidbClusterEvent(verb string, tc *v1alpha1.TidbCluster, err error) {
-	tcName := tc.GetName()
-	if err == nil {
-		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s TidbCluster %s successful",
-			strings.ToLower(verb), tcName)
-		rtc.recorder.Event(tc, corev1.EventTypeNormal, reason, msg)
-	} else {
-		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s TidbCluster %s failed error: %s",
-			strings.ToLower(verb), tcName, err)
-		rtc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
-	}
 }
 
 func deepEqualExceptHeartbeatTime(newStatus *v1alpha1.TidbClusterStatus, oldStatus *v1alpha1.TidbClusterStatus) bool {
