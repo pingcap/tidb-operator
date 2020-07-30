@@ -530,7 +530,8 @@ type IsolationRead struct {
 // +k8s:openapi-gen=true
 type Experimental struct {
 	// Whether enable the syntax like `auto_random(3)` on the primary key column.
-	// imported from TiDB v3.1.0
+	// Imported from TiDB v3.1.0.
+	// Deprecated in TiDB v4.0.3, please check detail in https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements.
 	// +optional
 	AllowAutoRandom *bool `toml:"allow-auto-random,omitempty" json:"allow-auto-random,omitempty"`
 	// Whether enable creating expression index.
