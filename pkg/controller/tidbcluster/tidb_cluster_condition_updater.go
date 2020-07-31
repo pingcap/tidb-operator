@@ -44,9 +44,9 @@ func allStatefulSetsAreUpToDate(tc *v1alpha1.TidbCluster) bool {
 		}
 		return status.CurrentRevision == status.UpdateRevision
 	}
-	return isUpToDate(tc.Status.PD.StatefulSet, true) &&
-		isUpToDate(tc.Status.TiKV.StatefulSet, true) &&
-		isUpToDate(tc.Status.TiDB.StatefulSet, true) &&
+	return (isUpToDate(tc.Status.PD.StatefulSet, true) || tc.Spec.PD == nil) &&
+		(isUpToDate(tc.Status.TiKV.StatefulSet, true) || tc.Spec.TiKV == nil) &&
+		(isUpToDate(tc.Status.TiDB.StatefulSet, true) || tc.Spec.TiDB == nil) &&
 		isUpToDate(tc.Status.TiFlash.StatefulSet, false)
 }
 
