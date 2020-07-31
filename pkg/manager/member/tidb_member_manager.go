@@ -106,7 +106,7 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if len(tc.Spec.PDAddress) == 0 && !tc.TiKVIsAvailable() {
+	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 	if tc.Spec.Pump != nil {
