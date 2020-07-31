@@ -131,7 +131,7 @@ func pdEtcdClientKey(namespace Namespace, clusterName string) string {
 }
 
 // pdClientUrl builds the url of pd client
-func ePdClientURL(namespace Namespace, clusterName string, scheme string) string {
+func PdClientURL(namespace Namespace, clusterName string, scheme string) string {
 	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
 }
 
