@@ -70,7 +70,14 @@ func (pdc *defaultPDControl) GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnable
 	}
 	key := pdEtcdClientKey(namespace, tcName)
 	if _, ok := pdc.pdEtcdClients[key]; !ok {
-		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
+		var pdetcdClient PDEtcdClient
+		var err error
+		if isHeterogeneous(tc) {
+			pdetcdClient, err = NewPdEtcdClient(HeterogeneousPDEtcdClientURL(tc.Spec.PDAddress), DefaultTimeout, nil)
+		} else {
+			pdetcdClient, err = NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +113,7 @@ func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster, tlsEnabled bo
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
 		if isHeterogeneous {
-			pdc.pdClients[key] = NewPDClient(getHeterogeneousPdAddress(tc.Spec.PDAddress), DefaultTimeout, nil)
+			pdc.pdClients[key] = NewPDClient(HeterogeneousPdAddress(tc.Spec.PDAddress), DefaultTimeout, nil)
 		} else {
 			pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
 		}
@@ -132,6 +139,16 @@ func PDEtcdClientURL(namespace Namespace, clusterName string) string {
 	return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
 }
 
+func HeterogeneousPDEtcdClientURL(pdAddress []string) string {
+	var pdAddressUrl = ""
+	for _, address := range pdAddress {
+		removeHttpAddress := strings.ReplaceAll(address, "http://", "")
+		removeHttpsAddress := strings.ReplaceAll(removeHttpAddress, "https://", "")
+		pdAddressUrl += removeHttpsAddress + ","
+	}
+	return pdAddressUrl
+}
+
 // FakePDControl implements a fake version of PDControlInterface.
 type FakePDControl struct {
 	defaultPDControl
@@ -151,6 +168,6 @@ func isHeterogeneous(tc *v1alpha1.TidbCluster) bool {
 	return len(tc.Spec.PDAddress) > 0 && tc.Spec.PD == nil
 }
 
-func getHeterogeneousPdAddress(pdAddress []string) string {
+func HeterogeneousPdAddress(pdAddress []string) string {
 	return strings.Join(pdAddress, ",")
 }
