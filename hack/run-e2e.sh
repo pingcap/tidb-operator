@@ -174,7 +174,7 @@ function e2e::setup_helm_server() {
     if hack::version_ge $(e2e::get_kube_version) "v1.16.0"; then
         # workaround for https://github.com/helm/helm/issues/6374
         # TODO remove this when we can upgrade to helm 2.15+, see https://github.com/helm/helm/pull/6462
-        # \'$'\n  regex is used to be compatible with BSD sed (Darwin)
+        # \'$'\n is used to be compatible with BSD sed (Darwin)
         $HELM_BIN init --service-account tiller --output yaml \
             | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@' \
             | sed 's@  replicas: 1@  replicas: 1\'$'\n  selector: {"matchLabels": {"app": "helm", "name": "tiller"}}@' \
