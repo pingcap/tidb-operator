@@ -11,7 +11,7 @@ spec:
   pvReclaimPolicy: Delete
   discovery: {}
   pdAddress:
-    - http://basic-pd:2379
+    - http://basic-pd-peer.default:2379
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
