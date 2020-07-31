@@ -516,7 +516,7 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 
 	// delete failover member store manually
 	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
-		pdclient := oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		pdclient := oa.pdControl.GetPDClient(tc, tc.IsTLSClusterEnabled())
 		for _, v := range tc.Status.TiKV.Stores {
 			ordinal, err := util.GetOrdinalFromPodName(v.PodName)
 			if err != nil {

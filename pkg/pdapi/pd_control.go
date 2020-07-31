@@ -16,7 +16,9 @@ package pdapi
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -30,9 +32,9 @@ type Namespace string
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient
+	GetPDClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
-	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
+	GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) (PDEtcdClient, error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -49,7 +51,9 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
-func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error) {
+func (pdc *defaultPDControl) GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) (PDEtcdClient, error) {
+	namespace := Namespace(tc.Namespace)
+	tcName := tc.Name
 	pdc.etcdmutex.Lock()
 	defer pdc.etcdmutex.Unlock()
 
@@ -76,7 +80,11 @@ func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string,
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
+func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) PDClient {
+
+	namespace := Namespace(tc.Namespace)
+	tcName := tc.Name
+	isHeterogeneous := isHeterogeneous(tc)
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
@@ -97,7 +105,11 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
+		if isHeterogeneous {
+			pdc.pdClients[key] = NewPDClient(getHeterogeneousPdAddress(tc.Spec.PDAddress), DefaultTimeout, nil)
+		} else {
+			pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
+		}
 	}
 	return pdc.pdClients[key]
 }
@@ -133,4 +145,12 @@ func NewFakePDControl(kubeCli kubernetes.Interface) *FakePDControl {
 
 func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
+}
+
+func isHeterogeneous(tc *v1alpha1.TidbCluster) bool {
+	return len(tc.Spec.PDAddress) > 0 && tc.Spec.PD == nil
+}
+
+func getHeterogeneousPdAddress(pdAddress []string) string {
+	return strings.Join(pdAddress, ",")
 }

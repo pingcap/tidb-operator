@@ -4,13 +4,14 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: basic
+  name: heterogeneous
 spec:
   version: v4.0.3
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
-  pdAddress: http://basic-pd:2379
+  pdAddress:
+    - http://basic-pd:2379
   tikv:
     baseImage: pingcap/tikv
     replicas: 1

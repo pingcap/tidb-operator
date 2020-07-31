@@ -94,7 +94,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
 
-	pdClient := td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+	pdClient := td.pdControl.GetPDClient(tc, tc.IsTLSClusterEnabled())
 	membersInfo, err := pdClient.GetMembers()
 	if err != nil {
 		return "", err
