@@ -267,13 +267,15 @@ string
 </tr>
 <tr>
 <td>
-<code>cleanData</code></br>
+<code>cleanPolicy</code></br>
 <em>
-bool
+<a href="#cleanpolicytype">
+CleanPolicyType
+</a>
 </em>
 </td>
 <td>
-<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
 </table>
@@ -985,6 +987,7 @@ PDSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PD cluster spec</p>
 </td>
 </tr>
@@ -998,6 +1001,7 @@ TiDBSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiDB cluster spec</p>
 </td>
 </tr>
@@ -1011,6 +1015,7 @@ TiKVSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiKV cluster spec</p>
 </td>
 </tr>
@@ -2580,13 +2585,15 @@ string
 </tr>
 <tr>
 <td>
-<code>cleanData</code></br>
+<code>cleanPolicy</code></br>
 <em>
-bool
+<a href="#cleanpolicytype">
+CleanPolicyType
+</a>
 </em>
 </td>
 <td>
-<p>CleanData denotes whether to clean backup data before the object is deleted from the cluster</p>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
 </tbody>
@@ -2965,6 +2972,14 @@ Optional: Defaults to range</p>
 </tr>
 </tbody>
 </table>
+<h3 id="cleanpolicytype">CleanPolicyType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>)
+</p>
+<p>
+<p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
+</p>
 <h3 id="commonconfig">CommonConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -3898,7 +3913,8 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable the syntax like <code>auto_random(3)</code> on the primary key column.
-imported from TiDB v3.1.0</p>
+Imported from TiDB v3.1.0.
+Deprecated in TiDB v4.0.3, please check detail in <a href="https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements">https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements</a>.</p>
 </td>
 </tr>
 <tr>
@@ -15852,6 +15868,7 @@ PDSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PD cluster spec</p>
 </td>
 </tr>
@@ -15865,6 +15882,7 @@ TiDBSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiDB cluster spec</p>
 </td>
 </tr>
@@ -15878,6 +15896,7 @@ TiKVSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiKV cluster spec</p>
 </td>
 </tr>

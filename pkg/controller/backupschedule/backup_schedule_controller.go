@@ -124,7 +124,6 @@ func (bsc *Controller) Run(workers int, stopCh <-chan struct{}) {
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
 func (bsc *Controller) worker() {
 	for bsc.processNextWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 

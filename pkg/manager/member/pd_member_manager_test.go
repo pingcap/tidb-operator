@@ -787,7 +787,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			UID:       types.UID("test"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{
+			PD: &v1alpha1.PDSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
@@ -801,7 +801,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
-			TiKV: v1alpha1.TiKVSpec{
+			TiKV: &v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
@@ -815,6 +815,7 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}
 }
@@ -962,6 +963,11 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Name:      "tc",
 					Namespace: "ns",
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
 			},
 			testSts: testHostNetwork(t, false, ""),
 		},
@@ -973,11 +979,13 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
@@ -990,11 +998,13 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1007,11 +1017,13 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
 					},
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1024,7 +1036,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceCPU:              resource.MustParse("1"),
@@ -1039,6 +1051,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1072,7 +1086,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Env: []corev1.EnvVar{
 								{
@@ -1093,6 +1107,8 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testPDContainerEnv(t, []corev1.EnvVar{
@@ -1140,16 +1156,17 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1166,16 +1183,17 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1192,16 +1210,17 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -1218,12 +1237,14 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Replicas: 3,
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 				Status: v1alpha1.TidbClusterStatus{
 					PD: v1alpha1.PDStatus{
@@ -1248,12 +1269,14 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Replicas: 3,
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 				Status: v1alpha1.TidbClusterStatus{
 					PD: v1alpha1.PDStatus{
@@ -1278,11 +1301,13 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							AdditionalContainers: []corev1.Container{customSideCarContainers[0]},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testAdditionalContainers(t, []corev1.Container{customSideCarContainers[0]}),
@@ -1295,11 +1320,13 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							AdditionalVolumes: []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
@@ -1333,6 +1360,11 @@ func TestGetPDConfigMap(t *testing.T) {
 					Name:      "foo",
 					Namespace: "ns",
 				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
 			},
 			expected: nil,
 		},
@@ -1344,7 +1376,7 @@ func TestGetPDConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
@@ -1359,6 +1391,8 @@ func TestGetPDConfigMap(t *testing.T) {
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1407,17 +1441,18 @@ func TestGetPDConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
 						Config: &v1alpha1.PDConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1459,17 +1494,18 @@ func TestGetPDConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
 						Config: &v1alpha1.PDConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1515,17 +1551,18 @@ func TestGetPDConfigMap(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
 						Config: &v1alpha1.PDConfig{},
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
 							Enabled: true,
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: &corev1.ConfigMap{
@@ -1599,6 +1636,14 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeClusterIP)},
 					},
+
+					PD: &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -1657,9 +1702,15 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeClusterIP)},
 					},
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{ClusterIP: pointer.StringPtr("172.20.10.1")},
 					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -1719,9 +1770,15 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{LoadBalancerIP: pointer.StringPtr("172.20.10.1")},
 					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -1781,7 +1838,13 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
-					PD: v1alpha1.PDSpec{
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
 							ClusterIP: pointer.StringPtr("172.20.10.1")},
 					},
@@ -1844,12 +1907,19 @@ func TestGetNewPdServiceForTidbCluster(t *testing.T) {
 					Services: []v1alpha1.Service{
 						{Name: "pd", Type: string(corev1.ServiceTypeLoadBalancer)},
 					},
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Service: &v1alpha1.ServiceSpec{Type: corev1.ServiceTypeClusterIP,
 							ClusterIP: pointer.StringPtr("172.20.10.1"),
 							PortName:  pointer.StringPtr("http-pd"),
 						},
 					},
+
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			expected: corev1.Service{
@@ -2120,7 +2190,7 @@ func TestPDShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 2,
 					},
 				},
@@ -2155,7 +2225,7 @@ func TestPDShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 2,
 					},
 				},
@@ -2190,7 +2260,7 @@ func TestPDShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 2,
 					},
 				},

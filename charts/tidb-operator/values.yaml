@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.2
+operatorImage: pingcap/tidb-operator:v1.1.3
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.2
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.3
 
 #
 # Enable or disable tidb-operator features:
@@ -151,7 +151,7 @@ apiserver:
 #   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml      # k8s version >= 1.16.0
 advancedStatefulset:
   create: false
-  image: pingcap/advanced-statefulset:v0.3.3
+  image: pingcap/advanced-statefulset:v0.4.0
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
   logLevel: 2

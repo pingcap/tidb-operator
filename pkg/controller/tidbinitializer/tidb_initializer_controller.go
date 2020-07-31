@@ -114,7 +114,6 @@ func (tic *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (tic *Controller) worker() {
 	for tic.processNextWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 

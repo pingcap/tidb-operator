@@ -207,7 +207,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
 					},
-					Env:       envVars,
+					Env:       util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources: restore.Spec.ResourceRequirements,
 				},
 			},
@@ -292,12 +292,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "cluster-client-tls",
+			Name:      util.ClusterClientVolName,
 			ReadOnly:  true,
 			MountPath: util.ClusterClientTLSPath,
 		})
 		volumes = append(volumes, corev1.Volume{
-			Name: "cluster-client-tls",
+			Name: util.ClusterClientVolName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterClientTLSSecretName(restore.Spec.BR.Cluster),
@@ -346,7 +346,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
-					Env:             envVars,
+					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       restore.Spec.ResourceRequirements,
 				},
 			},

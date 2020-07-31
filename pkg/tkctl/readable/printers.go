@@ -53,10 +53,6 @@ type podBasicColumns struct {
 	CPUInfo string
 }
 
-type tikvExtraInfoColumn struct {
-	StoreId string
-}
-
 func AddHandlers(h printers.PrintHandler) {
 	tidbClusterColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
@@ -405,14 +401,6 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	}
 
 	return duration.HumanDuration(time.Since(timestamp.Time))
-}
-
-// extra Component Tikv Data
-func extraTikvDataColumn(pod *v1.Pod) *tikvExtraInfoColumn {
-	storeId := pod.Labels[label.StoreIDLabelKey]
-	return &tikvExtraInfoColumn{
-		StoreId: storeId,
-	}
 }
 
 // localPrinter prints object with local handlers.

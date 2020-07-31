@@ -12,7 +12,7 @@ spec:
   storageSize: 10Gi
   schedule: "*/2 * * * *"
   backupTemplate:
-    # cleanData: true
+    # cleanPolicy: OnFailure
     from:
       host: 10.0.0.1
       port: 4000

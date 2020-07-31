@@ -7,7 +7,7 @@ metadata:
 spec:
   # backupType: full
   # serviceAccount: myServiceAccount
-  # cleanData: true
+  # cleanPolicy: OnFailure
   br:
     cluster: mycluster
     sendCredToTikv: true

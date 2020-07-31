@@ -214,30 +214,6 @@ func (s *Server) vmAction(
 	}
 }
 
-func (s *Server) kubeProxyAction(
-	req *restful.Request,
-	resp *restful.Response,
-	res *Response,
-	nodeName string,
-	fn func(nodeName string) error,
-	method string,
-) {
-	if err := fn(nodeName); err != nil {
-		res.message(fmt.Sprintf("failed to invoke %s, nodeName: %s, error: %v", method, nodeName, err)).
-			statusCode(http.StatusInternalServerError)
-		if err = resp.WriteEntity(res); err != nil {
-			klog.Errorf("failed to response, methods: %s, error: %v", method, err)
-		}
-		return
-	}
-
-	res.message("OK").statusCode(http.StatusOK)
-
-	if err := resp.WriteEntity(res); err != nil {
-		klog.Errorf("failed to response, method: %s, error: %v", method, err)
-	}
-}
-
 func (s *Server) getVM(name string) (*manager.VM, error) {
 	vms, err := s.mgr.ListVMs()
 	if err != nil {

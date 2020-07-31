@@ -3,13 +3,10 @@ run:
 
 linters:
   enable:
-    - gofmt
+    - goimports
   disable:
     # Enable once related errors are fixed or ignored explicitly 
     - staticcheck
-    - unused
     - gosimple
     - structcheck
     - errcheck
-    - deadcode
-    - varcheck

@@ -409,7 +409,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			}
 
 			ginkgo.By("Mark stores of failed tikv pods as tombstone")
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
 			framework.ExpectNoError(err)
 			defer func() {
 				if cancel != nil {
