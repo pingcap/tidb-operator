@@ -518,6 +518,16 @@ func (in *CommonConfig) DeepCopyInto(out *CommonConfig) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.TCPPortSecure != nil {
+		in, out := &in.TCPPortSecure, &out.TCPPortSecure
+		*out = new(int32)
+		**out = **in
+	}
+	if in.HTTPSPort != nil {
+		in, out := &in.HTTPSPort, &out.HTTPSPort
+		*out = new(int32)
+		**out = **in
+	}
 	if in.InternalServerHTTPPort != nil {
 		in, out := &in.InternalServerHTTPPort, &out.InternalServerHTTPPort
 		*out = new(int32)
@@ -561,6 +571,11 @@ func (in *CommonConfig) DeepCopyInto(out *CommonConfig) {
 	if in.FlashProfile != nil {
 		in, out := &in.FlashProfile, &out.FlashProfile
 		*out = new(FlashProfile)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Security != nil {
+		in, out := &in.Security, &out.Security
+		*out = new(TiKVSecurityConfig)
 		(*in).DeepCopyInto(*out)
 	}
 	return

@@ -124,6 +124,14 @@ type CommonConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	HTTPPort *int32 `json:"http_port,omitempty" toml:"http_port,omitempty"`
+	// Optional: Defaults to 9000
+	// +optional
+	// +k8s:openapi-gen=false
+	TCPPortSecure *int32 `json:"tcp_port_secure,omitempty" toml:"tcp_port_secure,omitempty"`
+	// Optional: Defaults to 8123
+	// +optional
+	// +k8s:openapi-gen=false
+	HTTPSPort *int32 `json:"https_port,omitempty" toml:"https_port,omitempty"`
 	// Optional: Defaults to 9009
 	// +optional
 	// +k8s:openapi-gen=false
@@ -150,6 +158,9 @@ type CommonConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	FlashProfile *FlashProfile `json:"profiles,omitempty" toml:"profiles,omitempty"`
+	// +optional
+	// +k8s:openapi-gen=false
+	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
 }
 
 // FlashProfile is the configuration of [profiles] section.

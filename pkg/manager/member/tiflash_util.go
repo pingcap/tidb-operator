@@ -178,6 +178,14 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, n
 		var p int32 = 9000
 		config.TCPPort = &p
 	}
+	if config.TCPPortSecure == nil {
+		var p int32 = 9000
+		config.TCPPortSecure = &p
+	}
+	if config.HTTPSPort == nil {
+		var p int32 = 8123
+		config.HTTPSPort = &p
+	}
 	if config.HTTPPort == nil {
 		var p int32 = 8123
 		config.HTTPPort = &p

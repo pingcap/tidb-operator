@@ -3034,10 +3034,47 @@ int64
 </tr>
 <tr>
 <td>
+<code>tcp_port_secure</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 9000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>https_port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 8123</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logger</code></br>
 <em>
 <a href="#flashlogger">
 FlashLogger
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#tikvsecurityconfig">
+TiKVSecurityConfig
 </a>
 </em>
 </td>
@@ -13965,6 +14002,7 @@ TiKVStorageReadPoolConfig
 <h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#commonconfig">CommonConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
