@@ -32,9 +32,9 @@ type Namespace string
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) PDClient
+	GetPDClient(namespace Namespace, tcName string, pdAddress []string, pd *v1alpha1.PDSpec, tlsEnabled bool) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
-	GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) (PDEtcdClient, error)
+	GetPDEtcdClient(namespace Namespace, tcName string, pdAddress []string, pd *v1alpha1.PDSpec, tlsEnabled bool) (PDEtcdClient, error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -51,9 +51,7 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
-func (pdc *defaultPDControl) GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) (PDEtcdClient, error) {
-	namespace := Namespace(tc.Namespace)
-	tcName := tc.Name
+func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, pdAddress []string, pd *v1alpha1.PDSpec, tlsEnabled bool) (PDEtcdClient, error) {
 	pdc.etcdmutex.Lock()
 	defer pdc.etcdmutex.Unlock()
 
@@ -66,14 +64,18 @@ func (pdc *defaultPDControl) GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnable
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
 			return nil, err
 		}
-		return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
+		if pd == nil && len(pdAddress) > 0 {
+			return NewPdEtcdClient(HeterogeneousPDEtcdClientURL(pdAddress), DefaultTimeout, tlsConfig)
+		} else {
+			return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
+		}
 	}
 	key := pdEtcdClientKey(namespace, tcName)
 	if _, ok := pdc.pdEtcdClients[key]; !ok {
 		var pdetcdClient PDEtcdClient
 		var err error
-		if isHeterogeneous(tc) {
-			pdetcdClient, err = NewPdEtcdClient(HeterogeneousPDEtcdClientURL(tc.Spec.PDAddress), DefaultTimeout, nil)
+		if pd == nil && len(pdAddress) > 0 {
+			pdetcdClient, err = NewPdEtcdClient(HeterogeneousPDEtcdClientURL(pdAddress), DefaultTimeout, nil)
 		} else {
 			pdetcdClient, err = NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
 		}
@@ -87,11 +89,7 @@ func (pdc *defaultPDControl) GetPDEtcdClient(tc *v1alpha1.TidbCluster, tlsEnable
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster, tlsEnabled bool) PDClient {
-
-	namespace := Namespace(tc.Namespace)
-	tcName := tc.Name
-	isHeterogeneous := isHeterogeneous(tc)
+func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, pdAddress []string, pd *v1alpha1.PDSpec, tlsEnabled bool) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
@@ -106,14 +104,18 @@ func (pdc *defaultPDControl) GetPDClient(tc *v1alpha1.TidbCluster, tlsEnabled bo
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
 			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
+		if pd == nil && len(pdAddress) > 0 {
+			return NewPDClient(HeterogeneousPdAddress(pdAddress), DefaultTimeout, tlsConfig)
+		} else {
+			return NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
+		}
 
-		return NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
 	}
 
 	key := pdClientKey(scheme, namespace, tcName)
 	if _, ok := pdc.pdClients[key]; !ok {
-		if isHeterogeneous {
-			pdc.pdClients[key] = NewPDClient(HeterogeneousPdAddress(tc.Spec.PDAddress), DefaultTimeout, nil)
+		if pd == nil && len(pdAddress) > 0 {
+			pdc.pdClients[key] = NewPDClient(HeterogeneousPdAddress(pdAddress), DefaultTimeout, nil)
 		} else {
 			pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
 		}
@@ -146,7 +148,8 @@ func HeterogeneousPDEtcdClientURL(pdAddress []string) string {
 		removeHttpsAddress := strings.ReplaceAll(removeHttpAddress, "https://", "")
 		pdAddressUrl += removeHttpsAddress + ","
 	}
-	return pdAddressUrl
+
+	return strings.TrimSuffix(pdAddressUrl, ",")
 }
 
 // FakePDControl implements a fake version of PDControlInterface.

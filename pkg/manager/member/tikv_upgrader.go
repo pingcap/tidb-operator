@@ -240,7 +240,7 @@ func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32)
 		return err
 	}
 
-	err = tku.pdControl.GetPDClient(tc, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+	err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.PDAddress, tc.Spec.PD, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	if err != nil {
 		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
 		return err

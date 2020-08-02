@@ -219,7 +219,7 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		pod:              pod,
 		controller:       tc,
 		ownerStatefulSet: ownerStatefulSet,
-		pdClient:         pc.pdControl.GetPDClient(tc, tc.IsTLSClusterEnabled()),
+		pdClient:         pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.PDAddress, tc.Spec.PD, tc.IsTLSClusterEnabled()),
 	}
 	return pc.admitDeletePdPods(payload)
 }
@@ -249,7 +249,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
 			return util.ARFail(err)
 		}
-		payload.pdClient = pc.pdControl.GetPDClient(tc, tc.IsTLSClusterEnabled())
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.Spec.PDAddress, tc.Spec.PD, tc.IsTLSClusterEnabled())
 		payload.controller = tc
 		payload.controllerDesc = controllerDesc{
 			name:      tcName,
@@ -275,7 +275,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerTcName, namespace, name)
 			return util.ARFail(err)
 		}
-		payload.pdClient = pc.pdControl.GetPDClient(tc, tc.IsTLSClusterEnabled())
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTcName, tc.Spec.PDAddress, tc.Spec.PD, tc.IsTLSClusterEnabled())
 		payload.controller = tg
 		payload.controllerDesc = controllerDesc{
 			name:      tgName,
@@ -350,7 +350,7 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 	}
 
 	if l.IsTiKV() {
-		pdClient := pc.pdControl.GetPDClient(ownerTc, ownerTc.IsTLSClusterEnabled())
+		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.Spec.PDAddress, ownerTc.Spec.PD, ownerTc.IsTLSClusterEnabled())
 		return pc.admitCreateTiKVPod(pod, pdClient)
 	}
 
