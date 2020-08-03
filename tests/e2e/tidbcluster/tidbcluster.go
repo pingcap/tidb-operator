@@ -1263,11 +1263,21 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 			if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
-				e2elog.Logf("failed to create heterogeneous cluster,tikv  (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
+				if tc.Status.TiKV.StatefulSet == nil {
+					e2elog.Logf("failed to create heterogeneous cluster,tikv  (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to create heterogeneous cluster,tikv  (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
+				}
+
 				return false, nil
 			}
 			if tc.Status.TiDB.StatefulSet == nil || tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
-				e2elog.Logf("failed to create heterogeneous cluster,tidb  (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				if tc.Status.TiDB.StatefulSet == nil {
+					e2elog.Logf("failed to create heterogeneous cluster,tidb  (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to create heterogeneous cluster,tidb  (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				}
+
 				return false, nil
 			}
 			e2elog.Logf("create heterogeneous tc successfully")
