@@ -15,7 +15,6 @@ package member
 
 import (
 	"fmt"
-	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -570,46 +569,7 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 }
 
 func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := tc.Spec.TiFlash.Config.DeepCopy()
-	if config == nil {
-		config = &v1alpha1.TiFlashConfig{}
-	}
-	var paths []string
-	for k := range tc.Spec.TiFlash.StorageClaims {
-		paths = append(paths, fmt.Sprintf("/data%d/db", k))
-	}
-	if len(paths) > 0 {
-		dataPath := strings.Join(paths, ",")
-		if config.CommonConfig == nil {
-			config.CommonConfig = &v1alpha1.CommonConfig{}
-		}
-		if config.CommonConfig.FlashDataPath == nil {
-			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
-		}
-	}
-	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
-
-	if tc.IsTLSClusterEnabled() {
-		if config.CommonConfig.Security == nil {
-			config.CommonConfig.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		if config.ProxyConfig.Security == nil {
-			config.ProxyConfig.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.ProxyConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
-		config.ProxyConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
-		config.ProxyConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
-		config.CommonConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
-		config.CommonConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
-		config.CommonConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
-		// unset the http ports
-		config.CommonConfig.HTTPPort = nil
-		config.CommonConfig.TCPPort = nil
-	} else {
-		// unset the https ports
-		config.CommonConfig.HTTPSPort = nil
-		config.CommonConfig.TCPPortSecure = nil
-	}
+	config := getTiFlashConfig(tc)
 
 	configText, err := MarshalTOML(config.CommonConfig)
 	if err != nil {

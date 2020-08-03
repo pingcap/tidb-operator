@@ -14,8 +14,10 @@
 package member
 
 import (
+	"path"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +29,106 @@ import (
 
 var (
 	defaultTiFlashConfig = v1alpha1.TiFlashConfig{
+		CommonConfig: &v1alpha1.CommonConfig{
+			FlashApplication: &v1alpha1.FlashApplication{
+				RunAsDaemon: pointer.BoolPtr(true),
+			},
+			DefaultProfile: pointer.StringPtr("default"),
+			DisplayName:    pointer.StringPtr("TiFlash"),
+			Flash: &v1alpha1.Flash{
+				CompactLogMinPeriod: pointer.Int32Ptr(200),
+				FlashCluster: &v1alpha1.FlashCluster{
+					ClusterManagerPath: pointer.StringPtr("/tiflash/flash_cluster_manager"),
+					ClusterLog:         pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
+					MasterTTL:          pointer.Int32Ptr(60),
+					RefreshInterval:    pointer.Int32Ptr(20),
+					UpdateRuleInterval: pointer.Int32Ptr(10),
+				},
+				OverlapThreshold: pointer.Float64Ptr(0.6),
+				FlashProxy: &v1alpha1.FlashProxy{
+					Addr:          pointer.StringPtr("0.0.0.0:20170"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					Config:        pointer.StringPtr("/data0/proxy.toml"),
+					DataDir:       pointer.StringPtr("/data0/proxy"),
+					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
+				},
+				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
+			},
+			HTTPPort:               pointer.Int32Ptr(8123),
+			HTTPSPort:              pointer.Int32Ptr(8123),
+			InternalServerHTTPPort: pointer.Int32Ptr(9009),
+			ListenHost:             pointer.StringPtr("0.0.0.0"),
+			FlashLogger: &v1alpha1.FlashLogger{
+				Count:     pointer.Int32Ptr(10),
+				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
+				Level:     pointer.StringPtr("information"),
+				ServerLog: pointer.StringPtr("/data0/logs/server.log"),
+				Size:      pointer.StringPtr("100M"),
+			},
+			MarkCacheSize:        pointer.Int64Ptr(5368709120),
+			MinmaxIndexCacheSize: pointer.Int64Ptr(5368709120),
+			FlashDataPath:        pointer.StringPtr("/data0/db"),
+			PathRealtimeMode:     pointer.BoolPtr(false),
+			FlashProfile: &v1alpha1.FlashProfile{
+				Default: &v1alpha1.Profile{
+					LoadBalancing:        pointer.StringPtr("random"),
+					MaxMemoryUsage:       pointer.Int64Ptr(10000000000),
+					UseUncompressedCache: pointer.Int32Ptr(0),
+				},
+				Readonly: &v1alpha1.Profile{
+					Readonly: pointer.Int32Ptr(1),
+				},
+			},
+			FlashQuota: &v1alpha1.FlashQuota{
+				Default: &v1alpha1.Quota{
+					Interval: &v1alpha1.Interval{
+						Duration:      pointer.Int32Ptr(3600),
+						Errors:        pointer.Int32Ptr(0),
+						ExecutionTime: pointer.Int32Ptr(0),
+						Queries:       pointer.Int32Ptr(0),
+						ReadRows:      pointer.Int32Ptr(0),
+						ResultRows:    pointer.Int32Ptr(0),
+					},
+				},
+			},
+			FlashRaft: &v1alpha1.FlashRaft{
+				KVStorePath:   pointer.StringPtr("/data0/kvstore"),
+				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				StorageEngine: pointer.StringPtr("dt"),
+			},
+			FlashStatus: &v1alpha1.FlashStatus{
+				MetricsPort: pointer.Int32Ptr(8234),
+			},
+			TCPPort:       pointer.Int32Ptr(9000),
+			TCPPortSecure: pointer.Int32Ptr(9000),
+			TmpPath:       pointer.StringPtr("/data0/tmp"),
+			FlashUser: &v1alpha1.FlashUser{
+				Default: &v1alpha1.User{
+					Networks: &v1alpha1.Networks{
+						IP: pointer.StringPtr("::/0"),
+					},
+					Profile: pointer.StringPtr("default"),
+					Quota:   pointer.StringPtr("default"),
+				},
+				Readonly: &v1alpha1.User{
+					Networks: &v1alpha1.Networks{
+						IP: pointer.StringPtr("::/0"),
+					},
+					Profile: pointer.StringPtr("readonly"),
+					Quota:   pointer.StringPtr("default"),
+				},
+			},
+		},
+		ProxyConfig: &v1alpha1.ProxyConfig{
+			LogLevel: pointer.StringPtr("info"),
+			Server: &v1alpha1.FlashServerConfig{
+				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+			},
+		},
+	}
+	defaultTiFlashNonTLSConfig = v1alpha1.TiFlashConfig{
 		CommonConfig: &v1alpha1.CommonConfig{
 			FlashApplication: &v1alpha1.FlashApplication{
 				RunAsDaemon: pointer.BoolPtr(true),
@@ -121,6 +223,114 @@ var (
 			Server: &v1alpha1.FlashServerConfig{
 				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
 				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+			},
+		},
+	}
+	defaultTiFlashTLSConfig = v1alpha1.TiFlashConfig{
+		CommonConfig: &v1alpha1.CommonConfig{
+			FlashApplication: &v1alpha1.FlashApplication{
+				RunAsDaemon: pointer.BoolPtr(true),
+			},
+			DefaultProfile: pointer.StringPtr("default"),
+			DisplayName:    pointer.StringPtr("TiFlash"),
+			Flash: &v1alpha1.Flash{
+				CompactLogMinPeriod: pointer.Int32Ptr(200),
+				FlashCluster: &v1alpha1.FlashCluster{
+					ClusterManagerPath: pointer.StringPtr("/tiflash/flash_cluster_manager"),
+					ClusterLog:         pointer.StringPtr("/data0/logs/flash_cluster_manager.log"),
+					MasterTTL:          pointer.Int32Ptr(60),
+					RefreshInterval:    pointer.Int32Ptr(20),
+					UpdateRuleInterval: pointer.Int32Ptr(10),
+				},
+				OverlapThreshold: pointer.Float64Ptr(0.6),
+				FlashProxy: &v1alpha1.FlashProxy{
+					Addr:          pointer.StringPtr("0.0.0.0:20170"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					Config:        pointer.StringPtr("/data0/proxy.toml"),
+					DataDir:       pointer.StringPtr("/data0/proxy"),
+					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
+				},
+				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
+			},
+			HTTPSPort:              pointer.Int32Ptr(8123),
+			InternalServerHTTPPort: pointer.Int32Ptr(9009),
+			ListenHost:             pointer.StringPtr("0.0.0.0"),
+			FlashLogger: &v1alpha1.FlashLogger{
+				Count:     pointer.Int32Ptr(10),
+				ErrorLog:  pointer.StringPtr("/data0/logs/error.log"),
+				Level:     pointer.StringPtr("information"),
+				ServerLog: pointer.StringPtr("/data0/logs/server.log"),
+				Size:      pointer.StringPtr("100M"),
+			},
+			MarkCacheSize:        pointer.Int64Ptr(5368709120),
+			MinmaxIndexCacheSize: pointer.Int64Ptr(5368709120),
+			FlashDataPath:        pointer.StringPtr("/data0/db"),
+			PathRealtimeMode:     pointer.BoolPtr(false),
+			FlashProfile: &v1alpha1.FlashProfile{
+				Default: &v1alpha1.Profile{
+					LoadBalancing:        pointer.StringPtr("random"),
+					MaxMemoryUsage:       pointer.Int64Ptr(10000000000),
+					UseUncompressedCache: pointer.Int32Ptr(0),
+				},
+				Readonly: &v1alpha1.Profile{
+					Readonly: pointer.Int32Ptr(1),
+				},
+			},
+			FlashQuota: &v1alpha1.FlashQuota{
+				Default: &v1alpha1.Quota{
+					Interval: &v1alpha1.Interval{
+						Duration:      pointer.Int32Ptr(3600),
+						Errors:        pointer.Int32Ptr(0),
+						ExecutionTime: pointer.Int32Ptr(0),
+						Queries:       pointer.Int32Ptr(0),
+						ReadRows:      pointer.Int32Ptr(0),
+						ResultRows:    pointer.Int32Ptr(0),
+					},
+				},
+			},
+			FlashRaft: &v1alpha1.FlashRaft{
+				KVStorePath:   pointer.StringPtr("/data0/kvstore"),
+				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				StorageEngine: pointer.StringPtr("dt"),
+			},
+			FlashStatus: &v1alpha1.FlashStatus{
+				MetricsPort: pointer.Int32Ptr(8234),
+			},
+			Security: &v1alpha1.TiKVSecurityConfig{
+				CAPath:   pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey)),
+				CertPath: pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey)),
+				KeyPath:  pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey)),
+			},
+			TCPPortSecure: pointer.Int32Ptr(9000),
+			TmpPath:       pointer.StringPtr("/data0/tmp"),
+			FlashUser: &v1alpha1.FlashUser{
+				Default: &v1alpha1.User{
+					Networks: &v1alpha1.Networks{
+						IP: pointer.StringPtr("::/0"),
+					},
+					Profile: pointer.StringPtr("default"),
+					Quota:   pointer.StringPtr("default"),
+				},
+				Readonly: &v1alpha1.User{
+					Networks: &v1alpha1.Networks{
+						IP: pointer.StringPtr("::/0"),
+					},
+					Profile: pointer.StringPtr("readonly"),
+					Quota:   pointer.StringPtr("default"),
+				},
+			},
+		},
+		ProxyConfig: &v1alpha1.ProxyConfig{
+			LogLevel: pointer.StringPtr("info"),
+			Server: &v1alpha1.FlashServerConfig{
+				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+			},
+			Security: &v1alpha1.TiKVSecurityConfig{
+				CAPath:   pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey)),
+				CertPath: pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey)),
+				KeyPath:  pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey)),
 			},
 		},
 	}
@@ -592,6 +802,72 @@ func TestSetTiFlashLogConfigDefault(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			setTiFlashLogConfigDefault(&test.config)
 			g.Expect(test.config).To(Equal(test.expect))
+		})
+	}
+}
+
+func TestGetTiFlashConfig(t *testing.T) {
+	testCases := []struct {
+		name     string
+		tc       v1alpha1.TidbCluster
+		expected *v1alpha1.TiFlashConfig
+	}{
+		{
+			name: "TiFlash config is nil with TLS disabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiFlash: &v1alpha1.TiFlashSpec{},
+					TLSCluster: &v1alpha1.TLSCluster{
+						Enabled: true,
+					},
+				},
+			},
+			expected: &defaultTiFlashTLSConfig,
+		},
+		{
+			name: "TiFlash config is nil with TLS enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiFlash: &v1alpha1.TiFlashSpec{},
+				},
+			},
+			expected: &defaultTiFlashNonTLSConfig,
+		},
+		{
+			name: "TiFlash config is nil with storageClaim",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiFlash: &v1alpha1.TiFlashSpec{
+						StorageClaims: []v1alpha1.StorageClaim{
+							{
+								StorageClassName: pointer.StringPtr("local-storage"),
+							},
+						},
+					},
+				},
+			},
+			expected: &defaultTiFlashNonTLSConfig,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			config := getTiFlashConfig(&tt.tc)
+			if diff := cmp.Diff(*tt.expected, *config); diff != "" {
+				t.Fatalf("unexpected configuration (-want, +got): %s", diff)
+			}
 		})
 	}
 }

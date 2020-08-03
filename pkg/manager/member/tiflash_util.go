@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -86,6 +87,52 @@ func buildSidecarContainer(name, path, image string,
 			fmt.Sprintf("touch %s; tail -n0 -F %s;", path, path),
 		},
 	}
+}
+
+func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
+	config := tc.Spec.TiFlash.Config.DeepCopy()
+	if config == nil {
+		config = &v1alpha1.TiFlashConfig{}
+	}
+
+	if config.CommonConfig == nil {
+		config.CommonConfig = &v1alpha1.CommonConfig{}
+	}
+	if config.CommonConfig.FlashDataPath == nil {
+		var paths []string
+		for k := range tc.Spec.TiFlash.StorageClaims {
+			paths = append(paths, fmt.Sprintf("/data%d/db", k))
+		}
+		if len(paths) > 0 {
+			dataPath := strings.Join(paths, ",")
+			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
+		}
+	}
+
+	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
+
+	if tc.IsTLSClusterEnabled() {
+		if config.CommonConfig.Security == nil {
+			config.CommonConfig.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		if config.ProxyConfig.Security == nil {
+			config.ProxyConfig.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.ProxyConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
+		config.ProxyConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
+		config.ProxyConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+		config.CommonConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
+		config.CommonConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
+		config.CommonConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+		// unset the http ports
+		config.CommonConfig.HTTPPort = nil
+		config.CommonConfig.TCPPort = nil
+	} else {
+		// unset the https ports
+		config.CommonConfig.HTTPSPort = nil
+		config.CommonConfig.TCPPortSecure = nil
+	}
+	return config
 }
 
 func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {
