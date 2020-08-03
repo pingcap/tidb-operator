@@ -1186,9 +1186,9 @@ type BRConfig struct {
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster
 	ClusterNamespace string `json:"clusterNamespace,omitempty"`
-	// DB is the specific DB which will be backed-up or restored
+	// --- Deprecated --- DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
-	// Table is the specific table which will be backed-up or restored
+	// --- Deprecated --- Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`
@@ -1409,6 +1409,8 @@ type RestoreSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching
+	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
