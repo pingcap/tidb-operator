@@ -78,7 +78,7 @@ func TestAdmitPod(t *testing.T) {
 			}
 		}
 
-		resp := podAdmissionControl.AdmitPods(ar)
+		resp := podAdmissionControl.Admit(ar)
 		test.expectFn(g, resp)
 	}
 
