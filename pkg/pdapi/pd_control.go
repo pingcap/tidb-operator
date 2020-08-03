@@ -167,10 +167,6 @@ func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclie
 	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
 }
 
-func isHeterogeneous(tc *v1alpha1.TidbCluster) bool {
-	return len(tc.Spec.PDAddress) > 0 && tc.Spec.PD == nil
-}
-
 func HeterogeneousPdAddress(pdAddress []string) string {
 	return strings.Join(pdAddress, ",")
 }
