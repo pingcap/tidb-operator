@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -25,10 +26,11 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func TestAdmissionWebhook_Mutate(t *testing.T) {
+func TestStrategyAdmissionHook_Admit(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name      string
@@ -71,7 +73,7 @@ func TestAdmissionWebhook_Mutate(t *testing.T) {
 		r := NewRegistry()
 		s := &FakeStrategy{}
 		r.Register(s)
-		w := NewAdmissionWebhook(&r)
+		w := NewStrategyAdmissionHook(&r)
 		gvk, err := controller.InferObjectKind(tt.apiObj)
 		g.Expect(err).To(Succeed())
 		raw, err := json.Marshal(tt.apiObj)
@@ -94,7 +96,7 @@ func TestAdmissionWebhook_Mutate(t *testing.T) {
 			ar.OldObject = *re.DeepCopy()
 		}
 
-		resp := w.Mutate(&ar)
+		resp := w.Admit(&ar)
 		g.Expect(resp.Allowed).To(BeTrue())
 		g.Expect(s.prepareForCreateTracker.GetRequests()).To(Equal(tt.expectedPrepareForCreateTimes))
 		g.Expect(s.prepareForUpdateTracker.GetRequests()).To(Equal(tt.expectedPrepareForUpdateTimes))
@@ -105,7 +107,7 @@ func TestAdmissionWebhook_Mutate(t *testing.T) {
 	}
 }
 
-func TestAdmissionWebhook_Validate(t *testing.T) {
+func TestStrategyAdmissionHook_Validate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
 		name      string
@@ -166,7 +168,7 @@ func TestAdmissionWebhook_Validate(t *testing.T) {
 		r := NewRegistry()
 		s := &FakeStrategy{}
 		r.Register(s)
-		w := NewAdmissionWebhook(&r)
+		w := NewStrategyAdmissionHook(&r)
 		gvk, err := controller.InferObjectKind(tt.apiObj)
 		g.Expect(err).To(Succeed())
 		raw, err := json.Marshal(tt.apiObj)
@@ -249,4 +251,32 @@ func (s *FakeStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Obje
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec"), "", s.validateUpdateTracker.GetError().Error()))
 	}
 	return allErrs
+}
+
+func TestValidatingResource(t *testing.T) {
+	r := NewRegistry()
+	w := NewStrategyAdmissionHook(&r)
+	wantGvr := schema.GroupVersionResource{
+		Group:    "admission.tidb.pingcap.com",
+		Version:  "v1alpha1",
+		Resource: "pingcapresourcevalidations",
+	}
+	gvr, _ := w.ValidatingResource()
+	if !reflect.DeepEqual(wantGvr, gvr) {
+		t.Fatalf("want: %v, got: %v", wantGvr, gvr)
+	}
+}
+
+func TestMutationResource(t *testing.T) {
+	r := NewRegistry()
+	w := NewStrategyAdmissionHook(&r)
+	wantGvr := schema.GroupVersionResource{
+		Group:    "admission.tidb.pingcap.com",
+		Version:  "v1alpha1",
+		Resource: "pingcapresourcemutations",
+	}
+	gvr, _ := w.MutatingResource()
+	if !reflect.DeepEqual(wantGvr, gvr) {
+		t.Fatalf("want: %v, got: %v", wantGvr, gvr)
+	}
 }
