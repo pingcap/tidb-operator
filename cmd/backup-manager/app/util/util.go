@@ -183,26 +183,33 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 // ConstructDumplingOptionsForBackup constructs dumpling options for backup
 func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
-	config := backup.Spec.Dumpling
-	if config == nil {
-		args = append(args, defaultOptions...)
-		args = append(args, defaultTableFilterOptions...)
-		return args
-	}
+	config := backup.Spec
 
-	if len(config.Options) != 0 {
-		args = append(args, config.Options...)
-	} else {
-		args = append(args, defaultOptions...)
-	}
-
-	if len(config.TableFilter) > 0 {
+	if config.TableFilter != nil && len(config.TableFilter) > 0 {
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
 	} else {
-		args = append(args, defaultTableFilterOptions...)
+		if config.Dumpling != nil && config.Dumpling.TableFilter != nil && len(config.Dumpling.TableFilter) > 0 {
+			for _, tableFilter := range config.Dumpling.TableFilter {
+				args = append(args, "--filter", tableFilter)
+			}
+		} else {
+			args = append(args, defaultTableFilterOptions...)
+		}
 	}
+
+	if config.Dumpling == nil {
+		args = append(args, defaultOptions...)
+		return args
+	}
+
+	if len(config.Dumpling.Options) != 0 {
+		args = append(args, config.Dumpling.Options...)
+	} else {
+		args = append(args, defaultOptions...)
+	}
+
 	return args
 }
 

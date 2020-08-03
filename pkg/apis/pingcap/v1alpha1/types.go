@@ -1181,6 +1181,8 @@ type BackupSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching
+	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -1188,7 +1190,7 @@ type BackupSpec struct {
 type DumplingConfig struct {
 	// Options means options for backup data to remote storage with dumpling.
 	Options []string `json:"options,omitempty"`
-	// TableFilter means Table filter expression for 'db.table' matching
+	// --- Deprecated --- TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
