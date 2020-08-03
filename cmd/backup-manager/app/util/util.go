@@ -161,22 +161,35 @@ func GetOptionValueFromEnv(option, envPrefix string) string {
 // ConstructBRGlobalOptionsForBackup constructs BR global options for backup and also return the remote path.
 func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error) {
 	var args []string
-	config := backup.Spec.BR
-	if config == nil {
+	config := backup.Spec
+	if config.BR == nil {
 		return nil, fmt.Errorf("no config for br in backup %s/%s", backup.Namespace, backup.Name)
 	}
-	args = append(args, constructBRGlobalOptions(config)...)
+	args = append(args, constructBRGlobalOptions(config.BR)...)
 	storageArgs, err := getRemoteStorage(backup.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
 	args = append(args, storageArgs...)
-	if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.DB != "" {
-		args = append(args, fmt.Sprintf("--db=%s", config.DB))
+
+	if config.TableFilter != nil && len(config.TableFilter) > 0 {
+		for _, tableFilter := range config.TableFilter {
+			args = append(args, "--filter", tableFilter)
+		}
+	} else {
+		if ((backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "") ||
+			(backup.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "") {
+			if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "" {
+				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+			}
+			if backup.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "" {
+				args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+			}
+		} else {
+			args = append(args, defaultTableFilterOptions...)
+		}
 	}
-	if backup.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
-		args = append(args, fmt.Sprintf("--table=%s", config.Table))
-	}
+
 	return args, nil
 }
 
@@ -216,22 +229,35 @@ func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 // ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
 func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
 	var args []string
-	config := restore.Spec.BR
-	if config == nil {
+	config := restore.Spec
+	if config.BR == nil {
 		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 	}
-	args = append(args, constructBRGlobalOptions(config)...)
+	args = append(args, constructBRGlobalOptions(config.BR)...)
 	storageArgs, err := getRemoteStorage(restore.Spec.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
 	args = append(args, storageArgs...)
-	if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && config.DB != "" {
-		args = append(args, fmt.Sprintf("--db=%s", config.DB))
+
+	if config.TableFilter != nil && len(config.TableFilter) > 0 {
+		for _, tableFilter := range config.TableFilter {
+			args = append(args, "--filter", tableFilter)
+		}
+	} else {
+		if ((restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "") ||
+			restore.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "" {
+			if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "" {
+				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+			}
+			if restore.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "" {
+				args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+			}
+		} else {
+			args = append(args, defaultTableFilterOptions...)
+		}
 	}
-	if restore.Spec.Type == v1alpha1.BackupTypeTable && config.Table != "" {
-		args = append(args, fmt.Sprintf("--table=%s", config.Table))
-	}
+
 	return args, nil
 }
 
