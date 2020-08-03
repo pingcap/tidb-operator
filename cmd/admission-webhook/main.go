@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/webhook"
 	"github.com/pingcap/tidb-operator/pkg/webhook/pod"
+	"github.com/pingcap/tidb-operator/pkg/webhook/strategy"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
 )
@@ -74,5 +75,7 @@ func main() {
 	}
 	pod.AstsControllerServiceAccounts = fmt.Sprintf("system:serviceaccount:%s:advanced-statefulset-controller", ns)
 
-	cmd.RunAdmissionServer(ah)
+	strategyAdmissionHook := strategy.NewStrategyAdmissionHook(&strategy.Registry)
+
+	cmd.RunAdmissionServer(ah, strategyAdmissionHook)
 }
