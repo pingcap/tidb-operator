@@ -1255,7 +1255,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = genericCli.Create(context.TODO(), heterogeneousTc)
 		framework.ExpectNoError(err, "Expected  Heterogeneous TiDB cluster created")
 
-		err = wait.PollImmediate(15*time.Second, 10*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(15*time.Second, 30*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
