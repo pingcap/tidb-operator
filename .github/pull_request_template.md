@@ -20,3 +20,13 @@
 
 - This PR is translated from: <!--Give links here-->
 - Other reference link(s): <!--Give links here-->
+
+### Do your changes match any of the following descriptions?
+
+<!-- Provide as much information as possible so that reviewers can review your changes more efficiently.
+If you are not sure of the options, leave it as it is. -->
+
+- [ ] Delete files
+- [ ] Change aliases
+- [ ] Have version specific changes <!-- If yes, please add the label "version-specific-changes-required"-->
+- [ ] Might cause conflicts
