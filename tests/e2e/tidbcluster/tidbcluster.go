@@ -1262,11 +1262,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
 				return false, nil
 			}
-			if tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
+			if tc.Status.TiKV.StatefulSet == nil && tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
 				e2elog.Logf("failed to create heterogeneous cluster,tikv  (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
 				return false, nil
 			}
-			if tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
+			if tc.Status.TiDB.StatefulSet == nil && tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
 				e2elog.Logf("failed to create heterogeneous cluster,tidb  (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
 				return false, nil
 			}
