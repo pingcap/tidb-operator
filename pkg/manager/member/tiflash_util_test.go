@@ -297,7 +297,7 @@ var (
 			FlashStatus: &v1alpha1.FlashStatus{
 				MetricsPort: pointer.Int32Ptr(8234),
 			},
-			Security: &v1alpha1.TiKVSecurityConfig{
+			Security: &v1alpha1.FlashSecurity{
 				CAPath:   pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey)),
 				CertPath: pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey)),
 				KeyPath:  pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey)),

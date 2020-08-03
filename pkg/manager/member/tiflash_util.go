@@ -113,7 +113,7 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
 
 	if tc.IsTLSClusterEnabled() {
 		if config.CommonConfig.Security == nil {
-			config.CommonConfig.Security = &v1alpha1.TiKVSecurityConfig{}
+			config.CommonConfig.Security = &v1alpha1.FlashSecurity{}
 		}
 		if config.ProxyConfig.Security == nil {
 			config.ProxyConfig.Security = &v1alpha1.TiKVSecurityConfig{}

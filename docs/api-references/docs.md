@@ -3073,8 +3073,8 @@ FlashLogger
 <td>
 <code>security</code></br>
 <em>
-<a href="#tikvsecurityconfig">
-TiKVSecurityConfig
+<a href="#flashsecurity">
+FlashSecurity
 </a>
 </em>
 </td>
@@ -4218,6 +4218,56 @@ int32
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 10</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashsecurity">FlashSecurity</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#commonconfig">CommonConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ca_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>key_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -14002,7 +14052,6 @@ TiKVStorageReadPoolConfig
 <h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#commonconfig">CommonConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>

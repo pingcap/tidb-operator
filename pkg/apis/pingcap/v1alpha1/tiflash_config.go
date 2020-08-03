@@ -160,7 +160,7 @@ type CommonConfig struct {
 	FlashProfile *FlashProfile `json:"profiles,omitempty" toml:"profiles,omitempty"`
 	// +optional
 	// +k8s:openapi-gen=false
-	Security *TiKVSecurityConfig `json:"security,omitempty" toml:"security,omitempty"`
+	Security *FlashSecurity `json:"security,omitempty" toml:"security,omitempty"`
 }
 
 // FlashProfile is the configuration of [profiles] section.
@@ -362,4 +362,14 @@ type FlashProxy struct {
 	// Optional: Defaults to /data0/logs/proxy.log
 	// +optional
 	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+}
+
+// +k8s:openapi-gen=false
+type FlashSecurity struct {
+	// +optional
+	CAPath *string `json:"ca_path,omitempty" toml:"ca_path,omitempty"`
+	// +optional
+	CertPath *string `json:"cert_path,omitempty" toml:"cert_path,omitempty"`
+	// +optional
+	KeyPath *string `json:"key_path,omitempty" toml:"key_path,omitempty"`
 }
