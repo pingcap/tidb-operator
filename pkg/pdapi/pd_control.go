@@ -16,11 +16,11 @@ package pdapi
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"net/http"
 	"strings"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
