@@ -431,14 +431,14 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 					},
 					"db": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DB is the specific DB which will be backed-up or restored",
+							Description: "--- Deprecated --- DB is the specific DB which will be backed-up or restored",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"table": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Table is the specific table which will be backed-up or restored",
+							Description: "--- Deprecated --- Table is the specific table which will be backed-up or restored",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -861,6 +861,20 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Description: "CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"tableFilter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -1396,7 +1410,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref common.ReferenceCallbac
 					},
 					"tableFilter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Description: "--- Deprecated --- TableFilter means Table filter expression for 'db.table' matching",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -3982,6 +3996,20 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Ref: ref("k8s.io/api/core/v1.LocalObjectReference"),
+									},
+								},
+							},
+						},
+					},
+					"tableFilter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
 									},
 								},
 							},
