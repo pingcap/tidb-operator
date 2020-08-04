@@ -34,31 +34,60 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	type testcase struct {
-		name       string
-		hasFilter  bool
-		hasOptions bool
+		name              string
+		hasBackupFilter   bool
+		hasDumplingFilter bool
+		hasOptions        bool
 	}
 
 	tests := []*testcase{
 		{
-			name:       "dumpling config is empty",
-			hasOptions: false,
-			hasFilter:  false,
+			name:              "backup filter is false and dumpling config is empty",
+			hasOptions:        false,
+			hasBackupFilter:   false,
+			hasDumplingFilter: false,
 		},
 		{
-			name:       "customize dumpling options but not set table regex",
-			hasOptions: true,
-			hasFilter:  false,
+			name:              "backup filter is false and customize dumpling options but not set table regex",
+			hasOptions:        true,
+			hasBackupFilter:   false,
+			hasDumplingFilter: false,
 		},
 		{
-			name:       "customize dumpling table regex but not customize options",
-			hasOptions: false,
-			hasFilter:  true,
+			name:              "backup filter is false and customize dumpling table regex but not customize options",
+			hasOptions:        false,
+			hasBackupFilter:   false,
+			hasDumplingFilter: true,
 		},
 		{
-			name:       "customize dumpling table regex and customize options",
-			hasOptions: true,
-			hasFilter:  true,
+			name:              "backup filter is false and customize dumpling table regex and customize options",
+			hasOptions:        true,
+			hasBackupFilter:   false,
+			hasDumplingFilter: true,
+		},
+		{
+			name:              "customize backup filter and dumpling config is empty",
+			hasOptions:        false,
+			hasBackupFilter:   true,
+			hasDumplingFilter: false,
+		},
+		{
+			name:              "customize backup filter and customize dumpling options but not set table regex",
+			hasOptions:        true,
+			hasBackupFilter:   true,
+			hasDumplingFilter: false,
+		},
+		{
+			name:              "customize backup filter and customize dumpling table regex but not customize options",
+			hasOptions:        false,
+			hasBackupFilter:   true,
+			hasDumplingFilter: true,
+		},
+		{
+			name:              "customize backup filter and customize dumpling table regex and customize options",
+			hasOptions:        true,
+			hasBackupFilter:   true,
+			hasDumplingFilter: true,
 		},
 	}
 
@@ -66,27 +95,33 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			backup := newBackup()
 
-			customFilter := []string{"mysql.*"}
+			customBackupFilter := []string{"mysql.*"}
+			customDumplingFilter := []string{"mysql2.*"}
 			customOptions := []string{"--consistency=snapshot"}
 
 			var expectArgs []string
 
+			if tt.hasDumplingFilter || tt.hasOptions || tt.hasBackupFilter {
+				backup.Spec.Dumpling = &v1alpha1.DumplingConfig{}
+			}
+
+			if tt.hasBackupFilter {
+				backup.Spec.TableFilter = customBackupFilter
+				expectArgs = append(expectArgs, "--filter", customBackupFilter[0])
+			} else {
+				if tt.hasDumplingFilter {
+					backup.Spec.Dumpling.TableFilter = customDumplingFilter
+					expectArgs = append(expectArgs, "--filter", customDumplingFilter[0])
+				} else {
+					expectArgs = append(expectArgs, defaultTableFilterOptions...)
+				}
+			}
+
 			if tt.hasOptions {
-				backup.Spec.Dumpling = &v1alpha1.DumplingConfig{Options: customOptions}
+				backup.Spec.Dumpling.Options = customOptions
 				expectArgs = append(expectArgs, customOptions...)
 			} else {
 				expectArgs = append(expectArgs, defaultOptions...)
-			}
-
-			if tt.hasFilter {
-				if backup.Spec.Dumpling == nil {
-					backup.Spec.Dumpling = &v1alpha1.DumplingConfig{TableFilter: customFilter}
-				} else {
-					backup.Spec.Dumpling.TableFilter = customFilter
-				}
-				expectArgs = append(expectArgs, "--filter", customFilter[0])
-			} else {
-				expectArgs = append(expectArgs, defaultTableFilterOptions...)
 			}
 
 			generateArgs := ConstructDumplingOptionsForBackup(backup)
