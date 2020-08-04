@@ -1,6 +1,7 @@
 ---
 title: Kubernetes 上的 TiDB 集群故障自动转移
 summary: 介绍 Kubernetes 上的 TiDB 集群故障自动转移的功能。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/use-auto-failover/']
 ---
 
 # Kubernetes 上的 TiDB 集群故障自动转移

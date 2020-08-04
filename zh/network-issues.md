@@ -1,6 +1,7 @@
 ---
 title: Kubernetes 上的 TiDB 集群常见网络问题
 summary: 介绍 Kubernetes 上 TiDB 集群的常见网络问题以及诊断解决方案。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/network-issues/']
 ---
 
 # Kubernetes 上的 TiDB 集群常见网络问题

@@ -1,6 +1,7 @@
 ---
 title: 在 Kubernetes 上部署 TiFlash
 summary: 了解如何在 Kubernetes 上部署 TiFlash。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-tiflash/']
 ---
 
 # 在 Kubernetes 上部署 TiFlash

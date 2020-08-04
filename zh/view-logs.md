@@ -1,6 +1,7 @@
 ---
 title: 查看日志
 summary: 介绍如何查看 TiDB 集群各组件日志以及 TiDB 慢查询日志。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/view-logs/']
 ---
 
 # 查看日志

@@ -1,6 +1,7 @@
 ---
 title: 开启 TiDB Operator 准入控制器
 summary: 介绍如何开启 TiDB Operator 准入控制器以及它的作用。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-admission-webhook/']
 ---
 
 # TiDB Operator 准入控制器

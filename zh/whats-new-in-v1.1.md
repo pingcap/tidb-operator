@@ -1,5 +1,6 @@
 ---
 title: What's New in v1.1
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/whats-new-in-v1.1/']
 ---
 
 # What's New in v1.1

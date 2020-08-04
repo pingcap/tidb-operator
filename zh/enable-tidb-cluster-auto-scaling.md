@@ -1,6 +1,7 @@
 ---
 title: 启用 TidbCluster 弹性伸缩
 summary: 介绍如何使用 TidbCluster 的弹性伸缩能力。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tidb-cluster-auto-scaling/']
 ---
 
 # 启用 TidbCluster 弹性伸缩

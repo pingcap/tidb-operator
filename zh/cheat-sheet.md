@@ -1,6 +1,7 @@
 ---
 title: 管理 TiDB 集群的 Command Cheat Sheet
 summary: 介绍管理 TiDB 集群的 Command Cheat Sheet。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/cheat-sheet/']
 ---
 
 # 管理 TiDB 集群的 Command Cheat Sheet

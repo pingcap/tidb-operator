@@ -1,5 +1,6 @@
 ---
 title: TiDB in Kubernetes Sysbench 性能测试
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/benchmark-sysbench/']
 ---
 
 # TiDB in Kubernetes Sysbench 性能测试

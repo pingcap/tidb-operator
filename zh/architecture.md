@@ -1,6 +1,7 @@
 ---
 title: TiDB Operator 架构
 summary: 了解 TiDB Operator 架构及其工作原理。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/architecture/']
 ---
 
 # TiDB Operator 架构

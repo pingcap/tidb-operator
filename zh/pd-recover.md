@@ -1,6 +1,7 @@
 ---
 title: 使用 PD Recover 恢复 PD 集群
 summary: 了解如何使用 PD Recover 恢复 PD 集群。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/pd-recover/']
 ---
 
 # 使用 PD Recover 恢复 PD 集群

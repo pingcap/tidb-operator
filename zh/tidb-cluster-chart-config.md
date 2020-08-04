@@ -1,6 +1,7 @@
 ---
 title: tidb-cluster chart 配置
 summary: 介绍 tidb-cluster chart 配置。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/tidb-cluster-chart-config/']
 ---
 
 # tidb-cluster chart 配置

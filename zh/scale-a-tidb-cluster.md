@@ -1,6 +1,7 @@
 ---
 title: Kubernetes 上的 TiDB 集群扩缩容
 summary: 介绍如何在 Kubernetes 中对 TiDB 集群扩缩容。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/scale-a-tidb-cluster/']
 ---
 
 # Kubernetes 上的 TiDB 集群扩缩容

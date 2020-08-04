@@ -1,6 +1,7 @@
 ---
 title: 为 TiDB 组件间开启 TLS
 summary: 在 Kubernetes 上如何为 TiDB 集群组件间开启 TLS。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
 ---
 
 # 为 TiDB 组件间开启 TLS

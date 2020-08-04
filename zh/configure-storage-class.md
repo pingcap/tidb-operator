@@ -1,7 +1,7 @@
 ---
 title: Kubernetes 上的持久化存储类型配置
 summary: 介绍 Kubernetes 上的数据持久化存储类型配置。
-aliases: ['/docs-cn/dev/tidb-in-kubernetes/reference/configuration/local-pv/']
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/configure-storage-class/','/docs-cn/dev/tidb-in-kubernetes/reference/configuration/local-pv/']
 ---
 
 # Kubernetes 上的持久化存储类型配置

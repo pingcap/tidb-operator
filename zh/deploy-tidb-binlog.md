@@ -1,6 +1,7 @@
 ---
 title: 部署 TiDB Binlog
 summary: 了解如何在 Kubernetes 上部署 TiDB 集群的 TiDB Binlog。
+aliases: ['/docs-cn/tidb-in-kubernetes/dev/deploy-tidb-binlog/']
 ---
 
 # 部署 TiDB Binlog
