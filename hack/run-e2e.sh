@@ -209,6 +209,10 @@ function e2e::image_load() {
     done
     if [ "$PROVIDER" == "kind" ]; then
         local nodes=$($KIND_BIN get nodes --name $CLUSTER | grep -v 'control-plane$')
+        if [ -z "$nodes" ]; then
+            # if no workers are found, we need to schedule pods to control-plane.
+            local nodes=$($KIND_BIN get nodes --name $CLUSTER)
+        fi
         echo "info: load images ${images[@]}"
         for n in ${images[@]}; do
             $KIND_BIN load docker-image --name $CLUSTER $n --nodes $(hack::join ',' ${nodes[@]})
