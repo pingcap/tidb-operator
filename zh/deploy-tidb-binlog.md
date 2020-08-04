@@ -186,7 +186,7 @@ spec:
       safe-mode = false
       db-type = "tidb"
       [syncer.to]
-      host = "slave-tidb"
+      host = "downstream-tidb"
       user = "root"
       password = ""
       port = 4000

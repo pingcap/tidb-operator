@@ -193,7 +193,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
       safe-mode = false
       db-type = "tidb"
       [syncer.to]
-      host = "slave-tidb"
+      host = "downstream-tidb"
       user = "root"
       password = ""
       port = 4000
