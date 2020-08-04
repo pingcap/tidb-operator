@@ -20,6 +20,8 @@ spec:
         location-labels:
         - zone
         max-replicas: 3
+    nodeSelector:
+      dedicated: pd
     tolerations:
     - effect: NoSchedule
       key: dedicated
@@ -31,6 +33,8 @@ spec:
     requests:
       storage: "100Gi"
     config: {}
+    nodeSelector:
+      dedicated: tikv
     tolerations:
     - effect: NoSchedule
       key: dedicated
@@ -64,6 +68,8 @@ spec:
       - name: net.core.somaxconn
         value: "32768"
     separateSlowLog: true
+    nodeSelector:
+      dedicated: tidb
     tolerations:
     - effect: NoSchedule
       key: dedicated
