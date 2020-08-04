@@ -280,6 +280,17 @@ CleanPolicyType
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -447,6 +458,17 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </table>
@@ -2332,7 +2354,7 @@ string
 </em>
 </td>
 <td>
-<p>DB is the specific DB which will be backed-up or restored</p>
+<p>&mdash; Deprecated &mdash; DB is the specific DB which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -2343,7 +2365,7 @@ string
 </em>
 </td>
 <td>
-<p>Table is the specific table which will be backed-up or restored</p>
+<p>&mdash; Deprecated &mdash; Table is the specific table which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -2896,6 +2918,17 @@ CleanPolicyType
 </td>
 <td>
 <p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -4714,7 +4747,7 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>&mdash; Deprecated &mdash; TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -9714,6 +9747,17 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
