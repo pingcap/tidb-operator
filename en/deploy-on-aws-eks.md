@@ -284,6 +284,30 @@ You can use the `terraform output` command to get the output again.
     kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db-monitor.yaml -n ${namespace}
     ```
 
+4. View the startup status of the TiDB cluster:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get pods -n ${namespace}
+    ```
+
+    When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
+
+    ```
+    NAME                              READY   STATUS    RESTARTS   AGE
+    tidb-discovery-5cb8474d89-n8cxk   1/1     Running   0          47h
+    tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
+    tidb-pd-0                         1/1     Running   0          47h
+    tidb-pd-1                         1/1     Running   0          46h
+    tidb-tidb-0                       2/2     Running   0          47h
+    tidb-tidb-1                       2/2     Running   0          46h
+    tidb-tikv-0                       1/1     Running   0          47h
+    tidb-tikv-1                       1/1     Running   0          47h
+    tidb-tikv-2                       1/1     Running   0          47h
+    tidb-tikv-3                       1/1     Running   0          46h
+    ```
+
 ### Enable cross-zone load balancing for the LoadBalancer of the TiDB service
 
 Due to an [issue](https://github.com/kubernetes/kubernetes/issues/82595) of AWS Network Load Balancer (NLB), the NLB created for the TiDB service cannot automatically enable cross-zone load balancing. You can manually enable it by taking the following steps:

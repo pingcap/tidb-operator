@@ -292,3 +292,28 @@ From the example above, you can see that the `backupSchedule` configuration cons
 * `.spec.pause`: `false` by default. If this parameter is set to `true`, the scheduled scheduling is paused. In this situation, the backup operation will not be performed even if the scheduling time is reached. During this pause, the backup [Garbage Collection](https://docs.pingcap.com/tidb/stable/garbage-collection-overview) (GC) runs normally. If you change `true` to `false`, the full backup process is restarted.
 
 </details>
+
+## Delete the backup CR
+
+You can delete the full backup CR (`Backup`) and the scheduled backup CR (`BackupSchedule`) by the following commands:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete backup ${name} -n ${namespace}
+kubectl delete backupschedule ${name} -n ${namespace}
+```
+
+If you use TiDB Operator v1.1.2 or earlier versions, or if you use TiDB Operator v1.1.3 or later versions and set the value of `spec.cleanPolicy` to `Delete`, TiDB Operator deletes the backup data when it deletes the CR. In such cases, if you need to delete the namespace as well, it is recommended that you first delete all the `Backup`/`BackupSchedule` CR and then delete the namespace.
+
+If you delete the namespace before you delete the `Backup`/`BackupSchedule` CR, TiDB Operator continues to create jobs to clean the backup data. However, since the namespace is in `Terminating` state, TiDB Operator fails to create a job, which causes the namespace to be stuck in the state.
+
+To address this issue, delete `finalizers` using the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl edit backup ${name} -n ${namespace}
+```
+
+After deleting the `metadata.finalizers` configuration, you can delete CR normally.

@@ -178,7 +178,7 @@ kubectl get bk -n test1 -owide
 
     Note that in v1.1.2 and earlier versions, this field does not exist. The backup data is deleted along with the CR by default. For v1.1.3 or later versions, if you want to keep this behavior, set this field to `Delete`.
 
-* `.spec.from.host`: the address of the TiDB cluster to be backed up.
+* `.spec.from.host`: the address of the TiDB cluster to be backed up, which is the service name of the TiDB cluster to be exported, such as `basic-tidb`.
 * `.spec.from.port`: the port of the TiDB cluster to be backed up.
 * `.spec.from.user`: the accessing user of the TiDB cluster to be backed up.
 * `.spec.from.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be backed up.
@@ -297,3 +297,32 @@ From the above example, you can see that the `backupSchedule` configuration cons
 > **Note:**
 >
 > TiDB Operator creates a PVC. This PVC is used for both ad-hoc full backup and scheduled full backup. The backup data is stored in PV first and then uploaded to remote storage. If you want to delete this PVC after the backup is completed, you can refer to [Delete Resource](cheat-sheet.md#delete-resources) to delete the backup Pod first, and then delete the PVC.
+>
+> If the backup data is successfully uploaded to remote storage, TiDB Operator automatically deletes the local data. If the upload fails, the local data is retained.
+
+## Delete the backup CR
+
+You can delete the full backup CR (`Backup`) and the scheduled backup CR (`BackupSchedule`) by the following commands:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl delete backup ${name} -n ${namespace}
+kubectl delete backupschedule ${name} -n ${namespace}
+```
+
+If you use TiDB Operator v1.1.2 or earlier versions, or if you use TiDB Operator v1.1.3 or later versions and set the value of `spec.cleanPolicy` to `Delete`, TiDB Operator deletes the backup data when it deletes the CR. In such cases, if you need to delete the namespace as well, it is recommended that you first delete all the `Backup`/`BackupSchedule` CR and then delete the namespace.
+
+If you delete the namespace before you delete the `Backup`/`BackupSchedule` CR, TiDB Operator continues to create jobs to clean the backup data. However, since the namespace is in `Terminating` state, TiDB Operator fails to create a job, which causes the namespace to be stuck in the state.
+
+For v1.1.2 and earlier versions, if the backup data is manually deleted before you delete the `Backup`/`BackupSchedule` CR, the namespace might also be stuck in the `Terminating` state.
+
+To address this issue, delete `finalizers` using the following command:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl edit backup ${name} -n ${namespace}
+```
+
+After deleting the `metadata.finalizers` configuration, you can delete CR normally.
