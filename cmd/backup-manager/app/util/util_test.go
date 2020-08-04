@@ -101,7 +101,7 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 
 			var expectArgs []string
 
-			if tt.hasDumplingFilter || tt.hasOptions || tt.hasBackupFilter {
+			if tt.hasBackupFilter || tt.hasDumplingFilter || tt.hasOptions {
 				backup.Spec.Dumpling = &v1alpha1.DumplingConfig{}
 			}
 
