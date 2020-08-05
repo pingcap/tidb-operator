@@ -70,21 +70,20 @@ func checkAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.Statefu
 
 // limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
 func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
-	if memberType != v1alpha1.TiKVMemberType && memberType != v1alpha1.TiDBMemberType {
+	var min, max int32
+	switch memberType {
+	case v1alpha1.TiKVMemberType:
+		min, max = *tac.Spec.TiKV.MinReplicas, tac.Spec.TiKV.MaxReplicas
+	case v1alpha1.TiDBMemberType:
+		min, max = *tac.Spec.TiDB.MinReplicas, tac.Spec.TiDB.MaxReplicas
+	default:
 		return targetReplicas
 	}
-	if memberType == v1alpha1.TiKVMemberType {
-		if targetReplicas > tac.Spec.TiKV.MaxReplicas {
-			targetReplicas = tac.Spec.TiKV.MaxReplicas
-		} else if targetReplicas < *tac.Spec.TiKV.MinReplicas {
-			targetReplicas = *tac.Spec.TiKV.MinReplicas
-		}
-	} else if memberType == v1alpha1.TiDBMemberType {
-		if targetReplicas > tac.Spec.TiDB.MaxReplicas {
-			targetReplicas = tac.Spec.TiDB.MaxReplicas
-		} else if targetReplicas < *tac.Spec.TiDB.MinReplicas {
-			targetReplicas = *tac.Spec.TiDB.MinReplicas
-		}
+	if targetReplicas > max {
+		return max
+	}
+	if targetReplicas < min {
+		return min
 	}
 	return targetReplicas
 }
