@@ -1,0 +1,50 @@
+name: chaos
+
+on:
+  pull_request:
+    branches:
+    - master
+    - release-*
+
+jobs:
+
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: go/src/github.com/${{ github.repository }}
+
+    - name: Creating kind cluster
+      run: |
+        SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_DOWN=y SKIP_TEST=y KUBE_WORKERS=0 ./hack/e2e.sh
+        echo "info: waiting for all nodes to be ready"
+        kubectl wait --for=condition=Ready nodes --all --timeout=120s
+        echo "info: waiting for all pods in kube-system namespace to be ready"
+        kubectl -n kube-system wait --for=condition=Ready pods --all
+        echo "info: print cluster information"
+        kubectl get nodes
+        kubectl get pods -n kube-system
+        helm version
+        kubectl version
+        echo "info: create pingcap namespace for chaos configurations"
+        kubectl create ns pingcap
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+
+    - name: Run chaos mesh
+      uses: chaos-mesh/chaos-mesh-actions@v0.2
+      env:
+        CFG_BASE64: YXBpVmVyc2lvbjogY2hhb3MtbWVzaC5vcmcvdjFhbHBoYTEKa2luZDogUG9kQ2hhb3MKbWV0YWRhdGE6CiAgbmFtZTogcG9kLWZhaWx1cmUKICBuYW1lc3BhY2U6IHBpbmdjYXAKc3BlYzoKICBhY3Rpb246IHBvZC1mYWlsdXJlIAogIG1vZGU6IG9uZSAKICBkdXJhdGlvbjogIjYwcyIKICBzZWxlY3RvcjoKICAgIGxhYmVsU2VsZWN0b3JzOgogICAgICAiYXBwLmt1YmVybmV0ZXMuaW8vY29tcG9uZW50IjogImNvbnRyb2xsZXItbWFuYWdlciIKICBzY2hlZHVsZXI6CiAgICBjcm9uOiAiQGV2ZXJ5IDVtIgo=
+
+    - name: Run e2e
+      run: |
+        SKIP_UP=y ./hack/e2e.sh -- --ginkgo.focus='Restarter'
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}

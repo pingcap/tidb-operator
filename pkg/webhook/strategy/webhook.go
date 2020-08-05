@@ -17,22 +17,46 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/openshift/generic-admission-server/pkg/apiserver"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 )
 
-// AdmissionWebhook is a admission webhook based on the registered strategies in the given registry
-type AdmissionWebhook struct {
+// StrategyAdmissionHook is a admission webhook based on the registered strategies in the given registry
+type StrategyAdmissionHook struct {
 	registry *StrategyRegistry
 }
 
-func NewAdmissionWebhook(registry *StrategyRegistry) *AdmissionWebhook {
-	return &AdmissionWebhook{registry}
+var _ apiserver.ValidatingAdmissionHook = &StrategyAdmissionHook{}
+var _ apiserver.MutatingAdmissionHook = &StrategyAdmissionHook{}
+
+func NewStrategyAdmissionHook(registry *StrategyRegistry) *StrategyAdmissionHook {
+	return &StrategyAdmissionHook{registry}
 }
 
-func (w *AdmissionWebhook) Validate(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
+func (w *StrategyAdmissionHook) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
+	return schema.GroupVersionResource{
+			Group:    "admission.tidb.pingcap.com",
+			Version:  "v1alpha1",
+			Resource: "pingcapresourcevalidations",
+		},
+		"pingcapresourcevalidation"
+}
+
+func (w *StrategyAdmissionHook) MutatingResource() (plural schema.GroupVersionResource, singular string) {
+	return schema.GroupVersionResource{
+			Group:    "admission.tidb.pingcap.com",
+			Version:  "v1alpha1",
+			Resource: "pingcapresourcemutations",
+		},
+		"pingcapresourcemutation"
+}
+
+func (w *StrategyAdmissionHook) Validate(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
 	s, ok := w.registry.Get(ar.Kind)
 	if !ok {
 		// no strategy registered
@@ -63,7 +87,7 @@ func (w *AdmissionWebhook) Validate(ar *admissionv1beta1.AdmissionRequest) *admi
 	return util.ARSuccess()
 }
 
-func (w *AdmissionWebhook) Mutate(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
+func (w *StrategyAdmissionHook) Admit(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
 	s, ok := w.registry.Get(ar.Kind)
 	if !ok {
 		return util.ARSuccess()
@@ -92,4 +116,8 @@ func (w *AdmissionWebhook) Mutate(ar *admissionv1beta1.AdmissionRequest) *admiss
 		return util.ARFail(err)
 	}
 	return util.ARPatch(patch)
+}
+
+func (w *StrategyAdmissionHook) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+	return nil
 }
