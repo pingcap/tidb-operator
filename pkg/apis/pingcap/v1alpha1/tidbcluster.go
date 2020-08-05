@@ -262,9 +262,6 @@ func (tc *TidbCluster) PDAllPodsStarted() bool {
 }
 
 func (tc *TidbCluster) PDAllMembersReady() bool {
-	if tc.Spec.PD == nil {
-		return true
-	}
 	if int(tc.PDStsDesiredReplicas()) != len(tc.Status.PD.Members) {
 		return false
 	}
@@ -315,9 +312,6 @@ func (tc *TidbCluster) TiKVAllPodsStarted() bool {
 }
 
 func (tc *TidbCluster) TiKVAllStoresReady() bool {
-	if tc.Spec.TiKV == nil {
-		return true
-	}
 	if int(tc.TiKVStsDesiredReplicas()) != len(tc.Status.TiKV.Stores) {
 		return false
 	}
@@ -408,9 +402,6 @@ func (tc *TidbCluster) TiDBAllPodsStarted() bool {
 }
 
 func (tc *TidbCluster) TiDBAllMembersReady() bool {
-	if tc.Spec.TiDB == nil {
-		return true
-	}
 	if int(tc.TiDBStsDesiredReplicas()) != len(tc.Status.TiDB.Members) {
 		return false
 	}

@@ -10,8 +10,8 @@ spec:
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
-  pdAddress:
-    - http://basic-pd-peer.default:2379
+  cluster:
+    name: basic
   tikv:
     baseImage: pingcap/tikv
     replicas: 1
