@@ -332,6 +332,15 @@ spec:
               type: object
             annotations:
               type: object
+            cluster:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
             configUpdateStrategy:
               type: string
             discovery:
@@ -2090,10 +2099,6 @@ spec:
               required:
               - replicas
               type: object
-            pdAddress:
-              items:
-                type: string
-              type: array
             priorityClassName:
               type: string
             pump:

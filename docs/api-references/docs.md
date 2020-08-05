@@ -1316,14 +1316,16 @@ bool
 </tr>
 <tr>
 <td>
-<code>pdAddress</code></br>
+<code>cluster</code></br>
 <em>
-[]string
+<a href="#tidbclusterref">
+TidbClusterRef
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>PdAddress is the PD address of this TiDB cluster, if configured, the components in this TidbCluster will join to this configured PD cluster.</p>
+<p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
 </td>
 </tr>
 </table>
@@ -15801,6 +15803,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
@@ -16209,14 +16212,16 @@ bool
 </tr>
 <tr>
 <td>
-<code>pdAddress</code></br>
+<code>cluster</code></br>
 <em>
-[]string
+<a href="#tidbclusterref">
+TidbClusterRef
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>PdAddress is the PD address of this TiDB cluster, if configured, the components in this TidbCluster will join to this configured PD cluster.</p>
+<p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
 </td>
 </tr>
 </tbody>

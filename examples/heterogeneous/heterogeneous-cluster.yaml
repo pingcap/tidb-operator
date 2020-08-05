@@ -6,6 +6,7 @@ kind: TidbCluster
 metadata:
   name: heterogeneous
 spec:
+  configUpdateStrategy: RollingUpdate
   version: v4.0.3
   timezone: UTC
   pvReclaimPolicy: Delete
