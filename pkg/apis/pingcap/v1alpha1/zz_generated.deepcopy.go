@@ -1582,6 +1582,11 @@ func (in *FlashServerConfig) DeepCopyInto(out *FlashServerConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.AdvertiseStatusAddr != nil {
+		in, out := &in.AdvertiseStatusAddr, &out.AdvertiseStatusAddr
+		*out = new(string)
+		**out = **in
+	}
 	in.TiKVServerConfig.DeepCopyInto(&out.TiKVServerConfig)
 	return
 }
