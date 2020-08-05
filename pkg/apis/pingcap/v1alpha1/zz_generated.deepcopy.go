@@ -7098,7 +7098,7 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 	if in.Cluster != nil {
 		in, out := &in.Cluster, &out.Cluster
 		*out = new(TidbClusterRef)
-		(*in).DeepCopyInto(*out)
+		**out = **in
 	}
 	return
 }
