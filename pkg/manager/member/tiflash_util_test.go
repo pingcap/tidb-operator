@@ -123,8 +123,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
 			},
 		},
 	}
@@ -221,8 +222,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
 			},
 		},
 	}
@@ -324,8 +326,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
 			},
 			Security: &v1alpha1.TiKVSecurityConfig{
 				CAPath:   pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey)),
@@ -427,8 +430,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info1"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				StatusAddr: pointer.StringPtr("0.0.0.0:20292"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
 			},
 		},
 	}
