@@ -311,6 +311,11 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.TableFilter != nil {
+		in, out := &in.TableFilter, &out.TableFilter
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -3433,6 +3438,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
+	}
+	if in.TableFilter != nil {
+		in, out := &in.TableFilter, &out.TableFilter
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 	return
