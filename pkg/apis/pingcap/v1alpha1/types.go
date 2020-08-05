@@ -224,6 +224,16 @@ type TidbClusterSpec struct {
 	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
+
+	// k8s Cluster Domain of TiDB cluster
+	// Optional: Defaults to omitted
+	// +optional
+	ClusterDomain string `json:"clusterDomain,omitempty"`
+
+	// DiscoveryUrl of TiDB cluster
+	// Optional: Defaults to omitted
+	// +optional
+	DiscoveryUrl  string `json:"discoveryUrl,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.

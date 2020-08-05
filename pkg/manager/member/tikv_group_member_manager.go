@@ -39,7 +39,6 @@ import (
 )
 
 const (
-
 	//find a better way to manage store only managed by tikv in Operator
 	tikvGroupStoreLimitPattern = `%s-tikv-group-\d+\.%s-tikv-group-peer\.%s\.svc\:\d+`
 )
@@ -454,6 +453,7 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 		EnableAdvertiseStatusAddr: enableAdvertiseStatusAddr,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tg.Spec.DataSubDir),
 		AdvertiseStatusAddr:       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",
+		ClusterDomain:             tc.Spec.ClusterDomain,
 	}
 	cm, err := getTikVConfigMapForTiKVSpec(&tg.Spec.TiKVSpec, tc, scriptModel)
 	if err != nil {

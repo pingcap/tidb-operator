@@ -50,7 +50,7 @@ fi
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
---advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
+--advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
 --host=0.0.0.0 \
 --path=${CLUSTER_NAME}-pd:2379 \
 --config=/etc/tidb/tidb.toml
@@ -81,6 +81,14 @@ type TidbStartScriptModel struct {
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
+	ClusterDomain   string
+}
+
+func (t *TidbStartScriptModel) FormatClusterDomain() string {
+	if len(t.ClusterDomain) > 0 {
+		return "." + t.ClusterDomain
+	}
+	return ""
 }
 
 func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
@@ -122,8 +130,8 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 # the general form of variable PEER_SERVICE_NAME is: "<clusterName>-pd-peer"
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" +
 	`
-domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
-discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc:10261"
+domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
+{{ if eq .DiscoveryUrl "" }}discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"{{ else }}discovery_url="{{ .DiscoveryUrl }}"{{ end }}
 encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
@@ -141,7 +149,7 @@ fi
 
 if nslookup ${domain} 2>/dev/null
 then
-echo "nslookup domain ${domain}.svc success"
+echo "nslookup domain ${domain}.svc{{ .FormatClusterDomain }} success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2
@@ -182,8 +190,17 @@ exec /pd-server ${ARGS}
 `))
 
 type PDStartScriptModel struct {
-	Scheme  string
-	DataDir string
+	Scheme        string
+	DataDir       string
+	ClusterDomain string
+	DiscoveryUrl  string
+}
+
+func (p *PDStartScriptModel) FormatClusterDomain() string {
+	if len(p.ClusterDomain) > 0 {
+		return "." + p.ClusterDomain
+	}
+	return ""
 }
 
 func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
@@ -221,7 +238,7 @@ fi
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
 --advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
@@ -245,6 +262,14 @@ type TiKVStartScriptModel struct {
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
+	ClusterDomain   string
+}
+
+func (t *TiKVStartScriptModel) FormatClusterDomain() string {
+	if len(t.ClusterDomain) > 0 {
+		return "." + t.ClusterDomain
+	}
+	return ""
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {

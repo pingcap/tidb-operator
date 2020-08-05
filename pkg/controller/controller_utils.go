@@ -296,6 +296,11 @@ func DiscoveryMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-discovery", clusterName)
 }
 
+// DiscoveryPeerMemberName returns the name of tidb discovery
+func DiscoveryPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-discovery-peer", clusterName)
+}
+
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{

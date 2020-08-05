@@ -60,22 +60,26 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		return "", fmt.Errorf("advertisePeerUrl is empty")
 	}
 	klog.Infof("advertisePeerUrl is: %s", advertisePeerUrl)
-	strArr := strings.Split(advertisePeerUrl, ".")
-	if len(strArr) != 4 {
+	strArr := strings.Split(advertisePeerUrl, ":")
+	hostArr := strings.Split(strArr[0], ".")
+
+	if len(hostArr) < 4 || hostArr[3] != "svc" {
 		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
-	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
+	podName, peerServiceName, ns := hostArr[0], hostArr[1], hostArr[2]
+	clusterDomain := strings.Join(hostArr[4:], ".")
 	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
+
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+	tc, err := td.cli.PingcapV1alpha1().TidbClusters(podNamespace).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
-	keyName := fmt.Sprintf("%s/%s", ns, tcName)
+	keyName := fmt.Sprintf("%s/%s/%s", ns, tcName, clusterDomain)
 	// TODO: the replicas should be the total replicas of pd sets.
 	replicas := tc.Spec.PD.Replicas
 
@@ -89,7 +93,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) {
+	if len(currentCluster.peers) == int(replicas) && podNamespace == ns && clusterDomain == tc.Spec.ClusterDomain {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}
