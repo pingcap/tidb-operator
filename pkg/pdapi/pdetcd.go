@@ -27,6 +27,8 @@ type PDEtcdClient interface {
 	PutKey(key, value string) error
 	// DeleteKey will delete key from the target pd etcd cluster
 	DeleteKey(key string) error
+	// Close will close the etcd connection
+	Close() error
 }
 
 type pdEtcdClient struct {
@@ -47,6 +49,10 @@ func NewPdEtcdClient(url string, timeout time.Duration, tlsConfig *tls.Config) (
 		etcdClient: etcdClient,
 		timeout:    timeout,
 	}, nil
+}
+
+func (pec *pdEtcdClient) Close() error {
+	return pec.etcdClient.Close()
 }
 
 func (pec *pdEtcdClient) PutKey(key, value string) error {
