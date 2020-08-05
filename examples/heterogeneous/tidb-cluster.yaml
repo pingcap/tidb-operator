@@ -9,8 +9,10 @@ spec:
   version: v4.0.3
   timezone: UTC
   pvReclaimPolicy: Delete
+  imagePullPolicy: IfNotPresent
   discovery: {}
   pd:
+    imagePullPolicy: IfNotPresent
     baseImage: pingcap/pd
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
@@ -19,6 +21,7 @@ spec:
       storage: "1Gi"
     config: {}
   tikv:
+    imagePullPolicy: IfNotPresent
     baseImage: pingcap/tikv
     replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
@@ -30,6 +33,7 @@ spec:
         # In basic examples, we set this to avoid using too much storage.
         reserve-space: "0MB"
   tidb:
+    imagePullPolicy: IfNotPresent
     baseImage: pingcap/tidb
     replicas: 1
     service:

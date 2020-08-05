@@ -164,7 +164,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	}
 
 	// checkout pd config
-	pdCfg, err := oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.PDAddress, tc.Spec.PD, tc.IsTLSClusterEnabled()).GetConfig()
+	var pdCfg *pdapi.PDConfigFromAPI
+	if tc.Spec.Cluster != nil && tc.Spec.PD == nil {
+		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
+	} else {
+		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
+	}
+
 	if err != nil {
 		klog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
@@ -516,7 +522,14 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 
 	// delete failover member store manually
 	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
-		pdclient := oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.Spec.PDAddress, tc.Spec.PD, tc.IsTLSClusterEnabled())
+
+		var pdclient pdapi.PDClient
+		if tc.Spec.Cluster != nil && tc.Spec.PD == nil {
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		} else {
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		}
+
 		for _, v := range tc.Status.TiKV.Stores {
 			ordinal, err := util.GetOrdinalFromPodName(v.PodName)
 			if err != nil {
