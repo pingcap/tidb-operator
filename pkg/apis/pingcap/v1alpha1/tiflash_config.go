@@ -34,8 +34,10 @@ type FlashServerConfig struct {
 	// +optional
 	EngineAddr *string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
 	// +optional
-	StatusAddr       *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
-	TiKVServerConfig `json:",inline"`
+	StatusAddr *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	// +optional
+	AdvertiseStatusAddr *string `json:"advertise-status-addr,omitempty" toml:"advertise-status-addr,omitempty"`
+	TiKVServerConfig    `json:",inline"`
 }
 
 // ProxyConfig is the configuration of TiFlash proxy process.
