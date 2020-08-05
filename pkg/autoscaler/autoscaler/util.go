@@ -29,13 +29,7 @@ import (
 // checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
 // upgrading, scaling
 func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
-	if operatorUtils.IsStatefulSetUpgrading(set) {
-		return false
-	}
-	if operatorUtils.IsStatefulSetScaling(set) {
-		return false
-	}
-	return true
+	return !operatorUtils.IsStatefulSetUpgrading(set) && !operatorUtils.IsStatefulSetScaling(set)
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
@@ -63,22 +57,15 @@ func checkAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.Statefu
 	if !checkStsAutoScalingPrerequisites(sts) {
 		return false
 	}
-	if memberType == v1alpha1.TiDBMemberType {
-		if tc.Status.TiDB.Phase != v1alpha1.NormalPhase {
-			return false
-		}
-	} else if memberType == v1alpha1.TiKVMemberType {
-		if !tc.Status.TiKV.Synced {
-			return false
-		}
-		if tc.Status.TiKV.Phase != v1alpha1.NormalPhase {
-			return false
-		}
-	} else {
+	switch memberType {
+	case v1alpha1.TiDBMemberType:
+		return tc.Status.TiDB.Phase == v1alpha1.NormalPhase
+	case v1alpha1.TiKVMemberType:
+		return tc.Status.TiKV.Synced && tc.Status.TiKV.Phase == v1alpha1.NormalPhase
+	default:
 		// Unknown MemberType
 		return false
 	}
-	return true
 }
 
 // limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
