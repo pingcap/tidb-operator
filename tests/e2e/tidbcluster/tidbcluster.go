@@ -1251,7 +1251,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		heterogeneousTc.Spec.PD = nil
 		heterogeneousTc.Spec.TiKV.Replicas = 1
 		heterogeneousTc.Spec.TiDB.Replicas = 1
-		heterogeneousTc.Spec.PDAddress = []string{originTc.Scheme() + "://" + controller.PDPeerMemberName(originTc.Name) + "." + originTc.GetNamespace() + ":2379"}
+		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+			Name: originTc.Name,
+		}
 		err = genericCli.Create(context.TODO(), heterogeneousTc)
 		framework.ExpectNoError(err, "Expected  Heterogeneous TiDB cluster created")
 
