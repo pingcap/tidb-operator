@@ -112,6 +112,10 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		}
 	}
 
+	if tidb := tac.Spec.TiDB; tidb != nil {
+		def(&tidb.BasicAutoScalerSpec)
+	}
+
 	if tikv := tac.Spec.TiKV; tikv != nil {
 		def(&tikv.BasicAutoScalerSpec)
 		for id, m := range tikv.Metrics {
@@ -128,14 +132,8 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 		}
 	}
 
-	if tidb := tac.Spec.TiDB; tidb != nil {
-		def(&tidb.BasicAutoScalerSpec)
-	}
-
-	if tac.Spec.Monitor != nil {
-		if len(tac.Spec.Monitor.Namespace) < 1 {
-			tac.Spec.Monitor.Namespace = tac.Namespace
-		}
+	if monitor := tac.Spec.Monitor; monitor != nil && len(monitor.Namespace) < 1 {
+		monitor.Namespace = tac.Namespace
 	}
 }
 
