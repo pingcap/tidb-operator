@@ -3067,10 +3067,47 @@ int64
 </tr>
 <tr>
 <td>
+<code>tcp_port_secure</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 9000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>https_port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 8123</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logger</code></br>
 <em>
 <a href="#flashlogger">
 FlashLogger
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#flashsecurity">
+FlashSecurity
 </a>
 </em>
 </td>
@@ -4214,6 +4251,56 @@ int32
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 10</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashsecurity">FlashSecurity</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#commonconfig">CommonConfig</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ca_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>key_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
