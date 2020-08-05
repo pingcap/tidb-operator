@@ -4072,7 +4072,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Is log rotate enabled.</p>
+<p>Deprecated in v4.0.0
+Is log rotate enabled.</p>
 </td>
 </tr>
 <tr>
@@ -4851,7 +4852,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Disable automatic timestamps in output.</p>
+<p>Deprecated in v3.0.5. Use EnableTimestamp instead
+Disable automatic timestamps in output.</p>
 </td>
 </tr>
 <tr>
@@ -5812,7 +5814,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>NamespaceClassifier is for classifying stores/regions into different
+<p>Deprecated in v4.0.0
+NamespaceClassifier is for classifying stores/regions into different
 namespaces.
 Optional: Defaults to true</p>
 </td>
@@ -7419,7 +7422,8 @@ uint64
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 300000</p>
+<p>Deprecated in v4.0.0
+Optional: Defaults to 300000</p>
 </td>
 </tr>
 </tbody>
@@ -9738,6 +9742,7 @@ TxnLocalLatches
 </td>
 <td>
 <em>(Optional)</em>
+<p>Deprecated in v4.0.0</p>
 </td>
 </tr>
 <tr>
@@ -11516,7 +11521,8 @@ uint
 </td>
 <td>
 <em>(Optional)</em>
-<p>MaxTxnTimeUse is the max time a Txn may use (in seconds) from its startTS to commitTS.
+<p>Deprecated in v4.0.0
+MaxTxnTimeUse is the max time a Txn may use (in seconds) from its startTS to commitTS.
 Optional: Defaults to 590</p>
 </td>
 </tr>
@@ -14982,6 +14988,7 @@ int64
 </td>
 <td>
 <em>(Optional)</em>
+<p>Deprecated in v4.0.0</p>
 </td>
 </tr>
 <tr>
@@ -15517,6 +15524,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Deprecated in v4.0.0</p>
 </td>
 </tr>
 <tr>
