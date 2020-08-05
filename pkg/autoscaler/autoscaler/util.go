@@ -95,50 +95,41 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
 	}
-	if tac.Spec.TiKV != nil {
-		if tac.Spec.TiKV.MinReplicas == nil {
-			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(1)
+
+	def := func(spec *v1alpha1.BasicAutoScalerSpec) {
+		if spec.MinReplicas == nil {
+			spec.MinReplicas = pointer.Int32Ptr(1)
 		}
-		if tac.Spec.TiKV.ScaleOutIntervalSeconds == nil {
-			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+		if spec.ScaleOutIntervalSeconds == nil {
+			spec.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
 		}
-		if tac.Spec.TiKV.ScaleInIntervalSeconds == nil {
-			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+		if spec.ScaleInIntervalSeconds == nil {
+			spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 		}
 		// If ExternalEndpoint is not provided, we would set default metrics
-		if tac.Spec.TiKV.ExternalEndpoint == nil {
-			if tac.Spec.TiKV.MetricsTimeDuration == nil {
-				tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
-			}
-		}
-		for id, m := range tac.Spec.TiKV.Metrics {
-			if m.Resource != nil && m.Resource.Name == corev1.ResourceStorage {
-				if m.LeastStoragePressurePeriodSeconds == nil {
-					m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
-				}
-				if m.LeastRemainAvailableStoragePercent == nil {
-					m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
-				}
-				tac.Spec.TiKV.Metrics[id] = m
-			}
+		if spec.ExternalEndpoint == nil && spec.MetricsTimeDuration == nil {
+			spec.MetricsTimeDuration = pointer.StringPtr("3m")
 		}
 	}
 
-	if tac.Spec.TiDB != nil {
-		if tac.Spec.TiDB.MinReplicas == nil {
-			tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(1)
-		}
-		if tac.Spec.TiDB.ScaleOutIntervalSeconds == nil {
-			tac.Spec.TiDB.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
-		}
-		if tac.Spec.TiDB.ScaleInIntervalSeconds == nil {
-			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
-		}
-		if tac.Spec.TiDB.ExternalEndpoint == nil {
-			if tac.Spec.TiDB.MetricsTimeDuration == nil {
-				tac.Spec.TiDB.MetricsTimeDuration = pointer.StringPtr("3m")
+	if tikv := tac.Spec.TiKV; tikv != nil {
+		def(&tikv.BasicAutoScalerSpec)
+		for id, m := range tikv.Metrics {
+			if m.Resource == nil || m.Resource.Name != corev1.ResourceStorage {
+				continue
 			}
+			if m.LeastStoragePressurePeriodSeconds == nil {
+				m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
+			}
+			if m.LeastRemainAvailableStoragePercent == nil {
+				m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
+			}
+			tikv.Metrics[id] = m
 		}
+	}
+
+	if tidb := tac.Spec.TiDB; tidb != nil {
+		def(&tidb.BasicAutoScalerSpec)
 	}
 
 	if tac.Spec.Monitor != nil {
