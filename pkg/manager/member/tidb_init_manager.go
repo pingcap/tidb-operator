@@ -47,8 +47,6 @@ const (
 	startScriptDir      = "/usr/local/bin"
 	startKey            = "start-script"
 	initStartKey        = "init-start-script"
-	// initContainerImage is the image for init container
-	initContainerImage = "busybox:1.31.1"
 )
 
 // InitManager implements the logic for syncing TidbInitializer.
@@ -329,7 +327,7 @@ func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batch
 			InitContainers: []corev1.Container{
 				{
 					Name:    initContainerName,
-					Image:   initContainerImage,
+					Image:   ti.Spec.Image,
 					Command: initcmds,
 					VolumeMounts: []corev1.VolumeMount{
 						{
@@ -358,6 +356,7 @@ func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batch
 
 	if ti.Spec.ImagePullPolicy != nil {
 		podSpec.Spec.Containers[0].ImagePullPolicy = *ti.Spec.ImagePullPolicy
+		podSpec.Spec.InitContainers[0].ImagePullPolicy = *ti.Spec.ImagePullPolicy
 	}
 	if ti.Spec.Resources != nil {
 		podSpec.Spec.Containers[0].Resources = *ti.Spec.Resources
