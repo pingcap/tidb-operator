@@ -6548,6 +6548,9 @@ spec:
                     max-server-connections:
                       format: int64
                       type: integer
+                    max-index-length:
+                      format: int64
+                      type: integer
                     mem-quota-query:
                       format: int64
                       type: integer
@@ -15036,6 +15039,9 @@ spec:
                   format: int32
                   type: integer
                 max-server-connections:
+                  format: int64
+                  type: integer
+                max-index-length:
                   format: int64
                   type: integer
                 mem-quota-query:
