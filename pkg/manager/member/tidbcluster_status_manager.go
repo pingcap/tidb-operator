@@ -120,6 +120,9 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	if err != nil {
 		return err
 	}
+	if tc.IsTLSClusterEnabled() {
+		defer pdEtcdClient.Close()
+	}
 	var prometheusExist bool
 	var grafanaExist bool
 	if tc.Status.Monitor != nil {
