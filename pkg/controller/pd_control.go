@@ -20,7 +20,7 @@ import (
 
 // GetPDClient gets the pd client from the TidbCluster
 func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) pdapi.PDClient {
-	if tc.Spec.Cluster != nil && tc.Spec.PD == nil {
+	if tc.IsHeterogeneous() {
 		return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	}
 	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())

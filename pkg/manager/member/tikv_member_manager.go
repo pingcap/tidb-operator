@@ -585,7 +585,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.Spec.Cluster != nil && tc.Spec.PD == nil {
+	if tc.IsHeterogeneous() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Name) + ":2379"

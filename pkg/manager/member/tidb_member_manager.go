@@ -399,7 +399,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		PluginList:      strings.Join(plugins, ","),
 	}
 
-	if tc.Spec.Cluster != nil && tc.Spec.PD == nil {
+	if tc.IsHeterogeneous() {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"

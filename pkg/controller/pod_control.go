@@ -119,7 +119,7 @@ func (rpc *realPodControl) UpdateMetaInfo(tc *v1alpha1.TidbCluster, pod *corev1.
 	storeID := labels[label.StoreIDLabelKey]
 
 	var pdClient pdapi.PDClient
-	if tc.Spec.Cluster != nil && tc.Spec.PD == nil {
+	if tc.IsHeterogeneous() {
 		pdClient = rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 	} else {
 		pdClient = rpc.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tcName, tc.IsTLSClusterEnabled())
