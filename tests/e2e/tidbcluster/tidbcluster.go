@@ -31,7 +31,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
@@ -56,7 +55,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
@@ -91,7 +89,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	 */
 	var stsGetter typedappsv1.StatefulSetsGetter
 	var crdUtil *tests.CrdTestUtil
-	var pdControl pdapi.PDControlInterface
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -124,9 +121,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, stsGetter)
-		kubecli, err := kubernetes.NewForConfig(config)
-		framework.ExpectNoError(err, "failed to create kubecli")
-		pdControl = pdapi.NewDefaultPDControl(kubecli)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -1263,9 +1257,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected  Heterogeneous TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
-
-		pdClient := pdControl.GetPDClient(pdapi.Namespace(originTc.GetNamespace()), originTc.Name, originTc.IsTLSClusterEnabled())
-
 		err = wait.PollImmediate(15*time.Second, 30*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
@@ -1292,13 +1283,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 
-			storeInfo, err := pdClient.GetStores()
-			if err != nil {
-				e2elog.Logf("failed to get heterogeneous cluster  storeInfo :%v", err)
-				return false, nil
-			}
-			if storeInfo == nil || storeInfo.Count != 2 {
-				e2elog.Logf("failed to create heterogeneous cluster,stores  (current: %d)", storeInfo.Count)
+			if len(tc.Status.TiKV.Stores) == 2 {
+				e2elog.Logf("failed to create heterogeneous cluster , stores  (current: %d)", len(tc.Status.TiKV.Stores))
 				return false, nil
 			}
 			e2elog.Logf("create heterogeneous tc successfully")
