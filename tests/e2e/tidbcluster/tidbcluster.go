@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -55,6 +56,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	clientset "k8s.io/client-go/kubernetes"
 	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	restclient "k8s.io/client-go/rest"
@@ -89,6 +91,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	 */
 	var stsGetter typedappsv1.StatefulSetsGetter
 	var crdUtil *tests.CrdTestUtil
+	var pdControl pdapi.PDControlInterface
 
 	ginkgo.BeforeEach(func() {
 		ns = f.Namespace.Name
@@ -121,6 +124,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 		oa = tests.NewOperatorActions(cli, c, asCli, aggrCli, apiExtCli, tests.DefaultPollInterval, ocfg, e2econfig.TestConfig, nil, fw, f)
 		crdUtil = tests.NewCrdTestUtil(cli, c, asCli, stsGetter)
+		kubecli, err := kubernetes.NewForConfig(config)
+		framework.ExpectNoError(err, "failed to create kubecli")
+		pdControl = pdapi.NewDefaultPDControl(kubecli)
 	})
 
 	ginkgo.AfterEach(func() {
@@ -797,7 +803,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
-
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
 			if err != nil {
@@ -1256,6 +1261,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		}
 		err = genericCli.Create(context.TODO(), heterogeneousTc)
 		framework.ExpectNoError(err, "Expected  Heterogeneous TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+
+		pdClient := pdControl.GetPDClient(pdapi.Namespace(originTc.GetNamespace()), originTc.Name, originTc.IsTLSClusterEnabled())
 
 		err = wait.PollImmediate(15*time.Second, 30*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
@@ -1280,6 +1289,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					e2elog.Logf("failed to create heterogeneous cluster,tidb  (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
 				}
 
+				return false, nil
+			}
+
+			storeInfo, err := pdClient.GetStores()
+			if err != nil {
+				e2elog.Logf("failed to get heterogeneous cluster  storeInfo")
+				return false, nil
+			}
+			if storeInfo == nil || storeInfo.Count != 2 {
+				e2elog.Logf("failed to create heterogeneous cluster,stores  (current: %d)", storeInfo.Count)
 				return false, nil
 			}
 			e2elog.Logf("create heterogeneous tc successfully")

@@ -108,14 +108,7 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	if tc.Spec.PD == nil {
 		return nil
 	}
-
-	var pdEtcdClient pdapi.PDEtcdClient
-	var err error
-	if tc.IsHeterogeneous() {
-		pdEtcdClient, err = tcsm.pdControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
-	} else {
-		pdEtcdClient, err = tcsm.pdControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
-	}
+	pdEtcdClient, err := tcsm.pdControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 
 	if err != nil {
 		return err
