@@ -61,7 +61,7 @@ func (hc *httpClient) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, err
 		RootCAs:      rootCAs,
 		Certificates: []tls.Certificate{tlsCert},
 	}
-	httpClient.Transport = &http.Transport{TLSClientConfig: config}
+	httpClient.Transport = &http.Transport{TLSClientConfig: config, DisableKeepAlives: true}
 
 	return httpClient, nil
 }
