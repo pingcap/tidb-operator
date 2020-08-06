@@ -951,11 +951,6 @@ func (in *DMClusterStatus) DeepCopyInto(out *DMClusterStatus) {
 	*out = *in
 	in.Master.DeepCopyInto(&out.Master)
 	in.Worker.DeepCopyInto(&out.Worker)
-	if in.Monitor != nil {
-		in, out := &in.Monitor, &out.Monitor
-		*out = new(TidbMonitorRef)
-		**out = **in
-	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]DMClusterCondition, len(*in))

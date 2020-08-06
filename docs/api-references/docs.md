@@ -4403,18 +4403,6 @@ WorkerStatus
 </tr>
 <tr>
 <td>
-<code>monitor</code></br>
-<em>
-<a href="#tidbmonitorref">
-TidbMonitorRef
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>conditions</code></br>
 <em>
 <a href="#dmclustercondition">
@@ -17990,7 +17978,6 @@ InitializePhase
 <h3 id="tidbmonitorref">TidbMonitorRef</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#dmclusterstatus">DMClusterStatus</a>, 
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
