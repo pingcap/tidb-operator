@@ -70,10 +70,6 @@ func setTidbClusterSpecDefault(tc *v1alpha1.TidbCluster) {
 	if tc.Spec.PVReclaimPolicy == nil {
 		tc.Spec.PVReclaimPolicy = &retainPVP
 	}
-
-	if tc.Spec.Cluster == nil {
-		tc.Spec.Cluster = &v1alpha1.TidbClusterRef{}
-	}
 }
 
 func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {

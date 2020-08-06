@@ -227,7 +227,7 @@ type TidbClusterSpec struct {
 
 	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
 	// +optional
-	Cluster *TidbClusterRef `json:"cluster"`
+	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
