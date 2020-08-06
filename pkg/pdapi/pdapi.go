@@ -114,11 +114,15 @@ type pdClient struct {
 
 // NewPDClient returns a new PDClient
 func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDClient {
+	var disableKeepalive bool
+	if tlsConfig != nil {
+		disableKeepalive = true
+	}
 	return &pdClient{
 		url: url,
 		httpClient: &http.Client{
 			Timeout:   timeout,
-			Transport: &http.Transport{TLSClientConfig: tlsConfig},
+			Transport: &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: disableKeepalive},
 		},
 	}
 }
