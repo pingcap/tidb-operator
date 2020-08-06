@@ -88,7 +88,8 @@ func getClient(endpoint *v1alpha1.ExternalEndpoint, kubecli kubernetes.Interface
 			return nil, err
 		}
 		tr := &http.Transport{
-			TLSClientConfig: tlsConfig,
+			TLSClientConfig:   tlsConfig,
+			DisableKeepAlives: true,
 		}
 		client = &http.Client{
 			Timeout:   defaultTimeout,
