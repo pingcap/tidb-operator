@@ -71,7 +71,7 @@ type WorkerConfig struct {
 	// +optional
 	LogFormat *string `toml:"log-format,omitempty" json:"log-format,omitempty"`
 
-	// KeepAliveTTL is the keepalive ttl dm-worker write to dm-master embed etcd
+	// KeepAliveTTL is the keepalive TTL when dm-worker writes to the embedded etcd of dm-master
 	// Optional: Defaults to 10
 	// +optional
 	KeepAliveTTL *int64 `toml:"keepalive-ttl,omitempty" json:"keepalive-ttl,omitempty"`
@@ -82,7 +82,7 @@ type WorkerConfig struct {
 
 // DM common security config
 type DMSecurityConfig struct {
-	// SSLCA is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty
+	// SSLCA is the path of file that contains list of trusted SSL CAs.
 	// +optional
 	SSLCA *string `toml:"ssl-ca,omitempty" json:"ssl-ca,omitempty" yaml:"ssl-ca,omitempty"`
 	// SSLCert is the path of file that contains X509 certificate in PEM format.

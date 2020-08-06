@@ -3482,7 +3482,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSecurityConfig(ref common.ReferenceCallb
 				Properties: map[string]spec.Schema{
 					"cacert-path": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CAPath is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty",
+							Description: "CAPath is the path of file that contains list of trusted SSL CAs.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -10727,14 +10727,14 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerConfig(ref common.ReferenceCallback)
 					},
 					"keepalive-ttl": {
 						SchemaProps: spec.SchemaProps{
-							Description: "KeepAliveTTL is the keepalive ttl dm-worker write to dm-master embed etcd Optional: Defaults to 10",
+							Description: "KeepAliveTTL is the keepalive TTL when dm-worker writes to the embedded etcd of dm-master Optional: Defaults to 10",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
 					"ssl-ca": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SSLCA is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty",
+							Description: "SSLCA is the path of file that contains list of trusted SSL CAs.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

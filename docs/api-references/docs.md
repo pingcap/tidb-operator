@@ -4491,7 +4491,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SSLCA is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn&rsquo;t be empty</p>
+<p>SSLCA is the path of file that contains list of trusted SSL CAs.</p>
 </td>
 </tr>
 <tr>
@@ -8147,7 +8147,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>CAPath is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn&rsquo;t be empty</p>
+<p>CAPath is the path of file that contains list of trusted SSL CAs.</p>
 </td>
 </tr>
 <tr>
@@ -18574,7 +18574,7 @@ int64
 </td>
 <td>
 <em>(Optional)</em>
-<p>KeepAliveTTL is the keepalive ttl dm-worker write to dm-master embed etcd
+<p>KeepAliveTTL is the keepalive TTL when dm-worker writes to the embedded etcd of dm-master
 Optional: Defaults to 10</p>
 </td>
 </tr>
