@@ -262,7 +262,7 @@ type TiKVStartScriptModel struct {
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
-	ClusterDomain   string
+	ClusterDomain             string
 }
 
 func (t *TiKVStartScriptModel) FormatClusterDomain() string {

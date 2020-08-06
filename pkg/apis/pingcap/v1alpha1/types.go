@@ -233,7 +233,7 @@ type TidbClusterSpec struct {
 	// DiscoveryUrl of TiDB cluster
 	// Optional: Defaults to omitted
 	// +optional
-	DiscoveryUrl  string `json:"discoveryUrl,omitempty"`
+	DiscoveryUrl string `json:"discoveryUrl,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
