@@ -6545,10 +6545,10 @@ spec:
                     lower-case-table-names:
                       format: int32
                       type: integer
-                    max-server-connections:
+                    max-index-length:
                       format: int64
                       type: integer
-                    max-index-length:
+                    max-server-connections:
                       format: int64
                       type: integer
                     mem-quota-query:
@@ -15038,10 +15038,10 @@ spec:
                 lower-case-table-names:
                   format: int32
                   type: integer
-                max-server-connections:
+                max-index-length:
                   format: int64
                   type: integer
-                max-index-length:
+                max-server-connections:
                   format: int64
                   type: integer
                 mem-quota-query:

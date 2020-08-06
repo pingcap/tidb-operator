@@ -9680,6 +9680,18 @@ string
 </tr>
 <tr>
 <td>
+<code>max-index-length</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3072</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>mem-quota-query</code></br>
 <em>
 int64
