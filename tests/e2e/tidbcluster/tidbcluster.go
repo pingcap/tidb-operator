@@ -1294,7 +1294,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			storeInfo, err := pdClient.GetStores()
 			if err != nil {
-				e2elog.Logf("failed to get heterogeneous cluster  storeInfo")
+				e2elog.Logf("failed to get heterogeneous cluster  storeInfo :%v", err)
 				return false, nil
 			}
 			if storeInfo == nil || storeInfo.Count != 2 {
