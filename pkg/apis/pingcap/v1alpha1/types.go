@@ -1175,7 +1175,7 @@ type BackupSpec struct {
 type DumplingConfig struct {
 	// Options means options for backup data to remote storage with dumpling.
 	Options []string `json:"options,omitempty"`
-	// --- Deprecated --- TableFilter means Table filter expression for 'db.table' matching
+	// Deprecated please use Backup TableFilter instead. TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
@@ -1186,9 +1186,9 @@ type BRConfig struct {
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster
 	ClusterNamespace string `json:"clusterNamespace,omitempty"`
-	// --- Deprecated --- DB is the specific DB which will be backed-up or restored
+	// Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
-	// --- Deprecated --- Table is the specific table which will be backed-up or restored
+	// Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`

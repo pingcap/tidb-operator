@@ -42,25 +42,25 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 
 	tests := []*testcase{
 		{
-			name:              "backup filter is false and dumpling config is empty",
+			name:              "backup filter is empty and dumpling config is empty",
 			hasOptions:        false,
 			hasBackupFilter:   false,
 			hasDumplingFilter: false,
 		},
 		{
-			name:              "backup filter is false and customize dumpling options but not set table regex",
+			name:              "backup filter is empty and customize dumpling options but not set table regex",
 			hasOptions:        true,
 			hasBackupFilter:   false,
 			hasDumplingFilter: false,
 		},
 		{
-			name:              "backup filter is false and customize dumpling table regex but not customize options",
+			name:              "backup filter is empty and customize dumpling table regex but not customize options",
 			hasOptions:        false,
 			hasBackupFilter:   false,
 			hasDumplingFilter: true,
 		},
 		{
-			name:              "backup filter is false and customize dumpling table regex and customize options",
+			name:              "backup filter is empty and customize dumpling table regex and customize options",
 			hasOptions:        true,
 			hasBackupFilter:   false,
 			hasDumplingFilter: true,

@@ -2052,7 +2052,7 @@ string
 </em>
 </td>
 <td>
-<p>&mdash; Deprecated &mdash; DB is the specific DB which will be backed-up or restored</p>
+<p>Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. DB is the specific DB which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -2063,7 +2063,7 @@ string
 </em>
 </td>
 <td>
-<p>&mdash; Deprecated &mdash; Table is the specific table which will be backed-up or restored</p>
+<p>Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. Table is the specific table which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -3951,7 +3951,7 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
-<p>&mdash; Deprecated &mdash; TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>Deprecated please use Backup TableFilter instead. TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>

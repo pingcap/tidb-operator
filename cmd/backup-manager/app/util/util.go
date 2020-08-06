@@ -176,17 +176,20 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
-	} else {
-		if ((backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "") ||
-			(backup.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "") {
-			if (backup.Spec.Type == v1alpha1.BackupTypeDB || backup.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "" {
-				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
-			}
-			if backup.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "" {
-				args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
-			}
-		} else {
-			args = append(args, defaultTableFilterOptions...)
+		return args, nil
+	}
+
+	switch backup.Spec.Type {
+	case v1alpha1.BackupTypeTable:
+		if config.BR.Table != "" {
+			args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+		}
+		if config.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+		}
+	case v1alpha1.BackupTypeDB:
+		if config.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
 		}
 	}
 
@@ -244,17 +247,20 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
-	} else {
-		if ((restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "") ||
-			restore.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "" {
-			if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && config.BR.DB != "" {
-				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
-			}
-			if restore.Spec.Type == v1alpha1.BackupTypeTable && config.BR.Table != "" {
-				args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
-			}
-		} else {
-			args = append(args, defaultTableFilterOptions...)
+		return args, nil
+	}
+
+	switch restore.Spec.Type {
+	case v1alpha1.BackupTypeTable:
+		if config.BR.Table != "" {
+			args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+		}
+		if config.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+		}
+	case v1alpha1.BackupTypeDB:
+		if config.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
 		}
 	}
 
