@@ -1449,6 +1449,9 @@ type IngressSpec struct {
 	TLS []extensionsv1beta1.IngressTLS `json:"tls,omitempty"`
 }
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // +k8s:openapi-gen=true
 // DMCluster is the control script's spec
 type DMCluster struct {
@@ -1462,6 +1465,18 @@ type DMCluster struct {
 	// +k8s:openapi-gen=false
 	// Most recently observed status of the dm cluster
 	Status DMClusterStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// +k8s:openapi-gen=true
+// DMClusterList is DMCluster list
+type DMClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ListMeta `json:"metadata"`
+
+	Items []DMCluster `json:"items"`
 }
 
 // +k8s:openapi-gen=true
@@ -1479,7 +1494,7 @@ type DMClusterSpec struct {
 
 	// dm-master cluster spec
 	// +optional
-	Master *MasterSpec `json:"master,omitempty"`
+	Master *MasterSpec `json:"master"`
 
 	// dm-worker cluster spec
 	// +optional
@@ -1545,7 +1560,7 @@ type DMClusterSpec struct {
 
 // DMClusterStatus represents the current status of a dm cluster.
 type DMClusterStatus struct {
-	Master MasterStatus `json:"master,omitempty"`
+	Master MasterStatus `json:"master"`
 	Worker WorkerStatus `json:"worker,omitempty"`
 
 	// Represents the latest available observations of a dm cluster's state.

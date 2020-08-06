@@ -14,6 +14,8 @@ Resource Types:
 </li><li>
 <a href="#backupschedule">BackupSchedule</a>
 </li><li>
+<a href="#dmcluster">DMCluster</a>
+</li><li>
 <a href="#restore">Restore</a>
 </li><li>
 <a href="#tidbgroup">TiDBGroup</a>
@@ -460,6 +462,292 @@ BackupScheduleStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmcluster">DMCluster</h3>
+<p>
+<p>DMCluster is the control script&rsquo;s spec</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+pingcap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>DMCluster</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#dmclusterspec">
+DMClusterSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec defines the behavior of a dm cluster</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#dmdiscoveryspec">
+DMDiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master</code></br>
+<em>
+<a href="#masterspec">
+MasterSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-master cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>worker</code></br>
+<em>
+<a href="#workerspec">
+WorkerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-worker cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the dm cluster is paused and will not be processed by
+the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TODO: remove optional after defaulting logic introduced
+dm cluster version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>schedulerName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SchedulerName of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by DM cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<p>ImagePullPolicy of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVReclaim</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsCluster</code></br>
+<em>
+<a href="#tlscluster">
+TLSCluster
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between DM server components
+Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of DM cluster Pods
+Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#dmclusterstatus">
+DMClusterStatus
+</a>
+</em>
+</td>
+<td>
+<p>Most recently observed status of the dm cluster</p>
 </td>
 </tr>
 </tbody>
@@ -3760,275 +4048,6 @@ int64
 the capacity storage. If the available storage is lower than the capacity storage * LeastRemainAvailableStoragePercent,
 the storage status will become storage pressure and ready to be scaled out.
 LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the default value would be 10</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="dmcluster">DMCluster</h3>
-<p>
-<p>DMCluster is the control script&rsquo;s spec</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>metadata</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
-Kubernetes meta/v1.ObjectMeta
-</a>
-</em>
-</td>
-<td>
-Refer to the Kubernetes API documentation for the fields of the
-<code>metadata</code> field.
-</td>
-</tr>
-<tr>
-<td>
-<code>spec</code></br>
-<em>
-<a href="#dmclusterspec">
-DMClusterSpec
-</a>
-</em>
-</td>
-<td>
-<p>Spec defines the behavior of a dm cluster</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>discovery</code></br>
-<em>
-<a href="#dmdiscoveryspec">
-DMDiscoverySpec
-</a>
-</em>
-</td>
-<td>
-<p>Discovery spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>master</code></br>
-<em>
-<a href="#masterspec">
-MasterSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>dm-master cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>worker</code></br>
-<em>
-<a href="#workerspec">
-WorkerSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>dm-worker cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>paused</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Indicates that the dm cluster is paused and will not be processed by
-the controller.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>version</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-dm cluster version</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>schedulerName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>SchedulerName of DM cluster Pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pvReclaimPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
-Kubernetes core/v1.PersistentVolumeReclaimPolicy
-</a>
-</em>
-</td>
-<td>
-<p>Persistent volume reclaim policy applied to the PVs that consumed by DM cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>imagePullPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
-Kubernetes core/v1.PullPolicy
-</a>
-</em>
-</td>
-<td>
-<p>ImagePullPolicy of DM cluster Pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>imagePullSecrets</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
-[]Kubernetes core/v1.LocalObjectReference
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enablePVReclaim</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
-Optional: Defaults to false</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tlsCluster</code></br>
-<em>
-<a href="#tlscluster">
-TLSCluster
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable the TLS connection between DM server components
-Optional: Defaults to nil</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>affinity</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
-Kubernetes core/v1.Affinity
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Affinity of DM cluster Pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>nodeSelector</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>annotations</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>timezone</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Time zone of DM cluster Pods
-Optional: Defaults to UTC</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tolerations</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
-[]Kubernetes core/v1.Toleration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr>
-<td>
-<code>status</code></br>
-<em>
-<a href="#dmclusterstatus">
-DMClusterStatus
-</a>
-</em>
-</td>
-<td>
-<p>Most recently observed status of the dm cluster</p>
 </td>
 </tr>
 </tbody>
