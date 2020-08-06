@@ -50,7 +50,7 @@ const (
 	// DMMasterMemberType is dm-master container type
 	DMMasterMemberType MemberType = "dm-master"
 	// DMWorkerMemberType is dm-worker container type
-	DMWorkerMemberType MemberType = "dm-master"
+	DMWorkerMemberType MemberType = "dm-worker"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
