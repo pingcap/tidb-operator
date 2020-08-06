@@ -1283,7 +1283,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 
-			if len(tc.Status.TiKV.Stores) == 2 {
+			if len(originTc.Status.TiKV.Stores) == 2 {
 				e2elog.Logf("failed to create heterogeneous cluster , stores  (current: %d)", len(tc.Status.TiKV.Stores))
 				return false, nil
 			}
