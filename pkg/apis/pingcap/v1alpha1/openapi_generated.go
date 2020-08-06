@@ -9466,6 +9466,20 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"clusterDomain": {
+						SchemaProps: spec.SchemaProps{
+							Description: "k8s Cluster Domain of TiDB cluster Optional: Defaults to omitted",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"discoveryUrl": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DiscoveryUrl of TiDB cluster Optional: Defaults to omitted",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

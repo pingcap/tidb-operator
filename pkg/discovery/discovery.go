@@ -79,7 +79,10 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	keyName := fmt.Sprintf("%s/%s/%s", ns, tcName, clusterDomain)
+	keyName := fmt.Sprintf("%s/%s", ns, tcName)
+	if clusterDomain != "" {
+		keyName = fmt.Sprintf("%s/%s", keyName, clusterDomain)
+	}
 	// TODO: the replicas should be the total replicas of pd sets.
 	replicas := tc.Spec.PD.Replicas
 

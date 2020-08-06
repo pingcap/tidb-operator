@@ -332,6 +332,8 @@ spec:
               type: object
             annotations:
               type: object
+            clusterDomain:
+              type: string
             configUpdateStrategy:
               type: string
             discovery:
@@ -341,6 +343,8 @@ spec:
                 requests:
                   type: object
               type: object
+            discoveryUrl:
+              type: string
             enableDynamicConfiguration:
               type: boolean
             enablePVReclaim:

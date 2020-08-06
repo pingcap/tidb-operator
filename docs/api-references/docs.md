@@ -1314,6 +1314,32 @@ bool
 <p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>k8s Cluster Domain of TiDB cluster
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>discoveryUrl</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DiscoveryUrl of TiDB cluster
+Optional: Defaults to omitted</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -16280,6 +16306,32 @@ bool
 <td>
 <em>(Optional)</em>
 <p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterDomain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>k8s Cluster Domain of TiDB cluster
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>discoveryUrl</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DiscoveryUrl of TiDB cluster
+Optional: Defaults to omitted</p>
 </td>
 </tr>
 </tbody>
