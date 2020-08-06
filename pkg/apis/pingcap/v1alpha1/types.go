@@ -31,6 +31,13 @@ const (
 	TiKVStateOffline string = "Offline"
 	// TiKVStateTombstone represents status of Tombstone of TiKV
 	TiKVStateTombstone string = "Tombstone"
+
+	// DMWorkerStateFree represents status of free of dm-worker
+	DMWorkerStateFree string = "free"
+	// DMWorkerStateBound represents status of bound of dm-worker
+	DMWorkerStateBound string = "bound"
+	// DMWorkerStateOffline represents status of offline of dm-worker
+	DMWorkerStateOffline string = "offline"
 )
 
 // MemberType represents member type
@@ -1460,24 +1467,23 @@ type DMCluster struct {
 // +k8s:openapi-gen=true
 // DMDiscoverySpec contains details of Discovery members for dm
 type DMDiscoverySpec struct {
-	corev1.ResourceRequirements `json:",inline"`
-	// Host indicates the existed TiDB discovery host. If not specified, dm cluster will start a new one
-	Host string `json:"host"`
+	// Address indicates the existed TiDB discovery address
+	Address string `json:"address"`
 }
 
 // +k8s:openapi-gen=true
 // DMClusterSpec describes the attributes that a user creates on a dm cluster
 type DMClusterSpec struct {
 	// Discovery spec
-	Discovery DMDiscoverySpec `json:"discovery,omitempty"`
+	Discovery DMDiscoverySpec `json:"discovery"`
 
 	// dm-master cluster spec
 	// +optional
-	Master *MasterSpec `json:"dm_master,omitempty"`
+	Master *MasterSpec `json:"master,omitempty"`
 
 	// dm-worker cluster spec
 	// +optional
-	Worker *WorkerSpec `json:"dm_worker,omitempty"`
+	Worker *WorkerSpec `json:"worker,omitempty"`
 
 	// Indicates that the dm cluster is paused and will not be processed by
 	// the controller.
@@ -1505,15 +1511,6 @@ type DMClusterSpec struct {
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
-	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-	// UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
-	// cluster component is needed to reload the configuration change.
-	// UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
-	// related components to use the new ConfigMap, that is, the new configuration will be applied automatically.
-	// +kubebuilder:validation:Enum=InPlace,RollingUpdate
-	// +kubebuilder:default=InPlacne
-	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
-
 	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
 	// Optional: Defaults to false
 	// +optional
@@ -1524,6 +1521,10 @@ type DMClusterSpec struct {
 	// +optional
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 
+	// Affinity of DM cluster Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
 	// Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
@@ -1532,6 +1533,11 @@ type DMClusterSpec struct {
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
+	// Time zone of DM cluster Pods
+	// Optional: Defaults to UTC
+	// +optional
+	Timezone string `json:"timezone,omitempty"`
+
 	// Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -1539,8 +1545,8 @@ type DMClusterSpec struct {
 
 // DMClusterStatus represents the current status of a dm cluster.
 type DMClusterStatus struct {
-	Master MasterStatus `json:"dm_master,omitempty"`
-	Worker WorkerStatus `json:"dm_worker,omitempty"`
+	Master MasterStatus `json:"master,omitempty"`
+	Worker WorkerStatus `json:"worker,omitempty"`
 
 	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
 	// Represents the latest available observations of a dm cluster's state.
@@ -1558,16 +1564,15 @@ type MasterSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
-	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
-	// +kubebuilder:default=pingcap/dm-master
+	// +kubebuilder:default=pingcap/dm
 	// +optional
-	BaseImage string `json:"baseImage"`
+	BaseImage string `json:"baseImage,omitempty"`
 
 	// Service defines a Kubernetes service of Master cluster.
 	// Optional: Defaults to `.spec.services` in favor of backward compatibility
 	// +optional
-	Service *ServiceSpec `json:"service,omitempty"`
+	Service *MasterServiceSpec `json:"service,omitempty"`
 
 	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
 	// Optional: Defaults to 3
@@ -1596,6 +1601,20 @@ type MasterSpec struct {
 	Config *MasterConfig `json:"config,omitempty"`
 }
 
+type MasterServiceSpec struct {
+	// +k8s:openapi-gen=false
+	ServiceSpec
+
+	// ExternalTrafficPolicy of the service
+	// Optional: Defaults to omitted
+	// +optional
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"` // Expose the tidb cluster mysql port to MySQLNodePort
+
+	// Optional: Defaults to 0
+	// +optional
+	MasterNodePort *int `json:"masterNodePort,omitempty"`
+}
+
 // +k8s:openapi-gen=true
 // WorkerSpec contains details of dm-worker members
 type WorkerSpec struct {
@@ -1606,11 +1625,10 @@ type WorkerSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	Replicas int32 `json:"replicas"`
 
-	// TODO: remove optional after defaulting introduced
 	// Base image of the component, image tag is now allowed during validation
-	// +kubebuilder:default=pingcap/dm-wokrer
+	// +kubebuilder:default=pingcap/dm
 	// +optional
-	BaseImage string `json:"baseImage"`
+	BaseImage string `json:"baseImage,omitempty"`
 
 	// The storageClassName of the persistent volume for dm-worker data storage.
 	// Defaults to Kubernetes default storage class.
@@ -1705,8 +1723,11 @@ type WorkerStatus struct {
 	Workers     map[string]WorkerMember `json:"workers,omitempty"`
 }
 
-// WorkerMember is DM Worker status
+// WorkerMember is dm-Worker member status
 type WorkerMember struct {
 	PodName string `json:"podName,omitempty"`
 	ID      string `json:"id,omitempty"`
+	State   string `json:"state"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }

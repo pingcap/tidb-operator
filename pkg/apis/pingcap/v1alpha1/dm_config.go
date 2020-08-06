@@ -31,30 +31,30 @@ type MasterConfig struct {
 	// Log level.
 	// Optional: Defaults to info
 	// +optional
-	LogLevel *string `toml:"log-level" json:"log-level"`
+	LogLevel *string `toml:"log-level,omitempty" json:"log-level,omitempty"`
 	// File log config.
 	// +optional
-	LogFile *string `toml:"log-file" json:"log-file"`
+	LogFile *string `toml:"log-file,omitempty" json:"log-file,omitempty"`
 	// Log format. one of json or text.
 	// +optional
-	LogFormat *string `toml:"log-format" json:"log-format"`
+	LogFormat *string `toml:"log-format,omitempty" json:"log-format,omitempty"`
 
 	// RPC timeout when dm-master request to dm-worker
 	// Optional: Defaults to 30s
 	// +optional
-	RPCTimeoutStr *string `toml:"rpc-timeout" json:"rpc-timeout"`
+	RPCTimeoutStr *string `toml:"rpc-timeout,omitempty" json:"rpc-timeout,omitempty"`
 	// RPC agent rate limit when dm-master request to dm-worker
 	// Optional: Defaults to 10
 	// +optional
-	RPCRateLimit *float64 `toml:"rpc-rate-limit" json:"rpc-rate-limit"`
+	RPCRateLimit *float64 `toml:"rpc-rate-limit,omitempty" json:"rpc-rate-limit,omitempty"`
 	// RPC agent rate burst when dm-master request to dm-worker
 	// Optional: Defaults to 40
 	// +optional
-	RPCRateBurst *int `toml:"rpc-rate-burst" json:"rpc-rate-burst"`
+	RPCRateBurst *int `toml:"rpc-rate-burst,omitempty" json:"rpc-rate-burst,omitempty"`
 	// dm-master's security config
 	// +optional
 	// +k8s:openapi-gen=false
-	DMSecurityConfig
+	DMSecurityConfig `toml:",inline" json:",inline"`
 }
 
 // WorkerConfig is the configuration of dm-worker-server
@@ -63,36 +63,35 @@ type WorkerConfig struct {
 	// Log level.
 	// Optional: Defaults to info
 	// +optional
-	LogLevel *string `toml:"log-level" json:"log-level"`
+	LogLevel *string `toml:"log-level,omitempty" json:"log-level,omitempty"`
 	// File log config.
 	// +optional
-	LogFile *string `toml:"log-file" json:"log-file"`
+	LogFile *string `toml:"log-file,omitempty" json:"log-file,omitempty"`
 	// Log format. one of json or text.
 	// +optional
-	LogFormat *string `toml:"log-format" json:"log-format"`
+	LogFormat *string `toml:"log-format,omitempty" json:"log-format,omitempty"`
 
 	// KeepAliveTTL is the keepalive ttl dm-worker write to dm-master embed etcd
 	// Optional: Defaults to 10
 	// +optional
-	KeepAliveTTL *int64 `toml:"keepalive-ttl" json:"keepalive-ttl"`
+	KeepAliveTTL *int64 `toml:"keepalive-ttl,omitempty" json:"keepalive-ttl,omitempty"`
 	// dm-worker's security config
 	// +optional
-	DMSecurityConfig
+	DMSecurityConfig `toml:",inline" json:",inline"`
 }
 
 // DM common security config
 type DMSecurityConfig struct {
 	// SSLCA is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty
 	// +optional
-	SSLCA *string `toml:"ssl-ca" json:"ssl-ca" yaml:"ssl-ca"`
+	SSLCA *string `toml:"ssl-ca,omitempty" json:"ssl-ca,omitempty" yaml:"ssl-ca,omitempty"`
 	// SSLCert is the path of file that contains X509 certificate in PEM format.
 	// +optional
-	SSLCert *string `toml:"ssl-cert" json:"ssl-cert" yaml:"ssl-cert"`
+	SSLCert *string `toml:"ssl-cert,omitempty" json:"ssl-cert,omitempty" yaml:"ssl-cert,omitempty"`
 	// SSLKey is the path of file that contains X509 key in PEM format.
 	// +optional
-	SSLKey *string `toml:"ssl-key" json:"ssl-key" yaml:"ssl-key"`
+	SSLKey *string `toml:"ssl-key,omitempty" json:"ssl-key,omitempty" yaml:"ssl-key,omitempty"`
 	// CertAllowedCN is the Common Name that allowed
 	// +optional
-	// +k8s:openapi-gen=false
-	CertAllowedCN []string `toml:"cert-allowed-cn" json:"cert-allowed-cn" yaml:"cert-allowed-cn"`
+	CertAllowedCN []string `toml:"cert-allowed-cn,omitempty" json:"cert-allowed-cn,omitempty" yaml:"cert-allowed-cn,omitempty"`
 }

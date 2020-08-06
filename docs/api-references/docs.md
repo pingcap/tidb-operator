@@ -3411,7 +3411,6 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
-<a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -3820,7 +3819,7 @@ DMDiscoverySpec
 </tr>
 <tr>
 <td>
-<code>dm_master</code></br>
+<code>master</code></br>
 <em>
 <a href="#masterspec">
 MasterSpec
@@ -3834,7 +3833,7 @@ MasterSpec
 </tr>
 <tr>
 <td>
-<code>dm_worker</code></br>
+<code>worker</code></br>
 <em>
 <a href="#workerspec">
 WorkerSpec
@@ -3925,23 +3924,6 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<code>configUpdateStrategy</code></br>
-<em>
-<a href="#configupdatestrategy">
-ConfigUpdateStrategy
-</a>
-</em>
-</td>
-<td>
-<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
-cluster component is needed to reload the configuration change.
-UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
-related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -3970,6 +3952,20 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>nodeSelector</code></br>
 <em>
 map[string]string
@@ -3990,6 +3986,19 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of DM cluster Pods
+Optional: Defaults to UTC</p>
 </td>
 </tr>
 <tr>
@@ -4154,7 +4163,7 @@ DMDiscoverySpec
 </tr>
 <tr>
 <td>
-<code>dm_master</code></br>
+<code>master</code></br>
 <em>
 <a href="#masterspec">
 MasterSpec
@@ -4168,7 +4177,7 @@ MasterSpec
 </tr>
 <tr>
 <td>
-<code>dm_worker</code></br>
+<code>worker</code></br>
 <em>
 <a href="#workerspec">
 WorkerSpec
@@ -4259,23 +4268,6 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<code>configUpdateStrategy</code></br>
-<em>
-<a href="#configupdatestrategy">
-ConfigUpdateStrategy
-</a>
-</em>
-</td>
-<td>
-<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
-cluster component is needed to reload the configuration change.
-UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
-related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>enablePVReclaim</code></br>
 <em>
 bool
@@ -4304,6 +4296,20 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>nodeSelector</code></br>
 <em>
 map[string]string
@@ -4324,6 +4330,19 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of DM cluster Pods
+Optional: Defaults to UTC</p>
 </td>
 </tr>
 <tr>
@@ -4360,7 +4379,7 @@ map[string]string
 <tbody>
 <tr>
 <td>
-<code>dm_master</code></br>
+<code>master</code></br>
 <em>
 <a href="#masterstatus">
 MasterStatus
@@ -4372,7 +4391,7 @@ MasterStatus
 </tr>
 <tr>
 <td>
-<code>dm_worker</code></br>
+<code>worker</code></br>
 <em>
 <a href="#workerstatus">
 WorkerStatus
@@ -4428,28 +4447,13 @@ TidbMonitorRef
 <tbody>
 <tr>
 <td>
-<code>ResourceRequirements</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
-Kubernetes core/v1.ResourceRequirements
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>ResourceRequirements</code> are embedded into this type.)
-</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>host</code></br>
+<code>address</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>Host indicates the existed TiDB discovery host. If not specified, dm cluster will start a new one</p>
+<p>Address indicates the existed TiDB discovery address</p>
 </td>
 </tr>
 </tbody>
@@ -5871,6 +5875,9 @@ DMSecurityConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>DMSecurityConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>dm-master&rsquo;s security config</p>
 </td>
@@ -6140,6 +6147,62 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="masterservicespec">MasterServiceSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ServiceSpec</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalTrafficPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#serviceexternaltrafficpolicytype-v1-core">
+Kubernetes core/v1.ServiceExternalTrafficPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalTrafficPolicy of the service
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>masterNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="masterspec">MasterSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -6206,16 +6269,15 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting introduced
-Base image of the component, image tag is now allowed during validation</p>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>service</code></br>
 <em>
-<a href="#servicespec">
-ServiceSpec
+<a href="#masterservicespec">
+MasterServiceSpec
 </a>
 </em>
 </td>
@@ -10022,7 +10084,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
-<a href="#masterspec">MasterSpec</a>, 
+<a href="#masterservicespec">MasterServiceSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
@@ -18520,6 +18582,9 @@ DMSecurityConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>DMSecurityConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>dm-worker&rsquo;s security config</p>
 </td>
@@ -18532,7 +18597,7 @@ DMSecurityConfig
 <a href="#workerstatus">WorkerStatus</a>)
 </p>
 <p>
-<p>WorkerMember is DM Worker status</p>
+<p>WorkerMember is dm-Worker member status</p>
 </p>
 <table>
 <thead>
@@ -18560,6 +18625,29 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>Last time the health transitioned from one to another.</p>
 </td>
 </tr>
 </tbody>
@@ -18630,8 +18718,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>TODO: remove optional after defaulting introduced
-Base image of the component, image tag is now allowed during validation</p>
+<p>Base image of the component, image tag is now allowed during validation</p>
 </td>
 </tr>
 <tr>
