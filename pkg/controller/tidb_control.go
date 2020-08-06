@@ -88,13 +88,13 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
-		return nil, errMsg
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
+		return nil, errMsg
 	}
 	info := DBInfo{}
 	err = json.Unmarshal(body, &info)
@@ -121,13 +121,13 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
-		return nil, errMsg
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
+		return nil, errMsg
 	}
 	info := config.Config{}
 	err = json.Unmarshal(body, &info)
@@ -142,16 +142,16 @@ func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
-		return nil, errMsg
-	}
-
 	defer httputil.DeferClose(res.Body)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
+	if res.StatusCode >= 400 {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL %s", string(body), res.StatusCode, apiURL))
+		return nil, errMsg
+	}
+
 	return body, err
 }
 
