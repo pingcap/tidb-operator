@@ -16,7 +16,6 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -32,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
