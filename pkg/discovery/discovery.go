@@ -71,11 +71,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	clusterDomain := strings.Join(hostArr[4:], ".")
 	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
+	podTcName := os.Getenv("TC_NAME")
 
-	if ns != podNamespace {
-		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
-	}
-	tc, err := td.cli.PingcapV1alpha1().TidbClusters(podNamespace).Get(tcName, metav1.GetOptions{})
+	tc, err := td.cli.PingcapV1alpha1().TidbClusters(podNamespace).Get(podTcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
