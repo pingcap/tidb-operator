@@ -440,14 +440,14 @@ func schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref common.ReferenceCallback) com
 					},
 					"db": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. DB is the specific DB which will be backed-up or restored",
+							Description: "Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. DB is the specific DB which will be backed-up or restored",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"table": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. Table is the specific table which will be backed-up or restored",
+							Description: "Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. Table is the specific table which will be backed-up or restored",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -874,7 +874,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"tableFilter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Description: "TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -1669,7 +1669,7 @@ func schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref common.ReferenceCallbac
 					},
 					"tableFilter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated please use Backup TableFilter instead. TableFilter means Table filter expression for 'db.table' matching",
+							Description: "Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4135,7 +4135,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 					},
 					"tableFilter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TableFilter means Table filter expression for 'db.table' matching",
+							Description: "TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

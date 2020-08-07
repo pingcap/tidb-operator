@@ -288,7 +288,7 @@ CleanPolicyType
 </em>
 </td>
 <td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
 </table>
@@ -468,7 +468,7 @@ string
 </em>
 </td>
 <td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
 </table>
@@ -2354,7 +2354,7 @@ string
 </em>
 </td>
 <td>
-<p>Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. DB is the specific DB which will be backed-up or restored</p>
+<p>Deprecated from BR v4.0.3. Please use <code>Spec.TableFilter</code> instead. DB is the specific DB which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -2365,7 +2365,7 @@ string
 </em>
 </td>
 <td>
-<p>Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. Table is the specific table which will be backed-up or restored</p>
+<p>Deprecated from BR v4.0.3. Please use <code>Spec.TableFilter</code> instead. Table is the specific table which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -2928,7 +2928,7 @@ CleanPolicyType
 </em>
 </td>
 <td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
 </tbody>
@@ -4747,7 +4747,7 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
-<p>Deprecated please use Backup TableFilter instead. TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>Deprecated. Please use <code>Spec.TableFilter</code> instead. TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -9757,7 +9757,7 @@ string
 </em>
 </td>
 <td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
 </tbody>
