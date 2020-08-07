@@ -918,16 +918,8 @@ func (in *DMClusterList) DeepCopyObject() runtime.Object {
 func (in *DMClusterSpec) DeepCopyInto(out *DMClusterSpec) {
 	*out = *in
 	out.Discovery = in.Discovery
-	if in.Master != nil {
-		in, out := &in.Master, &out.Master
-		*out = new(MasterSpec)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Worker != nil {
-		in, out := &in.Worker, &out.Worker
-		*out = new(WorkerSpec)
-		(*in).DeepCopyInto(*out)
-	}
+	in.Master.DeepCopyInto(&out.Master)
+	in.Worker.DeepCopyInto(&out.Worker)
 	if in.PVReclaimPolicy != nil {
 		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
 		*out = new(v1.PersistentVolumeReclaimPolicy)
@@ -7517,6 +7509,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 	if in.EnableDynamicConfiguration != nil {
 		in, out := &in.EnableDynamicConfiguration, &out.EnableDynamicConfiguration
 		*out = new(bool)
+		**out = **in
+	}
+	if in.Cluster != nil {
+		in, out := &in.Cluster, &out.Cluster
+		*out = new(TidbClusterRef)
 		**out = **in
 	}
 	return

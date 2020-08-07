@@ -235,6 +235,10 @@ type TidbClusterSpec struct {
 	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
+
+	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
+	// +optional
+	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -1494,11 +1498,11 @@ type DMClusterSpec struct {
 
 	// dm-master cluster spec
 	// +optional
-	Master *MasterSpec `json:"master"`
+	Master MasterSpec `json:"master"`
 
 	// dm-worker cluster spec
 	// +optional
-	Worker *WorkerSpec `json:"worker,omitempty"`
+	Worker WorkerSpec `json:"worker,omitempty"`
 
 	// Indicates that the dm cluster is paused and will not be processed by
 	// the controller.
@@ -1560,7 +1564,7 @@ type DMClusterSpec struct {
 
 // DMClusterStatus represents the current status of a dm cluster.
 type DMClusterStatus struct {
-	Master MasterStatus `json:"master"`
+	Master MasterStatus `json:"master,omitempty"`
 	Worker WorkerStatus `json:"worker,omitempty"`
 
 	// Represents the latest available observations of a dm cluster's state.
