@@ -1616,8 +1616,7 @@ type MasterSpec struct {
 }
 
 type MasterServiceSpec struct {
-	// +k8s:openapi-gen=false
-	ServiceSpec
+	ServiceSpec `json:",inline"`
 
 	// ExternalTrafficPolicy of the service
 	// Optional: Defaults to omitted

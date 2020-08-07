@@ -6179,6 +6179,9 @@ ServiceSpec
 </em>
 </td>
 <td>
+<p>
+(Members of <code>ServiceSpec</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 <tr>
