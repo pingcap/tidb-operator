@@ -1493,7 +1493,7 @@ func schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref common.ReferenceCallback
 					},
 					"log-rotate": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Is log rotate enabled.",
+							Description: "Deprecated in v4.0.0 Is log rotate enabled.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -1839,7 +1839,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Log(ref common.ReferenceCallback) common.O
 					},
 					"disable-timestamp": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Disable automatic timestamps in output.",
+							Description: "Deprecated in v3.0.5. Use EnableTimestamp instead Disable automatic timestamps in output.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -2441,7 +2441,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 					},
 					"namespace-classifier": {
 						SchemaProps: spec.SchemaProps{
-							Description: "NamespaceClassifier is for classifying stores/regions into different namespaces. Optional: Defaults to true",
+							Description: "Deprecated in v4.0.0 NamespaceClassifier is for classifying stores/regions into different namespaces. Optional: Defaults to true",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3371,7 +3371,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 					},
 					"txn-entry-count-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 300000",
+							Description: "Deprecated in v4.0.0 Optional: Defaults to 300000",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
@@ -4852,7 +4852,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 					},
 					"txn-local-latches": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches"),
+							Description: "Deprecated in v4.0.0",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches"),
 						},
 					},
 					"lower-case-table-names": {
@@ -5874,6 +5875,255 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVCfConfig(ref common.ReferenceCallback)
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
 							Format: "int64",
+<<<<<<< HEAD
+=======
+						},
+					},
+					"level0-stop-writes-trigger": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"max-compaction-bytes": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"compaction-pri": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"dynamic-level-bytes": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"num-levels": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"max-bytes-for-level-multiplier": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"compaction-style": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"disable-auto-compactions": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"soft-pending-compaction-bytes-limit": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"hard-pending-compaction-bytes-limit": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"force-consistency-checks": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"prop-size-index-distance": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"prop-keys-index-distance": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"enable-doubly-skiplist": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"titan": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVTitanCfConfig"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVTitanCfConfig"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiKVClient(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiKVClient is the config for tikv client.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"grpc-connection-count": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GrpcConnectionCount is the max gRPC connections that will be established with each tikv-server. Optional: Defaults to 16",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-keepalive-time": {
+						SchemaProps: spec.SchemaProps{
+							Description: "After a duration of this time in seconds if the client doesn't see any activity it pings the server to see if the transport is still alive. Optional: Defaults to 10",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-keepalive-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "After having pinged for keepalive check, the client waits for a duration of Timeout in seconds and if no activity is seen even after that the connection is closed. Optional: Defaults to 3",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"commit-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CommitTimeout is the max time which command 'commit' will wait. Optional: Defaults to 41s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"max-txn-time-use": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Deprecated in v4.0.0 MaxTxnTimeUse is the max time a Txn may use (in seconds) from its startTS to commitTS. Optional: Defaults to 590",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"max-batch-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxBatchSize is the max batch size when calling batch commands API. Optional: Defaults to 128",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"overload-threshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If TiKV load is greater than this, TiDB will wait for a while to avoid little batch. Optional: Defaults to 200",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"max-batch-wait-time": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxBatchWaitTime in nanosecond is the max wait time for batch. Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"batch-wait-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BatchWaitSize is the max wait size for batch. Optional: Defaults to 8",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"region-cache-ttl": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If a Region has not been accessed for more than the given duration (in seconds), it will be reloaded from the PD. Optional: Defaults to 600",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"store-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If a store has been up to the limit, it will return error for successive request to prevent the store occupying too much token in dispatching level. Optional: Defaults to 0",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"store-liveness-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StoreLivenessTimeout is the timeout for store liveness check request.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"copr-cache": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CoprocessorCache"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CoprocessorCache"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiKVConfig is the configuration of TiKV.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"log-level": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to info",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-file": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"slow-log-file": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"slow-log-threshold": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"log-rotation-timespan": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 24h",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-rotation-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+>>>>>>> 683c4fb... mark deprecated configurations (#3074)
 						},
 					},
 					"level0-stop-writes-trigger": {
@@ -7881,8 +8131,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageConfig(ref common.ReferenceCall
 					},
 					"scheduler-notify-capacity": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
+							Description: "Deprecated in v4.0.0",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 					"scheduler-concurrency": {
@@ -8139,8 +8390,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVUnifiedReadPoolConfig(ref common.Refer
 					},
 					"stack-size": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Deprecated in v4.0.0",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"max-tasks-per-worker": {
