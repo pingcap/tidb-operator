@@ -195,7 +195,7 @@ exec /tikv-server ${ARGS}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			model := TiKVStartScriptModel{
-				Scheme:                    "http",
+				PDAddress:                 "http://${CLUSTER_NAME}-pd:2379",
 				EnableAdvertiseStatusAddr: tt.enableAdvertiseAddr,
 				AdvertiseStatusAddr:       tt.advertiseAddr,
 				DataDir:                   filepath.Join(tikvDataVolumeMountPath, tt.dataSubDir),
