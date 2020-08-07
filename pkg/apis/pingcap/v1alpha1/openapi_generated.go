@@ -1513,7 +1513,7 @@ func schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref common.ReferenceCallback
 					},
 					"log-rotate": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Is log rotate enabled.",
+							Description: "Deprecated in v4.0.0 Is log rotate enabled.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -1859,7 +1859,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Log(ref common.ReferenceCallback) common.O
 					},
 					"disable-timestamp": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Disable automatic timestamps in output.",
+							Description: "Deprecated in v3.0.5. Use EnableTimestamp instead Disable automatic timestamps in output.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -2461,7 +2461,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 					},
 					"namespace-classifier": {
 						SchemaProps: spec.SchemaProps{
-							Description: "NamespaceClassifier is for classifying stores/regions into different namespaces. Optional: Defaults to true",
+							Description: "Deprecated in v4.0.0 NamespaceClassifier is for classifying stores/regions into different namespaces. Optional: Defaults to true",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3391,7 +3391,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 					},
 					"txn-entry-count-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 300000",
+							Description: "Deprecated in v4.0.0 Optional: Defaults to 300000",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
@@ -4886,7 +4886,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 					},
 					"txn-local-latches": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches"),
+							Description: "Deprecated in v4.0.0",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches"),
 						},
 					},
 					"lower-case-table-names": {
@@ -6408,7 +6409,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVClient(ref common.ReferenceCallback) c
 					},
 					"max-txn-time-use": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxTxnTimeUse is the max time a Txn may use (in seconds) from its startTS to commitTS. Optional: Defaults to 590",
+							Description: "Deprecated in v4.0.0 MaxTxnTimeUse is the max time a Txn may use (in seconds) from its startTS to commitTS. Optional: Defaults to 590",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -8619,8 +8620,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVStorageConfig(ref common.ReferenceCall
 					},
 					"scheduler-notify-capacity": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
+							Description: "Deprecated in v4.0.0",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 					"scheduler-concurrency": {
@@ -8877,8 +8879,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVUnifiedReadPoolConfig(ref common.Refer
 					},
 					"stack-size": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Deprecated in v4.0.0",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"max-tasks-per-worker": {
