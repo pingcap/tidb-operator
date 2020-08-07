@@ -660,13 +660,6 @@ func checkNoError(t *testing.T, results []reflect.Value) {
 	}
 }
 
-func checkError(t *testing.T, results []reflect.Value) {
-	lastVal := results[len(results)-1].Interface()
-	if v, ok := lastVal.(error); !ok || v == nil {
-		t.Errorf("expects error, got nil")
-	}
-}
-
 // TestGeneric is a generic test to test methods of PD Client.
 func TestGeneric(t *testing.T) {
 	tests := []struct {

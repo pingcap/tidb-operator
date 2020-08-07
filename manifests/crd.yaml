@@ -6545,6 +6545,9 @@ spec:
                     lower-case-table-names:
                       format: int32
                       type: integer
+                    max-index-length:
+                      format: int64
+                      type: integer
                     max-server-connections:
                       format: int64
                       type: integer
@@ -11271,10 +11274,6 @@ spec:
               type: array
             version:
               type: string
-          required:
-          - pd
-          - tidb
-          - tikv
           type: object
       type: object
   version: v1alpha1
@@ -11616,8 +11615,8 @@ spec:
               required:
               - cluster
               type: object
-            cleanData:
-              type: boolean
+            cleanPolicy:
+              type: string
             dumpling:
               properties:
                 options:
@@ -12517,8 +12516,8 @@ spec:
                   required:
                   - cluster
                   type: object
-                cleanData:
-                  type: boolean
+                cleanPolicy:
+                  type: string
                 dumpling:
                   properties:
                     options:
@@ -15038,6 +15037,9 @@ spec:
                   type: object
                 lower-case-table-names:
                   format: int32
+                  type: integer
+                max-index-length:
+                  format: int64
                   type: integer
                 max-server-connections:
                   format: int64

@@ -1262,6 +1262,10 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+
+					TiDB: &v1alpha1.TiDBSpec{},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1288,6 +1292,9 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
@@ -1300,7 +1307,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
@@ -1316,6 +1323,8 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1328,7 +1337,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							HostNetwork: &enable,
 						},
@@ -1344,6 +1353,8 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testHostNetwork(t, false, ""),
@@ -1359,7 +1370,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					},
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 					TiFlash: &v1alpha1.TiFlashSpec{
 						StorageClaims: []v1alpha1.StorageClaim{
 							{
@@ -1371,6 +1382,8 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: testAnnotations(t, map[string]string{"delete-slots": "[0,1]"}),
@@ -1408,6 +1421,9 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 							},
 						},
 					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {

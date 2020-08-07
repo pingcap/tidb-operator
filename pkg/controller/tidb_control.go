@@ -14,8 +14,6 @@
 package controller
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,11 +21,8 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 	"github.com/pingcap/tidb/config"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -54,14 +49,14 @@ type TiDBControlInterface interface {
 
 // defaultTiDBControl is default implementation of TiDBControlInterface.
 type defaultTiDBControl struct {
-	kubeCli kubernetes.Interface
+	httpClient
 	// for unit test only
 	testURL string
 }
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance
 func NewDefaultTiDBControl(kubeCli kubernetes.Interface) *defaultTiDBControl {
-	return &defaultTiDBControl{kubeCli: kubeCli}
+	return &defaultTiDBControl{httpClient: httpClient{kubeCli: kubeCli}}
 }
 
 func (tdc *defaultTiDBControl) GetHealth(tc *v1alpha1.TidbCluster, ordinal int32) (bool, error) {
@@ -93,13 +88,13 @@ func (tdc *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) 
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
-		return nil, errMsg
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
+		return nil, errMsg
 	}
 	info := DBInfo{}
 	err = json.Unmarshal(body, &info)
@@ -126,13 +121,13 @@ func (tdc *defaultTiDBControl) GetSettings(tc *v1alpha1.TidbCluster, ordinal int
 		return nil, err
 	}
 	defer httputil.DeferClose(res.Body)
-	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL: %s", res.StatusCode, url))
-		return nil, errMsg
-	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
+		return nil, errMsg
 	}
 	info := config.Config{}
 	err = json.Unmarshal(body, &info)
@@ -147,53 +142,17 @@ func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %v URL %s", res.StatusCode, apiURL))
-		return nil, errMsg
-	}
-
 	defer httputil.DeferClose(res.Body)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
+	if res.StatusCode >= 400 {
+		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL %s", string(body), res.StatusCode, apiURL))
+		return nil, errMsg
+	}
+
 	return body, err
-}
-
-func (tdc *defaultTiDBControl) getHTTPClient(tc *v1alpha1.TidbCluster) (*http.Client, error) {
-	httpClient := &http.Client{Timeout: timeout}
-	if !tc.IsTLSClusterEnabled() {
-		return httpClient, nil
-	}
-
-	tcName := tc.Name
-	ns := tc.Namespace
-	secretName := util.ClusterClientTLSSecretName(tcName)
-	secret, err := tdc.kubeCli.CoreV1().Secrets(ns).Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	clientCert, certExists := secret.Data[v1.TLSCertKey]
-	clientKey, keyExists := secret.Data[v1.TLSPrivateKeyKey]
-	if !certExists || !keyExists {
-		return nil, fmt.Errorf("cert or key does not exist in secret %s/%s", ns, secretName)
-	}
-
-	tlsCert, err := tls.X509KeyPair(clientCert, clientKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load certificates from secret %s/%s: %v", ns, secretName, err)
-	}
-
-	rootCAs := x509.NewCertPool()
-	rootCAs.AppendCertsFromPEM(secret.Data[v1.ServiceAccountRootCAKey])
-	config := &tls.Config{
-		RootCAs:      rootCAs,
-		Certificates: []tls.Certificate{tlsCert},
-	}
-	httpClient.Transport = &http.Transport{TLSClientConfig: config}
-
-	return httpClient, nil
 }
 
 func (tdc *defaultTiDBControl) getBaseURL(tc *v1alpha1.TidbCluster, ordinal int32) string {

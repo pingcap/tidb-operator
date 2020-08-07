@@ -14,9 +14,10 @@
 package defaulting
 
 import (
+	"testing"
+
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"testing"
 )
 
 func TestSetTidbSpecDefault(t *testing.T) {
@@ -92,5 +93,11 @@ func TestSetTidbSpecDefault(t *testing.T) {
 }
 
 func newTidbCluster() *v1alpha1.TidbCluster {
-	return &v1alpha1.TidbCluster{}
+	return &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			PD:   &v1alpha1.PDSpec{},
+			TiKV: &v1alpha1.TiKVSpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
+		},
+	}
 }

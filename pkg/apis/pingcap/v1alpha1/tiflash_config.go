@@ -34,8 +34,10 @@ type FlashServerConfig struct {
 	// +optional
 	EngineAddr *string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
 	// +optional
-	StatusAddr       *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
-	TiKVServerConfig `json:",inline"`
+	StatusAddr *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	// +optional
+	AdvertiseStatusAddr *string `json:"advertise-status-addr,omitempty" toml:"advertise-status-addr,omitempty"`
+	TiKVServerConfig    `json:",inline"`
 }
 
 // ProxyConfig is the configuration of TiFlash proxy process.
@@ -124,6 +126,14 @@ type CommonConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	HTTPPort *int32 `json:"http_port,omitempty" toml:"http_port,omitempty"`
+	// Optional: Defaults to 9000
+	// +optional
+	// +k8s:openapi-gen=false
+	TCPPortSecure *int32 `json:"tcp_port_secure,omitempty" toml:"tcp_port_secure,omitempty"`
+	// Optional: Defaults to 8123
+	// +optional
+	// +k8s:openapi-gen=false
+	HTTPSPort *int32 `json:"https_port,omitempty" toml:"https_port,omitempty"`
 	// Optional: Defaults to 9009
 	// +optional
 	// +k8s:openapi-gen=false
@@ -150,6 +160,9 @@ type CommonConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	FlashProfile *FlashProfile `json:"profiles,omitempty" toml:"profiles,omitempty"`
+	// +optional
+	// +k8s:openapi-gen=false
+	Security *FlashSecurity `json:"security,omitempty" toml:"security,omitempty"`
 }
 
 // FlashProfile is the configuration of [profiles] section.
@@ -351,4 +364,14 @@ type FlashProxy struct {
 	// Optional: Defaults to /data0/logs/proxy.log
 	// +optional
 	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+}
+
+// +k8s:openapi-gen=false
+type FlashSecurity struct {
+	// +optional
+	CAPath *string `json:"ca_path,omitempty" toml:"ca_path,omitempty"`
+	// +optional
+	CertPath *string `json:"cert_path,omitempty" toml:"cert_path,omitempty"`
+	// +optional
+	KeyPath *string `json:"key_path,omitempty" toml:"key_path,omitempty"`
 }

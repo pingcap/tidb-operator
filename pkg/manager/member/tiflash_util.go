@@ -16,6 +16,7 @@ package member
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -88,6 +89,52 @@ func buildSidecarContainer(name, path, image string,
 	}
 }
 
+func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
+	config := tc.Spec.TiFlash.Config.DeepCopy()
+	if config == nil {
+		config = &v1alpha1.TiFlashConfig{}
+	}
+
+	if config.CommonConfig == nil {
+		config.CommonConfig = &v1alpha1.CommonConfig{}
+	}
+	if config.CommonConfig.FlashDataPath == nil {
+		var paths []string
+		for k := range tc.Spec.TiFlash.StorageClaims {
+			paths = append(paths, fmt.Sprintf("/data%d/db", k))
+		}
+		if len(paths) > 0 {
+			dataPath := strings.Join(paths, ",")
+			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
+		}
+	}
+
+	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
+
+	if tc.IsTLSClusterEnabled() {
+		if config.CommonConfig.Security == nil {
+			config.CommonConfig.Security = &v1alpha1.FlashSecurity{}
+		}
+		if config.ProxyConfig.Security == nil {
+			config.ProxyConfig.Security = &v1alpha1.TiKVSecurityConfig{}
+		}
+		config.ProxyConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
+		config.ProxyConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
+		config.ProxyConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+		config.CommonConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
+		config.CommonConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
+		config.CommonConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+		// unset the http ports
+		config.CommonConfig.HTTPPort = nil
+		config.CommonConfig.TCPPort = nil
+	} else {
+		// unset the https ports
+		config.CommonConfig.HTTPSPort = nil
+		config.CommonConfig.TCPPortSecure = nil
+	}
+	return config
+}
+
 func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {
 	if config.CommonConfig == nil {
 		config.CommonConfig = &v1alpha1.CommonConfig{}
@@ -144,6 +191,9 @@ func setTiFlashProxyConfigDefault(config *v1alpha1.ProxyConfig, clusterName, ns 
 	if config.Server.StatusAddr == nil {
 		config.Server.StatusAddr = pointer.StringPtr("0.0.0.0:20292")
 	}
+	if config.Server.AdvertiseStatusAddr == nil {
+		config.Server.AdvertiseStatusAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+	}
 }
 
 func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, ns string) {
@@ -177,6 +227,14 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, n
 	if config.TCPPort == nil {
 		var p int32 = 9000
 		config.TCPPort = &p
+	}
+	if config.TCPPortSecure == nil {
+		var p int32 = 9000
+		config.TCPPortSecure = &p
+	}
+	if config.HTTPSPort == nil {
+		var p int32 = 8123
+		config.HTTPSPort = &p
 	}
 	if config.HTTPPort == nil {
 		var p int32 = 8123

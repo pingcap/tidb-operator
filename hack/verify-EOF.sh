@@ -21,7 +21,7 @@ ROOTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 
 cd $ROOTDIR
 
-FILELIST=($(find . -type f -not \( -path './vendor/*' \
+FILELIST=($(find . -type f -not \( -path '*/vendor/*' \
     -o -path './output/*' \
     -o -path './_tools/*' \
     -o -path './.git/*' \
@@ -34,6 +34,7 @@ FILELIST=($(find . -type f -not \( -path './vendor/*' \
     -o -path './.DS_Store' \
     -o -path './*/.DS_Store' \
     -o -path './data' \
+    -o -path './_artifacts/*' \
     \)))
 
 NUM=0

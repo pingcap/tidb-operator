@@ -19,7 +19,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +35,6 @@ type tidbDiscovery struct {
 	cli       versioned.Interface
 	lock      sync.Mutex
 	clusters  map[string]*clusterInfo
-	tcGetFn   func(ns, tcName string) (*v1alpha1.TidbCluster, error)
 	pdControl pdapi.PDControlInterface
 }
 
@@ -46,14 +44,12 @@ type clusterInfo struct {
 }
 
 // NewTiDBDiscovery returns a TiDBDiscovery
-func NewTiDBDiscovery(cli versioned.Interface, kubeCli kubernetes.Interface) TiDBDiscovery {
-	td := &tidbDiscovery{
+func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) TiDBDiscovery {
+	return &tidbDiscovery{
 		cli:       cli,
-		pdControl: pdapi.NewDefaultPDControl(kubeCli),
+		pdControl: pdControl,
 		clusters:  map[string]*clusterInfo{},
 	}
-	td.tcGetFn = td.realTCGetFn
-	return td
 }
 
 func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
@@ -75,7 +71,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	if ns != podNamespace {
 		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
 	}
-	tc, err := td.tcGetFn(ns, tcName)
+	tc, err := td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -111,8 +107,4 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
-}
-
-func (td *tidbDiscovery) realTCGetFn(ns, tcName string) (*v1alpha1.TidbCluster, error) {
-	return td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 }

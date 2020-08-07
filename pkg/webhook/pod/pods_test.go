@@ -78,7 +78,7 @@ func TestAdmitPod(t *testing.T) {
 			}
 		}
 
-		resp := podAdmissionControl.AdmitPods(ar)
+		resp := podAdmissionControl.Admit(ar)
 		test.expectFn(g, resp)
 	}
 
@@ -153,14 +153,14 @@ func newTidbClusterForPodAdmissionControl(pdReplicas int32, tikvReplicas int32) 
 			Labels:    label.New().Instance(upgradeInstanceName),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{
+			PD: &v1alpha1.PDSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         pdReplicas,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
-			TiKV: v1alpha1.TiKVSpec{
+			TiKV: &v1alpha1.TiKVSpec{
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},

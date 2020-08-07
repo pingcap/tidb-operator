@@ -281,7 +281,6 @@ func (tcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
 func (tcc *Controller) worker() {
 	for tcc.processNextWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 

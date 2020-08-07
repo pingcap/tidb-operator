@@ -57,6 +57,9 @@ type TiDBConfig struct {
 	// Optional: Defaults to log
 	// +optional
 	OOMAction *string `toml:"oom-action,omitempty" json:"oom-action,omitempty"`
+	// Optional: Defaults to 3072
+	// +optional
+	MaxIndexLength *int64 `toml:"max-index-length,omitempty" json:"max-index-length,omitempty"`
 	// Optional: Defaults to 34359738368
 	// +optional
 	MemQuotaQuery *int64 `toml:"mem-quota-query,omitempty" json:"mem-quota-query,omitempty"`
@@ -530,7 +533,8 @@ type IsolationRead struct {
 // +k8s:openapi-gen=true
 type Experimental struct {
 	// Whether enable the syntax like `auto_random(3)` on the primary key column.
-	// imported from TiDB v3.1.0
+	// Imported from TiDB v3.1.0.
+	// Deprecated in TiDB v4.0.3, please check detail in https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements.
 	// +optional
 	AllowAutoRandom *bool `toml:"allow-auto-random,omitempty" json:"allow-auto-random,omitempty"`
 	// Whether enable creating expression index.

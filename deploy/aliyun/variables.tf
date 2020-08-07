@@ -10,7 +10,7 @@ variable "bastion_cpu_core_count" {
 
 variable "operator_version" {
   type    = string
-  default = "v1.1.2"
+  default = "v1.1.3"
 }
 
 variable "operator_helm_values" {
@@ -89,7 +89,7 @@ variable "vpc_id" {
 }
 
 variable "group_id" {
-  description = "Security group id, specify this variable to use and exising security group"
+  description = "Security group id, specify this variable to use and existing security group"
   default     = ""
 }
 

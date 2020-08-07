@@ -856,10 +856,10 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
-					"cleanData": {
+					"cleanPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CleanData denotes whether to clean backup data before the object is deleted from the cluster",
-							Type:        []string{"boolean"},
+							Description: "CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
@@ -1423,7 +1423,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Experimental(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"allow-auto-random": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether enable the syntax like `auto_random(3)` on the primary key column. imported from TiDB v3.1.0",
+							Description: "Whether enable the syntax like `auto_random(3)` on the primary key column. Imported from TiDB v3.1.0. Deprecated in TiDB v4.0.3, please check detail in https://docs.pingcap.com/tidb/dev/release-4.0.3#improvements.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -4819,6 +4819,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Description: "Optional: Defaults to log",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"max-index-length": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 3072",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 					"mem-quota-query": {
@@ -9467,7 +9474,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"pd", "tidb", "tikv"},
 			},
 		},
 		Dependencies: []string{

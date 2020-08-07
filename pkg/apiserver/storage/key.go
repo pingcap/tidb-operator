@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -93,12 +92,6 @@ func (o *objKey) objectMeta() metav1.ObjectMeta {
 		Name:   o.fullName(),
 		Labels: o.labelMap(),
 	}
-}
-
-func (o *objKey) selector() (labels.Selector, error) {
-	return metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: o.labelMap(),
-	})
 }
 
 func (o *objKey) labelSelectorStr() string {

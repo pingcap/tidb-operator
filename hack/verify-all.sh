@@ -20,5 +20,4 @@ set -o pipefail
 ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
-make check-setup
 make check

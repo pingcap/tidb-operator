@@ -39,11 +39,10 @@ import (
 )
 
 const (
-	// tiflashClusterCertPath is where the cert for inter-cluster communication stored (if any)
-	tiflashClusterCertPath = "/var/lib/tiflash-tls"
-
 	//find a better way to manage store only managed by tiflash in Operator
 	tiflashStoreLimitPattern = `%s-tiflash-\d+\.%s-tiflash-peer\.%s\.svc\:\d+`
+	tiflashCertPath          = "/var/lib/tiflash-tls"
+	tiflashCertVolumeName    = "tiflash-tls"
 )
 
 // tiflashMemberManager implements manager.Manager.
@@ -335,12 +334,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			Name: fmt.Sprintf("data%d", k), MountPath: fmt.Sprintf("/data%d", k)})
 	}
 
-	// TiFlash does not support TLS yet
-	// if tc.IsTLSClusterEnabled() {
-	// 	volMounts = append(volMounts, corev1.VolumeMount{
-	// 		Name: "tiflash-tls", ReadOnly: true, MountPath: "/var/lib/tiflash-tls",
-	// 	})
-	// }
+	if tc.IsTLSClusterEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
+		})
+	}
 
 	vols := []corev1.Volume{
 		annVolume,
@@ -353,15 +351,15 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		},
 	}
 
-	// if tc.IsTLSClusterEnabled() {
-	// 	vols = append(vols, corev1.Volume{
-	// 		Name: "tiflash-tls", VolumeSource: corev1.VolumeSource{
-	// 			Secret: &corev1.SecretVolumeSource{
-	// 				SecretName: util.ClusterTLSSecretName(tc.Name, label.TiFlashLabelVal),
-	// 			},
-	// 		},
-	// 	})
-	// }
+	if tc.IsTLSClusterEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: tiflashCertVolumeName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiFlashLabelVal),
+				},
+			},
+		})
+	}
 
 	sysctls := "sysctl -w"
 	var initContainers []corev1.Container
@@ -571,34 +569,7 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 }
 
 func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := tc.Spec.TiFlash.Config.DeepCopy()
-	if config == nil {
-		config = &v1alpha1.TiFlashConfig{}
-	}
-	var paths []string
-	for k := range tc.Spec.TiFlash.StorageClaims {
-		paths = append(paths, fmt.Sprintf("/data%d/db", k))
-	}
-	if len(paths) > 0 {
-		dataPath := strings.Join(paths, ",")
-		if config.CommonConfig == nil {
-			config.CommonConfig = &v1alpha1.CommonConfig{}
-		}
-		if config.CommonConfig.FlashDataPath == nil {
-			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
-		}
-	}
-	setTiFlashConfigDefault(config, tc.Name, tc.Namespace)
-
-	// override CA if tls enabled
-	// if tc.IsTLSClusterEnabled() {
-	// 	if config.Security == nil {
-	// 		config.Security = &v1alpha1.TiFlashSecurityConfig{}
-	// 	}
-	// 	config.Security.CAPath = path.Join(tiflashClusterCertPath, tlsSecretRootCAKey)
-	// 	config.Security.CertPath = path.Join(tiflashClusterCertPath, corev1.TLSCertKey)
-	// 	config.Security.KeyPath = path.Join(tiflashClusterCertPath, corev1.TLSPrivateKeyKey)
-	// }
+	config := getTiFlashConfig(tc)
 
 	configText, err := MarshalTOML(config.CommonConfig)
 	if err != nil {

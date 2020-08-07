@@ -26,13 +26,11 @@ import (
 
 const (
 	// defaultHelperImage is default image of helper
-	defaultHelperImage      = "busybox:1.26.2"
-	defaultTimeZone         = "UTC"
-	defaultEnableTLSCluster = false
-	defaultEnableTLSClient  = false
-	defaultExposeStatus     = true
-	defaultSeparateSlowLog  = true
-	defaultEnablePVReclaim  = false
+	defaultHelperImage     = "busybox:1.26.2"
+	defaultTimeZone        = "UTC"
+	defaultExposeStatus    = true
+	defaultSeparateSlowLog = true
+	defaultEnablePVReclaim = false
 )
 
 var (
@@ -438,6 +436,9 @@ func (tc *TidbCluster) TiDBStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
 }
 
 func (tc *TidbCluster) PDIsAvailable() bool {
+	if tc.Spec.PD == nil {
+		return true
+	}
 	lowerLimit := tc.Spec.PD.Replicas/2 + 1
 	if int32(len(tc.Status.PD.Members)) < lowerLimit {
 		return false

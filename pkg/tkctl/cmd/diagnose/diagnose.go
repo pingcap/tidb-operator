@@ -66,7 +66,6 @@ using 'tkctl use to set tidb cluster first.'`
 )
 
 type diagnoseInfoOptions struct {
-	kubeContext     string
 	namespace       string
 	tidbClusterName string
 

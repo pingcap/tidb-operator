@@ -31,9 +31,7 @@ import (
 const (
 	prometheusComponent = "prometheus"
 	grafanaComponent    = "grafana"
-	//TODO support AlertManager, move to UCP
-	alertmanager    = "alertmanager"
-	componentPrefix = "/topology"
+	componentPrefix     = "/topology"
 )
 
 type TidbClusterStatusManager struct {
@@ -110,6 +108,9 @@ func (tcsm *TidbClusterStatusManager) syncDashboardMetricStorage(tc *v1alpha1.Ti
 	pdEtcdClient, err := tcsm.pdControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 	if err != nil {
 		return err
+	}
+	if tc.IsTLSClusterEnabled() {
+		defer pdEtcdClient.Close()
 	}
 	var prometheusExist bool
 	var grafanaExist bool
