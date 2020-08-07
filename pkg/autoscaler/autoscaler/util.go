@@ -29,13 +29,7 @@ import (
 // checkStsAutoScalingPrerequisites would check the sts status to ensure wouldn't happen during
 // upgrading, scaling
 func checkStsAutoScalingPrerequisites(set *appsv1.StatefulSet) bool {
-	if operatorUtils.IsStatefulSetUpgrading(set) {
-		return false
-	}
-	if operatorUtils.IsStatefulSetScaling(set) {
-		return false
-	}
-	return true
+	return !operatorUtils.IsStatefulSetUpgrading(set) && !operatorUtils.IsStatefulSetScaling(set)
 }
 
 // checkStsAutoScalingInterval would check whether there is enough interval duration between every two auto-scaling
@@ -63,41 +57,33 @@ func checkAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.Statefu
 	if !checkStsAutoScalingPrerequisites(sts) {
 		return false
 	}
-	if memberType == v1alpha1.TiDBMemberType {
-		if tc.Status.TiDB.Phase != v1alpha1.NormalPhase {
-			return false
-		}
-	} else if memberType == v1alpha1.TiKVMemberType {
-		if !tc.Status.TiKV.Synced {
-			return false
-		}
-		if tc.Status.TiKV.Phase != v1alpha1.NormalPhase {
-			return false
-		}
-	} else {
+	switch memberType {
+	case v1alpha1.TiDBMemberType:
+		return tc.Status.TiDB.Phase == v1alpha1.NormalPhase
+	case v1alpha1.TiKVMemberType:
+		return tc.Status.TiKV.Synced && tc.Status.TiKV.Phase == v1alpha1.NormalPhase
+	default:
 		// Unknown MemberType
 		return false
 	}
-	return true
 }
 
 // limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
 func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
-	if memberType != v1alpha1.TiKVMemberType && memberType != v1alpha1.TiDBMemberType {
+	var min, max int32
+	switch memberType {
+	case v1alpha1.TiKVMemberType:
+		min, max = *tac.Spec.TiKV.MinReplicas, tac.Spec.TiKV.MaxReplicas
+	case v1alpha1.TiDBMemberType:
+		min, max = *tac.Spec.TiDB.MinReplicas, tac.Spec.TiDB.MaxReplicas
+	default:
 		return targetReplicas
 	}
-	if memberType == v1alpha1.TiKVMemberType {
-		if targetReplicas > tac.Spec.TiKV.MaxReplicas {
-			targetReplicas = tac.Spec.TiKV.MaxReplicas
-		} else if targetReplicas < *tac.Spec.TiKV.MinReplicas {
-			targetReplicas = *tac.Spec.TiKV.MinReplicas
-		}
-	} else if memberType == v1alpha1.TiDBMemberType {
-		if targetReplicas > tac.Spec.TiDB.MaxReplicas {
-			targetReplicas = tac.Spec.TiDB.MaxReplicas
-		} else if targetReplicas < *tac.Spec.TiDB.MinReplicas {
-			targetReplicas = *tac.Spec.TiDB.MinReplicas
-		}
+	if targetReplicas > max {
+		return max
+	}
+	if targetReplicas < min {
+		return min
 	}
 	return targetReplicas
 }
@@ -109,56 +95,45 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
 	}
-	if tac.Spec.TiKV != nil {
-		if tac.Spec.TiKV.MinReplicas == nil {
-			tac.Spec.TiKV.MinReplicas = pointer.Int32Ptr(1)
+
+	def := func(spec *v1alpha1.BasicAutoScalerSpec) {
+		if spec.MinReplicas == nil {
+			spec.MinReplicas = pointer.Int32Ptr(1)
 		}
-		if tac.Spec.TiKV.ScaleOutIntervalSeconds == nil {
-			tac.Spec.TiKV.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
+		if spec.ScaleOutIntervalSeconds == nil {
+			spec.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
 		}
-		if tac.Spec.TiKV.ScaleInIntervalSeconds == nil {
-			tac.Spec.TiKV.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
+		if spec.ScaleInIntervalSeconds == nil {
+			spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 		}
 		// If ExternalEndpoint is not provided, we would set default metrics
-		if tac.Spec.TiKV.ExternalEndpoint == nil {
-			if tac.Spec.TiKV.MetricsTimeDuration == nil {
-				tac.Spec.TiKV.MetricsTimeDuration = pointer.StringPtr("3m")
-			}
-		}
-		for id, m := range tac.Spec.TiKV.Metrics {
-			if m.Resource != nil && m.Resource.Name == corev1.ResourceStorage {
-				if m.LeastStoragePressurePeriodSeconds == nil {
-					m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
-				}
-				if m.LeastRemainAvailableStoragePercent == nil {
-					m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
-				}
-				tac.Spec.TiKV.Metrics[id] = m
-			}
+		if spec.ExternalEndpoint == nil && spec.MetricsTimeDuration == nil {
+			spec.MetricsTimeDuration = pointer.StringPtr("3m")
 		}
 	}
 
-	if tac.Spec.TiDB != nil {
-		if tac.Spec.TiDB.MinReplicas == nil {
-			tac.Spec.TiDB.MinReplicas = pointer.Int32Ptr(1)
-		}
-		if tac.Spec.TiDB.ScaleOutIntervalSeconds == nil {
-			tac.Spec.TiDB.ScaleOutIntervalSeconds = pointer.Int32Ptr(300)
-		}
-		if tac.Spec.TiDB.ScaleInIntervalSeconds == nil {
-			tac.Spec.TiDB.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
-		}
-		if tac.Spec.TiDB.ExternalEndpoint == nil {
-			if tac.Spec.TiDB.MetricsTimeDuration == nil {
-				tac.Spec.TiDB.MetricsTimeDuration = pointer.StringPtr("3m")
+	if tidb := tac.Spec.TiDB; tidb != nil {
+		def(&tidb.BasicAutoScalerSpec)
+	}
+
+	if tikv := tac.Spec.TiKV; tikv != nil {
+		def(&tikv.BasicAutoScalerSpec)
+		for id, m := range tikv.Metrics {
+			if m.Resource == nil || m.Resource.Name != corev1.ResourceStorage {
+				continue
 			}
+			if m.LeastStoragePressurePeriodSeconds == nil {
+				m.LeastStoragePressurePeriodSeconds = pointer.Int64Ptr(300)
+			}
+			if m.LeastRemainAvailableStoragePercent == nil {
+				m.LeastRemainAvailableStoragePercent = pointer.Int64Ptr(10)
+			}
+			tikv.Metrics[id] = m
 		}
 	}
 
-	if tac.Spec.Monitor != nil {
-		if len(tac.Spec.Monitor.Namespace) < 1 {
-			tac.Spec.Monitor.Namespace = tac.Namespace
-		}
+	if monitor := tac.Spec.Monitor; monitor != nil && len(monitor.Namespace) < 1 {
+		monitor.Namespace = tac.Namespace
 	}
 }
 
