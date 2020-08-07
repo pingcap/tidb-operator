@@ -4821,6 +4821,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"max-index-length": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 3072",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"mem-quota-query": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 34359738368",
