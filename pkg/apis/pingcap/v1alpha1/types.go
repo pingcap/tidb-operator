@@ -1175,7 +1175,7 @@ type BackupSpec struct {
 type DumplingConfig struct {
 	// Options means options for backup data to remote storage with dumpling.
 	Options []string `json:"options,omitempty"`
-	// Deprecated please use Backup TableFilter instead. TableFilter means Table filter expression for 'db.table' matching
+	// Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
