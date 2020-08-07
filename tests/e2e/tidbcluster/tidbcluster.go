@@ -16,6 +16,7 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -1282,9 +1283,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 				return false, nil
 			}
-
-			if len(originTc.Status.TiKV.Stores) != 2 {
-				e2elog.Logf("failed to create heterogeneous cluster , stores  (current: %d)", len(tc.Status.TiKV.Stores))
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
+			framework.ExpectNoError(err, "create pdapi error")
+			defer cancel()
+			storeInfo, err := pdClient.GetStores()
+			if err != nil {
+				e2elog.Logf("failed to create pdClient, %v", err)
+			}
+			if storeInfo.Count != 2 {
+				e2elog.Logf("failed to create heterogeneous cluster , stores  (current: %d)", storeInfo.Count)
 				return false, nil
 			}
 			e2elog.Logf("create heterogeneous tc successfully")
