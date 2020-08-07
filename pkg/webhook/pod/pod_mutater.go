@@ -57,11 +57,12 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 		return util.ARFail(err)
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-		err := pc.tikvHotRegionSchedule(tc, pod)
-		if err != nil {
-			return util.ARFail(err)
-		}
+	if !features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+		return util.ARSuccess()
+	}
+
+	if err := pc.tikvHotRegionSchedule(tc, pod); err != nil {
+		return util.ARFail(err)
 	}
 
 	patch, err := util.CreateJsonPatch(original, pod)
