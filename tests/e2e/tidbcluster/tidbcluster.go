@@ -16,7 +16,6 @@ package tidbcluster
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -42,6 +41,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
