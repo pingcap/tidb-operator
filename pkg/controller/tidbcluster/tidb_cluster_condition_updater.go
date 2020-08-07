@@ -44,9 +44,9 @@ func allStatefulSetsAreUpToDate(tc *v1alpha1.TidbCluster) bool {
 		}
 		return status.CurrentRevision == status.UpdateRevision
 	}
-	return isUpToDate(tc.Status.PD.StatefulSet, true) &&
-		isUpToDate(tc.Status.TiKV.StatefulSet, true) &&
-		isUpToDate(tc.Status.TiDB.StatefulSet, true) &&
+	return (isUpToDate(tc.Status.PD.StatefulSet, false)) &&
+		(isUpToDate(tc.Status.TiKV.StatefulSet, false)) &&
+		(isUpToDate(tc.Status.TiDB.StatefulSet, false)) &&
 		isUpToDate(tc.Status.TiFlash.StatefulSet, false)
 }
 
@@ -59,13 +59,13 @@ func (u *tidbClusterConditionUpdater) updateReadyCondition(tc *v1alpha1.TidbClus
 	case !allStatefulSetsAreUpToDate(tc):
 		reason = utiltidbcluster.StatfulSetNotUpToDate
 		message = "Statefulset(s) are in progress"
-	case !tc.PDAllMembersReady():
+	case tc.Spec.PD != nil && !tc.PDAllMembersReady():
 		reason = utiltidbcluster.PDUnhealthy
 		message = "PD(s) are not healthy"
-	case !tc.TiKVAllStoresReady():
+	case tc.Spec.TiKV != nil && !tc.TiKVAllStoresReady():
 		reason = utiltidbcluster.TiKVStoreNotUp
 		message = "TiKV store(s) are not up"
-	case !tc.TiDBAllMembersReady():
+	case tc.Spec.TiDB != nil && !tc.TiDBAllMembersReady():
 		reason = utiltidbcluster.TiDBUnhealthy
 		message = "TiDB(s) are not healthy"
 	case !tc.TiFlashAllStoresReady():
