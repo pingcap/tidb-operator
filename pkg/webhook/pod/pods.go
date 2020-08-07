@@ -185,6 +185,7 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		klog.Infof("tc[%s/%s] is force upgraded, admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
+<<<<<<< HEAD
 
 	// When AdvancedStatefulSet is enabled, the ordinal of the last pod in the statefulset could be a non-zero number,
 	// so we let the deleting request of the last pod pass when spec.replicas <= 1 and status.replicas equals 1
@@ -192,6 +193,22 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		klog.Infof("tc[%s/%s]'s statefulset only have one pod[%s/%s],admit to delete it.", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
+=======
+	payload := &admitPayload{
+		pod:              pod,
+		controller:       tc,
+		ownerStatefulSet: ownerStatefulSet,
+	}
+
+	if tc.IsHeterogeneous() {
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	} else {
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+	}
+
+	return pc.admitDeletePdPods(payload)
+}
+>>>>>>> 23d8fa3... TidbCluster controller update for cluster reference change (#3003)
 
 	payload := &admitPayload{
 		pod:              pod,
@@ -200,9 +217,66 @@ func (pc *PodAdmissionControl) admitDeletePods(name, namespace string) *admissio
 		pdClient:         pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled()),
 	}
 
+<<<<<<< HEAD
 	if l.IsPD() {
 		return pc.admitDeletePdPods(payload)
 	} else if l.IsTiKV() {
+=======
+	if l.IsTidbClusterPod() {
+		tcName := controllerName
+		tc, err := pc.tcLister.TidbClusters(namespace).Get(tcName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("tc[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
+				return util.ARSuccess()
+			}
+			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
+			return util.ARFail(err)
+		}
+		if tc.IsHeterogeneous() {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		} else {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+		}
+
+		payload.controller = tc
+		payload.controllerDesc = controllerDesc{
+			name:      tcName,
+			namespace: namespace,
+			kind:      v1alpha1.TiDBClusterKind,
+		}
+		return pc.admitDeleteTiKVPods(payload)
+	} else if l.IsGroupPod() {
+		tgName := controllerName
+		tg, err := pc.tikvGroupLister.TiKVGroups(namespace).Get(tgName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("tikvgroup[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tgName, namespace, name)
+				return util.ARSuccess()
+			}
+			klog.Errorf("failed get tikvgroup[%s/%s],refuse to delete pod[%s/%s]", namespace, tgName, namespace, name)
+			return util.ARFail(err)
+		}
+		ownerTcName := tg.Spec.ClusterName
+		tc, err := pc.tcLister.TidbClusters(namespace).Get(ownerTcName)
+		if err != nil {
+			// Event if the ownerTC is deleted, we won't delete the tikvgroup pod unless its owner controller is deleted
+			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerTcName, namespace, name)
+			return util.ARFail(err)
+		}
+		if tc.IsHeterogeneous() {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		} else {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTcName, tc.IsTLSClusterEnabled())
+		}
+
+		payload.controller = tg
+		payload.controllerDesc = controllerDesc{
+			name:      tgName,
+			namespace: namespace,
+			kind:      v1alpha1.TiKVGroupKind,
+		}
+>>>>>>> 23d8fa3... TidbCluster controller update for cluster reference change (#3003)
 		return pc.admitDeleteTiKVPods(payload)
 	}
 
@@ -242,7 +316,31 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 		return util.ARSuccess()
 	}
 
+<<<<<<< HEAD
 	tc, err := pc.operatorCli.PingcapV1alpha1().TidbClusters(namespace).Get(tcName, metav1.GetOptions{})
+=======
+	if l.IsTiKV() {
+
+		var pdClient pdapi.PDClient
+		if ownerTc.IsHeterogeneous() {
+			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Spec.Cluster.Name, ownerTc.IsTLSClusterEnabled())
+		} else {
+			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.IsTLSClusterEnabled())
+		}
+		return pc.admitCreateTiKVPod(pod, pdClient)
+	}
+
+	return util.ARSuccess()
+}
+
+// Initialize implements AdmissionHook.Initialize interface. It's is called as
+// a post-start hook.
+func (a *PodAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	cli, err := versioned.NewForConfig(cfg)
+>>>>>>> 23d8fa3... TidbCluster controller update for cluster reference change (#3003)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return util.ARSuccess()

@@ -636,3 +636,7 @@ func (tc *TidbCluster) TiCDCLogLevel() string {
 
 	return "info"
 }
+
+func (tc *TidbCluster) IsHeterogeneous() bool {
+	return tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 && tc.Spec.PD == nil
+}
