@@ -41,6 +41,7 @@ import (
 type autoScalerManager struct {
 	kubecli   kubernetes.Interface
 	cli       versioned.Interface
+	tcLister  v1alpha1listers.TidbClusterLister
 	tcControl controller.TidbClusterControlInterface
 	taLister  v1alpha1listers.TidbClusterAutoScalerLister
 	stsLister appslisters.StatefulSetLister
@@ -58,6 +59,7 @@ func NewAutoScalerManager(
 	return &autoScalerManager{
 		kubecli:   kubecli,
 		cli:       cli,
+		tcLister:  tcLister,
 		tcControl: controller.NewRealTidbClusterControl(cli, tcLister, recorder),
 		taLister:  informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		stsLister: stsLister,
@@ -76,7 +78,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 		tac.Spec.Cluster.Namespace = tac.Namespace
 	}
 
-	tc, err := am.cli.PingcapV1alpha1().TidbClusters(tac.Spec.Cluster.Namespace).Get(tcName, metav1.GetOptions{})
+	tc, err := am.tcLister.TidbClusters(tac.Spec.Cluster.Namespace).Get(tcName)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status

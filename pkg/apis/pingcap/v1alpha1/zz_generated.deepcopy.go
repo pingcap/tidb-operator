@@ -3998,6 +3998,11 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.MaxIndexLength != nil {
+		in, out := &in.MaxIndexLength, &out.MaxIndexLength
+		*out = new(int64)
+		**out = **in
+	}
 	if in.MemQuotaQuery != nil {
 		in, out := &in.MemQuotaQuery, &out.MemQuotaQuery
 		*out = new(int64)
