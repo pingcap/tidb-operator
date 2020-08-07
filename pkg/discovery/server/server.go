@@ -18,6 +18,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
+
 	restful "github.com/emicklei/go-restful"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery"
@@ -32,9 +34,9 @@ type server struct {
 }
 
 // NewServer creates a new server.
-func NewServer(pdControl pdapi.PDControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) Server {
+func NewServer(pdControl pdapi.PDControlInterface, masterControl dmapi.MasterControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) Server {
 	s := &server{
-		discovery: discovery.NewTiDBDiscovery(pdControl, cli, kubeCli),
+		discovery: discovery.NewTiDBDiscovery(pdControl, masterControl, cli, kubeCli),
 		container: restful.NewContainer(),
 	}
 	s.registerHandlers()
@@ -44,6 +46,7 @@ func NewServer(pdControl pdapi.PDControlInterface, cli versioned.Interface, kube
 func (s *server) registerHandlers() {
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(s.newHandler))
+	ws.Route(ws.GET("/newdm/{advertise-peer-url}").To(s.newHandler))
 	s.container.Add(ws)
 }
 
@@ -75,5 +78,32 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	klog.Infof("generated args for %s: %s", advertisePeerURL, result)
 	if _, err := io.WriteString(resp, result); err != nil {
 		klog.Errorf("failed to writeString: %s, %v", result, err)
+	}
+}
+
+func (s *server) newDMHandler(req *restful.Request, resp *restful.Response) {
+	encodedAdvertisePeerURL := req.PathParameter("advertise-peer-url")
+	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
+	if err != nil {
+		klog.Errorf("failed to decode dm advertise-peer-url: %s", encodedAdvertisePeerURL)
+		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
+			klog.Errorf("failed to writeError: %v", err)
+		}
+		return
+	}
+	advertisePeerURL := string(data)
+
+	result, err := s.discovery.DiscoverDM(advertisePeerURL)
+	if err != nil {
+		klog.Errorf("failed to discover DM: %s, %v", advertisePeerURL, err)
+		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
+			klog.Errorf("failed to writeError for dm: %v", err)
+		}
+		return
+	}
+
+	klog.Infof("generated args for dm %s: %s", advertisePeerURL, result)
+	if _, err := io.WriteString(resp, result); err != nil {
+		klog.Errorf("failed to writeString for dm: %s, %v", result, err)
 	}
 }
