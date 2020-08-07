@@ -113,6 +113,7 @@ type PDConfig struct {
 	// +optional
 	LabelProperty *PDLabelPropertyConfig `toml:"label-property,omitempty" json:"label-property,omitempty"`
 
+	// Deprecated in v4.0.0
 	// NamespaceClassifier is for classifying stores/regions into different
 	// namespaces.
 	// Optional: Defaults to true
@@ -457,6 +458,7 @@ type FileLogConfig struct {
 	// Log filename, leave empty to disable file log.
 	// +optional
 	Filename *string `toml:"filename,omitempty" json:"filename,omitempty"`
+	// Deprecated in v4.0.0
 	// Is log rotate enabled.
 	// +optional
 	LogRotate *bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`
