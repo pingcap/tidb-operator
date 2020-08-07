@@ -1188,7 +1188,7 @@ type BRConfig struct {
 	ClusterNamespace string `json:"clusterNamespace,omitempty"`
 	// Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
-	// Deprecated from BR v4.0.3 please use Backup TableFilter or Restore TableFilter instead. Table is the specific table which will be backed-up or restored
+	// Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`
