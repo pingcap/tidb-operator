@@ -57,6 +57,9 @@ type TiDBConfig struct {
 	// Optional: Defaults to log
 	// +optional
 	OOMAction *string `toml:"oom-action,omitempty" json:"oom-action,omitempty"`
+	// Optional: Defaults to 3072
+	// +optional
+	MaxIndexLength *int64 `toml:"max-index-length,omitempty" json:"max-index-length,omitempty"`
 	// Optional: Defaults to 34359738368
 	// +optional
 	MemQuotaQuery *int64 `toml:"mem-quota-query,omitempty" json:"mem-quota-query,omitempty"`
