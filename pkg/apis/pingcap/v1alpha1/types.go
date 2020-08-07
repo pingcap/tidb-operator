@@ -225,15 +225,15 @@ type TidbClusterSpec struct {
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 
-	// k8s Cluster Domain of TiDB cluster
-	// Optional: Defaults to omitted
+	// Kubernetes Cluster Domain of TiDB cluster
+	// Optional: Defaults to ""
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`
 
-	// DiscoveryUrl of TiDB cluster
-	// Optional: Defaults to omitted
+	// DiscoveryAddress of TiDB cluster
+	// Optional: Defaults to ""
 	// +optional
-	DiscoveryUrl string `json:"discoveryUrl,omitempty"`
+	DiscoveryAddress string `json:"discoveryAddress,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
