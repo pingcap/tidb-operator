@@ -228,7 +228,9 @@ func runTest(t *testing.T, tt testcase, asts bool) {
 	}
 
 	cli := fake.NewSimpleClientset()
-	ac := NewStatefulSetAdmissionControl(cli)
+	ac := NewStatefulSetAdmissionControl()
+	ac.initialized = true
+	ac.operatorCli = cli
 	ar := &admission.AdmissionRequest{
 		Name:      "foo",
 		Namespace: v1.NamespaceDefault,
@@ -258,7 +260,7 @@ func runTest(t *testing.T, tt testcase, asts bool) {
 	if tt.tc != nil {
 		cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(tt.tc)
 	}
-	resp := ac.AdmitStatefulSets(ar)
+	resp := ac.Validate(ar)
 	if resp.Allowed != tt.wantAllowed {
 		t.Errorf("want allowed %v, got %v", tt.wantAllowed, resp.Allowed)
 	}
