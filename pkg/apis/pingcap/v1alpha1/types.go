@@ -1502,7 +1502,7 @@ type DMClusterSpec struct {
 
 	// dm-worker cluster spec
 	// +optional
-	Worker WorkerSpec `json:"worker,omitempty"`
+	Worker *WorkerSpec `json:"worker,omitempty"`
 
 	// Indicates that the dm cluster is paused and will not be processed by
 	// the controller.
