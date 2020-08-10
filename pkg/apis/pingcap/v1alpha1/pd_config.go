@@ -415,7 +415,7 @@ type PDLabelPropertyConfig map[string]PDStoreLabels
 // PDSecurityConfig is the configuration for supporting tls.
 // +k8s:openapi-gen=true
 type PDSecurityConfig struct {
-	// CAPath is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty
+	// CAPath is the path of file that contains list of trusted SSL CAs.
 	// +optional
 	CAPath *string `toml:"cacert-path,omitempty" json:"cacert-path,omitempty"`
 	// CertPath is the path of file that contains X509 certificate in PEM format.

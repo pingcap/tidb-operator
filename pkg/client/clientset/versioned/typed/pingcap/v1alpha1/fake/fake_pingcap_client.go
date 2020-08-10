@@ -33,6 +33,10 @@ func (c *FakePingcapV1alpha1) BackupSchedules(namespace string) v1alpha1.BackupS
 	return &FakeBackupSchedules{c, namespace}
 }
 
+func (c *FakePingcapV1alpha1) DMClusters(namespace string) v1alpha1.DMClusterInterface {
+	return &FakeDMClusters{c, namespace}
+}
+
 func (c *FakePingcapV1alpha1) DataResources(namespace string) v1alpha1.DataResourceInterface {
 	return &FakeDataResources{c, namespace}
 }
