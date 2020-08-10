@@ -273,7 +273,7 @@ func TestTiKVDeleterDelete(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			cli := fake.NewSimpleClientset()
 			kubeCli := kubefake.NewSimpleClientset()
-			podAdmissionControl := newPodAdmissionControl(kubeCli, cli)
+			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 			pdControl := pdapi.NewFakePDControl(kubeCli)
 			fakePDClient := controller.NewFakePDClient(pdControl, testcase.ownerTc)
 

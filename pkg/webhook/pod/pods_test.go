@@ -28,10 +28,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
@@ -169,7 +171,7 @@ func TestAdmitPod(t *testing.T) {
 			if tt.cm != nil {
 				kubeCli.CoreV1().ConfigMaps(tt.cm.Namespace).Create(tt.cm)
 			}
-			podAdmissionControl := newPodAdmissionControl(kubeCli, cli)
+			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 			ar := &admission.AdmissionRequest{
 				Name:      "foo",
 				Namespace: namespace,
@@ -190,13 +192,9 @@ func TestAdmitPod(t *testing.T) {
 	}
 }
 
-func newPodAdmissionControl(kubeCli kubernetes.Interface, cli versioned.Interface) *PodAdmissionControl {
-	ah := NewPodAdmissionControl(nil, time.Minute, time.Minute)
-	ah.kubeCli = kubeCli
-	ah.operatorCli = cli
-	ah.pdControl = pdapi.NewFakePDControl(kubeCli)
-	ah.recorder = record.NewFakeRecorder(10)
-	ah.initialized = true
+func newPodAdmissionControl(serviceAccount []string, kubeCli kubernetes.Interface, cli versioned.Interface) *PodAdmissionControl {
+	ah := NewPodAdmissionControl(serviceAccount, time.Minute, time.Minute)
+	ah.initialize(cli, kubeCli, pdapi.NewFakePDControl(kubeCli), record.NewFakeRecorder(10), wait.NeverStop)
 	return ah
 }
 
@@ -255,4 +253,104 @@ func newTidbClusterForPodAdmissionControl(pdReplicas int32, tikvReplicas int32) 
 		}
 	}
 	return tc
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name        string
+		operation   admission.Operation
+		username    string
+		pod         *corev1.Pod
+		tc          *v1alpha1.TidbCluster
+		cm          *corev1.ConfigMap
+		wantAllowed bool
+	}{
+		{
+			name:      "unknown service account",
+			operation: admission.Create,
+			username:  "does-not-exist",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name:      "create a pod that is not managed by tidb-operator",
+			operation: admission.Create,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name:      "create a pod but tidb cluster does not exist",
+			operation: admission.Create,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+					Labels: map[string]string{
+						label.ManagedByLabelKey: label.TiDBOperator,
+						label.ComponentLabelKey: label.TiKVLabelVal,
+						label.NameLabelKey:      "tidb-cluster",
+						label.InstanceLabelKey:  "tc",
+					},
+				},
+			},
+			wantAllowed: false,
+		},
+		{
+			name:      "delete a pod that is not managed by tidb-operator",
+			operation: admission.Delete,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+				},
+			},
+			wantAllowed: true,
+		},
+	}
+
+	jsonInfo, ok := runtime.SerializerInfoForMediaType(util.Codecs.SupportedMediaTypes(), runtime.ContentTypeJSON)
+	if !ok {
+		t.Fatalf("unable to locate encoder -- %q is not a supported media type", runtime.ContentTypeJSON)
+	}
+	encoder := util.Codecs.EncoderForVersion(jsonInfo.Serializer, corev1.SchemeGroupVersion)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cli := fake.NewSimpleClientset()
+			kubeCli := kubefake.NewSimpleClientset()
+			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
+			ar := &admission.AdmissionRequest{
+				Name:      "foo",
+				Namespace: namespace,
+				Operation: tt.operation,
+				UserInfo: authenticationv1.UserInfo{
+					Username: tt.username,
+				},
+			}
+			buf := bytes.Buffer{}
+			if err := encoder.Encode(tt.pod, &buf); err != nil {
+				t.Fatal(err)
+			}
+			ar.Object = runtime.RawExtension{
+				Raw: buf.Bytes(),
+			}
+			resp := podAdmissionControl.Validate(ar)
+			if resp.Allowed != tt.wantAllowed {
+				t.Errorf("want %v, got %v", tt.wantAllowed, resp.Allowed)
+			}
+		})
+	}
 }

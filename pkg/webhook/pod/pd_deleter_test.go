@@ -82,7 +82,7 @@ func TestPDDeleterDelete(t *testing.T) {
 		}
 
 		cli := fake.NewSimpleClientset()
-		podAdmissionControl := newPodAdmissionControl(kubeCli, cli)
+		podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
