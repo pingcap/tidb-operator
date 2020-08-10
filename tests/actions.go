@@ -1430,6 +1430,9 @@ func getStsContainer(kubeCli kubernetes.Interface, sts *apps.StatefulSet, contai
 }
 
 func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	if tc.Spec.PD == nil {
+		return true, nil
+	}
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	pdSetName := controller.PDMemberName(tcName)
@@ -1511,6 +1514,9 @@ func (oa *operatorActions) pdMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, err
 }
 
 func (oa *operatorActions) tikvMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	if tc.Spec.TiKV == nil {
+		return true, nil
+	}
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	tikvSetName := controller.TiKVMemberName(tcName)
@@ -1661,6 +1667,9 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 }
 
 func (oa *operatorActions) tidbMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, error) {
+	if tc.Spec.TiDB == nil {
+		return true, nil
+	}
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	tidbSetName := controller.TiDBMemberName(tcName)

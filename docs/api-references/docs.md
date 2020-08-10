@@ -1336,6 +1336,20 @@ bool
 <p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>cluster</code></br>
+<em>
+<a href="#tidbclusterref">
+TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -15940,6 +15954,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>, 
 <a href="#tidbinitializerspec">TidbInitializerSpec</a>, 
 <a href="#tidbmonitorspec">TidbMonitorSpec</a>)
 </p>
@@ -16344,6 +16359,20 @@ bool
 <td>
 <em>(Optional)</em>
 <p>EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cluster</code></br>
+<em>
+<a href="#tidbclusterref">
+TidbClusterRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
 </td>
 </tr>
 </tbody>

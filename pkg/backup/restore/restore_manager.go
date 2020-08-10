@@ -289,7 +289,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
+	if tc.IsTLSClusterEnabled() {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      util.ClusterClientVolName,
