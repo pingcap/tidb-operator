@@ -30,7 +30,12 @@ import (
 	"k8s.io/klog"
 )
 
+// mutatePod mutates the pod by setting hotRegion label if the pod is created by AutoScaling
 func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
+	if !features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+		return util.ARSuccess()
+	}
+
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
 		return util.ARFail(err)
@@ -55,10 +60,6 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 			return util.ARSuccess()
 		}
 		return util.ARFail(err)
-	}
-
-	if !features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-		return util.ARSuccess()
 	}
 
 	if err := pc.tikvHotRegionSchedule(tc, pod); err != nil {
