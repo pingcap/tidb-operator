@@ -261,6 +261,8 @@ func GetCrdKindFromKindName(kindName string) (v1alpha1.CrdKind, error) {
 	switch strings.ToLower(kindName) {
 	case v1alpha1.TiDBClusterKindKey:
 		return v1alpha1.DefaultCrdKinds.TiDBCluster, nil
+	case v1alpha1.DMClusterKindKey:
+		return v1alpha1.DefaultCrdKinds.DMCluster, nil
 	case v1alpha1.BackupKindKey:
 		return v1alpha1.DefaultCrdKinds.Backup, nil
 	case v1alpha1.RestoreKindKey:
