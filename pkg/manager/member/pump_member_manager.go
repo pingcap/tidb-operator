@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/listers/apps/v1"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
@@ -467,9 +468,11 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		scheme = "https"
 	}
 	return RenderPumpStartScript(&PumpStartScriptModel{
-		Scheme:      scheme,
-		ClusterName: tc.Name,
-		LogLevel:    getPumpLogLevel(tc),
+		Scheme:        scheme,
+		ClusterName:   tc.Name,
+		LogLevel:      getPumpLogLevel(tc),
+		ClusterDomain: tc.Spec.ClusterDomain,
+		Namespace:     tc.GetNamespace(),
 	})
 }
 

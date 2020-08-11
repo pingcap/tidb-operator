@@ -1323,21 +1323,21 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>k8s Cluster Domain of TiDB cluster
-Optional: Defaults to omitted</p>
+<p>Kubernetes Cluster Domain of TiDB cluster
+Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>discoveryUrl</code></br>
+<code>discoveryAddress</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>DiscoveryUrl of TiDB cluster
-Optional: Defaults to omitted</p>
+<p>DiscoveryAddress of TiDB cluster
+Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>
 </table>
@@ -16317,21 +16317,21 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>k8s Cluster Domain of TiDB cluster
-Optional: Defaults to omitted</p>
+<p>Kubernetes Cluster Domain of TiDB cluster
+Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>discoveryUrl</code></br>
+<code>discoveryAddress</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>DiscoveryUrl of TiDB cluster
-Optional: Defaults to omitted</p>
+<p>DiscoveryAddress of TiDB cluster
+Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>
 </tbody>

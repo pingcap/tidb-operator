@@ -15,6 +15,7 @@ package member
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 )
 
@@ -283,7 +284,7 @@ var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`
 /pump \
 -pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \
 -L={{ .LogLevel }} \
--advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump:8250 \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
 -data-dir=/data \
 -log-file=
@@ -294,9 +295,18 @@ if [ $? == 0 ]; then
 fi`))
 
 type PumpStartScriptModel struct {
-	Scheme      string
-	ClusterName string
-	LogLevel    string
+	Scheme        string
+	ClusterName   string
+	LogLevel      string
+	Namespace     string
+	ClusterDomain string
+}
+
+func (pssm *PumpStartScriptModel) FormatPumpZone() string {
+	if pssm.ClusterDomain != "" {
+		return fmt.Sprintf(".%s.svc.%s", pssm.Namespace, pssm.ClusterDomain)
+	}
+	return ""
 }
 
 func RenderPumpStartScript(model *PumpStartScriptModel) (string, error) {

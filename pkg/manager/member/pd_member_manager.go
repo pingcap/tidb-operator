@@ -792,7 +792,7 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		Scheme:        tc.Scheme(),
 		DataDir:       filepath.Join(pdDataVolumeMountPath, tc.Spec.PD.DataSubDir),
 		ClusterDomain: tc.Spec.ClusterDomain,
-		DiscoveryUrl:  tc.Spec.DiscoveryUrl,
+		DiscoveryUrl:  tc.Spec.DiscoveryAddress,
 	})
 	if err != nil {
 		return nil, err

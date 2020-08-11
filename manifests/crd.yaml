@@ -343,7 +343,7 @@ spec:
                 requests:
                   type: object
               type: object
-            discoveryUrl:
+            discoveryAddress:
               type: string
             enableDynamicConfiguration:
               type: boolean
