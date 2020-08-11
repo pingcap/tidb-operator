@@ -1,4 +1,4 @@
-# Deprecated - Heterogeneous design for TidbCluster
+# Heterogeneous design for TidbCluster (DEPRECATED)
 
 This document presents a design for the Heterogeneous components in one kind for `TidbCluster`.
 
