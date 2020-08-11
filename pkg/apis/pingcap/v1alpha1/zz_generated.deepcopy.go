@@ -919,7 +919,11 @@ func (in *DMClusterSpec) DeepCopyInto(out *DMClusterSpec) {
 	*out = *in
 	out.Discovery = in.Discovery
 	in.Master.DeepCopyInto(&out.Master)
-	in.Worker.DeepCopyInto(&out.Worker)
+	if in.Worker != nil {
+		in, out := &in.Worker, &out.Worker
+		*out = new(WorkerSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PVReclaimPolicy != nil {
 		in, out := &in.PVReclaimPolicy, &out.PVReclaimPolicy
 		*out = new(v1.PersistentVolumeReclaimPolicy)
