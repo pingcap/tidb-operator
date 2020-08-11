@@ -115,7 +115,6 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 		if pvc.DeletionTimestamp != nil {
 			// PVC has been deleted, skip it
 			skipReason[pvcName] = skipReasonPVCCleanerPVCHasBeenDeleted
-			skipReason[pvcName] = skipReasonPVCCleanerPVCHasBeenDeleted
 			continue
 		}
 
