@@ -19,6 +19,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	pdUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -80,7 +81,8 @@ func TestPDDeleterDelete(t *testing.T) {
 			}
 		}
 
-		podAdmissionControl := newPodAdmissionControl(kubeCli)
+		cli := fake.NewSimpleClientset()
+		podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 

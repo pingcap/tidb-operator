@@ -169,7 +169,7 @@ func (pc *PodAdmissionControl) Validate(ar *admission.AdmissionRequest) *admissi
 	case admission.Delete:
 		return pc.admitDeletePods(name, namespace)
 	case admission.Create:
-		return pc.AdmitCreatePods(ar)
+		return pc.admintCreatePods(ar)
 	default:
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
@@ -349,7 +349,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 // Webhook server receive request to create pod
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Currently we only check with tikv pod
-func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 	pod := &core.Pod{}
 	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
 		klog.Errorf("Could not unmarshal raw object: %v", err)
@@ -420,6 +420,33 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 	return util.ARSuccess()
 }
 
+func (a *PodAdmissionControl) initialize(cli versioned.Interface, kubeCli kubernetes.Interface, pdControl pdapi.PDControlInterface, recorder record.EventRecorder, stopCh <-chan struct{}) error {
+	a.operatorCli = cli
+	a.kubeCli = kubeCli
+	a.pdControl = pdControl
+	a.recorder = recorder
+
+	// informer factory
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, a.resyncDuration)
+
+	// initialize listers
+	a.tcLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+	a.tikvGroupLister = informerFactory.Pingcap().V1alpha1().TiKVGroups().Lister()
+
+	// Start informer factories after all controller are initialized.
+	informerFactory.Start(stopCh)
+
+	// Wait for all started informers' cache were synced.
+	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			klog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+
+	a.initialized = true
+	return nil
+}
+
 // Initialize implements AdmissionHook.Initialize interface. It's is called as
 // a post-start hook.
 func (a *PodAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
@@ -447,36 +474,11 @@ func (a *PodAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{
 		kubeCli = helper.NewHijackClient(kubeCli, asCli)
 	}
 
-	a.kubeCli = kubeCli
-	a.operatorCli = cli
-
-	// init pdControl
-	a.pdControl = pdapi.NewDefaultPDControl(kubeCli)
-
-	// init recorder
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	a.recorder = eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidb-admission-controller"})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidb-admission-controller"})
 
-	// informer factory
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, a.resyncDuration)
-
-	// initialize listers
-	a.tcLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
-	a.tikvGroupLister = informerFactory.Pingcap().V1alpha1().TiKVGroups().Lister()
-
-	// Start informer factories after all controller are initialized.
-	informerFactory.Start(stopCh)
-
-	// Wait for all started informers' cache were synced.
-	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
-		if !synced {
-			klog.Fatalf("error syncing informer for %v", v)
-		}
-	}
-
-	a.initialized = true
-	return nil
+	return a.initialize(cli, kubeCli, pdapi.NewDefaultPDControl(kubeCli), recorder, stopCh)
 }
