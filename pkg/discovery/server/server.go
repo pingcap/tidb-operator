@@ -46,7 +46,7 @@ func NewServer(pdControl pdapi.PDControlInterface, masterControl dmapi.MasterCon
 func (s *server) registerHandlers() {
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(s.newHandler))
-	ws.Route(ws.GET("/newdm/{advertise-peer-url}").To(s.newHandler))
+	ws.Route(ws.GET("/newdm/{advertise-peer-url}").To(s.newDMHandler))
 	s.container.Add(ws)
 }
 
