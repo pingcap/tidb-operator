@@ -134,7 +134,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	}
 
 	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
-	dcName := strings.TrimSuffix(peerServiceName, "-master-peer")
+	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
 	if ns != podNamespace {
 		return "", fmt.Errorf("dm the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
@@ -149,7 +149,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 
 	currentCluster := td.dmClusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != dc.ResourceVersion {
-		td.clusters[keyName] = &clusterInfo{
+		td.dmClusters[keyName] = &clusterInfo{
 			resourceVersion: dc.ResourceVersion,
 			peers:           map[string]struct{}{},
 		}
@@ -163,15 +163,15 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	}
 
 	masterClient := td.masterControl.GetMasterClient(dmapi.Namespace(dc.GetNamespace()), dc.GetName(), dc.IsTLSClusterEnabled())
-	membersInfo, err := masterClient.GetMasters()
+	mastersInfos, err := masterClient.GetMasters()
 	if err != nil {
 		return "", err
 	}
 
-	membersArr := make([]string, 0)
-	for _, member := range membersInfo.Masters {
-		membersArr = append(membersArr, member.ClientURLs[0])
+	mastersArr := make([]string, 0)
+	for _, master := range mastersInfos {
+		mastersArr = append(mastersArr, master.ClientURLs[0])
 	}
 	delete(currentCluster.peers, podName)
-	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
+	return fmt.Sprintf("--join=%s", strings.Join(mastersArr, ",")), nil
 }
