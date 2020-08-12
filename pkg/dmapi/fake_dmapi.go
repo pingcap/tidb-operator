@@ -20,7 +20,6 @@ import (
 type ActionType string
 
 const (
-	GetMembersActionType ActionType = "GetMembers"
 	GetMastersActionType ActionType = "GetMasters"
 )
 
@@ -65,20 +64,11 @@ func (pc *FakeMasterClient) fakeAPI(actionType ActionType, action *Action) (inte
 	return nil, &NotFoundReaction{actionType}
 }
 
-func (pc *FakeMasterClient) GetMembers(_ string) (*MembersInfo, error) {
-	action := &Action{}
-	result, err := pc.fakeAPI(GetMembersActionType, action)
-	if err != nil {
-		return nil, err
-	}
-	return result.(*MembersInfo), nil
-}
-
-func (pc *FakeMasterClient) GetMasters() (*MembersInfo, error) {
+func (pc *FakeMasterClient) GetMasters() ([]*MastersInfo, error) {
 	action := &Action{}
 	result, err := pc.fakeAPI(GetMastersActionType, action)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*MembersInfo), nil
+	return result.([]*MastersInfo), nil
 }

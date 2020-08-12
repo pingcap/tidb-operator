@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	dmpb "github.com/pingcap/dm/dm/pb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
@@ -409,7 +408,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		url          string
 		dmClusters   map[string]*clusterInfo
 		dc           *v1alpha1.DMCluster
-		getMastersFn func() (*dmapi.MembersInfo, error)
+		getMastersFn func() ([]*dmapi.MastersInfo, error)
 		expectFn     func(*GomegaWithT, *tidbDiscovery, string, error)
 	}
 	testFn := func(test testcase, t *testing.T) {
@@ -486,7 +485,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			url:        "demo-dm-master-0.demo-dm-master-peer.default.svc:2380",
 			dmClusters: map[string]*clusterInfo{},
 			dc:         newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("get members failed")
 			},
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
@@ -502,7 +501,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-dm-master-0.demo-dm-master-peer.default.svc:2380",
 			dc:   newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("getMembers failed")
 			},
 			dmClusters: map[string]*clusterInfo{
@@ -528,7 +527,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			url:        "demo-dm-master-0.demo-dm-master-peer.default.svc:2380",
 			dmClusters: map[string]*clusterInfo{},
 			dc:         newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("there are no dm-master members")
 			},
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
@@ -544,7 +543,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-dm-master-1.demo-dm-master-peer.default.svc:2380",
 			dc:   newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("there are no dm-master members 2")
 			},
 			dmClusters: map[string]*clusterInfo{
@@ -592,7 +591,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-dm-master-0.demo-dm-master-peer.default.svc:2380",
 			dc:   newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("there are no dm-master members 3")
 			},
 			dmClusters: map[string]*clusterInfo{
@@ -618,12 +617,10 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-dm-master-0.demo-dm-master-peer.default.svc:2380",
 			dc:   newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
-				return &dmapi.MembersInfo{
-					Masters: []*dmpb.MasterInfo{
-						{
-							PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
-						},
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
+				return []*dmapi.MastersInfo{
+					{
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
 					},
 				}, nil
 			},
@@ -649,15 +646,13 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			ns:   "default",
 			url:  "demo-dm-master-1.demo-dm-master-peer.default.svc:2380",
 			dc:   newDC(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
-				return &dmapi.MembersInfo{
-					Masters: []*dmpb.MasterInfo{
-						{
-							PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer.default.svc:2380"},
-						},
-						{
-							PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
-						},
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
+				return []*dmapi.MastersInfo{
+					{
+						PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer.default.svc:2380"},
+					},
+					{
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
 					},
 				}, nil
 			},
@@ -685,18 +680,16 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				dc.Spec.Master.Replicas = 5
 				return dc
 			}(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
-				return &dmapi.MembersInfo{
-					Masters: []*dmpb.MasterInfo{
-						{
-							PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer.default.svc:2380"},
-						},
-						{
-							PeerURLs: []string{"demo-dm-master-1.demo-dm-master-peer.default.svc:2380"},
-						},
-						{
-							PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
-						},
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
+				return []*dmapi.MastersInfo{
+					{
+						PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer.default.svc:2380"},
+					},
+					{
+						PeerURLs: []string{"demo-dm-master-1.demo-dm-master-peer.default.svc:2380"},
+					},
+					{
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
 					},
 				}, nil
 			},
@@ -722,21 +715,19 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				dc.Spec.Master.Replicas = 5
 				return dc
 			}(),
-			getMastersFn: func() (*dmapi.MembersInfo, error) {
-				return &dmapi.MembersInfo{
-					Masters: []*dmpb.MasterInfo{
-						{
-							PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer.default.svc:2380"},
-						},
-						{
-							PeerURLs: []string{"demo-dm-master-1.demo-dm-master-peer.default.svc:2380"},
-						},
-						{
-							PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
-						},
-						{
-							PeerURLs: []string{"demo-dm-master-3.demo-dm-master-peer.default.svc:2380"},
-						},
+			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
+				return []*dmapi.MastersInfo{
+					{
+						PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer.default.svc:2380"},
+					},
+					{
+						PeerURLs: []string{"demo-dm-master-1.demo-dm-master-peer.default.svc:2380"},
+					},
+					{
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer.default.svc:2380"},
+					},
+					{
+						PeerURLs: []string{"demo-dm-master-3.demo-dm-master-peer.default.svc:2380"},
 					},
 				}, nil
 			},

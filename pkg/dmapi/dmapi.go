@@ -15,13 +15,11 @@ package dmapi
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
-	dmpb "github.com/pingcap/dm/dm/pb"
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
 )
 
@@ -32,21 +30,39 @@ const (
 // MasterClient provides master server's api
 type MasterClient interface {
 	// GetMasters returns all master members from cluster
-	GetMembers(string) (*MembersInfo, error)
-	// GetMasters returns all master members from cluster
-	GetMasters() (*MembersInfo, error)
+	GetMasters() ([]*MastersInfo, error)
 }
 
 var (
 	membersPrefix = "apis/v1alpha1/members"
 )
 
-// MembersInfo is master members info returned from dm-master RESTful interface
-//type Members map[string][]*pdpb.Member
-type MembersInfo struct {
-	Masters []*dmpb.MasterInfo
-	Workers []*dmpb.WorkerInfo
-	Leader  *dmpb.ListLeaderMember
+type ListMemberRespHeader struct {
+	Result bool   `json:"result,omitempty"`
+	Msg    string `json:"msg,omitempty"`
+}
+
+type MastersInfo struct {
+	Name       string   `json:"name,omitempty"`
+	MemberID   uint64   `json:"memberID,omitempty"`
+	Alive      bool     `json:"alive,omitempty"`
+	PeerURLs   []string `json:"peerURLs,omitempty"`
+	ClientURLs []string `json:"clientURLs,omitempty"`
+}
+
+type MembersMaster struct {
+	Msg     string         `json:"msg,omitempty"`
+	Masters []*MastersInfo `json:"masters,omitempty"`
+}
+
+type ListMemberMaster struct {
+	MembersMaster `json:"master,omitempty"`
+}
+
+type MastersResp struct {
+	ListMemberRespHeader `json:",inline"`
+
+	ListMemberResp []*ListMemberMaster `json:"members,omitempty"`
 }
 
 // masterClient is default implementation of MasterClient
@@ -55,39 +71,26 @@ type masterClient struct {
 	httpClient *http.Client
 }
 
-func (mc *masterClient) GetMembers(apiURL string) (*MembersInfo, error) {
+func (mc *masterClient) GetMasters() ([]*MastersInfo, error) {
+	query := "?master=true"
+	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
 	body, err := httputil.GetBodyOK(mc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
-	listMemberResp := &dmpb.ListMemberResponse{}
-	err = jsonpb.Unmarshal(strings.NewReader(string(body)), listMemberResp)
+	listMemberResp := &MastersResp{}
+	err = json.Unmarshal(body, listMemberResp)
 	if err != nil {
 		return nil, err
 	}
 	if !listMemberResp.Result {
 		return nil, fmt.Errorf("unable to list members info from dm-master, err: %s", listMemberResp.Msg)
 	}
-	membersInfo := &MembersInfo{
-		Masters: make([]*dmpb.MasterInfo, 0),
-		Workers: make([]*dmpb.WorkerInfo, 0),
+	if len(listMemberResp.ListMemberResp) != 1 {
+		return nil, fmt.Errorf("invalid list members resp: %s", body)
 	}
-	for _, member := range listMemberResp.GetMembers() {
-		if leader := member.GetLeader(); leader != nil {
-			membersInfo.Leader = leader
-		} else if masters := member.GetMaster(); masters != nil {
-			membersInfo.Masters = append(membersInfo.Masters, masters.Masters...)
-		} else if workers := member.GetWorker(); workers != nil {
-			membersInfo.Workers = append(membersInfo.Workers, workers.Workers...)
-		}
-	}
-	return membersInfo, nil
-}
 
-func (mc *masterClient) GetMasters() (*MembersInfo, error) {
-	query := "?leader=true&master=true"
-	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
-	return mc.GetMembers(apiURL)
+	return listMemberResp.ListMemberResp[0].Masters, nil
 }
 
 // NewMasterClient returns a new MasterClient
