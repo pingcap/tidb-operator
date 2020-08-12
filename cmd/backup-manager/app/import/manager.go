@@ -91,8 +91,8 @@ func (rm *RestoreManager) ProcessRestore() error {
 	var db *sql.DB
 	var dsn string
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		// TLS is not currently supported
-		dsn, err = rm.GetDSN(false)
+		// TODO: for local backend mode, lightning will use both pd and mysql client. We should set both tls configurations in that mode
+		dsn, err = rm.GetDSN(rm.TLSClient)
 		if err != nil {
 			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", rm, err)
 			return false, err
