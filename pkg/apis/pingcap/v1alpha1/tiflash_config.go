@@ -366,12 +366,18 @@ type FlashProxy struct {
 	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 }
 
-// +k8s:openapi-gen=false
+// +k8s:openapi-gen=true
 type FlashSecurity struct {
+	// +k8s:openapi-gen=false
 	// +optional
 	CAPath *string `json:"ca_path,omitempty" toml:"ca_path,omitempty"`
+	// +k8s:openapi-gen=false
 	// +optional
 	CertPath *string `json:"cert_path,omitempty" toml:"cert_path,omitempty"`
+	// +k8s:openapi-gen=false
 	// +optional
 	KeyPath *string `json:"key_path,omitempty" toml:"key_path,omitempty"`
+	// CertAllowedCN is the Common Name that allowed
+	// +optional
+	CertAllowedCN []string `json:"cert_allowed_cn,omitempty" toml:"cert_allowed_cn,omitempty"`
 }
