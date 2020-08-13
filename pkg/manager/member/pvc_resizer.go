@@ -59,6 +59,7 @@ import (
 // - If the feature `ExpandInUsePersistentVolumes` is not enabled or the volume
 //   plugin does not support, the pod referencing the volume must be deleted and
 //   recreted after the `FileSystemResizePending` condition becomes true.
+// - Shrinking volumes is not supported.
 //
 type PVCResizerInterface interface {
 	Resize(*v1alpha1.TidbCluster) error
@@ -169,12 +170,14 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, storageReque
 			klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
 			continue
 		}
-		if currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; !ok || currentRequest != storageRequest {
+		if currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; !ok || storageRequest.Cmp(currentRequest) > 0 {
 			_, err = p.kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
 			if err != nil {
 				return err
 			}
 			klog.V(2).Infof("PVC %s/%s storage request is updated from %s to %s", pvc.Namespace, pvc.Name, currentRequest.String(), storageRequest.String())
+		} else if storageRequest.Cmp(currentRequest) < 0 {
+			klog.Warningf("PVC %s/%s/ storage request cannot be shrunk (%s to %s), skipped", pvc.Namespace, pvc.Name, currentRequest.String(), storageRequest.String())
 		} else {
 			klog.V(4).Infof("PVC %s/%s storage request is already %s, skipped", pvc.Namespace, pvc.Name, storageRequest.String())
 		}
