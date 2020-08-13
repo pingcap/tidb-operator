@@ -54,6 +54,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().Backups().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("backupschedules"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().BackupSchedules().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("dmclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().DMClusters().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dataresources"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pingcap().V1alpha1().DataResources().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("restores"):

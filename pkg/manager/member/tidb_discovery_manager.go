@@ -107,10 +107,6 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
 	}
-	_, err = m.ctrl.CreateOrUpdateService(tc, getTiDBDiscoverHeadlessService(tc, deploy))
-	if err != nil {
-		return controller.RequeueErrorf("error creating or updating discovery headless service: %v", err)
-	}
 	return nil
 }
 
@@ -120,31 +116,6 @@ func getTidbDiscoveryService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment
 		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "discovery",
-					Port:       10261,
-					TargetPort: intstr.FromInt(10261),
-					Protocol:   corev1.ProtocolTCP,
-				},
-				{
-					Name:       "proxy",
-					Port:       10262,
-					TargetPort: intstr.FromInt(10262),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-			Selector: deploy.Spec.Template.Labels,
-		},
-	}
-}
-
-func getTiDBDiscoverHeadlessService(tc *v1alpha1.TidbCluster, deploy *appsv1.Deployment) *corev1.Service {
-	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryPeerMemberName)
-	return &corev1.Service{
-		ObjectMeta: meta,
-		Spec: corev1.ServiceSpec{
-			ClusterIP: "None",
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "discovery",

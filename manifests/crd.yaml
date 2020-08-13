@@ -332,6 +332,15 @@ spec:
               type: object
             annotations:
               type: object
+            cluster:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
             clusterDomain:
               type: string
             configUpdateStrategy:
@@ -343,8 +352,6 @@ spec:
                 requests:
                   type: object
               type: object
-            discoveryAddress:
-              type: string
             enableDynamicConfiguration:
               type: boolean
             enablePVReclaim:
@@ -6548,6 +6555,9 @@ spec:
                       type: object
                     lower-case-table-names:
                       format: int32
+                      type: integer
+                    max-index-length:
+                      format: int64
                       type: integer
                     max-server-connections:
                       format: int64
@@ -15038,6 +15048,9 @@ spec:
                   type: object
                 lower-case-table-names:
                   format: int32
+                  type: integer
+                max-index-length:
+                  format: int64
                   type: integer
                 max-server-connections:
                   format: int64

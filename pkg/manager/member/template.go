@@ -53,7 +53,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }} \
 --host=0.0.0.0 \
---path=${CLUSTER_NAME}-pd:2379 \
+--path={{ .Path }} \
 --config=/etc/tidb/tidb.toml
 "
 
@@ -78,11 +78,11 @@ exec /tidb-server ${ARGS}
 `))
 
 type TidbStartScriptModel struct {
-	ClusterName     string
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
 	ClusterDomain   string
+	Path            string
 }
 
 func (t *TidbStartScriptModel) FormatClusterDomain() string {
@@ -132,7 +132,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-pd-peer//'` + "`" +
 	`
 domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}"
-{{ if eq .DiscoveryUrl "" }}discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"{{ else }}discovery_url="{{ .DiscoveryUrl }}"{{ end }}
+discovery_url="${cluster_name}-discovery.${NAMESPACE}.svc{{ .FormatClusterDomain }}:10261"
 encoded_domain_url=` + "`" + `echo ${domain}:2380 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
 elapseTime=0
@@ -194,7 +194,6 @@ type PDStartScriptModel struct {
 	Scheme        string
 	DataDir       string
 	ClusterDomain string
-	DiscoveryUrl  string
 }
 
 func (p *PDStartScriptModel) FormatClusterDomain() string {
@@ -238,8 +237,13 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
+<<<<<<< HEAD
 ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
+=======
+ARGS="--pd={{ .PDAddress }} \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+>>>>>>> master
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
 --advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
@@ -259,11 +263,11 @@ exec /tikv-server ${ARGS}
 `))
 
 type TiKVStartScriptModel struct {
-	Scheme                    string
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
 	ClusterDomain             string
+	PDAddress                 string
 }
 
 func (t *TiKVStartScriptModel) FormatClusterDomain() string {
