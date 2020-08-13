@@ -370,6 +370,12 @@ chmod 777 /data/prometheus /data/grafana
 			})
 
 	}
+	for k, v := range monitor.Spec.Initializer.Envs {
+		container.Env = append(container.Env, core.EnvVar{
+			Name:  k,
+			Value: v,
+		})
+	}
 	return container
 }
 
