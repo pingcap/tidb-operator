@@ -45,6 +45,7 @@ func NewExportCommand() *cobra.Command {
 	cmd.Flags().StringVar(&bo.Namespace, "namespace", "", "Backup CR's namespace")
 	cmd.Flags().StringVar(&bo.ResourceName, "backupName", "", "Backup CRD object name")
 	cmd.Flags().StringVar(&bo.Bucket, "bucket", "", "Bucket in which to store the backup data")
+	cmd.Flags().BoolVar(&bo.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().StringVar(&bo.StorageType, "storageType", "", "Backend storage type")
 	return cmd
 }
