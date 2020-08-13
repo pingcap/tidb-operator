@@ -1592,6 +1592,11 @@ func (in *FlashSecurity) DeepCopyInto(out *FlashSecurity) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.CertAllowedCN != nil {
+		in, out := &in.CertAllowedCN, &out.CertAllowedCN
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
