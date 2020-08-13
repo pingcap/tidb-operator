@@ -45,6 +45,7 @@ func NewServer(pdControl pdapi.PDControlInterface, masterControl dmapi.MasterCon
 
 func (s *server) registerHandlers() {
 	ws := new(restful.WebService)
+	ws.Route(ws.GET("/new/{advertise-peer-url}").To(s.newHandler))
 	ws.Route(ws.GET("/new/{advertise-peer-url}/{register-type}").To(s.newHandler))
 	s.container.Add(ws)
 }
@@ -90,7 +91,7 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
-	klog.Infof("generated args for %s: %s, register-type: ", advertisePeerURL, result, registerType)
+	klog.Infof("generated args for %s: %s, register-type: %s", advertisePeerURL, result, registerType)
 	if _, err := io.WriteString(resp, result); err != nil {
 		klog.Errorf("failed to writeString: %s, %v", result, err)
 	}
