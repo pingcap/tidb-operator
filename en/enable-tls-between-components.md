@@ -348,6 +348,47 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal drainer-server.json | cfssljson -bare drainer-server
         ```
 
+    - TiCDC
+
+        1. Generate the default `ticdc-server.json` file:
+
+            {{< copyable "shell-regular" >}}
+
+            ``` shell
+            cfssl print-defaults csr > ticdc-server.json
+            ```
+
+        2. Edit this file to change the `CN`, `hosts` attributes:
+
+            ``` json
+            ...
+                "CN": "TiDB",
+                "hosts": [
+                  "127.0.0.1",
+                  "::1",
+                  "${cluster_name}-ticdc",
+                  "${cluster_name}-ticdc.${namespace}",
+                  "${cluster_name}-ticdc.${namespace}.svc",
+                  "${cluster_name}-ticdc-peer",
+                  "${cluster_name}-ticdc-peer.${namespace}",
+                  "${cluster_name}-ticdc-peer.${namespace}.svc",
+                  "*.${cluster_name}-ticdc-peer",
+                  "*.${cluster_name}-ticdc-peer.${namespace}",
+                  "*.${cluster_name}-ticdc-peer.${namespace}.svc"
+                ],
+            ...
+            ```
+
+            `${cluster_name}` is the name of the cluster. `${namespace}` is the namespace in which the TiDB cluster is deployed. You can also add your customized `hosts`.
+
+        3. Generate the TiCDC server-side certificate:
+
+            {{< copyable "shell-regular" >}}
+
+            ``` shell
+            cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=internal ticdc-server.json | cfssljson -bare ticdc-server
+            ```
+
 6. Generate the client-side certificate:
 
     First, create the default `client.json` file:
@@ -822,6 +863,69 @@ This section describes how to issue certificates using two methods: `cfssl` and 
         - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
 
         After the object is created, `cert-manager` generates a `${cluster_name}-drainer-cluster-secret` Secret object to be used by the Drainer component of the TiDB server.
+
+    - TiCDC
+
+        Starting from v4.0.3, TiCDC supports TLS. TiDB Operator supports enabling TLS for TiCDC since v1.1.3.
+
+        ``` yaml
+        apiVersion: cert-manager.io/v1alpha2
+        kind: Certificate
+        metadata:
+          name: ${cluster_name}-ticdc-cluster-secret
+          namespace: ${namespace}
+        spec:
+          secretName: ${cluster_name}-ticdc-cluster-secret
+          duration: 8760h # 365d
+          renewBefore: 360h # 15d
+          organization:
+          - PingCAP
+          commonName: "TiDB"
+          usages:
+            - server auth
+            - client auth
+          dnsNames:
+          - "${cluster_name}-ticdc"
+          - "${cluster_name}-ticdc.${namespace}"
+          - "${cluster_name}-ticdc.${namespace}.svc"
+          - "${cluster_name}-ticdc-peer"
+          - "${cluster_name}-ticdc-peer.${namespace}"
+          - "${cluster_name}-ticdc-peer.${namespace}.svc"
+          - "*.${cluster_name}-ticdc-peer"
+          - "*.${cluster_name}-ticdc-peer.${namespace}"
+          - "*.${cluster_name}-ticdc-peer.${namespace}.svc"
+          ipAddresses:
+          - 127.0.0.1
+          - ::1
+          issuerRef:
+            name: ${cluster_name}-tidb-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ```
+
+        In the file, `${cluster_name}` is the name of the cluster:
+
+        - Set `spec.secretName` to `${cluster_name}-ticdc-cluster-secret`.
+        - Add `server auth` and `client auth` in `usages`.
+        - Add the following DNSs in `dnsNames`. You can also add other DNSs according to your needs:
+
+            - `${cluster_name}-ticdc`
+            - `${cluster_name}-ticdc.${namespace}`
+            - `${cluster_name}-ticdc.${namespace}.svc`
+            - `${cluster_name}-ticdc-peer`
+            - `${cluster_name}-ticdc-peer.${namespace}`
+            - `${cluster_name}-ticdc-peer.${namespace}.svc`
+            - `*.${cluster_name}-ticdc-peer`
+            - `*.${cluster_name}-ticdc-peer.${namespace}`
+            - `*.${cluster_name}-ticdc-peer.${namespace}.svc`
+
+        - Add the following 2 IPs in `ipAddresses`. You can also add other IPs according to your needs:
+            - `127.0.0.1`
+            - `::1`
+        - Add the Issuer created above in `issuerRef`.
+        - For other attributes, refer to [cert-manager API](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1alpha2.CertificateSpec).
+
+        After the object is created, `cert-manager` generates a `${cluster_name}-ticdc-cluster-secret` Secret object to be used by the TiCDC component of the TiDB server.
 
 4. Generate the client-side certificate for components of the TiDB cluster.
 

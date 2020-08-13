@@ -61,7 +61,7 @@ To deploy TiCDC when deploying the TiDB cluster, refer to [Deploy TiDB in Genera
     {{< copyable "shell-regular" >}}
 
     ```shell
-    /cdc cli capture list --pd=${pd_address}:2379
+    /cdc cli capture list --pd=http://${cluster_name}-pd:2379
     ```
 
     ```shell
@@ -75,6 +75,16 @@ To deploy TiCDC when deploying the TiDB cluster, refer to [Deploy TiDB in Genera
                     "is-owner": false
             }
     ]
+    ```
+
+    Starting from v4.0.3, TiCDC supports TLS. TiDB Operator supports enabling TLS for TiCDC since v1.1.3.
+
+    If TLS is enabled when you create the TiDB cluster, add TLS certificate-related parameters when you use `cdc cli`.
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    /cdc cli capture list --pd=https://${cluster_name}-pd:2379 --ca=/var/lib/cluster-client-tls/ca.crt --cert=/var/lib/cluster-client-tls/tls.crt --key=/var/lib/cluster-client-tls/tls.key
     ```
 
     If the server does not have an external network, refer to [deploy TiDB cluster](deploy-on-general-kubernetes.md#deploy-the-tidb-cluster) to download the required Docker image on the machine with an external network and upload it to the server.
