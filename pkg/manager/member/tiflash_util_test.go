@@ -811,13 +811,16 @@ func TestSetTiFlashLogConfigDefault(t *testing.T) {
 }
 
 func TestGetTiFlashConfig(t *testing.T) {
+	cnConfig := defaultTiFlashTLSConfig.DeepCopy()
+	cnConfig.ProxyConfig.Security.CertAllowedCN = append(cnConfig.ProxyConfig.Security.CertAllowedCN, "TiDB")
+	cnConfig.CommonConfig.Security.CertAllowedCN = append(cnConfig.CommonConfig.Security.CertAllowedCN, "TiDB")
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
 		expected *v1alpha1.TiFlashConfig
 	}{
 		{
-			name: "TiFlash config is nil with TLS disabled",
+			name: "TiFlash config is nil with TLS enabled",
 			tc: v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -833,7 +836,33 @@ func TestGetTiFlashConfig(t *testing.T) {
 			expected: &defaultTiFlashTLSConfig,
 		},
 		{
-			name: "TiFlash config is nil with TLS enabled",
+			name: "TiFlash config with cert-allowed-cn and TLS enabled",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Config: &v1alpha1.TiFlashConfig{
+							CommonConfig: &v1alpha1.CommonConfig{
+								Security: &v1alpha1.FlashSecurity{
+									CertAllowedCN: []string{
+										"TiDB",
+									},
+								},
+							},
+						},
+					},
+					TLSCluster: &v1alpha1.TLSCluster{
+						Enabled: true,
+					},
+				},
+			},
+			expected: cnConfig,
+		},
+		{
+			name: "TiFlash config is nil with TLS disabled",
 			tc: v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
