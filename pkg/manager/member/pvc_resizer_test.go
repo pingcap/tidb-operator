@@ -28,13 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
-
-func init() {
-	klog.InitFlags(nil)
-}
 
 func newPVCWithStorage(name string, component string, storaegClass, storageRequest string) *v1.PersistentVolumeClaim {
 	return &v1.PersistentVolumeClaim{
@@ -254,6 +249,32 @@ func TestPVCResizer(t *testing.T) {
 			},
 			wantPVCs: []*v1.PersistentVolumeClaim{
 				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "1Gi"),
+			},
+			wantErr: nil,
+		},
+		{
+			name: "shrinking is not supported",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: v1.NamespaceDefault,
+					Name:      "tc",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ResourceRequirements: v1.ResourceRequirements{
+							Requests: v1.ResourceList{
+								v1.ResourceStorage: resource.MustParse("1Gi"),
+							},
+						},
+					},
+				},
+			},
+			sc: newStorageClass("sc", false),
+			pvcs: []*v1.PersistentVolumeClaim{
+				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "2Gi"),
+			},
+			wantPVCs: []*v1.PersistentVolumeClaim{
+				newPVCWithStorage("pd-0", label.PDLabelVal, "sc", "2Gi"),
 			},
 			wantErr: nil,
 		},
