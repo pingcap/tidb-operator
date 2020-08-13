@@ -16,6 +16,7 @@ package export
 import (
 	"fmt"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,14 +24,16 @@ import (
 
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the backup command
 type Options struct {
-	util.GenericOptions
+	backupUtil.GenericOptions
 	Bucket      string
 	Prefix      string
 	StorageType string
@@ -57,7 +60,7 @@ func (bo *Options) getDestBucketURI(remotePath string) string {
 
 func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) {
 	bfPath := bo.getBackupFullPath()
-	err := util.EnsureDirectoryExist(bfPath)
+	err := backupUtil.EnsureDirectoryExist(bfPath)
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +71,12 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 		fmt.Sprintf("--user=%s", bo.User),
 		fmt.Sprintf("--password=%s", bo.Password),
 	}
-	args = append(args, util.ConstructDumplingOptionsForBackup(backup)...)
+	args = append(args, backupUtil.ConstructDumplingOptionsForBackup(backup)...)
+	if bo.TLSClient {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
+	}
 
 	klog.Infof("The dump process is ready, command \"/dumpling %s\"", strings.Join(args, " "))
 
@@ -80,9 +88,9 @@ func (bo *Options) dumpTidbClusterData(backup *v1alpha1.Backup) (string, error) 
 }
 
 func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) error {
-	destBucket := util.NormalizeBucketURI(bucketURI)
+	destBucket := backupUtil.NormalizeBucketURI(bucketURI)
 	tmpDestBucket := fmt.Sprintf("%s.tmp", destBucket)
-	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket)
+	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", source, tmpDestBucket)
 	// TODO: We may need to use exec.CommandContext to control timeouts.
 	output, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
@@ -93,7 +101,7 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 
 	// the backup was a success
 	// remove .tmp extension
-	args = util.ConstructArgs(constants.RcloneConfigArg, opts, "moveto", tmpDestBucket, destBucket)
+	args = backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "moveto", tmpDestBucket, destBucket)
 	output, err = exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cluster %s, execute rclone moveto command failed, output: %s, err: %v", bo, string(output), err)
@@ -104,10 +112,10 @@ func (bo *Options) backupDataToRemote(source, bucketURI string, opts []string) e
 // getBackupSize get the backup data size
 func getBackupSize(backupPath string, opts []string) (int64, error) {
 	var size int64
-	if exist := util.IsFileExist(backupPath); !exist {
+	if exist := backupUtil.IsFileExist(backupPath); !exist {
 		return size, fmt.Errorf("file %s does not exist or is not regular file", backupPath)
 	}
-	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "ls", backupPath, "")
+	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "ls", backupPath, "")
 	out, err := exec.Command("rclone", args...).CombinedOutput()
 	if err != nil {
 		return size, fmt.Errorf("failed to get backup %s size, err: %v", backupPath, err)
@@ -122,11 +130,11 @@ func getBackupSize(backupPath string, opts []string) (int64, error) {
 
 // archiveBackupData archive backup data by destFile's extension name
 func archiveBackupData(backupDir, destFile string) error {
-	if exist := util.IsDirExist(backupDir); !exist {
+	if exist := backupUtil.IsDirExist(backupDir); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", backupDir)
 	}
 	destDir := filepath.Dir(destFile)
-	if err := util.EnsureDirectoryExist(destDir); err != nil {
+	if err := backupUtil.EnsureDirectoryExist(destDir); err != nil {
 		return err
 	}
 	err := archiver.Archive([]string{backupDir}, destFile)
