@@ -5371,9 +5371,54 @@ PDMetricConfig
 <td>
 <code>schedule</code></br>
 <em>
+<<<<<<< HEAD
 <a href="#pdscheduleconfig">
 PDScheduleConfig
 </a>
+=======
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert_allowed_cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gcsstorageprovider">GcsStorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storageprovider">StorageProvider</a>)
+</p>
+<p>
+<p>GcsStorageProvider represents the google cloud storage for storing backups.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>projectId</code></br>
+<em>
+string
+>>>>>>> 49b99d2... support cert-allowed-cn for tiflash (#3101)
 </em>
 </td>
 <td>

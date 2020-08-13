@@ -124,6 +124,9 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
 		config.CommonConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
 		config.CommonConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
 		config.CommonConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+		if len(config.CommonConfig.Security.CertAllowedCN) > 0 && len(config.ProxyConfig.Security.CertAllowedCN) == 0 {
+			config.ProxyConfig.Security.CertAllowedCN = config.CommonConfig.Security.CertAllowedCN
+		}
 		// unset the http ports
 		config.CommonConfig.HTTPPort = nil
 		config.CommonConfig.TCPPort = nil
