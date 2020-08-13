@@ -111,8 +111,7 @@ func (bm *BackupManager) ProcessBackup() error {
 	var db *sql.DB
 	var dsn string
 	err = wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		// TLS is not currently supported
-		dsn, err = bm.GetDSN(false)
+		dsn, err = bm.GetDSN(bm.TLSClient)
 		if err != nil {
 			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", bm, err)
 			return false, err
