@@ -25,6 +25,7 @@ type PingcapV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	BackupsGetter
 	BackupSchedulesGetter
+	DMClustersGetter
 	DataResourcesGetter
 	RestoresGetter
 	TiDBGroupsGetter
@@ -46,6 +47,10 @@ func (c *PingcapV1alpha1Client) Backups(namespace string) BackupInterface {
 
 func (c *PingcapV1alpha1Client) BackupSchedules(namespace string) BackupScheduleInterface {
 	return newBackupSchedules(c, namespace)
+}
+
+func (c *PingcapV1alpha1Client) DMClusters(namespace string) DMClusterInterface {
+	return newDMClusters(c, namespace)
 }
 
 func (c *PingcapV1alpha1Client) DataResources(namespace string) DataResourceInterface {
