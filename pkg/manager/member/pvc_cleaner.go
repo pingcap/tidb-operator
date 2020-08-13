@@ -79,15 +79,15 @@ func (rpc *realPVCCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string, e
 	if skipReason, err := rpc.cleanScheduleLock(tc); err != nil {
 		return skipReason, err
 	}
-
-	if !tc.IsPVReclaimEnabled() {
-		// disable PV reclaim, return directly.
-		return nil, nil
-	}
 	return rpc.reclaimPV(tc)
 }
 
+// reclaimPV reclaims PV used by tidb cluster if necessary.
 func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]string, error) {
+	if !tc.IsPVReclaimEnabled() {
+		// PV reclaim is not enabled, return directly.
+		return nil, nil
+	}
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
@@ -194,6 +194,7 @@ func (rpc *realPVCCleaner) reclaimPV(tc *v1alpha1.TidbCluster) (map[string]strin
 	return skipReason, nil
 }
 
+// cleanScheduleLock cleans AnnPVCPodScheduling label if necessary.
 func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[string]string, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
@@ -267,6 +268,7 @@ func (rpc *realPVCCleaner) cleanScheduleLock(tc *v1alpha1.TidbCluster) (map[stri
 	return skipReason, nil
 }
 
+// listAllPVCs lists all PVCs used by the given tidb cluster.
 func (rpc *realPVCCleaner) listAllPVCs(tc *v1alpha1.TidbCluster) ([]*corev1.PersistentVolumeClaim, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
