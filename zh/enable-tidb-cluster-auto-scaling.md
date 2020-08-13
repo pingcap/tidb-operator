@@ -6,7 +6,7 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tidb-cluster-auto-scaling/']
 
 # 启用 TidbCluster 弹性伸缩
 
-在 Kubernetes 平台上，有着基于 CPU 利用率进行负载的原生 API: [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)。与之相应的，在 Operator 1.1 版本及以上，TiDB 集群可以凭借 Kubernetes 平台本身的特性来开启弹性调度的能力。本篇文章将会介绍如何开启并使用 TidbCluster 的弹性伸缩能力。
+在 Kubernetes 平台上，有着基于 CPU 利用率进行负载的原生 API: [Horizontal Pod Autoscaler](https://kubernetes.io/zh/docs/tasks/run-application/horizontal-pod-autoscale/)。基于 Kubernetes，TiDB 4.0 起支持了全新的弹性调度算法。与之相应的，在 TiDB Operator 1.1 及以上版本中，TiDB 集群可以凭借 Kubernetes 平台本身的特性来开启弹性调度的能力。本篇文章将会介绍如何开启并使用 TidbCluster 的弹性伸缩能力。
 
 ## 开启弹性伸缩特性
 
