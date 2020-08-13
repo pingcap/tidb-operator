@@ -237,13 +237,8 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-<<<<<<< HEAD
-ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
-=======
 ARGS="--pd={{ .PDAddress }} \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
->>>>>>> master
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc{{ .FormatClusterDomain }}:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
 --advertise-status-addr={{ .AdvertiseStatusAddr }}:20180 \{{end}}
