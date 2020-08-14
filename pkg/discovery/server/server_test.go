@@ -68,7 +68,9 @@ func TestServer(t *testing.T) {
 		if len(pdMemberInfos.Members) <= 0 {
 			return nil, fmt.Errorf("no members yet")
 		}
-		return pdMemberInfos, nil
+		// as pdMemberInfos.Members maybe modified, we must return a copy
+		ret := *pdMemberInfos
+		return &ret, nil
 	})
 	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.Spec.ClusterDomain, pdClient)
