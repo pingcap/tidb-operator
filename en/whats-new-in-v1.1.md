@@ -1,20 +1,20 @@
 ---
-title: What's New in v1.1
-summary: Learn the new features in TiDB Operator v1.1.
+title: What's New in TiDB Operator 1.1
+summary: Learn the new features in TiDB Operator 1.1.
 aliases: ['/docs/tidb-in-kubernetes/dev/whats-new-in-v1.1/']
 ---
 
-# What's New in v1.1
+# What's New in TiDB Operator 1.1
 
-Based on v1.0, TiDB Operator v1.1 has several new features, including TiDB 4.0 support, TiKV data encryption, and TLS certificate configuration. TiDB Operator v1.1 also supports deploying new components such as TiFlash and TiCDC.
+Based on 1.0, TiDB Operator 1.1 has several new features, including TiDB 4.0 support, TiKV data encryption, and TLS certificate configuration. TiDB Operator v1.1 also supports deploying new components such as TiFlash and TiCDC.
 
 TiDB Operator 1.1 also makes improvements in usability, providing the user experience that is consistent with the Kubernetes native resources.
 
 ## Extensibility
 
-- TidbCluster CR supports deploying and managing the PD Discovery component, which is fully capable of replacing tidb-cluster chart to manage the TiDB cluster.
+- `TidbCluster` CR supports deploying and managing the PD Discovery component, which is fully capable of replacing tidb-cluster chart to manage the TiDB cluster.
 
-- TidbCluster CR adds support for Pump, TiFlash, TiCDC, and TiDB Dashboard.
+- `TidbCluster` CR adds support for Pump, TiFlash, TiCDC, and TiDB Dashboard.
 
 - Add the [Admission Controller](enable-admission-webhook.md) (optional) to improve the user experience of upgrade and scaling, and to provide the canary release feature.
 
@@ -24,11 +24,11 @@ TiDB Operator 1.1 also makes improvements in usability, providing the user exper
 
 ## Usability
 
-- Add TidbMonitor CR to deploy the cluster monitoring.
+- Add `TidbMonitor` CR to deploy the cluster monitoring.
 
-- Add TidbInitializer CR to initialize the cluster.
+- Add `TidbInitializer` CR to initialize the cluster.
 
-- Add Backup, BackupSchedule, and Restore CR to back up and restore the cluster, which supports using Amazon S3 or GCS as the remote storage.
+- Add `Backup`, `BackupSchedule`, and `Restore` CR to back up and restore the cluster, which supports using Amazon S3 or GCS as the remote storage.
 
 - Support gracefully restart a component in the TiDB cluster.
 

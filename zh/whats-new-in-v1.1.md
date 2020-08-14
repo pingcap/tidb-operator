@@ -1,11 +1,11 @@
 ---
-title: What's New in v1.1
+title: What's New in TiDB Operator 1.1
 aliases: ['/docs-cn/tidb-in-kubernetes/dev/whats-new-in-v1.1/']
 ---
 
-# What's New in v1.1
+# What's New in TiDB Operator 1.1
 
-TiDB Operator v1.1 在 v1.0 基础上新增 TiDB 4.0 功能特性支持，TiKV 数据加密、TLS 证书配置等。新增 TiFlash、TiCDC 新组件部署支持，同时在易用性上做了许多改进，提供与 Kubernetes 原生资源一致的用户体验。以下是主要变化：
+TiDB Operator 1.1 在 1.0 基础上新增 TiDB 4.0 功能特性支持，TiKV 数据加密、TLS 证书配置等。新增 TiFlash、TiCDC 新组件部署支持，同时在易用性上做了许多改进，提供与 Kubernetes 原生资源一致的用户体验。以下是主要变化：
 
 ## 扩展性
 
