@@ -117,7 +117,7 @@ func PdClientURL(namespace Namespace, clusterName string, clusterDomain string, 
 }
 
 func PDEtcdClientURL(namespace Namespace, clusterName string, clusterDomain string) string {
-	if clusterDomain != "" {
+	if clusterDomain == "" {
 		return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
 	}
 	return fmt.Sprintf("%s-pd.%s.svc.%s:2379", clusterName, string(namespace), clusterDomain)
