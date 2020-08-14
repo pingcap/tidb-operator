@@ -30,9 +30,9 @@ type Namespace string
 // PDControlInterface is an interface that knows how to manage and get tidb cluster's PD client
 type PDControlInterface interface {
 	// GetPDClient provides PDClient of the tidb cluster.
-	GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient
+	GetPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient
 	// GetPDEtcdClient provides PD etcd Client of the tidb cluster.
-	GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error)
+	GetPDEtcdClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) (PDEtcdClient, error)
 }
 
 // defaultPDControl is the default implementation of PDControlInterface.
@@ -49,7 +49,7 @@ func NewDefaultPDControl(kubeCli kubernetes.Interface) PDControlInterface {
 	return &defaultPDControl{kubeCli: kubeCli, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}}
 }
 
-func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool) (PDEtcdClient, error) {
+func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) (PDEtcdClient, error) {
 	pdc.etcdmutex.Lock()
 	defer pdc.etcdmutex.Unlock()
 
@@ -62,11 +62,11 @@ func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string,
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd etcd client may not work: %v", tcName, err)
 			return nil, err
 		}
-		return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, tlsConfig)
+		return NewPdEtcdClient(PDEtcdClientURL(namespace, tcName, clusterDomain), DefaultTimeout, tlsConfig)
 	}
-	key := pdEtcdClientKey(namespace, tcName)
+	key := pdEtcdClientKey(namespace, tcName, clusterDomain)
 	if _, ok := pdc.pdEtcdClients[key]; !ok {
-		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName), DefaultTimeout, nil)
+		pdetcdClient, err := NewPdEtcdClient(PDEtcdClientURL(namespace, tcName, clusterDomain), DefaultTimeout, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +76,7 @@ func (pdc *defaultPDControl) GetPDEtcdClient(namespace Namespace, tcName string,
 }
 
 // GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
-func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool) PDClient {
+func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, clusterDomain string, tlsEnabled bool) PDClient {
 	pdc.mutex.Lock()
 	defer pdc.mutex.Unlock()
 
@@ -89,35 +89,38 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 		tlsConfig, err = GetTLSConfig(pdc.kubeCli, namespace, tcName, util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for tidb cluster %q, pd client may not work: %v", tcName, err)
-			return &pdClient{url: PdClientURL(namespace, tcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return &pdClient{url: PdClientURL(namespace, tcName, clusterDomain, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 
-		return NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, tlsConfig)
+		return NewPDClient(PdClientURL(namespace, tcName, clusterDomain, scheme), DefaultTimeout, tlsConfig)
 	}
 
-	key := pdClientKey(scheme, namespace, tcName)
+	key := pdClientKey(scheme, namespace, tcName, clusterDomain)
 	if _, ok := pdc.pdClients[key]; !ok {
-		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, scheme), DefaultTimeout, nil)
+		pdc.pdClients[key] = NewPDClient(PdClientURL(namespace, tcName, clusterDomain, scheme), DefaultTimeout, nil)
 	}
 	return pdc.pdClients[key]
 }
 
 // pdClientKey returns the pd client key
-func pdClientKey(scheme string, namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
+func pdClientKey(scheme string, namespace Namespace, clusterName string, clusterDomain string) string {
+	return fmt.Sprintf("%s.%s.%s.%s", scheme, clusterName, string(namespace), clusterDomain)
 }
 
-func pdEtcdClientKey(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s", clusterName, string(namespace))
+func pdEtcdClientKey(namespace Namespace, clusterName string, clusterDomain string) string {
+	return fmt.Sprintf("%s.%s.%s", clusterName, string(namespace), clusterDomain)
 }
 
 // pdClientUrl builds the url of pd client
-func PdClientURL(namespace Namespace, clusterName string, scheme string) string {
-	return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
+func PdClientURL(namespace Namespace, clusterName string, clusterDomain string, scheme string) string {
+	return fmt.Sprintf("%s://%s", scheme, PDEtcdClientURL(namespace, clusterName, clusterDomain))
 }
 
-func PDEtcdClientURL(namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
+func PDEtcdClientURL(namespace Namespace, clusterName string, clusterDomain string) string {
+	if clusterDomain != "" {
+		return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
+	}
+	return fmt.Sprintf("%s-pd.%s.svc.%s:2379", clusterName, string(namespace), clusterDomain)
 }
 
 // FakePDControl implements a fake version of PDControlInterface.
@@ -131,6 +134,6 @@ func NewFakePDControl(kubeCli kubernetes.Interface) *FakePDControl {
 	}
 }
 
-func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
+func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, clusterDomain string, pdclient PDClient) {
+	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName, clusterDomain)] = pdclient
 }

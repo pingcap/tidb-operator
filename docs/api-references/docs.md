@@ -17326,6 +17326,17 @@ string
 <p>Name is the name of TidbCluster object</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>domain</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Domain is the domain of TidbCluster object</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbclusterspec">TidbClusterSpec</h3>

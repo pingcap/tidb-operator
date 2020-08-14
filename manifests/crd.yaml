@@ -334,12 +334,15 @@ spec:
               type: object
             cluster:
               properties:
+                domain:
+                  type: string
                 name:
                   type: string
                 namespace:
                   type: string
               required:
               - name
+              - domain
               type: object
             clusterDomain:
               type: string
@@ -13212,12 +13215,15 @@ spec:
             clusters:
               items:
                 properties:
+                  domain:
+                    type: string
                   name:
                     type: string
                   namespace:
                     type: string
                 required:
                 - name
+                - domain
                 type: object
               type: array
             grafana: {}
@@ -13303,12 +13309,15 @@ spec:
           properties:
             cluster:
               properties:
+                domain:
+                  type: string
                 name:
                   type: string
                 namespace:
                   type: string
               required:
               - name
+              - domain
               type: object
             image:
               type: string
@@ -13391,12 +13400,15 @@ spec:
           properties:
             cluster:
               properties:
+                domain:
+                  type: string
                 name:
                   type: string
                 namespace:
                   type: string
               required:
               - name
+              - domain
               type: object
             metricsUrl:
               type: string

@@ -9856,8 +9856,15 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"domain": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Domain is the domain of TidbCluster object",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"name"},
+				Required: []string{"name", "domain"},
 			},
 		},
 	}

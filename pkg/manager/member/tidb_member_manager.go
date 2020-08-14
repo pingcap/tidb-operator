@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/listers/apps/v1"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
@@ -401,7 +402,11 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	if tc.IsHeterogeneous() {
-		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
+		tidbStartScriptModel.Path = fmt.Sprintf("%s.%s.svc%s:2379",
+			controller.PDMemberName(tc.Spec.Cluster.Name),
+			tc.Spec.Cluster.Namespace,
+			controller.FormatClusterDomain(tc.Spec.Cluster.Domain),
+		)
 	} else {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"
 	}

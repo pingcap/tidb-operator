@@ -101,9 +101,9 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	var pdClient pdapi.PDClient
 	if tc.IsHeterogeneous() {
-		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.Domain, tc.IsTLSClusterEnabled())
 	} else {
-		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled())
+		pdClient = td.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
 	}
 
 	membersInfo, err := pdClient.GetMembers()

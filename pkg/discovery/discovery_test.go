@@ -48,7 +48,7 @@ func TestDiscoveryDiscovery(t *testing.T) {
 		pdClient := pdapi.NewFakePDClient()
 		if test.tc != nil {
 			cli.PingcapV1alpha1().TidbClusters(test.tc.Namespace).Create(test.tc)
-			fakePDControl.SetPDClient(pdapi.Namespace(test.tc.GetNamespace()), test.tc.GetName(), pdClient)
+			fakePDControl.SetPDClient(pdapi.Namespace(test.tc.GetNamespace()), test.tc.GetName(), test.tc.Spec.ClusterDomain, pdClient)
 		}
 		pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 			return test.getMembersFn()
