@@ -103,7 +103,7 @@ func (tfmm *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if !tc.PDIsAvailable() {
+	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
@@ -437,10 +437,6 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 					FieldPath: "metadata.namespace",
 				},
 			},
-		},
-		{
-			Name:  "CLUSTER_NAME",
-			Value: tcName,
 		},
 		{
 			Name:  "HEADLESS_SERVICE_NAME",

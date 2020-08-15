@@ -1251,6 +1251,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		heterogeneousTc.Spec.PD = nil
 		heterogeneousTc.Spec.TiKV.Replicas = 1
 		heterogeneousTc.Spec.TiDB.Replicas = 1
+		heterogeneousTc.Spec.TiFlash.Replicas = 1
 		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 			Name: originTc.Name,
 		}
@@ -1279,6 +1280,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", 0)
 				} else {
 					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+				}
+
+				return false, nil
+			}
+			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
+				if tc.Status.TiDB.StatefulSet == nil {
+					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", tc.Status.TiFlash.StatefulSet.Replicas)
 				}
 
 				return false, nil
@@ -1350,6 +1360,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		framework.Logf("CDC works as expected")
 	})
+
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
