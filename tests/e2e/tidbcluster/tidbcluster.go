@@ -1291,8 +1291,8 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 				return false, nil
 			}
-			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
-				if tc.Status.TiDB.StatefulSet == nil {
+			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiFlash.StatefulSet.ReadyReplicas != 1 {
+				if tc.Status.TiFlash.StatefulSet == nil {
 					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", 0)
 				} else {
 					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", tc.Status.TiFlash.StatefulSet.Replicas)
