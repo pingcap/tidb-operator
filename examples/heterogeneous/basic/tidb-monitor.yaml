@@ -10,7 +10,7 @@ spec:
     version: v2.11.1
     config:
       configMapRef:
-        name: external-config
+        name: basic-monitor-external-config
   grafana:
     baseImage: grafana/grafana
     version: 6.1.6

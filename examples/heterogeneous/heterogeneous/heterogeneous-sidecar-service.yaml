@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/instance: heterogeneous
+    app.kubernetes.io/managed-by: tidb-operator
+    app.kubernetes.io/name: tidb-cluster
+    app.kubernetes.io/used-by: prometheus
+  name: heterogeneous-prometheus-sidecar
+  namespace: default
+spec:
+  ports:
+  - name: sidecar-prometheus
+    port: 10901
+    protocol: TCP
+    targetPort: 10901
+  selector:
+    app.kubernetes.io/component: monitor
+    app.kubernetes.io/instance: heterogeneous
+    app.kubernetes.io/name: tidb-cluster
+  sessionAffinity: None
+  type: ClusterIP

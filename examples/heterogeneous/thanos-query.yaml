@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: query-layer
+    app.kubernetes.io/instance: thanos-query
+    app.kubernetes.io/name: thanos-query
+    app.kubernetes.io/version: master-2020-08-11-2ea2c2b7
+  name: thanos-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: query-layer
+      app.kubernetes.io/instance: thanos-query
+      app.kubernetes.io/name: thanos-query
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: query-layer
+        app.kubernetes.io/instance: thanos-query
+        app.kubernetes.io/name: thanos-query
+        app.kubernetes.io/version: master-2020-08-11-2ea2c2b7
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - thanos-query
+                namespaces:
+                  - thanos
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      containers:
+        - args:
+            - query
+            - --log.level=info
+            - --grpc-address=0.0.0.0:10901
+            - --http-address=0.0.0.0:9090
+            - --query.replica-label=prometheus_replica
+            - --query.replica-label=rule_replica
+            - --store=basic-prometheus-sidecar:10901
+            - --store=heterogeneous-prometheus-sidecar:10901
+            - --query.timeout=5m
+          image: quay.io/thanos/thanos:master-2020-08-11-2ea2c2b7
+          livenessProbe:
+            failureThreshold: 4
+            httpGet:
+              path: /-/healthy
+              port: 9090
+              scheme: HTTP
+            periodSeconds: 30
+          name: thanos-query
+          ports:
+            - containerPort: 10901
+              name: grpc
+            - containerPort: 9090
+              name: http
+          readinessProbe:
+            failureThreshold: 20
+            httpGet:
+              path: /-/ready
+              port: 9090
+              scheme: HTTP
+            periodSeconds: 5
+          terminationMessagePolicy: FallbackToLogsOnError
+      terminationGracePeriodSeconds: 120

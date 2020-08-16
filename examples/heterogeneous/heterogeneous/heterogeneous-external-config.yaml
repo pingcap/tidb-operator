@@ -2,16 +2,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: external-config
+  name: heterogeneous-external-config
   labels:
     app.kubernetes.io/name: tidb-cluster
-    app.kubernetes.io/instance: basic
+    app.kubernetes.io/instance: heterogeneous
     app.kubernetes.io/component: monitor
 data:
   prometheus-config: |-
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
+      external_labels:
+        tidbcluster: heterogeneous
     scrape_configs:
     - job_name: 'pd'
       scrape_interval: 15s
@@ -27,7 +29,7 @@ data:
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
         action: keep
-        regex: basic
+        regex: heterogeneous
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
         action: keep
         regex: pd
@@ -73,11 +75,11 @@ data:
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
         action: keep
-        regex: basic
+        regex: heterogeneous
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
         action: keep
         regex: tidb
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      - source_labels: [external_labels__meta_kubernetes_pod_annotation_prometheus_io_scrape]
         action: keep
         regex: true
       - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
@@ -126,7 +128,7 @@ data:
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
         action: keep
-        regex: basic
+        regex: heterogeneous
       - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
         action: keep
         regex: tikv
