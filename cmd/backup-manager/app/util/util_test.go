@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"fmt"
 	. "github.com/onsi/gomega"
 	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -125,6 +126,84 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 			}
 
 			generateArgs := ConstructDumplingOptionsForBackup(backup)
+			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
+		})
+	}
+}
+
+func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name            string
+		hasBackupFilter bool
+		hasTable        bool
+		hasDB           bool
+	}
+
+	tests := []*testcase{
+		{
+			name:            "empty filter, table and database",
+			hasBackupFilter: false,
+			hasTable:        false,
+			hasDB:           false,
+		},
+		{
+			name:            "customize filter, empty table and database",
+			hasBackupFilter: true,
+			hasTable:        false,
+			hasDB:           false,
+		},
+		{
+			name:            "empty filter, customize table and empty database",
+			hasBackupFilter: false,
+			hasTable:        true,
+			hasDB:           false,
+		},
+		{
+			name:            "empty filter, empty table and customize database",
+			hasBackupFilter: false,
+			hasTable:        false,
+			hasDB:           true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			backup := newBackup()
+
+			customBackupFilter := []string{"mysql.*"}
+			customTable := []string{"table1"}
+			customDb := []string{"mysql"}
+
+			backup.Spec.BR = &v1alpha1.BRConfig{Cluster: "cluster-1", ClusterNamespace: "default"}
+			var expectArgs []string
+			expectArgs = append(expectArgs, "--storage=s3://test1-demo1/")
+			expectArgs = append(expectArgs, "--s3.provider=ceph")
+			expectArgs = append(expectArgs, "--s3.endpoint=http://10.0.0.1")
+
+			if tt.hasBackupFilter {
+				backup.Spec.TableFilter = customBackupFilter
+				expectArgs = append(expectArgs, "--filter", customBackupFilter[0])
+			}
+
+			if tt.hasTable {
+				backup.Spec.Type = v1alpha1.BackupTypeTable
+				backup.Spec.BR.Table = customTable[0]
+				backup.Spec.BR.DB = customDb[0]
+				expectArgs = append(expectArgs, fmt.Sprintf("--table=%s", customTable[0]))
+				expectArgs = append(expectArgs, fmt.Sprintf("--db=%s", customDb[0]))
+			}
+
+			if tt.hasDB {
+				backup.Spec.Type = v1alpha1.BackupTypeDB
+				backup.Spec.BR.DB = customDb[0]
+				expectArgs = append(expectArgs, fmt.Sprintf("--db=%s", customDb[0]))
+			}
+
+			generateArgs, err := ConstructBRGlobalOptionsForBackup(backup)
+			if err != nil {
+			}
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}
