@@ -1257,7 +1257,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					Requests: v1.ResourceList{
 						v1.ResourceStorage: resource.MustParse("10G"),
 					},
-				}, StorageClassName: pointer.StringPtr("standard")},
+				}},
 			}}
 		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 			Name: originTc.Name,
