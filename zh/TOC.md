@@ -26,6 +26,7 @@
   - [部署 TiFlash](deploy-tiflash.md)
   - [部署 TiCDC](deploy-ticdc.md)
   - [部署 TiDB Binlog](deploy-tidb-binlog.md)
+  - [部署 TiDB 企业版集群](deploy-tidb-enterprise-edition.md)
   + 部署 TiDB 集群监控
     - [监控 Kubernetes 和 TiDB 集群](monitor-a-tidb-cluster.md)
     - [使用 TidbMonitor 监控 TiDB 集群](monitor-using-tidbmonitor.md)
