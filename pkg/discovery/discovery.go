@@ -94,7 +94,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	currentCluster = td.clusters[keyName]
 	currentCluster.peers[podName] = struct{}{}
 
-	if len(currentCluster.peers) == int(replicas) && podNamespace == ns && clusterDomain == tc.Spec.ClusterDomain {
+	if len(currentCluster.peers) == int(replicas) && tc.Spec.Cluster == nil {
 		delete(currentCluster.peers, podName)
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}

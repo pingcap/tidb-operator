@@ -17334,6 +17334,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Domain is the domain of TidbCluster object</p>
 </td>
 </tr>

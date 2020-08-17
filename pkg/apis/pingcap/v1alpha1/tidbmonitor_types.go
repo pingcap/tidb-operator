@@ -173,6 +173,7 @@ type TidbClusterRef struct {
 	Name string `json:"name"`
 
 	// Domain is the domain of TidbCluster object
+	// +optional
 	Domain string `json:"domain"`
 }
 

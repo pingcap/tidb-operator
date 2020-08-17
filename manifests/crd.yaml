@@ -342,7 +342,6 @@ spec:
                   type: string
               required:
               - name
-              - domain
               type: object
             clusterDomain:
               type: string
@@ -13223,7 +13222,6 @@ spec:
                     type: string
                 required:
                 - name
-                - domain
                 type: object
               type: array
             grafana: {}
@@ -13317,7 +13315,6 @@ spec:
                   type: string
               required:
               - name
-              - domain
               type: object
             image:
               type: string
@@ -13408,7 +13405,6 @@ spec:
                   type: string
               required:
               - name
-              - domain
               type: object
             metricsUrl:
               type: string

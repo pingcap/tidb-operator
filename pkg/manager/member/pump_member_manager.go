@@ -468,7 +468,7 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	}
 
 	PdAddress := controller.ClusterPdAddress(tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
-	if tc.IsHeterogeneous(){
+	if tc.IsHeterogeneous() {
 		PdAddress = controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.Domain)
 	}
 

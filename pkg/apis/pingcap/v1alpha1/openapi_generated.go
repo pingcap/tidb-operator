@@ -9864,7 +9864,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 						},
 					},
 				},
-				Required: []string{"name", "domain"},
+				Required: []string{"name"},
 			},
 		},
 	}
