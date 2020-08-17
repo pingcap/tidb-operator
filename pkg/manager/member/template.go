@@ -281,7 +281,7 @@ func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
 var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(`set -euo pipefail
 
 /pump \
--pd-urls={{ .Scheme }}://{{ .ClusterName }}-pd:2379 \
+-pd-urls={{ .Scheme }}://{{ .PdAddress }}:2379 \
 -L={{ .LogLevel }} \
 -advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.{{ .ClusterName }}-pump{{ .FormatPumpZone }}:8250 \
 -config=/etc/pump/pump.toml \
@@ -299,6 +299,7 @@ type PumpStartScriptModel struct {
 	LogLevel      string
 	Namespace     string
 	ClusterDomain string
+	PdAddress     string
 }
 
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {

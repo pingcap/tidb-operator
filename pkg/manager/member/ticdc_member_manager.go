@@ -264,13 +264,18 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-file=%s", tc.TiCDCLogFile()))
 	cmdArgs = append(cmdArgs, fmt.Sprintf("--log-level=%s", tc.TiCDCLogLevel()))
 
+	pdProtocol := "http"
 	if tc.IsTLSClusterEnabled() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--ca=%s", path.Join(ticdcCertPath, corev1.ServiceAccountRootCAKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--cert=%s", path.Join(ticdcCertPath, corev1.TLSCertKey)))
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--key=%s", path.Join(ticdcCertPath, corev1.TLSPrivateKeyKey)))
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=https://%s-pd:2379", tcName))
+		pdProtocol = "https"
+	}
+
+	if tc.IsHeterogeneous() {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s://%s:2379", pdProtocol, controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.Domain)))
 	} else {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=http://%s-pd:2379", tcName))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s://%s:2379", pdProtocol, controller.ClusterPdAddress(tc.Name, tc.Namespace, tc.Spec.ClusterDomain)))
 	}
 
 	cmd := strings.Join(cmdArgs, " ")
