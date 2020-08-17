@@ -199,6 +199,26 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
 	}
 
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+	if backup.Spec.From.TLSClientSecretName != nil {
+		args = append(args, "--client-tls=true")
+		clientSecretName := *backup.Spec.From.TLSClientSecretName
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientSecretName,
+				},
+			},
+		})
+	}
+
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
@@ -218,9 +238,9 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: []corev1.VolumeMount{
+					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
-					},
+					}, volumeMounts...),
 					Env:       util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources: backup.Spec.ResourceRequirements,
 				},
@@ -228,7 +248,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			RestartPolicy: corev1.RestartPolicyNever,
 			Affinity:      backup.Spec.Affinity,
 			Tolerations:   backup.Spec.Tolerations,
-			Volumes: []corev1.Volume{
+			Volumes: append([]corev1.Volume{
 				{
 					Name: label.BackupJobLabelVal,
 					VolumeSource: corev1.VolumeSource{
@@ -237,7 +257,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 						},
 					},
 				},
-			},
+			}, volumes...),
 		},
 	}
 
