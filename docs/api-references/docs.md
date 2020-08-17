@@ -14,6 +14,8 @@ Resource Types:
 </li><li>
 <a href="#backupschedule">BackupSchedule</a>
 </li><li>
+<a href="#dmcluster">DMCluster</a>
+</li><li>
 <a href="#restore">Restore</a>
 </li><li>
 <a href="#tidbgroup">TiDBGroup</a>
@@ -471,6 +473,292 @@ BackupScheduleStatus
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmcluster">DMCluster</h3>
+<p>
+<p>DMCluster is the control script&rsquo;s spec</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+pingcap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>DMCluster</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#dmclusterspec">
+DMClusterSpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec defines the behavior of a dm cluster</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#dmdiscoveryspec">
+DMDiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master</code></br>
+<em>
+<a href="#masterspec">
+MasterSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-master cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>worker</code></br>
+<em>
+<a href="#workerspec">
+WorkerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-worker cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the dm cluster is paused and will not be processed by
+the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TODO: remove optional after defaulting logic introduced
+dm cluster version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>schedulerName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SchedulerName of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by DM cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<p>ImagePullPolicy of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVReclaim</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsCluster</code></br>
+<em>
+<a href="#tlscluster">
+TLSCluster
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between DM server components
+Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of DM cluster Pods
+Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#dmclusterstatus">
+DMClusterStatus
+</a>
+</em>
+</td>
+<td>
+<p>Most recently observed status of the dm cluster</p>
 </td>
 </tr>
 </tbody>
@@ -3139,12 +3427,14 @@ and component-level overrides</p>
 <h3 id="componentspec">ComponentSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
-<a href="#tikvspec">TiKVSpec</a>)
+<a href="#tikvspec">TiKVSpec</a>, 
+<a href="#workerspec">WorkerSpec</a>)
 </p>
 <p>
 <p>ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties</p>
@@ -3630,6 +3920,18 @@ CrdKind
 </tr>
 <tr>
 <td>
+<code>DMCluster</code></br>
+<em>
+<a href="#crdkind">
+CrdKind
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>Backup</code></br>
 <em>
 <a href="#crdkind">
@@ -3793,6 +4095,486 @@ int64
 the capacity storage. If the available storage is lower than the capacity storage * LeastRemainAvailableStoragePercent,
 the storage status will become storage pressure and ready to be scaled out.
 LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the default value would be 10</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmclustercondition">DMClusterCondition</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterstatus">DMClusterStatus</a>)
+</p>
+<p>
+<p>DMClusterCondition is dm cluster condition</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+<a href="#tidbclusterconditiontype">
+TidbClusterConditionType
+</a>
+</em>
+</td>
+<td>
+<p>Type of the condition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#conditionstatus-v1-core">
+Kubernetes core/v1.ConditionStatus
+</a>
+</em>
+</td>
+<td>
+<p>Status of the condition, one of True, False, Unknown.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastUpdateTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>The last time this condition was updated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Last time the condition transitioned from one status to another.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The reason for the condition&rsquo;s last transition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>A human readable message indicating details about the transition.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmclusterconditiontype">DMClusterConditionType</h3>
+<p>
+<p>DMClusterConditionType represents a dm cluster condition value.</p>
+</p>
+<h3 id="dmclusterspec">DMClusterSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmcluster">DMCluster</a>)
+</p>
+<p>
+<p>DMClusterSpec describes the attributes that a user creates on a dm cluster</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>discovery</code></br>
+<em>
+<a href="#dmdiscoveryspec">
+DMDiscoverySpec
+</a>
+</em>
+</td>
+<td>
+<p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master</code></br>
+<em>
+<a href="#masterspec">
+MasterSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-master cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>worker</code></br>
+<em>
+<a href="#workerspec">
+WorkerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>dm-worker cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>paused</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Indicates that the dm cluster is paused and will not be processed by
+the controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TODO: remove optional after defaulting logic introduced
+dm cluster version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>schedulerName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SchedulerName of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvReclaimPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
+Kubernetes core/v1.PersistentVolumeReclaimPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Persistent volume reclaim policy applied to the PVs that consumed by DM cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<p>ImagePullPolicy of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVReclaim</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsCluster</code></br>
+<em>
+<a href="#tlscluster">
+TLSCluster
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable the TLS connection between DM server components
+Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base annotations of DM cluster Pods, components may add or override selectors upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of DM cluster Pods
+Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmclusterstatus">DMClusterStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmcluster">DMCluster</a>)
+</p>
+<p>
+<p>DMClusterStatus represents the current status of a dm cluster.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>master</code></br>
+<em>
+<a href="#masterstatus">
+MasterStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>worker</code></br>
+<em>
+<a href="#workerstatus">
+WorkerStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#dmclustercondition">
+[]DMClusterCondition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a dm cluster&rsquo;s state.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmdiscoveryspec">DMDiscoverySpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterspec">DMClusterSpec</a>)
+</p>
+<p>
+<p>DMDiscoverySpec contains details of Discovery members for dm</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>address</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Address indicates the existed TiDB discovery address</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dmsecurityconfig">DMSecurityConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterconfig">MasterConfig</a>, 
+<a href="#workerconfig">WorkerConfig</a>)
+</p>
+<p>
+<p>DM common security config</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ssl-ca</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SSLCA is the path of file that contains list of trusted SSL CAs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ssl-cert</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SSLCert is the path of file that contains X509 certificate in PEM format.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ssl-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SSLKey is the path of file that contains X509 key in PEM format.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert-allowed-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
 </td>
 </tr>
 </tbody>
@@ -4316,6 +5098,18 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cert_allowed_cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
 </td>
 </tr>
 </tbody>
@@ -5047,6 +5841,183 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </tbody>
 </table>
+<h3 id="masterconfig">MasterConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+<p>MasterConfig is the configuration of dm-master-server</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log level.
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File log config.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log format. one of json or text.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-timeout</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RPC timeout when dm-master request to dm-worker
+Optional: Defaults to 30s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-rate-limit</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RPC agent rate limit when dm-master request to dm-worker
+Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rpc-rate-burst</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RPC agent rate burst when dm-master request to dm-worker
+Optional: Defaults to 40</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>DMSecurityConfig</code></br>
+<em>
+<a href="#dmsecurityconfig">
+DMSecurityConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>DMSecurityConfig</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>dm-master&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterfailuremember">MasterFailureMember</h3>
+<p>
+<p>MasterFailureMember is the dm-master failure member information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>memberID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvcUID</code></br>
+<em>
+k8s.io/apimachinery/pkg/types.UID
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>memberDeleted</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>createdAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="masterkeyfileconfig">MasterKeyFileConfig</h3>
 <p>
 (<em>Appears on:</em>
@@ -5171,14 +6142,403 @@ optional</p>
 </tr>
 </tbody>
 </table>
+<h3 id="mastermember">MasterMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>)
+</p>
+<p>
+<p>MasterMember is dm-master member status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>member id is actually a uint64, but apimachinery&rsquo;s json only treats numbers as int64/float64
+so uint64 may overflow int64 and thus convert to float64</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clientURL</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>health</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>Last time the health transitioned from one to another.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterservicespec">MasterServiceSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#masterspec">MasterSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ServiceSpec</code></br>
+<em>
+<a href="#servicespec">
+ServiceSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ServiceSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>externalTrafficPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#serviceexternaltrafficpolicytype-v1-core">
+Kubernetes core/v1.ServiceExternalTrafficPolicyType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalTrafficPolicy of the service
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>masterNodePort</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterspec">MasterSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterspec">DMClusterSpec</a>)
+</p>
+<p>
+<p>MasterSpec contains details of dm-master members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>service</code></br>
+<em>
+<a href="#masterservicespec">
+MasterServiceSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Service defines a Kubernetes service of Master cluster.
+Optional: Defaults to <code>.spec.services</code> in favor of backward compatibility</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxFailoverCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+Optional: Defaults to 3</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for dm-master data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store dm-master Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/dm-master.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/dm-master/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#masterconfig">
+MasterConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of dm-master-servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="masterstatus">MasterStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterstatus">DMClusterStatus</a>)
+</p>
+<p>
+<p>MasterStatus is dm-master status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>members</code></br>
+<em>
+<a href="#mastermember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>leader</code></br>
+<em>
+<a href="#mastermember">
+MasterMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureMembers</code></br>
+<em>
+<a href="#pdfailuremember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>unjoinedMembers</code></br>
+<em>
+<a href="#unjoinedmember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.UnjoinedMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="memberphase">MemberPhase</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
-<a href="#tikvstatus">TiKVStatus</a>)
+<a href="#tikvstatus">TiKVStatus</a>, 
+<a href="#workerstatus">WorkerStatus</a>)
 </p>
 <p>
 <p>MemberPhase is the current state of member</p>
@@ -5885,6 +7245,7 @@ DashboardConfig
 <h3 id="pdfailuremember">PDFailureMember</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
 <a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
@@ -6851,7 +8212,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>CAPath is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn&rsquo;t be empty</p>
+<p>CAPath is the path of file that contains list of trusted SSL CAs.</p>
 </td>
 </tr>
 <tr>
@@ -8807,6 +10168,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#masterservicespec">MasterServiceSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#prometheusspec">PrometheusSpec</a>, 
 <a href="#reloaderspec">ReloaderSpec</a>, 
@@ -9232,6 +10594,7 @@ GcsStorageProvider
 <h3 id="tlscluster">TLSCluster</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmclusterspec">DMClusterSpec</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -15945,6 +17308,7 @@ string
 <h3 id="tidbclusterconditiontype">TidbClusterConditionType</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#dmclustercondition">DMClusterCondition</a>, 
 <a href="#tidbclustercondition">TidbClusterCondition</a>)
 </p>
 <p>
@@ -17148,6 +18512,7 @@ uint
 <h3 id="unjoinedmember">UnjoinedMember</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>, 
 <a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
@@ -17251,6 +18616,333 @@ Networks
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerconfig">WorkerConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerspec">WorkerSpec</a>)
+</p>
+<p>
+<p>WorkerConfig is the configuration of dm-worker-server</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log level.
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>File log config.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Log format. one of json or text.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>keepalive-ttl</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KeepAliveTTL is the keepalive TTL when dm-worker writes to the embedded etcd of dm-master
+Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>DMSecurityConfig</code></br>
+<em>
+<a href="#dmsecurityconfig">
+DMSecurityConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>DMSecurityConfig</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>dm-worker&rsquo;s security config</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workermember">WorkerMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
+<p>WorkerMember is dm-Worker member status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>Last time the health transitioned from one to another.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerspec">WorkerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterspec">DMClusterSpec</a>)
+</p>
+<p>
+<p>WorkerSpec contains details of dm-worker members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for dm-worker data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataSubDir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subdirectory within the volume to store dm-worker Data. By default, the data
+is stored in the root directory of volume which is mounted at
+/var/lib/dm-worker.
+Specifying this will change the data directory to a subdirectory, e.g.
+/var/lib/dm-worker/data if you set the value to &ldquo;data&rdquo;.
+It&rsquo;s dangerous to change this value for a running cluster as it will
+upgrade your cluster to use a new storage directory.
+Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#workerconfig">
+WorkerConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of dm-worker-servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workerstatus">WorkerStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterstatus">DMClusterStatus</a>)
+</p>
+<p>
+<p>WorkerStatus is dm-worker status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>workers</code></br>
+<em>
+<a href="#workermember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMember
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>

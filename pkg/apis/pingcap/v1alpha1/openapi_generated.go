@@ -4133,20 +4133,6 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 							},
 						},
 					},
-					"tableFilter": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "",
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		},

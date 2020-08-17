@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	. "github.com/onsi/gomega"
 	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
