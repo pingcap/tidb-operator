@@ -58,7 +58,7 @@ import (
 //   https://github.com/kubernetes/enhancements/pull/1848) to be implemented.
 // - If the feature `ExpandInUsePersistentVolumes` is not enabled or the volume
 //   plugin does not support, the pod referencing the volume must be deleted and
-//   recreted after the `FileSystemResizePending` condition becomes true.
+//   recreated after the `FileSystemResizePending` condition becomes true.
 // - Shrinking volumes is not supported.
 //
 type PVCResizerInterface interface {
