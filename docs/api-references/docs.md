@@ -671,6 +671,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>hostNetwork</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether Hostnetwork is enabled for DM cluster Pods
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>affinity</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
@@ -681,6 +694,19 @@ Kubernetes core/v1.Affinity
 <td>
 <em>(Optional)</em>
 <p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PriorityClassName of DM cluster Pods
+Optional: Defaults to omitted</p>
 </td>
 </tr>
 <tr>
@@ -4086,8 +4112,8 @@ LeastRemainAvailableStoragePercent should between 5 and 90. If not set, the defa
 <td>
 <code>type</code></br>
 <em>
-<a href="#tidbclusterconditiontype">
-TidbClusterConditionType
+<a href="#dmclusterconditiontype">
+DMClusterConditionType
 </a>
 </em>
 </td>
@@ -4162,6 +4188,10 @@ string
 </tbody>
 </table>
 <h3 id="dmclusterconditiontype">DMClusterConditionType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclustercondition">DMClusterCondition</a>)
+</p>
 <p>
 <p>DMClusterConditionType represents a dm cluster condition value.</p>
 </p>
@@ -4329,6 +4359,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>hostNetwork</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether Hostnetwork is enabled for DM cluster Pods
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>affinity</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
@@ -4339,6 +4382,19 @@ Kubernetes core/v1.Affinity
 <td>
 <em>(Optional)</em>
 <p>Affinity of DM cluster Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PriorityClassName of DM cluster Pods
+Optional: Defaults to omitted</p>
 </td>
 </tr>
 <tr>
@@ -17252,7 +17308,6 @@ string
 <h3 id="tidbclusterconditiontype">TidbClusterConditionType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#dmclustercondition">DMClusterCondition</a>, 
 <a href="#tidbclustercondition">TidbClusterCondition</a>)
 </p>
 <p>
@@ -18667,7 +18722,7 @@ DMSecurityConfig
 <tbody>
 <tr>
 <td>
-<code>podName</code></br>
+<code>name</code></br>
 <em>
 string
 </em>
@@ -18677,7 +18732,7 @@ string
 </tr>
 <tr>
 <td>
-<code>id</code></br>
+<code>addr</code></br>
 <em>
 string
 </em>
@@ -18687,7 +18742,7 @@ string
 </tr>
 <tr>
 <td>
-<code>state</code></br>
+<code>stage</code></br>
 <em>
 string
 </em>
@@ -18879,7 +18934,7 @@ Kubernetes apps/v1.StatefulSetStatus
 </tr>
 <tr>
 <td>
-<code>workers</code></br>
+<code>members</code></br>
 <em>
 <a href="#workermember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMember

@@ -127,6 +127,20 @@ func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 	}
 }
 
+// GetDMOwnerRef returns DMCluster's OwnerReference
+func GetDMOwnerRef(dc *v1alpha1.DMCluster) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         ControllerKind.GroupVersion().String(),
+		Kind:               ControllerKind.Kind,
+		Name:               dc.GetName(),
+		UID:                dc.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
 // GetBackupOwnerRef returns Backup's OwnerReference
 func GetBackupOwnerRef(backup *v1alpha1.Backup) metav1.OwnerReference {
 	controller := true
@@ -294,6 +308,21 @@ func PumpPeerMemberName(clusterName string) string {
 // DiscoveryMemberName returns the name of tidb discovery
 func DiscoveryMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-discovery", clusterName)
+}
+
+// DMMasterMemberName returns dm-master member name
+func DMMasterMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-master", clusterName)
+}
+
+// DMMasterPeerMemberName returns dm-master peer service name
+func DMMasterPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-master-peer", clusterName)
+}
+
+// DMWorkerPeerMemberName returns dm-worker peer service name
+func DMWorkerPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
 // AnnProm adds annotations for prometheus scraping metrics

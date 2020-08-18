@@ -191,10 +191,10 @@ func CombineAnnotations(a, b map[string]string) map[string]string {
 }
 
 // NeedForceUpgrade check if force upgrade is necessary
-func NeedForceUpgrade(tc *v1alpha1.TidbCluster) bool {
+func NeedForceUpgrade(ann map[string]string) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
-	if tc.Annotations != nil {
-		forceVal, ok := tc.Annotations[label.AnnForceUpgradeKey]
+	if ann != nil {
+		forceVal, ok := ann[label.AnnForceUpgradeKey]
 		if ok && (forceVal == label.AnnForceUpgradeVal) {
 			return true
 		}
@@ -248,23 +248,25 @@ func AddConfigMapDigestSuffix(cm *corev1.ConfigMap) error {
 }
 
 // getStsAnnotations gets annotations for statefulset of given component.
-func getStsAnnotations(tc *v1alpha1.TidbCluster, component string) map[string]string {
+func getStsAnnotations(tcAnns map[string]string, component string) map[string]string {
 	anns := map[string]string{}
-	tcAnns := tc.Annotations
 	if tcAnns == nil {
 		return anns
 	}
 	// delete slots
 	var key string
-	if component == label.PDLabelVal {
+	switch component {
+	case label.PDLabelVal:
 		key = label.AnnPDDeleteSlots
-	} else if component == label.TiDBLabelVal {
+	case label.TiDBLabelVal:
 		key = label.AnnTiDBDeleteSlots
-	} else if component == label.TiKVLabelVal {
+	case label.TiKVLabelVal:
 		key = label.AnnTiKVDeleteSlots
-	} else if component == label.TiFlashLabelVal {
+	case label.TiFlashLabelVal:
 		key = label.AnnTiFlashDeleteSlots
-	} else {
+	case label.DMMasterLabelVal:
+		key = label.AnnDMMasterDeleteSlots
+	default:
 		return anns
 	}
 	if val, ok := tcAnns[key]; ok {

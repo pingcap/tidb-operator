@@ -104,6 +104,8 @@ const (
 	AnnTiKVDeleteSlots = "tikv.tidb.pingcap.com/delete-slots"
 	// TiFlashDeleteSlots is annotation key of tiflash delete slots.
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
+	// DMMasterDeleteSlots is annotation key of dm-master delete slots.
+	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
 
 	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"
@@ -149,6 +151,11 @@ const (
 	InitJobLabelVal string = "initializer"
 	// TiDBOperator is ManagedByLabelKey label value
 	TiDBOperator string = "tidb-operator"
+
+	// DMMasterLabelVal is dm-master label value
+	DMMasterLabelVal string = "dm-master"
+	// DMWorkerLabelVal is dm-worker label value
+	DMWorkerLabelVal string = "dm-worker"
 )
 
 // Label is the label field in metadata
@@ -308,6 +315,24 @@ func (l Label) PD() Label {
 func (l Label) Pump() Label {
 	l.Component(PumpLabelVal)
 	return l
+}
+
+func (l Label) DMMaster() Label {
+	l.Component(DMMasterLabelVal)
+	return l
+}
+
+func (l Label) DMWorker() Label {
+	l.Component(DMWorkerLabelVal)
+	return l
+}
+
+func (l Label) IsDMMaster() bool {
+	return l[ComponentLabelKey] == DMMasterLabelVal
+}
+
+func (l Label) IsDMWorker() bool {
+	return l[ComponentLabelKey] == DMWorkerLabelVal
 }
 
 func (l Label) IsPump() bool {

@@ -1452,10 +1452,24 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster"),
 						},
 					},
+					"hostNetwork": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether Hostnetwork is enabled for DM cluster Pods Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Affinity of DM cluster Pods",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PriorityClassName of DM cluster Pods Optional: Defaults to omitted",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"nodeSelector": {

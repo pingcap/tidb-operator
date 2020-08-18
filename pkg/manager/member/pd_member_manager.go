@@ -244,7 +244,7 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	}
 
 	if !tc.Status.PD.Synced {
-		force := NeedForceUpgrade(tc)
+		force := NeedForceUpgrade(tc.Annotations)
 		if force {
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			setUpgradePartition(newPDSet, 0)
@@ -630,7 +630,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	pdLabel := label.New().Instance(instanceName).PD()
 	setName := controller.PDMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(2379), basePDSpec.Annotations())
-	stsAnnotations := getStsAnnotations(tc, label.PDLabelVal)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.PDLabelVal)
 	failureReplicas := getFailureReplicas(tc)
 
 	pdContainer := corev1.Container{
@@ -825,6 +825,15 @@ func clusterVersionGreaterThanOrEqualTo4(version string) (bool, error) {
 	}
 
 	return v.Major() >= 4, nil
+}
+
+func clusterVersionLessThan2(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return true, err
+	}
+
+	return v.Major() < 2, nil
 }
 
 func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, pdStatus map[string]v1alpha1.PDMember) error {
