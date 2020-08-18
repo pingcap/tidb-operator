@@ -371,11 +371,12 @@ chmod 777 /data/prometheus /data/grafana
 
 	}
 	for k, v := range monitor.Spec.Initializer.Envs {
-		container.Env = append(container.Env, core.EnvVar{
+		util.AppendOverwriteEnv(container.Env, []core.EnvVar{{
 			Name:  k,
 			Value: v,
-		})
+		}})
 	}
+	sort.Sort(util.SortEnvByName(container.Env))
 	return container
 }
 
@@ -511,14 +512,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			},
 		},
 	}
-	for k, v := range monitor.Spec.Grafana.Envs {
-		c.Env = append(c.Env, core.EnvVar{
-			Name:  k,
-			Value: v,
-		})
-	}
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
+	}
+	for k, v := range monitor.Spec.Grafana.Envs {
+		util.AppendOverwriteEnv(c.Env, []core.EnvVar{{
+			Name:  k,
+			Value: v,
+		}})
 	}
 	sort.Sort(util.SortEnvByName(c.Env))
 	return c
@@ -878,25 +879,4 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 	if monitor.Spec.PVReclaimPolicy == nil {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
-}
-
-// AppendOverwriteEnv appends envs b into a and overwrites the envs whose names already exist
-// in b.
-// Note that this will not change relative order of envs.
-func AppendOverwriteEnv(a []core.EnvVar, b []core.EnvVar) []core.EnvVar {
-	for _, valNew := range b {
-		matched := false
-		for j, valOld := range a {
-			// It's possible there are multiple instances of the same variable in this array,
-			// so we just overwrite all of them rather than trying to resolve dupes here.
-			if valNew.Name == valOld.Name {
-				a[j] = valNew
-				matched = true
-			}
-		}
-		if !matched {
-			a = append(a, valNew)
-		}
-	}
-	return a
 }
