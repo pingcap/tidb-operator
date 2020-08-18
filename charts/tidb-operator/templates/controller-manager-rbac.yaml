@@ -44,7 +44,7 @@ rules:
   verbs: ["create", "update", "get", "list", "watch","delete"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch", "create", "update", "delete"]
+  verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
@@ -77,6 +77,9 @@ rules:
 - apiGroups: [""]
   resources: ["persistentvolumes"]
   verbs: ["get", "list", "watch", "patch","update"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
 {{/*
 Allow controller manager to escalate its privileges to other subjects, the subjects may never have privilege over the controller.
 Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping
@@ -138,7 +141,7 @@ rules:
   verbs: ["create", "update", "get", "list", "watch", "delete"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list", "watch", "create", "update", "delete"]
+  verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "watch","update", "delete"]
