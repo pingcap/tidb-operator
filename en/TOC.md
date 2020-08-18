@@ -26,6 +26,7 @@
   - [Deploy TiFlash](deploy-tiflash.md)
   - [Deploy TiCDC](deploy-ticdc.md)
   - [Deploy TiDB Binlog](deploy-tidb-binlog.md)
+  - [Deploy TiDB Enterprise Edition](deploy-tidb-enterprise-edition.md)
   + Deploy Monitoring
     - [Monitor Kubernetes and TiDB Cluster](monitor-a-tidb-cluster.md)
     - [Monitor TiDB Cluster Using TidbMonitor](monitor-using-tidbmonitor.md)
