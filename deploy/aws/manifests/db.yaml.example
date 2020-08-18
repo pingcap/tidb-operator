@@ -100,7 +100,7 @@ spec:
       cpu: "1"
       memory: 2Gi
       storage: 45Gi
-    storageClassName: local-storage
+    storageClassName: ebs-gp2
     tolerations:
     - effect: NoSchedule
       key: dedicated
