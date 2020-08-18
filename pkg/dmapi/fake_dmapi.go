@@ -39,7 +39,7 @@ type Action struct {
 
 type Reaction func(action *Action) (interface{}, error)
 
-// FakeMasterClient implements a fake version of PDClient.
+// FakeMasterClient implements a fake version of MasterClient.
 type FakeMasterClient struct {
 	reactions map[ActionType]Reaction
 }

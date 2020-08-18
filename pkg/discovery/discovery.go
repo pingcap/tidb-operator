@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 )
 
-// TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
+// TiDBDiscovery helps new PD and dm-master member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
 	Discover(string) (string, error)
 	DiscoverDM(string) (string, error)
@@ -54,6 +54,7 @@ func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, masterControl dmapi.Ma
 		pdControl:     pdControl,
 		masterControl: masterControl,
 		clusters:      map[string]*clusterInfo{},
+		dmClusters:    map[string]*clusterInfo{},
 	}
 }
 
@@ -144,7 +145,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, dcName)
-	// TODO: the replicas should be the total replicas of pd sets.
+	// TODO: the replicas should be the total replicas of dm master sets.
 	replicas := dc.Spec.Master.Replicas
 
 	currentCluster := td.dmClusters[keyName]

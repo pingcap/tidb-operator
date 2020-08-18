@@ -15,6 +15,7 @@ package server
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -78,7 +79,7 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 		result, err = s.discovery.DiscoverDM(advertisePeerURL)
 	default:
 		klog.Errorf("invalid register-type %s", registerType)
-		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
+		if err := resp.WriteError(http.StatusInternalServerError, fmt.Errorf("invalid register-type %s", registerType)); err != nil {
 			klog.Errorf("failed to writeError: %v", err)
 		}
 		return

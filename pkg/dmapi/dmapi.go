@@ -87,7 +87,7 @@ func (mc *masterClient) GetMasters() ([]*MastersInfo, error) {
 		return nil, fmt.Errorf("unable to list members info from dm-master, err: %s", listMemberResp.Msg)
 	}
 	if len(listMemberResp.ListMemberResp) != 1 {
-		return nil, fmt.Errorf("invalid list members resp: %s", body)
+		return nil, fmt.Errorf("invalid list members resp: %s", string(body))
 	}
 
 	return listMemberResp.ListMemberResp[0].Masters, nil
