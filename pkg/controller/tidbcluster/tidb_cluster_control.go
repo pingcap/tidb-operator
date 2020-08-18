@@ -46,6 +46,7 @@ func NewDefaultTidbClusterControl(
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
+	pvcResizer member.PVCResizerInterface,
 	pumpMemberManager manager.Manager,
 	tiflashMemberManager manager.Manager,
 	ticdcMemberManager manager.Manager,
@@ -63,6 +64,7 @@ func NewDefaultTidbClusterControl(
 		metaManager,
 		orphanPodsCleaner,
 		pvcCleaner,
+		pvcResizer,
 		pumpMemberManager,
 		tiflashMemberManager,
 		ticdcMemberManager,
@@ -83,6 +85,7 @@ type defaultTidbClusterControl struct {
 	metaManager              manager.Manager
 	orphanPodsCleaner        member.OrphanPodsCleaner
 	pvcCleaner               member.PVCCleanerInterface
+	pvcResizer               member.PVCResizerInterface
 	pumpMemberManager        manager.Manager
 	tiflashMemberManager     manager.Manager
 	ticdcMemberManager       manager.Manager
@@ -245,6 +248,11 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		for pvcName, reason := range pvcSkipReasons {
 			klog.Infof("pvc %s of cluster %s/%s is skipped, reason %q", pvcName, tc.Namespace, tc.Name, reason)
 		}
+	}
+
+	// resize PVC if necessary
+	if err := tcc.pvcResizer.Resize(tc); err != nil {
+		return err
 	}
 
 	// syncing the some tidbcluster status attributes
