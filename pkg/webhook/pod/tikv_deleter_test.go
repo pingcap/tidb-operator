@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	memberUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
@@ -270,8 +271,9 @@ func TestTiKVDeleterDelete(t *testing.T) {
 	}
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
+			cli := fake.NewSimpleClientset()
 			kubeCli := kubefake.NewSimpleClientset()
-			podAdmissionControl := newPodAdmissionControl(kubeCli)
+			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 			pdControl := pdapi.NewFakePDControl(kubeCli)
 			fakePDClient := controller.NewFakePDClient(pdControl, testcase.ownerTc)
 

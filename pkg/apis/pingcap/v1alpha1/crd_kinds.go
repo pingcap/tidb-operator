@@ -25,6 +25,10 @@ const (
 	TiDBClusterKind    = "TidbCluster"
 	TiDBClusterKindKey = "tidbcluster"
 
+	DMClusterName    = "dmclusters"
+	DMCLusterKind    = "DMCluster"
+	DMClusterKindKey = "dmcluster"
+
 	BackupName    = "backups"
 	BackupKind    = "Backup"
 	BackupKindKey = "backup"
@@ -71,6 +75,7 @@ type CrdKind struct {
 type CrdKinds struct {
 	KindsString           string
 	TiDBCluster           CrdKind
+	DMCluster             CrdKind
 	Backup                CrdKind
 	Restore               CrdKind
 	BackupSchedule        CrdKind
@@ -84,6 +89,7 @@ type CrdKinds struct {
 var DefaultCrdKinds = CrdKinds{
 	KindsString:           "",
 	TiDBCluster:           CrdKind{Plural: TiDBClusterName, Kind: TiDBClusterKind, ShortNames: []string{"tc"}, SpecName: SpecPath + TiDBClusterKind},
+	DMCluster:             CrdKind{Plural: DMClusterName, Kind: DMCLusterKind, ShortNames: []string{"dc"}, SpecName: SpecPath + DMCLusterKind},
 	Backup:                CrdKind{Plural: BackupName, Kind: BackupKind, ShortNames: []string{"bk"}, SpecName: SpecPath + BackupKind},
 	Restore:               CrdKind{Plural: RestoreName, Kind: RestoreKind, ShortNames: []string{"rt"}, SpecName: SpecPath + RestoreKind},
 	BackupSchedule:        CrdKind{Plural: BackupScheduleName, Kind: BackupScheduleKind, ShortNames: []string{"bks"}, SpecName: SpecPath + BackupScheduleKind},

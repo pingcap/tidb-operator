@@ -184,6 +184,26 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		fmt.Sprintf("--backupPath=%s", backupPath),
 	}
 
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+	if restore.Spec.To.TLSClientSecretName != nil {
+		args = append(args, "--client-tls=true")
+		clientSecretName := *restore.Spec.To.TLSClientSecretName
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: clientSecretName,
+				},
+			},
+		})
+	}
+
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 	serviceAccount := constants.DefaultServiceAccountName
 	if restore.Spec.ServiceAccount != "" {
@@ -204,9 +224,9 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 					Image:           controller.TidbBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: []corev1.VolumeMount{
+					VolumeMounts: append([]corev1.VolumeMount{
 						{Name: label.RestoreJobLabelVal, MountPath: constants.BackupRootPath},
-					},
+					}, volumeMounts...),
 					Env:       util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources: restore.Spec.ResourceRequirements,
 				},
@@ -214,7 +234,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			RestartPolicy: corev1.RestartPolicyNever,
 			Affinity:      restore.Spec.Affinity,
 			Tolerations:   restore.Spec.Tolerations,
-			Volumes: []corev1.Volume{
+			Volumes: append([]corev1.Volume{
 				{
 					Name: label.RestoreJobLabelVal,
 					VolumeSource: corev1.VolumeSource{
@@ -223,7 +243,7 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 						},
 					},
 				},
-			},
+			}, volumes...),
 		},
 	}
 
@@ -289,7 +309,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	restoreLabel := label.NewBackup().Instance(restore.GetInstanceName()).RestoreJob().Restore(name)
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-	if tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled {
+	if tc.IsTLSClusterEnabled() {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      util.ClusterClientVolName,

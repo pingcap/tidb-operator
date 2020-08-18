@@ -17,18 +17,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/mholt/archiver"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )
 
 // Options contains the input arguments to the restore command
 type Options struct {
-	util.GenericOptions
+	backupUtil.GenericOptions
 	BackupPath string
 }
 
@@ -39,12 +42,12 @@ func (ro *Options) getRestoreDataPath() string {
 }
 
 func (ro *Options) downloadBackupData(localPath string, opts []string) error {
-	if err := util.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
+	if err := backupUtil.EnsureDirectoryExist(filepath.Dir(localPath)); err != nil {
 		return err
 	}
 
-	remoteBucket := util.NormalizeBucketURI(ro.BackupPath)
-	args := util.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath)
+	remoteBucket := backupUtil.NormalizeBucketURI(ro.BackupPath)
+	args := backupUtil.ConstructArgs(constants.RcloneConfigArg, opts, "copyto", remoteBucket, localPath)
 	rcCopy := exec.Command("rclone", args...)
 
 	stdOut, err := rcCopy.StdoutPipe()
@@ -79,7 +82,7 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 }
 
 func (ro *Options) loadTidbClusterData(restorePath string) error {
-	if exist := util.IsDirExist(restorePath); !exist {
+	if exist := backupUtil.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
 	// args for restore
@@ -94,6 +97,11 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		fmt.Sprintf("--d=%s", restorePath),
 		fmt.Sprintf("--tidb-port=%d", ro.Port),
 	}
+	if ro.TLSClient {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSPrivateKeyKey)))
+	}
 
 	output, err := exec.Command("/tidb-lightning", args...).CombinedOutput()
 	if err != nil {
@@ -105,7 +113,7 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 // unarchiveBackupData unarchive backup data to dest dir
 func unarchiveBackupData(backupFile, destDir string) (string, error) {
 	var unarchiveBackupPath string
-	if err := util.EnsureDirectoryExist(destDir); err != nil {
+	if err := backupUtil.EnsureDirectoryExist(destDir); err != nil {
 		return unarchiveBackupPath, err
 	}
 	backupName := strings.TrimSuffix(filepath.Base(backupFile), constants.DefaultArchiveExtention)

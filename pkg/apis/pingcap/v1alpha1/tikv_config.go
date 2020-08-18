@@ -80,6 +80,7 @@ type TiKVUnifiedReadPoolConfig struct {
 	MinThreadCount *int32 `json:"min-thread-count,omitempty" toml:"min-thread-count,omitempty"`
 	// +optional
 	MaxThreadCount *int32 `json:"max-thread-count,omitempty" toml:"max-thread-count,omitempty"`
+	// Deprecated in v4.0.0
 	// +optional
 	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
 	// +optional
@@ -548,6 +549,7 @@ type TiKVTitanDBConfig struct {
 type TiKVStorageConfig struct {
 	// +optional
 	MaxKeySize *int64 `json:"max-key-size,omitempty" toml:"max-key-size,omitempty"`
+	// Deprecated in v4.0.0
 	// +optional
 	SchedulerNotifyCapacity *int64 `json:"scheduler-notify-capacity,omitempty" toml:"scheduler-notify-capacity,omitempty"`
 	// +optional

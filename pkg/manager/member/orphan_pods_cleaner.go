@@ -142,17 +142,22 @@ func (opc *orphanPodsCleaner) Clean(tc *v1alpha1.TidbCluster) (map[string]string
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodIsNotFound
 			continue
 		}
-		if apiPod.UID != pod.UID {
-			skipReason[podName] = skipReasonOrphanPodsCleanerPodRecreated
-		}
+
 		if err != nil {
 			return skipReason, err
 		}
+
+		if apiPod.UID != pod.UID {
+			skipReason[podName] = skipReasonOrphanPodsCleanerPodRecreated
+			continue
+		}
+
 		// In pre-1.14, kube-apiserver does not support
 		// deleteOption.Preconditions.ResourceVersion, we fetch the latest
 		// version and check again before deletion.
 		if len(apiPod.Spec.NodeName) > 0 {
 			skipReason[podName] = skipReasonOrphanPodsCleanerPodHasBeenScheduled
+			continue
 		}
 		// As the pod may be updated by kube-scheduler or other components
 		// frequently, we should use the latest object here to avoid API

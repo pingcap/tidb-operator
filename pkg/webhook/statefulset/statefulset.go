@@ -16,7 +16,9 @@ package statefulset
 import (
 	"fmt"
 	"strconv"
+	"sync"
 
+	"github.com/openshift/generic-admission-server/pkg/apiserver"
 	asapps "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -27,6 +29,8 @@ import (
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 )
 
@@ -35,17 +39,35 @@ var (
 )
 
 type StatefulSetAdmissionControl struct {
+	lock        sync.RWMutex
+	initialized bool
 	// operator client interface
 	operatorCli versioned.Interface
 }
 
-func NewStatefulSetAdmissionControl(operatorCli versioned.Interface) *StatefulSetAdmissionControl {
-	return &StatefulSetAdmissionControl{
-		operatorCli: operatorCli,
-	}
+var _ apiserver.ValidatingAdmissionHook = &StatefulSetAdmissionControl{}
+
+func NewStatefulSetAdmissionControl() *StatefulSetAdmissionControl {
+	return &StatefulSetAdmissionControl{}
 }
 
-func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (sc *StatefulSetAdmissionControl) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
+	return schema.GroupVersionResource{
+			Group:    "admission.tidb.pingcap.com",
+			Version:  "v1alpha1",
+			Resource: "statefulsetvalidations",
+		},
+		"statefulsetvalidation"
+}
+
+func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	sc.lock.RLock()
+	defer sc.lock.RUnlock()
+	if !sc.initialized {
+		return &admission.AdmissionResponse{
+			Allowed: false,
+		}
+	}
 
 	name := ar.Name
 	namespace := ar.Namespace
@@ -114,6 +136,23 @@ func (sc *StatefulSetAdmissionControl) AdmitStatefulSets(ar *admission.Admission
 		klog.Infof("admit statefulset %s/%s update partition to %d, protect partition is %d", namespace, name, *stsPartition, partition)
 	}
 	return util.ARSuccess()
+}
+
+// Initialize implements AdmissionHook.Initialize interface. It's is called as
+// a post-start hook.
+func (a *StatefulSetAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	cli, err := versioned.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	a.operatorCli = cli
+
+	a.initialized = true
+	return nil
 }
 
 func getStsAttributes(data []byte) (*metav1.ObjectMeta, *int32, error) {
