@@ -27,7 +27,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -268,4 +270,13 @@ func AppendEnvIfPresent(envs []corev1.EnvVar, name string) []corev1.EnvVar {
 		})
 	}
 	return envs
+}
+
+// MustNewRequirement calls NewRequirement and panics on failure.
+func MustNewRequirement(key string, op selection.Operator, vals []string) *labels.Requirement {
+	r, err := labels.NewRequirement(key, op, vals)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
