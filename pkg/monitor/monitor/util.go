@@ -879,3 +879,24 @@ func defaultTidbMonitor(monitor *v1alpha1.TidbMonitor) {
 		monitor.Spec.PVReclaimPolicy = &retainPVP
 	}
 }
+
+// AppendOverwriteEnv appends envs b into a and overwrites the envs whose names already exist
+// in b.
+// Note that this will not change relative order of envs.
+func AppendOverwriteEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
+	for _, valNew := range b {
+		matched := false
+		for j, valOld := range a {
+			// It's possible there are multiple instances of the same variable in this array,
+			// so we just overwrite all of them rather than trying to resolve dupes here.
+			if valNew.Name == valOld.Name {
+				a[j] = valNew
+				matched = true
+			}
+		}
+		if !matched {
+			a = append(a, valNew)
+		}
+	}
+	return a
+}
