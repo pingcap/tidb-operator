@@ -83,14 +83,14 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 	if err != nil {
 		return err
 	}
-	// patch PD PVCs
+    // patch PD PVCs
     if storageRequest, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
         err = p.patchPVCs(tc.GetNamespace(), selector.Add(*pdRequirement), storageRequest, "") 
         if err != nil {
             return err 
         }   
     }
-	// patch TiKV PVCs
+    // patch TiKV PVCs
     if storageRequest, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
         err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tikvRequirement), storageRequest, "")
         if err != nil {
