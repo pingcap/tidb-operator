@@ -16,6 +16,7 @@ package pdapi
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"net/http"
 	"sync"
 
@@ -120,7 +121,7 @@ func PDEtcdClientURL(namespace Namespace, clusterName string, clusterDomain stri
 	if clusterDomain == "" {
 		return fmt.Sprintf("%s-pd.%s:2379", clusterName, string(namespace))
 	}
-	return fmt.Sprintf("%s-pd.%s.svc.%s:2379", clusterName, string(namespace), clusterDomain)
+	return fmt.Sprintf("%s.%s.svc.%s:2379", controller.PDPeerMemberName(clusterName), string(namespace), clusterDomain)
 }
 
 // FakePDControl implements a fake version of PDControlInterface.
