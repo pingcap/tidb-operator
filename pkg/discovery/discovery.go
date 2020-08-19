@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 )
 
-// TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
+// TiDBDiscovery helps new PD and dm-master member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
 	Discover(string) (string, error)
 	DiscoverDM(string) (string, error)
@@ -54,6 +54,7 @@ func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, masterControl dmapi.Ma
 		pdControl:     pdControl,
 		masterControl: masterControl,
 		clusters:      map[string]*clusterInfo{},
+		dmClusters:    map[string]*clusterInfo{},
 	}
 }
 
@@ -129,22 +130,25 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	}
 	klog.Infof("dm advertisePeerUrl is: %s", advertisePeerUrl)
 	strArr := strings.Split(advertisePeerUrl, ".")
-	if len(strArr) != 4 {
+	if len(strArr) != 2 {
 		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
-	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
-	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
-	podNamespace := os.Getenv("MY_POD_NAMESPACE")
-	if ns != podNamespace {
-		return "", fmt.Errorf("dm the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
+	podName, peerServiceNameWithPort := strArr[0], strArr[1]
+	strArr = strings.Split(peerServiceNameWithPort, ":")
+	if len(strArr) != 2 {
+		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
+	peerServiceName := strArr[0]
+	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
+	ns := os.Getenv("MY_POD_NAMESPACE")
+
 	dc, err := td.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, dcName)
-	// TODO: the replicas should be the total replicas of pd sets.
+	// TODO: the replicas should be the total replicas of dm master sets.
 	replicas := dc.Spec.Master.Replicas
 
 	currentCluster := td.dmClusters[keyName]

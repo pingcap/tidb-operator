@@ -44,6 +44,7 @@ func NewImportCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
 	cmd.Flags().StringVar(&ro.ResourceName, "restoreName", "", "Restore CRD object name")
+	cmd.Flags().BoolVar(&ro.TLSClient, "client-tls", false, "Whether client tls is enabled")
 	cmd.Flags().StringVar(&ro.BackupPath, "backupPath", "", "The location of the backup")
 	return cmd
 }

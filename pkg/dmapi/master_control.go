@@ -48,7 +48,7 @@ func NewDefaultMasterControl(kubeCli kubernetes.Interface) MasterControlInterfac
 	return &defaultMasterControl{kubeCli: kubeCli, masterClients: map[string]MasterClient{}}
 }
 
-// GetPDClient provides a PDClient of real pd cluster,if the PDClient not existing, it will create new one.
+// GetMasterClient provides a MasterClient of real dm-master cluster, if the MasterClient not existing, it will create new one.
 func (mc *defaultMasterControl) GetMasterClient(namespace Namespace, dcName string, tlsEnabled bool) MasterClient {
 	mc.mutex.Lock()
 	defer mc.mutex.Unlock()
@@ -82,7 +82,7 @@ func masterClientKey(scheme string, namespace Namespace, clusterName string) str
 
 // MasterClientURL builds the url of master client
 func MasterClientURL(namespace Namespace, clusterName string, scheme string) string {
-	return fmt.Sprintf("%s://%s-master.%s:2379", scheme, clusterName, string(namespace))
+	return fmt.Sprintf("%s://%s-master.%s:8261", scheme, clusterName, string(namespace))
 }
 
 // FakeMasterControl implements a fake version of MasterControlInterface.

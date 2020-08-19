@@ -5123,6 +5123,18 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>cert_allowed_cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="gcsstorageprovider">GcsStorageProvider</h3>

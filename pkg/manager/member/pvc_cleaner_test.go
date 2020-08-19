@@ -31,6 +31,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestPVCCleanerReclaimPV(t *testing.T) {
@@ -38,21 +39,21 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 
 	tc := newTidbClusterForPD()
 	type testcase struct {
-		name            string
-		pods            []*corev1.Pod
-		apiPods         []*corev1.Pod
-		pvcs            []*corev1.PersistentVolumeClaim
-		apiPvcs         []*corev1.PersistentVolumeClaim
-		pvs             []*corev1.PersistentVolume
-		getPodFailed    bool
-		patchPVFailed   bool
-		getPVCFailed    bool
-		deletePVCFailed bool
-		expectFn        func(*GomegaWithT, map[string]string, *realPVCCleaner, error)
+		name             string
+		pvReclaimEnabled bool
+		pods             []*corev1.Pod
+		apiPods          []*corev1.Pod
+		pvcs             []*corev1.PersistentVolumeClaim
+		apiPvcs          []*corev1.PersistentVolumeClaim
+		pvs              []*corev1.PersistentVolume
+		getPodFailed     bool
+		patchPVFailed    bool
+		getPVCFailed     bool
+		deletePVCFailed  bool
+		expectFn         func(*GomegaWithT, map[string]string, *realPVCCleaner, error)
 	}
 	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-
+		tc.Spec.EnablePVReclaim = pointer.BoolPtr(test.pvReclaimEnabled)
 		pcc, fakeCli, podIndexer, pvcIndexer, pvcControl, pvIndexer, pvControl := newFakePVCCleaner()
 		if test.pods != nil {
 			for _, pod := range test.pods {
@@ -101,25 +102,27 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 	}
 	tests := []testcase{
 		{
-			name:            "no pvcs",
-			pods:            nil,
-			apiPods:         nil,
-			pvcs:            nil,
-			apiPvcs:         nil,
-			pvs:             nil,
-			getPodFailed:    false,
-			patchPVFailed:   false,
-			getPVCFailed:    false,
-			deletePVCFailed: false,
+			name:             "no pvcs",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
+			pvcs:             nil,
+			apiPvcs:          nil,
+			pvs:              nil,
+			getPodFailed:     false,
+			patchPVFailed:    false,
+			getPVCFailed:     false,
+			deletePVCFailed:  false,
 			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(skipReason)).To(Equal(0))
 			},
 		},
 		{
-			name:    "not pd or tikv pvcs",
-			pods:    nil,
-			apiPods: nil,
+			name:             "not pd or tikv pvcs",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -146,9 +149,31 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "pvc is not bound",
-			pods:    nil,
-			apiPods: nil,
+			name:             "pv reclaim is not enabled",
+			pvReclaimEnabled: false,
+			pvcs: []*corev1.PersistentVolumeClaim{
+				{
+					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: metav1.NamespaceDefault,
+						Name:      "tidb-test-tidb-0",
+						Labels:    label.New().Instance(tc.GetInstanceName()).PD().Labels(),
+					},
+					Status: corev1.PersistentVolumeClaimStatus{
+						Phase: corev1.ClaimBound,
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, skipReason map[string]string, _ *realPVCCleaner, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(skipReason)).To(Equal(0))
+			},
+		},
+		{
+			name:             "pvc is not bound",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -175,9 +200,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "pvc has been deleted",
-			pods:    nil,
-			apiPods: nil,
+			name:             "pvc has been deleted",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -204,9 +230,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "pvc is not defer delete pvc",
-			pods:    nil,
-			apiPods: nil,
+			name:             "pvc is not defer delete pvc",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -232,9 +259,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "pvc not has pod name annotation",
-			pods:    nil,
-			apiPods: nil,
+			name:             "pvc not has pod name annotation",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -264,7 +292,8 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name: "pvc is still referenced by pod,",
+			name:             "pvc is still referenced by pod,",
+			pvReclaimEnabled: true,
 			pods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -305,8 +334,9 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name: "not found pod that referenced pvc from local cache, but found this pod from apiserver",
-			pods: nil,
+			name:             "not found pod that referenced pvc from local cache, but found this pod from apiserver",
+			pvReclaimEnabled: true,
+			pods:             nil,
 			apiPods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -346,8 +376,9 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name: "get pod from apiserver failed",
-			pods: nil,
+			name:             "get pod from apiserver failed",
+			pvReclaimEnabled: true,
+			pods:             nil,
 			apiPods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -387,9 +418,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "not found pv bound to pvc",
-			pods:    nil,
-			apiPods: nil,
+			name:             "not found pv bound to pvc",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -423,9 +455,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "patch pv reclaim policy to delete policy failed",
-			pods:    nil,
-			apiPods: nil,
+			name:             "patch pv reclaim policy to delete policy failed",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -470,9 +503,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "found pvc from local cache, but not found this pvc from apiserver",
-			pods:    nil,
-			apiPods: nil,
+			name:             "found pvc from local cache, but not found this pvc from apiserver",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -517,9 +551,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "get pvc from apiserver failed",
-			pods:    nil,
-			apiPods: nil,
+			name:             "get pvc from apiserver failed",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -587,9 +622,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "pvc has been changed",
-			pods:    nil,
-			apiPods: nil,
+			name:             "pvc has been changed",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -657,9 +693,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "delete pvc failed",
-			pods:    nil,
-			apiPods: nil,
+			name:             "delete pvc failed",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -729,9 +766,10 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 			},
 		},
 		{
-			name:    "the defer delete pvc has been remove and reclaim pv success",
-			pods:    nil,
-			apiPods: nil,
+			name:             "the defer delete pvc has been remove and reclaim pv success",
+			pvReclaimEnabled: true,
+			pods:             nil,
+			apiPods:          nil,
 			pvcs: []*corev1.PersistentVolumeClaim{
 				{
 					TypeMeta: metav1.TypeMeta{Kind: "PersistentVolumeClaim", APIVersion: "v1"},
@@ -804,7 +842,9 @@ func TestPVCCleanerReclaimPV(t *testing.T) {
 	}
 
 	for i := range tests {
-		testFn(&tests[i], t)
+		t.Run(tests[i].name, func(t *testing.T) {
+			testFn(&tests[i], t)
+		})
 	}
 }
 
@@ -1123,7 +1163,9 @@ func TestPVCCleanerCleanScheduleLock(t *testing.T) {
 		},
 	}
 	for i := range tests {
-		testFn(&tests[i], t)
+		t.Run(tests[i].name, func(t *testing.T) {
+			testFn(&tests[i], t)
+		})
 	}
 }
 

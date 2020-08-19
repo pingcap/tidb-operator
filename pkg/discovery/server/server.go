@@ -15,6 +15,7 @@ package server
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -46,7 +47,7 @@ func NewServer(pdControl pdapi.PDControlInterface, masterControl dmapi.MasterCon
 func (s *server) registerHandlers() {
 	ws := new(restful.WebService)
 	ws.Route(ws.GET("/new/{advertise-peer-url}").To(s.newHandler))
-	ws.Route(ws.GET("/newdm/{advertise-peer-url}").To(s.newDMHandler))
+	ws.Route(ws.GET("/new/{advertise-peer-url}/{register-type}").To(s.newHandler))
 	s.container.Add(ws)
 }
 
@@ -56,9 +57,13 @@ func (s *server) ListenAndServe(addr string) {
 
 func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	encodedAdvertisePeerURL := req.PathParameter("advertise-peer-url")
+	registerType := req.PathParameter("register-type")
+	if registerType == "" {
+		registerType = "pd"
+	}
 	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
 	if err != nil {
-		klog.Errorf("failed to decode advertise-peer-url: %s", encodedAdvertisePeerURL)
+		klog.Errorf("failed to decode advertise-peer-url: %s, register-type is: %s", encodedAdvertisePeerURL, registerType)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
 			klog.Errorf("failed to writeError: %v", err)
 		}
@@ -66,44 +71,30 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	}
 	advertisePeerURL := string(data)
 
-	result, err := s.discovery.Discover(advertisePeerURL)
+	var result string
+	switch registerType {
+	case "pd":
+		result, err = s.discovery.Discover(advertisePeerURL)
+	case "dm":
+		result, err = s.discovery.DiscoverDM(advertisePeerURL)
+	default:
+		err = fmt.Errorf("invalid register-type %s", registerType)
+		klog.Errorf("%v", err)
+		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
+			klog.Errorf("failed to writeError: %v", werr)
+		}
+		return
+	}
 	if err != nil {
-		klog.Errorf("failed to discover: %s, %v", advertisePeerURL, err)
+		klog.Errorf("failed to discover: %s, %v, register-type is: %s", advertisePeerURL, err, registerType)
 		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
 			klog.Errorf("failed to writeError: %v", err)
 		}
 		return
 	}
 
-	klog.Infof("generated args for %s: %s", advertisePeerURL, result)
+	klog.Infof("generated args for %s: %s, register-type: %s", advertisePeerURL, result, registerType)
 	if _, err := io.WriteString(resp, result); err != nil {
 		klog.Errorf("failed to writeString: %s, %v", result, err)
-	}
-}
-
-func (s *server) newDMHandler(req *restful.Request, resp *restful.Response) {
-	encodedAdvertisePeerURL := req.PathParameter("advertise-peer-url")
-	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
-	if err != nil {
-		klog.Errorf("failed to decode dm advertise-peer-url: %s", encodedAdvertisePeerURL)
-		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			klog.Errorf("failed to writeError: %v", err)
-		}
-		return
-	}
-	advertisePeerURL := string(data)
-
-	result, err := s.discovery.DiscoverDM(advertisePeerURL)
-	if err != nil {
-		klog.Errorf("failed to discover DM: %s, %v", advertisePeerURL, err)
-		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			klog.Errorf("failed to writeError for dm: %v", err)
-		}
-		return
-	}
-
-	klog.Infof("generated args for dm %s: %s", advertisePeerURL, result)
-	if _, err := io.WriteString(resp, result); err != nil {
-		klog.Errorf("failed to writeString for dm: %s, %v", result, err)
 	}
 }
