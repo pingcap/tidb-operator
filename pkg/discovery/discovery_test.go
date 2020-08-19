@@ -460,7 +460,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name:       "failed to get tidbcluster",
 			ns:         "default",
-			url:        "demo-dm-master-0.demo-dm-master-peer.svc:8291",
+			url:        "demo-dm-master-0.demo-dm-master-peer:8291",
 			dmClusters: map[string]*clusterInfo{},
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
 				g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
@@ -470,7 +470,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name:       "failed to get members",
 			ns:         "default",
-			url:        "demo-dm-master-0.demo-dm-master-peer.svc:8291",
+			url:        "demo-dm-master-0.demo-dm-master-peer:8291",
 			dmClusters: map[string]*clusterInfo{},
 			dc:         newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
@@ -487,7 +487,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name: "resourceVersion changed",
 			ns:   "default",
-			url:  "demo-dm-master-0.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-0.demo-dm-master-peer:8291",
 			dc:   newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("getMembers failed")
@@ -512,7 +512,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name:       "1 cluster, first ordinal, there are no dm-master members",
 			ns:         "default",
-			url:        "demo-dm-master-0.demo-dm-master-peer.svc:8291",
+			url:        "demo-dm-master-0.demo-dm-master-peer:8291",
 			dmClusters: map[string]*clusterInfo{},
 			dc:         newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
@@ -529,7 +529,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name: "1 cluster, second ordinal, there are no dm-master members",
 			ns:   "default",
-			url:  "demo-dm-master-1.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-1.demo-dm-master-peer:8291",
 			dc:   newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("there are no dm-master members 2")
@@ -554,7 +554,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name: "1 cluster, third ordinal, return the initial-cluster args",
 			ns:   "default",
-			url:  "demo-dm-master-2.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-2.demo-dm-master-peer:8291",
 			dc:   newDC(),
 			dmClusters: map[string]*clusterInfo{
 				"default/demo": {
@@ -571,13 +571,13 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				g.Expect(len(td.dmClusters["default/demo"].peers)).To(Equal(2))
 				g.Expect(td.dmClusters["default/demo"].peers["demo-dm-master-0"]).To(Equal(struct{}{}))
 				g.Expect(td.dmClusters["default/demo"].peers["demo-dm-master-1"]).To(Equal(struct{}{}))
-				g.Expect(s).To(Equal("--initial-cluster=demo-dm-master-2=http://demo-dm-master-2.demo-dm-master-peer.svc:8291"))
+				g.Expect(s).To(Equal("--initial-cluster=demo-dm-master-2=http://demo-dm-master-2.demo-dm-master-peer:8291"))
 			},
 		},
 		{
 			name: "1 cluster, the first ordinal second request, get members failed",
 			ns:   "default",
-			url:  "demo-dm-master-0.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-0.demo-dm-master-peer:8291",
 			dc:   newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return nil, fmt.Errorf("there are no dm-master members 3")
@@ -603,12 +603,12 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name: "1 cluster, the first ordinal third request, get members success",
 			ns:   "default",
-			url:  "demo-dm-master-0.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-0.demo-dm-master-peer:8291",
 			dc:   newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
 					},
 				}, nil
 			},
@@ -626,21 +626,21 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				g.Expect(len(td.dmClusters)).To(Equal(1))
 				g.Expect(len(td.dmClusters["default/demo"].peers)).To(Equal(1))
 				g.Expect(td.dmClusters["default/demo"].peers["demo-dm-master-1"]).To(Equal(struct{}{}))
-				g.Expect(s).To(Equal("--join=demo-dm-master-2.demo-dm-master-peer.svc:8261"))
+				g.Expect(s).To(Equal("--join=demo-dm-master-2.demo-dm-master-peer:8261"))
 			},
 		},
 		{
 			name: "1 cluster, the second ordinal second request, get members success",
 			ns:   "default",
-			url:  "demo-dm-master-1.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-1.demo-dm-master-peer:8291",
 			dc:   newDC(),
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8261"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
 					},
 				}, nil
 			},
@@ -656,13 +656,13 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.dmClusters)).To(Equal(1))
 				g.Expect(len(td.dmClusters["default/demo"].peers)).To(Equal(0))
-				g.Expect(s).To(Equal("--join=demo-dm-master-0.demo-dm-master-peer.svc:8261,demo-dm-master-2.demo-dm-master-peer.svc:8261"))
+				g.Expect(s).To(Equal("--join=demo-dm-master-0.demo-dm-master-peer:8261,demo-dm-master-2.demo-dm-master-peer:8261"))
 			},
 		},
 		{
 			name: "1 cluster, the fourth ordinal request, get members success",
 			ns:   "default",
-			url:  "demo-dm-master-3.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-3.demo-dm-master-peer:8291",
 			dc: func() *v1alpha1.DMCluster {
 				dc := newDC()
 				dc.Spec.Master.Replicas = 5
@@ -671,13 +671,13 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8261"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-1.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-1.demo-dm-master-peer:8261"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
 					},
 				}, nil
 			},
@@ -691,13 +691,13 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(td.dmClusters)).To(Equal(1))
 				g.Expect(len(td.dmClusters["default/demo"].peers)).To(Equal(0))
-				g.Expect(s).To(Equal("--join=demo-dm-master-0.demo-dm-master-peer.svc:8261,demo-dm-master-1.demo-dm-master-peer.svc:8261,demo-dm-master-2.demo-dm-master-peer.svc:8261"))
+				g.Expect(s).To(Equal("--join=demo-dm-master-0.demo-dm-master-peer:8261,demo-dm-master-1.demo-dm-master-peer:8261,demo-dm-master-2.demo-dm-master-peer:8261"))
 			},
 		},
 		{
 			name: "2 clusters, the five ordinal request, get members success",
 			ns:   "default",
-			url:  "demo-dm-master-3.demo-dm-master-peer.svc:8291",
+			url:  "demo-dm-master-3.demo-dm-master-peer:8291",
 			dc: func() *v1alpha1.DMCluster {
 				dc := newDC()
 				dc.Spec.Master.Replicas = 5
@@ -706,16 +706,16 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8261"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-1.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-1.demo-dm-master-peer:8261"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-3.demo-dm-master-peer.svc:8261"},
+						ClientURLs: []string{"demo-dm-master-3.demo-dm-master-peer:8261"},
 					},
 				}, nil
 			},
@@ -737,7 +737,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 				g.Expect(len(td.dmClusters)).To(Equal(2))
 				g.Expect(len(td.dmClusters["default/demo"].peers)).To(Equal(0))
 				g.Expect(len(td.dmClusters["default/demo-1"].peers)).To(Equal(3))
-				g.Expect(s).To(Equal("--join=demo-dm-master-0.demo-dm-master-peer.svc:8261,demo-dm-master-1.demo-dm-master-peer.svc:8261,demo-dm-master-2.demo-dm-master-peer.svc:8261,demo-dm-master-3.demo-dm-master-peer.svc:8261"))
+				g.Expect(s).To(Equal("--join=demo-dm-master-0.demo-dm-master-peer:8261,demo-dm-master-1.demo-dm-master-peer:8261,demo-dm-master-2.demo-dm-master-peer:8261,demo-dm-master-3.demo-dm-master-peer:8261"))
 			},
 		},
 	}
