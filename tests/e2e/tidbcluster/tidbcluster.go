@@ -1238,7 +1238,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
-		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4Version)
 		originTc.Spec.PD.Replicas = 1
 		originTc.Spec.TiKV.Replicas = 1
 		originTc.Spec.TiDB.Replicas = 1
@@ -1277,7 +1277,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				if tc.Status.TiKV.StatefulSet == nil {
 					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", 0)
 				} else {
-					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
+					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", tc.Status.TiKV.StatefulSet.ReadyReplicas)
 				}
 
 				return false, nil
@@ -1286,16 +1286,16 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				if tc.Status.TiDB.StatefulSet == nil {
 					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", 0)
 				} else {
-					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
+					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.ReadyReplicas)
 				}
 
 				return false, nil
 			}
 			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiFlash.StatefulSet.ReadyReplicas != 1 {
 				if tc.Status.TiFlash.StatefulSet == nil {
-					ginkgo.By(fmt.Sprintf("failed to check TiFlash statefulset status, (current: %d )", 0))
+					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d )", 0)
 				} else {
-					ginkgo.By(fmt.Sprintf("failed to check TiFlash statefulset status, (current: %d )", tc.Status.TiFlash.StatefulSet.ReadyReplicas))
+					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d )", tc.Status.TiFlash.StatefulSet.ReadyReplicas)
 				}
 
 				return false, nil
