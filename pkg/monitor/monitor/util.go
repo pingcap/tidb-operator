@@ -370,6 +370,12 @@ chmod 777 /data/prometheus /data/grafana
 			})
 
 	}
+	for k, v := range monitor.Spec.Initializer.Envs {
+		util.AppendOverwriteEnv(container.Env, []core.EnvVar{{
+			Name:  k,
+			Value: v,
+		}})
+	}
 	return container
 }
 
@@ -505,14 +511,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			},
 		},
 	}
-	for k, v := range monitor.Spec.Grafana.Envs {
-		c.Env = append(c.Env, core.EnvVar{
-			Name:  k,
-			Value: v,
-		})
-	}
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
+	}
+	for k, v := range monitor.Spec.Grafana.Envs {
+		util.AppendOverwriteEnv(c.Env, []core.EnvVar{{
+			Name:  k,
+			Value: v,
+		}})
 	}
 	sort.Sort(util.SortEnvByName(c.Env))
 	return c
