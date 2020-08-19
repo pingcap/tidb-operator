@@ -17,11 +17,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
@@ -29,8 +24,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/spf13/pflag"
+	"io/ioutil"
 	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 var (
@@ -205,14 +204,12 @@ func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
-	} else {
-		if config.Dumpling != nil && config.Dumpling.TableFilter != nil && len(config.Dumpling.TableFilter) > 0 {
-			for _, tableFilter := range config.Dumpling.TableFilter {
-				args = append(args, "--filter", tableFilter)
-			}
-		} else {
-			args = append(args, defaultTableFilterOptions...)
+	} else if config.Dumpling != nil && config.Dumpling.TableFilter != nil && len(config.Dumpling.TableFilter) > 0 {
+		for _, tableFilter := range config.Dumpling.TableFilter {
+			args = append(args, "--filter", tableFilter)
 		}
+	} else {
+		args = append(args, defaultTableFilterOptions...)
 	}
 
 	if config.Dumpling == nil {
