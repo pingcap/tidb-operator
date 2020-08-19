@@ -78,9 +78,10 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	case "dm":
 		result, err = s.discovery.DiscoverDM(advertisePeerURL)
 	default:
-		klog.Errorf("invalid register-type %s", registerType)
-		if err := resp.WriteError(http.StatusInternalServerError, fmt.Errorf("invalid register-type %s", registerType)); err != nil {
-			klog.Errorf("failed to writeError: %v", err)
+		err = fmt.Errorf("invalid register-type %s", registerType)
+		klog.Errorf("%v", err)
+		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
+			klog.Errorf("failed to writeError: %v", werr)
 		}
 		return
 	}

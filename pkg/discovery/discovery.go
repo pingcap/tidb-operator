@@ -134,12 +134,10 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
-	podName, peerServiceName, ns := strArr[0], strArr[1], strArr[2]
+	podName, peerServiceName := strArr[0], strArr[1]
 	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
-	podNamespace := os.Getenv("MY_POD_NAMESPACE")
-	if ns != podNamespace {
-		return "", fmt.Errorf("dm the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
-	}
+	ns := os.Getenv("MY_POD_NAMESPACE")
+
 	dc, err := td.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
