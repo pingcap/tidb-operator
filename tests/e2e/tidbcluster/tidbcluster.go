@@ -1236,9 +1236,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
 	})
 
-	ginkgo.It("Add heterogeneous cluster into an existing cluster  ", func() {
+	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
-		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV3Version)
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
 		originTc.Spec.PD.Replicas = 1
 		originTc.Spec.TiKV.Replicas = 1
 		originTc.Spec.TiDB.Replicas = 1
