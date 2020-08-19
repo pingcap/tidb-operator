@@ -17,9 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/juju/errors"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -28,7 +25,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
@@ -39,7 +39,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/apis/apps"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

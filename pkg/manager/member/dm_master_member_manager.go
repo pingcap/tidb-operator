@@ -133,10 +133,7 @@ func (mmm *masterMemberManager) syncMasterServiceForDMCluster(dc *v1alpha1.DMClu
 	if err != nil {
 		return err
 	}
-	annoEqual := util.IsSubMapOf(newSvc.Annotations, oldSvc.Annotations)
-	isOrphan := metav1.GetControllerOf(oldSvc) == nil
-
-	if !equal || !annoEqual || isOrphan {
+	if !equal {
 		svc := *oldSvc
 		svc.Spec = newSvc.Spec
 		err = controller.SetServiceLastAppliedConfigAnnotation(&svc)
@@ -146,11 +143,6 @@ func (mmm *masterMemberManager) syncMasterServiceForDMCluster(dc *v1alpha1.DMClu
 		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 		for k, v := range newSvc.Annotations {
 			svc.Annotations[k] = v
-		}
-		// also override labels when adopt orphan
-		if isOrphan {
-			svc.OwnerReferences = newSvc.OwnerReferences
-			svc.Labels = newSvc.Labels
 		}
 		_, err = mmm.svcControl.UpdateService(dc, &svc)
 		return err
@@ -383,11 +375,6 @@ func (mmm *masterMemberManager) syncMasterConfigMap(dc *v1alpha1.DMCluster, set 
 }
 
 func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Service {
-	svcSpec := dc.Spec.Master.Service
-	if svcSpec == nil {
-		return nil
-	}
-
 	ns := dc.Namespace
 	dcName := dc.Name
 	svcName := controller.DMMasterMemberName(dcName)
@@ -401,7 +388,6 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 			Port:       8261,
 			TargetPort: intstr.FromInt(8261),
 			Protocol:   corev1.ProtocolTCP,
-			NodePort:   svcSpec.GetMasterNodePort(),
 		},
 	}
 	masterSvc := &corev1.Service{
@@ -409,28 +395,35 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 			Name:            svcName,
 			Namespace:       ns,
 			Labels:          masterLabels,
-			Annotations:     copyAnnotations(svcSpec.Annotations),
 			OwnerReferences: []metav1.OwnerReference{controller.GetDMOwnerRef(dc)},
 		},
 		Spec: corev1.ServiceSpec{
-			Type:     svcSpec.Type,
+			Type:     corev1.ServiceTypeClusterIP,
 			Ports:    ports,
 			Selector: masterSelector.Labels(),
 		},
 	}
-	if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
-		if svcSpec.LoadBalancerIP != nil {
-			masterSvc.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+	svcSpec := dc.Spec.Master.Service
+	if svcSpec != nil {
+		if svcSpec.Type != "" {
+			masterSvc.Spec.Type = svcSpec.Type
 		}
-		if svcSpec.LoadBalancerSourceRanges != nil {
-			masterSvc.Spec.LoadBalancerSourceRanges = svcSpec.LoadBalancerSourceRanges
+		masterSvc.ObjectMeta.Annotations = copyAnnotations(svcSpec.Annotations)
+		masterSvc.Spec.Ports[0].NodePort = svcSpec.GetMasterNodePort()
+		if svcSpec.Type == corev1.ServiceTypeLoadBalancer {
+			if svcSpec.LoadBalancerIP != nil {
+				masterSvc.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
+			}
+			if svcSpec.LoadBalancerSourceRanges != nil {
+				masterSvc.Spec.LoadBalancerSourceRanges = svcSpec.LoadBalancerSourceRanges
+			}
 		}
-	}
-	if svcSpec.ExternalTrafficPolicy != nil {
-		masterSvc.Spec.ExternalTrafficPolicy = *svcSpec.ExternalTrafficPolicy
-	}
-	if svcSpec.ClusterIP != nil {
-		masterSvc.Spec.ClusterIP = *svcSpec.ClusterIP
+		if svcSpec.ExternalTrafficPolicy != nil {
+			masterSvc.Spec.ExternalTrafficPolicy = *svcSpec.ExternalTrafficPolicy
+		}
+		if svcSpec.ClusterIP != nil {
+			masterSvc.Spec.ClusterIP = *svcSpec.ClusterIP
+		}
 	}
 	return masterSvc
 }
@@ -438,7 +431,7 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Service {
 	ns := dc.Namespace
 	tcName := dc.Name
-	svcName := controller.DMMasterMemberName(tcName)
+	svcName := controller.DMMasterPeerMemberName(tcName)
 	instanceName := dc.GetInstanceName()
 	masterSelector := label.New().Instance(instanceName).DMMaster()
 	masterLabels := masterSelector.Copy().UsedByPeer().Labels()
@@ -693,6 +686,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
+	klog.Info("start to render dm-master start script")
 	startScript, err := RenderDMMasterStartScript(&DMMasterStartScriptModel{
 		Scheme:       dc.Scheme(),
 		DataDir:      filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
