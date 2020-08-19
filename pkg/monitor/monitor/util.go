@@ -376,7 +376,6 @@ chmod 777 /data/prometheus /data/grafana
 			Value: v,
 		}})
 	}
-	sort.Sort(util.SortEnvByName(container.Env))
 	return container
 }
 
