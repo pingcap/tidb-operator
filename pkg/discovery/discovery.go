@@ -134,7 +134,12 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
-	podName, peerServiceName := strArr[0], strArr[1]
+	podName, peerServiceNameWithPort := strArr[0], strArr[1]
+	strArr = strings.Split(peerServiceNameWithPort, ":")
+	if len(strArr) != 2 {
+		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
+	}
+	peerServiceName := strArr[0]
 	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
 	ns := os.Getenv("MY_POD_NAMESPACE")
 

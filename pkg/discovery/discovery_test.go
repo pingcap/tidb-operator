@@ -448,7 +448,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		{
 			name:       "advertisePeerUrl is wrong",
 			ns:         "default",
-			url:        "demo-dm-master-0.demo-dm-master-peer:8291",
+			url:        "demo-dm-master-0.demo-dm-master-peer.svc:8291",
 			dmClusters: map[string]*clusterInfo{},
 			dc:         newDC(),
 			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
