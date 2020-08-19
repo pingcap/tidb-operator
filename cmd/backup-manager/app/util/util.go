@@ -17,6 +17,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/Masterminds/semver"
 	"github.com/gogo/protobuf/proto"
 	kvbackup "github.com/pingcap/kvproto/pkg/backup"
@@ -24,12 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/spf13/pflag"
-	"io/ioutil"
 	"k8s.io/klog"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 var (
