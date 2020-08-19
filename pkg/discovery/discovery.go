@@ -130,7 +130,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 	}
 	klog.Infof("dm advertisePeerUrl is: %s", advertisePeerUrl)
 	strArr := strings.Split(advertisePeerUrl, ".")
-	if len(strArr) != 4 {
+	if len(strArr) != 3 {
 		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
