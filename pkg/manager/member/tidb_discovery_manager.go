@@ -64,6 +64,11 @@ func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 				Verbs:         []string{"get"},
 			},
 			{
+				APIGroups: []string{v1alpha1.GroupName},
+				Resources: []string{v1alpha1.DMClusterName},
+				Verbs:     []string{"get"},
+			},
+			{
 				APIGroups: []string{corev1.GroupName},
 				Resources: []string{"secrets"},
 				Verbs:     []string{"get", "list"},

@@ -13,7 +13,7 @@ spec:
     version: 6.1.6
   initializer:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-initializer
-    version: v4.0.1
+    version: v4.0.4
   reloader:
     baseImage: registry.cn-beijing.aliyuncs.com/tidb/tidb-monitor-reloader
     version: v1.0.1
