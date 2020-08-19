@@ -1266,7 +1266,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
 		err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
-		err = wait.PollImmediate(15*time.Second, 30*time.Minute, func() (bool, error) {
+		err = wait.PollImmediate(15*time.Second, 45*time.Minute, func() (bool, error) {
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
@@ -1293,9 +1293,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			}
 			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiFlash.StatefulSet.ReadyReplicas != 1 {
 				if tc.Status.TiFlash.StatefulSet == nil {
-					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", 0)
+					ginkgo.By(fmt.Sprintf("failed to check TiFlash statefulset status, (current: %d )", 0))
 				} else {
-					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", tc.Status.TiFlash.StatefulSet.Replicas)
+					ginkgo.By(fmt.Sprintf("failed to check TiFlash statefulset status, (current: %d )", tc.Status.TiFlash.StatefulSet.ReadyReplicas))
 				}
 
 				return false, nil
