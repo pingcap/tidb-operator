@@ -15,7 +15,6 @@ package meta
 
 import (
 	"fmt"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -67,20 +66,19 @@ func NewReclaimPolicyTiKVGroupManager(pvcLister corelisters.PersistentVolumeClai
 }
 
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
-	return rpm.sync(tc, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
+	return rpm.sync(v1alpha1.TiDBClusterKind, tc, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
 }
 
 func (rpm *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
-	return rpm.sync(tm, false, *tm.Spec.PVReclaimPolicy)
+	return rpm.sync(v1alpha1.TiDBMonitorKind, tm, false, *tm.Spec.PVReclaimPolicy)
 }
 
 func (rpm *reclaimPolicyManager) SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error {
-	return rpm.sync(tg, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
+	return rpm.sync(v1alpha1.TiKVGroupKind, tg, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
 }
 
-func (rpm *reclaimPolicyManager) sync(obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
+func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
 	var (
-		kind         = obj.GetObjectKind().GroupVersionKind().Kind
 		meta         = obj.(metav1.ObjectMetaAccessor).GetObjectMeta()
 		ns           = meta.GetNamespace()
 		instanceName = meta.GetName()
