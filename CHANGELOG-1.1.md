@@ -1,3 +1,21 @@
+# TiDB Operator v1.1.4 Release Notes
+
+## Notable changes
+
+- `TableFilter` is added to the `BackupSpec` and `RestoreSpec`, which supports backup specific database or table with Dumpling or BR and supports restore specific database or table with BR.
+  `BackupSpec.Dumpling.TableFilter` is deprecated from v1.1.4 and please configure `BackupSpec.TableFilter`.
+  From TiDB v4.0.3, you can configure `BackupSpec.TableFilter` to replace the `BackupSpec.BR.DB` and `BackupSpec.BR.Table` fields and configure `RestoreSpec.TableFilter` to replace the `RestoreSpec.BR.DB` and `RestoreSpec.BR.Table` fields ([#3134](https://github.com/pingcap/tidb-operator/pull/3134), [@sstubbs](https://github.com/sstubbs))
+- Update TiDB and tools version to v4.0.4 ([#3135](https://github.com/pingcap/tidb-operator/pull/3135), [@lichunzhu](https://github.com/lichunzhu))
+- Support customizing environment variables for the initializer container in the TidbMonitor CR ([#3109](https://github.com/pingcap/tidb-operator/pull/3109), [@kolbe](https://github.com/kolbe))
+- Support patching PVCs when the storage request is increased ([#3096](https://github.com/pingcap/tidb-operator/pull/3096), [@cofyc](https://github.com/cofyc))
+- Support TLS for Backup&Restore with Dumpling&Lightning ([#3100](https://github.com/pingcap/tidb-operator/pull/3100), [@lichunzhu](https://github.com/lichunzhu))
+- Support cert-allowed-cn for TiFlash ([#3101](https://github.com/pingcap/tidb-operator/pull/3101), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Add support for the `max-index-length` (https://docs.pingcap.com/tidb/stable/tidb-configuration-file&#35;max-index-length) TiDB config option to the TidbCluster CRD ([#3076](https://github.com/pingcap/tidb-operator/pull/3076), [@kolbe](https://github.com/kolbe))
+- Fix goroutine leak when TLS enabled ([#3081](https://github.com/pingcap/tidb-operator/pull/3081), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Fix a memory leak issue caused by etcd client when TLS is enabled ([#3064](https://github.com/pingcap/tidb-operator/pull/3064), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Support TLS for TiFlash ([#3049](https://github.com/pingcap/tidb-operator/pull/3049), [@DanielZhangQD](https://github.com/DanielZhangQD))
+- Configure TZ environment for admission webhook and advanced statefulset controller deployed in tidb-operator chart ([#3034](https://github.com/pingcap/tidb-operator/pull/3034), [@cofyc](https://github.com/cofyc))
+
 # TiDB Operator v1.1.3 Release Notes
 
 ## Action Required
