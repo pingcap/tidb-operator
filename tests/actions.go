@@ -1603,10 +1603,12 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 	}
 
 	if tiflashSet.Status.CurrentRevision != tiflashSet.Status.UpdateRevision {
+		klog.Errorf("currentRevision not equals to UpdateRevision: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tiflashSet) {
+		klog.Errorf("desired Pod not running and ready: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
@@ -1652,7 +1654,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 
 	for _, store := range tc.Status.TiFlash.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
-			klog.Infof("tidbcluster: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			klog.Infof("tidbcluster tiflash: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
