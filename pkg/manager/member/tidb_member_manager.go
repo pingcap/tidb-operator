@@ -404,8 +404,9 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		tidbStartScriptModel.Path = fmt.Sprintf("%s.%s.svc%s:2379",
 			controller.PDMemberName(tc.Spec.Cluster.Name),
 			tc.Spec.Cluster.Namespace,
-			controller.FormatClusterDomain(tc.Spec.Cluster.Domain),
+			controller.FormatClusterDomain(tc.Spec.Cluster.ClusterDomain),
 		)
+		tidbStartScriptModel.Path = controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain)
 	} else {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"
 	}

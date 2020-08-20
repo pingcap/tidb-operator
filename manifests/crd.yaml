@@ -334,7 +334,7 @@ spec:
               type: object
             cluster:
               properties:
-                domain:
+                clusterDomain:
                   type: string
                 name:
                   type: string
@@ -13214,7 +13214,7 @@ spec:
             clusters:
               items:
                 properties:
-                  domain:
+                  clusterDomain:
                     type: string
                   name:
                     type: string
@@ -13307,7 +13307,7 @@ spec:
           properties:
             cluster:
               properties:
-                domain:
+                clusterDomain:
                   type: string
                 name:
                   type: string
@@ -13397,7 +13397,7 @@ spec:
           properties:
             cluster:
               properties:
-                domain:
+                clusterDomain:
                   type: string
                 name:
                   type: string

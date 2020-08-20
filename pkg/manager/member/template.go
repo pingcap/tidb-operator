@@ -150,7 +150,7 @@ fi
 
 if nslookup ${domain} 2>/dev/null
 then
-echo "nslookup domain ${domain}.svc{{ .FormatClusterDomain }} success"
+echo "nslookup domain ${domain}.svc success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2

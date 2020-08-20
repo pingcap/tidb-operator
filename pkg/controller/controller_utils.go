@@ -296,11 +296,6 @@ func DiscoveryMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-discovery", clusterName)
 }
 
-// DiscoveryPeerMemberName returns the name of tidb discovery
-func DiscoveryPeerMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-discovery-peer", clusterName)
-}
-
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{
@@ -317,14 +312,17 @@ func FormatClusterDomain(clusterDomain string) string {
 	return "." + clusterDomain
 }
 
-func ClusterPdAddress(clusterDomain, namespace, clusterName string) string {
+func ClusterPdAddress(clusterName, namespace, clusterDomain string) string {
+	if clusterName == "" {
+		return ""
+	}
 	if namespace == "" {
 		return fmt.Sprintf("%s-pd", clusterName)
 	}
-	if clusterName == "" {
+	if clusterDomain == "" {
 		return fmt.Sprintf("%s-pd.%s.svc", clusterName, namespace)
 	}
-	return fmt.Sprintf("%s-pd.%s.svc.%s", clusterName, namespace, clusterDomain)
+	return fmt.Sprintf("%s-pd-peer.%s.svc.%s", clusterName, namespace, clusterDomain)
 }
 
 // AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod

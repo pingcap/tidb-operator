@@ -273,9 +273,9 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	}
 
 	if tc.IsHeterogeneous() {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s://%s:2379", pdProtocol, controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.Domain)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s://%s:2379", pdProtocol, controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain)))
 	} else {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s://%s:2379", pdProtocol, controller.ClusterPdAddress(tc.Name, tc.Namespace, tc.Spec.ClusterDomain)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--pd=%s://%s-pd:2379", pdProtocol, tcName))
 	}
 
 	cmd := strings.Join(cmdArgs, " ")

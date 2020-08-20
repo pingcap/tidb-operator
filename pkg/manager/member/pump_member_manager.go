@@ -467,9 +467,9 @@ func getPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		scheme = "https"
 	}
 
-	PdAddress := controller.ClusterPdAddress(tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
+	PdAddress := controller.PDMemberName(tc.Name)
 	if tc.IsHeterogeneous() {
-		PdAddress = controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.Domain)
+		PdAddress = controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain)
 	}
 
 	return RenderPumpStartScript(&PumpStartScriptModel{

@@ -17328,7 +17328,7 @@ string
 </tr>
 <tr>
 <td>
-<code>domain</code></br>
+<code>clusterDomain</code></br>
 <em>
 string
 </em>
