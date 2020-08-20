@@ -1251,14 +1251,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		heterogeneousTc.Spec.PD = nil
 		heterogeneousTc.Spec.TiKV.Replicas = 1
 		heterogeneousTc.Spec.TiDB.Replicas = 1
-		heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
-			BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
-				{Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{
-						v1.ResourceStorage: resource.MustParse("10G"),
-					},
-				}},
-			}}
 		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 			Name: originTc.Name,
 		}
