@@ -566,3 +566,7 @@ kubectl edit backup ${name} -n ${namespace}
 ```
 
 删除 `metadata.finalizers` 配置，即可正常删除 CR。
+
+## 故障诊断
+
+在使用过程中如果遇到问题，可以参考[故障诊断](deploy-failures.md)。
