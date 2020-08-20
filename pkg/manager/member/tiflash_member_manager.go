@@ -494,6 +494,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 				ContainerPort: int32(8234),
 				Protocol:      corev1.ProtocolTCP,
 			},
+			{
+				Name:          "proxymetrics",
+				ContainerPort: int32(20292),
+				Protocol:      corev1.ProtocolTCP,
+			},
 		},
 		VolumeMounts: volMounts,
 		Resources:    controller.ContainerResource(tc.Spec.TiFlash.ResourceRequirements),

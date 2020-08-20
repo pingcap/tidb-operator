@@ -37,6 +37,7 @@ const (
 	namespaceLabel             = "__meta_kubernetes_namespace"
 	podNameLabel               = "__meta_kubernetes_pod_name"
 	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
+	portNameLabel              = "__meta_kubernetes_pod_container_port_name"
 )
 
 var (
@@ -53,6 +54,7 @@ var (
 	cdcPattern       config.Regexp
 	importerPattern  config.Regexp
 	lightningPattern config.Regexp
+	metricsPattern   config.Regexp
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -123,6 +125,10 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	metricsPattern, err = config.NewRegexp(".*metrics")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
@@ -146,7 +152,6 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			scrapeJob("tidb", tidbPattern, cmodel, buildAddressRelabelConfigByComponent("tidb")),
 			scrapeJob("tikv", tikvPattern, cmodel, buildAddressRelabelConfigByComponent("tikv")),
 			scrapeJob("tiflash", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash")),
-			scrapeJob("tiflash-proxy", tiflashPattern, cmodel, buildAddressRelabelConfigByComponent("tiflash-proxy")),
 			scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump")),
 			scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer")),
 			scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc")),
@@ -180,20 +185,14 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 		return f()
 	case "tikv":
 		return f()
-	case "tiflash":
-		return f()
 	case "ticdc":
 		return f()
-	case "tiflash-proxy":
+	case "tiflash":
 		return &config.RelabelConfig{
-			Action:      config.RelabelReplace,
-			Regex:       addressPattern,
-			Replacement: "$1.$2-tiflash-peer:$3",
-			TargetLabel: "__address__",
+			Action: config.RelabelKeep,
+			Regex:  metricsPattern,
 			SourceLabels: model.LabelNames{
-				podNameLabel,
-				instanceLabel,
-				model.LabelName(fmt.Sprintf(additionalPortLabelPattern, "tiflash_proxy")),
+				portNameLabel,
 			},
 		}
 	case "pump":
