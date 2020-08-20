@@ -1292,15 +1292,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				return false, nil
 			}
 
-			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiFlash.StatefulSet.ReadyReplicas != 1 {
-				if tc.Status.TiDB.StatefulSet == nil {
-					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", 0)
-				} else {
-					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d)", tc.Status.TiFlash.StatefulSet.Replicas)
-				}
-
-				return false, nil
-			}
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
