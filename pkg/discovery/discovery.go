@@ -68,19 +68,17 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 
 	podName, peerServiceName, ns := hostArr[0], hostArr[1], hostArr[2]
-	clusterDomain := strings.Join(hostArr[4:], ".")
 	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
-	podTcName := os.Getenv("TC_NAME")
 
-	tc, err := td.cli.PingcapV1alpha1().TidbClusters(podNamespace).Get(podTcName, metav1.GetOptions{})
+	if ns != podNamespace {
+		return "", fmt.Errorf("the peer's namespace: %s is not equal to discovery namespace: %s", ns, podNamespace)
+	}
+	tc, err := td.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
-	if clusterDomain != "" {
-		keyName = fmt.Sprintf("%s/%s", keyName, clusterDomain)
-	}
 	// TODO: the replicas should be the total replicas of pd sets.
 	replicas := tc.Spec.PD.Replicas
 

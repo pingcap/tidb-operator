@@ -87,6 +87,18 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
+			name:     "namespace is wrong",
+			ns:       "default1",
+			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",
+			clusters: map[string]*clusterInfo{},
+			tc:       newTC(),
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(strings.Contains(err.Error(), "is not equal to discovery namespace:")).To(BeTrue())
+				g.Expect(len(td.clusters)).To(BeZero())
+			},
+		},
+		{
 			name:     "failed to get tidbcluster",
 			ns:       "default",
 			url:      "demo-pd-0.demo-pd-peer.default.svc:2380",

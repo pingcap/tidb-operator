@@ -373,7 +373,7 @@ func setTiFlashApplicationConfigDefault(config *v1alpha1.FlashApplication) {
 
 func setTiFlashRaftConfigDefault(config *v1alpha1.FlashRaft, clusterName, ns, clusterDomain string) {
 	if config.PDAddr == nil {
-		config.PDAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc%s:2379", controller.PDMemberName(clusterName), ns, controller.FormatClusterDomain(clusterDomain)))
+		config.PDAddr = pointer.StringPtr(fmt.Sprintf("%s:2379", controller.ClusterPdAddress(clusterName, ns, clusterDomain)))
 	}
 	if config.KVStorePath == nil {
 		config.KVStorePath = pointer.StringPtr("/data0/kvstore")
