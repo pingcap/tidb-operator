@@ -20,22 +20,26 @@ import (
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
-// TiDBDiscovery helps new PD member to discover all other members in cluster bootstrap phase.
+// TiDBDiscovery helps new PD and dm-master member to discover all other members in cluster bootstrap phase.
 type TiDBDiscovery interface {
 	Discover(string) (string, error)
+	DiscoverDM(string) (string, error)
 }
 
 type tidbDiscovery struct {
-	cli       versioned.Interface
-	lock      sync.Mutex
-	clusters  map[string]*clusterInfo
-	pdControl pdapi.PDControlInterface
+	cli           versioned.Interface
+	lock          sync.Mutex
+	clusters      map[string]*clusterInfo
+	dmClusters    map[string]*clusterInfo
+	pdControl     pdapi.PDControlInterface
+	masterControl dmapi.MasterControlInterface
 }
 
 type clusterInfo struct {
@@ -44,11 +48,13 @@ type clusterInfo struct {
 }
 
 // NewTiDBDiscovery returns a TiDBDiscovery
-func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) TiDBDiscovery {
+func NewTiDBDiscovery(pdControl pdapi.PDControlInterface, masterControl dmapi.MasterControlInterface, cli versioned.Interface, kubeCli kubernetes.Interface) TiDBDiscovery {
 	return &tidbDiscovery{
-		cli:       cli,
-		pdControl: pdControl,
-		clusters:  map[string]*clusterInfo{},
+		cli:           cli,
+		pdControl:     pdControl,
+		masterControl: masterControl,
+		clusters:      map[string]*clusterInfo{},
+		dmClusters:    map[string]*clusterInfo{},
 	}
 }
 
@@ -123,4 +129,63 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(membersArr, ",")), nil
+}
+
+func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
+	td.lock.Lock()
+	defer td.lock.Unlock()
+
+	if advertisePeerUrl == "" {
+		return "", fmt.Errorf("dm advertisePeerUrl is empty")
+	}
+	klog.Infof("dm advertisePeerUrl is: %s", advertisePeerUrl)
+	strArr := strings.Split(advertisePeerUrl, ".")
+	if len(strArr) != 2 {
+		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
+	}
+
+	podName, peerServiceNameWithPort := strArr[0], strArr[1]
+	strArr = strings.Split(peerServiceNameWithPort, ":")
+	if len(strArr) != 2 {
+		return "", fmt.Errorf("dm advertisePeerUrl format is wrong: %s", advertisePeerUrl)
+	}
+	peerServiceName := strArr[0]
+	dcName := strings.TrimSuffix(peerServiceName, "-dm-master-peer")
+	ns := os.Getenv("MY_POD_NAMESPACE")
+
+	dc, err := td.cli.PingcapV1alpha1().DMClusters(ns).Get(dcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	keyName := fmt.Sprintf("%s/%s", ns, dcName)
+	// TODO: the replicas should be the total replicas of dm master sets.
+	replicas := dc.Spec.Master.Replicas
+
+	currentCluster := td.dmClusters[keyName]
+	if currentCluster == nil || currentCluster.resourceVersion != dc.ResourceVersion {
+		td.dmClusters[keyName] = &clusterInfo{
+			resourceVersion: dc.ResourceVersion,
+			peers:           map[string]struct{}{},
+		}
+	}
+	currentCluster = td.dmClusters[keyName]
+	currentCluster.peers[podName] = struct{}{}
+
+	if len(currentCluster.peers) == int(replicas) {
+		delete(currentCluster.peers, podName)
+		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, dc.Scheme(), advertisePeerUrl), nil
+	}
+
+	masterClient := td.masterControl.GetMasterClient(dmapi.Namespace(dc.GetNamespace()), dc.GetName(), dc.IsTLSClusterEnabled())
+	mastersInfos, err := masterClient.GetMasters()
+	if err != nil {
+		return "", err
+	}
+
+	mastersArr := make([]string, 0)
+	for _, master := range mastersInfos {
+		mastersArr = append(mastersArr, master.ClientURLs[0])
+	}
+	delete(currentCluster.peers, podName)
+	return fmt.Sprintf("--join=%s", strings.Join(mastersArr, ",")), nil
 }
