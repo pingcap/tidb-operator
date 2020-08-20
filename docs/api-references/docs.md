@@ -695,6 +695,17 @@ string
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -942,7 +953,6 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>imagePullSecrets</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
@@ -953,18 +963,6 @@ Kubernetes core/v1.PullPolicy
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
-=======
-<code>tableFilter</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
-</td>
-</tr>
-</table>
->>>>>>> 7d59286... Br backup restore table filter 2 (#3134)
 </td>
 </tr>
 <tr>
@@ -1845,7 +1843,7 @@ string
 </em>
 </td>
 <td>
-<p>DB is the specific DB which will be backed-up or restored</p>
+<p>Deprecated from BR v4.0.3. Please use <code>Spec.TableFilter</code> instead. DB is the specific DB which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -1856,7 +1854,7 @@ string
 </em>
 </td>
 <td>
-<p>Table is the specific table which will be backed-up or restored</p>
+<p>Deprecated from BR v4.0.3. Please use <code>Spec.TableFilter</code> instead. Table is the specific table which will be backed-up or restored</p>
 </td>
 </tr>
 <tr>
@@ -2364,6 +2362,17 @@ DumplingConfig
 </tr>
 <tr>
 <td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>affinity</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
@@ -2578,13 +2587,9 @@ int32
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 <em>(Optional)</em>
 <p>ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
 If not set, the default ScaleInIntervalSeconds will be set to 500</p>
-=======
-<p>Deprecated from BR v4.0.3. Please use <code>Spec.TableFilter</code> instead. DB is the specific DB which will be backed-up or restored</p>
->>>>>>> 7d59286... Br backup restore table filter 2 (#3134)
 </td>
 </tr>
 <tr>
@@ -2595,13 +2600,9 @@ int32
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 <em>(Optional)</em>
 <p>ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out
 If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
-=======
-<p>Deprecated from BR v4.0.3. Please use <code>Spec.TableFilter</code> instead. Table is the specific table which will be backed-up or restored</p>
->>>>>>> 7d59286... Br backup restore table filter 2 (#3134)
 </td>
 </tr>
 <tr>
@@ -3155,22 +3156,7 @@ tidb-operator built envs.
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>additionalVolumes</code></br>
-=======
-<code>tableFilter</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>affinity</code></br>
->>>>>>> 7d59286... Br backup restore table filter 2 (#3134)
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#volume-v1-core">
 []Kubernetes core/v1.Volume
@@ -3732,7 +3718,7 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
+<p>Deprecated. Please use <code>Spec.TableFilter</code> instead. TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
 </td>
 </tr>
 </tbody>
@@ -5142,11 +5128,7 @@ OpenTracingSampler
 </em>
 </td>
 <td>
-<<<<<<< HEAD
 <em>(Optional)</em>
-=======
-<p>Deprecated. Please use <code>Spec.TableFilter</code> instead. TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching</p>
->>>>>>> 7d59286... Br backup restore table filter 2 (#3134)
 </td>
 </tr>
 <tr>
@@ -8139,6 +8121,17 @@ string
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="restorestatus">RestoreStatus</h3>
@@ -10294,38 +10287,6 @@ TiDBTLSClient
 Optional: Defaults to nil</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>tableFilter</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="restorestatus">RestoreStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#restore">Restore</a>)
-</p>
-<p>
-<p>RestoreStatus represents the current status of a tidb cluster restore.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 7d59286... Br backup restore table filter 2 (#3134)
 <tr>
 <td>
 <code>slowLogTailer</code></br>
