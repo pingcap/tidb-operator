@@ -1257,7 +1257,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					Requests: v1.ResourceList{
 						v1.ResourceStorage: resource.MustParse("10G"),
 					},
-				}, StorageClassName: pointer.StringPtr("local-storage")},
+				}},
 			}}
 		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 			Name: originTc.Name,
@@ -1287,15 +1287,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", 0)
 				} else {
 					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.ReadyReplicas)
-				}
-
-				return false, nil
-			}
-			if tc.Status.TiFlash.StatefulSet == nil || tc.Status.TiFlash.StatefulSet.ReadyReplicas != 1 {
-				if tc.Status.TiFlash.StatefulSet == nil {
-					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d )", 0)
-				} else {
-					e2elog.Logf("failed to check TiFlash statefulset status, (current: %d )", tc.Status.TiFlash.StatefulSet.ReadyReplicas)
 				}
 
 				return false, nil
