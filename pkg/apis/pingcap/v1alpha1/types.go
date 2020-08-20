@@ -1146,6 +1146,8 @@ type BackupSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
+	TableFilter []string `json:"tableFilter,omitempty"`
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -1162,7 +1164,7 @@ type BackupSpec struct {
 type DumplingConfig struct {
 	// Options means options for backup data to remote storage with dumpling.
 	Options []string `json:"options,omitempty"`
-	// TableFilter means Table filter expression for 'db.table' matching
+	// Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
@@ -1173,9 +1175,9 @@ type BRConfig struct {
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster
 	ClusterNamespace string `json:"clusterNamespace,omitempty"`
-	// DB is the specific DB which will be backed-up or restored
+	// Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
-	// Table is the specific table which will be backed-up or restored
+	// Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`
@@ -1396,6 +1398,8 @@ type RestoreSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
+	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
