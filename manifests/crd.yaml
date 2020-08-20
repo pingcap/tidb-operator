@@ -11722,6 +11722,10 @@ spec:
               type: string
             storageSize:
               type: string
+            tableFilter:
+              items:
+                type: string
+              type: array
             tikvGCLifeTime:
               type: string
             tolerations:
@@ -12146,6 +12150,10 @@ spec:
               type: string
             storageSize:
               type: string
+            tableFilter:
+              items:
+                type: string
+              type: array
             tikvGCLifeTime:
               type: string
             to:
@@ -12623,6 +12631,10 @@ spec:
                   type: string
                 storageSize:
                   type: string
+                tableFilter:
+                  items:
+                    type: string
+                  type: array
                 tikvGCLifeTime:
                   type: string
                 tolerations:
