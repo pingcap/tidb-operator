@@ -3607,6 +3607,7 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		}
 		if tc.Spec.TiFlash != nil {
 			if b, err := oa.tiflashMembersReadyFn(local); !b && err == nil {
+				klog.Errorf("tiflash  members not ready: %s/%s, %v", tc.Namespace, tc.Name, err)
 				return false, nil
 			}
 		}
