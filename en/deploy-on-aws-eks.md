@@ -92,7 +92,7 @@ The EKS deployment scripts provide two options:
     The demo deployment creates a new VPC, a t2.micro instance as the bastion host and an EKS cluster with the following Amazon EC2 instances as worker nodes:
     
     * 1 c5.large instance for PD
-    * 3 c5d.large instances for TiKV
+    * 3 m5.large instances for TiKV
     * 1 c5.large instance for TiDB
     * 1 c5.large instance for monitor
 
@@ -109,7 +109,7 @@ The EKS deployment scripts provide two options:
     The production setup creates a new VPC, a t2.micro instance as the bastion host and an EKS cluster with the following Amazon EC2 instances as worker nodes:
 
     * 3 c5.xlarge instances for PD
-    * 3 i3.4xlarge instances for TiKV
+    * 3 m5.2xlarge instances for TiKV
     * 2 c5.2xlarge instances for TiDB
     * 1 c5.2xlarge instance for monitor
 
