@@ -1598,17 +1598,17 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 
 	tiflashSet, err := oa.tcStsGetter.StatefulSets(ns).Get(tiflashSetName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
+		klog.Errorf("TiFlash failed to get statefulset: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
 	if tiflashSet.Status.CurrentRevision != tiflashSet.Status.UpdateRevision {
-		klog.Errorf("currentRevision not equals to UpdateRevision: %s/%s, %v", ns, tiflashSetName, err)
+		klog.Errorf("TiFlash currentRevision not equals to UpdateRevision: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
 	if !utilstatefulset.IsAllDesiredPodsRunningAndReady(helper.NewHijackClient(oa.kubeCli, oa.asCli), tiflashSet) {
-		klog.Errorf("desired Pod not running and ready: %s/%s, %v", ns, tiflashSetName, err)
+		klog.Errorf("TiFlash desired Pod not running and ready: %s/%s, %v", ns, tiflashSetName, err)
 		return false, nil
 	}
 
@@ -1619,52 +1619,52 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 	failureCount := len(tc.Status.TiFlash.FailureStores)
 	replicas := tc.Spec.TiFlash.Replicas + int32(failureCount)
 	if *tiflashSet.Spec.Replicas != replicas {
-		klog.Infof("statefulset: %s/%s .spec.Replicas(%d) != %d",
+		klog.Infof("TiFlash statefulset: %s/%s .spec.Replicas(%d) != %d",
 			ns, tiflashSetName, *tiflashSet.Spec.Replicas, replicas)
 		return false, nil
 	}
 	if tiflashSet.Status.ReadyReplicas != replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
+		klog.Infof("TiFlash statefulset: %s/%s .status.ReadyReplicas(%d) != %d",
 			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, replicas)
 		return false, nil
 	}
 	if len(tc.Status.TiFlash.Stores) != int(replicas) {
-		klog.Infof("tidbcluster: %s/%s .status.TiFlash.Stores.count(%d) != %d",
+		klog.Infof("TiFlash tidbcluster: %s/%s .status.TiFlash.Stores.count(%d) != %d",
 			ns, tcName, len(tc.Status.TiFlash.Stores), replicas)
 		return false, nil
 	}
 	if tiflashSet.Status.ReadyReplicas != tiflashSet.Status.Replicas {
-		klog.Infof("statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
+		klog.Infof("TiFlash statefulset: %s/%s .status.ReadyReplicas(%d) != .status.Replicas(%d)",
 			ns, tiflashSetName, tiflashSet.Status.ReadyReplicas, tiflashSet.Status.Replicas)
 		return false, nil
 	}
 
 	c, found := getMemberContainer(oa.kubeCli, oa.tcStsGetter, ns, tc.Name, label.TiFlashLabelVal)
 	if !found {
-		klog.Infof("statefulset: %s/%s not found containers[name=tiflash] or pod %s-0",
+		klog.Infof("TiFlash statefulset: %s/%s not found containers[name=tiflash] or pod %s-0",
 			ns, tiflashSetName, tiflashSetName)
 		return false, nil
 	}
 
 	if tc.TiFlashImage() != c.Image {
-		klog.Infof("statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
+		klog.Infof("TiFlash statefulset: %s/%s .spec.template.spec.containers[name=tiflash].image(%s) != %s",
 			ns, tiflashSetName, c.Image, tc.TiFlashImage())
 		return false, nil
 	}
 
 	for _, store := range tc.Status.TiFlash.Stores {
 		if store.State != v1alpha1.TiKVStateUp {
-			klog.Infof("tidbcluster tiflash: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
+			klog.Infof("TiFlash tidbcluster tiflash: %s/%s's store(%s) state != %s", ns, tcName, store.ID, v1alpha1.TiKVStateUp)
 			return false, nil
 		}
 	}
 
 	tiflashPeerServiceName := controller.TiFlashPeerMemberName(tcName)
 	if _, err := oa.kubeCli.CoreV1().Services(ns).Get(tiflashPeerServiceName, metav1.GetOptions{}); err != nil {
-		klog.Errorf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
+		klog.Errorf("TiFlash failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
-
+	klog.Errorf("TiFlash ready: %s/%s", ns, tcName)
 	return true, nil
 }
 
