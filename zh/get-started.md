@@ -235,7 +235,7 @@ minikube delete
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.2/manifests/crd.yaml
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.4/manifests/crd.yaml
     ```
 
     期望输出：
@@ -319,7 +319,7 @@ minikube delete
             {{< copyable "shell-regular" >}}
 
             ```shell
-            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.2
+            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.4
             ```
 
             如果访问 Docker Hub 网速较慢，可以使用阿里云上的镜像：
@@ -327,9 +327,9 @@ minikube delete
             {{< copyable "shell-regular" >}}
 
             ```
-            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.2 \
-              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.2 \
-              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.2 \
+            helm install --namespace tidb-admin --name tidb-operator pingcap/tidb-operator --version v1.1.4 \
+              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.4 \
+              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.4 \
               --set scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler
             ```
 
@@ -384,7 +384,7 @@ minikube delete
             {{< copyable "shell-regular" >}}
 
             ```shell
-            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.2
+            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.4
             ```
 
             如果访问 Docker Hub 网速较慢，可以使用阿里云上的镜像：
@@ -392,9 +392,9 @@ minikube delete
             {{< copyable "shell-regular" >}}
 
             ```
-            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.2 \
-              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.2 \
-              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.2 \
+            helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.1.4 \
+              --set operatorImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-operator:v1.1.4 \
+              --set tidbBackupManagerImage=registry.cn-beijing.aliyuncs.com/tidb/tidb-backup-manager:v1.1.4 \
               --set scheduler.kubeSchedulerImageName=registry.cn-hangzhou.aliyuncs.com/google_containers/kube-scheduler
             ```
 

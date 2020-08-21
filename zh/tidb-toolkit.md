@@ -186,7 +186,7 @@ Helm 服务端是一个名字叫 `tiller` 的服务, 请首先安装 `tiller` �
 {{< copyable "shell-regular" >}}
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/tiller-rbac.yaml
+kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.4/manifests/tiller-rbac.yaml
 ```
 
 如果服务器没有外网，需要先用有外网的机器下载 `tiller-rbac.yaml` 文件：
@@ -194,7 +194,7 @@ kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/
 {{< copyable "shell-regular" >}}
 
 ```shell
-wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.0/manifests/tiller-rbac.yaml
+wget https://raw.githubusercontent.com/pingcap/tidb-operator/v1.1.4/manifests/tiller-rbac.yaml
 ```
 
 将 `tiller-rbac.yaml` 文件拷贝到服务器上并安装 `RBAC`：
@@ -351,9 +351,9 @@ helm del --purge ${release_name}
 {{< copyable "shell-regular" >}}
 
 ```shell
-wget http://charts.pingcap.org/tidb-operator-v1.1.0.tgz
-wget http://charts.pingcap.org/tidb-drainer-v1.1.0.tgz
-wget http://charts.pingcap.org/tidb-lightning-v1.1.0.tgz
+wget http://charts.pingcap.org/tidb-operator-v1.1.4.tgz
+wget http://charts.pingcap.org/tidb-drainer-v1.1.4.tgz
+wget http://charts.pingcap.org/tidb-lightning-v1.1.4.tgz
 ```
 
 将这些 chart 文件拷贝到服务器上并解压，可以通过 `helm install` 命令使用这些 chart 来安装相应组件，以 `tidb-operator` 为例：
@@ -361,7 +361,7 @@ wget http://charts.pingcap.org/tidb-lightning-v1.1.0.tgz
 {{< copyable "shell-regular" >}}
 
 ```shell
-tar zxvf tidb-operator.v1.1.0.tgz
+tar zxvf tidb-operator.v1.1.4.tgz
 helm install ./tidb-operator --name=${release_name} --namespace=${namespace}
 ```
 

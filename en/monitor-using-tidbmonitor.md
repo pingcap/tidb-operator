@@ -12,7 +12,7 @@ In TiDB Operator v1.1 or later versions, you can monitor a TiDB cluster on a Kub
 
 ### Prerequisites
 
-- TiDB Operator **v1.1.0-beta.1** (or later versions) is installed, and the related Custom Resource Definition (CRD) file is updated.
+- TiDB Operator **v1.1.0** (or later versions) is installed, and the related Custom Resource Definition (CRD) file is updated.
 
 - The default storageClass is set, which has enough Persistent Volumes (PV). 6 PVs are needed by default. You can check this setting by executing the following command:
 
