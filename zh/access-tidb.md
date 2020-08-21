@@ -81,7 +81,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v4.0.0
+  version: v4.0.4
   pvReclaimPolicy: Retain
   discovery: {}
   pd:

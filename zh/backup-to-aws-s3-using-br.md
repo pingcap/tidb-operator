@@ -154,6 +154,10 @@ Ad-hoc 全量备份通过创建一个自定义的 `Backup` Custom Resource (CR) 
 >
 > `arn:aws:iam::123456789012:role/user` 为步骤 4 中创建的 IAM 角色。
 
+### 数据库账户权限
+
+* `mysql.tidb` 表的 `SELECT` 和 `UPDATE` 权限：备份前后，backup CR 需要一个拥有该权限的数据库账户，用于调整 GC 时间
+
 ### 使用 BR 备份数据到 Amazon S3 的存储
 
 + 创建 `Backup` CR，通过 accessKey 和 secretKey 授权的方式备份集群:

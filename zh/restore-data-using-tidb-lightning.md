@@ -42,7 +42,7 @@ TiDB Lightning 包含两个组件：tidb-lightning 和 tikv-importer。在 Kuber
 
     ```yaml
     clusterName: demo
-    image: pingcap/tidb-lightning:v3.0.8
+    image: pingcap/tidb-lightning:v4.0.4
     imagePullPolicy: IfNotPresent
     storageClassName: local-storage
     storage: 20Gi

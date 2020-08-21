@@ -43,9 +43,9 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/configure-a-tidb-cluster/','/zh/tidb-
 
 相关参数的格式如下：
 
-- `spec.version`，格式为 `imageTag`，例如 `v4.0.0`
+- `spec.version`，格式为 `imageTag`，例如 `v4.0.4`
 - `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.baseImage`，格式为 `imageName`，例如 `pingcap/tidb`
-- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v4.0.0`
+- `spec.<pd/tidb/tikv/pump/tiflash/ticdc>.version`，格式为 `imageTag`，例如 `v4.0.4`
 
 ### Storage class
 
@@ -157,7 +157,7 @@ metadata:
 spec:
 ....
   tidb:
-    image: pingcap/tidb:v4.0.2
+    image: pingcap/tidb:v4.0.4
     imagePullPolicy: IfNotPresent
     replicas: 1
     service:
@@ -187,7 +187,7 @@ metadata:
 spec:
 ....
   tikv:
-    image: pingcap/tikv:v4.0.2
+    image: pingcap/tikv:v4.0.4
     config: {}
     replicas: 1
     requests:
@@ -212,7 +212,7 @@ metadata:
 spec:
 .....
   pd:
-    image: pingcap/pd:v4.0.2
+    image: pingcap/pd:v4.0.4
     config:
       lease: 3
       enable-prevote: true

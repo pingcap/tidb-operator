@@ -30,6 +30,18 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs/']
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=${password} --namespace=test2
     ```
 
+## 数据库账户权限
+
+| 权限 | 作用域 |
+|:----|:------|
+| SELECT | Tables |
+| INSERT | Tables |
+| UPDATE | Tables |
+| DELETE | Tables |
+| CREATE | Databases, tables |
+| DROP | Databases, tables |
+| ALTER | Tables |
+
 ## 将指定备份数据恢复到 TiDB 集群
 
 1. 创建 restore custom resource (CR)，将指定的备份数据恢复至 TiDB 集群：

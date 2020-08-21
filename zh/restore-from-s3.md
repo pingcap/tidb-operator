@@ -20,6 +20,18 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-s3/']
 
 参考[环境准备](restore-from-aws-s3-using-br.md#环境准备)
 
+## 数据库账户权限
+
+| 权限 | 作用域 |
+|:----|:------|
+| SELECT | Tables |
+| INSERT | Tables |
+| UPDATE | Tables |
+| DELETE | Tables |
+| CREATE | Databases, tables |
+| DROP | Databases, tables |
+| ALTER | Tables |
+
 ## 将指定备份数据恢复到 TiDB 集群
 
 > **注意：**

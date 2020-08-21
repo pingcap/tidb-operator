@@ -21,7 +21,7 @@ summary: 了解如何在 Kubernetes 上部署 TiDB 企业版。
 
 ```yaml
 spec:
-  version: v4.0.2
+  version: v4.0.4
   ...
   pd:
     baseImage: pingcap/pd-enterprise
@@ -55,7 +55,7 @@ TiDB Operator 会自动通过滚动升级的方式将集群镜像更新为企业
 
 ```yaml
 spec:
-  version: v4.0.2
+  version: v4.0.4
   ...
   pd:
     baseImage: pingcap/pd

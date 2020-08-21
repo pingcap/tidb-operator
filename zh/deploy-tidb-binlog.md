@@ -26,7 +26,7 @@ spec
   ...
   pump:
     baseImage: pingcap/tidb-binlog
-    version: v3.0.11
+    version: v4.0.4
     replicas: 1
     storageClassName: local-storage
     requests:
@@ -173,7 +173,7 @@ spec:
 
     ```yaml
     clusterName: example-tidb
-    clusterVersion: v3.0.0
+    clusterVersion: v4.0.4
     baseImage: pingcap/tidb-binlog
     storageClassName: local-storage
     storage: 10Gi
@@ -203,7 +203,7 @@ spec:
 
     ```yaml
     ...
-    clusterVersion: v4.0.2
+    clusterVersion: v4.0.4
     baseImage: pingcap/tidb-binlog-enterprise
     ...
     ```
