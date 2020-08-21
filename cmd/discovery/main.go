@@ -24,6 +24,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/discovery/server"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -87,7 +88,7 @@ func main() {
 	go wait.Forever(func() {
 		addr := fmt.Sprintf("0.0.0.0:%d", port)
 		klog.Infof("starting TiDB Discovery server, listening on %s", addr)
-		discoveryServer := server.NewServer(pdapi.NewDefaultPDControl(kubeCli), cli, kubeCli)
+		discoveryServer := server.NewServer(pdapi.NewDefaultPDControl(kubeCli), dmapi.NewDefaultMasterControl(kubeCli), cli, kubeCli)
 		discoveryServer.ListenAndServe(addr)
 	}, 5*time.Second)
 	go wait.Forever(func() {
