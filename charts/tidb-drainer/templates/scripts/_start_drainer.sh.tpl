@@ -34,3 +34,8 @@ done
 -initial-commit-ts={{ .Values.initialCommitTs | default -1 }} \
 -data-dir=/data \
 -log-file=""
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "drainer offline, please delete my pod"
+    tail -f /dev/null
+fi
