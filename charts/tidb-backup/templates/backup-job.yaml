@@ -2,7 +2,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
+  {{- if .Values.jobName }}
+  name: {{ tpl .Values.jobName . }}
+  {{- else }}
   name: {{ .Values.clusterName }}-{{ tpl .Values.name . }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -21,11 +25,24 @@ spec:
     {{- if .Values.extraLabels }}
 {{ toYaml .Values.extraLabels | indent 8 }}
     {{- end }}
+      annotations:
+    {{- if .Values.annotations }}
+{{ toYaml .Values.annotations | indent 8 }}
+    {{- end }}
     spec:
+      {{- if .Values.serviceAccount }}
+      serviceAccount: {{ .Values.serviceAccount }}
+      {{- end }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
       containers:
       - name: backup
         image: {{ .Values.image.backup }}
         imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+    {{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+    {{- end }}
         command:
         - /bin/sh
         - -c
@@ -34,28 +51,32 @@ spec:
         volumeMounts:
         - name: data
           mountPath: "/data"
-      {{- if .Values.gcp }}
+      {{- if .Values.gcp.secretName }}
         - name: gcp-credentials
           mountPath: "/gcp"
           readOnly: true
       {{- end }}
         env:
         - name: BACKUP_NAME
-          value: {{ .Values.name | quote }}
-      {{- if .Values.gcp }}
+          value: {{ tpl .Values.name . | quote }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+      {{- if .Values.gcp.secretName }}
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /gcp/credentials.json
       {{- end }}
-      {{- if .Values.ceph }}
+      {{- if or .Values.ceph.secretName .Values.s3.secretName }}
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.ceph.secretName }}
+              name: {{ or .Values.ceph.secretName .Values.s3.secretName }}
               key: access_key
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: {{ .Values.ceph.secretName }}
+              name: {{ or .Values.ceph.secretName .Values.s3.secretName }}
               key: secret_key
       {{- end }}
         - name: TIDB_USER
@@ -69,11 +90,19 @@ spec:
               name: {{ .Values.secretName }}
               key: password
       restartPolicy: OnFailure
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+    {{- end }}
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: {{ .Values.name }}
-    {{- if .Values.gcp }}
+          claimName: {{ tpl .Values.name . }}
+    {{- if .Values.gcp.secretName }}
       - name: gcp-credentials
         secret:
           secretName: {{ .Values.gcp.secretName }}

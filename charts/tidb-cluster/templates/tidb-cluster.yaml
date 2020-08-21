@@ -4,9 +4,10 @@ metadata:
   name: {{ template "cluster.name" . }}
 {{- if .Values.enableConfigMapRollout }}
   annotations:
-    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ template "pd-configmap.data-digest" . }}
-    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ template "tikv-configmap.data-digest" . }}
-    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ template "tidb-configmap.data-digest" . }}
+    pingcap.com/pd.{{ template "cluster.name" . }}-pd.sha: {{ include "pd-configmap.data-digest" . | quote }}
+    pingcap.com/tikv.{{ template "cluster.name" . }}-tikv.sha: {{ include "tikv-configmap.data-digest" . | quote }}
+    pingcap.com/tidb.{{ template "cluster.name" . }}-tidb.sha: {{ include "tidb-configmap.data-digest" . | quote }}
+    pingcap.com/ha-topology-key: {{ .Values.haTopologyKey | default "kubernetes.io/hostname" }}
 {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -19,7 +20,12 @@ metadata:
     {{- end }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
+  enablePVReclaim: {{ .Values.enablePVReclaim }}
   timezone: {{ .Values.timezone | default "UTC" }}
+{{- if .Values.tlsCluster }}
+  tlsCluster:
+{{ toYaml .Values.tlsCluster | indent 4 }}
+{{- end }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
@@ -45,6 +51,19 @@ spec:
     annotations:
 {{ toYaml .Values.pd.annotations | indent 6 }}
   {{- end }}
+    hostNetwork: {{ .Values.pd.hostNetwork }}
+
+  {{- if .Values.pd.podSecurityContext }}
+    podSecurityContext:
+{{ toYaml .Values.pd.podSecurityContext | indent 6}}
+  {{- end }}
+  {{- if .Values.pd.priorityClassName }}
+    priorityClassName: {{ .Values.pd.priorityClassName }}
+  {{- end }}
+  {{- if .Values.pd.service }}
+    service:
+  {{ toYaml .Values.pd.service | indent 4 }}
+  {{- end }}
   tikv:
     replicas: {{ .Values.tikv.replicas }}
     image: {{ .Values.tikv.image }}
@@ -67,7 +86,20 @@ spec:
     annotations:
 {{ toYaml .Values.tikv.annotations | indent 6 }}
   {{- end }}
+    hostNetwork: {{ .Values.tikv.hostNetwork }}
+  {{- if .Values.tikv.podSecurityContext }}
+    podSecurityContext:
+{{ toYaml .Values.tikv.podSecurityContext | indent 6}}
+  {{- end }}
+  {{- if .Values.tikv.priorityClassName }}
+    priorityClassName: {{ .Values.tikv.priorityClassName }}
+  {{- end }}
+    maxFailoverCount: {{ .Values.tikv.maxFailoverCount | default 3 }}
   tidb:
+  {{- if .Values.tidb.tlsClient }}
+    tlsClient:
+{{ toYaml .Values.tidb.tlsClient | indent 6 }}
+  {{- end }}
     replicas: {{ .Values.tidb.replicas }}
     image: {{ .Values.tidb.image }}
     imagePullPolicy: {{ .Values.tidb.imagePullPolicy | default "IfNotPresent" }}
@@ -85,6 +117,14 @@ spec:
   {{- if .Values.tidb.annotations }}
     annotations:
 {{ toYaml .Values.tidb.annotations | indent 6 }}
+  {{- end }}
+    hostNetwork: {{ .Values.tidb.hostNetwork }}
+  {{- if .Values.tidb.podSecurityContext }}
+    podSecurityContext:
+{{ toYaml .Values.tidb.podSecurityContext | indent 6}}
+  {{- end }}
+  {{- if .Values.tidb.priorityClassName }}
+    priorityClassName: {{ .Values.tidb.priorityClassName }}
   {{- end }}
     binlogEnabled: {{ .Values.binlog.pump.create | default false }}
     maxFailoverCount: {{ .Values.tidb.maxFailoverCount | default 3 }}

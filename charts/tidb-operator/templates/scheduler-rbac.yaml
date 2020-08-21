@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+{{- if .Values.clusterScoped }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -21,41 +22,33 @@ metadata:
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
-{{- if .Values.clusterScoped }}
+# ConfigMap permission for --policy-configmap
 - apiGroups: [""]
-  resources: ["pods", "services", "configmaps", "replicationcontrollers", "persistentvolumeclaims", "endpoints"]
+  resources: ["configmaps"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["pods/binding"]
-  verbs: ["create"]
-- apiGroups: [""]
-  resources: ["endpoints", "events"]
-  verbs: ["get", "list", "watch", "create", "update", "patch"]
-- apiGroups: ["apps"]
-  resources: ["statefulsets"]
+  resources: ["pods"]
   verbs: ["get", "list", "watch"]
-- apiGroups: ["policy"]
-  resources: ["poddisruptionbudgets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["apps", "extensions"]
-  resources: ["replicasets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["storage.k8s.io"]
-  resources: ["storageclasses"]
-  verbs: ["get", "list", "watch"]
-{{- end }}
 - apiGroups: [""]
   resources: ["nodes"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["persistentvolumes"]
-  verbs: ["get", "list", "watch", "update"]
+  verbs: ["get", "list"]
 - apiGroups: ["pingcap.com"]
   resources: ["tidbclusters"]
   verbs: ["get"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+# Extra permissions for endpoints other than kube-scheduler
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["delete", "get", "patch", "update"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  verbs: ["get", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -75,6 +68,7 @@ roleRef:
   kind: ClusterRole
   name: {{ .Release.Name }}:{{ .Values.scheduler.schedulerName }}
   apiGroup: rbac.authorization.k8s.io
+{{- end }}
 {{- if (not .Values.clusterScoped) }}
 ---
 kind: Role
@@ -88,33 +82,33 @@ metadata:
     app.kubernetes.io/component: scheduler
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
+# ConfigMap permission for --policy-configmap
 - apiGroups: [""]
-  resources: ["pods", "services", "configmaps", "replicationcontrollers", "persistentvolumeclaims", "endpoints"]
+  resources: ["configmaps"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["pods/binding"]
-  verbs: ["create"]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["endpoints", "events"]
-  verbs: ["get", "list", "watch", "create", "update", "patch"]
-- apiGroups: ["apps"]
-  resources: ["statefulsets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["policy"]
-  resources: ["poddisruptionbudgets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["apps", "extensions"]
-  resources: ["replicasets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["storage.k8s.io"]
-  resources: ["storageclasses"]
-  verbs: ["get", "list", "watch"]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
 - apiGroups: ["pingcap.com"]
   resources: ["tidbclusters"]
   verbs: ["get"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "update"]
+# Extra permissions for endpoints other than kube-scheduler
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["delete", "get", "patch", "update"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["{{ .Values.scheduler.schedulerName }}"]
+  verbs: ["get", "update"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -129,9 +123,48 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.scheduler.serviceAccount }}
+  namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
   name: {{ .Release.Name }}:{{ .Values.scheduler.schedulerName }}
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ .Release.Name }}:kube-scheduler
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: scheduler
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.scheduler.serviceAccount }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: system:kube-scheduler
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ .Release.Name }}:volume-scheduler
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: scheduler
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.scheduler.serviceAccount }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: system:volume-scheduler
+  apiGroup: rbac.authorization.k8s.io
 {{- end }}

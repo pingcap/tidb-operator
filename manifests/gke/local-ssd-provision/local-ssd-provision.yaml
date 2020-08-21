@@ -12,13 +12,21 @@ metadata:
   name: local-provisioner-config
   namespace: kube-system
 data:
+  setPVOwnerRef: "true"
+  nodeLabelsForPV: |
+    - kubernetes.io/hostname
   storageClassMap: |
     local-storage:
       hostDir: /mnt/disks
       mountDir: /mnt/disks
 
 ---
-apiVersion: extensions/v1beta1
+# Local SSD provisioner
+# Remount disks with a UUID. Ensure the nobarrier options is set.
+# This will combine all disks with mdadm or LVM.
+# If you don't want to combine disks, you can set NO_COMBINE_LOCAL_SSD=1
+# mdadm is preferred over LVM, to use LVM set USE_LVM=1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: local-volume-provisioner
@@ -36,7 +44,6 @@ spec:
     spec:
       hostPID: true
       nodeSelector:
-        cloud.google.com/gke-os-distribution: ubuntu
         cloud.google.com/gke-local-ssd: "true"
       serviceAccountName: local-storage-admin
       initContainers:
@@ -50,83 +57,134 @@ spec:
             name: local-disks
             mountPropagation: Bidirectional
           env:
+          #- name: NO_COMBINE_LOCAL_SSD
+          #  value: "1"
+          #- name: USE_LVM
+          #  value: "1"
           - name: STARTUP_SCRIPT
             value: |
                 #!/usr/bin/env bash
                 set -euo pipefail
                 set -x
 
-                # Install the linux guest environment tools
-                export DEBIAN_FRONTEND=noninteractive
-                # Fix any issues
-                dpkg --configure -a
-                apt-get -y autoremove
-                # Avoid unecessary repository listings
-                test -f /etc/apt/sources.list.orig || cp /etc/apt/sources.list /etc/apt/sources.list.orig
-                cat /etc/apt/sources.list.orig | awk '/bionic main|bionic-updates main|bionic-updates universe/' > /etc/apt/sources.list
-                apt-get update
-                # Install required packages
-                apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
-                # Restore original repository listings
-                cp /etc/apt/sources.list.orig /etc/apt/sources.list
+                # discard,nobarrier are required to optimize local SSD
+                # performance in GCP, see
+                # https://cloud.google.com/compute/docs/disks/performance#optimize_local_ssd
+                mnt_opts="defaults,nodelalloc,noatime,discard,nobarrier"
 
+                # use /var because it is writeable on COS
                 if ! findmnt -n -a -l | grep /mnt/disks/ssd ; then
-                  if test -f /etc/ssd_mounts ; then
-                    ssd_mounts=$(cat /etc/ssd_mounts)
+                  if test -f /var/ssd_mounts ; then
+                    ssd_mounts=$(cat /var/ssd_mounts)
                   else
                     echo "no ssds mounted yet"
                     exit 1
                   fi
                 else
                   ssd_mounts=$(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd)
-                  echo "$ssd_mounts" > /etc/ssd_mounts
+                  echo "$ssd_mounts" > /var/ssd_mounts
                 fi
 
-                # Re-mount all disks as a single logical volume
-                for ssd in $(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd | awk '{print $1}') ; do
-                  umount "$ssd"
-                done
-                for ssd in $(echo "$ssd_mounts" | awk '{print $1}') ; do
+                # Re-mount all disks as a single logical volume with a UUID
+                if old_mounts=$(findmnt -n -a -l --nofsroot | grep /mnt/disks/ssd) ; then
+                  echo "$old_mounts" | awk '{print $1}' | while read -r ssd ; do
+                    umount "$ssd"
+                    new_fstab=$(grep -v "$ssd" /etc/fstab) || echo "fstab is now empty"
+                    echo "$new_fstab" > /etc/fstab
+                  done
+                fi
+                echo "$ssd_mounts" | awk '{print $1}' | while read -r ssd ; do
                   if test -d "$ssd"; then
                     rm -r "$ssd"
                   fi
                 done
 
-                if ! pvs | grep volume_all_ssds ; then
-                  for dev in $(echo "$ssd_mounts" | awk '{print $2}') ; do
-                    wipefs --all "$dev"
-                  done
-                  echo "$ssd_mounts" | awk '{print $2}' | xargs /sbin/pvcreate
-                fi
-                pvdisplay
-                pvs
-                if ! vgs | grep volume_all_ssds ; then
-                  echo "$ssd_mounts" | awk '{print $2}' | xargs /sbin/vgcreate volume_all_ssds
-                fi
-                vgdisplay
-                vgs
-                if ! lvs | grep logical_all_ssds ; then
-                  lvcreate -l 100%FREE -n logical_all_ssds volume_all_ssds
-                fi
-                lvdisplay
-                lvs
+                devs=$(echo "$ssd_mounts" | awk '{print $2}')
+                raid_dev=/dev/mdx
 
-                if ! uuid=$(blkid -s UUID -o value /dev/volume_all_ssds/logical_all_ssds) ; then
-                  mkfs.ext4 /dev/volume_all_ssds/logical_all_ssds
-                  uuid=$(blkid -s UUID -o value /dev/volume_all_ssds/logical_all_ssds)
+                # If RAID or LVM is already in use, this may have been re-deployed.
+                # Don't try to change the disks.
+                pvs=$((test -x /sbin/pvs && /sbin/pvs) || echo "")
+                if ! test -e $raid_dev && ! echo "$pvs" | grep volume_all_ssds ; then
+                  # wipe all devices
+                  echo "$devs" | while read -r dev ; do
+                    dev_basename=$(basename "$dev")
+                    mkdir -p /var/dev_wiped/
+                    if ! test -f /var/dev_wiped/$dev_basename ; then
+                      if findmnt -n -a -l --nofsroot | grep "$dev" ; then
+                        echo "$dev" already individually mounted
+                        exit 1
+                      fi
+                      /sbin/wipefs --all "$dev"
+                      touch /var/dev_wiped/$dev_basename
+                    fi
+                  done
+
+                  # Don't combine if there is 1 disk or the environment variable is set.
+                  # lvm and mdadm do have overhead, so don't use them if there is just 1 disk
+                  # remount with uuid, set mount options (nobarrier), and exit
+                  NO_COMBINE_LOCAL_SSD="${NO_COMBINE_LOCAL_SSD:-""}"
+                  if ! test -z "$NO_COMBINE_LOCAL_SSD" || [ "$(echo "$devs" | wc -l)" -eq 1 ] ; then
+                    echo "$devs" | while read -r dev ; do
+                      if ! findmnt -n -a -l --nofsroot | grep "$dev" ; then
+                        if ! uuid=$(blkid -s UUID -o value "$dev") ; then
+                          mkfs.ext4 "$dev"
+                          uuid=$(blkid -s UUID -o value "$dev")
+                        fi
+                        mnt_dir="/mnt/disks/$uuid"
+                        mkdir -p "$mnt_dir"
+                        if ! grep "$uuid" /etc/fstab ; then
+                          echo "UUID=$uuid $mnt_dir ext4 $mnt_opts" >> /etc/fstab
+                        fi
+                        mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
+                        chmod a+w "$mnt_dir"
+                      fi
+                    done
+
+                    exit 0
+                  fi
+                fi
+
+                new_dev=
+                USE_LVM="${USE_LVM:-""}"
+                # If RAID is available use it because it performs better than LVM
+                if test -e $raid_dev || (test -x /sbin/mdadm && test -z "$USE_LVM") ; then
+                  if ! test -e $raid_dev ; then
+                    echo "$devs" | xargs /sbin/mdadm --create $raid_dev --level=0 --raid-devices=$(echo "$devs" | wc -l)
+                    sudo mkfs.ext4 -F $raid_dev
+                    new_dev=$raid_dev
+                  fi
+                else
+                  if ! echo "$pvs" | grep volume_all_ssds ; then
+                    echo "$devs" | xargs /sbin/pvcreate
+                  fi
+                  /sbin/pvdisplay
+                  if ! /sbin/vgs | grep volume_all_ssds ; then
+                    echo "$devs" | xargs /sbin/vgcreate volume_all_ssds
+                  fi
+                  /sbin/vgdisplay
+                  if ! /sbin/lvs | grep logical_all_ssds ; then
+                    /sbin/lvcreate -l 100%FREE -n logical_all_ssds volume_all_ssds
+                  fi
+                  /sbin/lvdisplay
+                  new_dev=/dev/volume_all_ssds/logical_all_ssds
+                fi
+
+                if ! uuid=$(blkid -s UUID -o value $new_dev) ; then
+                  mkfs.ext4 $new_dev
+                  uuid=$(blkid -s UUID -o value $new_dev)
                 fi
 
                 mnt_dir="/mnt/disks/$uuid"
                 mkdir -p "$mnt_dir"
 
                 if ! grep "$uuid" /etc/fstab ; then
-                  new_fstab=$(grep -v /mnt/disks/ssd /etc/fstab)
-                  echo "$new_fstab" > /etc/fstab
-                  echo "UUID=$uuid $mnt_dir ext4 rw,relatime,discard,nobarrier,data=ordered" >> /etc/fstab
+                  echo "UUID=$uuid $mnt_dir ext4 $mnt_opts" >> /etc/fstab
                 fi
-                mount -a
+                mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
+                chmod a+w "$mnt_dir"
       containers:
-        - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
           name: provisioner
           securityContext:
             privileged: true
@@ -147,7 +205,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: JOB_CONTAINER_IMAGE
-            value: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
+            value: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
           volumeMounts:
             - mountPath: /etc/provisioner/config
               name: provisioner-config

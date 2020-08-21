@@ -41,7 +41,7 @@ subjects:
   namespace: kube-system
 ---
 kind: Deployment
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 metadata:
   labels:
     k8s-app: kubernetes-dashboard
@@ -60,7 +60,7 @@ spec:
     spec:
       containers:
       - name: kubernetes-dashboard
-        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.6.3
+        image: k8s.gcr.io/kubernetes-dashboard-amd64:v1.6.3
         ports:
         - containerPort: 9090
           protocol: TCP

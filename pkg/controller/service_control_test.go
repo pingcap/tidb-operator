@@ -47,23 +47,6 @@ func TestServiceControlCreatesServices(t *testing.T) {
 	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func TestServiceControlCreatesServiceExists(t *testing.T) {
-	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
-	tc := newTidbCluster()
-	svc := newService(tc, "pd")
-	fakeClient := &fake.Clientset{}
-	control := NewRealServiceControl(fakeClient, nil, recorder)
-	fakeClient.AddReactor("create", "services", func(action core.Action) (bool, runtime.Object, error) {
-		return true, svc, apierrors.NewAlreadyExists(action.GetResource().GroupResource(), svc.Name)
-	})
-	err := control.CreateService(tc, svc)
-	g.Expect(apierrors.IsAlreadyExists(err)).To(Equal(true))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
-}
-
 func TestServiceControlCreatesServiceFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
@@ -97,10 +80,6 @@ func TestServiceControlUpdateService(t *testing.T) {
 	updateSvc, err := control.UpdateService(tc, svc)
 	g.Expect(err).To(Succeed())
 	g.Expect(updateSvc.Spec.ClusterIP).To(Equal("1.1.1.1"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestServiceControlUpdateServiceConflictSuccess(t *testing.T) {
@@ -129,10 +108,6 @@ func TestServiceControlUpdateServiceConflictSuccess(t *testing.T) {
 	updateSvc, err := control.UpdateService(tc, svc)
 	g.Expect(err).To(Succeed())
 	g.Expect(updateSvc.Spec.ClusterIP).To(Equal("1.1.1.1"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestServiceControlDeleteService(t *testing.T) {

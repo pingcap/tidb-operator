@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:3.10
 
 ENV KUBECTL_VERSION=v1.12.2
 ENV HELM_VERSION=v2.9.1
@@ -14,4 +14,5 @@ RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VER
     rm -rf linux-amd64 && \
     rm helm-${HELM_VERSION}-linux-amd64.tar.gz
 
+ADD bin/blockwriter /usr/local/bin/
 ADD bin/stability-test /usr/local/bin/stability-test

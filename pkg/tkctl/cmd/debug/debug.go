@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,32 +15,33 @@ package debug
 
 import (
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/executor"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 const (
 	debugExample = `
 	# debug a container in the running pod, the first container will be picked by default
-	tkc debug POD_NAME
+	tkctl debug POD_NAME
 
 	# specify namespace or container
-	tkc debug --namespace foo POD_NAME -c CONTAINER_NAME
+	tkctl debug --namespace foo POD_NAME -c CONTAINER_NAME
 
 	# override the default troubleshooting image
-	tkc debug POD_NAME --image aylei/debug-jvm
+	tkctl debug POD_NAME --image aylei/debug-jvm
 
 	# override entrypoint of debug container
-	tkc debug POD_NAME --image aylei/debug-jvm /bin/bash
+	tkctl debug POD_NAME --image aylei/debug-jvm /bin/bash
 
 `
 	debugLongDesc = `

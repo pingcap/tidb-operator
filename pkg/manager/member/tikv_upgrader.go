@@ -18,12 +18,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	apps "k8s.io/api/apps/v1beta1"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog"
 )
 
 const (
@@ -33,16 +36,20 @@ const (
 	EvictLeaderTimeout = 3 * time.Minute
 )
 
+type TiKVUpgrader interface {
+	Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error
+}
+
 type tikvUpgrader struct {
-	pdControl  controller.PDControlInterface
+	pdControl  pdapi.PDControlInterface
 	podControl controller.PodControlInterface
 	podLister  corelisters.PodLister
 }
 
 // NewTiKVUpgrader returns a tikv Upgrader
-func NewTiKVUpgrader(pdControl controller.PDControlInterface,
+func NewTiKVUpgrader(pdControl pdapi.PDControlInterface,
 	podControl controller.PodControlInterface,
-	podLister corelisters.PodLister) Upgrader {
+	podLister corelisters.PodLister) TiKVUpgrader {
 	return &tikvUpgrader{
 		pdControl:  pdControl,
 		podControl: podControl,
@@ -50,44 +57,74 @@ func NewTiKVUpgrader(pdControl controller.PDControlInterface,
 	}
 }
 
-func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	ns := tc.GetNamespace()
-	tcName := tc.GetName()
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase {
-		_, podSpec, err := GetLastAppliedConfig(oldSet)
-		if err != nil {
-			return err
+func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	ns := meta.GetNamespace()
+	tcName := meta.GetName()
+
+	var status *v1alpha1.TiKVStatus
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		tc := meta.(*v1alpha1.TidbCluster)
+		if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
+			klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
+				ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+			_, podSpec, err := GetLastAppliedConfig(oldSet)
+			if err != nil {
+				return err
+			}
+			newSet.Spec.Template.Spec = *podSpec
+			return nil
 		}
-		newSet.Spec.Template.Spec = *podSpec
+		status = &tc.Status.TiKV
+	case *v1alpha1.TiDBGroup:
+		tg := meta.(*v1alpha1.TiKVGroup)
+		status = &tg.Status.TiKVStatus
+	default:
+		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
+	}
+
+	if !status.Synced {
+		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
+	}
+
+	status.Phase = v1alpha1.UpgradePhase
+	if !templateEqual(newSet, oldSet) {
 		return nil
 	}
 
-	if !tc.Status.TiKV.Synced {
-		return fmt.Errorf("Tidbcluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
+	if status.StatefulSet.UpdateRevision == status.StatefulSet.CurrentRevision {
+		return nil
 	}
 
-	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+		// Manually bypass tidb-operator to modify statefulset directly, such as modify tikv statefulset's RollingUpdate strategy to OnDelete strategy,
+		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
+		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tikv.
+		// Therefore, in the production environment, we should try to avoid modifying the tikv statefulset update strategy directly.
+		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		klog.Warningf("tidbcluster: [%s/%s] tikv statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := tc.Status.TiKV.StatefulSet.Replicas - 1; i >= 0; i-- {
-		store := tku.getStoreByOrdinal(tc, i)
+	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+		i := podOrdinals[_i]
+		store := tku.getStoreByOrdinal(meta.GetName(), *status, i)
 		if store == nil {
 			continue
 		}
-		podName := tikvPodName(tcName, i)
+		podName := TikvPodName(tcName, i)
 		pod, err := tku.podLister.Pods(ns).Get(podName)
 		if err != nil {
-			return err
+			return fmt.Errorf("tikvUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] has no label: %s", ns, tcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
-		if revision == tc.Status.TiKV.StatefulSet.UpdateRevision {
+		if revision == status.StatefulSet.UpdateRevision {
 
 			if pod.Status.Phase != corev1.PodRunning {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not running", ns, tcName, podName)
@@ -99,6 +136,14 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 			continue
 		}
 
+		if controller.PodWebhookEnabled {
+			setUpgradePartition(newSet, i)
+			return nil
+		}
+		tc, ok := meta.(*v1alpha1.TidbCluster)
+		if !ok {
+			return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to not tidbcluster and not enabled pod webhook", meta.GetNamespace(), meta.GetName())
+		}
 		return tku.upgradeTiKVPod(tc, i, newSet)
 	}
 
@@ -108,10 +153,10 @@ func (tku *tikvUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	upgradePodName := tikvPodName(tcName, ordinal)
+	upgradePodName := TikvPodName(tcName, ordinal)
 	upgradePod, err := tku.podLister.Pods(ns).Get(upgradePodName)
 	if err != nil {
-		return err
+		return fmt.Errorf("upgradeTiKVPod: failed to get pods %s for cluster %s/%s, error: %s", upgradePodName, ns, tcName, err)
 	}
 
 	for _, store := range tc.Status.TiKV.Stores {
@@ -121,6 +166,9 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return err
 			}
 			_, evicting := upgradePod.Annotations[EvictLeaderBeginTime]
+			if !evicting {
+				return tku.beginEvictLeader(tc, storeID, upgradePod)
+			}
 
 			if tku.readyToUpgrade(upgradePod, store) {
 				err := tku.endEvictLeader(tc, ordinal)
@@ -131,9 +179,6 @@ func (tku *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32,
 				return nil
 			}
 
-			if !evicting {
-				return tku.beginEvictLeader(tc, storeID, upgradePod)
-			}
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s tikv pod: [%s] is evicting leader", ns, tcName, upgradePodName)
 		}
 	}
@@ -148,7 +193,7 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 	if evictLeaderBeginTimeStr, evicting := upgradePod.Annotations[EvictLeaderBeginTime]; evicting {
 		evictLeaderBeginTime, err := time.Parse(time.RFC3339, evictLeaderBeginTimeStr)
 		if err != nil {
-			glog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
+			klog.Errorf("parse annotation:[%s] to time failed.", EvictLeaderBeginTime)
 			return false
 		}
 		if time.Now().After(evictLeaderBeginTime.Add(EvictLeaderTimeout)) {
@@ -159,48 +204,59 @@ func (tku *tikvUpgrader) readyToUpgrade(upgradePod *corev1.Pod, store v1alpha1.T
 }
 
 func (tku *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
-	err := tku.pdControl.GetPDClient(tc).BeginEvictLeader(storeID)
+	ns := tc.GetNamespace()
+	podName := pod.GetName()
+	err := controller.GetPDClient(tku.pdControl, tc).BeginEvictLeader(storeID)
 	if err != nil {
+		klog.Errorf("tikv upgrader: failed to begin evict leader: %d, %s/%s, %v",
+			storeID, ns, podName, err)
 		return err
 	}
+	klog.Infof("tikv upgrader: begin evict leader: %d, %s/%s successfully", storeID, ns, podName)
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	pod.Annotations[EvictLeaderBeginTime] = time.Now().Format(time.RFC3339)
+	now := time.Now().Format(time.RFC3339)
+	pod.Annotations[EvictLeaderBeginTime] = now
 	_, err = tku.podControl.UpdatePod(tc, pod)
-	return err
+	if err != nil {
+		klog.Errorf("tikv upgrader: failed to set pod %s/%s annotation %s to %s, %v",
+			ns, podName, EvictLeaderBeginTime, now, err)
+		return err
+	}
+	klog.Infof("tikv upgrader: set pod %s/%s annotation %s to %s successfully",
+		ns, podName, EvictLeaderBeginTime, now)
+	return nil
 }
 
 func (tku *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, ordinal int32) error {
-	store := tku.getStoreByOrdinal(tc, ordinal)
+	// wait 5 second before delete evict scheduler，it is for auto test can catch these info
+	if controller.TestMode {
+		time.Sleep(5 * time.Second)
+	}
+	store := tku.getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	storeID, err := strconv.ParseUint(store.ID, 10, 64)
 	if err != nil {
 		return err
 	}
-	upgradedPodName := tikvPodName(tc.GetName(), ordinal)
-	upgradedPod, err := tku.podLister.Pods(tc.GetNamespace()).Get(upgradedPodName)
-	if err != nil {
-		return err
-	}
-	_, evicting := upgradedPod.Annotations[EvictLeaderBeginTime]
-	if evicting {
-		delete(upgradedPod.Annotations, EvictLeaderBeginTime)
-		_, err = tku.podControl.UpdatePod(tc, upgradedPod)
-		if err != nil {
-			return err
-		}
-	}
-	err = tku.pdControl.GetPDClient(tc).EndEvictLeader(storeID)
-	if err != nil {
-		return err
+
+	if tc.IsHeterogeneous() {
+		err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
+	} else {
+		err = tku.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).EndEvictLeader(storeID)
 	}
 
+	if err != nil {
+		klog.Errorf("tikv upgrader: failed to end evict leader storeID: %d ordinal: %d, %v", storeID, ordinal, err)
+		return err
+	}
+	klog.Infof("tikv upgrader: end evict leader storeID: %d ordinal: %d successfully", storeID, ordinal)
 	return nil
 }
 
-func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int32) *v1alpha1.TiKVStore {
-	podName := tikvPodName(tc.GetName(), ordinal)
-	for _, store := range tc.Status.TiKV.Stores {
+func (tku *tikvUpgrader) getStoreByOrdinal(name string, status v1alpha1.TiKVStatus, ordinal int32) *v1alpha1.TiKVStore {
+	podName := TikvPodName(name, ordinal)
+	for _, store := range status.Stores {
 		if store.PodName == podName {
 			return &store
 		}
@@ -211,11 +267,12 @@ func (tku *tikvUpgrader) getStoreByOrdinal(tc *v1alpha1.TidbCluster, ordinal int
 type fakeTiKVUpgrader struct{}
 
 // NewFakeTiKVUpgrader returns a fake tikv upgrader
-func NewFakeTiKVUpgrader() Upgrader {
+func NewFakeTiKVUpgrader() TiKVUpgrader {
 	return &fakeTiKVUpgrader{}
 }
 
-func (tku *fakeTiKVUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+func (tku *fakeTiKVUpgrader) Upgrade(meta metav1.Object, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	tc := meta.(*v1alpha1.TidbCluster)
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	return nil
 }

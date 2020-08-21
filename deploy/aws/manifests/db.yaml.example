@@ -1,0 +1,112 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: CLUSTER_NAME
+spec:
+  configUpdateStrategy: RollingUpdate
+  helper:
+    image: busybox:1.31.1
+  hostNetwork: false
+  imagePullPolicy: IfNotPresent
+  pd:
+    affinity: {}
+    baseImage: pingcap/pd
+    config:
+      log:
+        level: info
+      replication:
+        location-labels:
+        - zone
+        max-replicas: 3
+    nodeSelector:
+      dedicated: CLUSTER_NAME-pd
+    podSecurityContext: {}
+    replicas: 3
+    requests:
+      cpu: "1"
+      memory: 400Mi
+      storage: 1Gi
+    storageClassName: ebs-gp2
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: CLUSTER_NAME-pd
+  pvReclaimPolicy: Retain
+  schedulerName: tidb-scheduler
+  tidb:
+    affinity: {}
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
+    baseImage: pingcap/tidb
+    config:
+      log:
+        level: info
+      performance:
+        max-procs: 0
+        tcp-keep-alive: true
+    enableTLSClient: false
+    maxFailoverCount: 3
+    nodeSelector:
+      dedicated: CLUSTER_NAME-tidb
+    podSecurityContext:
+      sysctls:
+      - name: net.ipv4.tcp_keepalive_time
+        value: "300"
+      - name: net.ipv4.tcp_keepalive_intvl
+        value: "75"
+      - name: net.core.somaxconn
+        value: "32768"
+    replicas: 2
+    requests:
+      cpu: "1"
+      memory: 400Mi
+    separateSlowLog: true
+    service:
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
+        service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      exposeStatus: true
+      externalTrafficPolicy: Local
+      type: LoadBalancer
+    slowLogTailer:
+      limits:
+        cpu: 100m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 5Mi
+    tlsClient:
+      enabled: false
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: CLUSTER_NAME-tidb
+  tikv:
+    affinity: {}
+    baseImage: pingcap/tikv
+    config:
+      log-level: info
+    hostNetwork: false
+    maxFailoverCount: 3
+    nodeSelector:
+      dedicated: CLUSTER_NAME-tikv
+    podSecurityContext: {}
+    privileged: false
+    replicas: 3
+    requests:
+      cpu: "1"
+      memory: 2Gi
+      storage: 45Gi
+    storageClassName: ebs-gp2
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: CLUSTER_NAME-tikv
+  timezone: UTC
+  tlsCluster:
+    enabled: false
+  version: v4.0.4

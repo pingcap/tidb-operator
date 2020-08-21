@@ -14,20 +14,20 @@
 package member
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	apps "k8s.io/api/apps/v1beta1"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeinformers "k8s.io/client-go/informers"
 	podinformers "k8s.io/client-go/informers/core/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiDBUpgrader_Upgrade(t *testing.T) {
@@ -37,20 +37,14 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		name                    string
 		changeFn                func(*v1alpha1.TidbCluster)
 		getLastAppliedConfigErr bool
-		resignDDLOwnerError     bool
 		errorExpect             bool
+		changeOldSet            func(set *apps.StatefulSet)
 		expectFn                func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
-		upgrader, tidbControl, podInformer := newTiDBUpgrader()
-		if test.resignDDLOwnerError {
-			tidbControl.SetResignDDLOwnerError(fmt.Errorf("resign DDL owner failed"))
-			tidbControl.NotDDLOwner(false)
-		} else {
-			tidbControl.NotDDLOwner(true)
-		}
+		upgrader, _, podInformer := newTiDBUpgrader()
 		tc := newTidbClusterForTiDBUpgrader()
 		if test.changeFn != nil {
 			test.changeFn(tc)
@@ -61,11 +55,15 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 		}
 
 		oldSet := newStatefulSetForTiDBUpgrader()
+		if test.changeOldSet != nil {
+			test.changeOldSet(oldSet)
+		}
+
 		newSet := oldSet.DeepCopy()
 		if test.getLastAppliedConfigErr {
 			oldSet.SetAnnotations(map[string]string{LastAppliedConfigAnnotation: "fake apply config"})
 		} else {
-			SetLastAppliedConfigAnnotation(oldSet)
+			SetStatefulSetLastAppliedConfigAnnotation(oldSet)
 		}
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		if test.errorExpect {
@@ -85,7 +83,42 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			},
 			getLastAppliedConfigErr: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(0); return &i }())))
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(0)))
+			},
+		},
+		{
+			name: "modify oldSet update strategy to OnDelete",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			getLastAppliedConfigErr: false,
+			changeOldSet: func(set *apps.StatefulSet) {
+				set.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
+					Type: apps.OnDeleteStatefulSetStrategyType,
+				}
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy).To(Equal(apps.StatefulSetUpdateStrategy{Type: apps.OnDeleteStatefulSetStrategyType}))
+			},
+		},
+		{
+			name: "set oldSet's RollingUpdate strategy to nil",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+			},
+			changeOldSet: func(set *apps.StatefulSet) {
+				set.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
+					Type: apps.RollingUpdateStatefulSetStrategyType,
+				}
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy).To(Equal(apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType}))
 			},
 		},
 		{
@@ -96,7 +129,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			},
 			getLastAppliedConfigErr: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
@@ -107,7 +140,20 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			},
 			getLastAppliedConfigErr: false,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+		},
+		{
+			name: "upgrade revision equals current revision",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Phase = v1alpha1.NormalPhase
+				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+				tc.Status.TiDB.StatefulSet.UpdateRevision = tc.Status.TiDB.StatefulSet.CurrentRevision
+			},
+			getLastAppliedConfigErr: false,
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
@@ -119,7 +165,7 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			getLastAppliedConfigErr: true,
 			errorExpect:             true,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 		{
@@ -135,36 +181,8 @@ func TestTiDBUpgrader_Upgrade(t *testing.T) {
 			getLastAppliedConfigErr: false,
 			errorExpect:             true,
 			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
-			},
-		},
-		{
-			name: "resign DDL owner error",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-			},
-			getLastAppliedConfigErr: false,
-			resignDDLOwnerError:     true,
-			errorExpect:             true,
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(1); return &i }())))
-				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(1)))
-			},
-		},
-		{
-			name: "resign DDL owner error count larger than MaxResignDDLOwnerCount",
-			changeFn: func(tc *v1alpha1.TidbCluster) {
-				tc.Status.PD.Phase = v1alpha1.NormalPhase
-				tc.Status.TiKV.Phase = v1alpha1.NormalPhase
-				tc.Status.TiDB.ResignDDLOwnerRetryCount = 4
-			},
-			getLastAppliedConfigErr: false,
-			resignDDLOwnerError:     true,
-			errorExpect:             false,
-			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
-				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal((func() *int32 { i := int32(0); return &i }())))
-				g.Expect(tc.Status.TiDB.ResignDDLOwnerRetryCount).To(Equal(int32(0)))
+				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
 	}
@@ -189,7 +207,7 @@ func newStatefulSetForTiDBUpgrader() *apps.StatefulSet {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: int32Pointer(2),
+			Replicas: pointer.Int32Ptr(2),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -202,7 +220,7 @@ func newStatefulSetForTiDBUpgrader() *apps.StatefulSet {
 			},
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: int32Pointer(1),
+					Partition: pointer.Int32Ptr(1),
 				},
 			},
 		},
@@ -229,26 +247,25 @@ func newTidbClusterForTiDBUpgrader() *v1alpha1.TidbCluster {
 			UID:       types.UID("upgrader"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+			PD: &v1alpha1.PDSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "pd-test-image",
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
-			TiKV: v1alpha1.TiKVSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+			TiKV: &v1alpha1.TiKVSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tikv-test-image",
 				},
 				Replicas:         3,
-				StorageClassName: "my-storage-class",
+				StorageClassName: pointer.StringPtr("my-storage-class"),
 			},
-			TiDB: v1alpha1.TiDBSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+			TiDB: &v1alpha1.TiDBSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
-				Replicas:         2,
-				StorageClassName: "my-storage-class",
+				Replicas: 2,
 			},
 		},
 		Status: v1alpha1.TidbClusterStatus{

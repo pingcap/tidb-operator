@@ -16,8 +16,12 @@ package member
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-	apps "k8s.io/api/apps/v1beta1"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -58,7 +62,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 		{
 			name: "CurrentRevision not equal UpdateRevision",
 			update: func(set *apps.StatefulSet) {
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v2"
 			},
@@ -68,7 +72,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 			name: "set.Generation > *set.Status.ObservedGeneration && *set.Spec.Replicas == set.Status.Replicas",
 			update: func(set *apps.StatefulSet) {
 				set.Generation = 1001
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v1"
 				set.Status.Replicas = 3
@@ -80,7 +84,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 			name: "replicas not equal",
 			update: func(set *apps.StatefulSet) {
 				set.Generation = 1001
-				set.Status.ObservedGeneration = func() *int64 { var i int64; i = 1000; return &i }()
+				set.Status.ObservedGeneration = 1000
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v1"
 				set.Status.Replicas = 3
@@ -92,5 +96,69 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 
 	for _, test := range tests {
 		testFn(test, t)
+	}
+}
+
+func TestGetStsAnnotations(t *testing.T) {
+	tests := []struct {
+		name      string
+		tc        *v1alpha1.TidbCluster
+		component string
+		expected  map[string]string
+	}{
+		{
+			name: "nil",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: nil,
+				},
+			},
+			component: label.TiDBLabelVal,
+			expected:  map[string]string{},
+		},
+		{
+			name: "empty",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			component: label.TiDBLabelVal,
+			expected:  map[string]string{},
+		},
+		{
+			name: "tidb",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnTiDBDeleteSlots: "[1,2]",
+					},
+				},
+			},
+			component: label.TiDBLabelVal,
+			expected: map[string]string{
+				helper.DeleteSlotsAnn: "[1,2]",
+			},
+		},
+		{
+			name: "tidb but component is not tidb",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						label.AnnTiDBDeleteSlots: "[1,2]",
+					},
+				},
+			},
+			component: label.PDLabelVal,
+			expected:  map[string]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getStsAnnotations(tt.tc, tt.component)
+			if diff := cmp.Diff(tt.expected, got); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
 	}
 }

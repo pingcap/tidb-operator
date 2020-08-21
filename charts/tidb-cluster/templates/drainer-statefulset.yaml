@@ -30,6 +30,14 @@ spec:
         app.kubernetes.io/managed-by: tidb-operator
         app.kubernetes.io/component: drainer
     spec:
+    {{- if .Values.binlog.drainer.affinity }}
+      affinity:
+{{ toYaml .Values.binlog.drainer.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.binlog.drainer.tolerations }}
+      tolerations:
+{{ toYaml .Values.binlog.drainer.tolerations | indent 8 }}
+    {{- end }}
       containers:
       - name: drainer
         image: {{ .Values.binlog.drainer.image }}
@@ -47,10 +55,21 @@ spec:
           mountPath: /data
         - name: config
           mountPath: /etc/drainer
+        resources:
+{{ toYaml .Values.binlog.drainer.resources | indent 10 }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
       volumes:
       - name: config
         configMap:
+        {{- if .Values.enableConfigMapRollout }}
+          name: {{ template "cluster.name" . }}-drainer-{{ template "drainer-configmap.data-digest" . }}
+        {{- else }}
           name: {{ template "cluster.name" . }}-drainer
+        {{- end }}
           items:
           - key: drainer-config
             path: drainer.toml

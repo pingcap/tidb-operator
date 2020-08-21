@@ -21,13 +21,12 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 func TestMapAndIntNil(t *testing.T) {
@@ -428,17 +427,18 @@ func TestHARealAcquireLockFn(t *testing.T) {
 func TestHAFilter(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name          string
-		podFn         func(string, string, int32) *apiv1.Pod
-		nodesFn       func() []apiv1.Node
-		podListFn     func(string, string, string) (*apiv1.PodList, error)
-		podGetFn      func(string, string) (*apiv1.Pod, error)
-		pvcGetFn      func(string, string) (*apiv1.PersistentVolumeClaim, error)
-		tcGetFn       func(string, string) (*v1alpha1.TidbCluster, error)
-		acquireLockFn func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
-		expectFn      func([]apiv1.Node, error, record.FakeRecorder)
+		name               string
+		podFn              func(string, string, int32) *apiv1.Pod
+		nodesFn            func() []apiv1.Node
+		podListFn          func(string, string, string) (*apiv1.PodList, error)
+		pvcGetFn           func(string, string) (*apiv1.PersistentVolumeClaim, error)
+		tcGetFn            func(string, string) (*v1alpha1.TidbCluster, error)
+		scheduledNodeGetFn func(string) (*apiv1.Node, error)
+		acquireLockFn      func(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error)
+		expectFn           func([]apiv1.Node, error)
 	}
 
+	topologyKey := "zone"
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		instanceName := "demo"
@@ -446,22 +446,21 @@ func TestHAFilter(t *testing.T) {
 
 		pod := test.podFn(instanceName, clusterName, 0)
 		nodes := test.nodesFn()
-		recorder := record.NewFakeRecorder(10)
 
 		ha := ha{
-			podListFn:     test.podListFn,
-			pvcGetFn:      test.pvcGetFn,
-			tcGetFn:       test.tcGetFn,
-			acquireLockFn: test.acquireLockFn,
-			recorder:      recorder,
+			podListFn:          test.podListFn,
+			pvcGetFn:           test.pvcGetFn,
+			tcGetFn:            test.tcGetFn,
+			scheduledNodeGetFn: test.scheduledNodeGetFn,
+			acquireLockFn:      test.acquireLockFn,
 		}
 		n, err := ha.Filter(instanceName, pod, nodes)
-		test.expectFn(n, err, *recorder)
+		test.expectFn(n, err)
 	}
 
 	tests := []testcase{
 		{
-			name:    "one node, one scheduled pod recreated and its pvc is bound, return the node",
+			name:    "one topology, one scheduled pod recreated and its pvc is bound, return the topologys",
 			podFn:   newHAPDPod,
 			nodesFn: fakeOneNode,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -472,9 +471,10 @@ func TestHAFilter(t *testing.T) {
 				}, nil
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone1"))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
 			},
 		},
@@ -492,7 +492,7 @@ func TestHAFilter(t *testing.T) {
 			acquireLockFn: func(pod *corev1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
 				return nil, nil, fmt.Errorf("failed to acquire the lock")
 			},
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "failed to acquire the lock")).To(BeTrue())
 			},
@@ -505,7 +505,7 @@ func TestHAFilter(t *testing.T) {
 				return nil, fmt.Errorf("get pvc failed")
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "get pvc failed")).To(BeTrue())
 			},
@@ -516,7 +516,7 @@ func TestHAFilter(t *testing.T) {
 			nodesFn:       fakeThreeNodes,
 			podListFn:     podListErr(),
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "list pods failed")).To(BeTrue())
 			},
@@ -530,7 +530,7 @@ func TestHAFilter(t *testing.T) {
 				return nil, fmt.Errorf("get tidbcluster failed")
 			},
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(strings.Contains(err.Error(), "get tidbcluster failed")).To(BeTrue())
 			},
@@ -542,13 +542,13 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "kube nodes is empty")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "no nodes available to schedule pods")).To(BeTrue())
 			},
 		},
 		{
-			name:    "one node, one replicas, return one node",
+			name:    "one topology, one replicas, return one topology",
 			podFn:   newHAPDPod,
 			nodesFn: fakeOneNode,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -561,14 +561,15 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetOneReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone1"))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
 			},
 		},
 		{
-			name:    "two nodes, one replicas, return two nodes",
+			name:    "two topology, one replicas, return two topology",
 			podFn:   newHAPDPod,
 			nodesFn: fakeTwoNodes,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -581,14 +582,15 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetOneReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
 			},
 		},
 		{
-			name:    "one node, two replicas, return one node",
+			name:    "one topology, two replicas, return one topology",
 			podFn:   newHAPDPod,
 			nodesFn: fakeOneNode,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -601,14 +603,15 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetTwoReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone1"))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
 			},
 		},
 		{
-			name:    "two nodes, two replicas, return two nodes",
+			name:    "two topologies, two replicas, return two topologies",
 			podFn:   newHAPDPod,
 			nodesFn: fakeTwoNodes,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -621,14 +624,15 @@ func TestHAFilter(t *testing.T) {
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetTwoReplicasFn,
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
 			},
 		},
 		{
-			name:    "one node, no pod scheduled, return the node",
+			name:    "one topology, no pod scheduled, return the topology",
 			podFn:   newHAPDPod,
 			nodesFn: fakeOneNode,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -641,14 +645,15 @@ func TestHAFilter(t *testing.T) {
 			acquireLockFn: acquireSuccess,
 			podListFn:     podListFn(map[string][]int32{}),
 			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone1"))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
 			},
 		},
 		{
-			name:    "one node, one pod scheduled, return zero node",
+			name:    "one topology, one pod scheduled, return zero topology",
 			podFn:   newHAPDPod,
 			nodesFn: fakeOneNode,
 			pvcGetFn: func(ns string, pvcName string) (*corev1.PersistentVolumeClaim, error) {
@@ -658,121 +663,145 @@ func TestHAFilter(t *testing.T) {
 					Status:     corev1.PersistentVolumeClaimStatus{Phase: corev1.ClaimPending},
 				}, nil
 			},
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {1}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {1}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
+				// g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 pd pods), max pods per node: 1"))
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
 		{
-			name:          "two nodes, one pod scheduled on the node, return one node",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeTwoNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			name:               "two topologies, one pod scheduled on the topology, return one topology",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeTwoNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone2"))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2"}))
 			},
 		},
 		{
-			name:          "two nodes, two pods scheduled on these two nodes, return zero node",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeTwoNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
+			name:               "two topologies, two pods scheduled on these two topologies, return zero topology",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeTwoNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
+				// g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 pd pods), kube-node-2 (1 pd pods), max pods per node: 1"))
 				g.Expect(len(nodes)).To(Equal(0))
 			},
 		},
 		{
-			name:          "three nodes, zero pod scheduled, return all the three nodes",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			name:               "three topologies, zero pod scheduled, return all the three topologies",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:          "three nodes, one pod scheduled, return two nodes",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			name:               "three topologies, one pod scheduled, return two topologies",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:          "three nodes, two pods scheduled, return one node",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			name:               "three topologies, two pods scheduled, return one topology",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone3"))
 				g.Expect(nodes[0].Name).To(Equal("kube-node-3"))
 			},
 		},
 		{
-			name:          "three nodes, one pod not scheduled on these three nodes, return all the three nodes",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-4": {4}}),
-			acquireLockFn: acquireSuccess,
-			tcGetFn:       tcGetFn,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			name:               "three topologies, one pod not scheduled on these three topologies, return all the three nodes",
+			podFn:              newHAPDPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-4": {4}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:          "three nodes, three pods scheduled on these three nodes, replicas is 4, can't scheduled",
-			podFn:         newHAPDPod,
-			nodesFn:       fakeThreeNodes,
-			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
-			acquireLockFn: acquireSuccess,
+			name:      "three topologies, three pods scheduled on these two topologies, replicas is 5, return one topology",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeSkipNodes(map[string]string{"kube-node-1": "zone1", "kube-node-5": "zone2"}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1, 2}}),
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
-				tc.Spec.PD.Replicas = 4
+				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			expectFn: func(nodes []apiv1.Node, err error, recorder record.FakeRecorder) {
-				g.Expect(err).To(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring("FailedScheduling"))
-				g.Expect(strings.Contains(err.Error(), "can't schedule to nodes:")).To(BeTrue())
-				g.Expect(len(nodes)).To(Equal(0))
+			scheduledNodeGetFn: fakeScheduledNode("kube-node-2", "zone2"),
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(1))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1"}))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1"}))
 			},
 		},
 		{
-			name:      "three nodes, three pods scheduled on these three nodes, replicas is 5, return three nodes",
+			name:      "three topologies, two pods scheduled on these two topologies, replicas is 5, return two topologies",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeSkipNodes(map[string]string{"kube-node-1": "zone1", "kube-node-5": "zone2"}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.PD.Replicas = 5
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeScheduledNode("kube-node-2", "zone2"),
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2"}))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-5"}))
+			},
+		},
+		{
+			name:      "three topologies, three pods scheduled on these three topologies, replicas is 5, return three topologies",
 			podFn:     newHAPDPod,
 			nodesFn:   fakeThreeNodes,
 			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
@@ -781,15 +810,17 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:          "three nodes, four pods scheduled on these three nodes, replicas is 5, return two nodes",
+			name:          "three topologies, four pods scheduled on these three topologies, replicas is 5, return two topologies",
 			podFn:         newHAPDPod,
 			nodesFn:       fakeThreeNodes,
 			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0, 3}, "kube-node-2": {1}, "kube-node-3": {2}}),
@@ -799,95 +830,210 @@ func TestHAFilter(t *testing.T) {
 				tc.Spec.PD.Replicas = 5
 				return tc, nil
 			},
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone2", "zone3"}))
 				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:      "four nodes, three pods scheduled on these three nodes, replicas is 4, return the fourth node",
+			name:      "three topologies, four nodes, three pods scheduled on these three topologies, replicas is 4, return zero topology",
 			podFn:     newHAPDPod,
-			nodesFn:   fakeFourNodes,
+			nodesFn:   fakeFourNodesWithThreeTopologies,
 			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
 				tc.Spec.PD.Replicas = 4
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(0))
+			},
+		},
+		{
+			name:      "three topologies, four nodes, four pods scheduled on these three topologies, replicas is 5, return these two topologies",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeFourNodesWithThreeTopologies,
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.PD.Replicas = 6
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
+			},
+		},
+		{
+			name:      "four topologies, four nodes, four pods scheduled on these four topologies, replicas is 5, return four topologies",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeFourNodes,
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.PD.Replicas = 6
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(4))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3", "kube-node-4"}))
+			},
+		},
+		{
+			name:      "four topologies, four nodes, four pods scheduled on these four topologies, replicas is 5, return one topology",
+			podFn:     newHAPDPod,
+			nodesFn:   fakeFourNodes,
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {}, "kube-node-4": {2, 3}}),
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.PD.Replicas = 6
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
-				g.Expect(nodes[0].Name).To(Equal("kube-node-4"))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-3"}))
 			},
 		},
 		{
-			name:      "four nodes, four pods scheduled on these four nodes, replicas is 5, return these four nodes",
+			name:      "four topologies, four nodes, four pods scheduled on these four topologies, replicas is 5, return two topologies",
 			podFn:     newHAPDPod,
 			nodesFn:   fakeFourNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
-			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
-				tc, _ := tcGetFn(ns, tcName)
-				tc.Spec.PD.Replicas = 5
-				return tc, nil
-			},
-			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).To(Equal(4))
-				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3", "kube-node-4"}))
-			},
-		},
-		{
-			name:      "four nodes, four pods scheduled on these four nodes, replicas is 6, return these four nodes",
-			podFn:     newHAPDPod,
-			nodesFn:   fakeFourNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0, 1}, "kube-node-2": {}, "kube-node-3": {}, "kube-node-4": {2, 3}}),
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
 				tc.Spec.PD.Replicas = 6
 				return tc, nil
 			},
-			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(len(nodes)).To(Equal(4))
-				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3", "kube-node-4"}))
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:      "four nodes, five pods scheduled on these four nodes, replicas is 6, return these three nodes",
-			podFn:     newHAPDPod,
-			nodesFn:   fakeFourNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": {0, 4}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
+			name:      "two topologies, 2,2 pods scheduled on these two topologies, replicas is 5, can't schedule",
+			podFn:     newHATiKVPod,
+			nodesFn:   fakeTwoNodes,
+			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}}),
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
-				tc.Spec.PD.Replicas = 6
+				tc.Spec.TiKV.Replicas = 5
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			acquireLockFn:      acquireSuccess,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).To(HaveOccurred())
+				//g.Expect(err.Error()).To(ContainSubstring("unable to schedule to nodes: kube-node-1 (1 tikv pods), kube-node-2 (1 tikv pods), max pods per node: 1"))
+				g.Expect(len(nodes)).To(Equal(0))
+			},
+		},
+		{
+			name:          "three topologies, three pods scheduled on these three topologies, replicas is 4, return all the three topologies",
+			podFn:         newHATiKVPod,
+			nodesFn:       fakeThreeNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.TiKV.Replicas = 4
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(3))
-				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2", "kube-node-3", "kube-node-4"}))
+				g.Expect(getSortedTopologies(nodes, topologyKey)).To(Equal([]string{"zone1", "zone2", "zone3"}))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3"}))
 			},
 		},
 		{
-			name:      "four nodes, five pods scheduled on these four nodes, replicas is 6, return one node",
-			podFn:     newHAPDPod,
-			nodesFn:   fakeFourNodes,
-			podListFn: podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {}, "kube-node-3": {1, 4}, "kube-node-4": {2, 3}}),
+			name:          "three topologies, four pods scheduled on these topologies, replicas is 5, return two topologies",
+			podFn:         newHATiKVPod,
+			nodesFn:       fakeThreeNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2, 3}}),
+			acquireLockFn: acquireSuccess,
 			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 				tc, _ := tcGetFn(ns, tcName)
-				tc.Spec.PD.Replicas = 6
+				tc.Spec.TiKV.Replicas = 4
 				return tc, nil
 			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
+			},
+		},
+		{
+			name:          "three topologies, four nodes, four pods scheduled on these topologies, replicas is 5, return one topology",
+			podFn:         newHATiKVPod,
+			nodesFn:       fakeFourNodesWithThreeTopologies,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
 			acquireLockFn: acquireSuccess,
-			expectFn: func(nodes []apiv1.Node, err error, _ record.FakeRecorder) {
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.TiKV.Replicas = 4
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(2))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2"}))
+			},
+		},
+		{
+			name:          "four topologies, four nodes, four pods scheduled on these topologies, replicas is 5, return four topologies",
+			podFn:         newHATiKVPod,
+			nodesFn:       fakeFourNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}, "kube-node-4": {3}}),
+			acquireLockFn: acquireSuccess,
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.TiKV.Replicas = 4
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(4))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-1", "kube-node-2", "kube-node-3", "kube-node-4"}))
+			},
+		},
+		{
+			name:          "four topologies, four nodes, four pods scheduled on these topologies, replicas is 5, return one topology",
+			podFn:         newHATiKVPod,
+			nodesFn:       fakeFourNodes,
+			podListFn:     podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {}, "kube-node-4": {2, 3}}),
+			acquireLockFn: acquireSuccess,
+			tcGetFn: func(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+				tc, _ := tcGetFn(ns, tcName)
+				tc.Spec.TiKV.Replicas = 4
+				return tc, nil
+			},
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(nodes)).To(Equal(1))
-				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-2"}))
+				g.Expect(getSortedNodeNames(nodes)).To(Equal([]string{"kube-node-3"}))
 			},
 		},
 	}
@@ -904,6 +1050,17 @@ func newHAPDPod(instanceName, clusterName string, ordinal int32) *apiv1.Pod {
 			Name:      fmt.Sprintf("%s-%d", controller.PDMemberName(clusterName), ordinal),
 			Namespace: corev1.NamespaceDefault,
 			Labels:    label.New().Instance(instanceName).PD().Labels(),
+		},
+	}
+}
+
+func newHATiKVPod(instanceName, clusterName string, ordinal int32) *apiv1.Pod {
+	return &apiv1.Pod{
+		TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%d", controller.TiKVMemberName(clusterName), ordinal),
+			Namespace: corev1.NamespaceDefault,
+			Labels:    label.New().Instance(instanceName).TiKV().Labels(),
 		},
 	}
 }
@@ -971,11 +1128,14 @@ func tcGetFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{Kind: "TidbCluster", APIVersion: "v1alpha1"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      tcName,
-			Namespace: ns,
+			Name:        tcName,
+			Namespace:   ns,
+			Annotations: map[string]string{"pingcap.com/ha-topology-key": "zone"},
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 3},
+			PD:   &v1alpha1.PDSpec{Replicas: 3},
+			TiKV: &v1alpha1.TiKVSpec{},
+			TiDB: &v1alpha1.TiDBSpec{},
 		},
 	}, nil
 }
@@ -988,7 +1148,7 @@ func tcGetOneReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error)
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 1},
+			PD: &v1alpha1.PDSpec{Replicas: 1},
 		},
 	}, nil
 }
@@ -1001,7 +1161,7 @@ func tcGetTwoReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error)
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PD: v1alpha1.PDSpec{Replicas: 2},
+			PD: &v1alpha1.PDSpec{Replicas: 2},
 		},
 	}, nil
 }
@@ -1015,20 +1175,15 @@ func getSortedNodeNames(nodes []apiv1.Node) []string {
 	return arr
 }
 
-func acquireSuccess(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
-	return nil, nil, nil
+func getSortedTopologies(nodes []apiv1.Node, topologyKey string) []string {
+	arr := make([]string, 0)
+	for _, node := range nodes {
+		arr = append(arr, node.Labels[topologyKey])
+	}
+	sort.Strings(arr)
+	return arr
 }
 
-func collectEvents(source <-chan string) []string {
-	done := false
-	events := make([]string, 0)
-	for !done {
-		select {
-		case event := <-source:
-			events = append(events, event)
-		default:
-			done = true
-		}
-	}
-	return events
+func acquireSuccess(*apiv1.Pod) (*apiv1.PersistentVolumeClaim, *apiv1.PersistentVolumeClaim, error) {
+	return nil, nil, nil
 }

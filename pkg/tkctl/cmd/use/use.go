@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,13 @@ package use
 
 import (
 	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 const (
@@ -32,10 +33,10 @@ const (
 `
 	useExample = `
 		# specify a tidb cluster to use
-		tkc use demo-cluster
+		tkctl use demo-cluster
 
 		# specify kubernetes context and namespace
-		tkc use --context=demo-ctx --namespace=demo-ns demo-cluster
+		tkctl use --context=demo-ctx --namespace=demo-ns demo-cluster
 `
 	useUsage = "expected 'use CLUSTER_NAME' for the use command"
 )

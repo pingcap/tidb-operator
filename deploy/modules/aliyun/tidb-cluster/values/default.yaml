@@ -1,0 +1,50 @@
+# Basic customization for tidb-cluster chart that suits Alibaba Cloud environment
+timezone: UTC
+
+pd:
+  logLevel: info
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: alicloud-disk
+tikv:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
+  podSecurityContext:
+    sysctls:
+    - name: net.core.somaxconn
+      value: "32768"
+  logLevel: info
+  storageClassName: local-volume
+  syncLog: true
+tidb:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
+  podSecurityContext:
+    sysctls:
+    - name: net.core.somaxconn
+      value: "32768"
+    - name: net.ipv4.tcp_keepalive_intvl
+      value: "75"
+    - name: net.ipv4.tcp_keepalive_time
+      value: "300"
+  logLevel: info
+  service:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    exposeStatus: true
+    annotations:
+      service.beta.kubernetes.io/alicloud-loadbalancer-address-type: intranet
+      service.beta.kubernetes.io/alicloud-loadbalancer-slb-network-type: vpc
+
+monitor:
+  storage: 100Gi
+  storageClassName: alicloud-disk-available
+  persistent: true
+  grafana:
+    config:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/alicloud-loadbalancer-address-type: internet

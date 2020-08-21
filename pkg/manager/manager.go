@@ -13,10 +13,18 @@
 
 package manager
 
-import "github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+import "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 
 // Manager implements the logic for syncing tidbcluster.
 type Manager interface {
 	// Sync	implements the logic for syncing tidbcluster.
 	Sync(*v1alpha1.TidbCluster) error
+}
+
+type TiDBGroupManager interface {
+	Sync(*v1alpha1.TiDBGroup) error
+}
+
+type TiKVGroupManager interface {
+	SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error
 }

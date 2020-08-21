@@ -1,0 +1,83 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: CLUSTER_NAME
+spec:
+  alertmanagerURL: ""
+  annotations: {}
+  clusters:
+  - name: CLUSTER_NAME
+  grafana:
+    baseImage: grafana/grafana
+    envs:
+      # Configure Grafana using environment variables except GF_PATHS_DATA, GF_SECURITY_ADMIN_USER and GF_SECURITY_ADMIN_PASSWORD
+      # Ref https://grafana.com/docs/installation/configuration/#using-environment-variables
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      # if grafana is running behind a reverse proxy with subpath http://foo.bar/grafana
+      # GF_SERVER_DOMAIN: foo.bar
+      # GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    password: admin
+    resources: {}
+    #  limits:
+    #    cpu: 8000m
+    #    memory: 8Gi
+    #  requests:
+    #    cpu: 4000m
+    #    memory: 4Gi
+    service:
+      portName: http-grafana
+      type: LoadBalancer
+    username: admin
+    version: 6.1.6
+  imagePullPolicy: IfNotPresent
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    imagePullPolicy: IfNotPresent
+    resources: {}
+    #  limits:
+    #    cpu: 50m
+    #    memory: 64Mi
+    #  requests:
+    #    cpu: 50m
+    #    memory: 64Mi
+    version: v4.0.4
+  kubePrometheusURL: ""
+  nodeSelector: {}
+  persistent: true
+  prometheus:
+    baseImage: prom/prometheus
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    reserveDays: 12
+    resources: {}
+    #  limits:
+    #    cpu: 8000m
+    #    memory: 8Gi
+    #  requests:
+    #    cpu: 4000m
+    #    memory: 4Gi
+    service:
+      portName: http-prometheus
+      type: NodePort
+    version: v2.18.1
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    imagePullPolicy: IfNotPresent
+    resources: {}
+    #  limits:
+    #    cpu: 50m
+    #    memory: 64Mi
+    #  requests:
+    #    cpu: 50m
+    #    memory: 64Mi
+    service:
+      portName: tcp-reloader
+      type: NodePort
+    version: v1.0.1
+  storage: 100Gi
+  storageClassName: pd-ssd
+  tolerations: []

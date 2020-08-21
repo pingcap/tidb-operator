@@ -14,12 +14,12 @@
 package meta
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
@@ -34,25 +34,31 @@ import (
 func TestReclaimPolicyManagerSync(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name             string
-		pvcHasLabels     bool
-		pvcHasVolumeName bool
-		updateErr        bool
-		err              bool
-		changed          bool
+		name              string
+		pvcHasLabels      bool
+		pvcHasVolumeName  bool
+		updateErr         bool
+		err               bool
+		changed           bool
+		enablePVRecalim   bool
+		hasDeferDeleteAnn bool
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 		tc := newTidbClusterForMeta()
-		pv1 := newPV()
-		pvc1 := newPVC(tc)
+		pv1 := newPV("1")
+		pvc1 := newPVC(tc, "1")
 
 		if !test.pvcHasLabels {
 			pvc1.Labels = nil
 		}
 		if !test.pvcHasVolumeName {
 			pvc1.Spec.VolumeName = ""
+		}
+		tc.Spec.EnablePVReclaim = &test.enablePVRecalim
+		if test.hasDeferDeleteAnn {
+			pvc1.Annotations = map[string]string{label.AnnPVCDeferDeleting: time.Now().String()}
 		}
 
 		rpm, fakePVControl, pvcIndexer, pvIndexer := newFakeReclaimPolicyManager()
@@ -86,36 +92,54 @@ func TestReclaimPolicyManagerSync(t *testing.T) {
 
 	tests := []testcase{
 		{
-			name:             "normal",
-			pvcHasLabels:     true,
-			pvcHasVolumeName: true,
-			updateErr:        false,
-			err:              false,
-			changed:          true,
+			name:              "normal",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			changed:           true,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 		{
-			name:             "pvc don't have labels",
-			pvcHasLabels:     false,
-			pvcHasVolumeName: true,
-			updateErr:        false,
-			err:              false,
-			changed:          false,
+			name:              "pvc don't have labels",
+			pvcHasLabels:      false,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			changed:           false,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 		{
-			name:             "pvc don't have volumeName",
-			pvcHasLabels:     false,
-			pvcHasVolumeName: false,
-			updateErr:        false,
-			err:              false,
-			changed:          false,
+			name:              "pvc don't have volumeName",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  false,
+			updateErr:         false,
+			err:               false,
+			changed:           false,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 		{
-			name:             "update failed",
-			pvcHasLabels:     true,
-			pvcHasVolumeName: true,
-			updateErr:        true,
-			err:              true,
-			changed:          false,
+			name:              "enable pv reclaim and pvc has defer delete annotation",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         false,
+			err:               false,
+			changed:           false,
+			enablePVRecalim:   true,
+			hasDeferDeleteAnn: true,
+		},
+		{
+			name:              "patch pv failed",
+			pvcHasLabels:      true,
+			pvcHasVolumeName:  true,
+			updateErr:         true,
+			err:               true,
+			changed:           false,
+			enablePVRecalim:   false,
+			hasDeferDeleteAnn: false,
 		},
 	}
 
@@ -141,6 +165,7 @@ func newFakeReclaimPolicyManager() (*reclaimPolicyManager, *controller.FakePVCon
 }
 
 func newTidbClusterForMeta() *v1alpha1.TidbCluster {
+	pvp := corev1.PersistentVolumeReclaimRetain
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TidbCluster",
@@ -153,19 +178,19 @@ func newTidbClusterForMeta() *v1alpha1.TidbCluster {
 			Labels:    label.New().Instance(controller.TestClusterName),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			PVReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
+			PVReclaimPolicy: &pvp,
 		},
 	}
 }
 
-func newPV() *corev1.PersistentVolume {
+func newPV(index string) *corev1.PersistentVolume {
 	return &corev1.PersistentVolume{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolume",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pv-1",
+			Name:      "pv-" + index,
 			Namespace: "",
 			UID:       types.UID("test"),
 		},
@@ -174,24 +199,24 @@ func newPV() *corev1.PersistentVolume {
 			ClaimRef: &corev1.ObjectReference{
 				APIVersion: "v1",
 				Kind:       "PersistentVolumeClaim",
-				Name:       "pvc-1",
+				Name:       "pvc-" + index,
 				Namespace:  corev1.NamespaceDefault,
-				UID:        types.UID("test"),
+				UID:        types.UID("pv" + index),
 			},
 		},
 	}
 }
 
-func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
+func newPVC(tc *v1alpha1.TidbCluster, index string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pvc-1",
+			Name:      "pvc-" + index,
 			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
+			UID:       types.UID("pvc" + index),
 			Labels: map[string]string{
 				label.NameLabelKey:      controller.TestName,
 				label.ComponentLabelKey: controller.TestComponentName,
@@ -200,7 +225,7 @@ func newPVC(tc *v1alpha1.TidbCluster) *corev1.PersistentVolumeClaim {
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			VolumeName: "pv-1",
+			VolumeName: "pv-" + index,
 		},
 	}
 }

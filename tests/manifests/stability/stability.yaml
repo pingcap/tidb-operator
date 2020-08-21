@@ -47,8 +47,8 @@ spec:
     command:
     - /usr/local/bin/stability-test
     - --config=/etc/tidb-operator-stability/config.yaml
-    - --operator-image=pingcap/tidb-operator:v1.0.0-beta.3
-    - --operator-tag=v1.0.0-beta.3
+    - --operator-image=pingcap/tidb-operator:v1.1.0-rc.2
+    - --operator-tag=v1.1.0-rc.2
     - --slack-webhook-url=""
     volumeMounts:
     - mountPath: /logDir

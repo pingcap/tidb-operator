@@ -1,0 +1,84 @@
+# Default values for tidb-lightning.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# timezone is the default system timzone
+timezone: UTC
+
+image: pingcap/tidb-lightning:v4.0.4
+imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
+
+service:
+  type: NodePort
+
+# failFast causes the lightning pod fails when any error happens.
+# when disabled, the lightning pod will keep running when error happens to allow manual intervention, users have to check logs to see the job status.
+failFast: true
+
+dataSource:
+  local: {}
+    # nodeName: kind-worker3
+    # hostPath: /data/export-20190820
+  # The backup data is on a PVC which is from tidb-backup or scheduled backup, and is not uploaded to cloud storage yet.
+  # Note: when using this mode, the lightning needs to be deployed in the same namespace as the PVC
+  # and the `targetTidbCluster.namespace` needs to be configured explicitly
+  adhoc: {}
+    # pvcName: tidb-cluster-scheduled-backup
+    # backupName: scheduled-backup-20190822-041004
+  remote:
+    rcloneImage: pingcap/tidb-cloud-backup:20200229
+    storageClassName: local-storage
+    storage: 100Gi
+    secretName: cloud-storage-secret
+    path: s3:bench-data-us/sysbench/sbtest_16_1e7.tar.gz
+    # Directory support downloading all files in a remote directory, shadow dataSoure.remote.path if present
+    # directory: s3:bench-data-us
+    # If rcloneConfig is configured, then `secretName` will be ignored,
+    # `rcloneConfig` should only be used for the cases where no sensitive
+    # information need to be configured, e.g. the configuration as below,
+    # the Pod will get the credentials from the infrastructure.
+    #rcloneConfig: |
+    #  [s3]
+    #  type = s3
+    #  provider = AWS
+    #  env_auth = true
+    #  region = us-west-2
+
+targetTidbCluster:
+  name: tidb-cluster
+  # namespace is the target tidb cluster namespace, can be omitted if the lightning is deployed in the same namespace of the target tidb cluster
+  namespace: ""
+  user: root
+  # If the `secretName` and `secretUserKey` are set,
+  # the `user` will be ignored and the user in the
+  # `secretName` will be used by lightning.
+  # If the `secretName` and `secretPwdKey` are set, the
+  # password in the `secretName` will be used by lightning.
+  #secretName: ""
+  #secretUserKey: user
+  #secretPwdKey: password
+
+resources: {}
+  # limits:
+  #  cpu: 16000m
+  #  memory: 8Gi
+  # requests:
+  #  cpu: 16000m
+  #  memory: 8Gi
+
+nodeSelector: {}
+
+annotations: {}
+
+tolerations: []
+affinity: {}
+
+backend: importer # importer | tidb
+
+# Specify a Service Account for lightning
+# serviceAccount:
+
+config: |
+  [lightning]
+  level = "info"

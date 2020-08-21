@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "cluster.name" . }}-discovery
@@ -9,6 +9,8 @@ metadata:
     app.kubernetes.io/component: discovery
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
+  strategy:
+    type: Recreate
   # don't modify this replicas
   replicas: 1
   selector:
@@ -29,6 +31,14 @@ spec:
     {{- if .Values.rbac.create }}
       serviceAccount: {{ template "cluster.name" . }}-discovery
     {{- end }}
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+    {{- end }}
   {{- end }}
       containers:
       - name: discovery
@@ -45,4 +55,7 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-
+        {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+          - name: TZ
+            value: {{ .Values.timezone | default "UTC" }}
+        {{- end }}

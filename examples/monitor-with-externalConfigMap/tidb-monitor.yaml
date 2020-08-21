@@ -1,0 +1,30 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbMonitor
+metadata:
+  name: basic
+spec:
+  clusters:
+  - name: basic
+  prometheus:
+    config:
+      configMapRef:
+        name: external-config
+      commandOptions:
+        - --web.enable-admin-api
+        - --web.enable-lifecycle
+        - --log.level=info
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/data/prometheus
+        - --storage.tsdb.retention=12d
+    baseImage: prom/prometheus
+    version: v2.11.1
+  grafana:
+    baseImage: grafana/grafana
+    version: 6.1.6
+  initializer:
+    baseImage: pingcap/tidb-monitor-initializer
+    version: v4.0.4
+  reloader:
+    baseImage: pingcap/tidb-monitor-reloader
+    version: v1.0.1
+  imagePullPolicy: IfNotPresent

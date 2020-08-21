@@ -14,15 +14,23 @@
 package util
 
 import (
+	asappsv1 "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
-var scheme = runtime.NewScheme()
+var (
+	// scheme is the runtime.Scheme to which all api types used by webhook are registered.
+	scheme = runtime.NewScheme()
+
+	// Codecs provides access to encoding and decoding for the scheme.
+	Codecs = serializer.NewCodecFactory(scheme)
+)
 
 func init() {
 	addToScheme(scheme)
@@ -30,10 +38,8 @@ func init() {
 
 func addToScheme(scheme *runtime.Scheme) {
 	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(appsv1.AddToScheme(scheme))
+	utilruntime.Must(asappsv1.AddToScheme(scheme))
 	utilruntime.Must(admissionv1beta1.AddToScheme(scheme))
 	utilruntime.Must(admissionregistrationv1beta1.AddToScheme(scheme))
-}
-
-func GetCodec() runtime.Decoder {
-	return serializer.NewCodecFactory(scheme).UniversalDeserializer()
 }

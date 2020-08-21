@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +16,15 @@ package debug
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/spf13/cobra"
-	"io"
-	"strings"
 )
 
 const (

@@ -1,9 +1,17 @@
 {{- if .Values.monitor.create }}
 {{- if .Values.rbac.create }}
-kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
+  {{- if .Values.rbac.crossNamespace }}
+kind: ClusterRole
+  {{- else }}
+kind: Role
+  {{- end }}
 metadata:
+  {{- if .Values.rbac.crossNamespace }}
+  name: {{ template "cluster.name" . }}:monitor
+  {{- else }}
   name: {{ template "cluster.name" . }}-monitor
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -12,13 +20,36 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "watch", "list"]
+  resources:
+  - pods
+  verbs: ["get", "list", "watch"]
+  {{- if .Capabilities.APIVersions.Has "security.openshift.io/v1" }}
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - anyuid
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+  {{- end }}
+  {{- if .Values.rbac.crossNamespace }}
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+  {{- end }}
 ---
+  {{- if .Values.rbac.crossNamespace }}
+kind: ClusterRoleBinding
+  {{- else }}
 kind: RoleBinding
+  {{- end }}
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
+  {{- if .Values.rbac.crossNamespace }}
+  name: {{ template "cluster.name" . }}:monitor
+  {{- else }}
   name: {{ template "cluster.name" . }}-monitor
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
@@ -32,12 +63,20 @@ subjects:
   {{- else }}
   name: {{ template "cluster.name" . }}-monitor
   {{- end }}
+  {{- if .Values.rbac.crossNamespace }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
 roleRef:
+  {{- if .Values.rbac.crossNamespace }}
+  kind: ClusterRole
+  name: {{ template "cluster.name" . }}:monitor
+  {{- else }}
   kind: Role
   name: {{ template "cluster.name" . }}-monitor
+  {{- end }}
   apiGroup: rbac.authorization.k8s.io
----
 {{- if not .Values.monitor.serviceAccount }}
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:

@@ -28,13 +28,18 @@ then
 	tail -f /dev/null
 fi
 
-ARGS="--pd=${CLUSTER_NAME}-pd:2379 \
---advertise-addr=${HOSTNAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+ARGS="--pd={{ template "cluster.scheme" . }}://${CLUSTER_NAME}-pd:2379 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
 --data-dir=/var/lib/tikv \
 --capacity=${CAPACITY} \
 --config=/etc/tikv/tikv.toml
 "
+
+{{ .Values.tikv.postArgScript }}
 
 echo "starting tikv-server ..."
 echo "/tikv-server ${ARGS}"

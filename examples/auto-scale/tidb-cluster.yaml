@@ -1,0 +1,29 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: auto-scaling-demo
+spec:
+  version: v4.0.4
+  timezone: UTC
+  pvReclaimPolicy: Delete
+  pd:
+    baseImage: pingcap/pd
+    replicas: 3
+    requests:
+      storage: "1Gi"
+    config: {}
+  tikv:
+    baseImage: pingcap/tikv
+    replicas: 3
+    requests:
+      cpu: "1"
+      storage: "1Gi"
+    config: {}
+  tidb:
+    baseImage: pingcap/tidb
+    replicas: 2
+    service:
+      type: ClusterIP
+    config: {}
+    requests:
+      cpu: "1"

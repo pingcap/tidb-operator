@@ -1,11 +1,10 @@
-pd_instance_type = "c5d.large"
-tikv_instance_type = "c5d.large"
-tidb_instance_type = "c4.large"
-monitor_instance_type = "c5.large"
+default_cluster_pd_instance_type      = "c5d.large"
+default_cluster_tikv_instance_type    = "c5d.large"
+default_cluster_tidb_instance_type    = "c4.large"
+default_cluster_monitor_instance_type = "c5.large"
 
-pd_count = 1
-tikv_count = 1
-tidb_count = 1
+default_cluster_pd_count   = 1
+default_cluster_tikv_count = 1
+default_cluster_tidb_count = 1
 
-cluster_name = "aws_tutorial"
-tikv_root_volume_size = "50"
+default_cluster_name = "aws-tutorial"

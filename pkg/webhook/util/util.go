@@ -15,15 +15,18 @@ package util
 
 import (
 	"crypto/tls"
+	"encoding/json"
 
-	"k8s.io/api/admission/v1beta1"
+	"gomodules.xyz/jsonpatch/v2"
+	admission "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ARFail is a helper function to create an AdmissionResponse
 // with an embedded error
-func ARFail(err error) *v1beta1.AdmissionResponse {
-	return &v1beta1.AdmissionResponse{
+func ARFail(err error) *admission.AdmissionResponse {
+	return &admission.AdmissionResponse{
 		Allowed: false,
 		Result: &metav1.Status{
 			Message: err.Error(),
@@ -33,9 +36,18 @@ func ARFail(err error) *v1beta1.AdmissionResponse {
 }
 
 // ARSuccess return allow to action
-func ARSuccess() *v1beta1.AdmissionResponse {
-	return &v1beta1.AdmissionResponse{
+func ARSuccess() *admission.AdmissionResponse {
+	return &admission.AdmissionResponse{
 		Allowed: true,
+	}
+}
+
+// ARPatch return admission response that contains a patch to mutate the object
+func ARPatch(patch []byte) *admission.AdmissionResponse {
+	return &admission.AdmissionResponse{
+		Allowed:   true,
+		Patch:     patch,
+		PatchType: func() *admission.PatchType { p := admission.PatchTypeJSONPatch; return &p }(),
 	}
 }
 
@@ -48,4 +60,20 @@ func ConfigTLS(certFile string, keyFile string) (*tls.Config, error) {
 	return &tls.Config{
 		Certificates: []tls.Certificate{sCert},
 	}, nil
+}
+
+func CreateJsonPatch(original, current runtime.Object) ([]byte, error) {
+	ori, err := json.Marshal(original)
+	if err != nil {
+		return nil, err
+	}
+	cur, err := json.Marshal(current)
+	if err != nil {
+		return nil, err
+	}
+	patches, err := jsonpatch.CreatePatch(ori, cur)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(patches)
 }

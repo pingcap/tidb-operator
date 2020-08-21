@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,10 +48,6 @@ func TestPVCControlUpdateMetaInfoSuccess(t *testing.T) {
 	updatePVC, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePVC.Annotations[label.AnnPodNameKey]).To(Equal(pod.GetName()))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPVCControlUpdateMetaInfoFailed(t *testing.T) {
@@ -66,10 +62,6 @@ func TestPVCControlUpdateMetaInfoFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
 func TestPVCControlUpdateMetaInfoConflictSuccess(t *testing.T) {
@@ -93,10 +85,6 @@ func TestPVCControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	updatePVC, err := control.UpdateMetaInfo(tc, pvc, pod)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePVC.Annotations[label.AnnPodNameKey]).To(Equal(pod.GetName()))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPVCControlUpdatePVCSuccess(t *testing.T) {
@@ -114,10 +102,6 @@ func TestPVCControlUpdatePVCSuccess(t *testing.T) {
 	updatePVC, err := control.UpdatePVC(tc, pvc)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePVC.Annotations["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPVCControlUpdatePVCFailed(t *testing.T) {
@@ -131,10 +115,6 @@ func TestPVCControlUpdatePVCFailed(t *testing.T) {
 	})
 	_, err := control.UpdatePVC(tc, pvc)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
 func TestPVCControlUpdatePVCConflictSuccess(t *testing.T) {
@@ -158,10 +138,6 @@ func TestPVCControlUpdatePVCConflictSuccess(t *testing.T) {
 	updatePVC, err := control.UpdatePVC(tc, pvc)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePVC.Annotations["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func newFakeClientAndRecorder() (*fake.Clientset, corelisters.PersistentVolumeClaimLister, cache.Indexer, *record.FakeRecorder) {

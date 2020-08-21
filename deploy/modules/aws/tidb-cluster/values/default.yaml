@@ -1,0 +1,39 @@
+# Basic customization for tidb-cluster chart that suits AWS environment
+timezone: UTC
+
+pd:
+  storageClassName: ebs-gp2
+tikv:
+  stroageClassName: local-storage
+  syncLog: true
+tidb:
+  annotations:
+    tidb.pingcap.com/sysctl-init: "true"
+  service:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-internal: '0.0.0.0/0'
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
+  separateSlowLog: true
+  config: |
+    [log]
+    level = "info"
+    [performance]
+    tcp-keep-alive = true
+  podSecurityContext:
+    sysctls:
+    - name: net.ipv4.tcp_keepalive_time
+      value: "300"
+    - name: net.ipv4.tcp_keepalive_intvl
+      value: "75"
+monitor:
+  storage: 100Gi
+  storageClassName: ebs-gp2
+  persistent: true
+  grafana:
+    config:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    service:
+      type: LoadBalancer

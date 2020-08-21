@@ -1,21 +1,22 @@
-variable "ALICLOUD_ACCESS_KEY" {}
-variable "ALICLOUD_SECRET_KEY" {}
-variable "ALICLOUD_REGION" {}
+variable "ALICLOUD_ACCESS_KEY" {
+}
+
+variable "ALICLOUD_SECRET_KEY" {
+}
+
+variable "ALICLOUD_REGION" {
+}
 
 provider "alicloud" {
-  alias      = "this"
-  region     = "${var.ALICLOUD_REGION}"
-  access_key = "${var.ALICLOUD_ACCESS_KEY}"
-  secret_key = "${var.ALICLOUD_SECRET_KEY}"
+  region     = var.ALICLOUD_REGION
+  access_key = var.ALICLOUD_ACCESS_KEY
+  secret_key = var.ALICLOUD_SECRET_KEY
 }
 
 locals {
-  credential_path               = "${path.module}/credentials"
-  kubeconfig                    = "${local.credential_path}/kubeconfig_${var.cluster_name_prefix}"
-  key_file                      = "${local.credential_path}/${var.cluster_name_prefix}-node-key.pem"
-  bastion_key_file              = "${local.credential_path}/${var.cluster_name_prefix}-bastion-key.pem"
-  tidb_cluster_values_path      = "${path.module}/rendered/tidb-cluster-values.yaml"
-  local_volume_provisioner_path = "${path.module}/rendered/local-volume-provisioner.yaml"
+  credential_path = "${path.cwd}/credentials"
+  kubeconfig      = "${local.credential_path}/kubeconfig"
+  key_file        = "${local.credential_path}/${var.cluster_name}-key.pem"
 }
 
 // AliCloud resource requires path existing
@@ -25,134 +26,68 @@ resource "null_resource" "prepare-dir" {
   }
 }
 
-module "ack" {
-  source  = "./ack"
-  version = "1.0.2"
+module "tidb-operator" {
+  source = "../modules/aliyun/tidb-operator"
 
+  region                        = var.ALICLOUD_REGION
+  access_key                    = var.ALICLOUD_ACCESS_KEY
+  secret_key                    = var.ALICLOUD_SECRET_KEY
+  cluster_name                  = var.cluster_name
+  operator_version              = var.operator_version
+  operator_helm_values          = var.operator_helm_values == "" ? "" : file(var.operator_helm_values)
+  k8s_pod_cidr                  = var.k8s_pod_cidr
+  k8s_service_cidr              = var.k8s_service_cidr
+  vpc_cidr                      = var.vpc_cidr
+  vpc_id                        = var.vpc_id
+  default_worker_cpu_core_count = var.default_worker_core_count
+  group_id                      = var.group_id
+  key_file                      = local.key_file
+  kubeconfig_file               = local.kubeconfig
+}
+
+module "bastion" {
+  source = "../modules/aliyun/bastion"
+
+  bastion_name             = "${var.cluster_name}-bastion"
+  key_name                 = module.tidb-operator.key_name
+  vpc_id                   = module.tidb-operator.vpc_id
+  vswitch_id               = module.tidb-operator.vswitch_ids[0]
+  enable_ssh_to_worker     = true
+  worker_security_group_id = module.tidb-operator.security_group_id
+}
+
+provider "helm" {
+  alias          = "default"
+  insecure       = true
+  install_tiller = false
+  kubernetes {
+    config_path = module.tidb-operator.kubeconfig_filename
+  }
+}
+
+module "tidb-cluster" {
+  source = "../modules/aliyun/tidb-cluster"
   providers = {
-    alicloud = "alicloud.this"
+    helm = helm.default
   }
 
-  # TODO: support non-public apiserver
-  region              = "${var.ALICLOUD_REGION}"
-  cluster_name_prefix = "${var.cluster_name_prefix}"
-  public_apiserver    = true
-  kubeconfig_file     = "${local.kubeconfig}"
-  key_file            = "${local.key_file}"
-  vpc_cidr            = "${var.vpc_cidr}"
-  k8s_pod_cidr        = "${var.k8s_pod_cidr}"
-  k8s_service_cidr    = "${var.k8s_service_cidr}"
-  vpc_cidr_newbits    = "${var.vpc_cidr_newbits}"
-  vpc_id              = "${var.vpc_id}"
-  group_id            = "${var.group_id}"
+  cluster_name = var.tidb_cluster_name
+  ack          = module.tidb-operator
 
-  default_worker_cpu_core_count = "${var.default_worker_core_count}"
-
-  worker_groups = [
-    {
-      name          = "pd_worker_group"
-      instance_type = "${data.alicloud_instance_types.pd.instance_types.0.id}"
-      min_size      = "${var.pd_count}"
-      max_size      = "${var.pd_count}"
-      node_taints   = "dedicated=pd:NoSchedule"
-      node_labels   = "dedicated=pd"
-      post_userdata = "${file("userdata/pd-userdata.sh")}"
-    },
-    {
-      name          = "tikv_worker_group"
-      instance_type = "${data.alicloud_instance_types.tikv.instance_types.0.id}"
-      min_size      = "${var.tikv_count}"
-      max_size      = "${var.tikv_count}"
-      node_taints   = "dedicated=tikv:NoSchedule"
-      node_labels   = "dedicated=tikv"
-      post_userdata = "${file("userdata/tikv-userdata.sh")}"
-    },
-    {
-      name          = "tidb_worker_group"
-      instance_type = "${var.tidb_instance_type != "" ? var.tidb_instance_type : data.alicloud_instance_types.tidb.instance_types.0.id}"
-      min_size      = "${var.tidb_count}"
-      max_size      = "${var.tidb_count}"
-      node_taints   = "dedicated=tidb:NoSchedule"
-      node_labels   = "dedicated=tidb"
-    },
-    {
-      name          = "monitor_worker_group"
-      instance_type = "${var.monitor_intance_type != "" ? var.monitor_intance_type : data.alicloud_instance_types.monitor.instance_types.0.id}"
-      min_size      = 1
-      max_size      = 1
-    },
-  ]
-}
-
-// Workaround: ACK does not support customize node RAM role, access key is the only way get local volume provisioner working
-// TODO: use STS when upstream get this fixed
-resource "local_file" "local-volume-provisioner" {
-  depends_on = ["data.template_file.local-volume-provisioner"]
-  filename   = "${local.local_volume_provisioner_path}"
-  content    = "${data.template_file.local-volume-provisioner.rendered}"
-}
-
-resource "local_file" "tidb-cluster-values" {
-  depends_on = ["data.template_file.tidb-cluster-values"]
-  content    = "${data.template_file.tidb-cluster-values.rendered}"
-  filename   = "${local.tidb_cluster_values_path}"
-}
-
-resource "null_resource" "setup-env" {
-  depends_on = ["module.ack", "local_file.local-volume-provisioner"]
-
-  provisioner "local-exec" {
-    command = <<EOS
-kubectl apply -f manifests/crd.yaml
-kubectl apply -f rendered/local-volume-provisioner.yaml
-helm init
-until helm ls; do
-  echo "Wait tiller ready"
-done
-helm upgrade --install tidb-operator ${path.module}/charts/tidb-operator --namespace=tidb-admin --set scheduler.kubeSchedulerImageName=gcr.akscn.io/google_containers/hyperkube
-EOS
-
-    environment = {
-      KUBECONFIG = "${local.kubeconfig}"
-    }
-  }
-}
-
-# Workaround: Terraform cannot specify provider dependency, so we take over kubernetes and helm stuffs,
-# But we cannot ouput kubernetes and helm resources in this way.
-# TODO: use helm and kubernetes provider when upstream get this fixed
-resource "null_resource" "deploy-tidb-cluster" {
-  depends_on = ["null_resource.setup-env", "local_file.tidb-cluster-values"]
-
-  triggers {
-    values = "${data.template_file.tidb-cluster-values.rendered}"
-  }
-
-  provisioner "local-exec" {
-    command = <<EOS
-helm upgrade --install tidb-cluster ${path.module}/charts/tidb-cluster --namespace=tidb -f ${local.tidb_cluster_values_path}
-echo "TiDB cluster setup complete!"
-EOS
-
-    environment = {
-      KUBECONFIG = "${local.kubeconfig}"
-    }
-  }
-}
-
-resource "null_resource" "wait-tidb-ready" {
-  depends_on = ["null_resource.deploy-tidb-cluster"]
-
-  provisioner "local-exec" {
-    command = <<EOS
-until kubectl get po -n tidb -lapp.kubernetes.io/component=tidb | grep Running; do
-  echo "Wait TiDB pod running"
-  sleep 5
-done
-EOS
-
-    environment = {
-      KUBECONFIG = "${local.kubeconfig}"
-    }
-  }
+  tidb_version                = var.tidb_version
+  tidb_cluster_chart_version  = var.tidb_cluster_chart_version
+  pd_instance_type            = var.pd_instance_type
+  pd_count                    = var.pd_count
+  tikv_instance_type          = var.tikv_instance_type
+  tikv_count                  = var.tikv_count
+  tidb_instance_type          = var.tidb_instance_type
+  tidb_count                  = var.tidb_count
+  monitor_instance_type       = var.monitor_instance_type
+  create_tidb_cluster_release = var.create_tidb_cluster_release
+  create_tiflash_node_pool    = var.create_tiflash_node_pool
+  create_cdc_node_pool        = var.create_cdc_node_pool
+  tiflash_count               = var.tiflash_count
+  cdc_count                   = var.cdc_count
+  cdc_instance_type           = var.cdc_instance_type
+  tiflash_instance_type       = var.tiflash_instance_type
 }

@@ -1,0 +1,89 @@
+{{- if .Values.admissionWebhook.create }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tidb-admission-webhook
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: admission-webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  replicas: {{ .Values.admissionWebhook.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "chart.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: admission-webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "chart.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: admission-webhook
+    spec:
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 6 }}
+    {{- end }}
+      serviceAccountName: {{ .Values.admissionWebhook.serviceAccount }}
+      containers:
+        - name: admission-webhook
+          image: {{ .Values.operatorImage }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - /usr/local/bin/tidb-admission-webhook
+            # use > 1024 port, then we can run it as non-root user
+            - --secure-port=6443
+            {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false }}
+            - --tls-cert-file=/var/serving-cert/tls.crt
+            - --tls-private-key-file=/var/serving-cert/tls.key
+            {{- end }}
+            - --v={{ .Values.admissionWebhook.logLevel }}
+            {{- if .Values.features }}
+            - --features={{ join "," .Values.features }}
+            {{- end }}
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 6443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: 6443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          env:
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: TZ
+            value: {{ .Values.timezone | default "UTC" }}
+          volumeMounts:
+          {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
+            - mountPath: /var/serving-cert
+              name: serving-cert
+          {{- else }}
+            - mountPath: /apiserver.local.config
+              name: apiserver-local-config
+          {{- end }}
+      volumes:
+      {{- if eq .Values.admissionWebhook.apiservice.insecureSkipTLSVerify false  }}
+        - name: serving-cert
+          secret:
+            defaultMode: 420
+            secretName: {{ .Values.admissionWebhook.apiservice.tlsSecret }}
+      {{- else }}
+        # rootfs maybe read-only, we need to an empty dir volume to store self-signed certifiates, etc.
+        - name: apiserver-local-config
+          emptyDir: {}
+      {{- end }}
+{{- end }}

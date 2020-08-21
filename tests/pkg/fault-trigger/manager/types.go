@@ -20,14 +20,13 @@ type VM struct {
 	Host   string   `json:"host"`
 	Port   int64    `json:"port"`
 	Name   string   `json:"name"`
-	IP     string   `json:"ip"`
 	Role   []string `json:"role"`
 	Status string   `json:"status"`
 }
 
 func (v *VM) Verify() error {
-	if len(v.Name) == 0 && len(v.IP) == 0 {
-		return errors.New("name or ip must be provided")
+	if len(v.Name) == 0 {
+		return errors.New("name must be provided")
 	}
 
 	return nil

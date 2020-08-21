@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const (
@@ -50,11 +50,11 @@ func (m *Manager) systemctlStartService(serviceName string) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	glog.Infof("%s is started", serviceName)
+	klog.Infof("%s is started", serviceName)
 
 	return nil
 }
@@ -64,11 +64,11 @@ func (m *Manager) systemctlStopService(serviceName string) error {
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		glog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
+		klog.Errorf("exec: [%s] failed, output: %s, error: %v", shell, string(output), err)
 		return err
 	}
 
-	glog.Infof("%s is stopped", serviceName)
+	klog.Infof("%s is stopped", serviceName)
 
 	return nil
 }

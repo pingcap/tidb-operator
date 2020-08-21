@@ -17,16 +17,8 @@ data-dir = "/data"
 heartbeat-interval = {{ .Values.binlog.pump.heartbeatInterval | default 2 }}
 
 # a comma separated list of PD endpoints
-pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
+pd-urls = "{{ template "cluster.scheme" . }}://{{ template "cluster.name" . }}-pd:2379"
 
-#[security]
-# Path of file that contains list of trusted SSL CAs for connection with cluster components.
-# ssl-ca = "/path/to/ca.pem"
-# Path of file that contains X509 certificate in PEM format for connection with cluster components.
-# ssl-cert = "/path/to/drainer.pem"
-# Path of file that contains X509 key in PEM format for connection with cluster components.
-# ssl-key = "/path/to/drainer-key.pem"
-#
 [storage]
 # Set to `true` (default) for best reliability, which prevents data loss when there is a power failure.
 sync-log = {{ .Values.binlog.pump.syncLog | default true }}
@@ -43,3 +35,13 @@ sync-log = {{ .Values.binlog.pump.syncLog | default true }}
 # write-buffer = 67108864
 # write-L0-pause-trigger = 24
 # write-L0-slowdown-trigger = 17
+{{ if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+[security]
+# Path of file that contains list of trusted SSL CAs for connection with cluster components.
+ssl-ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+# Path of file that contains X509 certificate in PEM format for connection with cluster components.
+ssl-cert = "/var/lib/pump-tls/tls.crt"
+# Path of file that contains X509 key in PEM format for connection with cluster components.
+ssl-key = "/var/lib/pump-tls/tls.key"
+{{- end -}}
+

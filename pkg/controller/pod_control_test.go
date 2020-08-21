@@ -21,8 +21,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,16 +44,15 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 	pod := newPod(tc)
 	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
+	pdClient := NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 		cluster := &metapb.Cluster{
 			Id: 222,
 		}
 		return cluster, nil
 	})
-	pdClient.AddReaction(GetMembersActionType, func(action *Action) (interface{}, error) {
-		membersInfo := &MembersInfo{
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		membersInfo := &pdapi.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -61,11 +61,11 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 		}
 		return membersInfo, nil
 	})
-	pdClient.AddReaction(GetStoresActionType, func(action *Action) (interface{}, error) {
-		storesInfo := &StoresInfo{
-			Stores: []*StoreInfo{
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
 				{
-					Store: &MetaStore{
+					Store: &pdapi.MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
 							Address: fmt.Sprintf("%s.web", TestPodName),
@@ -82,10 +82,6 @@ func TestPodControlUpdateMetaInfoSuccess(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(Succeed())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
@@ -94,13 +90,12 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 	pod := newPod(tc)
 	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
+	pdClient := NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 		return nil, errors.New("failed to get cluster info from PD server")
 	})
-	pdClient.AddReaction(GetMembersActionType, func(action *Action) (interface{}, error) {
-		membersInfo := &MembersInfo{
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		membersInfo := &pdapi.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -109,11 +104,11 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 		}
 		return membersInfo, nil
 	})
-	pdClient.AddReaction(GetStoresActionType, func(action *Action) (interface{}, error) {
-		storesInfo := &StoresInfo{
-			Stores: []*StoreInfo{
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
 				{
-					Store: &MetaStore{
+					Store: &pdapi.MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
 							Address: fmt.Sprintf("%s.web", TestPodName),
@@ -130,9 +125,6 @@ func TestPodControlUpdateMetaInfoGetClusterFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
@@ -141,22 +133,21 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 	pod := newPod(tc)
 	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
+	pdClient := NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 		cluster := &metapb.Cluster{
 			Id: 222,
 		}
 		return cluster, nil
 	})
-	pdClient.AddReaction(GetMembersActionType, func(action *Action) (interface{}, error) {
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
 		return nil, errors.New("failed to get member info from PD server")
 	})
-	pdClient.AddReaction(GetStoresActionType, func(action *Action) (interface{}, error) {
-		storesInfo := &StoresInfo{
-			Stores: []*StoreInfo{
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
 				{
-					Store: &MetaStore{
+					Store: &pdapi.MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
 							Address: fmt.Sprintf("%s.web", TestPodName),
@@ -174,9 +165,6 @@ func TestPodControlUpdateMetaInfoGetMemberFailed(t *testing.T) {
 	pod.Labels[label.ComponentLabelKey] = label.PDLabelVal
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
@@ -185,16 +173,15 @@ func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
 	pod := newPod(tc)
 	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
+	pdClient := NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 		cluster := &metapb.Cluster{
 			Id: 222,
 		}
 		return cluster, nil
 	})
-	pdClient.AddReaction(GetMembersActionType, func(action *Action) (interface{}, error) {
-		membersInfo := &MembersInfo{
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		membersInfo := &pdapi.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -203,7 +190,7 @@ func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
 		}
 		return membersInfo, nil
 	})
-	pdClient.AddReaction(GetStoresActionType, func(action *Action) (interface{}, error) {
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
 		return nil, errors.New("failed to get store info from PD server")
 	})
 
@@ -213,9 +200,6 @@ func TestPodControlUpdateMetaInfoGetStoreFailed(t *testing.T) {
 	pod.Labels[label.ComponentLabelKey] = label.TiKVLabelVal
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
@@ -224,16 +208,15 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 	pod := newPod(tc)
 	fakeClient, pdControl, podLister, _, recorder := newFakeClientRecorderAndPDControl()
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
+	pdClient := NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 		cluster := &metapb.Cluster{
 			Id: 222,
 		}
 		return cluster, nil
 	})
-	pdClient.AddReaction(GetMembersActionType, func(action *Action) (interface{}, error) {
-		membersInfo := &MembersInfo{
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		membersInfo := &pdapi.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -242,11 +225,11 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 		}
 		return membersInfo, nil
 	})
-	pdClient.AddReaction(GetStoresActionType, func(action *Action) (interface{}, error) {
-		storesInfo := &StoresInfo{
-			Stores: []*StoreInfo{
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
 				{
-					Store: &MetaStore{
+					Store: &pdapi.MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
 							Address: fmt.Sprintf("%s.web", TestPodName),
@@ -263,10 +246,6 @@ func TestPodControlUpdateMetaInfoUpdatePodFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pod)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
 func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
@@ -278,16 +257,15 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	fakeClient, pdControl, podLister, podIndexer, recorder := newFakeClientRecorderAndPDControl()
 	podIndexer.Add(oldPod)
 	control := NewRealPodControl(fakeClient, pdControl, podLister, recorder)
-	pdClient := NewFakePDClient()
-	pdControl.SetPDClient(tc, pdClient)
-	pdClient.AddReaction(GetClusterActionType, func(action *Action) (interface{}, error) {
+	pdClient := NewFakePDClient(pdControl, tc)
+	pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
 		cluster := &metapb.Cluster{
 			Id: 222,
 		}
 		return cluster, nil
 	})
-	pdClient.AddReaction(GetMembersActionType, func(action *Action) (interface{}, error) {
-		membersInfo := &MembersInfo{
+	pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+		membersInfo := &pdapi.MembersInfo{
 			Members: []*pdpb.Member{
 				{
 					MemberId: 111,
@@ -296,11 +274,11 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 		}
 		return membersInfo, nil
 	})
-	pdClient.AddReaction(GetStoresActionType, func(action *Action) (interface{}, error) {
-		storesInfo := &StoresInfo{
-			Stores: []*StoreInfo{
+	pdClient.AddReaction(pdapi.GetStoresActionType, func(action *pdapi.Action) (interface{}, error) {
+		storesInfo := &pdapi.StoresInfo{
+			Stores: []*pdapi.StoreInfo{
 				{
-					Store: &MetaStore{
+					Store: &pdapi.MetaStore{
 						Store: &metapb.Store{
 							Id:      333,
 							Address: fmt.Sprintf("%s.web", TestPodName),
@@ -325,15 +303,10 @@ func TestPodControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePod.Labels[label.StoreIDLabelKey]).To(Equal("333"))
 	g.Expect(updatePod.Labels[label.ClusterIDLabelKey]).To(Equal("222"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPodControlUpdatePod(t *testing.T) {
 	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	pod.Annotations = map[string]string{"a": "b"}
@@ -348,15 +321,10 @@ func TestPodControlUpdatePod(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePod.Annotations["a"]).To(Equal("b"))
 	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
-	recorder := record.NewFakeRecorder(10)
 	tc := newTidbCluster()
 	pod := newPod(tc)
 	pod.Annotations = map[string]string{"a": "b"}
@@ -379,16 +347,12 @@ func TestPodControlUpdatePodConflictSuccess(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePod.Annotations["a"]).To(Equal("b"))
 	g.Expect(updatePod.Labels["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
-func newFakeClientRecorderAndPDControl() (*fake.Clientset, *FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
+func newFakeClientRecorderAndPDControl() (*fake.Clientset, *pdapi.FakePDControl, corelisters.PodLister, cache.Indexer, *record.FakeRecorder) {
 	fakeClient := &fake.Clientset{}
-	pdControl := NewFakePDControl()
 	kubeCli := kubefake.NewSimpleClientset()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	recorder := record.NewFakeRecorder(10)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()

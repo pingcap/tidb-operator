@@ -1,4 +1,4 @@
-{{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql }}
+{{- if or .Values.tidb.passwordSecretName .Values.tidb.permitHost .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -19,6 +19,33 @@ spec:
         app.kubernetes.io/component: tidb-initializer
     spec:
       restartPolicy: OnFailure
+      initContainers:
+      # Before proceeding to initialize TiDB, we wait for the TiDB host:port is
+      # open. This avoids unnecessary pod restarts which may result in a very long
+      # restart delay (10s, 20s, .., 5 mins).
+      # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+      - name: wait
+        image: {{ .Values.busybox.image }}
+        imagePullPolicy: {{ .Values.busybox.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - sh
+        - -c
+        - |
+          trap exit TERM
+          host={{ template "cluster.name" . }}-tidb
+          port=4000
+          while true; do
+            nc -zv -w 3 $host $port
+            if [ $? -eq 0 ]; then
+              break
+            else
+              echo "info: failed to connect to $host:$port, sleep 1 second then retry"
+              sleep 1
+            fi
+          done
+          echo "info: successfully connected to $host:$port, able to initialize TiDB now"
+        resources:
+{{ toYaml .Values.tidb.initializer.resources | indent 10 }}
       containers:
       - name: mysql-client
         image: {{ .Values.mysqlClient.image }}
@@ -28,25 +55,51 @@ spec:
         - -c
         - |
 {{ tuple "scripts/_initialize_tidb_users.py.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
+        {{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
         volumeMounts:
-        - name: password
-          mountPath: /etc/tidb/password
-          readOnly: true
-        {{- if .Values.tidb.initSql }}
-        - name: init-sql
-          mountPath: /data
-          readOnly: true
+          {{- if .Values.tidb.passwordSecretName }}
+          - name: password
+            mountPath: /etc/tidb/password
+            readOnly: true
+          {{- end }}
+          {{- if .Values.tidb.initSqlConfigMapName }}
+          - name: init-sql
+            mountPath: /data
+            readOnly: true
+          {{- else if .Values.tidb.initSql }}
+          - name: init-sql
+            mountPath: /data
+            readOnly: true
+          {{- end }}
         {{- end }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+        resources:
+{{ toYaml .Values.tidb.initializer.resources | indent 10 }}
+      {{- if or .Values.tidb.passwordSecretName .Values.tidb.initSql .Values.tidb.initSqlConfigMapName }}
       volumes:
-      - name: password
-        secret:
-          secretName: {{ .Values.tidb.passwordSecretName }}
-      {{- if .Values.tidb.initSql }}
-      - name: init-sql
-        configMap:
-          name: {{ template "cluster.name" . }}-tidb
-          items:
-          - key: init-sql
-            path: init.sql
+        {{- if .Values.tidb.passwordSecretName }}
+        - name: password
+          secret:
+            secretName: {{ .Values.tidb.passwordSecretName }}
+        {{- end }}
+        {{- if .Values.tidb.initSqlConfigMapName }}
+        - name: init-sql
+          configMap:
+            name: {{ .Values.tidb.initSqlConfigMapName }}
+            items:
+              - key: init-sql
+                path: init.sql
+        {{- else if .Values.tidb.initSql }}
+        - name: init-sql
+          configMap:
+            name: {{ template "cluster.name" . }}-tidb
+            items:
+            - key: init-sql
+              path: init.sql
+        {{- end }}
       {{- end }}
 {{- end }}

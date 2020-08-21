@@ -39,7 +39,7 @@ func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, nil
 	})
-	err := control.PatchPVReclaimPolicy(tc, pv, tc.Spec.PVReclaimPolicy)
+	err := control.PatchPVReclaimPolicy(tc, pv, *tc.Spec.PVReclaimPolicy)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -56,7 +56,7 @@ func TestPVControlPatchPVReclaimPolicyFailed(t *testing.T) {
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
-	err := control.PatchPVReclaimPolicy(tc, pv, tc.Spec.PVReclaimPolicy)
+	err := control.PatchPVReclaimPolicy(tc, pv, *tc.Spec.PVReclaimPolicy)
 	g.Expect(err).To(HaveOccurred())
 
 	events := collectEvents(recorder.Events)
@@ -79,7 +79,7 @@ func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 		}
 		return true, nil, nil
 	})
-	err := control.PatchPVReclaimPolicy(tc, pv, tc.Spec.PVReclaimPolicy)
+	err := control.PatchPVReclaimPolicy(tc, pv, *tc.Spec.PVReclaimPolicy)
 	g.Expect(err).To(Succeed())
 
 	events := collectEvents(recorder.Events)
@@ -106,10 +106,6 @@ func TestPVControlUpdateMetaInfoSuccess(t *testing.T) {
 	updatePV, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePV.Annotations["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestPVControlUpdateMetaInfoUpdatePVFailed(t *testing.T) {
@@ -128,10 +124,6 @@ func TestPVControlUpdateMetaInfoUpdatePVFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(HaveOccurred())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeWarning))
 }
 
 func TestPVControlUpdateMetaInfoGetPVCFailed(t *testing.T) {
@@ -148,9 +140,6 @@ func TestPVControlUpdateMetaInfoGetPVCFailed(t *testing.T) {
 	})
 	_, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(0))
 }
 
 func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
@@ -179,10 +168,6 @@ func TestPVControlUpdateMetaInfoConflictSuccess(t *testing.T) {
 	updatePV, err := control.UpdateMetaInfo(tc, pv)
 	g.Expect(err).To(Succeed())
 	g.Expect(updatePV.Annotations["a"]).To(Equal("b"))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func newFakeRecorderAndPVCInformer() (*fake.Clientset, coreinformers.PersistentVolumeClaimInformer, coreinformers.PersistentVolumeInformer, *record.FakeRecorder) {

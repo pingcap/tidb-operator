@@ -1,0 +1,37 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: BackupSchedule
+metadata:
+  name: demo1-backup-schedule-gcs
+  namespace: test1
+spec:
+  #maxBackups: 5
+  #pause: true
+  maxReservedTime: "3h"
+  schedule: "*/2 * * * *"
+  backupTemplate:
+    #backupType: full
+    # serviceAccount: myServiceAccount
+    # cleanPolicy: OnFailure
+    br:
+      cluster: myCluster
+      sendCredToTikv: true
+      # clusterNamespce: backupNamespace
+      # logLevel: info
+      # statusAddr: <status-addr>
+      # concurrency: 4
+      # rateLimit: 0
+      # timeAgo: <time>
+      # checksum: true
+    from:
+      host:         172.30.6.56
+      secretName:   mysecret
+      # port:         4000
+      # user:         root
+      # tlsClientSecretName: <backup-tls-secretname>
+    gcs:
+      provider: gcp
+      region: us-west-2
+      bucket: backup
+      prefix: test1-demo1
+      secretName: gcp-secret

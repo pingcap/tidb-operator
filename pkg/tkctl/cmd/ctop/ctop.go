@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,27 +15,28 @@ package ctop
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/executor"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"strings"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 const (
 	ctopExample = `
 	# ctop the specified pod
-	tkc ctop POD_NAME
+	tkctl ctop POD_NAME
 
 	# ctop the specified node
-	tkc ctop node/NODE_NAME
+	tkctl ctop node/NODE_NAME
 `
 	ctopUsage    = "expected 'ctop POD_NAME' or 'ctop node/NODE_NAME' for the ctop command"
 	defaultImage = "quay.io/vektorlab/ctop:0.7.2"

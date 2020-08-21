@@ -25,6 +25,10 @@ spec:
         app.kubernetes.io/component: scheduled-backup
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
     spec:
+      backoffLimit: {{ .Values.scheduledBackup.backoffLimit | default 6 }}
+    {{- if .Values.scheduledBackup.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ .Values.scheduledBackup.activeDeadlineSeconds }}
+    {{- end }}
       template:
         metadata:
           labels:
@@ -51,6 +55,8 @@ spec:
               mountPath: "/gcp"
               readOnly: true
           {{- end }}
+            resources:
+{{ toYaml .Values.scheduledBackup.resources | indent 14 }}
             env:
             - name: POD_NAME
               valueFrom:
@@ -60,20 +66,24 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+            - name: TZ
+              value: {{ .Values.timezone | default "UTC" }}
+          {{- end }}
           {{- if .Values.scheduledBackup.gcp }}
             - name: GOOGLE_APPLICATION_CREDENTIALS
               value: /gcp/credentials.json
           {{- end }}
-          {{- if .Values.scheduledBackup.ceph }}
+          {{- if or .Values.scheduledBackup.ceph.secretName .Values.scheduledBackup.s3.secretName }}
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.scheduledBackup.ceph.secretName }}
+                  name: {{ or .Values.scheduledBackup.ceph.secretName .Values.scheduledBackup.s3.secretName }}
                   key: access_key
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.scheduledBackup.ceph.secretName }}
+                  name: {{ or .Values.scheduledBackup.ceph.secretName .Values.scheduledBackup.s3.secretName }}
                   key: secret_key
           {{- end }}
             - name: TIDB_USER
@@ -86,7 +96,15 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.scheduledBackup.secretName }}
                   key: password
-          restartPolicy: OnFailure
+          restartPolicy: {{ .Values.scheduledBackup.restartPolicy | default "OnFailure" }}
+        {{- if .Values.scheduledBackup.affinity }}
+          affinity:
+{{ toYaml .Values.scheduledBackup.affinity | indent 12 }}
+        {{- end }}
+        {{- if .Values.scheduledBackup.tolerations }}
+          tolerations:
+{{ toYaml .Values.scheduledBackup.tolerations | indent 12 }}
+        {{- end }}
           volumes:
           - name: data
             persistentVolumeClaim:

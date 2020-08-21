@@ -1,0 +1,97 @@
+{{- if .Values.advancedStatefulset.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.advancedStatefulset.serviceAccount }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: advanced-statefulset-controller
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: advanced-statefulset-controller
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: advanced-statefulset-controller
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+- apiGroups:
+  - apps.pingcap.com
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - 'apps'
+  resources:
+  - 'controllerrevisions'
+  verbs:
+  - '*'
+- apiGroups:
+  - ''
+  resources:
+  - 'events'
+  - 'pods'
+  - 'persistentvolumeclaims'
+  - 'persistentvolumes'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: advanced-statefulset-controller
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: advanced-statefulset-controller
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: advanced-statefulset-controller
+subjects:
+- kind: ServiceAccount
+  name: advanced-statefulset-controller
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: advanced-statefulset-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: advanced-statefulset-controller
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - 'endpoints'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: advanced-statefulset-controller
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: advanced-statefulset-controller
+subjects:
+- kind: ServiceAccount
+  name: advanced-statefulset-controller
+  namespace: {{ .Release.Namespace }}
+{{- end }}

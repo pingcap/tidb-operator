@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "drainer.name" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "drainer.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.clusterName }}
+    app.kubernetes.io/component: drainer
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "drainer.name" . }}
+      app.kubernetes.io/instance: {{ .Values.clusterName }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+      app.kubernetes.io/component: drainer
+  serviceName: {{ include "drainer.name" . }}
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8249"
+      labels:
+        app.kubernetes.io/name: {{ include "drainer.name" . }}
+        app.kubernetes.io/instance: {{ .Values.clusterName }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/component: drainer
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 6 }}
+      {{- end }}
+      containers:
+      - name: drainer
+        image: {{ .Values.baseImage }}:{{ .Values.clusterVersion }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        - |-
+{{ tuple "scripts/_start_drainer.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
+        ports:
+        - containerPort: 8249
+          name: drainer
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /etc/drainer
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+        - name: drainer-tls
+          mountPath: /var/lib/drainer-tls
+          readOnly: true
+      {{- end }}
+      {{- if .Values.tlsSyncer }}
+      {{- if .Values.tlsSyncer.tlsClientSecretName }}
+        - name: drainer-syncer-tls
+          mountPath: /var/lib/drainer-syncer-tls
+          readOnly: true
+      {{- end }}
+      {{- if .Values.tlsSyncer.checkpoint }}
+        {{- if .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+        - name: drainer-syncer-checkpoint-tls
+          mountPath: /var/lib/drainer-syncer-checkpoint-tls
+          readOnly: true
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "drainer-configmap.name" . }}
+          items:
+          - key: config-file
+            path: drainer.toml
+    {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: drainer-tls
+        secret:
+          secretName: {{ include "drainer.tlsSecretName" . }}
+    {{- end }}
+    {{- if .Values.tlsSyncer }}
+    {{- if .Values.tlsSyncer.tlsClientSecretName }}
+      - name: drainer-syncer-tls
+        secret:
+          secretName: {{ .Values.tlsSyncer.tlsClientSecretName }}
+    {{- end }}
+    {{- if .Values.tlsSyncer.checkpoint }}
+      {{- if .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+      - name: drainer-syncer-checkpoint-tls
+        secret:
+          secretName: {{ .Values.tlsSyncer.checkpoint.tlsClientSecretName }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.storageClassName }}
+      resources:
+        requests:
+          storage: {{ .Values.storage }}

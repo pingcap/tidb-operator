@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	pingcapfake "github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	v1 "k8s.io/api/core/v1"
@@ -51,10 +51,12 @@ func makeTidbCluster(name, node string) *v1alpha1.TidbCluster {
 func makePod(name string, component string) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Namespace: v1.NamespaceDefault,
+			Name:      name,
 			Labels: map[string]string{
 				label.ComponentLabelKey: component,
 			},
+			GenerateName: name[0 : len(name)-1],
 		},
 	}
 }
@@ -120,7 +122,8 @@ func TestStableSchedulingFilter(t *testing.T) {
 				makeNode("node-3"),
 			},
 			expectFn: func(nodes []v1.Node, err error, recorder *record.FakeRecorder) {
-				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(ContainSubstring("no previous node exists for pod \"demo-tidb-0\" in TiDB cluster default/demo"))
 				g.Expect(len(nodes)).To(Equal(3))
 			},
 		},
@@ -135,10 +138,8 @@ func TestStableSchedulingFilter(t *testing.T) {
 				makeNode("node-3"),
 			},
 			expectFn: func(nodes []v1.Node, err error, recorder *record.FakeRecorder) {
-				g.Expect(err).NotTo(HaveOccurred())
-				events := collectEvents(recorder.Events)
-				g.Expect(events).To(HaveLen(1))
-				g.Expect(events[0]).To(ContainSubstring(UnableToRunOnPreviousNodeReason))
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(ContainSubstring("cannot run default/demo-tidb-0 on its previous node \"node-4\""))
 				g.Expect(len(nodes)).To(Equal(3))
 			},
 		},
@@ -174,9 +175,8 @@ func TestStableSchedulingFilter(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 		p := stableScheduling{
-			kubeCli:  kubeCli,
-			cli:      cli,
-			recorder: recorder,
+			kubeCli: kubeCli,
+			cli:     cli,
 		}
 		nodes, err := p.Filter(tc.instanceName, tc.pod, tc.candicateNodes)
 		tc.expectFn(nodes, err, recorder)

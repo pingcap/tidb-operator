@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,24 +15,31 @@ package readable
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"k8s.io/api/core/v1"
+	"io"
+	"time"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
+	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/kubernetes/pkg/printers"
+	kubeprinters "k8s.io/kubernetes/pkg/printers"
 	"k8s.io/kubernetes/pkg/util/node"
-	"time"
 )
 
 const (
-	unset = "<none>"
+	unset        = "<none>"
+	podNameIndex = 0
 )
 
-// PodBasicColumns holds common columns for all kinds of pod
-type PodBasicColumns struct {
+// podBasicColumns holds common columns for all kinds of pod
+type podBasicColumns struct {
 	Name     string
 	Ready    string
 	Reason   string
@@ -40,7 +47,7 @@ type PodBasicColumns struct {
 	Memory   string
 	Age      string
 	PodIP    string
-	HostIP   string
+	NodeName string
 
 	MemInfo string
 	CPUInfo string
@@ -66,24 +73,40 @@ func AddHandlers(h printers.PrintHandler) {
 		{Name: "CPU", Type: "string", Description: "The Pod total cpu request and limit."},
 		{Name: "Restarts", Type: "integer", Description: "The number of times the containers in this pod have been restarted."},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Node", Type: "string", Description: "Node IP"},
+		{Name: "IP", Type: "string", Priority: 1, Description: apiv1.PodStatus{}.SwaggerDoc()["podIP"]},
+		{Name: "Node", Type: "string", Priority: 1, Description: apiv1.PodSpec{}.SwaggerDoc()["nodeName"]},
 	}
 	h.TableHandler(commonPodColumns, printPod)
 	h.TableHandler(commonPodColumns, printPodList)
+	//tikv columns
+	tikvPodColumns := commonPodColumns
+	storeId := metav1beta1.TableColumnDefinition{
+		Name:        "StoreID",
+		Type:        "string",
+		Description: "TiKV StoreID",
+	}
+	storeState := metav1beta1.TableColumnDefinition{
+		Name:        "Store State",
+		Type:        "string",
+		Description: "TiKV Store State",
+	}
+	tikvPodColumns = append(tikvPodColumns, storeId, storeState)
+	h.TableHandler(tikvPodColumns, printTikvList)
 	// TODO: add available space for volume
 	volumeColumns := []metav1beta1.TableColumnDefinition{
 		{Name: "Volume", Type: "string", Format: "name", Description: "Volume name"},
 		{Name: "Claim", Type: "string", Format: "name", Description: "Volume claim"},
 		{Name: "Status", Type: "string", Description: "Volume status"},
 		{Name: "Capacity", Type: "string", Description: "Volume capacity"},
-		{Name: "Node", Type: "string", Description: "Mounted node"},
-		{Name: "Local", Type: "string", Description: "Local path"},
+		{Name: "StorageClass", Type: "string", Description: "Storage class of volume"},
+		{Name: "Node", Type: "string", Priority: 1, Description: "Mounted node"},
+		{Name: "Local", Type: "string", Priority: 1, Description: "Local path"},
 	}
 	h.TableHandler(volumeColumns, printVolume)
 	h.TableHandler(volumeColumns, printVolumeList)
 }
 
-func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	rows := make([]metav1beta1.TableRow, 0, len(tcs.Items))
 	for i := range tcs.Items {
 		r, err := printTidbCluster(&tcs.Items[i], options)
@@ -95,7 +118,7 @@ func printTidbClusterList(tcs *v1alpha1.TidbClusterList, options printers.PrintO
 	return rows, nil
 }
 
-func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: tc},
 	}
@@ -118,7 +141,7 @@ func printTidbCluster(tc *v1alpha1.TidbCluster, options printers.PrintOptions) (
 	return []metav1beta1.TableRow{row}, nil
 }
 
-func printPodList(podList *v1.PodList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printPodList(podList *v1.PodList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	rows := make([]metav1beta1.TableRow, 0, len(podList.Items))
 	for i := range podList.Items {
 		r, err := printPod(&podList.Items[i], options)
@@ -130,7 +153,7 @@ func printPodList(podList *v1.PodList, options printers.PrintOptions) ([]metav1b
 	return rows, nil
 }
 
-func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printPod(pod *v1.Pod, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	columns := basicPodColumns(pod)
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: pod},
@@ -142,12 +165,48 @@ func printPod(pod *v1.Pod, options printers.PrintOptions) ([]metav1beta1.TableRo
 		columns.MemInfo,
 		columns.CPUInfo,
 		columns.Restarts,
-		columns.Age,
-		columns.HostIP)
+		columns.Age)
+
+	if options.Wide {
+		row.Cells = append(row.Cells, columns.PodIP, columns.NodeName)
+	}
 	return []metav1beta1.TableRow{row}, nil
 }
 
-func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+// add more columns for tikv info
+func printTikvList(tikvList *alias.TikvList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
+	podList := tikvList.PodList
+	metaTableRows, err := printPodList(podList, options)
+	if err != nil {
+		return nil, err
+	}
+	for id, row := range metaTableRows {
+		podName := row.Cells[podNameIndex].(string)
+		var storeId string
+		for _, pod := range tikvList.PodList.Items {
+			if podName == pod.Name {
+				storeId = pod.Labels[label.StoreIDLabelKey]
+				break
+			}
+		}
+		viewStoreId := unset
+		viewStoreState := unset
+		// set storeId and tikv Store State if existed
+		if len(storeId) > 0 {
+			viewStoreId = storeId
+			if tikvList.TikvStatus != nil && tikvList.TikvStatus.Stores != nil {
+				if _, ok := tikvList.TikvStatus.Stores[storeId]; ok {
+					viewStoreState = tikvList.TikvStatus.Stores[storeId].State
+				}
+			}
+		}
+		row.Cells = append(row.Cells, viewStoreId, viewStoreState)
+		metaTableRows[id] = row
+	}
+	return metaTableRows, nil
+}
+
+func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	rows := make([]metav1beta1.TableRow, 0, len(volumeList.Items))
 	for i := range volumeList.Items {
 		r, err := printVolume(&volumeList.Items[i], options)
@@ -159,14 +218,14 @@ func printVolumeList(volumeList *v1.PersistentVolumeList, options printers.Print
 	return rows, nil
 }
 
-func printVolume(volume *v1.PersistentVolume, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+func printVolume(volume *v1.PersistentVolume, options printers.GenerateOptions) ([]metav1beta1.TableRow, error) {
 	row := metav1beta1.TableRow{
 		Object: runtime.RawExtension{Object: volume},
 	}
 
 	claim := unset
 	if volume.Spec.ClaimRef != nil {
-		claim = volume.Spec.ClaimRef.Name
+		claim = fmt.Sprintf("%s/%s", volume.Spec.ClaimRef.Namespace, volume.Spec.ClaimRef.Name)
 	}
 	local := unset
 	if volume.Spec.Local != nil {
@@ -194,13 +253,17 @@ func printVolume(volume *v1.PersistentVolume, options printers.PrintOptions) ([]
 			capacity = val.String()
 		}
 	}
-	row.Cells = append(row.Cells, volume.Name, claim, volume.Status.Phase, capacity, host, local)
+	row.Cells = append(row.Cells, volume.Name, claim, volume.Status.Phase, capacity, volume.Spec.StorageClassName)
+
+	if options.Wide {
+		row.Cells = append(row.Cells, host, local)
+	}
 
 	return []metav1beta1.TableRow{row}, nil
 }
 
 // basicPodColumns calculates common columns for PD/TiKV/TiDB pods
-func basicPodColumns(pod *v1.Pod) *PodBasicColumns {
+func basicPodColumns(pod *v1.Pod) *podBasicColumns {
 	restarts := 0
 	totalContainers := len(pod.Spec.Containers)
 	readyContainers := 0
@@ -273,10 +336,10 @@ func basicPodColumns(pod *v1.Pod) *PodBasicColumns {
 		reason = "Terminating"
 	}
 
-	hostIP := pod.Status.HostIP
+	nodeName := pod.Spec.NodeName
 	podIP := pod.Status.PodIP
-	if hostIP == "" {
-		hostIP = unset
+	if nodeName == "" {
+		nodeName = unset
 	}
 	if podIP == "" {
 		podIP = unset
@@ -319,13 +382,13 @@ func basicPodColumns(pod *v1.Pod) *PodBasicColumns {
 	memInfo := fmt.Sprintf("%s/%s", memRequestStr, memLimitStr)
 	cpuInfo := fmt.Sprintf("%s/%s", cpuRequestStr, cpuLimitStr)
 
-	return &PodBasicColumns{
+	return &podBasicColumns{
 		Name:     pod.Name,
 		Ready:    fmt.Sprintf("%d/%d", readyContainers, totalContainers),
 		Reason:   reason,
 		Restarts: int64(restarts),
 		Age:      translateTimestampSince(pod.CreationTimestamp),
-		HostIP:   hostIP,
+		NodeName: nodeName,
 		PodIP:    podIP,
 		MemInfo:  memInfo,
 		CPUInfo:  cpuInfo,
@@ -338,4 +401,31 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	}
 
 	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
+// localPrinter prints object with local handlers.
+type localPrinter struct {
+	printer        kubeprinters.ResourcePrinter
+	tableGenerator *kubeprinters.HumanReadableGenerator
+	options        kubeprinters.GenerateOptions
+}
+
+func (l *localPrinter) PrintObj(obj runtime.Object, w io.Writer) error {
+	table, err := l.tableGenerator.GenerateTable(obj, l.options)
+	if table == nil {
+		return fmt.Errorf("unknown type: %v", obj)
+	}
+	if err != nil {
+		return err
+	}
+	return l.printer.PrintObj(table, w)
+}
+
+// NewLocalPrinter creates a new local printer.
+func NewLocalPrinter(printer kubeprinters.ResourcePrinter, tableGenerator *kubeprinters.HumanReadableGenerator, options kubeprinters.GenerateOptions) kubeprinters.ResourcePrinter {
+	return &localPrinter{
+		printer:        printer,
+		tableGenerator: tableGenerator,
+		options:        options,
+	}
 }

@@ -1,18 +1,31 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tests
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/pingcap/tidb-operator/tests/slack"
-
+	utiloperator "github.com/pingcap/tidb-operator/tests/e2e/util/operator"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
-
-	"github.com/golang/glog"
+	"github.com/pingcap/tidb-operator/tests/slack"
 	"gopkg.in/yaml.v2"
+	"k8s.io/klog"
 )
 
 const (
@@ -26,22 +39,28 @@ const (
 type Config struct {
 	configFile string
 
-	TidbVersions         string  `yaml:"tidb_versions" json:"tidb_versions"`
-	OperatorTag          string  `yaml:"operator_tag" json:"operator_tag"`
-	OperatorImage        string  `yaml:"operator_image" json:"operator_image"`
-	UpgradeOperatorTag   string  `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
-	UpgradeOperatorImage string  `yaml:"upgrade_operator_image" json:"upgrade_operator_image"`
-	LogDir               string  `yaml:"log_dir" json:"log_dir"`
-	FaultTriggerPort     int     `yaml:"fault_trigger_port" json:"fault_trigger_port"`
-	Nodes                []Nodes `yaml:"nodes" json:"nodes"`
-	ETCDs                []Nodes `yaml:"etcds" json:"etcds"`
-	APIServers           []Nodes `yaml:"apiservers" json:"apiservers"`
+	TidbVersions         string          `yaml:"tidb_versions" json:"tidb_versions"`
+	InstallOperator      bool            `yaml:"install_opeartor" json:"install_opeartor"`
+	OperatorTag          string          `yaml:"operator_tag" json:"operator_tag"`
+	OperatorImage        string          `yaml:"operator_image" json:"operator_image"`
+	BackupImage          string          `yaml:"backup_image" json:"backup_image"`
+	OperatorFeatures     map[string]bool `yaml:"operator_features" json:"operator_features"`
+	UpgradeOperatorTag   string          `yaml:"upgrade_operator_tag" json:"upgrade_operator_tag"`
+	UpgradeOperatorImage string          `yaml:"upgrade_operator_image" json:"upgrade_operator_image"`
+	LogDir               string          `yaml:"log_dir" json:"log_dir"`
+	FaultTriggerPort     int             `yaml:"fault_trigger_port" json:"fault_trigger_port"`
+	Nodes                []Nodes         `yaml:"nodes" json:"nodes"`
+	ETCDs                []Nodes         `yaml:"etcds" json:"etcds"`
+	APIServers           []Nodes         `yaml:"apiservers" json:"apiservers"`
 	CertFile             string
 	KeyFile              string
 
 	PDMaxReplicas       int `yaml:"pd_max_replicas" json:"pd_max_replicas"`
 	TiKVGrpcConcurrency int `yaml:"tikv_grpc_concurrency" json:"tikv_grpc_concurrency"`
 	TiDBTokenLimit      int `yaml:"tidb_token_limit" json:"tidb_token_limit"`
+
+	// old versions of reparo does not support idempotent incremental recover, so we lock the version explicitly
+	AdditionalDrainerVersion string `yaml:"file_drainer_version" json:"file_drainer_version"`
 
 	// Block writer
 	BlockWriter blockwriter.Config `yaml:"block_writer,omitempty"`
@@ -53,17 +72,30 @@ type Config struct {
 	ChartDir string `yaml:"chart_dir" json:"chart_dir"`
 	// manifest dir
 	ManifestDir string `yaml:"manifest_dir" json:"manifest_dir"`
+
+	E2EImage string `yaml:"e2e_image" json:"e2e_image"`
+
+	PreloadImages bool `yaml:"preload_images" json:"preload_images"`
+
+	OperatorKiller utiloperator.OperatorKillerConfig
 }
 
 // Nodes defines a series of nodes that belong to the same physical node.
 type Nodes struct {
-	PhysicalNode string   `yaml:"physical_node" json:"physical_node"`
-	Nodes        []string `yaml:"nodes" json:"nodes"`
+	PhysicalNode string `yaml:"physical_node" json:"physical_node"`
+	Nodes        []Node `yaml:"nodes" json:"nodes"`
 }
 
-// NewConfig creates a new config.
-func NewConfig() (*Config, error) {
-	cfg := &Config{
+type Node struct {
+	IP   string `yaml:"ip" json:"ip"`
+	Name string `yaml:"name" json:"name"`
+}
+
+// NewDefaultConfig creates a default configuration.
+func NewDefaultConfig() *Config {
+	return &Config{
+		AdditionalDrainerVersion: "v3.0.8",
+
 		PDMaxReplicas:       5,
 		TiDBTokenLimit:      1024,
 		TiKVGrpcConcurrency: 8,
@@ -75,18 +107,25 @@ func NewConfig() (*Config, error) {
 			RawSize:     defaultRawSize,
 		},
 	}
+}
+
+// NewConfig creates a new config.
+func NewConfig() (*Config, error) {
+	cfg := NewDefaultConfig()
 	flag.StringVar(&cfg.configFile, "config", "", "Config file")
 	flag.StringVar(&cfg.LogDir, "log-dir", "/logDir", "log directory")
 	flag.IntVar(&cfg.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
-	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.0-rc.1,v3.0.0-rc.2", "tidb versions")
+	flag.StringVar(&cfg.TidbVersions, "tidb-versions", "v3.0.6,v3.0.7,v3.0.8", "tidb versions")
 	flag.StringVar(&cfg.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flag.StringVar(&cfg.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")
+	flag.StringVar(&cfg.E2EImage, "e2e-image", "pingcap/tidb-operator-e2e:latest", "operator-e2e image")
 	flag.StringVar(&cfg.UpgradeOperatorTag, "upgrade-operator-tag", "", "upgrade operator tag used to choose charts")
 	flag.StringVar(&cfg.UpgradeOperatorImage, "upgrade-operator-image", "", "upgrade operator image")
 	flag.StringVar(&cfg.OperatorRepoDir, "operator-repo-dir", "/tidb-operator", "local directory to which tidb-operator cloned")
 	flag.StringVar(&cfg.OperatorRepoUrl, "operator-repo-url", "https://github.com/pingcap/tidb-operator.git", "tidb-operator repo url used")
 	flag.StringVar(&cfg.ChartDir, "chart-dir", "", "chart dir")
 	flag.StringVar(&slack.WebhookURL, "slack-webhook-url", "", "slack webhook url")
+	flag.StringVar(&slack.TestName, "test-name", "operator-test", "the stability test name")
 	flag.Parse()
 
 	operatorRepo, err := ioutil.TempDir("", "tidb-operator")
@@ -121,7 +160,7 @@ func ParseConfigOrDie() *Config {
 		slack.NotifyAndPanic(err)
 	}
 
-	glog.Infof("using config: %+v", cfg)
+	klog.Infof("using config: %+v", cfg)
 	return cfg
 }
 
@@ -198,4 +237,20 @@ func (c *Config) CleanTempDirs() error {
 		}
 	}
 	return nil
+}
+
+func (c *Config) PrettyPrintJSON() (string, error) {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (c *Config) MustPrettyPrintJSON() string {
+	s, err := c.PrettyPrintJSON()
+	if err != nil {
+		panic(err)
+	}
+	return s
 }

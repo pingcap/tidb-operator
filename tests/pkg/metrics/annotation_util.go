@@ -55,7 +55,7 @@ type AnnotationOptions struct {
 	TimeEnd     int64 `json:"timeEnd,omitempty"`
 }
 
-//NewClient creats a new grafanaClient. This client performs rest functions
+//NewClient creates a new grafanaClient. This client performs rest functions
 //such as Get, Post on specified paths.
 func NewClient(grafanaURL string, userName string, password string) (*Client, error) {
 	u, err := url.Parse(grafanaURL)
@@ -92,8 +92,7 @@ func initErrorMetric() prometheus.Counter {
 	})
 }
 
-//IncreErrorCountWithAnno increments the errorcount by 1,
-//and add the annotation to grafanan.
+//AddAnnotation adds an annotation to grafana.
 func (cli *Client) AddAnnotation(annotation Annotation) error {
 	body, err := annotation.getBody()
 	if err != nil {
@@ -120,6 +119,7 @@ func (cli *Client) AddAnnotation(annotation Annotation) error {
 	return err
 }
 
+//IncrErrorCount increments the errorcount by 1.
 func (cli *Client) IncrErrorCount() {
 	counterMetric.Inc()
 }
@@ -130,7 +130,7 @@ func (cli *Client) getAnnotationPath() string {
 	return u.String()
 }
 
-func init() {
+func StartServer() {
 	counterMetric = initErrorMetric()
 	prometheus.MustRegister(counterMetric)
 	mux := http.NewServeMux()

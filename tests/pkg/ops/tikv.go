@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 const (
@@ -70,7 +70,7 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 		}
 		stdout, stderr, err := exec("find", "/var/lib/tikv/db", "-name", "*.sst", "-o", "-name", "*.save")
 		if err != nil {
-			glog.Warningf(logHdr+"list sst files: stderr=%s err=%s", stderr, err.Error())
+			klog.Warningf(logHdr+"list sst files: stderr=%s err=%s", stderr, err.Error())
 			continue
 		}
 
@@ -93,7 +93,7 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			}
 		}
 		if len(ssts) == 0 {
-			glog.Warning(logHdr + "cannot find a sst file")
+			klog.Warning(logHdr + "cannot find a sst file")
 			continue
 		}
 
@@ -102,17 +102,17 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 			_, stderr, err = exec("sh", "-c",
 				fmt.Sprintf("cp %s %s.save && truncate -s 0 %s", sst, sst, sst))
 			if err != nil {
-				glog.Warningf(logHdr+"truncate sst file: sst=%s stderr=%s err=%s", sst, stderr, err.Error())
+				klog.Warningf(logHdr+"truncate sst file: sst=%s stderr=%s err=%s", sst, stderr, err.Error())
 				continue
 			}
 			truncated++
 		}
 		if truncated == 0 {
-			glog.Warningf(logHdr + "no sst file has been truncated")
+			klog.Warningf(logHdr + "no sst file has been truncated")
 			continue
 		}
 
-		glog.Infof(logHdr+"%d sst files got truncated", truncated)
+		klog.Infof(logHdr+"%d sst files got truncated", truncated)
 		break
 	}
 
@@ -125,14 +125,14 @@ func (ops *TiKVOps) TruncateSSTFile(opts TruncateOptions) error {
 
 func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 	annotateCmd := fmt.Sprintf("kubectl annotate pod %s -n %s runmode=debug --overwrite", podName, ns)
-	glog.Info(annotateCmd)
+	klog.Info(annotateCmd)
 	res, err := exec.Command("/bin/sh", "-c", annotateCmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to annotation pod: %s/%s, %v, %s", ns, podName, err, string(res))
 	}
 
 	findCmd := fmt.Sprintf("kubectl exec -n %s %s -- find /var/lib/tikv/db -name '*.sst.save'", ns, podName)
-	glog.Info(findCmd)
+	klog.Info(findCmd)
 	findData, err := exec.Command("/bin/sh", "-c", findCmd).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to find .save files: %s/%s, %v, %s", ns, podName, err, string(findData))
@@ -145,7 +145,7 @@ func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 		}
 		sstFile := strings.TrimSuffix(saveFile, ".save")
 		mvCmd := fmt.Sprintf("kubectl exec -n %s %s -- mv %s %s", ns, podName, saveFile, sstFile)
-		glog.Info(mvCmd)
+		klog.Info(mvCmd)
 		res, err := exec.Command("/bin/sh", "-c", mvCmd).CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("failed to recovery .sst files: %s/%s, %s, %s, %v, %s",
@@ -153,5 +153,23 @@ func (ops *TiKVOps) RecoverSSTFile(ns, podName string) error {
 		}
 	}
 
+	return nil
+}
+
+func (ops *TiKVOps) RemovePanicMark(ns, podName string) error {
+	annotateCmd := fmt.Sprintf("kubectl annotate pod %s -n %s runmode=debug --overwrite", podName, ns)
+	klog.Info(annotateCmd)
+	res, err := exec.Command("/bin/sh", "-c", annotateCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to annotation pod: %s/%s, %v, %s", ns, podName, err, string(res))
+	}
+
+	rmMarkCmd := "rm -f /var/lib/tikv/panic_mark_file"
+	rmCmd := fmt.Sprintf("kubectl exec -n %s %s -- %s", ns, podName, rmMarkCmd)
+	klog.Infof(rmCmd)
+	res, err = exec.Command("/bin/sh", "-c", rmCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to remove panic mark for pod[%s/%s],err:%v, resp:%v", ns, podName, err, string(res))
+	}
 	return nil
 }

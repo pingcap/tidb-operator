@@ -1,19 +1,20 @@
-apiVersion: extensions/v1beta1
+---
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: local-ssd-startup
+  name: local-ssd-startup-cos
   namespace: kube-system
   labels:
-    app: local-ssd-startup
+    app: local-ssd-startup-cos
 spec:
   template:
     metadata:
       labels:
-        app: local-ssd-startup
+        app: local-ssd-startup-cos
     spec:
       hostPID: true
       nodeSelector:
-        cloud.google.com/gke-os-distribution: ubuntu
+        cloud.google.com/gke-os-distribution: cos
         cloud.google.com/gke-local-ssd: "true"
       containers:
         - name: local-ssd-startup
@@ -32,19 +33,6 @@ spec:
             value: |
               #!/usr/bin/env bash
               set -euo pipefail
-              export DEBIAN_FRONTEND=noninteractive
-              # Fix any issues
-              dpkg --configure -a
-              apt-get -y autoremove
-              apt-get update
-              # Avoid unecessary repository listings
-              test -f /etc/apt/sources.list.orig || cp /etc/apt/sources.list /etc/apt/sources.list.orig
-              cat /etc/apt/sources.list.orig | awk '/bionic main|bionic-updates main|bionic-updates universe/' > /etc/apt/sources.list
-              apt-get update
-              # Install required packages
-              apt-get install -y lvm2 python-google-compute-engine python3-google-compute-engine google-compute-engine-oslogin gce-compute-image-packages
-              # Restore original repository listings
-              cp /etc/apt/sources.list.orig /etc/apt/sources.list
               mount | grep -v nobarrier | awk '/ssd/{print $1}' | xargs -i mount {} -o remount,nobarrier
           volumeMounts:
           - mountPath: /mnt/disks

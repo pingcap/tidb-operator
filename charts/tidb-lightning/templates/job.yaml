@@ -1,0 +1,152 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {{- if .Values.jobName }}
+  name: {{ .Values.jobName }}
+  {{- else}}
+  name: {{ include "tidb-lightning.name" . }}
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Values.targetTidbCluster.name }}
+    app.kubernetes.io/component: tidb-lightning
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  backoffLimit: 0               # disable job retry when fails
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "tidb-lightning.name" . }}
+        app.kubernetes.io/instance:  {{ .Values.targetTidbCluster.name }}
+        app.kubernetes.io/component: tidb-lightning
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8289"
+    {{- if .Values.annotations }}
+{{ toYaml .Values.annotations | indent 8 }}
+    {{- end }}
+    spec:
+      {{- if .Values.serviceAccount }}
+      serviceAccountName: {{ .Values.serviceAccount }}
+      {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 6 }}
+      {{- end }}
+      {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
+      nodeName: {{ .Values.dataSource.local.nodeName }}
+      {{ else if not .Values.dataSource.adhoc.pvcName -}}
+      initContainers:
+      - name: data-retriever
+        image: {{ .Values.dataSource.remote.rcloneImage }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+{{ tuple "scripts/_start_data_retriever.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
+        volumeMounts:
+        - name: credentials
+          mountPath: /etc/rclone
+        - name: data
+          mountPath: /data
+      {{ if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{ end -}}
+      {{ end -}}
+      restartPolicy: Never      # if lightning fails, manual intervention is required so no restart
+      containers:
+      - name: tidb-lightning
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+{{ tuple "scripts/_start_lightning.sh.tpl" . | include "helm-toolkit.utils.template" | indent 10 }}
+        {{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        {{- end }}
+        env:
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+        {{- if .Values.failFast }}
+        - name: FAIL_FAST
+          value: "true"
+        {{- end }}
+        {{- if .Values.targetTidbCluster.secretName }}
+        {{- if .Values.targetTidbCluster.secretUserKey }}
+        - name: TIDB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.targetTidbCluster.secretName }}
+              key: {{ .Values.targetTidbCluster.secretUserKey }}
+        {{- end }}
+        {{- if .Values.targetTidbCluster.secretPwdKey }}
+        - name: TIDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.targetTidbCluster.secretName }}
+              key: {{ .Values.targetTidbCluster.secretPwdKey }}
+        {{- end }}
+        {{- end }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/tidb-lightning
+        - name: data
+          {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName }}
+          mountPath: {{ .Values.dataSource.local.hostPath }}
+          {{- else -}}
+          mountPath: /var/lib/tidb-lightning
+          {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "tidb-lightning.name" . }}-{{ template "lightning-configmap.data-digest" . }}
+          items:
+          - key: config-file
+            path: tidb-lightning.toml
+      {{ if and .Values.dataSource.local.hostPath .Values.dataSource.local.nodeName -}}
+      - name: data
+        hostPath:
+          path: {{ .Values.dataSource.local.hostPath }}
+          type: Directory
+      {{- else if .Values.dataSource.adhoc.pvcName -}}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Values.dataSource.adhoc.pvcName }}
+      {{ else }}
+      {{- if .Values.dataSource.remote.rcloneConfig }}
+      - name: credentials
+        configMap:
+          name: rclone-{{ include "tidb-lightning.name" . }}
+          items:
+          - key: config-file
+            path: rclone.conf
+      {{ else }}
+      - name: credentials
+        secret:
+          secretName: {{ .Values.dataSource.remote.secretName }}
+      {{ end -}}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "tidb-lightning.name" . }}
+      {{ end -}}
+    {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 6 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 6 }}
+    {{- end -}}

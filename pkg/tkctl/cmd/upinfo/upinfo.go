@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -26,12 +26,12 @@ import (
 	tkctlUtil "github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/spf13/cobra"
-	apps "k8s.io/api/apps/v1beta1"
-	"k8s.io/api/core/v1"
+	apps "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 const (
@@ -41,14 +41,14 @@ const (
 		You can omit --tidbcluster=<name> option by running 'tkc use <clusterName>',
 `
 	upinfoExample = `
-		# get current tidb cluster info (set by tkc user)
-		tkc upinfo
+		# get current tidb cluster info (set by tkctl user)
+		tkctl upinfo
 
 		# get specified tidb cluster component upgrade info
-		tkc upinfo -t another-cluster
+		tkctl upinfo -t another-cluster
 `
 	infoUsage = `expected 'upinfo -t CLUSTER_NAME' for the upinfo command or 
-using 'tkc use' to set tidb cluster first.
+using 'tkctl use' to set tidb cluster first.
 `
 	UPDATED  = "updated"
 	UPDATING = "updating"
@@ -138,7 +138,7 @@ func (o *UpInfoOptions) Run() error {
 		return err
 	}
 	setName := controller.TiDBMemberName(tc.Name)
-	set, err := o.KubeCli.AppsV1beta1().StatefulSets(o.Namespace).Get(setName, metav1.GetOptions{})
+	set, err := o.KubeCli.AppsV1().StatefulSets(o.Namespace).Get(setName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func renderTCUpgradeInfo(tc *v1alpha1.TidbCluster, set *apps.StatefulSet, podLis
 		if dbPhase == v1alpha1.UpgradePhase {
 			if len(podList.Items) != 0 {
 				pod := podList.Items[0]
-				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.Spec.TiDB.Image)
+				w.WriteLine(readable.LEVEL_0, "Image:\t%s ---> %s", pod.Spec.Containers[0].Image, tc.TiDBImage())
 			}
 		}
 		{

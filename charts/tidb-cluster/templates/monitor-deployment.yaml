@@ -1,5 +1,5 @@
 {{- if .Values.monitor.create }}
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "cluster.name" . }}-monitor
@@ -11,6 +11,9 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
+    rollingUpdate: null
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ template "chart.name" . }}
@@ -47,20 +50,61 @@ spec:
             {{- end }}
     {{- end }}
       initContainers:
-      - name: init-data
-        image: {{ .Values.monitor.prometheus.image }}
-        imagePullPolicy: {{ .Values.monitor.prometheus.imagePullPolicy | default "IfNotPresent" }}
+      - name: monitor-initializer
+        image: {{ .Values.monitor.initializer.image }}
+        imagePullPolicy: {{ .Values.monitor.initializer.imagePullPolicy | default "IfNotPresent" }}
+        env:
+        - name: GF_PROVISIONING_PATH
+          value: /grafana-dashboard-definitions/tidb
+        - name: GF_DATASOURCE_PATH
+          value: /etc/grafana/provisioning/datasources
+        - name: TIDB_CLUSTER_NAME
+          value: {{ template "cluster.name" . }}
+        - name: TIDB_ENABLE_BINLOG
+          value: {{ .Values.binlog.pump.create | default false | quote }}
+        - name:  PROM_CONFIG_PATH
+          value: /prometheus-rules
+        - name: PROM_PERSISTENT_DIR
+          value: /data
+        - name: TIDB_VERSION
+      {{- if .Values.monitor.prometheus.alertManagerRulesVersion }}
+          value: tidb:{{ .Values.monitor.prometheus.alertManagerRulesVersion }}
+      {{- else }}
+          value: {{ .Values.tidb.image }}
+      {{- end }}
+        - name: GF_K8S_PROMETHEUS_URL
+          value: {{ .Values.monitor.initializer.config.K8S_PROMETHEUS_URL }}
+        - name: GF_TIDB_PROMETHEUS_URL
+          value: http://127.0.0.1:9090
+        - name: TIDB_CLUSTER_NAMESPACE
+          value: {{ .Release.Namespace }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
         command:
         - /bin/sh
         - -c
         - |
           mkdir -p /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
           chmod 777 /data/prometheus {{- if .Values.monitor.grafana.create }} /data/grafana {{- end }}
+          /usr/bin/init.sh
         securityContext:
           runAsUser: 0
         volumeMounts:
+        - mountPath: /grafana-dashboard-definitions/tidb
+          name: grafana-dashboard
+          readOnly: false
+        - name: prometheus-rules
+          mountPath: /prometheus-rules
+          readOnly: false
         - name: monitor-data
           mountPath: /data
+        - name: datasource
+          mountPath: /etc/grafana/provisioning/datasources
+          readOnly: false
+        resources:
+{{ toYaml .Values.monitor.initializer.resources | indent 10 }}
       containers:
       - name: prometheus
         image: {{ .Values.monitor.prometheus.image }}
@@ -72,6 +116,7 @@ spec:
         command:
         - /bin/prometheus
         - --web.enable-admin-api
+        - --web.enable-lifecycle
         - --log.level={{ .Values.monitor.prometheus.logLevel }}
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data/prometheus
@@ -90,14 +135,46 @@ spec:
             readOnly: true
           - name: monitor-data
             mountPath: /data
+          - name: prometheus-rules
+            mountPath: /prometheus-rules
+            readOnly: false
+          {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+          - name: cluster-client-tls
+            mountPath: /var/lib/cluster-client-tls
+            readOnly: true
+          {{- end }}
+      {{- if .Values.monitor.grafana.create }}
+      - name: reloader
+        image: {{ .Values.monitor.reloader.image }}
+        imagePullPolicy: {{ .Values.monitor.reloader.imagePullPolicy | default "IfNotPresent" }}
+        command:
+        - /bin/reload
+        - --root-store-path=/data
+        - --sub-store-path={{ .Values.tidb.image }}
+        - --watch-path=/prometheus-rules/rules
+        - --prometheus-url=http://127.0.0.1:9090
+        ports:
+        - name: reloader
+          containerPort: 9089
+          protocol: TCP
+        volumeMounts:
+          - name: prometheus-rules
+            mountPath: /prometheus-rules
+            readOnly: false
+          - name: monitor-data
+            mountPath: /data
+        resources:
+{{ toYaml .Values.monitor.reloader.resources | indent 10 }}
+      {{- if and (ne .Values.timezone "UTC") (ne .Values.timezone "") }}
+        env:
+        - name: TZ
+          value: {{ .Values.timezone | default "UTC" }}
+      {{- end }}
+      {{- end }}
       {{- if .Values.monitor.grafana.create }}
       - name: grafana
         image: {{ .Values.monitor.grafana.image }}
         imagePullPolicy: {{ .Values.monitor.grafana.imagePullPolicy | default "IfNotPresent" }}
-        lifecycle:
-            postStart:
-              exec:
-                command: ["/bin/bash", "/tmp/grafanaPrestart.sh"]
         {{- if .Values.monitor.grafana.resources }}
         resources:
 {{ toYaml .Values.monitor.grafana.resources | indent 12 }}
@@ -136,20 +213,8 @@ spec:
           - mountPath: /etc/grafana/provisioning/dashboards
             name: dashboards-provisioning
             readOnly: false
-          - mountPath: /tmp/dashboard-v2
-            name: dashboard-v2
-            readOnly: false
-          - mountPath: /tmp/dashboard-v3
-            name: dashboard-v3
-            readOnly: false
-          - mountPath: /tmp/dashboard-v3/extra
-            name: dashboard-extra-v3
-            readOnly: false
           - mountPath: /grafana-dashboard-definitions/tidb
             name: grafana-dashboard
-            readOnly: false
-          - mountPath: /tmp
-            name: grafana-prestart
             readOnly: false
       {{- end }}
       volumes:
@@ -166,14 +231,8 @@ spec:
           items:
           - key: prometheus-config
             path: prometheus.yml
-          - key: alert-rules-config
-            path: alert.rules
       {{- if .Values.monitor.grafana.create }}
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor
-          items:
-          - key: datasource-config
-            path: datasource.yaml
+      - emptyDir: {}
         name: datasource
       - configMap:
           name: {{ template "cluster.name" . }}-monitor
@@ -181,23 +240,16 @@ spec:
           - key: dashboard-config
             path: dashboards.yaml
         name: dashboards-provisioning
+      {{- end }}
+      - emptyDir: {}
+        name: prometheus-rules
       - emptyDir: {}
         name: grafana-dashboard
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor-dashboard-v2
-        name: dashboard-v2
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor-dashboard-v3
-        name: dashboard-v3
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor-dashboard-extra-v3
-        name: dashboard-extra-v3
-      - configMap:
-          name: {{ template "cluster.name" . }}-monitor
-          items:
-          - key: grafana-prestart
-            path: grafanaPrestart.sh
-        name: grafana-prestart
+      {{- if and .Values.tlsCluster .Values.tlsCluster.enabled }}
+      - name: cluster-client-tls
+        secret:
+          defaultMode: 420
+          secretName: {{ .Release.Name }}-cluster-client-secret
       {{- end }}
     {{- if .Values.monitor.tolerations }}
       tolerations:

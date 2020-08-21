@@ -1,0 +1,25 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: Backup
+metadata:
+  name: demo1-backup-gcs
+  namespace: test1
+spec:
+  # cleanPolicy: OnFailure
+  # resources:
+  #   limits:
+  #     cpu: 300m
+  #     memory: 300Mi
+  #   requests:
+  #     memory: 300Mi
+  from:
+    host: 10.233.10.242
+    port: 4000
+    user: root
+    secretName: backup-demo1-tidb-secret
+  gcs:
+    projectId: <your-project-id>
+    secretName: gcs-secret
+    bucket: test1-demo1
+  storageClassName: local-storage
+  storageSize: 1Gi

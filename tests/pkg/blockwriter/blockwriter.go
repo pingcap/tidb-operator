@@ -9,7 +9,7 @@
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
-// limitations under the License.package spec
+// limitations under the License.
 
 package blockwriter
 
@@ -23,9 +23,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 const (
@@ -96,7 +96,7 @@ func (c *BlockWriterCase) newBlockWriter() *blockWriter {
 
 func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []string, wg *sync.WaitGroup) {
 	defer func() {
-		glog.Infof("[%s] [%s] [action: generate Query] stopped", c, c.ClusterName)
+		klog.Infof("[%s] [%s] [action: generate Query] stopped", c, c.ClusterName)
 		wg.Done()
 	}()
 
@@ -126,7 +126,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 		case queryChan <- querys:
 			continue
 		default:
-			glog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
+			klog.V(4).Infof("[%s] [%s] [action: generate Query] query channel is full, sleep 10 seconds", c, c.ClusterName)
 			util.Sleep(ctx, 10*time.Second)
 		}
 	}
@@ -135,7 +135,7 @@ func (c *BlockWriterCase) generateQuery(ctx context.Context, queryChan chan []st
 func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 	_, err := db.Exec(query)
 	if err != nil {
-		glog.V(4).Infof("exec sql [%s] failed, err: %v", query, err)
+		klog.V(4).Infof("exec sql [%s] failed, err: %v", query, err)
 		return err
 	}
 
@@ -143,7 +143,7 @@ func (bw *blockWriter) batchExecute(db *sql.DB, query string) error {
 }
 
 func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []string) {
-	defer glog.Infof("run stopped")
+	defer klog.Infof("run stopped")
 	for {
 		select {
 		case <-ctx.Done():
@@ -163,7 +163,7 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 				return
 			default:
 				if err := bw.batchExecute(db, query); err != nil {
-					glog.V(4).Info(err)
+					klog.V(4).Info(err)
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -174,10 +174,10 @@ func (bw *blockWriter) run(ctx context.Context, db *sql.DB, queryChan chan []str
 
 // Initialize inits case
 func (c *BlockWriterCase) initialize(db *sql.DB) error {
-	glog.Infof("[%s] [%s] start to init...", c, c.ClusterName)
+	klog.Infof("[%s] [%s] start to init...", c, c.ClusterName)
 	defer func() {
 		atomic.StoreUint32(&c.isInit, 1)
-		glog.Infof("[%s] [%s] init end...", c, c.ClusterName)
+		klog.Infof("[%s] [%s] init end...", c, c.ClusterName)
 	}()
 
 	for i := 0; i < c.cfg.TableNum; i++ {
@@ -196,7 +196,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 		err := wait.PollImmediate(5*time.Second, 30*time.Second, func() (bool, error) {
 			_, err := db.Exec(tmt)
 			if err != nil {
-				glog.Warningf("[%s] exec sql [%s] failed, err: %v, retry...", c, tmt, err)
+				klog.Warningf("[%s] exec sql [%s] failed, err: %v, retry...", c, tmt, err)
 				return false, nil
 			}
 
@@ -204,7 +204,7 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 		})
 
 		if err != nil {
-			glog.Errorf("[%s] exec sql [%s] failed, err: %v", c, tmt, err)
+			klog.Errorf("[%s] exec sql [%s] failed, err: %v", c, tmt, err)
 			return err
 		}
 	}
@@ -216,13 +216,13 @@ func (c *BlockWriterCase) initialize(db *sql.DB) error {
 func (c *BlockWriterCase) Start(db *sql.DB) error {
 	if !atomic.CompareAndSwapUint32(&c.isRunning, 0, 1) {
 		err := fmt.Errorf("[%s] [%s] is running, you can't start it again", c, c.ClusterName)
-		glog.Error(err)
+		klog.Error(err)
 		return nil
 	}
 
 	defer func() {
 		c.RLock()
-		glog.Infof("[%s] [%s] stopped", c, c.ClusterName)
+		klog.Infof("[%s] [%s] stopped", c, c.ClusterName)
 		atomic.SwapUint32(&c.isRunning, 0)
 	}()
 
@@ -232,7 +232,7 @@ func (c *BlockWriterCase) Start(db *sql.DB) error {
 		}
 	}
 
-	glog.Infof("[%s] [%s] start to execute case...", c, c.ClusterName)
+	klog.Infof("[%s] [%s] start to execute case...", c, c.ClusterName)
 
 	var wg sync.WaitGroup
 
@@ -255,7 +255,7 @@ loop:
 	for {
 		select {
 		case <-c.stopChan:
-			glog.Infof("[%s] stoping...", c)
+			klog.Infof("[%s] stoping...", c)
 			cancel()
 			break loop
 		default:

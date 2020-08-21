@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+    - master
+    - release-*
+
+jobs:
+
+  pull:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+        - verify
+        - build
+        - test
+        - e2e-examples
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: go/src/github.com/${{ github.repository }}
+
+    - name: ${{ matrix.job }}
+      run: |
+        # workaround for https://github.com/actions/setup-go/issues/14
+        export GOPATH=${GITHUB_WORKSPACE}/go
+        export PATH=$PATH:$GOPATH/bin
+        if [[ "$job" == "verify" ]]; then
+          make check-setup check
+        elif [[ "$job" == "build" ]]; then
+          make docker e2e-docker cli debug-build-docker
+        elif [[ "$job" == "test" ]]; then
+          make test GOFLAGS=-race GO_COVER=y
+        else
+          make $job
+        fi
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+      env:
+        job: ${{ matrix.job }}
+
+    - name: Upload test coverage
+      run: |
+        curl -s https://codecov.io/bash | bash -s - -F unittest
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+      if: ${{ matrix.job == 'test' }}

@@ -19,10 +19,11 @@ import (
 	"sync"
 
 	restful "github.com/emicklei/go-restful"
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/scheduler"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
+	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
@@ -52,14 +53,19 @@ func StartServer(kubeCli kubernetes.Interface, cli versioned.Interface, port int
 		Operation("filterNodes").
 		Writes(schedulerapiv1.ExtenderFilterResult{}))
 
+	ws.Route(ws.POST("/preempt").To(svr.preemptNode).
+		Doc("preempt nodes").
+		Operation("preemptNodes").
+		Writes(schedulerapi.ExtenderPreemptionResult{}))
+
 	ws.Route(ws.POST("/prioritize").To(svr.prioritizeNode).
 		Doc("prioritize nodes").
 		Operation("prioritizeNodes").
 		Writes(schedulerapiv1.HostPriorityList{}))
 	restful.Add(ws)
 
-	glog.Infof("start scheduler extender server, listening on 0.0.0.0:%d", port)
-	glog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	klog.Infof("start scheduler extender server, listening on 0.0.0.0:%d", port)
+	klog.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
 func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
@@ -84,6 +90,28 @@ func (svr *server) filterNode(req *restful.Request, resp *restful.Response) {
 	}
 }
 
+func (svr *server) preemptNode(req *restful.Request, resp *restful.Response) {
+	svr.lock.Lock()
+	defer svr.lock.Unlock()
+
+	args := &schedulerapi.ExtenderPreemptionArgs{}
+	if err := req.ReadEntity(args); err != nil {
+		errorResponse(resp, errFailToRead)
+		return
+	}
+
+	preemptResult, err := svr.scheduler.Preempt(args)
+	if err != nil {
+		errorResponse(resp, restful.NewError(http.StatusInternalServerError,
+			fmt.Sprintf("unable to preempt nodes: %v", err)))
+		return
+	}
+
+	if err := resp.WriteEntity(preemptResult); err != nil {
+		errorResponse(resp, errFailToWrite)
+	}
+}
+
 func (svr *server) prioritizeNode(req *restful.Request, resp *restful.Response) {
 	args := &schedulerapiv1.ExtenderArgs{}
 	if err := req.ReadEntity(args); err != nil {
@@ -104,8 +132,8 @@ func (svr *server) prioritizeNode(req *restful.Request, resp *restful.Response) 
 }
 
 func errorResponse(resp *restful.Response, svcErr restful.ServiceError) {
-	glog.Error(svcErr.Message)
+	klog.Error(svcErr.Message)
 	if writeErr := resp.WriteServiceError(svcErr.Code, svcErr); writeErr != nil {
-		glog.Errorf("unable to write error: %v", writeErr)
+		klog.Errorf("unable to write error: %v", writeErr)
 	}
 }

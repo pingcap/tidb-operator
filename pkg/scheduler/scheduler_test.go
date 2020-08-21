@@ -18,23 +18,29 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheduler/predicates"
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/record"
+	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulerapiv1 "k8s.io/kubernetes/pkg/scheduler/api/v1"
 )
 
 func TestSchedulerFilter(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name           string
-		args           *schedulerapiv1.ExtenderArgs
-		predicateError bool
-		expectFn       func(*GomegaWithT, *schedulerapiv1.ExtenderFilterResult, error)
+		name      string
+		args      *schedulerapiv1.ExtenderArgs
+		predicate predicates.Predicate
+		expectFn  func(*GomegaWithT, *schedulerapiv1.ExtenderFilterResult, error)
 	}
+
+	recorder := record.NewFakeRecorder(10)
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
@@ -42,22 +48,17 @@ func TestSchedulerFilter(t *testing.T) {
 		s := &scheduler{
 			predicates: map[string][]predicates.Predicate{
 				label.PDLabelVal: {
-					newFakeErrPredicate(),
+					test.predicate,
 				},
 				label.TiKVLabelVal: {
-					newFakeErrPredicate(),
+					test.predicate,
 				},
 				label.TiDBLabelVal: {
-					newFakeErrPredicate(),
+					test.predicate,
 				},
 			},
-		}
-		if test.predicateError {
-			for _, predicatesByComponent := range s.predicates {
-				for _, predicate := range predicatesByComponent {
-					predicate.(*fakeErrPredicate).SetError(fmt.Errorf("predicate error"))
-				}
-			}
+
+			recorder: recorder,
 		}
 		re, err := s.Filter(test.args)
 		test.expectFn(g, re, err)
@@ -80,7 +81,7 @@ func TestSchedulerFilter(t *testing.T) {
 					Items:    []apiv1.Node{},
 				},
 			},
-			predicateError: false,
+			predicate: &predicates.FakePredicate{},
 			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.Nodes.ResourceVersion).To(Equal("9999"))
@@ -107,7 +108,7 @@ func TestSchedulerFilter(t *testing.T) {
 					Items:    []apiv1.Node{},
 				},
 			},
-			predicateError: false,
+			predicate: &predicates.FakePredicate{},
 			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.Nodes.ResourceVersion).To(Equal("9999"))
@@ -134,11 +135,13 @@ func TestSchedulerFilter(t *testing.T) {
 					Items:    []apiv1.Node{},
 				},
 			},
-			predicateError: true,
+			predicate: &predicates.FakePredicate{Err: fmt.Errorf("predicate error")},
 			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(strings.Contains(err.Error(), "predicate error")).To(BeTrue())
-				g.Expect(result).To(BeNil())
+				g.Expect(err).NotTo(HaveOccurred())
+				events := predicates.CollectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("predicate error"))
+				g.Expect(result.Nodes.Items).To(BeNil())
 			},
 		},
 		{
@@ -168,7 +171,7 @@ func TestSchedulerFilter(t *testing.T) {
 					},
 				},
 			},
-			predicateError: false,
+			predicate: &predicates.FakePredicate{},
 			expectFn: func(g *GomegaWithT, result *schedulerapiv1.ExtenderFilterResult, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(result.Nodes.Items[0].Name).To(Equal("node-1"))
@@ -269,26 +272,198 @@ func TestSchedulerPriority(t *testing.T) {
 	}
 }
 
-type fakeErrPredicate struct {
-	err error
-}
-
-func newFakeErrPredicate() *fakeErrPredicate {
-	return &fakeErrPredicate{}
-}
-
-func (fep *fakeErrPredicate) SetError(err error) {
-	fep.err = err
-}
-
-func (fep *fakeErrPredicate) Name() string {
-	return "fakeErrPredicate"
-}
-
-func (fep *fakeErrPredicate) Filter(_ string, _ *apiv1.Pod, nodes []apiv1.Node) ([]apiv1.Node, error) {
-	if fep.err != nil {
-		return nil, fep.err
+func TestSchedulerPreempt(t *testing.T) {
+	victims := &schedulerapi.Victims{
+		Pods: []*apiv1.Pod{},
+	}
+	metaVictims := &schedulerapi.MetaVictims{
+		Pods: []*schedulerapi.MetaPod{},
+	}
+	nodeA := &apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node-a",
+		},
+	}
+	nodeB := &apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node-b",
+		},
+	}
+	nodeC := &apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node-c",
+		},
+	}
+	unrelatedPod := &apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: apiv1.NamespaceDefault,
+			Name:      "test",
+		},
+	}
+	pdPod := &apiv1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: apiv1.NamespaceDefault,
+			Name:      "test",
+			Labels: map[string]string{
+				label.InstanceLabelKey:  "test",
+				label.ComponentLabelKey: "pd",
+			},
+		},
+	}
+	tests := []struct {
+		name       string
+		nodes      []*apiv1.Node
+		args       *schedulerapi.ExtenderPreemptionArgs
+		predicates map[string][]predicates.Predicate
+		wantResult *schedulerapi.ExtenderPreemptionResult
+		wantErr    string
+	}{
+		{
+			name:  "unrelated pod",
+			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			args: &schedulerapi.ExtenderPreemptionArgs{
+				Pod: unrelatedPod,
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
+					"node-a": victims,
+					"node-b": victims,
+					"node-c": victims,
+				},
+			},
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{
+					"node-a": metaVictims,
+					"node-b": metaVictims,
+					"node-c": metaVictims,
+				},
+			},
+		},
+		{
+			name:  "node does not exist anymore",
+			nodes: []*apiv1.Node{nodeA, nodeB},
+			predicates: map[string][]predicates.Predicate{
+				label.PDLabelVal: {
+					&predicates.FakePredicate{},
+				},
+			},
+			args: &schedulerapi.ExtenderPreemptionArgs{
+				Pod: pdPod,
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
+					"node-a": victims,
+					"node-b": victims,
+					"node-c": victims,
+				},
+			},
+			wantResult: nil,
+			wantErr:    `nodes "node-c" not found`,
+		},
+		{
+			name:  "one of nominated nodes is feasible",
+			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			predicates: map[string][]predicates.Predicate{
+				label.PDLabelVal: {
+					&predicates.FakePredicate{
+						Nodes: []apiv1.Node{
+							*nodeA,
+						},
+					},
+				},
+			},
+			args: &schedulerapi.ExtenderPreemptionArgs{
+				Pod: pdPod,
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
+					"node-a": victims,
+					"node-b": victims,
+					"node-c": victims,
+				},
+			},
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{
+					"node-a": metaVictims,
+				},
+			},
+		},
+		{
+			name:  "none of nominated nodes is feasible",
+			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			predicates: map[string][]predicates.Predicate{
+				label.PDLabelVal: {
+					&predicates.FakePredicate{
+						Nodes: []apiv1.Node{},
+					},
+				},
+			},
+			args: &schedulerapi.ExtenderPreemptionArgs{
+				Pod: pdPod,
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
+					"node-a": victims,
+					"node-b": victims,
+					"node-c": victims,
+				},
+			},
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{},
+			},
+		},
+		{
+			name:  "all nominated nodes are feasible",
+			nodes: []*apiv1.Node{nodeA, nodeB, nodeC},
+			predicates: map[string][]predicates.Predicate{
+				label.PDLabelVal: {
+					&predicates.FakePredicate{
+						Nodes: []apiv1.Node{
+							*nodeA,
+							*nodeB,
+							*nodeC,
+						},
+					},
+				},
+			},
+			args: &schedulerapi.ExtenderPreemptionArgs{
+				Pod: pdPod,
+				NodeNameToVictims: map[string]*schedulerapi.Victims{
+					"node-a": victims,
+					"node-b": victims,
+					"node-c": victims,
+				},
+			},
+			wantResult: &schedulerapi.ExtenderPreemptionResult{
+				NodeNameToMetaVictims: map[string]*schedulerapi.MetaVictims{
+					"node-a": metaVictims,
+					"node-b": metaVictims,
+					"node-c": metaVictims,
+				},
+			},
+		},
 	}
 
-	return nodes, nil
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kubeCli := fake.NewSimpleClientset()
+			s := &scheduler{
+				kubeCli:  kubeCli,
+				recorder: record.NewFakeRecorder(10),
+			}
+			if tt.predicates != nil {
+				s.predicates = tt.predicates
+			}
+			if tt.nodes != nil {
+				for _, node := range tt.nodes {
+					kubeCli.CoreV1().Nodes().Create(node)
+				}
+			}
+			kubeCli.CoreV1().Pods(apiv1.NamespaceDefault).Create(tt.args.Pod)
+			result, err := s.Preempt(tt.args)
+			if diff := cmp.Diff(tt.wantResult, result); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+			if tt.wantErr == "" && err != nil {
+				t.Errorf("expects error is nil, got %v", err)
+			}
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("expects error is %v, got %v", tt.wantErr, err)
+				}
+			}
+		})
+	}
 }

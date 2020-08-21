@@ -15,14 +15,16 @@ package member
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,14 +32,18 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/pointer"
 )
 
 func TestPDFailoverFailover(t *testing.T) {
 	g := NewGomegaWithT(t)
 
+	recorder := record.NewFakeRecorder(100)
 	type testcase struct {
 		name                     string
 		update                   func(*v1alpha1.TidbCluster)
+		maxFailoverCount         int32
 		hasPVC                   bool
 		hasPod                   bool
 		podWithDeletionTimestamp bool
@@ -49,53 +55,12 @@ func TestPDFailoverFailover(t *testing.T) {
 		errExpectFn              func(*GomegaWithT, error)
 		expectFn                 func(*v1alpha1.TidbCluster, *pdFailover)
 	}
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-		tc := newTidbClusterForPD()
-		test.update(tc)
 
-		pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
-		pdClient := controller.NewFakePDClient()
-		fakePDControl.SetPDClient(tc, pdClient)
-
-		pdClient.AddReaction(controller.DeleteMemberByIDActionType, func(action *controller.Action) (interface{}, error) {
-			if test.delMemberFailed {
-				return nil, fmt.Errorf("failed to delete member")
-			}
-			return nil, nil
-		})
-
-		if test.hasPVC {
-			pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
-			if test.pvcWithDeletionTimestamp {
-				pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-			}
-			pvcIndexer.Add(pvc)
-		}
-		if test.hasPod {
-			pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
-			if test.podWithDeletionTimestamp {
-				pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-			}
-			podIndexer.Add(pod)
-		}
-		if test.delPodFailed {
-			fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)
-		}
-		if test.delPVCFailed {
-			fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("delete pvc: API server failed")), 0)
-		}
-
-		tc.Status.PD.Synced = !test.statusSyncFailed
-
-		err := pdFailover.Failover(tc)
-		test.errExpectFn(g, err)
-		test.expectFn(tc, pdFailover)
-	}
 	tests := []testcase{
 		{
 			name:                     "all members are ready",
 			update:                   allMembersReady,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -107,11 +72,14 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(0))
 			},
 		},
 		{
 			name:                     "pd status sync failed",
 			update:                   allMembersReady,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -122,11 +90,14 @@ func TestPDFailoverFailover(t *testing.T) {
 			errExpectFn:              errExpectNotNil,
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(0))
 			},
 		},
 		{
 			name:                     "two members are not ready, not in quorum",
 			update:                   twoMembersNotReady,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -141,11 +112,17 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				sort.Strings(events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-0(0) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
 			name:                     "two members are ready and a failure member",
 			update:                   oneFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -160,6 +137,9 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -171,6 +151,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.LastTransitionTime = metav1.Time{Time: time.Now().Add(-2 * time.Minute)}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -182,6 +163,9 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
@@ -193,6 +177,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.LastTransitionTime = metav1.Time{}
 				tc.Status.PD.Members[pd1Name] = pd1
 			},
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -204,11 +189,15 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
 			name:                     "has one not ready member, don't have pvc",
 			update:                   oneNotReadyMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -223,11 +212,15 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
 			name:                     "has one not ready member",
 			update:                   oneNotReadyMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -242,14 +235,41 @@ func TestPDFailoverFailover(t *testing.T) {
 			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
 				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
 				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(1))
-				g.Expect(tc.Status.PD.FailureMembers).To(Equal(map[string]v1alpha1.PDFailureMember{
-					"test-pd-1": {PodName: "test-pd-1", MemberID: "12891273174085095651", PVCUID: "pvc-1-uid", MemberDeleted: false},
-				}))
+				failureMembers := tc.Status.PD.FailureMembers["test-pd-1"]
+				g.Expect(failureMembers.PodName).To(Equal("test-pd-1"))
+				g.Expect(failureMembers.MemberID).To(Equal("12891273174085095651"))
+				g.Expect(string(failureMembers.PVCUID)).To(Equal("pvc-1-uid"))
+				g.Expect(failureMembers.MemberDeleted).To(BeFalse())
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("Unhealthy pd pod[test-pd-1] is unhealthy, msg:pd member[12891273174085095651] is unhealthy"))
+			},
+		},
+		{
+			name:                     "has one not ready member but maxFailoverCount is 0",
+			update:                   oneNotReadyMember,
+			maxFailoverCount:         0,
+			hasPVC:                   true,
+			hasPod:                   true,
+			podWithDeletionTimestamp: false,
+			delMemberFailed:          false,
+			delPodFailed:             false,
+			delPVCFailed:             false,
+			statusSyncFailed:         false,
+			errExpectFn:              errExpectNil,
+			expectFn: func(tc *v1alpha1.TidbCluster, _ *pdFailover) {
+				g.Expect(int(tc.Spec.PD.Replicas)).To(Equal(3))
+				g.Expect(len(tc.Status.PD.FailureMembers)).To(Equal(0))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod success",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -264,6 +284,10 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(true))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
@@ -275,6 +299,7 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1.MemberID = "wrong-id"
 				tc.Status.PD.FailureMembers[pd1Name] = pd1
 			},
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -292,11 +317,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete member failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -314,11 +343,15 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(1))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, don't have PVC, has Pod, delete pod failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   false,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -336,11 +369,16 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, has Pod, delete pvc failed",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -358,11 +396,16 @@ func TestPDFailoverFailover(t *testing.T) {
 				pd1, ok := tc.Status.PD.FailureMembers[pd1Name]
 				g.Expect(ok).To(Equal(true))
 				g.Expect(pd1.MemberDeleted).To(Equal(false))
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, has Pod with deletion timestamp",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: true,
@@ -383,11 +426,16 @@ func TestPDFailoverFailover(t *testing.T) {
 				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 		{
 			name:                     "has one not ready member, and exceed deadline, has PVC with deletion timestamp",
 			update:                   oneNotReadyMemberAndAFailureMember,
+			maxFailoverCount:         3,
 			hasPVC:                   true,
 			hasPod:                   true,
 			podWithDeletionTimestamp: false,
@@ -409,12 +457,58 @@ func TestPDFailoverFailover(t *testing.T) {
 				g.Expect(errors.IsNotFound(err)).To(BeTrue())
 				_, err = pf.pvcLister.PersistentVolumeClaims(metav1.NamespaceDefault).Get(pvcName)
 				g.Expect(err).NotTo(HaveOccurred())
+				events := collectEvents(recorder.Events)
+				g.Expect(events).To(HaveLen(2))
+				g.Expect(events[0]).To(ContainSubstring("test-pd-1(12891273174085095651) is unhealthy"))
+				g.Expect(events[1]).To(ContainSubstring("test-pd-1(12891273174085095651) deleted from cluster"))
 			},
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc := newTidbClusterForPD()
+			tc.Spec.PD.MaxFailoverCount = pointer.Int32Ptr(test.maxFailoverCount)
+			test.update(tc)
+
+			pdFailover, pvcIndexer, podIndexer, fakePDControl, fakePodControl, fakePVCControl := newFakePDFailover()
+			pdClient := controller.NewFakePDClient(fakePDControl, tc)
+			pdFailover.recorder = recorder
+
+			pdClient.AddReaction(pdapi.DeleteMemberByIDActionType, func(action *pdapi.Action) (interface{}, error) {
+				if test.delMemberFailed {
+					return nil, fmt.Errorf("failed to delete member")
+				}
+				return nil, nil
+			})
+
+			if test.hasPVC {
+				pvc := newPVCForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				if test.pvcWithDeletionTimestamp {
+					pvc.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				}
+				pvcIndexer.Add(pvc)
+			}
+			if test.hasPod {
+				pod := newPodForPDFailover(tc, v1alpha1.PDMemberType, 1)
+				if test.podWithDeletionTimestamp {
+					pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+				}
+				podIndexer.Add(pod)
+			}
+			if test.delPodFailed {
+				fakePodControl.SetDeletePodError(errors.NewInternalError(fmt.Errorf("delete pod: API server failed")), 0)
+			}
+			if test.delPVCFailed {
+				fakePVCControl.SetDeletePVCError(errors.NewInternalError(fmt.Errorf("delete pvc: API server failed")), 0)
+			}
+
+			tc.Status.PD.Synced = !test.statusSyncFailed
+
+			err := pdFailover.Failover(tc)
+			test.errExpectFn(g, err)
+			test.expectFn(tc, pdFailover)
+		})
 	}
 }
 
@@ -520,10 +614,10 @@ func TestPDFailoverRecovery(t *testing.T) {
 	}
 }
 
-func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *controller.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
+func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *pdapi.FakePDControl, *controller.FakePodControl, *controller.FakePVCControl) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	pdControl := controller.NewFakePDControl()
+	pdControl := pdapi.NewFakePDControl(kubeCli)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -539,7 +633,8 @@ func newFakePDFailover() (*pdFailover, cache.Indexer, cache.Indexer, *controller
 			podControl,
 			pvcInformer.Lister(),
 			pvcControl,
-			pvInformer.Lister()},
+			pvInformer.Lister(),
+			nil},
 		pvcInformer.Informer().GetIndexer(),
 		podInformer.Informer().GetIndexer(),
 		pdControl, podControl, pvcControl
@@ -646,4 +741,18 @@ func newPodForPDFailover(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 			Namespace: metav1.NamespaceDefault,
 		},
 	}
+}
+
+func collectEvents(source <-chan string) []string {
+	done := false
+	events := make([]string, 0)
+	for !done {
+		select {
+		case event := <-source:
+			events = append(events, event)
+		default:
+			done = true
+		}
+	}
+	return events
 }

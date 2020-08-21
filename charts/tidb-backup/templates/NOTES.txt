@@ -3,11 +3,11 @@
    watch kubectl get jobs --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=backup
 2. Wait until backup pods becomes completed
    watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=backup -o wide
-{{- else if eq .Values.mode "restore" }}
+{{- else if (or (eq .Values.mode "restore") (eq .Values.mode "scheduled-restore")) }}
 1. Watch restore job is created
    watch kubectl get jobs --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
 2. Wait until restore pod becomes completed
-   watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component=restore
+   watch kubectl get po --namespace {{ .Release.Namespace }}  -l app.kubernetes.io/component={{ .Values.mode }}
 {{- else }}
 {{ fail (printf "invalid mode: %s" .Values.mode) }}
 {{- end -}}

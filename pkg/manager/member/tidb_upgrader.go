@@ -14,15 +14,14 @@
 package member
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controller"
-	apps "k8s.io/api/apps/v1beta1"
-	corelisters "k8s.io/client-go/listers/core/v1"
-)
+	"fmt"
 
-const (
-	// MaxResignDDLOwnerCount is the max regign DDL owner count
-	MaxResignDDLOwnerCount = 3
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	apps "k8s.io/api/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog"
 )
 
 type tidbUpgrader struct {
@@ -39,10 +38,18 @@ func NewTiDBUpgrader(tidbControl controller.TiDBControlInterface, podLister core
 }
 
 func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+
+	// when scale replica to 0 , all nodes crash and tidb is in upgrade phase, this method will throw error about pod is upgrade.
+	// so  directly return nil when scale replica to 0.
+	if tc.Spec.TiDB.Replicas == int32(0) {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase {
+	if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.Status.TiKV.Phase == v1alpha1.UpgradePhase ||
+		tc.Status.Pump.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -52,16 +59,32 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 	}
 
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
+	if !templateEqual(newSet, oldSet) {
+		return nil
+	}
+
+	if tc.Status.TiDB.StatefulSet.UpdateRevision == tc.Status.TiDB.StatefulSet.CurrentRevision {
+		return nil
+	}
+
+	if oldSet.Spec.UpdateStrategy.Type == apps.OnDeleteStatefulSetStrategyType || oldSet.Spec.UpdateStrategy.RollingUpdate == nil {
+		// Manually bypass tidb-operator to modify statefulset directly, such as modify tidb statefulset's RollingUpdate strategy to OnDelete strategy,
+		// or set RollingUpdate to nil, skip tidb-operator's rolling update logic in order to speed up the upgrade in the test environment occasionally.
+		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading tidb.
+		// Therefore, in the production environment, we should try to avoid modifying the tidb statefulset update strategy directly.
+		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
+		klog.Warningf("tidbcluster: [%s/%s] tidb statefulset %s UpdateStrategy has been modified manually", ns, tcName, oldSet.GetName())
 		return nil
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := tc.Status.TiDB.StatefulSet.Replicas - 1; i >= 0; i-- {
+	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
+	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
+		i := podOrdinals[_i]
 		podName := tidbPodName(tcName, i)
 		pod, err := tdu.podLister.Pods(ns).Get(podName)
 		if err != nil {
-			return err
+			return fmt.Errorf("tidbUpgrader.Upgrade: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
 		}
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
@@ -81,18 +104,6 @@ func (tdu *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stateful
 }
 
 func (tdu *tidbUpgrader) upgradeTiDBPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet) error {
-	tcName := tc.GetName()
-	if tc.Spec.TiDB.Replicas > 1 {
-		if member, exist := tc.Status.TiDB.Members[tidbPodName(tcName, ordinal)]; exist && member.Health {
-			hasResign, err := tdu.tidbControl.ResignDDLOwner(tc, ordinal)
-			if (!hasResign || err != nil) && tc.Status.TiDB.ResignDDLOwnerRetryCount < MaxResignDDLOwnerCount {
-				tc.Status.TiDB.ResignDDLOwnerRetryCount++
-				return err
-			}
-		}
-	}
-
-	tc.Status.TiDB.ResignDDLOwnerRetryCount = 0
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }

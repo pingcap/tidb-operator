@@ -1,0 +1,24 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: Restore
+metadata:
+  name: demo2-restore
+  namespace: test2
+spec:
+  # resources:
+  #   limits:
+  #     cpu: 300m
+  #     memory: 300Mi
+  #   requests:
+  #     memory: 300Mi
+  to:
+    host: 10.233.31.143
+    port: 4000
+    user: root
+    secretName: restore-demo2-tidb-secret
+  gcs:
+    projectId: <your-project-id>
+    secretName: gcs-secret
+    path: gcs://test1-demo1/backup-2019-11-11T16:06:05Z.tgz
+  storageClassName: local-storage
+  storageSize: 1Gi

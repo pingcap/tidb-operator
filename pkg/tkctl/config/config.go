@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
 
 	restclient "k8s.io/client-go/rest"
 )
@@ -98,11 +98,11 @@ func (c *TkcContext) ToTkcClientConfig() (*TkcClientConfig, error) {
 	// try loading tidb cluster config
 	tcConfigFile, err := tcConfigLocation()
 	if err != nil {
-		glog.V(4).Info("Error getting tidb cluster config file location")
+		klog.V(4).Info("Error getting tidb cluster config file location")
 	} else {
 		tcConfig, err := LoadFile(tcConfigFile)
 		if err != nil {
-			glog.V(4).Info("Error reading tidb cluster config file")
+			klog.V(4).Info("Error reading tidb cluster config file")
 			c.TidbClusterConfig = &TidbClusterConfig{}
 		} else {
 			c.TidbClusterConfig = tcConfig

@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -21,11 +22,12 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/kubernetes/pkg/kubectl/util/logs"
+	"k8s.io/component-base/logs"
 )
 
 func main() {
-	flags := pflag.NewFlagSet("tkc", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("tkctl", pflag.ExitOnError)
+	flag.CommandLine.Parse([]string{})
 	pflag.CommandLine = flags
 
 	command := cmd.NewTkcCommand(genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr})

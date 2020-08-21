@@ -8,6 +8,7 @@ tests/images/e2e/bin/
 tests/images/fault-trigger/bin/
 tests/images/e2e/tidb-cluster/
 tests/images/e2e/tidb-backup/
+tests/images/e2e/tidb-drainer/
 tests/images/e2e/tidb-operator/
 tests/images/e2e/manifests/
 *.tar
@@ -22,12 +23,21 @@ filenametags
 *.coverprofile
 
 coverage.txt
+coverage.out
 
 # retool. We could check this in like a vendor
 # But it is just tools that can be installed with make setup
-/_tools/
 vendor
 tests/e2e/e2e.test
 .orig
-tkc
+apiserver.local.config/
+/tkctl
+/.go-version
+kubeconfig
 
+# local output directory
+/output/
+# kubetest2 default artifacts directory
+/_artifacts/
+
+.DS_Store

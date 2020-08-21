@@ -1,0 +1,82 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: CLUSTER_NAME
+spec:
+  version: v4.0.4
+  timezone: UTC
+  pvReclaimPolicy: Retain
+  schedulerName: tidb-scheduler
+  pd:
+    config: {}
+    nodeSelector:
+      dedicated: CLUSTER_NAME-pd
+    replicas: 3
+    requests:
+      cpu: "1"
+      memory: 400Mi
+      storage: 1Gi
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: CLUSTER_NAME-pd
+    storageClassName: pd-ssd
+  tidb:
+    config: {}
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
+    podSecurityContext:
+      sysctls:
+      - name: net.core.somaxconn
+        value: "32768"
+      - name: net.ipv4.tcp_keepalive_intvl
+        value: "75"
+      - name: net.ipv4.tcp_keepalive_time
+        value: "300"
+    nodeSelector:
+      dedicated: CLUSTER_NAME-tidb
+    replicas: 2
+    requests:
+      cpu: "1"
+      memory: 400Mi
+    separateSlowLog: true
+    service:
+      type: LoadBalancer
+      externalTrafficPolicy: Local
+      annotations:
+        cloud.google.com/load-balancer-type: Internal
+    slowLogTailer:
+      limits:
+        cpu: 100m
+        memory: 50Mi
+      requests:
+        cpu: 20m
+        memory: 5Mi
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: CLUSTER_NAME-tidb
+  tikv:
+    config:
+      log-level: info
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
+    podSecurityContext:
+      sysctls:
+      - name: net.core.somaxconn
+        value: "32768"
+    nodeSelector:
+      dedicated: CLUSTER_NAME-tikv
+    replicas: 3
+    requests:
+      cpu: "1"
+      memory: 2Gi
+      storage: 45Gi
+    storageClassName: local-storage
+    tolerations:
+    - effect: NoSchedule
+      key: dedicated
+      operator: Equal
+      value: CLUSTER_NAME-tikv

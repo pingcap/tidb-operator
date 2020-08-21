@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
 package list
 
 import (
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/klog"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubeprinters "k8s.io/kubernetes/pkg/printers"
 )
 
@@ -33,13 +33,13 @@ const (
 `
 	listExample = `
 		# list all clusters and sync to local config
-		tkc list
+		tkctl list
 
 		# filter by namespace
-		tkc list --namespace=foo
+		tkctl list --namespace=foo
 
 		# get tidb cluster in all namespaces
-		tkc list -A
+		tkctl list -A
 `
 )
 
@@ -129,7 +129,7 @@ func (o *ListOptions) Run(tkcContext *config.TkcContext, cmd *cobra.Command, arg
 	for _, info := range infos {
 		internalObj, err := v1alpha1.Scheme.ConvertToVersion(info.Object, v1alpha1.SchemeGroupVersion)
 		if err != nil {
-			glog.V(1).Info(err)
+			klog.V(1).Info(err)
 			printer.PrintObj(info.Object, w)
 		} else {
 			printer.PrintObj(internalObj, w)

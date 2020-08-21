@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,19 +18,18 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	watchapi "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/watch"
-	"k8s.io/kubernetes/pkg/kubectl"
-	"k8s.io/kubernetes/pkg/kubectl/cmd"
+	cmdattach "k8s.io/kubectl/pkg/cmd/attach"
+	cmdrun "k8s.io/kubectl/pkg/cmd/run"
 	"k8s.io/kubernetes/pkg/util/interrupt"
 )
 
@@ -69,13 +68,42 @@ func (t *PodExecutor) Execute() error {
 	return t.attachPod(pod)
 }
 
+// podRunningAndReady returns true if the pod is running and ready, false if the pod has not
+// yet reached those states, returns ErrPodCompleted if the pod has run to completion, or
+// an error in any other case.
+func podRunningAndReady(event watchapi.Event) (bool, error) {
+	switch event.Type {
+	case watchapi.Deleted:
+		return false, errors.NewNotFound(schema.GroupResource{Resource: "pods"}, "")
+	}
+	switch t := event.Object.(type) {
+	case *v1.Pod:
+		switch t.Status.Phase {
+		case v1.PodFailed, v1.PodSucceeded:
+			return false, cmdrun.ErrPodCompleted
+		case v1.PodRunning:
+			conditions := t.Status.Conditions
+			if conditions == nil {
+				return false, nil
+			}
+			for i := range conditions {
+				if conditions[i].Type == v1.PodReady &&
+					conditions[i].Status == v1.ConditionTrue {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
 func (t *PodExecutor) attachPod(pod *v1.Pod) error {
 
 	// TODO: currently, if a pod stuck in ImagePullBackoff state, watch thinks it still has chance to start so will
 	// keep waiting, but most likely the pod cannot really start. For better experience, We should periodically
 	// print pod current state, so that user can interrupt waiting when seeing 'ImagePullBackoff' or other unexpected states.
 	fmt.Fprintf(t.Out, "waiting for pod %s running...\n", pod.Name)
-	watched, err := t.waitForPod(pod, defaultWaitTimeOutSeconds, kubectl.PodRunningAndReady)
+	watched, err := t.waitForPod(pod, defaultWaitTimeOutSeconds, podRunningAndReady)
 	if err != nil {
 		return err
 	}
@@ -83,7 +111,7 @@ func (t *PodExecutor) attachPod(pod *v1.Pod) error {
 		return fmt.Errorf("pod unexpcetedly exits, status: %s", watched.Status.Phase)
 	}
 	// reuse `kubectl attach` facility
-	attachOpts := cmd.NewAttachOptions(t.IOStreams)
+	attachOpts := cmdattach.NewAttachOptions(t.IOStreams)
 	attachOpts.TTY = true
 	attachOpts.Stdin = true
 	attachOpts.Pod = watched
@@ -135,7 +163,7 @@ func setKubernetesDefaults(config *rest.Config) error {
 		// This codec factory ensures the resources are not converted. Therefore, resources
 		// will not be round-tripped through internal versions. Defaulting does not happen
 		// on the client.
-		config.NegotiatedSerializer = &serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+		config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 	}
 	return rest.SetKubernetesDefaults(config)
 }

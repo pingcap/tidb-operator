@@ -16,11 +16,35 @@ metadata:
   {{- end }}
 spec:
   ports:
-  - name: grafana
+  - name: {{ .Values.monitor.grafana.service.portName }}
     port: 3000
     protocol: TCP
     targetPort: 3000
   type: {{ .Values.monitor.grafana.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: monitor
+{{- end }}
+---
+{{- if .Values.monitor.reloader.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "cluster.name" . }}-monitor-reloader
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: monitor
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  ports:
+  - name: {{ .Values.monitor.reloader.service.portName }}
+    port: 9089
+    protocol: TCP
+    targetPort: 9089
+  type: {{ .Values.monitor.reloader.service.type }}
   selector:
     app.kubernetes.io/name: {{ template "chart.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -39,7 +63,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   ports:
-  - name: prometheus
+  - name: {{ .Values.monitor.prometheus.service.portName }}
     port: 9090
     protocol: TCP
     targetPort: 9090

@@ -14,10 +14,10 @@
 package predicates
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/golang/glog"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apiv1 "k8s.io/api/core/v1"
@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/klog"
 )
 
 const (
@@ -40,17 +40,15 @@ var (
 )
 
 type stableScheduling struct {
-	kubeCli  kubernetes.Interface
-	cli      versioned.Interface
-	recorder record.EventRecorder
+	kubeCli kubernetes.Interface
+	cli     versioned.Interface
 }
 
 // NewStableScheduling returns a Predicate
-func NewStableScheduling(kubeCli kubernetes.Interface, cli versioned.Interface, recorder record.EventRecorder) Predicate {
+func NewStableScheduling(kubeCli kubernetes.Interface, cli versioned.Interface) Predicate {
 	p := &stableScheduling{
-		kubeCli:  kubeCli,
-		cli:      cli,
-		recorder: recorder,
+		kubeCli: kubeCli,
+		cli:     cli,
 	}
 	return p
 }
@@ -95,18 +93,18 @@ func (p *stableScheduling) Filter(instanceName string, pod *apiv1.Pod, nodes []a
 	nodeName := p.findPreviousNodeInTC(tc, pod)
 
 	if nodeName != "" {
-		glog.V(2).Infof("found previous node %q for pod %q in TiDB cluster %q", nodeName, podName, tcName)
+		klog.V(2).Infof("found previous node %q for pod %q in TiDB cluster %q", nodeName, podName, tcName)
 		for _, node := range nodes {
 			if node.Name == nodeName {
-				glog.V(2).Infof("previous node %q for pod %q in TiDB cluster %q exists in candicates, filter out other nodes", nodeName, podName, tcName)
+				klog.V(2).Infof("previous node %q for pod %q in TiDB cluster %q exists in candicates, filter out other nodes", nodeName, podName, tcName)
 				return []apiv1.Node{node}, nil
 			}
 		}
-		msg := fmt.Sprintf("cannot run on its previous node %q", nodeName)
-		p.recorder.Event(pod, apiv1.EventTypeWarning, UnableToRunOnPreviousNodeReason, msg)
-	} else {
-		glog.V(2).Infof("no previous node exists for pod %q in TiDB cluster %s/%q", podName, ns, tcName)
+		return nodes, fmt.Errorf("cannot run %s/%s on its previous node %q", ns, podName, nodeName)
 	}
 
-	return nodes, nil
+	msg := fmt.Sprintf("no previous node exists for pod %q in TiDB cluster %s/%s", podName, ns, tcName)
+	klog.Warning(msg)
+
+	return nodes, errors.New(msg)
 }

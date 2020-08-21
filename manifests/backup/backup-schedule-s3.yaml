@@ -1,0 +1,27 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: BackupSchedule
+metadata:
+  name: demo1-backup-schedule-s3
+  namespace: test1
+spec:
+  #maxBackups: 5
+  #pause: true
+  maxReservedTime: "3h"
+  storageClassName: local-storage
+  storageSize: 10Gi
+  schedule: "*/2 * * * *"
+  backupTemplate:
+    # cleanPolicy: OnFailure
+    from:
+      host: 10.0.0.1
+      port: 4000
+      user: root
+      secretName: backup-demo1-tidb-secret
+    s3:
+      provider: ceph
+      #region: us-east-1
+      endpoint: http://10.233.2.161
+      secretName: ceph-secret
+      bucket: test1-demo1
+    storageType: s3

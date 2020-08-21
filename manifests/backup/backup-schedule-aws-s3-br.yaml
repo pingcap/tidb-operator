@@ -1,0 +1,40 @@
+---
+apiVersion: pingcap.com/v1alpha1
+kind: BackupSchedule
+metadata:
+  name: demo1-backup-schedule-s3
+  namespace: test1
+  # annotations:
+    # iam.amazonaws.com/role: "arn:aws:iam::123456789:role"
+spec:
+  #maxBackups: 5
+  #pause: true
+  maxReservedTime: "3h"
+  schedule: "*/2 * * * *"
+  backupTemplate:
+    #backupType: full
+    # useKMS: false
+    # serviceAccount: myServiceAccount
+    # cleanPolicy: OnFailure
+    br:
+      cluster: myCluster
+      # clusterNamespce: backupNamespace
+      # logLevel: info
+      # statusAddr: <status-addr>
+      # concurrency: 4
+      # rateLimit: 0
+      # timeAgo: <time>
+      # checksum: true
+      # sendCredToTikv: true
+    from:
+      host:         172.30.6.56
+      secretName:   mysecret
+      # port:         4000
+      # user:         root
+      # tlsClientSecretName: <backup-tls-secretname>
+    s3:
+      provider: aws
+      region: us-west-2
+      bucket: backup
+      prefix: test1-demo1
+      # secretName: aws-secret

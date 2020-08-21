@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tidb-controller-manager
@@ -25,21 +25,45 @@ spec:
     {{- if .Values.controllerManager.serviceAccount }}
       serviceAccount: {{ .Values.controllerManager.serviceAccount }}
     {{- end }}
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+  {{ toYaml .Values.imagePullSecrets | indent 6 }}
+    {{- end }}
       containers:
       - name: tidb-operator
         image: {{ .Values.operatorImage }}
         imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+        {{- if .Values.controllerManager.resources }}
         resources:
 {{ toYaml .Values.controllerManager.resources | indent 12 }}
+        {{- end }}
         command:
           - /usr/local/bin/tidb-controller-manager
-          - -default-storage-class-name={{ .Values.defaultStorageClassName }}
+          {{- if .Values.tidbBackupManagerImage }}
+          - -tidb-backup-manager-image={{ .Values.tidbBackupManagerImage }}
+          {{- end }}
+          - -tidb-discovery-image={{ .Values.operatorImage }}
           - -cluster-scoped={{ .Values.clusterScoped }}
-          - -auto-failover={{ .Values.controllerManager.autoFailover | default false }}
+         {{- if eq .Values.controllerManager.autoFailover true }}
+          - -auto-failover=true
+         {{- end }}
+         {{- if eq .Values.controllerManager.autoFailover false }}
+          - -auto-failover=false
+         {{- end }}
           - -pd-failover-period={{ .Values.controllerManager.pdFailoverPeriod | default "5m" }}
           - -tikv-failover-period={{ .Values.controllerManager.tikvFailoverPeriod | default "5m" }}
+          - -tiflash-failover-period={{ .Values.controllerManager.tiflashFailoverPeriod | default "5m" }}
           - -tidb-failover-period={{ .Values.controllerManager.tidbFailoverPeriod | default "5m" }}
           - -v={{ .Values.controllerManager.logLevel }}
+          {{- if .Values.testMode }}
+          - -test-mode={{ .Values.testMode }}
+          {{- end}}
+          {{- if .Values.features }}
+          - -features={{ join "," .Values.features }}
+          {{- end }}
+          {{- if and ( .Values.admissionWebhook.create ) ( .Values.admissionWebhook.validation.pods ) }}
+          - -pod-webhook-enabled=true
+          {{- end }}
         env:
           - name: NAMESPACE
             valueFrom:
@@ -47,3 +71,23 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
+
+      {{- with .Values.controllerManager.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- with .Values.controllerManager.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- with .Values.controllerManager.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- if .Values.controllerManager.priorityClassName }}
+      priorityClassName: {{ .Values.controllerManager.priorityClassName }}
+      {{- end }}
+

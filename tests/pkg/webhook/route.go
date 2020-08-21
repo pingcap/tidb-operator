@@ -1,13 +1,27 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package webhook
 
 import (
 	"encoding/json"
 	"errors"
-	"github.com/golang/glog"
 	"io/ioutil"
+	"net/http"
+
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
+	"k8s.io/klog"
 )
 
 // toAdmissionResponse is a helper function to create an AdmissionResponse
@@ -69,13 +83,13 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitFunc) {
 returnData:
 	respBytes, err := json.Marshal(responseAdmissionReview)
 	if err != nil {
-		glog.Error(err)
+		klog.Error(err)
 	}
 	if _, err := w.Write(respBytes); err != nil {
-		glog.Error(err)
+		klog.Error(err)
 	}
 }
 
-func ServePods(w http.ResponseWriter, r *http.Request) {
-	serve(w, r, admitPods)
+func (wh *webhook) ServePods(w http.ResponseWriter, r *http.Request) {
+	serve(w, r, wh.admitPods)
 }

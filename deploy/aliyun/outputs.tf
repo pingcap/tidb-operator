@@ -1,47 +1,36 @@
 output "region" {
-  value = "${var.ALICLOUD_REGION}"
+  value = var.ALICLOUD_REGION
 }
 
 output "cluster_id" {
-  value = "${module.ack.cluster_id}"
-}
-
-output "cluster_name" {
-  value = "${var.cluster_name_prefix}"
+  value = module.tidb-operator.cluster_id
 }
 
 output "kubeconfig_file" {
-  value = "${module.ack.kubeconfig_filename}"
+  value = module.tidb-operator.kubeconfig_filename
 }
 
 output "vpc_id" {
-  value = "${module.ack.vpc_id}"
+  value = module.tidb-operator.vpc_id
 }
 
 output "bastion_ip" {
-  value = "${join(",", alicloud_instance.bastion.*.public_ip)}"
+  value = module.bastion.bastion_ip
 }
 
-output "bastion_key_file" {
-  value = "${local.bastion_key_file}"
-}
-
-output "worker_key_file" {
-  value = "${local.key_file}"
+output "ssh_key_file" {
+  value = local.key_file
 }
 
 output "tidb_version" {
-  value = "${var.tidb_version}"
+  value = var.tidb_version
 }
 
-output "tidb_slb_ip" {
-  value = "${data.external.tidb_slb_ip.result["ip"]}"
-}
-
-output "tidb_port" {
-  value = "${data.external.tidb_port.result["port"]}"
+output "tidb_endpoint" {
+  value = module.tidb-cluster.tidb_endpoint
 }
 
 output "monitor_endpoint" {
-  value = "${data.external.monitor_slb_ip.result["ip"]}:${data.external.monitor_port.result["port"]}"
+  value = module.tidb-cluster.monitor_endpoint
 }
+

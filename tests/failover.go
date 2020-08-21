@@ -1,18 +1,35 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tests
 
 import (
 	"database/sql"
 	"fmt"
+	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	// To register MySQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang/glog"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/pkg/ops"
 	"github.com/pingcap/tidb-operator/tests/slack"
@@ -21,7 +38,117 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
+
+func (oa *operatorActions) DeletePDDataThenCheckFailover(info *TidbClusterConfig, pdFailoverPeriod time.Duration) error {
+	const failoverTimeout = 5 * time.Minute
+	ns := info.Namespace
+	tcName := info.ClusterName
+	podName := fmt.Sprintf("%s-pd-0", tcName)
+
+	var err error
+	var result []byte
+
+	oldPD, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		klog.Error(err)
+		return err
+	}
+
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		deletePDDataCmd := fmt.Sprintf("kubectl exec -n %s %s -- rm -rf /var/lib/pd/member", ns, podName)
+		result, err = exec.Command("/bin/sh", "-c", deletePDDataCmd).CombinedOutput()
+		if err != nil {
+			klog.Error(err)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete pod %s/%s data, %s", ns, podName, string(result))
+	}
+	klog.Infof("delete pod %s/%s data successfully", ns, podName)
+
+	// first we ensured that pd failover new pod, and failure member/pod should be deleted.
+	err = wait.Poll(10*time.Second, 30*time.Minute+failoverTimeout+pdFailoverPeriod, func() (bool, error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return false, nil
+		}
+
+		// ensure oldPD is deleted
+		newPd, err := oa.kubeCli.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return false, nil
+		}
+		if string(oldPD.UID) == string(newPd.UID) {
+			klog.Infof("oldPD should be deleted and newPD should be created")
+			return false, nil
+		}
+
+		// ensure failure member has deleted state
+		if len(tc.Status.PD.FailureMembers) == 1 {
+			klog.Infof("%#v", tc.Status.PD.FailureMembers)
+			for _, failureMember := range tc.Status.PD.FailureMembers {
+				if failureMember.MemberDeleted {
+					return true, nil
+				}
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to check pd %s/%s failover", ns, podName)
+	}
+	klog.Infof("check pd pod %s/%s failover marked successfully, new pod verified", ns, podName)
+
+	// Then we ensure pd failover recovery
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return false, nil
+		}
+
+		if tc.Status.PD.FailureMembers != nil && len(tc.Status.PD.FailureMembers) > 0 {
+			klog.Error("pd failover should empty failure members in recovery")
+			return false, nil
+		}
+		pdSpecReplicas := tc.Spec.PD.Replicas
+		pdsts, err := oa.kubeCli.AppsV1().StatefulSets(ns).Get(fmt.Sprintf("%s-pd", tc.Name), metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err)
+			return false, nil
+		}
+		if *pdsts.Spec.Replicas != pdSpecReplicas {
+			klog.Errorf("pdsts replicas[%d] should equal pdspec replicas[%d]", pdSpecReplicas, *pdsts.Spec.Replicas)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("check pd cluster %s/%s recovery failed after failover", ns, tcName)
+	}
+	klog.Infof("pd cluster have been recovered")
+
+	err = oa.CheckTidbClusterStatus(info)
+	if err != nil {
+		return err
+	}
+
+	klog.Infof("recover %s/%s successfully", ns, podName)
+	return nil
+}
+
+func (oa *operatorActions) DeletePDDataThenCheckFailoverOrDie(info *TidbClusterConfig, pdFailoverPeriod time.Duration) {
+	if err := oa.DeletePDDataThenCheckFailover(info, pdFailoverPeriod); err != nil {
+		slack.NotifyAndPanic(err)
+	}
+}
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) error {
 	const failoverTimeout = 5 * time.Minute
@@ -32,18 +159,27 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	// checkout latest tidb cluster
 	tc, err := cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("failed to get the cluster: ns=%s tc=%s err=%s", info.Namespace, info.ClusterName, err.Error())
+		klog.Errorf("failed to get the cluster: ns=%s tc=%s err=%s", info.Namespace, info.ClusterName, err.Error())
 		return err
 	}
 
 	// checkout pd config
-	pdCfg, err := oa.pdControl.GetPDClient(tc).GetConfig()
+	var pdCfg *pdapi.PDConfigFromAPI
+	if tc.IsHeterogeneous() {
+		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
+	} else {
+		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
+	}
+
 	if err != nil {
-		glog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
+		klog.Errorf("failed to get the pd config: tc=%s err=%s", info.ClusterName, err.Error())
 		return err
 	}
-	maxStoreDownTime := pdCfg.Schedule.MaxStoreDownTime.Duration
-	glog.Infof("truncate sst file failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
+	maxStoreDownTime, err := time.ParseDuration(pdCfg.Schedule.MaxStoreDownTime)
+	if err != nil {
+		return err
+	}
+	klog.Infof("truncate sst file failover config: maxStoreDownTime=%v tikvFailoverPeriod=%v", maxStoreDownTime, tikvFailoverPeriod)
 
 	// find an up store
 	var store v1alpha1.TiKVStore
@@ -57,16 +193,16 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		break
 	}
 	if len(store.ID) == 0 {
-		glog.Errorf("failed to find an up store")
+		klog.Errorf("failed to find an up store")
 		return errors.New("no up store for truncating sst file")
 	}
-	glog.Infof("truncate sst file target store: id=%s pod=%s", store.ID, store.PodName)
+	klog.Infof("truncate sst file target store: id=%s pod=%s", store.ID, store.PodName)
 
 	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s", store.PodName))
-	glog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
+	klog.Infof("deleting pod: [%s/%s] and wait 1 minute for the pod to terminate", info.Namespace, store.PodName)
 	err = cli.CoreV1().Pods(info.Namespace).Delete(store.PodName, nil)
 	if err != nil {
-		glog.Errorf("failed to get delete the pod: ns=%s tc=%s pod=%s err=%s",
+		klog.Errorf("failed to get delete the pod: ns=%s tc=%s pod=%s err=%s",
 			info.Namespace, info.ClusterName, store.PodName, err.Error())
 		return err
 	}
@@ -80,28 +216,32 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		Store:     store.ID,
 	})
 	if err != nil {
-		glog.Errorf("failed to truncate the sst file: ns=%s tc=%s store=%s err=%s",
+		klog.Errorf("failed to truncate the sst file: ns=%s tc=%s store=%s err=%s",
 			info.Namespace, info.ClusterName, store.ID, err.Error())
 		return err
 	}
 	oa.EmitEvent(info, fmt.Sprintf("TruncateSSTFile: tikv: %s/%s", info.Namespace, store.PodName))
 
 	// delete tikv pod
-	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
-	wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+	klog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
 		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
 		if err != nil {
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		klog.Error(err.Error())
+		return err
+	}
 
 	tikvOps.SetPoll(DefaultPollInterval, maxStoreDownTime+tikvFailoverPeriod+failoverTimeout)
 
 	err = tikvOps.PollTiDBCluster(info.Namespace, info.ClusterName,
 		func(tc *v1alpha1.TidbCluster, err error) (bool, error) {
 			_, ok := tc.Status.TiKV.FailureStores[store.ID]
-			glog.Infof("cluster: [%s/%s] check if target store failed: %t",
+			klog.Infof("cluster: [%s/%s] check if target store failed: %t",
 				info.Namespace, info.ClusterName, ok)
 			if !ok {
 				return false, nil
@@ -109,13 +249,13 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			return true, nil
 		})
 	if err != nil {
-		glog.Errorf("failed to check truncate sst file: %v", err)
+		klog.Errorf("failed to check truncate sst file: %v", err)
 		return err
 	}
 
 	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
 		if err := tikvOps.RecoverSSTFile(info.Namespace, podName); err != nil {
-			glog.Errorf("failed to recovery sst file %s/%s, %v", info.Namespace, podName, err)
+			klog.Errorf("failed to recovery sst file %s/%s, %v", info.Namespace, podName, err)
 			return false, nil
 		}
 
@@ -124,14 +264,68 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 		return err
 	}
 
-	glog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
-	return wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+	klog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
 		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
 		if err != nil {
 			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		return err
+	}
+
+	err = wait.Poll(10*time.Second, 30*time.Minute, func() (done bool, err error) {
+		if err := tikvOps.RemovePanicMark(info.Namespace, podName); err != nil {
+			klog.Errorf("failed to remove panic mark %s/%s, %v", info.Namespace, podName, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	klog.Infof("deleting pod: [%s/%s] again", info.Namespace, store.PodName)
+	err = wait.Poll(10*time.Second, time.Minute, func() (bool, error) {
+		err = oa.kubeCli.CoreV1().Pods(info.Namespace).Delete(store.PodName, &metav1.DeleteOptions{})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	ns := info.Namespace
+	tcName := info.ClusterName
+	err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
+		tc, err := oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{})
+		if err != nil {
+			klog.Error(err.Error())
+			return false, nil
+		}
+		if tc.Status.TiKV.FailureStores == nil || len(tc.Status.TiKV.FailureStores) < 1 {
+			return true, nil
+		}
+		tc.Status.TiKV.FailureStores = nil
+		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		if err != nil {
+			klog.Error(err.Error())
+		}
+		return false, nil
+	})
+	if err != nil {
+		return err
+	}
+	err = oa.CheckTidbClusterStatus(info)
+	if err != nil {
+		return err
+	}
+
+	klog.Infof("recover %s/%s successfully", ns, podName)
+	return nil
 }
 
 func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClusterConfig, tikvFailoverPeriod time.Duration) {
@@ -143,15 +337,15 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailoverOrDie(info *TidbClust
 func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node string, faultPoint *time.Time) (bool, error) {
 	affectedPods, err := oa.getPodsByNode(info, node)
 	if err != nil {
-		glog.Infof("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
+		klog.Infof("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
 		return false, nil
 	}
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
-		glog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
+		klog.Infof("pending failover,failed to get tidbcluster:[%s], error: %v", info.FullName(), err)
 		if strings.Contains(err.Error(), "Client.Timeout exceeded while awaiting headers") {
-			glog.Info("create new client")
-			newCli, _ := client.NewCliOrDie()
+			klog.Info("create new client")
+			newCli, _, _, _, _ := client.NewCliOrDie()
 			oa.cli = newCli
 		}
 		return false, nil
@@ -162,7 +356,7 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 			for _, failureMember := range tc.Status.PD.FailureMembers {
 				if _, exist := affectedPods[failureMember.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the pd member[%s] should be mark failure after %s", info.FullName(), failureMember.PodName, deadline.Format(time.RFC3339))
-					glog.Errorf(err.Error())
+					klog.Errorf(err.Error())
 					return false, err
 				}
 			}
@@ -171,8 +365,9 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 			for _, failureStore := range tc.Status.TiKV.FailureStores {
 				if _, exist := affectedPods[failureStore.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tikv store[%s] should be mark failure after %s", info.FullName(), failureStore.PodName, deadline.Format(time.RFC3339))
-					glog.Errorf(err.Error())
-					return false, err
+					klog.Errorf(err.Error())
+					// There may have been a failover before
+					return false, nil
 				}
 			}
 
@@ -181,13 +376,13 @@ func (oa *operatorActions) CheckFailoverPending(info *TidbClusterConfig, node st
 			for _, failureMember := range tc.Status.TiDB.FailureMembers {
 				if _, exist := affectedPods[failureMember.PodName]; exist {
 					err := fmt.Errorf("cluster: [%s] the tidb member[%s] should be mark failure after %s", info.FullName(), failureMember.PodName, deadline.Format(time.RFC3339))
-					glog.Errorf(err.Error())
+					klog.Errorf(err.Error())
 					return false, err
 				}
 			}
 		}
 
-		glog.Infof("cluster: [%s] operator's failover feature is pending", info.FullName())
+		klog.Infof("cluster: [%s] operator's failover feature is pending", info.FullName())
 		return false, nil
 	}
 	return true, nil
@@ -217,18 +412,18 @@ func (oa *operatorActions) CheckFailoverPendingOrDie(clusters []*TidbClusterConf
 func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (bool, error) {
 	affectedPods, err := oa.getPodsByNode(info, node)
 	if err != nil {
-		glog.Infof("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
+		klog.Infof("cluster:[%s] query pods failed,error:%v", info.FullName(), err)
 		return false, nil
 	}
 
 	if len(affectedPods) == 0 {
-		glog.Infof("the cluster:[%s] can not be affected by node:[%s]", info.FullName(), node)
+		klog.Infof("the cluster:[%s] can not be affected by node:[%s]", info.FullName(), node)
 		return true, nil
 	}
 
 	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(info.Namespace).Get(info.ClusterName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("query tidbcluster: [%s] failed, error: %v", info.FullName(), err)
+		klog.Errorf("query tidbcluster: [%s] failed, error: %v", info.FullName(), err)
 		return false, nil
 	}
 
@@ -249,19 +444,19 @@ func (oa *operatorActions) CheckFailover(info *TidbClusterConfig, node string) (
 		}
 	}
 
-	glog.Infof("cluster: [%s]'s failover feature has complete", info.FullName())
+	klog.Infof("cluster: [%s]'s failover feature has complete", info.FullName())
 	return true, nil
 }
 
 func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (map[string]*corev1.Pod, error) {
 	selector, err := label.New().Instance(info.ClusterName).Selector()
 	if err != nil {
-		glog.Errorf("cluster:[%s] create selector failed, error:%v", info.FullName(), err)
+		klog.Errorf("cluster:[%s] create selector failed, error:%v", info.FullName(), err)
 		return nil, err
 	}
 	pods, err := oa.kubeCli.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
-		glog.Errorf("cluster:[%s] query pods failed, error:%v", info.FullName(), err)
+		klog.Errorf("cluster:[%s] query pods failed, error:%v", info.FullName(), err)
 		return nil, err
 	}
 	podsOfNode := map[string]*corev1.Pod{}
@@ -275,7 +470,7 @@ func (oa *operatorActions) getPodsByNode(info *TidbClusterConfig, node string) (
 }
 
 func (oa *operatorActions) CheckFailoverOrDie(clusters []*TidbClusterConfig, faultNode string) {
-	if err := wait.Poll(1*time.Minute, 30*time.Minute, func() (bool, error) {
+	if err := wait.Poll(1*time.Minute, 60*time.Minute, func() (bool, error) {
 		var passes []bool
 		for i := range clusters {
 			pass, err := oa.CheckFailover(clusters[i], faultNode)
@@ -302,13 +497,63 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	}
 
 	if tc.Status.PD.FailureMembers != nil && len(tc.Status.PD.FailureMembers) > 0 {
-		glog.Infof("cluster: [%s]'s pd FailureMembers is not nil, continue to wait", cluster.FullName())
+		klog.Infof("cluster: [%s]'s pd FailureMembers is not nil, continue to wait", cluster.FullName())
 		return false, nil
 	}
 
 	if tc.Status.TiDB.FailureMembers != nil && len(tc.Status.TiDB.FailureMembers) > 0 {
-		glog.Infof("cluster: [%s]'s tidb FailureMembers is not nil, continue to wait", cluster.FullName())
+		klog.Infof("cluster: [%s]'s tidb FailureMembers is not nil, continue to wait", cluster.FullName())
 		return false, nil
+	}
+
+	// Wait all Store State Up
+	for k, v := range tc.Status.TiKV.Stores {
+		if v.State != v1alpha1.TiKVStateUp {
+			klog.Infof("Store[%s]'s State[%s] is not Up", k, v.State)
+			return false, nil
+		}
+	}
+
+	tikvSts, err := oa.kubeCli.AppsV1().StatefulSets(tc.Namespace).Get(fmt.Sprintf("%s-tikv", tc.Name), metav1.GetOptions{})
+	if err != nil {
+		klog.Error(err)
+		return false, nil
+	}
+
+	// delete failover member store manually
+	if int32(len(tc.Status.TiKV.Stores)) > tc.Spec.TiKV.Replicas {
+
+		var pdclient pdapi.PDClient
+		if tc.IsHeterogeneous() {
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		} else {
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
+		}
+
+		for _, v := range tc.Status.TiKV.Stores {
+			ordinal, err := util.GetOrdinalFromPodName(v.PodName)
+			if err != nil {
+				klog.Error(err)
+				return false, nil
+			}
+			if !helper.GetPodOrdinals(*tikvSts.Spec.Replicas, tikvSts).Has(ordinal) {
+				id, err := strconv.ParseInt(v.ID, 10, 64)
+				if err != nil {
+					klog.Error(err)
+					return false, nil
+				}
+				err = pdclient.DeleteStore(uint64(id))
+				if err != nil {
+					klog.Error(err)
+					return false, nil
+				}
+			}
+		}
+	}
+
+	tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
+	if err != nil {
+		return false, err
 	}
 
 	// recover tikv manually
@@ -316,11 +561,11 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 		tc.Status.TiKV.FailureStores = nil
 		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
 		if err != nil {
-			glog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
+			klog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
 			return false, nil
 		}
+		return false, nil
 	}
-
 	return true, nil
 }
 
@@ -354,13 +599,13 @@ func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster)
 		}
 	}
 	if !failure {
-		glog.Infof("tidbCluster:[%s/%s]'s member:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+		klog.Infof("tidbCluster:[%s/%s]'s member:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
 		return false
 	}
 
 	for _, member := range tc.Status.PD.Members {
 		if member.Name == pod.GetName() {
-			glog.Infof("tidbCluster:[%s/%s]'s status.members still have pd member:[%s]", tc.Namespace, tc.Name, pod.Name)
+			klog.Infof("tidbCluster:[%s/%s]'s status.members still have pd member:[%s]", tc.Namespace, tc.Name, pod.Name)
 			return false
 		}
 	}
@@ -369,7 +614,7 @@ func (oa *operatorActions) pdFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluster)
 		return true
 	}
 
-	glog.Infof("cluster: [%s/%s] pd:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
+	klog.Infof("cluster: [%s/%s] pd:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
 
 	return false
 }
@@ -386,7 +631,7 @@ func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 		}
 	}
 	if !failure {
-		glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+		klog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
 		return false
 	}
 
@@ -400,7 +645,7 @@ func (oa *operatorActions) tikvFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 		return true
 	}
 
-	glog.Infof("cluster: [%s/%s] tikv:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
+	klog.Infof("cluster: [%s/%s] tikv:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
 	return false
 }
 
@@ -408,7 +653,7 @@ func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 	failure := false
 	for _, failureMember := range tc.Status.TiDB.FailureMembers {
 		if failureMember.PodName == pod.GetName() {
-			glog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have not become failuremember", tc.Namespace, tc.Name, pod.Name)
+			klog.Infof("tidbCluster:[%s/%s]'s store pod:[%s] have become failuremember", tc.Namespace, tc.Name, pod.Name)
 			failure = true
 			break
 		}
@@ -427,7 +672,7 @@ func (oa *operatorActions) tidbFailover(pod *corev1.Pod, tc *v1alpha1.TidbCluste
 	if healthCount == int(tc.Spec.TiDB.Replicas) {
 		return true
 	}
-	glog.Infof("cluster: [%s/%s] tidb:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
+	klog.Infof("cluster: [%s/%s] tidb:[%s] failover still not complete", tc.Namespace, tc.Name, pod.GetName())
 	return false
 }
 
@@ -471,30 +716,55 @@ func (oa *operatorActions) GetNodeMap(info *TidbClusterConfig, component string)
 	return nodeMap, nil
 }
 
-func (oa *operatorActions) CheckOneEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	glog.Infof("check k8s/operator/tidbCluster status when one etcd down")
+func (oa *operatorActions) CheckKubeletDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	klog.Infof("check k8s/operator/tidbCluster status when kubelet down")
+	time.Sleep(10 * time.Minute)
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("k8s cluster is available.")
+		klog.V(4).Infof("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters are available")
+		klog.V(4).Infof("all clusters are available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckEtcdDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
+	klog.Infof("check k8s/operator/tidbCluster status when etcd down")
+	// kube-apiserver may block 15 min
+	time.Sleep(20 * time.Minute)
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckK8sAvailable(nil, nil)
+		if err != nil {
+			return err
+		}
+		klog.V(4).Infof("k8s cluster is available.")
+		err = oa.CheckOperatorAvailable(operatorConfig)
+		if err != nil {
+			return err
+		}
+		klog.V(4).Infof("tidb operator is available.")
+		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			return err
+		}
+		klog.V(4).Infof("all clusters are available")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
-	glog.Infof("checking k8s/tidbCluster status when kube-proxy down")
+	klog.Infof("checking k8s/tidbCluster status when kube-proxy down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
@@ -502,75 +772,75 @@ func (oa *operatorActions) CheckKubeProxyDownOrDie(operatorConfig *OperatorConfi
 			return err
 
 		}
-		glog.V(4).Infof("k8s cluster is available.")
+		klog.V(4).Infof("k8s cluster is available.")
 
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Infof("tidb operator is available.")
 
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters are available.")
+		klog.V(4).Infof("all clusters are available.")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckKubeSchedulerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
-	glog.Infof("verify kube-scheduler is not avaiavble")
+	klog.Infof("verify kube-scheduler is not avaiavble")
 
 	if err := waitForComponentStatus(oa.kubeCli, "scheduler", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
 		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-scheduler: %v", err))
 	}
 
-	glog.Infof("checking operator/tidbCluster status when kube-scheduler is not available")
+	klog.Infof("checking operator/tidbCluster status when kube-scheduler is not available")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Infof("tidb operator is available.")
 
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters are available.")
+		klog.V(4).Infof("all clusters are available.")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckKubeControllerManagerDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
-	glog.Infof("verify kube-controller-manager is not avaiavble")
+	klog.Infof("verify kube-controller-manager is not avaiavble")
 
 	if err := waitForComponentStatus(oa.kubeCli, "controller-manager", corev1.ComponentHealthy, corev1.ConditionFalse); err != nil {
 		slack.NotifyAndPanic(fmt.Errorf("failed to stop kube-controller-manager: %v", err))
 	}
 
-	glog.Infof("checking operator/tidbCluster status when kube-controller-manager is not available")
+	klog.Infof("checking operator/tidbCluster status when kube-controller-manager is not available")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Infof("tidb operator is available.")
 
 		err = oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters are available.")
+		klog.V(4).Infof("all clusters are available.")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig, faultNode string) {
-	glog.Infof("check k8s/operator/tidbCluster status when one apiserver down")
+	klog.Infof("check k8s/operator/tidbCluster status when one apiserver down")
 	affectedPods := map[string]*corev1.Pod{}
 	apiserverPod, err := GetKubeApiserverPod(oa.kubeCli, faultNode)
 	if err != nil {
@@ -609,30 +879,44 @@ func (oa *operatorActions) CheckOneApiserverDownOrDie(operatorConfig *OperatorCo
 		slack.NotifyAndPanic(fmt.Errorf("can't find kube-proxy in k8s cluster"))
 	}
 	if proxyPod != nil {
-		affectedPods[dnsPod.GetName()] = proxyPod
+		affectedPods[proxyPod.GetName()] = proxyPod
 	}
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(map[string]string{faultNode: faultNode}, affectedPods)
 		if err != nil {
+			klog.Errorf("CheckK8sAvailable Failed, err: %v", err)
 			return err
 		}
-		glog.V(4).Infof("k8s cluster is available.")
+		klog.V(4).Infof("k8s cluster is available.")
 		err = oa.CheckOperatorAvailable(operatorConfig)
 		if err != nil {
+			klog.Errorf("CheckOperatorAvailable Failed, err: %v", err)
 			return err
 		}
-		glog.V(4).Infof("tidb operator is available.")
+		klog.V(4).Infof("tidb operator is available.")
 		err = oa.CheckTidbClustersAvailable(clusters)
+		if err != nil {
+			klog.Errorf("CheckTidbClustersAvailable Failed, err: %v", err)
+			return err
+		}
+		klog.V(4).Infof("all clusters is available")
+		return nil
+	})
+}
+
+func (oa *operatorActions) CheckAllApiserverDownOrDie(operatorConfig *OperatorConfig, clusters []*TidbClusterConfig) {
+	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
+		err := oa.CheckTidbClustersAvailable(clusters)
 		if err != nil {
 			return err
 		}
-		glog.V(4).Infof("all clusters is available")
+		klog.V(4).Infof("all clusters is available")
 		return nil
 	})
 }
 
 func (oa *operatorActions) CheckOperatorDownOrDie(clusters []*TidbClusterConfig) {
-	glog.Infof("checking k8s/tidbCluster status when operator down")
+	klog.Infof("checking k8s/tidbCluster status when operator down")
 
 	KeepOrDie(3*time.Second, 10*time.Minute, func() error {
 		err := oa.CheckK8sAvailable(nil, nil)
@@ -651,10 +935,10 @@ func (oa *operatorActions) CheckK8sAvailableOrDie(excludeNodes map[string]string
 }
 
 func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, excludePods map[string]*corev1.Pod) error {
-	return wait.Poll(3*time.Second, time.Minute, func() (bool, error) {
+	return wait.Poll(3*time.Second, 10*time.Minute, func() (bool, error) {
 		nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
-			glog.Errorf("failed to list nodes,error:%v", err)
+			klog.Errorf("failed to list nodes,error:%v", err)
 			return false, nil
 		}
 		for _, node := range nodes.Items {
@@ -663,13 +947,14 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			for _, condition := range node.Status.Conditions {
 				if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
-					return false, fmt.Errorf("node: [%s] is not in running", node.GetName())
+					klog.Infof("node: [%s] is not in running", node.GetName())
+					return false, nil
 				}
 			}
 		}
 		systemPods, err := oa.kubeCli.CoreV1().Pods("kube-system").List(metav1.ListOptions{})
 		if err != nil {
-			glog.Errorf("failed to list kube-system pods,error:%v", err)
+			klog.Errorf("failed to list kube-system pods,error:%v", err)
 			return false, nil
 		}
 		for _, pod := range systemPods.Items {
@@ -678,7 +963,8 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 			}
 			podState := GetPodStatus(&pod)
 			if podState != string(corev1.PodRunning) {
-				return false, fmt.Errorf("pod:[%s/%s] is unavailable,state is %s", pod.GetNamespace(), pod.GetName(), podState)
+				klog.Infof("pod:[%s/%s] is unavailable,state is %s", pod.GetNamespace(), pod.GetName(), podState)
+				return false, nil
 			}
 		}
 		return true, nil
@@ -686,29 +972,40 @@ func (oa *operatorActions) CheckK8sAvailable(excludeNodes map[string]string, exc
 }
 
 func (oa *operatorActions) CheckOperatorAvailable(operatorConfig *OperatorConfig) error {
-	return wait.Poll(3*time.Second, 3*time.Minute, func() (bool, error) {
+	var errCount int
+	var e error
+	return wait.Poll(10*time.Second, 3*time.Minute, func() (bool, error) {
+		if errCount >= 10 {
+			return true, e
+		}
 		controllerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbControllerName, metav1.GetOptions{})
 		if err != nil {
-			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
+			klog.Errorf("failed to get deployment：%s failed,error:%v", tidbControllerName, err)
 			return false, nil
 		}
 		if controllerDeployment.Status.AvailableReplicas != *controllerDeployment.Spec.Replicas {
-			return false, fmt.Errorf("the %s is not available", tidbControllerName)
+			e = fmt.Errorf("the %s is not available", tidbControllerName)
+			klog.Error(e)
+			errCount++
+			return false, nil
 		}
 		schedulerDeployment, err := oa.kubeCli.AppsV1().Deployments(operatorConfig.Namespace).Get(tidbSchedulerName, metav1.GetOptions{})
 		if err != nil {
-			glog.Errorf("failed to get deployment：%s failed,error:%v", tidbSchedulerName, err)
+			klog.Errorf("failed to get deployment：%s failed,error:%v", tidbSchedulerName, err)
 			return false, nil
 		}
 		if schedulerDeployment.Status.AvailableReplicas != *schedulerDeployment.Spec.Replicas {
-			return false, fmt.Errorf("the %s is not available", tidbSchedulerName)
+			e = fmt.Errorf("the %s is not available", tidbSchedulerName)
+			klog.Error(e)
+			errCount++
+			return false, nil
 		}
 		return true, nil
 	})
 }
 
 func (oa *operatorActions) CheckTidbClustersAvailable(infos []*TidbClusterConfig) error {
-	return wait.Poll(3*time.Second, 30*time.Second, func() (bool, error) {
+	return wait.Poll(3*time.Second, DefaultPollTimeout, func() (bool, error) {
 		for _, info := range infos {
 			succ, err := oa.addDataToCluster(info)
 			if err != nil {
@@ -732,26 +1029,60 @@ func (oa *operatorActions) CheckTidbClustersAvailableOrDie(infos []*TidbClusterC
 var testTableName = "testTable"
 
 func (oa *operatorActions) addDataToCluster(info *TidbClusterConfig) (bool, error) {
-	db, err := sql.Open("mysql", getDSN(info.Namespace, info.ClusterName, "test", info.Password))
+	dsn, cancel, err := oa.getTiDBDSN(info.Namespace, info.ClusterName, "test", info.Password)
 	if err != nil {
-		glog.Errorf("cluster:[%s] can't open connection to mysql: %v", info.FullName(), err)
+		klog.Errorf("failed to get TiDB DSN: %v", err)
+		return false, nil
+	}
+	defer cancel()
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		klog.Errorf("cluster:[%s] can't open connection to mysql: %v", info.FullName(), err)
 		return false, nil
 	}
 	defer db.Close()
 
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s (name VARCHAR(64))", testTableName))
 	if err != nil && !tableAlreadyExist(err) {
-		glog.Errorf("cluster:[%s] can't create table to mysql: %v", info.FullName(), err)
+		klog.Errorf("cluster:[%s] can't create table to mysql: %v", info.FullName(), err)
 		return false, nil
 	}
 
 	_, err = db.Exec(fmt.Sprintf("INSERT INTO %s VALUES (?)", testTableName), "testValue")
 	if err != nil {
-		glog.Errorf("cluster:[%s] can't insert data to mysql: %v", info.FullName(), err)
+		klog.Errorf("cluster:[%s] can't insert data to mysql: %v", info.FullName(), err)
 		return false, nil
 	}
 
 	return true, nil
+}
+
+func (oa *operatorActions) WaitPodOnNodeReadyOrDie(clusters []*TidbClusterConfig, faultNode string) {
+
+	err := wait.Poll(5*time.Second, 30*time.Minute, func() (done bool, err error) {
+		for _, cluster := range clusters {
+			listOptions := metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(
+					label.New().Instance(cluster.ClusterName).Labels()).String(),
+			}
+			pods, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).List(listOptions)
+			if err != nil {
+				klog.Error(err.Error())
+				return false, nil
+			}
+			for _, pod := range pods.Items {
+				if pod.Spec.NodeName == faultNode {
+					if !podutil.IsPodReady(&pod) {
+						return false, nil
+					}
+				}
+			}
+		}
+		return true, nil
+	})
+	if err != nil {
+		slack.NotifyAndPanic(fmt.Errorf("pod on node[%s] not ready, err:%v", faultNode, err))
+	}
 }
 
 func GetPodStatus(pod *corev1.Pod) string {

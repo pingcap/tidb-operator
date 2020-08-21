@@ -1,0 +1,106 @@
+# Default values for tidb-drainer.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates
+
+# timezone is the default system timzone
+timezone: UTC
+
+# Change the name of the statefulset and pod
+# The default is clusterName-ReleaseName-drainer
+# Do not change the name of an existing running drainer: this is unsupported.
+# drainerName:
+
+# clusterName is the TiDB cluster name that should backup from or restore to.
+clusterName: demo
+clusterVersion: v4.0.4
+
+baseImage: pingcap/tidb-binlog
+imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
+
+logLevel: info
+# storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+# different classes might map to quality-of-service levels, or to backup policies,
+# or to arbitrary policies determined by the cluster administrators.
+# refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+storageClassName: local-storage
+storage: 10Gi
+# disable detect causality
+disableDetect: false
+# if drainer donesn't have checkpoint, use initial commitTS to initial checkpoint
+initialCommitTs: "-1"
+
+# Whether enable the TLS connection between TiDB server components
+tlsCluster:
+  # The steps to enable this feature:
+  #   1. Generate Drainer certificate.
+  #      There are multiple ways to generate these certificates:
+  #        - user-provided certificates: https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/
+  #        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+  #        - or use cert-manager signed certificates: https://cert-manager.io/
+  #   2. Create one secret object for Drainer which contains the certificates created above.
+  #      The name of this Secret must be: <clusterName>-drainer-cluster-secret.
+  #        For Drainer: kubectl create secret generic <clusterName>-drainer-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+  #   3. Then create the Drainer cluster with `tlsCluster.enabled` set to `true`.
+  enabled: false
+
+  # certAllowedCN is the Common Name that allowed
+  certAllowedCN: []
+  #  - TiDB
+
+# The TLS config between drainer and the downstream database server (MySQL/TiDB)
+tlsSyncer: {}
+  # The steps to enable this feature:
+  #   1. Create one secret object which contains the certificates for the downstream database server.
+  #      For example: kubectl create secret generic ${downstream_database_secret_name} --namespace=${namespace} --from-file=tls.crt=client.pem --from-file=tls.key=client-key.pem --from-file=ca.crt=ca.pem
+  #   2. Then set `tlsSyncer.tlsClientSecretName` to `${downstream_database_secret_name}`.
+  # tlsClientSecretName: ${downstream_database_secret_name}
+  # certAllowedCN is the Common Name that allowed
+  # certAllowedCN:
+  #  - TiDB
+
+  # checkpoint is the TLS config for the database you save binlog checkpoint.
+  # By default, Drainer will use downstream to save binlog checkpoint,
+  # so you do not need to configure [syncer.to.checkpoint.type] and
+  # you do not need to configure the `checkpoint` below.
+  # You have to configure this field only if you want to save binlog checkpoint
+  # to ** another database which has enabled TLS **.
+  # The steps to enable this feature is similar with those to enable tlsSyncer.tlsClientSecretName,
+  # which means you need to create one secret object containing the certificates for
+  # the checkpoint database and then set `checkpoint.tlsClientSecretName`.
+  # checkpoint:
+  #   tlsClientSecretName: ${checkpoint_tidb_client_secret}
+  # certAllowedCN is the Common Name that allowed
+  # certAllowedCN:
+  #  - TiDB
+
+# Refer to https://github.com/pingcap/tidb-binlog/blob/master/cmd/drainer/drainer.toml
+# [security] section will be generated automatically if tlsCluster.enabled is set to true so users do not need to configure it.
+config: |
+  detect-interval = 10
+  compressor = ""
+  [syncer]
+  worker-count = 16
+  disable-dispatch = false
+  ignore-schemas = "INFORMATION_SCHEMA,PERFORMANCE_SCHEMA,mysql"
+  safe-mode = false
+  txn-batch = 20
+  db-type = "file"
+  [syncer.to]
+  dir = "/data/pb"
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

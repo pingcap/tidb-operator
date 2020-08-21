@@ -22,7 +22,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -97,10 +97,6 @@ func TestStatefulSetControlUpdateStatefulSet(t *testing.T) {
 	updateSS, err := control.UpdateStatefulSet(tc, set)
 	g.Expect(err).To(Succeed())
 	g.Expect(int(*updateSS.Spec.Replicas)).To(Equal(100))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
@@ -129,10 +125,6 @@ func TestStatefulSetControlUpdateStatefulSetConflictSuccess(t *testing.T) {
 	updateSS, err := control.UpdateStatefulSet(tc, set)
 	g.Expect(err).To(Succeed())
 	g.Expect(int(*updateSS.Spec.Replicas)).To(Equal(100))
-
-	events := collectEvents(recorder.Events)
-	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
 }
 
 func TestStatefulSetControlDeleteStatefulSet(t *testing.T) {

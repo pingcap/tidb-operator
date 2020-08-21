@@ -1,0 +1,59 @@
+resources:
+- config.yaml
+- prepare.yaml
+- warmup.yaml
+- bench.yaml
+commonAnnotations:
+  table-count: "16"
+  table-size: "10000000"
+  tidb-host: localhost
+  tidb-port: "4000"
+  tidb-user: root
+  tidb-password: ""
+  tidb-db: sbtest
+patches:
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: not-important
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            dedicated: sysbench
+  target:
+    kind: Job
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: sysbench-prepare
+    spec:
+      template:
+        metadata:
+          annotations:
+            sysbench-threads: "16"
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: sysbench-warmup
+    spec:
+      template:
+        metadata:
+          annotations:
+            sysbench-time: "600"
+            sysbench-threads: "50"
+- patch: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: sysbench-bench
+    spec:
+      template:
+        metadata:
+          annotations:
+            sysbench-time: "300"
+            sysbench-threads: "50"
+            sysbench-test-name: oltp_point_select

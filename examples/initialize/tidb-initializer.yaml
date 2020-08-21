@@ -1,0 +1,21 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbInitializer
+metadata:
+  name: initialize-demo
+spec:
+  image: tnir/mysqlclient
+  imagePullPolicy: IfNotPresent
+  cluster:
+    name: initialize-demo
+  initSql: "create database hello;"
+  # initSqlConfigMap: tidb-initsql
+  passwordSecret: "tidb-secret"
+  # permitHost: 172.6.5.8
+  # resources:
+  #   limits:
+  #     cpu: 1000m
+  #     memory: 500Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 50Mi
+  # timezone: "Asia/Shanghai"

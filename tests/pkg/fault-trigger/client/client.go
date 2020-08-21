@@ -1,3 +1,16 @@
+// Copyright 2019 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client
 
 import (
@@ -7,10 +20,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/golang/glog"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/api"
 	"github.com/pingcap/tidb-operator/tests/pkg/fault-trigger/manager"
 	"github.com/pingcap/tidb-operator/tests/pkg/util"
+	"k8s.io/klog"
 )
 
 // Client is a fault-trigger client
@@ -140,7 +153,7 @@ func (c *client) ListVMs() ([]*manager.VM, error) {
 	url := util.GenURL(fmt.Sprintf("%s%s/vms", c.cfg.Addr, api.APIPrefix))
 	data, err := c.get(url)
 	if err != nil {
-		glog.Errorf("failed to get %s: %v", url, err)
+		klog.Errorf("failed to get %s: %v", url, err)
 		return nil, err
 	}
 
@@ -158,13 +171,10 @@ func (c *client) StartVM(vm *manager.VM) error {
 	}
 
 	vmName := vm.Name
-	if len(vmName) == 0 {
-		vmName = vm.IP
-	}
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/start", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("faled to post %s: %v", url, err)
+		klog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -177,13 +187,10 @@ func (c *client) StopVM(vm *manager.VM) error {
 	}
 
 	vmName := vm.Name
-	if len(vmName) == 0 {
-		vmName = vm.IP
-	}
 
 	url := util.GenURL(fmt.Sprintf("%s%s/vm/%s/stop", c.cfg.Addr, api.APIPrefix, vmName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("faled to post %s: %v", url, err)
+		klog.Errorf("faled to post %s: %v", url, err)
 		return err
 	}
 
@@ -233,7 +240,7 @@ func (c *client) StopKubeControllerManager() error {
 func (c *client) startService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/start", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("failed to post %s: %v", url, err)
+		klog.Errorf("failed to post %s: %v", url, err)
 		return err
 	}
 
@@ -243,7 +250,7 @@ func (c *client) startService(serviceName string) error {
 func (c *client) stopService(serviceName string) error {
 	url := util.GenURL(fmt.Sprintf("%s%s/%s/stop", c.cfg.Addr, api.APIPrefix, serviceName))
 	if _, err := c.post(url, nil); err != nil {
-		glog.Errorf("failed to post %s: %v", url, err)
+		klog.Errorf("failed to post %s: %v", url, err)
 		return err
 	}
 

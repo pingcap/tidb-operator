@@ -1,0 +1,6 @@
+StatefulSet {{ include "drainer.name" . }} installed.
+
+1. Watch if the drainer instance gets created:
+   watch kubectl get pod -n {{ .Release.Namespace }} {{ include "drainer.name" . }}-0
+2. Check if the drainer instance works properly:
+   kubectl logs -f -n {{ .Release.Namespace }} {{ include "drainer.name" . }}-0

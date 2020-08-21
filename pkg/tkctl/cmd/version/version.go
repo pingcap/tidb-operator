@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
-	"github.com/pingcap/tidb-operator/version"
+	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubernetes/pkg/apis/core"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 const (
@@ -80,7 +80,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	controllers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
 		List(v1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.InstanceLabelKey, "tidb-operator"),
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "controller-manager", label.NameLabelKey, "tidb-operator"),
 		})
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	schedulers, err := kubeCli.AppsV1().
 		Deployments(core.NamespaceAll).
 		List(v1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.InstanceLabelKey, "tidb-operator"),
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s", label.ComponentLabelKey, "scheduler", label.NameLabelKey, "tidb-operator"),
 		})
 	if err != nil {
 		return nil
@@ -103,7 +103,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 	} else {
 		fmt.Fprintf(o, "TiDB Controller Manager Versions:\n")
 		for _, item := range controllers.Items {
-			fmt.Fprintf(o, "\t%s: %s\n", item.Name, item.Spec.Template.Spec.Containers[0].Image)
+			fmt.Fprintf(o, "\t%s/%s: %s\n", item.Namespace, item.Name, item.Spec.Template.Spec.Containers[0].Image)
 		}
 	}
 	if len(schedulers.Items) == 0 {
@@ -115,7 +115,7 @@ func (o *VersionOptions) runVersion(tkcContext *config.TkcContext) error {
 		}
 	} else {
 		// warn for multiple scheduler
-		fmt.Fprintf(o, "WARN: more than one TiDB Scheduler instance found, this is un-supported and may lead to un-expected behavior:\n")
+		fmt.Fprintf(o, "WARN: more than one TiDB Scheduler deployment found, this is un-supported and may lead to un-expected behavior:\n")
 		for _, item := range schedulers.Items {
 			fmt.Fprintf(o, "\t%s\n", item.Name)
 		}

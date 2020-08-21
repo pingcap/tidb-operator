@@ -8,11 +8,34 @@ clusterScoped: true
 rbac:
   create: true
 
-# operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.0.0-beta.3
-imagePullPolicy: IfNotPresent
+# timezone is the default system timzone
+timezone: UTC
 
-defaultStorageClassName: local-storage
+# operatorImage is TiDB Operator image
+operatorImage: pingcap/tidb-operator:v1.1.4
+imagePullPolicy: IfNotPresent
+# imagePullSecrets: []
+
+# tidbBackupManagerImage is tidb backup manager image
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.4
+
+#
+# Enable or disable tidb-operator features:
+#
+#   StableScheduling (default: true)
+#     Enable stable scheduling of tidb servers.
+#
+#   AdvancedStatefulSet (default: false)
+#     If enabled, tidb-operator will use AdvancedStatefulSet to manage pods
+#     instead of Kubernetes StatefulSet.
+#     It's ok to turn it on if this feature is not enabled. However it's not ok
+#     to turn it off when the tidb-operator already uses AdvancedStatefulSet to
+#     manage pods. This is in alpha phase.
+#
+features: []
+# - AdvancedStatefulSet=false
+# - StableScheduling=true
+# - AutoScaling=false
 
 controllerManager:
   # With rbac.create=false, the user is responsible for creating this account
@@ -22,20 +45,36 @@ controllerManager:
   logLevel: 2
   replicas: 1
   resources:
-    limits:
-      cpu: 250m
-      memory: 150Mi
     requests:
       cpu: 80m
       memory: 50Mi
+#  # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+#  priorityClassName: system-cluster-critical
+
   # autoFailover is whether tidb-operator should auto failover when failure occurs
-  autoFailover: false
+  autoFailover: true
   # pd failover period default(5m)
   pdFailoverPeriod: 5m
   # tikv failover period default(5m)
   tikvFailoverPeriod: 5m
   # tidb failover period default(5m)
   tidbFailoverPeriod: 5m
+  # tiflash failover period default(5m)
+  tiflashFailoverPeriod: 5m
+  ## affinity defines pod scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb-operator
+  #   effect: "NoSchedule"
 
 scheduler:
   # With rbac.create=false, the user is responsible for creating this account
@@ -45,8 +84,6 @@ scheduler:
   logLevel: 2
   replicas: 1
   schedulerName: tidb-scheduler
-  # features:
-  # - StableScheduling
   resources:
     limits:
       cpu: 250m
@@ -54,6 +91,148 @@ scheduler:
     requests:
       cpu: 80m
       memory: 50Mi
-  kubeSchedulerImageName: gcr.io/google-containers/hyperkube
+  kubeSchedulerImageName: k8s.gcr.io/kube-scheduler
   # This will default to matching your kubernetes version
   # kubeSchedulerImageTag:
+  ## affinity defines pod scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb-operator
+  #   effect: "NoSchedule"
+
+apiserver:
+  # leave the creation of apiserver CA cert/key to user for now
+  # TODO: adopt advanced cert management strategy after #1040 (webhook) merged
+  certificate: ""
+  key: ""
+  caBundle: ""
+
+  create: false
+  replicas: 1
+  serviceAccount: tidb-apiserver
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 50Mi
+  # This will default to matching your kubernetes version
+  # kubeSchedulerImageTag:
+  ## affinity defines pod scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb-operator
+  #   effect: "NoSchedule"
+
+# When AdvancedStatefulSet feature is enabled, you must install
+# AdvancedStatefulSet controller.
+# Note that AdvancedStatefulSet CRD must be installed manually via the following
+# command:
+#   kubectl apply -f manifests/advanced-statefulset-crd.v1beta1.yaml # k8s version < 1.16.0
+#   kubectl apply -f manifests/advanced-statefulset-crd.v1.yaml      # k8s version >= 1.16.0
+advancedStatefulset:
+  create: false
+  image: pingcap/advanced-statefulset:v0.4.0
+  imagePullPolicy: IfNotPresent
+  serviceAccount: advanced-statefulset-controller
+  logLevel: 2
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 50Mi
+  ## affinity defines pod scheduling rules,affinity default settings is empty.
+  ## please read the affinity document before set your scheduling rule:
+  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+  nodeSelector: {}
+  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: []
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb-operator
+  #   effect: "NoSchedule"
+
+admissionWebhook:
+  create: false
+  replicas: 1
+  serviceAccount: tidb-admission-webhook
+  logLevel: 2
+  rbac:
+    create: true
+  ## jobImage is to indicate the image used in `pre-delete-job.yaml`
+  ## if admissionWebhook.create and admissionWebhook.validation.pods are both enabled,
+  ## The pre-delete-job would delete the validationWebhookConfiguration using this image
+  jobImage: "bitnami/kubectl:latest"
+  ## validation webhook would check the given request for the specific resource and operation
+  validation:
+    ## statefulsets hook would check requests for updating tidbcluster's statefulsets
+    ## If enabled it, the statefulsets of tidbcluseter would update in partition by tidbcluster's annotation
+    statefulSets: false
+    ## pods hook would check requests for creating and deleting tidbcluster's pods
+    ## if enabled it, the pods of tidbcluster would safely created or deleted by webhook instead of controller
+    pods: true
+    ## validating hook validates the correctness of the resources under pingcap.com group
+    pingcapResources: false
+  ## mutation webhook would mutate the given request for the specific resource and operation
+  mutation:
+    ## pods mutation hook would mutate the pod. Currently It is used for TiKV Auto-Scaling.
+    ## refer to https://github.com/pingcap/tidb-operator/issues/1651
+    pods: true
+    ## defaulting hook set default values for the the resources under pingcap.com group
+    pingcapResources: true
+  ## failurePolicy are applied to ValidatingWebhookConfiguration which affect tidb-admission-webhook
+  ## refer to https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+  failurePolicy:
+    ## the validation webhook would check the request of the given resources.
+    ## If the kubernetes api-server version >= 1.15.0, we recommend the failurePolicy as Fail, otherwise, as Ignore.
+    validation: Ignore
+    ## the mutation webhook would mutate the request of the given resources.
+    ## If the kubernetes api-server version >= 1.15.0, we recommend the failurePolicy as Fail, otherwise, as Ignore.
+    mutation: Ignore
+  ## tidb-admission-webhook deployed as kubernetes apiservice server
+  ## refer to https://github.com/openshift/generic-admission-server
+  apiservice:
+    ## apiservice config
+    ## refer to https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/#contacting-the-extension-apiserver
+    insecureSkipTLSVerify: true
+    ## The Secret includes the TLS ca, cert and key for the `tidb-admission-webook.<Release Namespace>.svc` Service.
+    ## If insecureSkipTLSVerify is true, this would be ignored.
+    ## You can create the tls secret by:
+    ## kubectl create secret generic <secret-name> --namespace=<release-namespace> --from-file=tls.crt=<path-to-cert> --from-file=tls.key=<path-to-key> --from-file=ca.crt=<path-to-ca>
+    tlsSecret: ""
+    ## The caBundle for the webhook apiservice, you could get it by the secret you created previously:
+    ## kubectl get secret <secret-name> --namespace=<release-namespace> -o=jsonpath='{.data.ca\.crt}'
+    caBundle: ""
+  ## certProvider indicate the key and cert for the webhook configuration to communicate with `kubernetes.default` service.
+  ## If your kube-apiserver's version >= 1.13.0, you can leave cabundle empty and the kube-apiserver
+  ## would trust the roots on the apiserver.
+  ## refer to https://github.com/kubernetes/api/blob/master/admissionregistration/v1/types.go#L529
+  ## or you can get the cabundle by:
+  ## kubectl get configmap -n kube-system extension-apiserver-authentication -o=jsonpath='{.data.client-ca-file}' | base64 | tr -d '\n'
+  cabundle: ""

@@ -1,4 +1,4 @@
-// Copyright 2019. PingCAP, Inc.
+// Copyright 2019 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,19 +15,21 @@ package info
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"io"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
 	"github.com/spf13/cobra"
-	"io"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 const (
@@ -38,13 +40,13 @@ const (
 `
 	infoExample = `
 		# get current tidb cluster info (set by tkc use)
-		tkc info
+		tkctl info
 
 		# get specified tidb cluster info
-		tkc info -t another-cluster
+		tkctl info -t another-cluster
 `
 	infoUsage = `expected 'info -t CLUSTER_NAME' for the info command or 
-using 'tkc use' to set tidb cluster first.
+using 'tkctl use' to set tidb cluster first.
 `
 )
 
@@ -152,6 +154,48 @@ func (o *InfoOptions) Run() error {
 // go template is lacking type checking and hard to maintain, in this
 // case we just render manually
 func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.PodList) (string, error) {
+	var pdCPU resource.Quantity
+	var pdMemory resource.Quantity
+	var pdStorage resource.Quantity
+	if tc.Spec.PD.Requests != nil {
+		if cpu := tc.Spec.PD.Requests.Cpu(); cpu != nil {
+			pdCPU = *cpu
+		}
+		if mem := tc.Spec.PD.Requests.Memory(); mem != nil {
+			pdMemory = *mem
+		}
+		if st, ok := tc.Spec.PD.Requests[v1.ResourceStorage]; ok {
+			pdStorage = st
+		}
+	}
+	var tikvCPU resource.Quantity
+	var tikvMemory resource.Quantity
+	var tikvStorage resource.Quantity
+	if tc.Spec.TiKV.Requests != nil {
+		if cpu := tc.Spec.TiKV.Requests.Cpu(); cpu != nil {
+			tikvCPU = *cpu
+		}
+		if mem := tc.Spec.TiKV.Requests.Memory(); mem != nil {
+			tikvMemory = *mem
+		}
+		if st, ok := tc.Spec.TiKV.Requests[v1.ResourceStorage]; ok {
+			tikvStorage = st
+		}
+	}
+	var tidbCPU resource.Quantity
+	var tidbMemory resource.Quantity
+	var tidbStorage resource.Quantity
+	if tc.Spec.TiDB.Requests != nil {
+		if cpu := tc.Spec.TiDB.Requests.Cpu(); cpu != nil {
+			tidbCPU = *cpu
+		}
+		if mem := tc.Spec.TiDB.Requests.Memory(); mem != nil {
+			tidbMemory = *mem
+		}
+		if st, ok := tc.Spec.TiDB.Requests[v1.ResourceStorage]; ok {
+			tidbStorage = st
+		}
+	}
 	return readable.TabbedString(func(out io.Writer) error {
 		w := readable.NewPrefixWriter(out)
 		w.WriteLine(readable.LEVEL_0, "Name:\t%s", tc.Name)
@@ -166,30 +210,30 @@ func renderTidbCluster(tc *v1alpha1.TidbCluster, svc *v1.Service, podList *v1.Po
 				w.Write(readable.LEVEL_0, "%s\t", tc.Status.PD.Phase)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.PD.StatefulSet.ReadyReplicas)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.PD.StatefulSet.Replicas)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.PD.Requests.CPU)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.PD.Requests.Memory)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.PD.Requests.Storage)
-				w.Write(readable.LEVEL_0, "%s\t\n", tc.Spec.PD.Image)
+				w.Write(readable.LEVEL_0, "%s\t", pdCPU)
+				w.Write(readable.LEVEL_0, "%s\t", pdMemory)
+				w.Write(readable.LEVEL_0, "%s\t", pdStorage)
+				w.Write(readable.LEVEL_0, "%s\t\n", tc.PDImage())
 			}
 			w.Write(readable.LEVEL_1, "TiKV:\t")
 			{
 				w.Write(readable.LEVEL_0, "%s\t", tc.Status.TiKV.Phase)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiKV.StatefulSet.ReadyReplicas)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiKV.StatefulSet.Replicas)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiKV.Requests.CPU)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiKV.Requests.Memory)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiKV.Requests.Storage)
-				w.Write(readable.LEVEL_0, "%s\t\n", tc.Spec.TiKV.Image)
+				w.Write(readable.LEVEL_0, "%s\t", tikvCPU)
+				w.Write(readable.LEVEL_0, "%s\t", tikvMemory)
+				w.Write(readable.LEVEL_0, "%s\t", tikvStorage)
+				w.Write(readable.LEVEL_0, "%s\t\n", tc.TiKVImage())
 			}
 			w.Write(readable.LEVEL_1, "TiDB\t")
 			{
 				w.Write(readable.LEVEL_0, "%s\t", tc.Status.TiDB.Phase)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiDB.StatefulSet.ReadyReplicas)
 				w.Write(readable.LEVEL_0, "%d\t", tc.Status.TiDB.StatefulSet.Replicas)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiDB.Requests.CPU)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiDB.Requests.Memory)
-				w.Write(readable.LEVEL_0, "%s\t", tc.Spec.TiDB.Requests.Storage)
-				w.Write(readable.LEVEL_0, "%s\t\n", tc.Spec.TiDB.Image)
+				w.Write(readable.LEVEL_0, "%s\t", tidbCPU)
+				w.Write(readable.LEVEL_0, "%s\t", tidbMemory)
+				w.Write(readable.LEVEL_0, "%s\t", tidbStorage)
+				w.Write(readable.LEVEL_0, "%s\t\n", tc.TiDBImage())
 			}
 		}
 		w.WriteLine(readable.LEVEL_0, "Endpoints(%s):", svc.Spec.Type)

@@ -1,7 +1,19 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
-TIDB_VERSION=${TIDB_VERSION:-2.1.0}
+# Copyright 2020 PingCAP, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # Version management helpers.  These functions help to set the
@@ -62,7 +74,7 @@ function tidb_operator::version::ldflag() {
   local key=${1}
   local val=${2}
 
-  echo "-X 'github.com/pingcap/tidb-operator/version.${key}=${val}'"
+  echo "-X 'github.com/pingcap/tidb-operator/pkg/version.${key}=${val}'"
 }
 
 # Prints the value that needs to be passed to the -ldflags parameter of go build
@@ -79,10 +91,6 @@ function tidb_operator::version::ldflags() {
 
   if [[ -n ${GIT_VERSION-} ]]; then
     ldflags+=($(tidb_operator::version::ldflag "gitVersion" "${GIT_VERSION}"))
-  fi
-
-  if [[ -n ${TIDB_VERSION-} ]]; then
-    ldflags+=($(tidb_operator::version::ldflag "tidbVersion" "${TIDB_VERSION}"))
   fi
 
   # The -ldflags parameter takes a single string, so join the output.

@@ -5,17 +5,49 @@
 # clusterName is the TiDB cluster name that should backup from or restore to.
 clusterName: demo
 
+# timezone is the default system timzone
+timezone: UTC
+
 mode: backup # backup | restore | scheduled-restore
-# name is the backup name
+
+# name is the backup dir name and pvc name for ad-hoc backup and restore
 name: fullbackup-{{ date "200601021504" .Release.Time }}
+
+# The default jobName is clusterName-name
+# jobName:
+
+# The TiDB host to connect to
+# By default this will match a normal tidb-operator deploy
+# host:
+
+# scheduledBackupName is the name of a scheduled backup directory,
+# used to restore the tidb cluster from scheduled backup.
+# scheduledBackupName: scheduled-backup-20190822-041004
+
 image:
   pullPolicy: IfNotPresent
   # https://github.com/pingcap/tidb-cloud-backup
-  backup: pingcap/tidb-cloud-backup:20190610
+  backup: pingcap/tidb-cloud-backup:20200229
+
+## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
+## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+nodeSelector: {}
 
 # Add additional labels for backup/restore job's pod
 # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 extraLabels: {}
+
+# Add annotations for backup/restore job's pod
+annotations: {}
+
+## affinity defines pd scheduling rules,it's default settings is empty.
+## please read the affinity document before set your scheduling rule:
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+affinity: {}
+
+## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+tolerations: []
 
 # secretName is the name of the secret which stores user and password used for backup/restore
 # Note: you must give the user enough privilege to do the backup and restore
@@ -23,12 +55,27 @@ extraLabels: {}
 # kubectl create secret generic backup-secret --namespace=<namespace> --from-literal=user=root --from-literal=password=<password>
 secretName: backup-secret
 
+resources:
+  limits:
+    cpu: 4000m
+    memory: 8Gi
+  requests:
+    cpu: 2000m
+    memory: 4Gi
+
+# Kubernetes service account to use
+# serviceAccount:
+
 storage:
   className: local-storage
   size: 100Gi
 
-# backupOptions is the options of mydumper https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options
-backupOptions: "--verbose=3"
+# -t is thread count, larger thread count will speed up the backup, but may impact the performance of the upstream TiDB.
+# -r is the chunk rows for each parallel dump thread to process, this is an option added in the pingcap's fork of mydumper
+# Other useful options are -B for database, and -T for tables.
+# See https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst#options for more options.
+backupOptions: "--compress-protocol -t 16 -r 10000  --skip-tz-utc --verbose=3"
+
 # Set the tidb_snapshot to be used for the backup
 # Use `show master status` to get the ts:
 #   MySQL [(none)]> show master status;
@@ -42,13 +89,23 @@ backupOptions: "--verbose=3"
 initialCommitTs: ""
 # restoreOptions is the options of loader https://www.pingcap.com/docs-cn/tools/loader/
 restoreOptions: "-t 16"
+# The time limit during which data is retained for each GC when backup, in the format of Go Duration.
+# When a GC happens, the current time minus this value is the safe point.
+tikvGCLifeTime: 720h
+
+# By default, restores are performed by binding to an existing volume containing backup data.
+# To restore from gcp, ceph, or s3, set this to false to create a new volume to load the backup into
+# This setting only affects the "restore" mode.
+restoreUsingExistingVolume: true
 
 # By default, the backup/restore uses PV to store/load backup data
-# You can choose to store/load backup data to/from gcp or ceph bucket by enabling the following corresponding section:
+# You can choose to store/load backup data to/from gcp, ceph or s3 bucket by enabling the following corresponding section:
 
 # backup to or restore from gcp bucket, the backup path is in the form of <clusterName>-<name>
 gcp: {}
   # bucket: ""
+  # prefix: ""
+  # secretName is not necessary on GKE if you use the workload identity feature
   # secretName is the name of the secret which stores the gcp service account credentials json file
   # The service account must have read/write permission to the above bucket.
   # Read the following document to create the service account and download the credentials file as credentials.json:
@@ -57,11 +114,23 @@ gcp: {}
   # kubectl create secret generic gcp-backup-secret --namespace=<namespace> --from-file=./credentials.json
   # secretName: gcp-backup-secret
 
-# backup to or restore from ceph bucket,  the backup path is in the form of <clusterName>-<name>
+# backup to or restore from ceph bucket, the backup path is in the form of <clusterName>-<name>
 ceph: {}
   # endpoint: ""
   # bucket: ""
+  # prefix: ""
   # secretName is the name of the secret which stores ceph object store access key and secret key
   # You can create the secret by:
   # kubectl create secret generic ceph-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
   # secretName: ceph-backup-secret
+
+# backup to or restore from s3 bucket, the backup path is in the form of <clusterName>-<name>
+s3: {}
+  # region: ""
+  # bucket: ""
+  # prefix: ""
+  # secretName is the name of the secret which stores s3 object store access key and secret key
+  # This is not necessary on AWS. Instead you should be able to get the credentials from the EKS service IAM role.
+  # You can create the secret by:
+  # kubectl create secret generic s3-backup-secret --namespace=<namespace> --from-literal=access_key=<access-key> --from-literal=secret_key=<secret-key>
+  # secretName: s3-backup-secret

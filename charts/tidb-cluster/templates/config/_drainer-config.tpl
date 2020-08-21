@@ -11,7 +11,7 @@ detect-interval = {{ .Values.binlog.drainer.detectInterval | default 10 }}
 data-dir = "/data"
 
 # a comma separated list of PD endpoints
-pd-urls = "http://{{ template "cluster.name" . }}-pd:2379"
+pd-urls = "{{ template "cluster.scheme" . }}://{{ template "cluster.name" . }}-pd:2379"
 
 # Use the specified compressor to compress payload between pump and drainer
 compressor = ""
@@ -28,7 +28,7 @@ compressor = ""
 [syncer]
 
 # Assume the upstream sql-mode.
-# If this is set , will use the same sql-mode to parse DDL statment, and set the same sql-mode at downstream when db-type is mysql.
+# If this is set , will use the same sql-mode to parse DDL statement, and set the same sql-mode at downstream when db-type is mysql.
 # The default value will not set any sql-mode.
 # sql-mode = "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"
 
@@ -46,7 +46,7 @@ disable-dispatch = {{ .Values.binlog.drainer.disableDispatch | default false }}
 safe-mode = {{ .Values.binlog.drainer.safeMode | default false }}
 
 # downstream storage, equal to --dest-db-type
-# valid values are "mysql", "pb", "tidb", "flash", "kafka"
+# valid values are "mysql", "file", "tidb", "flash", "kafka"
 db-type = "{{ .Values.binlog.drainer.destDBType }}"
 
 # disable sync these schema
@@ -70,7 +70,7 @@ ignore-schemas = {{ .Values.binlog.drainer.ignoreSchemas | default "INFORMATION_
 #db-name = "test"
 #tbl-name = "log"
 
-{{- if eq .Values.binlog.drainer.destDBType "mysql" }}
+{{- if or (eq .Values.binlog.drainer.destDBType "mysql") (eq .Values.binlog.drainer.destDBType "tidb") }}
 # the downstream mysql protocol database
 [syncer.to]
 host = {{ .Values.binlog.drainer.mysql.host | quote }}
@@ -83,14 +83,11 @@ port = {{ .Values.binlog.drainer.mysql.port | default 3306 }}
 #schema = "tidb_binlog"
 {{- end }}
 
-{{- if eq .Values.binlog.drainer.destDBType "pb" }}
-# Uncomment this if you want to use pb or sql as db-type.
-# Compress compresses output file, like pb and sql file. Now it supports "gzip" algorithm only.
-# Values can be "gzip". Leave it empty to disable compression.
+{{- if or (eq .Values.binlog.drainer.destDBType "pb") (eq .Values.binlog.drainer.destDBType "file") }}
+# Uncomment this if you want to use file as db-type.
 [syncer.to]
-# directory to save pb file, default same as data-dir(save checkpoint file) if this is not configured.
+# directory to save binlog file, default same as data-dir(save checkpoint file) if this is not configured.
 dir = "/data/pb"
-compression = "gzip"
 {{- end }}
 
 {{- if eq .Values.binlog.drainer.destDBType "kafka" }}

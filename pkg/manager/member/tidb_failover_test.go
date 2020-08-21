@@ -14,38 +14,31 @@
 package member
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/pointer"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestFakeTiDBFailoverFailover(t *testing.T) {
-	type testcase struct {
+func TestTiDBFailoverFailover(t *testing.T) {
+	tests := []struct {
 		name        string
+		pods        []*corev1.Pod
 		update      func(*v1alpha1.TidbCluster)
 		errExpectFn func(*GomegaWithT, error)
 		expectFn    func(*GomegaWithT, *v1alpha1.TidbCluster)
-	}
-
-	testFn := func(test *testcase, t *testing.T) {
-		t.Logf(test.name)
-		g := NewGomegaWithT(t)
-		tidbFailover := newTiDBFailover()
-		tc := newTidbClusterForTiDBFailover()
-		test.update(tc)
-
-		err := tidbFailover.Failover(tc)
-		test.errExpectFn(g, err)
-		test.expectFn(g, tc)
-	}
-
-	tests := []testcase{
+	}{
 		{
 			name: "all tidb members are ready",
 			update: func(tc *v1alpha1.TidbCluster) {
@@ -70,6 +63,36 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 		},
 		{
 			name: "one tidb member failed",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "failover-tidb-0",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodScheduled,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "failover-tidb-1",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodScheduled,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
 					"failover-tidb-0": {
@@ -91,7 +114,89 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 			},
 		},
 		{
+			name: "one tidb member failed but not scheduled yet",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "failover-tidb-0",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodScheduled,
+								Status: corev1.ConditionUnknown,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "failover-tidb-1",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodScheduled,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
+					"failover-tidb-0": {
+						Name:   "failover-tidb-0",
+						Health: false,
+					},
+					"failover-tidb-1": {
+						Name:   "failover-tidb-1",
+						Health: true,
+					},
+				}
+			},
+			errExpectFn: func(t *GomegaWithT, err error) {
+				t.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(0))
+				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+			},
+		},
+		{
 			name: "two tidb members failed",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "failover-tidb-0",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodScheduled,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "failover-tidb-1",
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodScheduled,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
 			update: func(tc *v1alpha1.TidbCluster) {
 				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
 					"failover-tidb-0": {
@@ -157,32 +262,79 @@ func TestFakeTiDBFailoverFailover(t *testing.T) {
 				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
 			},
 		},
+		{
+			name: "max failover count but maxFailoverCount = 0",
+			update: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(0)
+				tc.Status.TiDB.Members = map[string]v1alpha1.TiDBMember{
+					"failover-tidb-0": {
+						Name:   "failover-tidb-0",
+						Health: false,
+					},
+					"failover-tidb-1": {
+						Name:   "failover-tidb-1",
+						Health: false,
+					},
+					"failover-tidb-2": {
+						Name:   "failover-tidb-2",
+						Health: false,
+					},
+					"failover-tidb-3": {
+						Name:   "failover-tidb-3",
+						Health: false,
+					},
+					"failover-tidb-4": {
+						Name:   "failover-tidb-4",
+						Health: false,
+					},
+				}
+				tc.Status.TiDB.FailureMembers = map[string]v1alpha1.TiDBFailureMember{
+					"failover-tidb-0": {
+						PodName: "failover-tidb-0",
+					},
+					"failover-tidb-1": {
+						PodName: "failover-tidb-1",
+					},
+					"failover-tidb-2": {
+						PodName: "failover-tidb-2",
+					},
+				}
+			},
+			errExpectFn: func(t *GomegaWithT, err error) {
+				t.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(t *GomegaWithT, tc *v1alpha1.TidbCluster) {
+				t.Expect(len(tc.Status.TiDB.FailureMembers)).To(Equal(3))
+				t.Expect(int(tc.Spec.TiDB.Replicas)).To(Equal(2))
+			},
+		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			fakeClient := fake.NewSimpleClientset()
+			for _, pod := range test.pods {
+				fakeClient.CoreV1().Pods(pod.Namespace).Create(pod)
+			}
+			tidbFailover := newTiDBFailover(ctx, fakeClient)
+			tc := newTidbClusterForTiDBFailover()
+			test.update(tc)
+			err := tidbFailover.Failover(tc)
+			test.errExpectFn(g, err)
+			test.expectFn(g, tc)
+		})
 	}
 }
 
-func TestFakeTiDBFailoverRecover(t *testing.T) {
-	type testcase struct {
+func TestTiDBFailoverRecover(t *testing.T) {
+	tests := []struct {
 		name     string
 		update   func(*v1alpha1.TidbCluster)
 		expectFn func(*GomegaWithT, *v1alpha1.TidbCluster)
-	}
-
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
-		g := NewGomegaWithT(t)
-		tidbFailover := newTiDBFailover()
-		tc := newTidbClusterForTiDBFailover()
-		test.update(tc)
-
-		tidbFailover.Recover(tc)
-		test.expectFn(g, tc)
-	}
-
-	tests := []testcase{
+	}{
 		{
 			name: "have not failure tidb member to recover",
 			update: func(tc *v1alpha1.TidbCluster) {
@@ -329,13 +481,28 @@ func TestFakeTiDBFailoverRecover(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			fakeClient := fake.NewSimpleClientset()
+			tidbFailover := newTiDBFailover(ctx, fakeClient)
+			tc := newTidbClusterForTiDBFailover()
+			test.update(tc)
+			tidbFailover.Recover(tc)
+			test.expectFn(g, tc)
+		})
 	}
 }
 
-func newTiDBFailover() Failover {
-	return &tidbFailover{tidbFailoverPeriod: time.Duration(5 * time.Minute)}
+func newTiDBFailover(ctx context.Context, client kubernetes.Interface) Failover {
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
+	podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+	kubeInformerFactory.Start(ctx.Done())
+	kubeInformerFactory.WaitForCacheSync(ctx.Done())
+	recorder := record.NewFakeRecorder(100)
+	return NewTiDBFailover(time.Duration(5*time.Minute), recorder, podLister)
 }
 
 func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {
@@ -350,13 +517,12 @@ func newTidbClusterForTiDBFailover() *v1alpha1.TidbCluster {
 			UID:       types.UID("failover"),
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			TiDB: v1alpha1.TiDBSpec{
-				ContainerSpec: v1alpha1.ContainerSpec{
+			TiDB: &v1alpha1.TiDBSpec{
+				ComponentSpec: v1alpha1.ComponentSpec{
 					Image: "tidb-test-image",
 				},
 				Replicas:         2,
-				StorageClassName: "my-storage-class",
-				MaxFailoverCount: 3,
+				MaxFailoverCount: pointer.Int32Ptr(3),
 			},
 		},
 	}

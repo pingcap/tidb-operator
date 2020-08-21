@@ -14,14 +14,8 @@
 package tests
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strconv"
 	"time"
-
-	"github.com/golang/glog"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
@@ -30,6 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 const (
@@ -67,12 +63,24 @@ func (oa *operatorActions) LabelNodes() error {
 	}
 
 	for i, node := range nodes.Items {
-		index := i % RackNum
-		node.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
-		_, err = oa.kubeCli.CoreV1().Nodes().Update(&node)
+		err := wait.PollImmediate(3*time.Second, time.Minute, func() (bool, error) {
+			n, err := oa.kubeCli.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("get node:[%s] failed! error: %v", node.Name, err)
+				return false, nil
+			}
+			index := i % RackNum
+			n.Labels[RackLabel] = fmt.Sprintf("rack%d", index)
+			_, err = oa.kubeCli.CoreV1().Nodes().Update(n)
+			if err != nil {
+				klog.Errorf("label node:[%s] failed! error: %v", node.Name, err)
+				return false, nil
+			}
+			return true, nil
+		})
+
 		if err != nil {
-			glog.Errorf("label node:[%s] failed!", node.Name)
-			return err
+			return fmt.Errorf("label nodes failed, error: %v", err)
 		}
 	}
 	return nil
@@ -145,85 +153,4 @@ func (oa *operatorActions) CheckDisasterToleranceOrDie(cluster *TidbClusterConfi
 	if err != nil {
 		slack.NotifyAndPanic(err)
 	}
-}
-
-func (oa *operatorActions) CheckDataRegionDisasterToleranceOrDie(cluster *TidbClusterConfig) {
-	err := oa.CheckDataRegionDisasterTolerance(cluster)
-	if err != nil {
-		slack.NotifyAndPanic(err)
-	}
-}
-
-func (oa *operatorActions) CheckDataRegionDisasterTolerance(cluster *TidbClusterConfig) error {
-	pdClient := http.Client{
-		Timeout: 10 * time.Second,
-	}
-	url := fmt.Sprintf("http://%s-pd.%s:2379/pd/api/v1/regions", cluster.ClusterName, cluster.Namespace)
-	resp, err := pdClient.Get(url)
-	if err != nil {
-		return err
-	}
-	buf, _ := ioutil.ReadAll(resp.Body)
-	regions := &RegionsInfo{}
-	err = json.Unmarshal(buf, &regions)
-	if err != nil {
-		return err
-	}
-
-	rackNodeMap, err := oa.getNodeRackMap()
-	if err != nil {
-		return err
-	}
-	// check peers of region are located on difference racks
-	// by default region replicas is 3 and rack num is also 3
-	// so each rack only have one peer of each data region; if not,return error
-	for _, region := range regions.Regions {
-		// regionRacks is map of rackName and the peerID
-		regionRacks := map[string]uint64{}
-		for _, peer := range region.Peers {
-			storeID := strconv.FormatUint(peer.StoreId, 10)
-			nodeName, err := oa.getNodeByStoreId(storeID, cluster)
-			if err != nil {
-				return err
-			}
-			rackName := rackNodeMap[nodeName]
-			// if the rack have more than one peer of the region, return error
-			if otherID, exist := regionRacks[rackName]; exist {
-				return fmt.Errorf("region[%d]'s peer: [%d]and[%d] are in same rack:[%s]", region.ID, otherID, peer.Id, rackName)
-			}
-			// add a new pair of rack and peer
-			regionRacks[rackName] = peer.Id
-		}
-	}
-	return nil
-}
-
-func (oa *operatorActions) getNodeByStoreId(storeID string, cluster *TidbClusterConfig) (string, error) {
-	tc, err := oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-	if store, exist := tc.Status.TiKV.Stores[storeID]; exist {
-		pod, err := oa.kubeCli.CoreV1().Pods(cluster.Namespace).Get(store.PodName, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return pod.Spec.NodeName, nil
-	}
-
-	return "", fmt.Errorf("the storeID:[%s] is not exist in tidbCluster:[%s] Status", storeID, cluster.FullName())
-}
-
-// getNodeRackMap return the map of node and rack
-func (oa *operatorActions) getNodeRackMap() (map[string]string, error) {
-	rackNodeMap := map[string]string{}
-	nodes, err := oa.kubeCli.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		return rackNodeMap, err
-	}
-	for _, node := range nodes.Items {
-		rackNodeMap[node.Name] = node.Labels[RackLabel]
-	}
-
-	return rackNodeMap, nil
 }
