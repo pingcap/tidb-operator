@@ -16,9 +16,6 @@ package monitor
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strconv"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -33,6 +30,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 func GetMonitorObjectName(monitor *v1alpha1.TidbMonitor) string {
@@ -48,11 +48,14 @@ func buildTidbMonitorLabel(name string) map[string]string {
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
 	var releaseNamespaces []string
+	var releaseClusters []string
 	for _, cluster := range monitor.Spec.Clusters {
 		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
+		releaseClusters = append(releaseClusters, cluster.Name)
 	}
 
-	targetPattern, err := config.NewRegexp(tc.Name)
+	relabelConfigsRegex := strings.Join(releaseClusters, "|")
+	targetPattern, err := config.NewRegexp(relabelConfigsRegex)
 	if err != nil {
 		return nil, err
 	}
