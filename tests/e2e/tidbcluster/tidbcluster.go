@@ -1268,13 +1268,31 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
 		err = wait.PollImmediate(15*time.Second, 45*time.Minute, func() (bool, error) {
 			e2elog.Logf("start check heterogeneous cluster: %s/%s", ns, heterogeneousTc.Name)
+			var tc *v1alpha1.TidbCluster
 			var err error
-			if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
 				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
 				return false, nil
 			}
+			if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
+				if tc.Status.TiKV.StatefulSet == nil {
+					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", tc.Status.TiKV.StatefulSet.ReadyReplicas)
+				}
 
-			e2elog.Logf("start two check heterogeneous cluster: %s/%s", ns, heterogeneousTc.Name)
+				return false, nil
+			}
+			if tc.Status.TiDB.StatefulSet == nil || tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
+				if tc.Status.TiDB.StatefulSet == nil {
+					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", 0)
+				} else {
+					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.ReadyReplicas)
+				}
+
+				return false, nil
+			}
+
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
@@ -1282,7 +1300,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if err != nil {
 				e2elog.Logf("failed to get stores, %v", err)
 			}
-			if storeInfo.Count != 2 {
+			if storeInfo.Count != 3 {
 				e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
 				return false, nil
 			}
