@@ -12,6 +12,8 @@ data:
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
+    external_labels:
+      tidbcluster: basic
     scrape_configs:
     - job_name: 'pd'
       scrape_interval: 15s
