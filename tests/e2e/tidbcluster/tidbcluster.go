@@ -1267,6 +1267,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(heterogeneousTc, 45*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
 		err = wait.PollImmediate(15*time.Second, 45*time.Minute, func() (bool, error) {
+			e2elog.Logf("start check heterogeneous cluster: %s/%s", ns, heterogeneousTc.Name)
 			var tc *v1alpha1.TidbCluster
 			var err error
 			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
