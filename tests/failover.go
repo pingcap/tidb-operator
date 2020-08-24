@@ -166,9 +166,9 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 	// checkout pd config
 	var pdCfg *pdapi.PDConfigFromAPI
 	if tc.IsHeterogeneous() {
-		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.GetName(), tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()).GetConfig()
+		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
 	} else {
-		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled()).GetConfig()
+		pdCfg, err = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled()).GetConfig()
 	}
 
 	if err != nil {
@@ -525,9 +525,9 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 
 		var pdclient pdapi.PDClient
 		if tc.IsHeterogeneous() {
-			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
 		} else {
-			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
+			pdclient = oa.pdControl.GetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.IsTLSClusterEnabled())
 		}
 
 		for _, v := range tc.Status.TiKV.Stores {

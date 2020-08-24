@@ -587,7 +587,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	if tc.IsHeterogeneous() {
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.ClusterDomain) + ":2379"
+		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Name) + ":2379"
 	}

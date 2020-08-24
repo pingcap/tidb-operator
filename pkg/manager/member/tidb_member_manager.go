@@ -401,7 +401,7 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	if tc.IsHeterogeneous() {
-		tidbStartScriptModel.Path = controller.ClusterPdAddress(tc.Spec.Cluster.Name, tc.Spec.Cluster.Namespace, tc.Spec.Cluster.ClusterDomain)
+		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"
 	}

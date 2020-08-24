@@ -133,6 +133,6 @@ func NewFakePDControl(kubeCli kubernetes.Interface) *FakePDControl {
 	}
 }
 
-func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, clusterDomain string, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[pdClientKey("http", namespace, tcName)] = pdclient
 }

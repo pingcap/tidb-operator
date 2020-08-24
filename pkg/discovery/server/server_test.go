@@ -75,7 +75,7 @@ func TestServer(t *testing.T) {
 		return &ret, nil
 	})
 	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
-	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, tc.Spec.ClusterDomain, pdClient)
+	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, pdClient)
 
 	var wg sync.WaitGroup
 	var (
