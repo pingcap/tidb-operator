@@ -1662,7 +1662,7 @@ func (oa *operatorActions) tiflashMembersReadyFn(tc *v1alpha1.TidbCluster) (bool
 		klog.Errorf("failed to get peer service: %s/%s", ns, tiflashPeerServiceName)
 		return false, nil
 	}
-	klog.Errorf("TiFlash ready: %s/%s", ns, tcName)
+	klog.Infof("TiFlash ready: %s/%s", ns, tcName)
 	return true, nil
 }
 
@@ -3610,7 +3610,7 @@ func (oa *operatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 				klog.Errorf("tiflash  members not ready: %s/%s, %v", tc.Namespace, tc.Name, err)
 				return false, nil
 			}
-			klog.Errorf("tiflash  members ready: %s/%s, %v", tc.Namespace, tc.Name, err)
+			klog.Infof("tiflash  members ready: %s/%s, %v", tc.Namespace, tc.Name, err)
 		}
 		if tc.Spec.Pump != nil {
 			if b, err := oa.pumpMembersReadyFn(local); !b && err == nil {
