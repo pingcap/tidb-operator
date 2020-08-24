@@ -407,7 +407,6 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
-
 	if err != nil {
 		return nil, err
 	}
