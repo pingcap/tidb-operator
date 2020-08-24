@@ -299,7 +299,6 @@ type PumpStartScriptModel struct {
 	LogLevel      string
 	Namespace     string
 	ClusterDomain string
-	PdAddress     string
 }
 
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {
