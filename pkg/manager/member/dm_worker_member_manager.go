@@ -143,7 +143,7 @@ func getNewWorkerHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 	dcName := dc.Name
 	instanceName := dc.GetInstanceName()
 	svcName := controller.DMWorkerPeerMemberName(dcName)
-	svcLabel := label.New().Instance(instanceName).DMWorker().Labels()
+	svcLabel := label.NewDM().Instance(instanceName).DMWorker().Labels()
 
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -275,7 +275,7 @@ func (wmm *workerMemberManager) workerStatefulSetIsUpgrading(set *apps.StatefulS
 		return true, nil
 	}
 	instanceName := dc.GetInstanceName()
-	selector, err := label.New().
+	selector, err := label.NewDM().
 		Instance(instanceName).
 		DMWorker().
 		Selector()
@@ -368,7 +368,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		return nil, fmt.Errorf("cannot parse storage request for dm-worker, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
 	}
 
-	workerLabel := label.New().Instance(instanceName).DMWorker()
+	workerLabel := label.NewDM().Instance(instanceName).DMWorker()
 	setName := controller.DMWorkerPeerMemberName(dcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8262), baseWorkerSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMWorkerLabelVal)
@@ -496,14 +496,14 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	}
 	startScript, err := RenderDMWorkerStartScript(&DMWorkerStartScriptModel{
 		DataDir:       filepath.Join(dmWorkerDataVolumeMountPath, dc.Spec.Worker.DataSubDir),
-		MasterAddress: dc.Scheme() + "://" + controller.DMMasterMemberName(dc.Name) + ":8261",
+		MasterAddress: controller.DMMasterMemberName(dc.Name) + ":8261",
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	instanceName := dc.GetInstanceName()
-	workerLabel := label.New().Instance(instanceName).DMWorker().Labels()
+	workerLabel := label.NewDM().Instance(instanceName).DMWorker().Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.DMWorkerPeerMemberName(dc.Name),

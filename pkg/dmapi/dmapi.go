@@ -46,7 +46,7 @@ type ListMemberRespHeader struct {
 
 type MastersInfo struct {
 	Name       string   `json:"name,omitempty"`
-	MemberID   uint64   `json:"memberID,omitempty"`
+	MemberID   string   `json:"memberID,omitempty"`
 	Alive      bool     `json:"alive,omitempty"`
 	PeerURLs   []string `json:"peerURLs,omitempty"`
 	ClientURLs []string `json:"clientURLs,omitempty"`
@@ -118,7 +118,7 @@ func (mc *masterClient) GetMasters() ([]*MastersInfo, error) {
 	listMemberResp := &MastersResp{}
 	err = json.Unmarshal(body, listMemberResp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to unmarshal list masters resp: %s, err: %s", body, err)
 	}
 	if !listMemberResp.Result {
 		return nil, fmt.Errorf("unable to list masters info, err: %s", listMemberResp.Msg)
@@ -140,7 +140,7 @@ func (mc *masterClient) GetWorkers() ([]*WorkersInfo, error) {
 	listMemberResp := &WorkerResp{}
 	err = json.Unmarshal(body, listMemberResp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to unmarshal list workers resp: %s, err: %s", body, err)
 	}
 	if !listMemberResp.Result {
 		return nil, fmt.Errorf("unable to list workers info, err: %s", listMemberResp.Msg)
@@ -162,7 +162,7 @@ func (mc *masterClient) GetLeader() (MembersLeader, error) {
 	listMemberResp := &LeaderResp{}
 	err = json.Unmarshal(body, listMemberResp)
 	if err != nil {
-		return MembersLeader{}, err
+		return MembersLeader{}, fmt.Errorf("unable to unmarshal list leader resp: %s, err: %s", body, err)
 	}
 	if !listMemberResp.Result {
 		return MembersLeader{}, fmt.Errorf("unable to get leader info, err: %s", listMemberResp.Msg)

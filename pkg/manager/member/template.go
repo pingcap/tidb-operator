@@ -499,10 +499,10 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
+# TODO: dm-worker will support data-dir in the future
 ARGS="--join={{ .MasterAddress }} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8262 \
---addr=0.0.0.0:8262 \
---data-dir={{ .DataDir }} \
+--worker-addr=0.0.0.0:8262 \
 --config=/etc/dm-worker/dm-worker.toml
 "
 

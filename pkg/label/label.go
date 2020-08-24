@@ -175,6 +175,14 @@ func New() Label {
 	}
 }
 
+// NewDM initialize a new Label for components of dm cluster
+func NewDM() Label {
+	return Label{
+		NameLabelKey:      "dm-cluster",
+		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
 // NewInitializer initialize a new Label for Jobs of TiDB initializer
 func NewInitializer() Label {
 	return Label{

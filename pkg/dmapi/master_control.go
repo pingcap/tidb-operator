@@ -82,7 +82,7 @@ func masterClientKey(scheme string, namespace Namespace, clusterName string) str
 
 // MasterClientURL builds the url of master client
 func MasterClientURL(namespace Namespace, clusterName string, scheme string) string {
-	return fmt.Sprintf("%s://%s-master.%s:8261", scheme, clusterName, string(namespace))
+	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, string(namespace))
 }
 
 // FakeMasterControl implements a fake version of MasterControlInterface.

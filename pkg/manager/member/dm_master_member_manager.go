@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -316,21 +315,20 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 	masterStatus := map[string]v1alpha1.MasterMember{}
 	for _, master := range mastersInfo {
 		id := master.MemberID
-		memberID := strconv.FormatUint(id, 10)
 		var clientURL string
 		if len(master.ClientURLs) > 0 {
 			clientURL = master.ClientURLs[0]
 		}
 		name := master.Name
 		if len(name) == 0 {
-			klog.Warningf("dm-master member: [%d] doesn't have a name, and can't get it from clientUrls: [%s], dm-master Info: [%v] in [%s/%s]",
+			klog.Warningf("dm-master member: [%s] doesn't have a name, and can't get it from clientUrls: [%s], dm-master Info: [%v] in [%s/%s]",
 				id, master.ClientURLs, master, ns, dcName)
 			continue
 		}
 
 		status := v1alpha1.MasterMember{
 			Name:      name,
-			ID:        memberID,
+			ID:        id,
 			ClientURL: clientURL,
 			Health:    master.Alive,
 		}
@@ -379,7 +377,7 @@ func (mmm *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMC
 	dcName := dc.Name
 	svcName := controller.DMMasterMemberName(dcName)
 	instanceName := dc.GetInstanceName()
-	masterSelector := label.New().Instance(instanceName).DMMaster()
+	masterSelector := label.NewDM().Instance(instanceName).DMMaster()
 	masterLabels := masterSelector.Copy().UsedByEndUser().Labels()
 
 	ports := []corev1.ServicePort{
@@ -433,7 +431,7 @@ func getNewMasterHeadlessServiceForDMCluster(dc *v1alpha1.DMCluster) *corev1.Ser
 	tcName := dc.Name
 	svcName := controller.DMMasterPeerMemberName(tcName)
 	instanceName := dc.GetInstanceName()
-	masterSelector := label.New().Instance(instanceName).DMMaster()
+	masterSelector := label.NewDM().Instance(instanceName).DMMaster()
 	masterLabels := masterSelector.Copy().UsedByPeer().Labels()
 
 	return &corev1.Service{
@@ -464,7 +462,7 @@ func (mmm *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulS
 		return true, nil
 	}
 	instanceName := dc.GetInstanceName()
-	selector, err := label.New().
+	selector, err := label.NewDM().
 		Instance(instanceName).
 		DMMaster().
 		Selector()
@@ -555,7 +553,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		return nil, fmt.Errorf("cannot parse storage request for dm-master, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
 	}
 
-	masterLabel := label.New().Instance(instanceName).DMMaster()
+	masterLabel := label.NewDM().Instance(instanceName).DMMaster()
 	setName := controller.DMMasterMemberName(dcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8261), baseMasterSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
@@ -686,7 +684,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	klog.Info("start to render dm-master start script")
+
 	startScript, err := RenderDMMasterStartScript(&DMMasterStartScriptModel{
 		Scheme:       dc.Scheme(),
 		DataDir:      filepath.Join(dmMasterDataVolumeMountPath, dc.Spec.Master.DataSubDir),
@@ -697,7 +695,7 @@ func getMasterConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	}
 
 	instanceName := dc.GetInstanceName()
-	masterLabel := label.New().Instance(instanceName).DMMaster().Labels()
+	masterLabel := label.NewDM().Instance(instanceName).DMMaster().Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.DMMasterMemberName(dc.Name),
