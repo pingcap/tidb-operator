@@ -166,11 +166,12 @@ func (p *pvcResizer) patchPVCs(ns string, selector labels.Selector, storageReque
 		if err != nil {
 			return err
 		}
-		if !volumeExpansionSupported {
-			klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
-			continue
-		}
+
 		if currentRequest, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; !ok || storageRequest.Cmp(currentRequest) > 0 {
+			if !volumeExpansionSupported {
+				klog.Warningf("Storage Class %q used by PVC %s/%s does not support volume expansion, skipped", *pvc.Spec.StorageClassName, pvc.Namespace, pvc.Name)
+				continue
+			}
 			_, err = p.kubeCli.CoreV1().PersistentVolumeClaims(pvc.Namespace).Patch(pvc.Name, types.MergePatchType, mergePatch)
 			if err != nil {
 				return err

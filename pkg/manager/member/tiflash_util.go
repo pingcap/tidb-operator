@@ -109,7 +109,11 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
 		}
 	}
 
-	setTiFlashConfigDefault(config, tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
+	if tc.IsHeterogeneous() {
+		setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
+	} else {
+		setTiFlashConfigDefault(config, "", tc.Name, tc.Namespace, tc.Spec.ClusterDomain)
+	}
 
 	if tc.IsTLSClusterEnabled() {
 		if config.CommonConfig.Security == nil {
@@ -170,11 +174,11 @@ func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {
 }
 
 // setTiFlashConfigDefault sets default configs for TiFlash
-func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfig, clusterName, ns, clusterDomain string) {
+func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfig, externalClusterName, clusterName, ns, clusterDomain string) {
 	if config.CommonConfig == nil {
 		config.CommonConfig = &v1alpha1.CommonConfig{}
 	}
-	setTiFlashCommonConfigDefault(config.CommonConfig, clusterName, ns, clusterDomain)
+	setTiFlashCommonConfigDefault(config.CommonConfig, externalClusterName, clusterName, ns, clusterDomain)
 	if config.ProxyConfig == nil {
 		config.ProxyConfig = &v1alpha1.ProxyConfig{}
 	}
@@ -199,7 +203,7 @@ func setTiFlashProxyConfigDefault(config *v1alpha1.ProxyConfig, clusterName, ns,
 	}
 }
 
-func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, ns, clusterDomain string) {
+func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, externalClusterName string, clusterName, ns, clusterDomain string) {
 	if config.TmpPath == nil {
 		config.TmpPath = pointer.StringPtr("/data0/tmp")
 	}
@@ -262,7 +266,13 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, clusterName, n
 	if config.FlashRaft == nil {
 		config.FlashRaft = &v1alpha1.FlashRaft{}
 	}
-	setTiFlashRaftConfigDefault(config.FlashRaft, clusterName, ns)
+
+	if len(externalClusterName) > 0 {
+		setTiFlashRaftConfigDefault(config.FlashRaft, externalClusterName, ns)
+	} else {
+		setTiFlashRaftConfigDefault(config.FlashRaft, clusterName, ns)
+	}
+
 	if config.FlashStatus == nil {
 		config.FlashStatus = &v1alpha1.FlashStatus{}
 	}

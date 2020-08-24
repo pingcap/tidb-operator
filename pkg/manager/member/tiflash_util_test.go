@@ -774,7 +774,7 @@ func TestSetTiFlashConfigDefault(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			setTiFlashConfigDefault(&test.config, "test", "test", "")
+			setTiFlashConfigDefault(&test.config, "", "test", "test", "")
 			g.Expect(test.config).To(Equal(test.expect))
 		})
 	}
