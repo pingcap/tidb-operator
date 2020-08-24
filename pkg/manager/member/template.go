@@ -397,7 +397,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 # the general form of variable PEER_SERVICE_NAME is: "<clusterName>-dm-master-peer"
 cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
 	`
-domain="${POD_NAME}.${PEER_SERVICE_NAME}.${NAMESPACE}.svc"
+domain="${POD_NAME}.${PEER_SERVICE_NAME}"
 discovery_url={{ .DiscoveryURL }}
 encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
 	`
@@ -427,8 +427,8 @@ ARGS="--data-dir={{ .DataDir }} \
 --name=${POD_NAME} \
 --peer-urls={{ .Scheme }}://0.0.0.0:8291 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:8291 \
---client-urls={{ .Scheme }}://0.0.0.0:8261 \
---advertise-client-urls={{ .Scheme }}://${domain}:8261 \
+--master-addr=0.0.0.0:8261 \
+--advertise-addr=${domain}:8261 \
 --config=/etc/dm-master/dm-master.toml \
 "
 
@@ -443,7 +443,7 @@ join=${join%,}
 ARGS="${ARGS} --join=${join}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
-until result=$(wget -qO- -T 3 http://${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do
+until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
 sleep $((RANDOM % 5))
 done

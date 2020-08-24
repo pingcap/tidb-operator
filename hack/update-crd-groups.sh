@@ -33,7 +33,7 @@ export GO111MODULE=on
 go install github.com/pingcap/tidb-operator/cmd/to-crdgen
 
 to-crdgen generate tidbcluster > $crd_target
-to-crdgen generate dmcluster > $crd_target
+to-crdgen generate dmcluster >> $crd_target
 to-crdgen generate backup >> $crd_target
 to-crdgen generate restore >> $crd_target
 to-crdgen generate backupschedule >> $crd_target

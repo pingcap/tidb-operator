@@ -51,6 +51,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	Scheme = scheme
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&TidbCluster{},
+		&DMCluster{},
 		&TidbClusterList{},
 		&Backup{},
 		&BackupList{},
