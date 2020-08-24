@@ -1162,9 +1162,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
 	})
 
-	ginkgo.It("Add heterogeneous cluster into an existing cluster  ", func() {
+	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
-		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV3Version)
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4Version)
 		originTc.Spec.PD.Replicas = 1
 		originTc.Spec.TiKV.Replicas = 1
 		originTc.Spec.TiDB.Replicas = 1
@@ -1173,42 +1173,32 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV3Version)
+		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4Version)
 		heterogeneousTc.Spec.PD = nil
 		heterogeneousTc.Spec.TiKV.Replicas = 1
 		heterogeneousTc.Spec.TiDB.Replicas = 1
+		heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
+			BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
+				{Resources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{
+						v1.ResourceStorage: resource.MustParse("10G"),
+					},
+				}},
+			}}
 		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
 			Name: originTc.Name,
 		}
 		err = genericCli.Create(context.TODO(), heterogeneousTc)
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
-		err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
+		err = oa.WaitForTidbClusterReady(heterogeneousTc, 15*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
-		err = wait.PollImmediate(15*time.Second, 30*time.Minute, func() (bool, error) {
-			var tc *v1alpha1.TidbCluster
+		err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
 			var err error
-			if tc, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+			if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
 				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
 				return false, nil
 			}
-			if tc.Status.TiKV.StatefulSet == nil || tc.Status.TiKV.StatefulSet.ReadyReplicas != 1 {
-				if tc.Status.TiKV.StatefulSet == nil {
-					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", 0)
-				} else {
-					e2elog.Logf("failed to check TiKV statefulset status, (current: %d)", tc.Status.TiKV.StatefulSet.Replicas)
-				}
-
-				return false, nil
-			}
-			if tc.Status.TiDB.StatefulSet == nil || tc.Status.TiDB.StatefulSet.ReadyReplicas != 1 {
-				if tc.Status.TiDB.StatefulSet == nil {
-					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", 0)
-				} else {
-					e2elog.Logf("failed to check TiDB statefulset status, (current: %d)", tc.Status.TiDB.StatefulSet.Replicas)
-				}
-
-				return false, nil
-			}
+			e2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
 			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
 			framework.ExpectNoError(err, "create pdClient error")
 			defer cancel()
@@ -1216,7 +1206,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			if err != nil {
 				e2elog.Logf("failed to get stores, %v", err)
 			}
-			if storeInfo.Count != 2 {
+			if storeInfo.Count != 3 {
 				e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
 				return false, nil
 			}
@@ -1276,6 +1266,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		framework.Logf("CDC works as expected")
 	})
+
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {
