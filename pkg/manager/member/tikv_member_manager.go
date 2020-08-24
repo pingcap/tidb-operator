@@ -577,6 +577,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	scriptModel := &TiKVStartScriptModel{
+		Scheme:                    tc.Scheme(),
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
 	}
@@ -585,11 +586,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
 
-	if tc.IsHeterogeneous() {
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
-	} else {
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Name) + ":2379"
-	}
 	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {
 		return nil, err
