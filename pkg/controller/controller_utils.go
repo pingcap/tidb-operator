@@ -312,19 +312,6 @@ func FormatClusterDomain(clusterDomain string) string {
 	return "." + clusterDomain
 }
 
-func ClusterPdAddress(clusterName, namespace, clusterDomain string) string {
-	if clusterName == "" {
-		return ""
-	}
-	if namespace == "" {
-		return fmt.Sprintf("%s-pd", clusterName)
-	}
-	if clusterDomain == "" {
-		return fmt.Sprintf("%s-pd.%s.svc", clusterName, namespace)
-	}
-	return fmt.Sprintf("%s-pd-peer.%s.svc.%s", clusterName, namespace, clusterDomain)
-}
-
 // AnnAdditionalProm adds additional prometheus scarping configuration annotation for the pod
 // which has multiple metrics endpoint
 // we assumes that the metrics path is as same as the previous metrics path
