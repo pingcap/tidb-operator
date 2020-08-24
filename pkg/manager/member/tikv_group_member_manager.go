@@ -39,6 +39,7 @@ import (
 )
 
 const (
+
 	//find a better way to manage store only managed by tikv in Operator
 	tikvGroupStoreLimitPattern = `%s-tikv-group-\d+\.%s-tikv-group-peer\.%s\.svc\:\d+`
 )
