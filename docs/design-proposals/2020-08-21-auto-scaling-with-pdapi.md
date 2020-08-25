@@ -130,6 +130,7 @@ type ExternalConfig struct {
 ### Auto-scaling
 
 `TC` represents `TidbCluster` in the following descriptions.
+`xxxx` represents `tikv` or `tidb` in the following descriptions.
 
 * If `spec.xxxx.external` is configured, according to the `spec.cluster` TC configuration, create a new TC (heterogeneous TC, only contains xxxx), set the label `specialUse: hotRegion` for TiKV, no special configuration for TiDB
 * If `spec.xxxx.external` is not configured, the Operator calls the PD API to get the scaling result and creates heterogeneous TCs based on the response.
@@ -167,7 +168,7 @@ type ExternalConfig struct {
     ```
     {
     "namespace": <ns>,        
-    "tas": <tidbAutoScalerName>,               
+    "tas": <TidbAutoScalerName>,               
     "component":"tikv",
     "cpu":1,
     "memory":8589934592,
@@ -185,6 +186,6 @@ type ExternalConfig struct {
     Create a new TC and set custom labels:
 
     ```
-    app.kubernetes.io/auto-instance: <TAC Name>
+    app.kubernetes.io/auto-instance: <TidbAutoScalerName>
     app.kubernetes.io/auto-component: xxxx
     ```
