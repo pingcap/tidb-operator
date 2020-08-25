@@ -485,15 +485,16 @@ func (mmm *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulS
 	return false, nil
 }
 
-func getDMFailureReplicas(dc *v1alpha1.DMCluster) int {
-	failureReplicas := 0
-	for _, failureMember := range dc.Status.Master.FailureMembers {
-		if failureMember.MemberDeleted {
-			failureReplicas++
-		}
-	}
-	return failureReplicas
-}
+// TODO: uncomment it after dm failover is supported
+//func getDMFailureReplicas(dc *v1alpha1.DMCluster) int {
+//	failureReplicas := 0
+//	for _, failureMember := range dc.Status.Master.FailureMembers {
+//		if failureMember.MemberDeleted {
+//			failureReplicas++
+//		}
+//	}
+//	return failureReplicas
+//}
 
 func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := dc.Namespace
