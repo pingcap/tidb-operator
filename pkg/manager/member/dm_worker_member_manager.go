@@ -267,6 +267,11 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 
 	dc.Status.Worker.Synced = true
 	dc.Status.Worker.Members = workerStatus
+	dc.Status.Worker.Image = ""
+	c := filterContainer(set, "dm-worker")
+	if c != nil {
+		dc.Status.Worker.Image = c.Image
+	}
 	return nil
 }
 

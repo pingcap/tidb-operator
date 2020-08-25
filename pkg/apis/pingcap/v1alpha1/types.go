@@ -1752,6 +1752,7 @@ type WorkerStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	Members     map[string]WorkerMember `json:"members,omitempty"`
+	Image       string                  `json:"image,omitempty"`
 }
 
 // WorkerMember is dm-Worker member status

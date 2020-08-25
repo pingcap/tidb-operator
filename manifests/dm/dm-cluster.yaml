@@ -13,7 +13,7 @@ spec:
     address: "http://basic-discovery.demo.svc:10261"
   master:
     baseImage: pingcap/dm
-    replicas: 1
+    replicas: 3
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
@@ -21,7 +21,7 @@ spec:
     config: {}
   worker:
     baseImage: pingcap/dm
-    replicas: 1
+    replicas: 3
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
