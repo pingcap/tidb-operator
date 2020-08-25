@@ -1633,7 +1633,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Kubernetes Cluster Domain of TiDB cluster
+<p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>
@@ -17379,7 +17379,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Domain is the domain of TidbCluster object</p>
+<p>ClusterDomain is the domain of TidbCluster object</p>
 </td>
 </tr>
 </tbody>
@@ -17759,7 +17759,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Kubernetes Cluster Domain of TiDB cluster
+<p>ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 Optional: Defaults to &ldquo;&rdquo;</p>
 </td>
 </tr>

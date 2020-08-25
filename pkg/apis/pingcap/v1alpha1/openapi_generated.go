@@ -9886,7 +9886,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref common.ReferenceCallbac
 					},
 					"clusterDomain": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Domain is the domain of TidbCluster object",
+							Description: "ClusterDomain is the domain of TidbCluster object",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -10100,7 +10100,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"clusterDomain": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Kubernetes Cluster Domain of TiDB cluster Optional: Defaults to \"\"",
+							Description: "ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster Optional: Defaults to \"\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},

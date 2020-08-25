@@ -106,7 +106,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	var pdClients []pdapi.PDClient
 	if tc.Spec.Cluster != nil && len(tc.Spec.Cluster.Name) > 0 {
 		namespace := tc.Spec.Cluster.Namespace
-		if len(namespace) == 0{
+		if len(namespace) == 0 {
 			namespace = tc.GetNamespace()
 		}
 		pdClients = append(pdClients, td.pdControl.GetClusterRefPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, tc.IsTLSClusterEnabled()))

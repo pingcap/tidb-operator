@@ -136,7 +136,7 @@ func pdClientKey(scheme string, namespace Namespace, clusterName string) string 
 }
 
 func ClusterRefpdClientKey(scheme string, namespace Namespace, clusterName string, clusterDomain string) string {
-	if len(clusterDomain) == 0{
+	if len(clusterDomain) == 0 {
 		return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
 	}
 	return fmt.Sprintf("%s.%s.%s.%s", scheme, clusterName, string(namespace), clusterDomain)
