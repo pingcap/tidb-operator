@@ -118,11 +118,11 @@ type ExternalConfig struct {
 ```
 ### Defaulting & Validation
 
-`xxxx` is `tikv` or `tidb` in the following descriptions.
+`<component>` is `tikv` or `tidb` in the following descriptions.
 
 * Defaulting
-  * If the user does not configure `spec.resources`, the Operator constructs the `default_xxxx` () resource type according to the resource request in the `spec.cluster` TidbCluster, and the count value is not set
-  * If `spec.xxxx.rules[].resource_type` is not configured, default to `spec.resources`(which will be `default_xxxx` if not configured)
+  * If the user does not configure `spec.resources`, the Operator constructs the `default_<component>` resource type according to the resource request in the `spec.cluster` TidbCluster, and the count value is not set
+  * If `spec.<component>.rules[].resource_type` is not configured, default to `spec.resources`(which will be `default_<component>` if not configured)
 * Validation
   * For CPU, `min` < `max` < 1
   * For storage, `max` < 1, `min` is ignored, `1-max` will be used when calling PD API
@@ -130,10 +130,10 @@ type ExternalConfig struct {
 ### Auto-scaling
 
 `TC` represents `TidbCluster` in the following descriptions.
-`xxxx` represents `tikv` or `tidb` in the following descriptions.
+`<component>` represents `tikv` or `tidb` in the following descriptions.
 
-* If `spec.xxxx.external` is configured, according to the `spec.cluster` TC configuration, create a new TC (heterogeneous TC, only contains xxxx), set the label `specialUse: hotRegion` for TiKV, no special configuration for TiDB
-* If `spec.xxxx.external` is not configured, the Operator calls the PD API to get the scaling result and creates heterogeneous TCs based on the response.
+* If `spec.<component>.external` is configured, according to the `spec.cluster` TC configuration, create a new TC (heterogeneous TC, only contains <component>), set the label `specialUse: hotRegion` for TiKV, no special configuration for TiDB
+* If `spec.<component>.external` is not configured, the Operator calls the PD API to get the scaling result and creates heterogeneous TCs based on the response.
 
     Example:
     `resource_a` is configured as:
@@ -187,5 +187,5 @@ type ExternalConfig struct {
 
     ```
     app.kubernetes.io/auto-instance: <TidbAutoScalerName>
-    app.kubernetes.io/auto-component: xxxx
+    app.kubernetes.io/auto-component: <component>
     ```
