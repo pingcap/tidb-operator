@@ -7,7 +7,7 @@ metadata:
   name: heterogeneous
 spec:
   configUpdateStrategy: RollingUpdate
-  version: v4.0.3
+  version: v4.0.4
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
@@ -30,3 +30,12 @@ spec:
     service:
       type: ClusterIP
     config: {}
+  tiflash:
+    baseImage: pingcap/tiflash
+    maxFailoverCount: 1
+    replicas: 1
+    storageClaims:
+      - resources:
+          requests:
+            storage: 1Gi
+        storageClassName: standard
