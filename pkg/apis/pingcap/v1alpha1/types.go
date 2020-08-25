@@ -236,7 +236,7 @@ type TidbClusterSpec struct {
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
 
-	// Kubernetes Cluster Domain of TiDB cluster
+	// ClusterDomain is the Kubernetes Cluster Domain of TiDB cluster
 	// Optional: Defaults to ""
 	// +optional
 	ClusterDomain string `json:"clusterDomain,omitempty"`

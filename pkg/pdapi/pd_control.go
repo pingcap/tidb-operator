@@ -157,7 +157,7 @@ func ClusterRefPDClientUrl(namespace Namespace, clusterName string, scheme strin
 		return fmt.Sprintf("%s://%s-pd:2379", scheme, clusterName)
 	}
 	if len(clusterDomain) == 0 {
-		return fmt.Sprintf("%s://%s-pd.%s.svc:2379", scheme, clusterName, string(namespace))
+		return fmt.Sprintf("%s://%s-pd.%s:2379", scheme, clusterName, string(namespace))
 	}
 	return fmt.Sprintf("%s://%s-pd.%s.svc.%s:2379", scheme, clusterName, string(namespace), clusterDomain)
 }
