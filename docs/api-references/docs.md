@@ -19000,6 +19000,16 @@ map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMemb
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <hr/>
