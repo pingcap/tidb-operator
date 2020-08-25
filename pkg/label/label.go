@@ -106,6 +106,8 @@ const (
 	AnnTiFlashDeleteSlots = "tiflash.tidb.pingcap.com/delete-slots"
 	// DMMasterDeleteSlots is annotation key of dm-master delete slots.
 	AnnDMMasterDeleteSlots = "dm-master.tidb.pingcap.com/delete-slots"
+	// DMWorkerDeleteSlots is annotation key of dm-worker delete slots.
+	AnnDMWorkerDeleteSlots = "dm-worker.tidb.pingcap.com/delete-slots"
 
 	// AnnTiDBLastAutoScalingTimestamp is annotation key of tidbcluster to indicate the last timestamp for tidb auto-scaling
 	AnnTiDBLastAutoScalingTimestamp = "tidb.tidb.pingcap.com/last-autoscaling-timestamp"

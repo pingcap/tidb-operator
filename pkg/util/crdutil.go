@@ -123,7 +123,7 @@ var (
 		Name:        "Storage",
 		Type:        "string",
 		Description: "The storage size specified for dm-master node",
-		JSONPath:    ".spec.master.requests.storage",
+		JSONPath:    ".spec.master.storageSize",
 	}
 	dmClusterMasterReadyColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Ready",
@@ -147,7 +147,7 @@ var (
 		Name:        "Storage",
 		Type:        "string",
 		Description: "The storage size specified for dm-worker node",
-		JSONPath:    ".spec.worker.requests.storage",
+		JSONPath:    ".spec.worker.storageSize",
 	}
 	dmClusterWorkerReadyColumn = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "Ready",

@@ -416,7 +416,7 @@ fi
 
 if nslookup ${domain} 2>/dev/null
 then
-echo "nslookup domain ${domain}.svc success"
+echo "nslookup domain ${domain} success"
 break
 else
 echo "nslookup domain ${domain} failed" >&2
@@ -501,7 +501,7 @@ fi
 POD_NAME=${POD_NAME:-$HOSTNAME}
 # TODO: dm-worker will support data-dir in the future
 ARGS="--join={{ .MasterAddress }} \
---advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:8262 \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}:8262 \
 --worker-addr=0.0.0.0:8262 \
 --config=/etc/dm-worker/dm-worker.toml
 "

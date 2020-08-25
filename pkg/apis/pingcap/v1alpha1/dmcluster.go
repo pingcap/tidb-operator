@@ -16,15 +16,23 @@ package v1alpha1
 import (
 	"fmt"
 	"strings"
-
-	"github.com/pingcap/tidb-operator/pkg/label"
 )
+
+var latestImageVersion = "latest"
 
 func (dc *DMCluster) Scheme() string {
 	if dc.IsTLSClusterEnabled() {
 		return "https"
 	}
 	return "http"
+}
+
+func (dc *DMCluster) Timezone() string {
+	tz := dc.Spec.Timezone
+	if tz == "" {
+		return defaultTimeZone
+	}
+	return tz
 }
 
 func (dc *DMCluster) IsTLSClusterEnabled() bool {
@@ -44,6 +52,19 @@ func (dc *DMCluster) MasterAllMembersReady() bool {
 	return true
 }
 
+func (dc *DMCluster) WorkerAllMembersReady() bool {
+	if int(dc.WorkerStsDesiredReplicas()) != len(dc.Status.Worker.Members) {
+		return false
+	}
+
+	for _, member := range dc.Status.Worker.Members {
+		if member.Stage == "offline" {
+			return false
+		}
+	}
+	return true
+}
+
 func (dc *DMCluster) MasterStsDesiredReplicas() int32 {
 	return dc.Spec.Master.Replicas + int32(len(dc.Status.Master.FailureMembers))
 }
@@ -57,13 +78,6 @@ func (dc *DMCluster) WorkerStsDesiredReplicas() int32 {
 }
 
 func (dc *DMCluster) GetInstanceName() string {
-	labels := dc.ObjectMeta.GetLabels()
-	// Keep backward compatibility for helm.
-	// This introduce a hidden danger that change this label will trigger rolling-update of most of the components
-	// TODO(aylei): disallow mutation of this label or adding this label with value other than the cluster name in ValidateUpdate()
-	if inst, ok := labels[label.InstanceLabelKey]; ok {
-		return inst
-	}
 	return dc.Name
 }
 
@@ -75,6 +89,9 @@ func (dc *DMCluster) MasterImage() string {
 		version := dc.Spec.Master.Version
 		if version == nil {
 			version = &dc.Spec.Version
+		}
+		if version == nil {
+			version = &latestImageVersion
 		}
 		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
@@ -90,6 +107,9 @@ func (dc *DMCluster) WorkerImage() string {
 		if version == nil {
 			version = &dc.Spec.Version
 		}
+		if version == nil {
+			version = &latestImageVersion
+		}
 		image = fmt.Sprintf("%s:%s", baseImage, *version)
 	}
 	return image
@@ -102,7 +122,7 @@ func (dc *DMCluster) MasterVersion() string {
 		return image[colonIdx+1:]
 	}
 
-	return "latest"
+	return latestImageVersion
 }
 
 func (dc *DMCluster) MasterUpgrading() bool {

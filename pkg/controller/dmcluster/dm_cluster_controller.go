@@ -348,7 +348,7 @@ func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.State
 
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
-	if controllerRef.Kind != controller.ControllerKind.Kind {
+	if controllerRef.Kind != controller.DMControllerKind.Kind {
 		return nil
 	}
 	dc, err := dcc.dcLister.DMClusters(namespace).Get(controllerRef.Name)

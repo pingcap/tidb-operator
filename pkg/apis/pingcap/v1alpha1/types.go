@@ -1617,6 +1617,11 @@ type MasterSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// StorageSize is the request storage size for dm-master.
+	// Defaults to "10Gi".
+	// +optional
+	StorageSize string `json:"storageSize,omitempty"`
+
 	// Subdirectory within the volume to store dm-master Data. By default, the data
 	// is stored in the root directory of volume which is mounted at
 	// /var/lib/dm-master.
@@ -1661,10 +1666,21 @@ type WorkerSpec struct {
 	// +optional
 	BaseImage string `json:"baseImage,omitempty"`
 
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
 	// The storageClassName of the persistent volume for dm-worker data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageSize is the request storage size for dm-worker.
+	// Defaults to "10Gi".
+	// +optional
+	StorageSize string `json:"storageSize,omitempty"`
 
 	// Subdirectory within the volume to store dm-worker Data. By default, the data
 	// is stored in the root directory of volume which is mounted at

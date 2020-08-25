@@ -266,6 +266,8 @@ func getStsAnnotations(tcAnns map[string]string, component string) map[string]st
 		key = label.AnnTiFlashDeleteSlots
 	case label.DMMasterLabelVal:
 		key = label.AnnDMMasterDeleteSlots
+	case label.DMWorkerLabelVal:
+		key = label.AnnDMWorkerDeleteSlots
 	default:
 		return anns
 	}

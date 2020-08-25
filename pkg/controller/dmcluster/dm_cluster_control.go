@@ -119,6 +119,7 @@ func (dcc *defaultDMClusterControl) validate(dc *v1alpha1.DMCluster) bool {
 }
 
 func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) error {
+	var errs []error
 	// TODO: implement reclaimPolicyManager
 	// syncing all PVs managed by operator's reclaim policy to Retain
 	// if err := dcc.reclaimPolicyManager.Sync(dc); err != nil {
@@ -155,7 +156,7 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - scale out/in the dm-master cluster
 	//   - failover the dm-master cluster
 	if err := dcc.masterMemberManager.Sync(dc); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	// works that should do to making the dm-worker cluster current state match the desired state:
@@ -167,7 +168,7 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	//   - scale out/in the dm-worker cluster
 	//   - failover the dm-worker cluster
 	if err := dcc.workerMemberManager.Sync(dc); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	// TODO: syncing labels for dm: syncing the labels from Pod to PVC and PV, these labels include:
@@ -193,5 +194,5 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	// syncing the some tidbcluster status attributes
 	// 	- sync tidbmonitor reference
 	// return dcc.tidbClusterStatusManager.Sync(dc)
-	return nil
+	return errorutils.NewAggregate(errs)
 }

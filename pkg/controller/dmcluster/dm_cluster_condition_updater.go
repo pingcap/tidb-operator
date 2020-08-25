@@ -60,6 +60,9 @@ func (u *dmClusterConditionUpdater) updateReadyCondition(dc *v1alpha1.DMCluster)
 	case !dc.MasterAllMembersReady():
 		reason = utildmcluster.MasterUnhealthy
 		message = "dm-master(s) are not healthy"
+	case !dc.WorkerAllMembersReady():
+		reason = utildmcluster.MasterUnhealthy
+		message = "some dm-worker(s) are not up yet"
 	default:
 		status = v1.ConditionTrue
 		reason = utildmcluster.Ready

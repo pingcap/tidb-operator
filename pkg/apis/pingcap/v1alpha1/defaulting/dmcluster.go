@@ -67,4 +67,7 @@ func setWorkerSpecDefault(dc *v1alpha1.DMCluster) {
 			dc.Spec.Worker.BaseImage = defaultWorkerImage
 		}
 	}
+	if dc.Spec.Worker.MaxFailoverCount == nil {
+		dc.Spec.Worker.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
 }

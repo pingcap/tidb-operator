@@ -18,24 +18,23 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/pingcap/tidb-operator/pkg/util"
-
-	"k8s.io/utils/pointer"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
+	"github.com/pingcap/tidb-operator/pkg/util"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -234,6 +233,8 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 	}
 	if upgrading {
 		dc.Status.Worker.Phase = v1alpha1.UpgradePhase
+	} else if dc.WorkerStsDesiredReplicas() != *set.Spec.Replicas {
+		dc.Status.Worker.Phase = v1alpha1.ScalePhase
 	} else {
 		dc.Status.Worker.Phase = v1alpha1.NormalPhase
 	}
@@ -368,9 +369,18 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		})
 	}
 
-	storageRequest, err := controller.ParseStorageRequest(dc.Spec.Worker.Requests)
+	storageSize := DefaultStorageSize
+	if dc.Spec.Worker.StorageSize != "" {
+		storageSize = dc.Spec.Worker.StorageSize
+	}
+	rs, err := resource.ParseQuantity(storageSize)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for dm-worker, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
+	}
+	storageRequest := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceStorage: rs,
+		},
 	}
 
 	workerLabel := label.NewDM().Instance(instanceName).DMWorker()
@@ -416,7 +426,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		},
 		{
 			Name:  "TZ",
-			Value: dc.Spec.Timezone,
+			Value: dc.Timezone(),
 		},
 	}
 

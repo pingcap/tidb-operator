@@ -29,6 +29,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/client-go/listers/apps/v1"
@@ -42,6 +43,8 @@ const (
 	dmMasterDataVolumeMountPath = "/var/lib/dm-master"
 	// dmMasterClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	dmMasterClusterCertPath = "/var/lib/dm-master-tls"
+	// DefaultStorageSize is the default pvc request storage size for dm
+	DefaultStorageSize = "10Gi"
 )
 
 type masterMemberManager struct {
@@ -549,9 +552,18 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		})
 	}
 
-	storageRequest, err := controller.ParseStorageRequest(dc.Spec.Master.Requests)
+	storageSize := DefaultStorageSize
+	if dc.Spec.Master.StorageSize != "" {
+		storageSize = dc.Spec.Master.StorageSize
+	}
+	rs, err := resource.ParseQuantity(storageSize)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse storage request for dm-master, dmcluster %s/%s, error: %v", dc.Namespace, dc.Name, err)
+	}
+	storageRequest := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceStorage: rs,
+		},
 	}
 
 	masterLabel := label.NewDM().Instance(instanceName).DMMaster()
@@ -602,7 +614,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		},
 		{
 			Name:  "TZ",
-			Value: dc.Spec.Timezone,
+			Value: dc.Timezone(),
 		},
 	}
 

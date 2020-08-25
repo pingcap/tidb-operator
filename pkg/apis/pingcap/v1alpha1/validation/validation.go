@@ -51,7 +51,7 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 	// validate metadata
 	fldPath := field.NewPath("metadata")
 	// validate metadata/annotations
-	allErrs = append(allErrs, validateAnnotations(dc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
+	allErrs = append(allErrs, validateDMAnnotations(dc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
 	// validate spec
 	allErrs = append(allErrs, validateDMClusterSpec(&dc.Spec, field.NewPath("spec"))...)
 	return allErrs
@@ -72,6 +72,15 @@ func validateAnnotations(anns map[string]string, fldPath *field.Path) field.Erro
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
 	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots} {
+		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
+	}
+	return allErrs
+}
+
+func validateDMAnnotations(anns map[string]string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
+	for _, key := range []string{label.AnnDMMasterDeleteSlots, label.AnnDMWorkerDeleteSlots} {
 		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
 	}
 	return allErrs
@@ -223,14 +232,12 @@ func validateDMClusterSpec(spec *v1alpha1.DMClusterSpec, fldPath *field.Path) fi
 func validateMasterSpec(spec *v1alpha1.MasterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
-	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	return allErrs
 }
 
 func validateWorkerSpec(spec *v1alpha1.WorkerSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
-	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
 	return allErrs
 }
 
