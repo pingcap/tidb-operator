@@ -6442,6 +6442,19 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>storageSize</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageSize is the request storage size for dm-master.
+Defaults to &ldquo;10Gi&rdquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dataSubDir</code></br>
 <em>
 string
@@ -18892,6 +18905,19 @@ string
 </tr>
 <tr>
 <td>
+<code>maxFailoverCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+Optional: Defaults to 3</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -18901,6 +18927,19 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for dm-worker data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageSize</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageSize is the request storage size for dm-worker.
+Defaults to &ldquo;10Gi&rdquo;.</p>
 </td>
 </tr>
 <tr>

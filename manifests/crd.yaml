@@ -11301,7 +11301,7 @@ spec:
     description: The image for dm-master cluster
     name: Master
     type: string
-  - JSONPath: .spec.master.requests.storage
+  - JSONPath: .spec.master.storageSize
     description: The storage size specified for dm-master node
     name: Storage
     type: string
@@ -11317,7 +11317,7 @@ spec:
     description: The image for dm-worker cluster
     name: Worker
     type: string
-  - JSONPath: .spec.worker.requests.storage
+  - JSONPath: .spec.worker.storageSize
     description: The storage size specified for dm-worker node
     name: Storage
     type: string
@@ -13124,6 +13124,8 @@ spec:
                 service: {}
                 storageClassName:
                   type: string
+                storageSize:
+                  type: string
                 terminationGracePeriodSeconds:
                   format: int64
                   type: integer
@@ -14612,6 +14614,9 @@ spec:
                   type: array
                 limits:
                   type: object
+                maxFailoverCount:
+                  format: int32
+                  type: integer
                 nodeSelector:
                   type: object
                 podSecurityContext:
@@ -14675,6 +14680,8 @@ spec:
                 schedulerName:
                   type: string
                 storageClassName:
+                  type: string
+                storageSize:
                   type: string
                 terminationGracePeriodSeconds:
                   format: int64

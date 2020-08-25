@@ -8089,6 +8089,11 @@ func (in *WorkerSpec) DeepCopyInto(out *WorkerSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.MaxFailoverCount != nil {
+		in, out := &in.MaxFailoverCount, &out.MaxFailoverCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)

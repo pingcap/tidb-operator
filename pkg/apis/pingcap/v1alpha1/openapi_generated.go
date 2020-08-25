@@ -2629,6 +2629,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"storageSize": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageSize is the request storage size for dm-master. Defaults to \"10Gi\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"dataSubDir": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Subdirectory within the volume to store dm-master Data. By default, the data is stored in the root directory of volume which is mounted at /var/lib/dm-master. Specifying this will change the data directory to a subdirectory, e.g. /var/lib/dm-master/data if you set the value to \"data\". It's dangerous to change this value for a running cluster as it will upgrade your cluster to use a new storage directory. Defaults to \"\" (volume's root).",
@@ -11063,9 +11070,23 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"maxFailoverCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover. Optional: Defaults to 3",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for dm-worker data storage. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageSize": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageSize is the request storage size for dm-worker. Defaults to \"10Gi\".",
 							Type:        []string{"string"},
 							Format:      "",
 						},
