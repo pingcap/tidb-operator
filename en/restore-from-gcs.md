@@ -59,7 +59,7 @@ This document shows an example in which the backup data stored in the specified 
         projectId: ${project_id}
         secretName: gcs-secret
         path: gcs://${backup_path}
-      storageClassName: local-storage
+      # storageClassName: local-storage
       storageSize: 1Gi
     ```
 
@@ -86,3 +86,7 @@ More `Restore` CRs are described as follows:
 > **Note:**
 >
 > TiDB Operator creates a PVC for data recovery. The backup data is downloaded from the remote storage to the PV first, and then restored. If you want to delete this PVC after the recovery is completed, you can refer to [Delete Resource](cheat-sheet.md#delete-resources) to delete the recovery Pod first, and then delete the PVC.
+
+## Troubleshooting
+
+If you encounter any problem during the restore process, refer to [Common Deployment Failures](deploy-failures.md).

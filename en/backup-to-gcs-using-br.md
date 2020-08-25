@@ -317,3 +317,7 @@ kubectl edit backup ${name} -n ${namespace}
 ```
 
 After deleting the `metadata.finalizers` configuration, you can delete CR normally.
+
+## Troubleshooting
+
+If you encounter any problem during the backup process, refer to [Common Deployment Failures](deploy-failures.md).

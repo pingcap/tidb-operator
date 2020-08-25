@@ -283,3 +283,7 @@ More `Restore` CR fields are described as follows:
     ```shell
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
+
+## Troubleshooting
+
+If you encounter any problem during the restore process, refer to [Common Deployment Failures](deploy-failures.md).

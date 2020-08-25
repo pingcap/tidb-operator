@@ -15,15 +15,29 @@ After creating a cluster, if the Pod is not created, you can diagnose it using t
 
 ```shell
 kubectl get tidbclusters -n ${namespace} && \
+kubectl describe tidbclusters -n ${namespace} ${cluster_name} && \
 kubectl get statefulsets -n ${namespace} && \
-kubectl describe statefulsets -n ${namespace} ${release_name}-pd
+kubectl describe statefulsets -n ${namespace} ${cluster_name}-pd
+```
+
+After creating a backup/restore task, if the Pod is not created, you can perform a diagnostic operation by executing the following commands:
+
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl get backups -n ${namespace}
+kubectl get jobs -n ${namespace}
+kubectl describe backups -n ${namespace} ${backup_name}
+kubectl describe backupschedules -n ${namespace} ${backupschedule_name}
+kubectl describe jobs -n ${namespace} ${backupjob_name}
+kubectl describe restores -n ${namespace} ${restore_name}
 ```
 
 ## The Pod is in the Pending state
 
 The Pending state of a Pod is usually caused by conditions of insufficient resources, for example:
 
-- The `StorageClass` of the PVC used by PD, TiKV, and Monitor Pods does not exist or the PV is insufficient.
+- The `StorageClass` of the PVC used by PD, TiKV, TiFlash, Pump, Monitor, Backup, and Restore Pods does not exist or the PV is insufficient.
 - No nodes in the Kubernetes cluster can satisfy the CPU or memory resources requested by the Pod
 - The number of TiKV or PD replicas and the number of nodes in the cluster do not satisfy the high availability scheduling policy of tidb-scheduler
 
@@ -53,7 +67,10 @@ If the `StorageClass` of the PVC cannot be found, take the following steps:
 
 2. Change `storageClassName` to the name of the `StorageClass` available in the cluster.
 
-3. Run `kubectl apply -f tidb-cluster.yaml` to update the cluster.
+3. Update the configuration file:
+
+    * If you want to start the TiDB cluster, execute `kubectl apply -f tidb-cluster.yaml` to update the cluster.
+    * If you want to run a backup/restore task, first execute `kubectl delete -f backup.yaml` to delete the old backup/restore task, and then execute `kubectl apply -f backup.yaml` to create a new backup/restore task.
 
 4. Delete Statefulset and the corresponding PVCs:
 

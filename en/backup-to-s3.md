@@ -82,7 +82,7 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     #  - --rows=10000
     #  tableFilter:
     #  - "test.*"
-      storageClassName: local-storage
+      # storageClassName: local-storage
       storageSize: 10Gi
     ```
 
@@ -121,7 +121,7 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     #  - --rows=10000
     #  tableFilter:
     #  - "test.*"
-      storageClassName: local-storage
+      # storageClassName: local-storage
       storageSize: 10Gi
     ```
 
@@ -165,7 +165,7 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     #  - --rows=10000
     #  tableFilter:
     #  - "test.*"
-      storageClassName: local-storage
+      # storageClassName: local-storage
       storageSize: 10Gi
     ```
 
@@ -208,7 +208,7 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
     #  - --rows=10000
     #  tableFilter:
     #  - "test.*"
-      storageClassName: local-storage
+      # storageClassName: local-storage
       storageSize: 10Gi
     ```
 
@@ -410,7 +410,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
       #  - --rows=10000
       #  tableFilter:
       #  - "test.*"
-        storageClassName: local-storage
+        # storageClassName: local-storage
         storageSize: 10Gi
     ```
 
@@ -454,7 +454,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
       #  - --rows=10000
       #  tableFilter:
       #  - "test.*"
-        storageClassName: local-storage
+        # storageClassName: local-storage
         storageSize: 10Gi
     ```
 
@@ -502,7 +502,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
       #  - --rows=10000
       #  tableFilter:
       #  - "test.*"
-        storageClassName: local-storage
+        # storageClassName: local-storage
         storageSize: 10Gi
     ```
 
@@ -549,7 +549,7 @@ The prerequisites for the scheduled backup is the same as the [prerequisites for
       #  - --rows=10000
       #  tableFilter:
       #  - "test.*"
-        storageClassName: local-storage
+        # storageClassName: local-storage
         storageSize: 10Gi
     ```
 
@@ -608,3 +608,7 @@ kubectl edit backup ${name} -n ${namespace}
 ```
 
 After deleting the `metadata.finalizers` configuration, you can delete CR normally.
+
+## Troubleshooting
+
+If you encounter any problem during the backup process, refer to [Common Deployment Failures](deploy-failures.md).

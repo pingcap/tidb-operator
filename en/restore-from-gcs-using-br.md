@@ -114,3 +114,7 @@ This example restores the backup data stored in the `spec.gcs.prefix` folder of 
     ```  
 
 </details>
+
+## Troubleshooting
+
+If you encounter any problem during the restore process, refer to [Common Deployment Failures](deploy-failures.md).
