@@ -167,7 +167,7 @@ type ExternalConfig struct {
     ```
     {
     "namespace": <ns>,        
-    "tac": <tacName>,               
+    "tas": <tidbAutoScalerName>,               
     "component":"tikv",
     "cpu":1,
     "memory":8589934592,
