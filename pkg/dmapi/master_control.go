@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/pingcap/tidb-operator/pkg/controller"
+
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -82,7 +84,7 @@ func masterClientKey(scheme string, namespace Namespace, clusterName string) str
 
 // MasterClientURL builds the url of master client
 func MasterClientURL(namespace Namespace, clusterName string, scheme string) string {
-	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, string(namespace))
+	return fmt.Sprintf("%s://%s.%s:8261", scheme, controller.DMMasterMemberName(clusterName), string(namespace))
 }
 
 // FakeMasterControl implements a fake version of MasterControlInterface.

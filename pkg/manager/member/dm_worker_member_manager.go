@@ -172,9 +172,9 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
-	oldStsTmp, err := wmm.setLister.StatefulSets(ns).Get(controller.DMWorkerPeerMemberName(dcName))
+	oldStsTmp, err := wmm.setLister.StatefulSets(ns).Get(controller.DMWorkerMemberName(dcName))
 	if err != nil && !errors.IsNotFound(err) {
-		return fmt.Errorf("syncWorkerStatefulSetForDMCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.DMWorkerPeerMemberName(dcName), ns, dcName, err)
+		return fmt.Errorf("syncWorkerStatefulSetForDMCluster: failed to get sts %s for cluster %s/%s, error: %s", controller.DMWorkerMemberName(dcName), ns, dcName, err)
 	}
 
 	stsNotExist := errors.IsNotFound(err)
@@ -208,11 +208,6 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 		if err != nil {
 			return err
 		}
-		return nil
-	}
-
-	if dc.MasterUpgrading() {
-		klog.Warningf("dm-master is upgrading, skipping upgrade dm-worker")
 		return nil
 	}
 
@@ -384,7 +379,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	}
 
 	workerLabel := label.NewDM().Instance(instanceName).DMWorker()
-	setName := controller.DMWorkerPeerMemberName(dcName)
+	setName := controller.DMWorkerMemberName(dcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8262), baseWorkerSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMWorkerLabelVal)
 
@@ -521,7 +516,7 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 	workerLabel := label.NewDM().Instance(instanceName).DMWorker().Labels()
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            controller.DMWorkerPeerMemberName(dc.Name),
+			Name:            controller.DMWorkerMemberName(dc.Name),
 			Namespace:       dc.Namespace,
 			Labels:          workerLabel,
 			OwnerReferences: []metav1.OwnerReference{controller.GetDMOwnerRef(dc)},

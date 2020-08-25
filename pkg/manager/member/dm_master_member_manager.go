@@ -85,13 +85,6 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 }
 
 func (mmm *masterMemberManager) Sync(dc *v1alpha1.DMCluster) error {
-	clusterVersionLT2, err := clusterVersionLessThan2(dc.MasterVersion())
-	if err != nil {
-		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", dc.MasterVersion())
-	} else if clusterVersionLT2 {
-		return fmt.Errorf("dm-operator only supports to deploy dm-2.0")
-	}
-
 	// Sync dm-master Service
 	if err := mmm.syncMasterServiceForDMCluster(dc); err != nil {
 		return err
@@ -324,7 +317,7 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 		}
 		name := master.Name
 		if len(name) == 0 {
-			klog.Warningf("dm-master member: [%s] doesn't have a name, and can't get it from clientUrls: [%s], dm-master Info: [%v] in [%s/%s]",
+			klog.Warningf("dm-master member: [%s] doesn't have a name, clientUrls: [%s], dm-master Info: [%#v] in [%s/%s]",
 				id, master.ClientURLs, master, ns, dcName)
 			continue
 		}

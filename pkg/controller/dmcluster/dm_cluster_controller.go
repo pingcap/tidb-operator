@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/semver"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -25,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -85,6 +87,7 @@ func NewController(
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
+	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
 	//nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	//secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
@@ -149,6 +152,11 @@ func NewController(
 				pvcInformer.Lister(),
 				pvInformer.Lister(),
 				pvControl,
+			),
+			mm.NewPVCResizer(
+				kubeCli,
+				pvcInformer,
+				scInformer,
 			),
 			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()),
 			//podRestarter,
@@ -244,6 +252,12 @@ func (dcc *Controller) sync(key string) error {
 	}
 	if err != nil {
 		return err
+	}
+	clusterVersionLT2, err := clusterVersionLessThan2(dc.MasterVersion())
+	if err != nil {
+		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", dc.MasterVersion())
+	} else if clusterVersionLT2 {
+		return fmt.Errorf("dm-operator only supports to deploy dm-2.0")
 	}
 
 	return dcc.syncDMCluster(dc.DeepCopy())
@@ -361,4 +375,13 @@ func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.State
 		return nil
 	}
 	return dc
+}
+
+func clusterVersionLessThan2(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return true, err
+	}
+
+	return v.Major() < 2, nil
 }

@@ -45,6 +45,7 @@ func NewDefaultDMClusterControl(
 	//metaManager manager.DMManager,
 	//orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
+	pvcResizer member.PVCResizerInterface,
 	//podRestarter member.PodRestarter,
 	conditionUpdater DMClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
@@ -57,6 +58,7 @@ func NewDefaultDMClusterControl(
 		//orphanPodsCleaner,
 		pvcCleaner,
 		//podRestarter,
+		pvcResizer,
 		conditionUpdater,
 		recorder,
 	}
@@ -71,6 +73,7 @@ type defaultDMClusterControl struct {
 	//orphanPodsCleaner member.OrphanPodsCleaner
 	pvcCleaner member.PVCCleanerInterface
 	//podRestarter     member.PodRestarter
+	pvcResizer       member.PVCResizerInterface
 	conditionUpdater DMClusterConditionUpdater
 	recorder         record.EventRecorder
 }
@@ -194,5 +197,10 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 	// syncing the some tidbcluster status attributes
 	// 	- sync tidbmonitor reference
 	// return dcc.tidbClusterStatusManager.Sync(dc)
+
+	// resize PVC if necessary
+	if err := dcc.pvcResizer.ResizeDM(dc); err != nil {
+		errs = append(errs, err)
+	}
 	return errorutils.NewAggregate(errs)
 }

@@ -18,8 +18,6 @@ import (
 	"strings"
 )
 
-var latestImageVersion = "latest"
-
 func (dc *DMCluster) Scheme() string {
 	if dc.IsTLSClusterEnabled() {
 		return "https"
@@ -69,6 +67,7 @@ func (dc *DMCluster) MasterStsDesiredReplicas() int32 {
 	return dc.Spec.Master.Replicas + int32(len(dc.Status.Master.FailureMembers))
 }
 
+// TODO: support fail-over
 func (dc *DMCluster) WorkerStsDesiredReplicas() int32 {
 	if dc.Spec.Worker == nil {
 		return 0
@@ -82,35 +81,25 @@ func (dc *DMCluster) GetInstanceName() string {
 }
 
 func (dc *DMCluster) MasterImage() string {
-	image := dc.Spec.Master.Image
-	baseImage := dc.Spec.Master.BaseImage
-	// base image takes higher priority
-	if baseImage != "" {
-		version := dc.Spec.Master.Version
-		if version == nil {
-			version = &dc.Spec.Version
-		}
-		if version == nil {
-			version = &latestImageVersion
-		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+	image := dc.Spec.Master.BaseImage
+	version := dc.Spec.Master.Version
+	if version == nil {
+		version = &dc.Spec.Version
+	}
+	if *version != "" {
+		image = fmt.Sprintf("%s:%s", image, *version)
 	}
 	return image
 }
 
 func (dc *DMCluster) WorkerImage() string {
-	image := dc.Spec.Worker.Image
-	baseImage := dc.Spec.Worker.BaseImage
-	// base image takes higher priority
-	if baseImage != "" {
-		version := dc.Spec.Worker.Version
-		if version == nil {
-			version = &dc.Spec.Version
-		}
-		if version == nil {
-			version = &latestImageVersion
-		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+	image := dc.Spec.Worker.BaseImage
+	version := dc.Spec.Worker.Version
+	if version == nil {
+		version = &dc.Spec.Version
+	}
+	if *version != "" {
+		image = fmt.Sprintf("%s:%s", image, *version)
 	}
 	return image
 }
@@ -122,7 +111,7 @@ func (dc *DMCluster) MasterVersion() string {
 		return image[colonIdx+1:]
 	}
 
-	return latestImageVersion
+	return "latest"
 }
 
 func (dc *DMCluster) MasterUpgrading() bool {

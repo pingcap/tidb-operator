@@ -8,7 +8,7 @@ The following steps will create a DM cluster.
 
 **Prerequisites**: 
 - Has TiDB operator `v1.2.0` or higher version installed. [Doc](https://pingcap.com/docs/stable/tidb-in-kubernetes/deploy/tidb-operator/)
-- Has default `StorageClass` configured, and there are enough PVs (by default, 6 PVs are required) of that storageClass:
+- Has default `StorageClass` configured, and there are enough PVs (by default, 2 PVs are required) of that storageClass:
   
   This could by verified by the following command:
   
@@ -24,7 +24,7 @@ The following steps will create a DM cluster.
   gold                 kubernetes.io/gce-pd      1d
   ```
   
-  Alternatively, you could specify the storageClass explicitly by modifying `tidb-cluster.yaml`.
+  Alternatively, you could specify the storageClass explicitly by modifying `dm-cluster.yaml`.
 
 ## Install
 
@@ -47,7 +47,7 @@ watch kubectl -n <namespace> get pod
 Explore the DM master interface:
 
 ```bash
-> kubectl -n <namespace> port-forward svc/basic-dm-master 8261:8261 &>/tmp/pf-dm.log &
+> kubectl -n <namespace> port-forward svc/basic-dm-master 8261:8261
 > dmctl --master-addr 127.0.0.1:8261 list-member
 ```
 

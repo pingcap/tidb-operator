@@ -323,9 +323,14 @@ func DMMasterPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-dm-master-peer", clusterName)
 }
 
+// DMWorkerMemberName returns dm-worker member name
+func DMWorkerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-worker", clusterName)
+}
+
 // DMWorkerPeerMemberName returns dm-worker peer service name
 func DMWorkerPeerMemberName(clusterName string) string {
-	return fmt.Sprintf("%s-dm-worker", clusterName)
+	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
 // AnnProm adds annotations for prometheus scraping metrics
