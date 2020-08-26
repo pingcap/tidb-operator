@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	"github.com/pingcap/tidb-operator/pkg/controller/dmcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/periodicity"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
@@ -184,6 +185,7 @@ func main() {
 		}
 
 		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod, tiflashFailoverPeriod)
+		dcController := dmcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover)
 		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
@@ -218,6 +220,7 @@ func main() {
 		}
 		klog.Infof("cache of informer factories sync successfully")
 
+		go wait.Forever(func() { dcController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { backupController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { restoreController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)

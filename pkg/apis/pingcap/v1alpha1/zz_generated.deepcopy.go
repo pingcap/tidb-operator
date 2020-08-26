@@ -949,10 +949,20 @@ func (in *DMClusterSpec) DeepCopyInto(out *DMClusterSpec) {
 		*out = new(TLSCluster)
 		**out = **in
 	}
+	if in.HostNetwork != nil {
+		in, out := &in.HostNetwork, &out.HostNetwork
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.PriorityClassName != nil {
+		in, out := &in.PriorityClassName, &out.PriorityClassName
+		*out = new(string)
+		**out = **in
 	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
@@ -8079,6 +8089,11 @@ func (in *WorkerSpec) DeepCopyInto(out *WorkerSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.MaxFailoverCount != nil {
+		in, out := &in.MaxFailoverCount, &out.MaxFailoverCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
@@ -8110,8 +8125,8 @@ func (in *WorkerStatus) DeepCopyInto(out *WorkerStatus) {
 		*out = new(appsv1.StatefulSetStatus)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Workers != nil {
-		in, out := &in.Workers, &out.Workers
+	if in.Members != nil {
+		in, out := &in.Members, &out.Members
 		*out = make(map[string]WorkerMember, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
