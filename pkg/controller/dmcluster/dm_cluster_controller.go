@@ -257,7 +257,7 @@ func (dcc *Controller) sync(key string) error {
 	if err != nil {
 		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", dc.MasterVersion())
 	} else if clusterVersionLT2 {
-		klog.Errorf("dm version %s not supported, dm-operator only supports to deploy dm-2.0", dc.MasterVersion())
+		klog.Errorf("dm version %s not supported, only support to deploy dm from v2.0", dc.MasterVersion())
 		return nil
 	}
 

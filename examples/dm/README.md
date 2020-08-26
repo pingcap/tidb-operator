@@ -48,7 +48,7 @@ Explore the DM master interface:
 
 ```bash
 > kubectl exec -ti -n <namespace> <cluster_name>-dm-master-0 -- /bin/sh
-> ./dmctl --master-addr <cluster_name>-dm-master.<namespace>:8261 list-member
+> /dmctl --master-addr 127.0.0.1:8261 list-member
 ```
 
 ## Destroy
