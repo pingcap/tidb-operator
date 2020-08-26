@@ -47,8 +47,8 @@ watch kubectl -n <namespace> get pod
 Explore the DM master interface:
 
 ```bash
-> kubectl -n <namespace> port-forward svc/basic-dm-master 8261:8261
-> dmctl --master-addr 127.0.0.1:8261 list-member
+> kubectl exec -ti -n <namespace> <cluster_name>-dm-master-0 -- /bin/sh
+> ./dmctl --master-addr <cluster_name>-dm-master.<namespace>:8261 list-member
 ```
 
 ## Destroy
