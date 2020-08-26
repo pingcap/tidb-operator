@@ -101,6 +101,66 @@ var (
 		Description: "The desired replicas number of TiDB cluster",
 		JSONPath:    ".spec.tidb.replicas",
 	}
+	dmClusteradditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
+	dmClusterReadyColumn              = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Ready",
+		Type:     "string",
+		JSONPath: `.status.conditions[?(@.type=="Ready")].status`,
+	}
+	dmClusterStatusMessageColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:     "Status",
+		Type:     "string",
+		JSONPath: `.status.conditions[?(@.type=="Ready")].message`,
+		Priority: 1,
+	}
+	dmClusterMasterColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Master",
+		Type:        "string",
+		Description: "The image for dm-master cluster",
+		JSONPath:    ".status.master.image",
+	}
+	dmClusterMasterStorageColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Storage",
+		Type:        "string",
+		Description: "The storage size specified for dm-master node",
+		JSONPath:    ".spec.master.storageSize",
+	}
+	dmClusterMasterReadyColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Ready",
+		Type:        "integer",
+		Description: "The desired replicas number of dm-master cluster",
+		JSONPath:    ".status.master.statefulSet.readyReplicas",
+	}
+	dmClusterMasterDesireColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Desire",
+		Type:        "integer",
+		Description: "The desired replicas number of dm-master cluster",
+		JSONPath:    ".spec.master.replicas",
+	}
+	dmClusterWorkerColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Worker",
+		Type:        "string",
+		Description: "The image for dm-worker cluster",
+		JSONPath:    ".status.worker.image",
+	}
+	dmClusterWorkerStorageColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Storage",
+		Type:        "string",
+		Description: "The storage size specified for dm-worker node",
+		JSONPath:    ".spec.worker.storageSize",
+	}
+	dmClusterWorkerReadyColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Ready",
+		Type:        "integer",
+		Description: "The ready replicas number of dm-worker cluster",
+		JSONPath:    ".status.worker.statefulSet.readyReplicas",
+	}
+	dmClusterWorkerDesireColumn = extensionsobj.CustomResourceColumnDefinition{
+		Name:        "Desire",
+		Type:        "integer",
+		Description: "The desired replicas number of dm-worker cluster",
+		JSONPath:    ".spec.worker.replicas",
+	}
 	backupAdditionalPrinterColumns []extensionsobj.CustomResourceColumnDefinition
 	backupPathColumn               = extensionsobj.CustomResourceColumnDefinition{
 		Name:        "BackupPath",
@@ -232,6 +292,11 @@ func init() {
 		tidbClusterPDColumn, tidbClusterPDStorageColumn, tidbClusterPDReadyColumn, tidbClusterPDDesireColumn,
 		tidbClusterTiKVColumn, tidbClusterTiKVStorageColumn, tidbClusterTiKVReadyColumn, tidbClusterTiKVDesireColumn,
 		tidbClusterTiDBColumn, tidbClusterTiDBReadyColumn, tidbClusterTiDBDesireColumn, tidbClusterStatusMessageColumn, ageColumn)
+	dmClusteradditionalPrinterColumns = append(dmClusteradditionalPrinterColumns,
+		dmClusterReadyColumn,
+		dmClusterMasterColumn, dmClusterMasterStorageColumn, dmClusterMasterReadyColumn, dmClusterMasterDesireColumn,
+		dmClusterWorkerColumn, dmClusterWorkerStorageColumn, dmClusterWorkerReadyColumn, dmClusterWorkerDesireColumn,
+		dmClusterStatusMessageColumn, ageColumn)
 	backupAdditionalPrinterColumns = append(backupAdditionalPrinterColumns, backupPathColumn, backupBackupSizeColumn, backupCommitTSColumn, backupStartedColumn, backupCompletedColumn, ageColumn)
 	restoreAdditionalPrinterColumns = append(restoreAdditionalPrinterColumns, restoreStartedColumn, restoreCompletedColumn, restoreCommitTSColumn, ageColumn)
 	bksAdditionalPrinterColumns = append(bksAdditionalPrinterColumns, bksScheduleColumn, bksMaxBackups, bksLastBackup, bksLastBackupTime, ageColumn)
@@ -288,6 +353,9 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 	switch crdKind.Kind {
 	case v1alpha1.DefaultCrdKinds.TiDBCluster.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbClusteradditionalPrinterColumns
+		break
+	case v1alpha1.DefaultCrdKinds.DMCluster.Kind:
+		crd.Spec.AdditionalPrinterColumns = dmClusteradditionalPrinterColumns
 		break
 	case v1alpha1.DefaultCrdKinds.Backup.Kind:
 		crd.Spec.AdditionalPrinterColumns = backupAdditionalPrinterColumns

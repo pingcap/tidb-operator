@@ -608,7 +608,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8291"},
 					},
 				}, nil
 			},
@@ -637,10 +637,10 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8291"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8291"},
 					},
 				}, nil
 			},
@@ -671,13 +671,13 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8291"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-1.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-1.demo-dm-master-peer:8291"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8291"},
 					},
 				}, nil
 			},
@@ -706,16 +706,16 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 			getMastersFn: func() ([]*dmapi.MastersInfo, error) {
 				return []*dmapi.MastersInfo{
 					{
-						ClientURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-0.demo-dm-master-peer:8291"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-1.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-1.demo-dm-master-peer:8291"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-2.demo-dm-master-peer:8291"},
 					},
 					{
-						ClientURLs: []string{"demo-dm-master-3.demo-dm-master-peer:8261"},
+						PeerURLs: []string{"demo-dm-master-3.demo-dm-master-peer:8291"},
 					},
 				}, nil
 			},

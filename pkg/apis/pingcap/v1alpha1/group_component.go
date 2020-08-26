@@ -15,7 +15,7 @@ package v1alpha1
 
 // BaseTiKVSpec returns the base spec of TiKV servers
 func (tg *TiKVGroup) BaseTiKVSpec(tc *TidbCluster) ComponentAccessor {
-	return &componentAccessorImpl{&tc.Spec, &tg.Spec.ComponentSpec}
+	return buildTidbClusterComponentAccessor(&tc.Spec, &tg.Spec.ComponentSpec)
 }
 
 func (tg *TiKVGroup) TiKVStsDesiredReplicas() int32 {
