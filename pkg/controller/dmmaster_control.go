@@ -23,6 +23,11 @@ func GetMasterClient(dmControl dmapi.MasterControlInterface, dc *v1alpha1.DMClus
 	return dmControl.GetMasterClient(dmapi.Namespace(dc.GetNamespace()), dc.GetName(), dc.IsTLSClusterEnabled())
 }
 
+// GetMasterClient gets the master client from the DMCluster
+func GetMasterPeerClient(dmControl dmapi.MasterControlInterface, dc *v1alpha1.DMCluster, podName string) dmapi.MasterClient {
+	return dmControl.GetMasterPeerClient(dmapi.Namespace(dc.GetNamespace()), dc.GetName(), podName, dc.IsTLSClusterEnabled())
+}
+
 // NewFakeMasterClient creates a fake master client that is set as the master client
 func NewFakeMasterClient(dmControl *dmapi.FakeMasterControl, dc *v1alpha1.DMCluster) *dmapi.FakeMasterClient {
 	masterClient := dmapi.NewFakeMasterClient()
