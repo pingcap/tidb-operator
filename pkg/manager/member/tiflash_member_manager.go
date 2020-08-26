@@ -103,7 +103,7 @@ func (tfmm *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if !tc.PDIsAvailable() {
+	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
@@ -425,7 +425,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	setName := controller.TiFlashMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8234), baseTiFlashSpec.Annotations())
 	podAnnotations = CombineAnnotations(controller.AnnAdditionalProm("tiflash.proxy", 20292), podAnnotations)
-	stsAnnotations := getStsAnnotations(tc, label.TiFlashLabelVal)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiFlashLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiFlash.Limits)
 	headlessSvcName := controller.TiFlashPeerMemberName(tcName)
 

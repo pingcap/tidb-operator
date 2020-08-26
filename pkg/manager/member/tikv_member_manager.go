@@ -424,7 +424,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	tikvLabel := labelTiKV(tc)
 	setName := controller.TiKVMemberName(tcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(20180), baseTiKVSpec.Annotations())
-	stsAnnotations := getStsAnnotations(tc, label.TiKVLabelVal)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiKVLabelVal)
 	capacity := controller.TiKVCapacity(tc.Spec.TiKV.Limits)
 	headlessSvcName := controller.TiKVPeerMemberName(tcName)
 
@@ -588,7 +588,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if tc.IsHeterogeneous() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
-		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Name) + ":2379"
+		scriptModel.PDAddress = tc.Scheme() + "://${CLUSTER_NAME}-pd:2379"
 	}
 	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
 	if err != nil {

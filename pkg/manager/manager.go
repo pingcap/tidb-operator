@@ -28,3 +28,8 @@ type TiDBGroupManager interface {
 type TiKVGroupManager interface {
 	SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error
 }
+
+type DMManager interface {
+	// Sync implements the logic for syncing dmcluster.
+	Sync(*v1alpha1.DMCluster) error
+}

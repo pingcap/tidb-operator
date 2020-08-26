@@ -1544,9 +1544,19 @@ type DMClusterSpec struct {
 	// +optional
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 
+	// Whether Hostnetwork is enabled for DM cluster Pods
+	// Optional: Defaults to false
+	// +optional
+	HostNetwork *bool `json:"hostNetwork,omitempty"`
+
 	// Affinity of DM cluster Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// PriorityClassName of DM cluster Pods
+	// Optional: Defaults to omitted
+	// +optional
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
 
 	// Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively
 	// +optional
@@ -1607,6 +1617,11 @@ type MasterSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// StorageSize is the request storage size for dm-master.
+	// Defaults to "10Gi".
+	// +optional
+	StorageSize string `json:"storageSize,omitempty"`
+
 	// Subdirectory within the volume to store dm-master Data. By default, the data
 	// is stored in the root directory of volume which is mounted at
 	// /var/lib/dm-master.
@@ -1651,10 +1666,21 @@ type WorkerSpec struct {
 	// +optional
 	BaseImage string `json:"baseImage,omitempty"`
 
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
 	// The storageClassName of the persistent volume for dm-worker data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageSize is the request storage size for dm-worker.
+	// Defaults to "10Gi".
+	// +optional
+	StorageSize string `json:"storageSize,omitempty"`
 
 	// Subdirectory within the volume to store dm-worker Data. By default, the data
 	// is stored in the root directory of volume which is mounted at
@@ -1675,7 +1701,7 @@ type WorkerSpec struct {
 // DMClusterCondition is dm cluster condition
 type DMClusterCondition struct {
 	// Type of the condition.
-	Type TidbClusterConditionType `json:"type"`
+	Type DMClusterConditionType `json:"type"`
 	// Status of the condition, one of True, False, Unknown.
 	Status corev1.ConditionStatus `json:"status"`
 	// The last time this condition was updated.
@@ -1741,14 +1767,15 @@ type WorkerStatus struct {
 	Synced      bool                    `json:"synced,omitempty"`
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Workers     map[string]WorkerMember `json:"workers,omitempty"`
+	Members     map[string]WorkerMember `json:"members,omitempty"`
+	Image       string                  `json:"image,omitempty"`
 }
 
 // WorkerMember is dm-Worker member status
 type WorkerMember struct {
-	PodName string `json:"podName,omitempty"`
-	ID      string `json:"id,omitempty"`
-	State   string `json:"state"`
+	Name  string `json:"name,omitempty"`
+	Addr  string `json:"addr,omitempty"`
+	Stage string `json:"stage"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }

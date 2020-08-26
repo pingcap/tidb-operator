@@ -31,6 +31,8 @@ const (
 type MasterClient interface {
 	// GetMasters returns all master members from cluster
 	GetMasters() ([]*MastersInfo, error)
+	GetWorkers() ([]*WorkersInfo, error)
+	GetLeader() (MembersLeader, error)
 }
 
 var (
@@ -44,10 +46,17 @@ type ListMemberRespHeader struct {
 
 type MastersInfo struct {
 	Name       string   `json:"name,omitempty"`
-	MemberID   uint64   `json:"memberID,omitempty"`
+	MemberID   string   `json:"memberID,omitempty"`
 	Alive      bool     `json:"alive,omitempty"`
 	PeerURLs   []string `json:"peerURLs,omitempty"`
 	ClientURLs []string `json:"clientURLs,omitempty"`
+}
+
+type WorkersInfo struct {
+	Name   string `json:"name,omitempty"`
+	Addr   string `json:"addr,omitempty"`
+	Stage  string `json:"stage,omitempty"`
+	Source string `json:"source,omitempty"`
 }
 
 type MembersMaster struct {
@@ -55,14 +64,42 @@ type MembersMaster struct {
 	Masters []*MastersInfo `json:"masters,omitempty"`
 }
 
+type MembersWorker struct {
+	Msg     string         `json:"msg,omitempty"`
+	Workers []*WorkersInfo `json:"workers,omitempty"`
+}
+
+type MembersLeader struct {
+	Msg  string `json:"msg,omitempty"`
+	Name string `json:"name,omitempty"`
+	Addr string `json:"addr,omitempty"`
+}
+
 type ListMemberMaster struct {
 	MembersMaster `json:"master,omitempty"`
 }
 
+type ListMemberWorker struct {
+	MembersWorker `json:"worker,omitempty"`
+}
+
+type ListMemberLeader struct {
+	MembersLeader `json:"leader,omitempty"`
+}
+
 type MastersResp struct {
 	ListMemberRespHeader `json:",inline"`
+	ListMemberResp       []*ListMemberMaster `json:"members,omitempty"`
+}
 
-	ListMemberResp []*ListMemberMaster `json:"members,omitempty"`
+type WorkerResp struct {
+	ListMemberRespHeader `json:",inline"`
+	ListMemberResp       []*ListMemberWorker `json:"members,omitempty"`
+}
+
+type LeaderResp struct {
+	ListMemberRespHeader `json:",inline"`
+	ListMemberResp       []*ListMemberLeader `json:"members,omitempty"`
 }
 
 // masterClient is default implementation of MasterClient
@@ -81,16 +118,60 @@ func (mc *masterClient) GetMasters() ([]*MastersInfo, error) {
 	listMemberResp := &MastersResp{}
 	err = json.Unmarshal(body, listMemberResp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to unmarshal list masters resp: %s, err: %s", body, err)
 	}
 	if !listMemberResp.Result {
-		return nil, fmt.Errorf("unable to list members info from dm-master, err: %s", listMemberResp.Msg)
+		return nil, fmt.Errorf("unable to list masters info, err: %s", listMemberResp.Msg)
 	}
 	if len(listMemberResp.ListMemberResp) != 1 {
-		return nil, fmt.Errorf("invalid list members resp: %s", string(body))
+		return nil, fmt.Errorf("invalid list masters resp: %s", body)
 	}
 
 	return listMemberResp.ListMemberResp[0].Masters, nil
+}
+
+func (mc *masterClient) GetWorkers() ([]*WorkersInfo, error) {
+	query := "?worker=true"
+	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
+	body, err := httputil.GetBodyOK(mc.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	listMemberResp := &WorkerResp{}
+	err = json.Unmarshal(body, listMemberResp)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal list workers resp: %s, err: %s", body, err)
+	}
+	if !listMemberResp.Result {
+		return nil, fmt.Errorf("unable to list workers info, err: %s", listMemberResp.Msg)
+	}
+	if len(listMemberResp.ListMemberResp) != 1 {
+		return nil, fmt.Errorf("invalid list workers resp: %s", body)
+	}
+
+	return listMemberResp.ListMemberResp[0].Workers, nil
+}
+
+func (mc *masterClient) GetLeader() (MembersLeader, error) {
+	query := "?leader=true"
+	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
+	body, err := httputil.GetBodyOK(mc.httpClient, apiURL)
+	if err != nil {
+		return MembersLeader{}, err
+	}
+	listMemberResp := &LeaderResp{}
+	err = json.Unmarshal(body, listMemberResp)
+	if err != nil {
+		return MembersLeader{}, fmt.Errorf("unable to unmarshal list leader resp: %s, err: %s", body, err)
+	}
+	if !listMemberResp.Result {
+		return MembersLeader{}, fmt.Errorf("unable to get leader info, err: %s", listMemberResp.Msg)
+	}
+	if len(listMemberResp.ListMemberResp) != 1 {
+		return MembersLeader{}, fmt.Errorf("invalid list leader resp: %s", body)
+	}
+
+	return listMemberResp.ListMemberResp[0].MembersLeader, nil
 }
 
 // NewMasterClient returns a new MasterClient
