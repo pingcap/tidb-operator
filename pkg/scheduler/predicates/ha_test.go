@@ -748,6 +748,19 @@ func TestHAFilter(t *testing.T) {
 			},
 		},
 		{
+			name:               "three topologies, three pods scheduled, desired replica is 4, return three topologies",
+			podFn:              newHATiKVPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetThreeAndOneFailoverReplicaFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(3))
+			},
+		},
+		{
 			name:               "three topologies, one pod not scheduled on these three topologies, return all the three nodes",
 			podFn:              newHAPDPod,
 			nodesFn:            fakeThreeNodes,
@@ -1160,6 +1173,26 @@ func tcGetTwoReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error)
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: v1alpha1.PDSpec{Replicas: 2},
+		},
+	}, nil
+}
+
+func tcGetThreeAndOneFailoverReplicaFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{Kind: "TidbCluster", APIVersion: "v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tcName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: v1alpha1.TiKVSpec{Replicas: 3},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				FailureStores: map[string]v1alpha1.TiKVFailureStore{
+					fmt.Sprintf("%s-tikv-1", tcName): {},
+				},
+			},
 		},
 	}, nil
 }
