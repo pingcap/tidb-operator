@@ -15,6 +15,7 @@ package statefulset
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	asapps "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
@@ -28,6 +29,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/pointer"
 )
 
@@ -283,5 +285,18 @@ func TestStatefulSetAdmissionControl_ASTS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			runTest(t, tt, true)
 		})
+	}
+}
+
+func TestValidatingResource(t *testing.T) {
+	w := NewStatefulSetAdmissionControl()
+	wantGvr := schema.GroupVersionResource{
+		Group:    "admission.tidb.pingcap.com",
+		Version:  "v1alpha1",
+		Resource: "statefulsetvalidations",
+	}
+	gvr, _ := w.ValidatingResource()
+	if !reflect.DeepEqual(wantGvr, gvr) {
+		t.Fatalf("want: %v, got: %v", wantGvr, gvr)
 	}
 }
