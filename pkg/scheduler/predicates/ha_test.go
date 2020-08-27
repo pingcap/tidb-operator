@@ -1185,7 +1185,7 @@ func tcGetThreeAndOneFailoverReplicaFn(ns string, tcName string) (*v1alpha1.Tidb
 			Namespace: ns,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
-			TiKV: &v1alpha1.TiKVSpec{Replicas: 3},
+			TiKV: v1alpha1.TiKVSpec{Replicas: 3},
 		},
 		Status: v1alpha1.TidbClusterStatus{
 			TiKV: v1alpha1.TiKVStatus{
