@@ -409,10 +409,10 @@ func getTCNameFromPod(pod *apiv1.Pod, component string) string {
 
 func getReplicasFrom(tc *v1alpha1.TidbCluster, component string) int32 {
 	if component == v1alpha1.PDMemberType.String() {
-		return tc.Spec.PD.Replicas
+		return tc.PDStsDesiredReplicas()
 	}
 
-	return tc.Spec.TiKV.Replicas
+	return tc.TiKVStsDesiredReplicas()
 }
 
 func pvcName(component, podName string) string {
