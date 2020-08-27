@@ -189,7 +189,7 @@ func (mc *masterClient) EvictLeader() error {
 		return fmt.Errorf("unable to unmarshal evict leader resp: %s, err: %s", body, err)
 	}
 	if !evictLeaderResp.Result {
-		return fmt.Errorf("unable to evict leader leader, err: %s", evictLeaderResp.Msg)
+		return fmt.Errorf("unable to evict leader, err: %s", evictLeaderResp.Msg)
 	}
 
 	return nil

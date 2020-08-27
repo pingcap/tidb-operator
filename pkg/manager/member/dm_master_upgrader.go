@@ -91,20 +91,20 @@ func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.S
 
 		revision, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
 		if !exist {
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s dm-master pod: [%s] has no label: %s", ns, dcName, podName, apps.ControllerRevisionHashLabelKey)
+			return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master pod: [%s] has no label: %s", ns, dcName, podName, apps.ControllerRevisionHashLabelKey)
 		}
 
 		if revision == dc.Status.Master.StatefulSet.UpdateRevision {
 			if member, exist := dc.Status.Master.Members[podName]; !exist || !member.Health {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s dm-master upgraded pod: [%s] is not ready", ns, dcName, podName)
+				return controller.RequeueErrorf("dmcluster: [%s/%s]'s dm-master upgraded pod: [%s] is not ready", ns, dcName, podName)
 			}
 			continue
 		}
 
-		if controller.PodWebhookEnabled {
-			setUpgradePartition(newSet, i)
-			return nil
-		}
+		//if controller.PodWebhookEnabled {
+		//	setUpgradePartition(newSet, i)
+		//	return nil
+		//}
 
 		return mu.upgradeMasterPod(dc, i, newSet)
 	}

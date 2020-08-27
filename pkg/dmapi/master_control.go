@@ -26,14 +26,11 @@ import (
 	"k8s.io/klog"
 )
 
-// Namespace is a newtype of a string
-type Namespace pdapi.Namespace
-
 // MasterControlInterface is an interface that knows how to manage and get dm cluster's master client
 type MasterControlInterface interface {
 	// GetMasterClient provides MasterClient of the dm cluster.
-	GetMasterClient(namespace Namespace, dcName string, tlsEnabled bool) MasterClient
-	GetMasterPeerClient(namespace Namespace, dcName, podName string, tlsEnabled bool) MasterClient
+	GetMasterClient(namespace string, dcName string, tlsEnabled bool) MasterClient
+	GetMasterPeerClient(namespace string, dcName, podName string, tlsEnabled bool) MasterClient
 }
 
 // defaultMasterControl is the default implementation of MasterControlInterface.
@@ -49,7 +46,7 @@ func NewDefaultMasterControl(kubeCli kubernetes.Interface) MasterControlInterfac
 }
 
 // GetMasterClient provides a MasterClient of real dm-master cluster, if the MasterClient not existing, it will create new one.
-func (mc *defaultMasterControl) GetMasterClient(namespace Namespace, dcName string, tlsEnabled bool) MasterClient {
+func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string, tlsEnabled bool) MasterClient {
 	mc.mutex.Lock()
 	defer mc.mutex.Unlock()
 
@@ -75,7 +72,7 @@ func (mc *defaultMasterControl) GetMasterClient(namespace Namespace, dcName stri
 	return mc.masterClients[key]
 }
 
-func (mc *defaultMasterControl) GetMasterPeerClient(namespace Namespace, dcName string, podName string, tlsEnabled bool) MasterClient {
+func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName string, podName string, tlsEnabled bool) MasterClient {
 	mc.mutex.Lock()
 	defer mc.mutex.Unlock()
 
@@ -98,17 +95,17 @@ func (mc *defaultMasterControl) GetMasterPeerClient(namespace Namespace, dcName 
 }
 
 // masterClientKey returns the master client key
-func masterClientKey(scheme string, namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
+func masterClientKey(scheme string, namespace string, clusterName string) string {
+	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, namespace)
 }
 
 // MasterClientURL builds the url of master client
-func MasterClientURL(namespace Namespace, clusterName string, scheme string) string {
-	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, string(namespace))
+func MasterClientURL(namespace string, clusterName string, scheme string) string {
+	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, namespace)
 }
 
-func MasterPeerClientURL(namespace Namespace, clusterName, podName, scheme string) string {
-	return fmt.Sprintf("%s://%s.%s-dm-master-peer.%s:8261", scheme, podName, clusterName, string(namespace))
+func MasterPeerClientURL(namespace string, clusterName, podName, scheme string) string {
+	return fmt.Sprintf("%s://%s.%s-dm-master-peer.%s:8261", scheme, podName, clusterName, namespace)
 }
 
 // FakeMasterControl implements a fake version of MasterControlInterface.
@@ -122,6 +119,6 @@ func NewFakeMasterControl(kubeCli kubernetes.Interface) *FakeMasterControl {
 	}
 }
 
-func (fmc *FakeMasterControl) SetMasterClient(namespace Namespace, tcName string, masterClient MasterClient) {
+func (fmc *FakeMasterControl) SetMasterClient(namespace string, tcName string, masterClient MasterClient) {
 	fmc.defaultMasterControl.masterClients[masterClientKey("http", namespace, tcName)] = masterClient
 }
