@@ -1467,10 +1467,24 @@ func schema_pkg_apis_pingcap_v1alpha1_DMClusterSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TLSCluster"),
 						},
 					},
+					"hostNetwork": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether Hostnetwork is enabled for DM cluster Pods Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"affinity": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Affinity of DM cluster Pods",
 							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PriorityClassName of DM cluster Pods Optional: Defaults to omitted",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"nodeSelector": {
@@ -2611,6 +2625,13 @@ func schema_pkg_apis_pingcap_v1alpha1_MasterSpec(ref common.ReferenceCallback) c
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for dm-master data storage. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageSize": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageSize is the request storage size for dm-master. Defaults to \"10Gi\".",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -11063,9 +11084,23 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"maxFailoverCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover. Optional: Defaults to 3",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for dm-worker data storage. Defaults to Kubernetes default storage class.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storageSize": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageSize is the request storage size for dm-worker. Defaults to \"10Gi\".",
 							Type:        []string{"string"},
 							Format:      "",
 						},

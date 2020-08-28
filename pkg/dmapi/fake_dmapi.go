@@ -21,6 +21,8 @@ type ActionType string
 
 const (
 	GetMastersActionType ActionType = "GetMasters"
+	GetWorkersActionType ActionType = "GetWorkers"
+	GetLeaderActionType  ActionType = "GetLeader"
 )
 
 type NotFoundReaction struct {
@@ -71,4 +73,22 @@ func (pc *FakeMasterClient) GetMasters() ([]*MastersInfo, error) {
 		return nil, err
 	}
 	return result.([]*MastersInfo), nil
+}
+
+func (pc *FakeMasterClient) GetWorkers() ([]*WorkersInfo, error) {
+	action := &Action{}
+	result, err := pc.fakeAPI(GetWorkersActionType, action)
+	if err != nil {
+		return nil, err
+	}
+	return result.([]*WorkersInfo), nil
+}
+
+func (pc *FakeMasterClient) GetLeader() (MembersLeader, error) {
+	action := &Action{}
+	result, err := pc.fakeAPI(GetLeaderActionType, action)
+	if err != nil {
+		return MembersLeader{}, err
+	}
+	return result.(MembersLeader), nil
 }

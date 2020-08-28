@@ -64,8 +64,8 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	data, err := base64.StdEncoding.DecodeString(encodedAdvertisePeerURL)
 	if err != nil {
 		klog.Errorf("failed to decode advertise-peer-url: %s, register-type is: %s", encodedAdvertisePeerURL, registerType)
-		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			klog.Errorf("failed to writeError: %v", err)
+		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
+			klog.Errorf("failed to writeError: %v", werr)
 		}
 		return
 	}
@@ -87,8 +87,8 @@ func (s *server) newHandler(req *restful.Request, resp *restful.Response) {
 	}
 	if err != nil {
 		klog.Errorf("failed to discover: %s, %v, register-type is: %s", advertisePeerURL, err, registerType)
-		if err := resp.WriteError(http.StatusInternalServerError, err); err != nil {
-			klog.Errorf("failed to writeError: %v", err)
+		if werr := resp.WriteError(http.StatusInternalServerError, err); werr != nil {
+			klog.Errorf("failed to writeError: %v", werr)
 		}
 		return
 	}

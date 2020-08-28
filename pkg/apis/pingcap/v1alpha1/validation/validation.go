@@ -44,6 +44,19 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	return allErrs
 }
 
+// ValidateDMCluster validates a DMCluster, it performs basic validation for all DMClusters despite it is legacy
+// or not
+func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
+	allErrs := field.ErrorList{}
+	// validate metadata
+	fldPath := field.NewPath("metadata")
+	// validate metadata/annotations
+	allErrs = append(allErrs, validateDMAnnotations(dc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
+	// validate spec
+	allErrs = append(allErrs, validateDMClusterSpec(&dc.Spec, field.NewPath("spec"))...)
+	return allErrs
+}
+
 func ValidateTidbMonitor(monitor *v1alpha1.TidbMonitor) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// validate monitor service
@@ -59,6 +72,15 @@ func validateAnnotations(anns map[string]string, fldPath *field.Path) field.Erro
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
 	for _, key := range []string{label.AnnPDDeleteSlots, label.AnnTiDBDeleteSlots, label.AnnTiKVDeleteSlots, label.AnnTiFlashDeleteSlots} {
+		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
+	}
+	return allErrs
+}
+
+func validateDMAnnotations(anns map[string]string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateAnnotations(anns, fldPath)...)
+	for _, key := range []string{label.AnnDMMasterDeleteSlots, label.AnnDMWorkerDeleteSlots} {
 		allErrs = append(allErrs, validateDeleteSlots(anns, key, fldPath.Child(key))...)
 	}
 	return allErrs
@@ -193,6 +215,27 @@ func validateTiDBSpec(spec *v1alpha1.TiDBSpec, fldPath *field.Path) field.ErrorL
 }
 
 func validatePumpSpec(spec *v1alpha1.PumpSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateDMClusterSpec(spec *v1alpha1.DMClusterSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateMasterSpec(&spec.Master, fldPath.Child("master"))...)
+	if spec.Worker != nil {
+		allErrs = append(allErrs, validateWorkerSpec(spec.Worker, fldPath.Child("worker"))...)
+	}
+	return allErrs
+}
+
+func validateMasterSpec(spec *v1alpha1.MasterSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
+	return allErrs
+}
+
+func validateWorkerSpec(spec *v1alpha1.WorkerSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	return allErrs

@@ -188,7 +188,8 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 
 	mastersArr := make([]string, 0)
 	for _, master := range mastersInfos {
-		mastersArr = append(mastersArr, master.ClientURLs[0])
+		memberURL := strings.ReplaceAll(master.PeerURLs[0], ":8291", ":8261")
+		mastersArr = append(mastersArr, memberURL)
 	}
 	delete(currentCluster.peers, podName)
 	return fmt.Sprintf("--join=%s", strings.Join(mastersArr, ",")), nil

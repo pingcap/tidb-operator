@@ -63,6 +63,7 @@ import (
 //
 type PVCResizerInterface interface {
 	Resize(*v1alpha1.TidbCluster) error
+	ResizeDM(*v1alpha1.DMCluster) error
 }
 
 var (
@@ -70,6 +71,9 @@ var (
 	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
 	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
+
+	dmMasterRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMMasterLabelVal})
+	dmWorkerRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMWorkerLabelVal})
 )
 
 type pvcResizer struct {
@@ -117,6 +121,30 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.Pump != nil {
 		if storageRequest, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
 			err = p.patchPVCs(tc.GetNamespace(), selector.Add(*pumpRequirement), storageRequest, "")
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (p *pvcResizer) ResizeDM(dc *v1alpha1.DMCluster) error {
+	selector, err := label.New().Instance(dc.GetInstanceName()).Selector()
+	if err != nil {
+		return err
+	}
+	// patch dm-master PVCs
+	if masterRs, err := resource.ParseQuantity(dc.Spec.Master.StorageSize); err == nil {
+		err = p.patchPVCs(dc.GetNamespace(), selector.Add(*dmMasterRequirement), masterRs, "")
+		if err != nil {
+			return err
+		}
+	}
+	// patch dm-worker PVCs
+	if dc.Spec.Worker != nil {
+		if workerRs, err := resource.ParseQuantity(dc.Spec.Worker.StorageSize); err == nil {
+			err = p.patchPVCs(dc.GetNamespace(), selector.Add(*dmWorkerRequirement), workerRs, "")
 			if err != nil {
 				return err
 			}
@@ -198,6 +226,10 @@ type fakePVCResizer struct {
 }
 
 func (f *fakePVCResizer) Resize(_ *v1alpha1.TidbCluster) error {
+	return nil
+}
+
+func (f *fakePVCResizer) ResizeDM(_ *v1alpha1.DMCluster) error {
 	return nil
 }
 

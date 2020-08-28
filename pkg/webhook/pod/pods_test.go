@@ -15,6 +15,7 @@ package pod
 
 import (
 	"bytes"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -28,10 +29,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
 	admission "k8s.io/api/admission/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -261,6 +265,7 @@ func TestValidate(t *testing.T) {
 		operation   admission.Operation
 		username    string
 		pod         *corev1.Pod
+		sts         *appsv1.StatefulSet
 		tc          *v1alpha1.TidbCluster
 		cm          *corev1.ConfigMap
 		wantAllowed bool
@@ -319,6 +324,114 @@ func TestValidate(t *testing.T) {
 			},
 			wantAllowed: true,
 		},
+		{
+			name:      "unsupported operation",
+			operation: admission.Connect,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name:      "delete a PD pod and statefulset owner does not exist",
+			operation: admission.Delete,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+					Labels: map[string]string{
+						label.ManagedByLabelKey: label.TiDBOperator,
+						label.ComponentLabelKey: label.PDLabelVal,
+						label.InstanceLabelKey:  "tc",
+					},
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name:      "delete a PD pod and tc does not exist",
+			operation: admission.Delete,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+					Labels: map[string]string{
+						label.ManagedByLabelKey: label.TiDBOperator,
+						label.ComponentLabelKey: label.PDLabelVal,
+						label.InstanceLabelKey:  "tc",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							Kind: "StatefulSet",
+							Name: "sts",
+						},
+					},
+				},
+			},
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "sts",
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+				Status: appsv1.StatefulSetStatus{
+					Replicas: 3,
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name:      "delete a PD pod and force upgrade is enabled",
+			operation: admission.Delete,
+			username:  "system:serviceaccount:kube-system:statefulset-controller",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "foo",
+					Labels: map[string]string{
+						label.ManagedByLabelKey: label.TiDBOperator,
+						label.ComponentLabelKey: label.PDLabelVal,
+						label.InstanceLabelKey:  "tc",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							Kind: "StatefulSet",
+							Name: "sts",
+						},
+					},
+				},
+			},
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "sts",
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: pointer.Int32Ptr(3),
+				},
+				Status: appsv1.StatefulSetStatus{
+					Replicas: 3,
+				},
+			},
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "tc",
+					Annotations: map[string]string{
+						"tidb.pingcap.com/force-upgrade": "true",
+					},
+				},
+			},
+			wantAllowed: true,
+		},
 	}
 
 	jsonInfo, ok := runtime.SerializerInfoForMediaType(util.Codecs.SupportedMediaTypes(), runtime.ContentTypeJSON)
@@ -331,10 +444,19 @@ func TestValidate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cli := fake.NewSimpleClientset()
 			kubeCli := kubefake.NewSimpleClientset()
+			if tt.pod != nil {
+				kubeCli.CoreV1().Pods(tt.pod.Namespace).Create(tt.pod)
+			}
+			if tt.sts != nil {
+				kubeCli.AppsV1().StatefulSets(tt.sts.Namespace).Create(tt.sts)
+			}
+			if tt.tc != nil {
+				cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(tt.tc)
+			}
 			podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 			ar := &admission.AdmissionRequest{
 				Name:      "foo",
-				Namespace: namespace,
+				Namespace: v1.NamespaceDefault,
 				Operation: tt.operation,
 				UserInfo: authenticationv1.UserInfo{
 					Username: tt.username,
@@ -352,5 +474,35 @@ func TestValidate(t *testing.T) {
 				t.Errorf("want %v, got %v", tt.wantAllowed, resp.Allowed)
 			}
 		})
+	}
+}
+
+func TestValidatingResource(t *testing.T) {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	w := newPodAdmissionControl(nil, kubeCli, cli)
+	wantGvr := schema.GroupVersionResource{
+		Group:    "admission.tidb.pingcap.com",
+		Version:  "v1alpha1",
+		Resource: "podvalidations",
+	}
+	gvr, _ := w.ValidatingResource()
+	if !reflect.DeepEqual(wantGvr, gvr) {
+		t.Fatalf("want: %v, got: %v", wantGvr, gvr)
+	}
+}
+
+func TestMutationResource(t *testing.T) {
+	cli := fake.NewSimpleClientset()
+	kubeCli := kubefake.NewSimpleClientset()
+	w := newPodAdmissionControl(nil, kubeCli, cli)
+	wantGvr := schema.GroupVersionResource{
+		Group:    "admission.tidb.pingcap.com",
+		Version:  "v1alpha1",
+		Resource: "podmutations",
+	}
+	gvr, _ := w.MutatingResource()
+	if !reflect.DeepEqual(wantGvr, gvr) {
+		t.Fatalf("want: %v, got: %v", wantGvr, gvr)
 	}
 }

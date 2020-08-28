@@ -252,7 +252,7 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		return util.ARFail(err)
 	}
 	// Force Upgraded,Admit to Upgrade
-	if memberUtils.NeedForceUpgrade(tc) {
+	if memberUtils.NeedForceUpgrade(tc.Annotations) {
 		klog.Infof("tc[%s/%s] is force upgraded, admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
