@@ -16,7 +16,6 @@ package dmapi
 import (
 	"crypto/tls"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -59,10 +58,10 @@ func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string,
 		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.ClusterClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
-			return &masterClient{url: MasterClientURL(namespace, dcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
 		}
 
-		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, false)
+		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
 	}
 
 	key := masterClientKey(scheme, namespace, dcName)
