@@ -74,8 +74,9 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 		kind = v1alpha1.TiKVGroupKind
 	case *v1alpha1.DMCluster:
 		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
-		l = label.New().Instance(meta.GetName())
-		l[label.AnnPodNameKey] = podName
+		l = label.NewDM().Instance(meta.GetName())
+		// just delete all defer Deleting pvc for convenience. Or dm have to support sync meta info labels for pod/pvc which seems unnecessary
+		// l[label.AnnPodNameKey] = podName
 		kind = v1alpha1.DMClusterKind
 	default:
 		kind = controller.GetObjectKind().GroupVersionKind().Kind

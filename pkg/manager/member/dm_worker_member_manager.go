@@ -259,6 +259,19 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 		}
 
 		workerStatus[name] = status
+
+		// offline the workers that already been scaled-in
+		if status.Stage == "offline" {
+			ordinal, err := util.GetOrdinalFromPodName(worker.Name)
+			if err != nil {
+				klog.Errorf("invalid worker name %s, can't offline this worker automatically, err: %s", worker.Name, err)
+			} else if ordinal >= dc.WorkerStsDesiredReplicas() {
+				err := dmClient.DeleteWorker(name)
+				if err != nil {
+					klog.Errorf("fail to remove worker %s, err: %s", worker.Name, err)
+				}
+			}
+		}
 	}
 
 	dc.Status.Worker.Synced = true

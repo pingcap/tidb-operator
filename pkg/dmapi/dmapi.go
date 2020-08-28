@@ -199,7 +199,7 @@ func (mc *masterClient) EvictLeader() error {
 
 func (mc *masterClient) deleteMember(query string) error {
 	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
-	body, err := httputil.PutBodyOK(mc.httpClient, apiURL)
+	body, err := httputil.DeleteBodyOK(mc.httpClient, apiURL)
 	if err != nil {
 		return err
 	}
