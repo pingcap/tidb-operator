@@ -196,8 +196,7 @@ func (mc *masterClient) EvictLeader() error {
 }
 
 // NewMasterClient returns a new MasterClient
-func NewMasterClient(url string, timeout time.Duration, tlsConfig *tls.Config) MasterClient {
-	var disableKeepalive bool
+func NewMasterClient(url string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) MasterClient {
 	if tlsConfig != nil {
 		disableKeepalive = true
 	}

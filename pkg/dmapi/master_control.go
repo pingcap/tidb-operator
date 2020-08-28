@@ -62,12 +62,12 @@ func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string,
 			return &masterClient{url: MasterClientURL(namespace, dcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
 		}
 
-		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig)
+		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, false)
 	}
 
 	key := masterClientKey(scheme, namespace, dcName)
 	if _, ok := mc.masterClients[key]; !ok {
-		mc.masterClients[key] = NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, nil)
+		mc.masterClients[key] = NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, nil, false)
 	}
 	return mc.masterClients[key]
 }
@@ -85,13 +85,13 @@ func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName str
 		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.ClusterClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
-			return &masterClient{url: MasterPeerClientURL(namespace, dcName, podName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
 		}
 
-		return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig)
+		return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
 	}
 
-	return &masterClient{url: MasterPeerClientURL(namespace, dcName, podName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+	return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
 }
 
 // masterClientKey returns the master client key
