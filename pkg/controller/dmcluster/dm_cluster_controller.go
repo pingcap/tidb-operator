@@ -99,6 +99,7 @@ func NewController(
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	//podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
 	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
 
 	dcc := &Controller{
@@ -116,6 +117,7 @@ func NewController(
 				podInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
+				masterScaler,
 				masterUpgrader,
 			),
 			mm.NewWorkerMemberManager(

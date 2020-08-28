@@ -57,6 +57,7 @@ type masterMemberManager struct {
 	podLister      corelisters.PodLister
 	epsLister      corelisters.EndpointsLister
 	pvcLister      corelisters.PersistentVolumeClaimLister
+	masterScaler   Scaler
 	masterUpgrader DMUpgrader
 }
 
@@ -70,6 +71,7 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
+	masterScaler Scaler,
 	masterUpgrader DMUpgrader) manager.DMManager {
 	return &masterMemberManager{
 		masterControl,
@@ -81,6 +83,7 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 		podLister,
 		epsLister,
 		pvcLister,
+		masterScaler,
 		masterUpgrader}
 }
 
@@ -243,10 +246,9 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		}
 	}
 
-	// TODO: dm add scaler
-	//if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
-	//	return err
-	//}
+	if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
+		return err
+	}
 
 	// TODO: dm add auto failover
 	// if mmm.autoFailover {

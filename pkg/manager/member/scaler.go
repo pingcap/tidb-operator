@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/label"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,17 +39,16 @@ const (
 // Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
 	// Scale scales the cluster. It does nothing if scaling is not needed.
-	Scale(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
+	Scale(meta metav1.Object, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// ScaleOut scales out the cluster
-	ScaleOut(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
+	ScaleOut(meta metav1.Object, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// ScaleIn scales in the cluster
-	ScaleIn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet, desired *apps.StatefulSet) error
+	ScaleIn(meta metav1.Object, actual *apps.StatefulSet, desired *apps.StatefulSet) error
 	// SyncAutoScalerAnn would sync Ann created by AutoScaler
-	SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error
+	SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error
 }
 
 type generalScaler struct {
-	pdControl  pdapi.PDControlInterface
 	pvcLister  corelisters.PersistentVolumeClaimLister
 	pvcControl controller.PVCControlInterface
 }
@@ -74,6 +72,11 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 		l = label.NewGroup().Instance(meta.GetName())
 		// TODO: support sync meta info into TiKVGroup resources (pod/pvc)
 		kind = v1alpha1.TiKVGroupKind
+	case *v1alpha1.DMCluster:
+		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
+		l = label.New().Instance(meta.GetName())
+		l[label.AnnPodNameKey] = podName
+		kind = v1alpha1.DMClusterKind
 	default:
 		kind = controller.GetObjectKind().GroupVersionKind().Kind
 		return nil, fmt.Errorf("%s[%s/%s] has unknown controller", kind, ns, meta.GetName())
