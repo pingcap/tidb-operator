@@ -81,7 +81,7 @@ func (ro *Options) downloadBackupData(localPath string, opts []string) error {
 	return nil
 }
 
-func (ro *Options) loadTidbClusterData(restorePath string) error {
+func (ro *Options) loadTidbClusterData(restorePath string, tableFilter []string) error {
 	if exist := backupUtil.IsDirExist(restorePath); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", restorePath)
 	}
@@ -97,6 +97,13 @@ func (ro *Options) loadTidbClusterData(restorePath string) error {
 		fmt.Sprintf("--d=%s", restorePath),
 		fmt.Sprintf("--tidb-port=%d", ro.Port),
 	}
+
+	if tableFilter != nil && len(tableFilter) > 0 {
+		for _, tableFilter := range tableFilter {
+			args = append(args, "--filter", tableFilter)
+		}
+	}
+
 	if ro.TLSClient {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.TiDBClientTLSPath, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.TiDBClientTLSPath, corev1.TLSCertKey)))

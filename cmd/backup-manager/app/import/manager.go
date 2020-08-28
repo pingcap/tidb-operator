@@ -182,7 +182,7 @@ func (rm *RestoreManager) performRestore(restore *v1alpha1.Restore) error {
 	}
 	klog.Infof("get cluster %s commitTs %s success", rm, commitTs)
 
-	err = rm.loadTidbClusterData(unarchiveDataPath)
+	err = rm.loadTidbClusterData(unarchiveDataPath, restore.Spec.TableFilter)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("restore cluster %s from backup %s failed, err: %s", rm, rm.BackupPath, err)
