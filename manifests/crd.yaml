@@ -6711,6 +6711,8 @@ spec:
                         ssl-key:
                           type: string
                       type: object
+                    skip-register-to-dashboard:
+                      type: boolean
                     socket:
                       type: string
                     split-region-max-num:
@@ -18642,6 +18644,8 @@ spec:
                     ssl-key:
                       type: string
                   type: object
+                skip-register-to-dashboard:
+                  type: boolean
                 socket:
                   type: string
                 split-region-max-num:

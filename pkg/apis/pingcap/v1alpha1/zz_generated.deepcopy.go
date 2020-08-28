@@ -4593,6 +4593,11 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 		*out = new(uint64)
 		**out = **in
 	}
+	if in.SkipRegisterToDashboard != nil {
+		in, out := &in.SkipRegisterToDashboard, &out.SkipRegisterToDashboard
+		*out = new(bool)
+		**out = **in
+	}
 	if in.EnableTelemetry != nil {
 		in, out := &in.EnableTelemetry, &out.EnableTelemetry
 		*out = new(bool)

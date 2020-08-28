@@ -8770,7 +8770,7 @@ uint
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 1024</p>
+<p>Optional: Defaults to 512</p>
 </td>
 </tr>
 <tr>
@@ -11583,6 +11583,19 @@ uint64
 <td>
 <em>(Optional)</em>
 <p>imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skip-register-to-dashboard</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>imported from v4.0.5
+SkipRegisterToDashboard tells TiDB don&rsquo;t register itself to the dashboard.</p>
 </td>
 </tr>
 <tr>

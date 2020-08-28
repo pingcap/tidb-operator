@@ -3925,7 +3925,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 					},
 					"query-feedback-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 1024",
+							Description: "Optional: Defaults to 512",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -5663,6 +5663,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Description: "imported from v3.1.0",
 							Type:        []string{"integer"},
 							Format:      "int64",
+						},
+					},
+					"skip-register-to-dashboard": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v4.0.5 SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"enable-telemetry": {
