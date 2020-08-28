@@ -95,16 +95,16 @@ func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName str
 }
 
 // masterClientKey returns the master client key
-func masterClientKey(scheme string, namespace string, clusterName string) string {
+func masterClientKey(scheme, namespace, clusterName string) string {
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, namespace)
 }
 
 // MasterClientURL builds the url of master client
-func MasterClientURL(namespace string, clusterName string, scheme string) string {
+func MasterClientURL(namespace, clusterName, scheme string) string {
 	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, namespace)
 }
 
-func MasterPeerClientURL(namespace string, clusterName, podName, scheme string) string {
+func MasterPeerClientURL(namespace, clusterName, podName, scheme string) string {
 	return fmt.Sprintf("%s://%s.%s-dm-master-peer.%s:8261", scheme, podName, clusterName, namespace)
 }
 

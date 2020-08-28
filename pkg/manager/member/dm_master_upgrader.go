@@ -75,7 +75,7 @@ func (mu *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.S
 		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading dm-master.
 		// Therefore, in the production environment, we should try to avoid modifying the dm-master statefulset update strategy directly.
 		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		klog.Warningf("tidbcluster: [%s/%s] dm-master statefulset %s UpdateStrategy has been modified manually", ns, dcName, oldSet.GetName())
+		klog.Warningf("dmcluster: [%s/%s] dm-master statefulset %s UpdateStrategy has been modified manually", ns, dcName, oldSet.GetName())
 		return nil
 	}
 
