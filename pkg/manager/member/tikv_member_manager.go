@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -62,6 +63,7 @@ type tikvMemberManager struct {
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
 	nodeLister                   corelisters.NodeLister
+	tidbLister                   listers.TidbClusterLister
 	autoFailover                 bool
 	tikvFailover                 Failover
 	tikvScaler                   TiKVScaler
@@ -80,6 +82,7 @@ func NewTiKVMemberManager(
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister,
+	tidbLister listers.TidbClusterLister,
 	autoFailover bool,
 	tikvFailover Failover,
 	tikvScaler TiKVScaler,
@@ -94,6 +97,7 @@ func NewTiKVMemberManager(
 		typedControl: typedControl,
 		setLister:    setLister,
 		svcLister:    svcLister,
+		tidbLister:   tidbLister,
 		autoFailover: autoFailover,
 		tikvFailover: tikvFailover,
 		tikvScaler:   tikvScaler,
@@ -219,7 +223,7 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 		tkmm.tikvFailover.Recover(tc)
 	}
 
-	newSet, err := getNewTiKVSetForTidbCluster(tc, cm)
+	newSet, err := tkmm.getNewTiKVSetForTidbCluster(tc, cm)
 	if err != nil {
 		return err
 	}
@@ -331,7 +335,7 @@ func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) 
 	return &svc
 }
 
-func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+func (tkmm *tikvMemberManager) getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	baseTiKVSpec := tc.BaseTiKVSpec()
@@ -348,7 +352,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tikv"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
-	if tc.IsTLSClusterEnabled() {
+	if tc.IsTLSClusterEnabled() && !tc.IsHeterogeneous() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
 		})
@@ -373,7 +377,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			}},
 		},
 	}
-	if tc.IsTLSClusterEnabled() {
+	if tc.IsTLSClusterEnabled() && !tc.IsHeterogeneous() {
 		vols = append(vols, corev1.Volume{
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -381,6 +385,29 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				},
 			},
 		})
+	}
+
+	if tc.IsHeterogeneous() {
+		originTcName := tc.Spec.Cluster.Name
+		originTidbCluster, err := tkmm.tidbLister.TidbClusters(ns).Get(originTcName)
+		if errors.IsNotFound(err) {
+			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
+			return nil, nil
+		}
+		if tc.IsTLSClusterEnabled() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
+			})
+		}
+		if tc.IsTLSClusterEnabled() {
+			vols = append(vols, corev1.Volume{
+				Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(originTcName, label.TiKVLabelVal),
+					},
+				},
+			})
+		}
 	}
 
 	sysctls := "sysctl -w"

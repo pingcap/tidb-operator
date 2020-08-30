@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"reflect"
 	"regexp"
 	"strings"
@@ -55,6 +56,7 @@ type tiflashMemberManager struct {
 	svcLister                       corelisters.ServiceLister
 	podLister                       corelisters.PodLister
 	nodeLister                      corelisters.NodeLister
+	tidbLister                      listers.TidbClusterLister
 	autoFailover                    bool
 	tiflashFailover                 Failover
 	tiflashScaler                   Scaler
@@ -72,6 +74,7 @@ func NewTiFlashMemberManager(
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	nodeLister corelisters.NodeLister,
+	tidbLister listers.TidbClusterLister,
 	autoFailover bool,
 	tiflashFailover Failover,
 	tiflashScaler Scaler,
@@ -85,6 +88,7 @@ func NewTiFlashMemberManager(
 		typedControl:    typedControl,
 		setLister:       setLister,
 		svcLister:       svcLister,
+		tidbLister:      tidbLister,
 		autoFailover:    autoFailover,
 		tiflashFailover: tiflashFailover,
 		tiflashScaler:   tiflashScaler,
@@ -210,7 +214,7 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 		tfmm.tiflashFailover.Recover(tc)
 	}
 
-	newSet, err := getNewStatefulSet(tc, cm)
+	newSet, err := tfmm.getNewStatefulSet(tc, cm)
 	if err != nil {
 		return err
 	}
@@ -306,7 +310,7 @@ func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
 	return &svc
 }
 
-func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
+func (tfmm *tiflashMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	baseTiFlashSpec := tc.BaseTiFlashSpec()
@@ -334,7 +338,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			Name: fmt.Sprintf("data%d", k), MountPath: fmt.Sprintf("/data%d", k)})
 	}
 
-	if tc.IsTLSClusterEnabled() {
+	if tc.IsTLSClusterEnabled() && !tc.IsHeterogeneous() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
 		})
@@ -351,7 +355,7 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		},
 	}
 
-	if tc.IsTLSClusterEnabled() {
+	if tc.IsTLSClusterEnabled() && !tc.IsHeterogeneous() {
 		vols = append(vols, corev1.Volume{
 			Name: tiflashCertVolumeName, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -359,6 +363,29 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 				},
 			},
 		})
+	}
+
+	if tc.IsHeterogeneous() {
+		originTcName := tc.Spec.Cluster.Name
+		originTidbCluster, err := tfmm.tidbLister.TidbClusters(ns).Get(originTcName)
+		if errors.IsNotFound(err) {
+			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
+			return nil, nil
+		}
+		if tc.IsTLSClusterEnabled() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
+			})
+		}
+		if tc.IsTLSClusterEnabled() {
+			vols = append(vols, corev1.Volume{
+				Name: tiflashCertVolumeName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(originTcName, label.TiFlashLabelVal),
+					},
+				},
+			})
+		}
 	}
 
 	sysctls := "sysctl -w"

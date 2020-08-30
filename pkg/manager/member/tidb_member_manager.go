@@ -16,6 +16,7 @@ package member
 import (
 	"crypto/tls"
 	"fmt"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"path"
 	"strconv"
 	"strings"
@@ -63,6 +64,7 @@ type tidbMemberManager struct {
 	podLister                    corelisters.PodLister
 	cmLister                     corelisters.ConfigMapLister
 	secretLister                 corelisters.SecretLister
+	tidbLister                   listers.TidbClusterLister
 	tidbUpgrader                 Upgrader
 	autoFailover                 bool
 	tidbFailover                 Failover
@@ -78,6 +80,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	secretLister corelisters.SecretLister,
+	tidbLister listers.TidbClusterLister,
 	tidbUpgrader Upgrader,
 	autoFailover bool,
 	tidbFailover Failover) manager.Manager {
@@ -89,6 +92,7 @@ func NewTiDBMemberManager(setControl controller.StatefulSetControlInterface,
 		setLister:                    setLister,
 		svcLister:                    svcLister,
 		podLister:                    podLister,
+		tidbLister:                   tidbLister,
 		secretLister:                 secretLister,
 		tidbUpgrader:                 tidbUpgrader,
 		autoFailover:                 autoFailover,
@@ -222,7 +226,7 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return err
 	}
 
-	newTiDBSet := getNewTiDBSetForTidbCluster(tc, cm)
+	newTiDBSet := tmm.getNewTiDBSetForTidbCluster(tc, cm)
 	if setNotExist {
 		err = SetStatefulSetLastAppliedConfigAnnotation(newTiDBSet)
 		if err != nil {
@@ -534,7 +538,7 @@ func getNewTiDBHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.S
 	}
 }
 
-func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
+func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) *apps.StatefulSet {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	headlessSvcName := controller.TiDBPeerMemberName(tcName)
@@ -551,15 +555,33 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		{Name: "config", ReadOnly: true, MountPath: "/etc/tidb"},
 		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 	}
-	if tc.IsTLSClusterEnabled() {
+	if tc.IsTLSClusterEnabled() && !tc.IsHeterogeneous() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.IsHeterogeneous() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
 		})
+	}
+	if tc.IsHeterogeneous() {
+		originTcName := tc.Spec.Cluster.Name
+		originTidbCluster, err := tmm.tidbLister.TidbClusters(ns).Get(originTcName)
+		if errors.IsNotFound(err) {
+			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
+			return nil
+		}
+		if originTidbCluster.IsTLSClusterEnabled() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
+			})
+		}
+		if tc.Spec.TiDB.IsTLSClientEnabled() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
+			})
+		}
 	}
 
 	vols := []corev1.Volume{
@@ -581,7 +603,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			}},
 		},
 	}
-	if tc.IsTLSClusterEnabled() {
+	if tc.IsTLSClusterEnabled() && !tc.IsHeterogeneous() {
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -590,7 +612,8 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		})
 	}
-	if tc.Spec.TiDB.IsTLSClientEnabled() {
+
+	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.IsHeterogeneous() {
 		secretName := tlsClientSecretName(tc)
 		vols = append(vols, corev1.Volume{
 			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
@@ -599,6 +622,34 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				},
 			},
 		})
+	}
+
+	if tc.IsHeterogeneous() {
+		originTcName := tc.Spec.Cluster.Name
+		originTidbCluster, err := tmm.tidbLister.TidbClusters(ns).Get(originTcName)
+		if errors.IsNotFound(err) {
+			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
+			return nil
+		}
+		if originTidbCluster.IsTLSClusterEnabled() {
+			vols = append(vols, corev1.Volume{
+				Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterTLSSecretName(originTcName, label.TiDBLabelVal),
+					},
+				},
+			})
+		}
+		if tc.Spec.TiDB.IsTLSClientEnabled() {
+			secretName := tlsClientSecretName(originTcName)
+			vols = append(vols, corev1.Volume{
+				Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secretName,
+					},
+				},
+			})
+		}
 	}
 
 	sysctls := "sysctl -w"
