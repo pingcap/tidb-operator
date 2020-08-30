@@ -641,7 +641,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			})
 		}
 		if tc.Spec.TiDB.IsTLSClientEnabled() {
-			secretName := tlsClientSecretName(originTcName)
+			secretName := tlsClientSecretName(originTidbCluster)
 			vols = append(vols, corev1.Volume{
 				Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
