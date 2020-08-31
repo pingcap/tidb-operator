@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -97,10 +98,11 @@ func NewController(
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	//podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
+	podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
 	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
+	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	dcc := &Controller{
 		kubeClient: kubeCli,
@@ -129,11 +131,11 @@ func NewController(
 				svcInformer.Lister(),
 				podInformer.Lister(),
 			),
-			//meta.NewReclaimPolicyManager(
-			//	pvcInformer.Lister(),
-			//	pvInformer.Lister(),
-			//	pvControl,
-			//),
+			meta.NewReclaimPolicyDMManager(
+				pvcInformer.Lister(),
+				pvInformer.Lister(),
+				pvControl,
+			),
 			//meta.NewMetaManager(
 			//	pvcInformer.Lister(),
 			//	pvcControl,
@@ -142,12 +144,12 @@ func NewController(
 			//	podInformer.Lister(),
 			//	podControl,
 			//),
-			//mm.NewOrphanPodsCleaner(
-			//	podInformer.Lister(),
-			//	podControl,
-			//	pvcInformer.Lister(),
-			//	kubeCli,
-			//),
+			mm.NewOrphanPodsCleaner(
+				podInformer.Lister(),
+				podControl,
+				pvcInformer.Lister(),
+				kubeCli,
+			),
 			mm.NewRealPVCCleaner(
 				kubeCli,
 				podInformer.Lister(),
@@ -162,7 +164,7 @@ func NewController(
 				scInformer,
 			),
 			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()),
-			//podRestarter,
+			podRestarter,
 			&dmClusterConditionUpdater{},
 			recorder,
 		),

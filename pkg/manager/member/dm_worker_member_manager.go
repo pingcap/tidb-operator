@@ -76,7 +76,7 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 	}
 }
 
-func (wmm *workerMemberManager) Sync(dc *v1alpha1.DMCluster) error {
+func (wmm *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 

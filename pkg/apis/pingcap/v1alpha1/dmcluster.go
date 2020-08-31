@@ -33,6 +33,14 @@ func (dc *DMCluster) Timezone() string {
 	return tz
 }
 
+func (dc *DMCluster) IsPVReclaimEnabled() bool {
+	enabled := dc.Spec.EnablePVReclaim
+	if enabled == nil {
+		return defaultEnablePVReclaim
+	}
+	return *enabled
+}
+
 func (dc *DMCluster) IsTLSClusterEnabled() bool {
 	return dc.Spec.TLSCluster != nil && dc.Spec.TLSCluster.Enabled
 }

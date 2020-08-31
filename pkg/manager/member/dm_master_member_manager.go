@@ -87,7 +87,7 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 		masterUpgrader}
 }
 
-func (mmm *masterMemberManager) Sync(dc *v1alpha1.DMCluster) error {
+func (mmm *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	// Sync dm-master Service
 	if err := mmm.syncMasterServiceForDMCluster(dc); err != nil {
 		return err
