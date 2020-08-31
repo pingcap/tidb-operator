@@ -69,9 +69,6 @@ func (msd *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, 
 	resetReplicas(newSet, oldSet)
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
-	if dc.MasterUpgrading() {
-		return nil
-	}
 
 	klog.Infof("scaling out dm-master statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := msd.deleteDeferDeletingPVC(dc, oldSet.GetName(), v1alpha1.DMMasterMemberType, ordinal)
@@ -120,10 +117,6 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 	resetReplicas(newSet, oldSet)
 	memberName := ordinalPodName(v1alpha1.DMMasterMemberType, dcName, ordinal)
 	setName := oldSet.GetName()
-
-	if dc.MasterUpgrading() {
-		return nil
-	}
 
 	if !dc.Status.Master.Synced {
 		return fmt.Errorf("DMCluster: %s/%s's dm-master status sync failed, can't scale in now", ns, dcName)

@@ -240,17 +240,19 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		}
 	}
 
-	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
-		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
-			return err
-		}
-	}
-
+	// Scaling takes precedence over upgrading because:
+	// - if a dm-master fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
 	if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
 		return err
 	}
 
 	// TODO: dm add auto failover
+	// Perform failover logic if necessary. Note that this will only update
+	// DMCluster status. The actual scaling performs in next sync loop (if a
+	// new replica needs to be added).
 	// if mmm.autoFailover {
 	//	if mmm.shouldRecover(tc) {
 	//		mmm.masterFailover.Recover(tc)
@@ -260,6 +262,12 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 	//		}
 	//	}
 	// }
+
+	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
+		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
+			return err
+		}
+	}
 
 	return updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
 }
@@ -279,10 +287,12 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 	if err != nil {
 		return err
 	}
-	if upgrading {
-		dc.Status.Master.Phase = v1alpha1.UpgradePhase
-	} else if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
+
+	// Scaling takes precedence over upgrading.
+	if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
 		dc.Status.Master.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
+		dc.Status.Master.Phase = v1alpha1.UpgradePhase
 	} else {
 		dc.Status.Master.Phase = v1alpha1.NormalPhase
 	}
