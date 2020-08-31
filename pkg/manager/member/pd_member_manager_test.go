@@ -694,7 +694,8 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
-				g.Expect(*set.Spec.Replicas).To(Equal(int32(1)))
+				// scale in one pd from 3 -> 2
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
 				g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {

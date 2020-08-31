@@ -231,12 +231,11 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 		return err
 	}
 
-	if !templateEqual(newSet, oldSet) {
-		if err := tfmm.tiflashUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
-			return err
-		}
-	}
-
+	// Scaling takes precedence over upgrading because:
+	// - if a tiflash fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
 	if err := tfmm.tiflashScaler.Scale(tc, oldSet, newSet); err != nil {
 		return err
 	}
@@ -246,6 +245,12 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 			if err := tfmm.tiflashFailover.Failover(tc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !templateEqual(newSet, oldSet) {
+		if err := tfmm.tiflashUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
+			return err
 		}
 	}
 
@@ -619,7 +624,9 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 	if err != nil {
 		return err
 	}
-	if upgrading {
+	if tc.TiFlashStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.TiFlash.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
 		tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiFlash.Phase = v1alpha1.NormalPhase

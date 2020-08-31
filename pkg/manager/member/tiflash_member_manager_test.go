@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/utils/pointer"
+
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -478,6 +480,9 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		tc := newTidbClusterForPD()
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
+			Spec: apps.StatefulSetSpec{
+				Replicas: pointer.Int32Ptr(0),
+			},
 			Status: status,
 		}
 		if test.updateTC != nil {
