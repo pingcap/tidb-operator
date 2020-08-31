@@ -245,6 +245,20 @@ func (pf *pdFailover) tryToDeleteAFailureMember(tc *v1alpha1.TidbCluster) error 
 	return nil
 }
 
+func (pf *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
+	ordinals := tc.PDStsDesiredOrdinals(true)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
+}
+
+func (pf *pdFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+	return
+}
+
 func setMemberDeleted(tc *v1alpha1.TidbCluster, podName string) {
 	failureMember := tc.Status.PD.FailureMembers[podName]
 	failureMember.MemberDeleted = true
@@ -267,12 +281,6 @@ func (fpf *fakePDFailover) Recover(_ *v1alpha1.TidbCluster) {
 	return
 }
 
-func (pf *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) bool {
-	ordinals := tc.PDStsDesiredOrdinals(true)
-	ordinal, err := util.GetOrdinalFromPodName(podName)
-	if err != nil {
-		klog.Errorf("unexpected pod name %q: %v", podName, err)
-		return false
-	}
-	return ordinals.Has(ordinal)
+func (fpf *fakePDFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+	return
 }

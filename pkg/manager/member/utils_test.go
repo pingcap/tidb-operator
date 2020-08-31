@@ -14,7 +14,9 @@
 package member
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
@@ -22,7 +24,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestStatefulSetIsUpgrading(t *testing.T) {
@@ -158,6 +164,574 @@ func TestGetStsAnnotations(t *testing.T) {
 			got := getStsAnnotations(tt.tc.Annotations, tt.component)
 			if diff := cmp.Diff(tt.expected, got); diff != "" {
 				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestShouldRecover(t *testing.T) {
+	notReadyPods := []*v1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tikv-0",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tikv-1",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tiflash-0",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tiflash-1",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		},
+	}
+	pods := []*v1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tikv-0",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tikv-1",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tiflash-0",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tiflash-1",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+	}
+	podsWithFailover := append(pods, []*v1.Pod{
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tikv-2",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		},
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "failover-tiflash-2",
+				Namespace: v1.NamespaceDefault,
+			},
+			Status: v1.PodStatus{
+				Conditions: []v1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+		},
+	}...)
+	tests := []struct {
+		name string
+		tc   *v1alpha1.TidbCluster
+		pods []*v1.Pod
+		want bool
+	}{
+		{
+			name: "should not recover if no failure members",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 3,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "should not recover if get pod failure",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 3,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 3,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"1": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"3": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"1": {
+								PodName: "failover-tikv-1",
+								StoreID: "1",
+							},
+						},
+					},
+					TiFlash: v1alpha1.TiFlashStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"2": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"4": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"2": {
+								PodName: "failover-tiflash-1",
+								StoreID: "2",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "should not recover if pod not ready",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 2,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"1": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"3": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"1": {
+								PodName: "failover-tikv-1",
+								StoreID: "1",
+							},
+						},
+					},
+					TiFlash: v1alpha1.TiFlashStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"2": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"4": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"2": {
+								PodName: "failover-tiflash-1",
+								StoreID: "2",
+							},
+						},
+					},
+				},
+			},
+			pods: notReadyPods,
+			want: false,
+		},
+		{
+			name: "should not recover if a member is not healthy",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 2,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"1": {
+								State:              v1alpha1.TiKVStateDown,
+								PodName:            "failover-tikv-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"3": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"1": {
+								PodName: "failover-tikv-1",
+								StoreID: "1",
+							},
+						},
+					},
+					TiFlash: v1alpha1.TiFlashStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"2": {
+								State:              v1alpha1.TiKVStateDown,
+								PodName:            "failover-tiflash-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"4": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"2": {
+								PodName: "failover-tiflash-1",
+								StoreID: "2",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "should not recover if some stores do not exist",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 2,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"3": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"1": {
+								PodName: "failover-tikv-1",
+								StoreID: "1",
+							},
+						},
+					},
+					TiFlash: v1alpha1.TiFlashStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"4": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"2": {
+								PodName: "failover-tiflash-1",
+								StoreID: "2",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: false,
+		},
+		{
+			name: "should recover if all members are ready and healthy",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 2,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"1": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"3": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"1": {
+								PodName: "failover-tikv-1",
+								StoreID: "1",
+							},
+						},
+					},
+					TiFlash: v1alpha1.TiFlashStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"2": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"4": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"2": {
+								PodName: "failover-tiflash-1",
+								StoreID: "2",
+							},
+						},
+					},
+				},
+			},
+			pods: pods,
+			want: true,
+		},
+		{
+			name: "should recover if all members are ready and healthy (ignore auto-created failover pods)",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "failover",
+					Namespace: v1.NamespaceDefault,
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 2,
+					},
+					TiFlash: &v1alpha1.TiFlashSpec{
+						Replicas: 2,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"1": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"5": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tikv-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"1": {
+								PodName: "failover-tikv-1",
+								StoreID: "1",
+							},
+							"3": {
+								PodName: "failover-tikv-2",
+								StoreID: "3",
+							},
+						},
+					},
+					TiFlash: v1alpha1.TiFlashStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"2": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-1",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+							"6": {
+								State:              v1alpha1.TiKVStateUp,
+								PodName:            "failover-tiflash-0",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(-70 * time.Minute)},
+							},
+						},
+						FailureStores: map[string]v1alpha1.TiKVFailureStore{
+							"2": {
+								PodName: "failover-tiflash-1",
+								StoreID: "2",
+							},
+							"4": {
+								PodName: "failover-tiflash-2",
+								StoreID: "4",
+							},
+						},
+					},
+				},
+			},
+			pods: podsWithFailover,
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client := kubefake.NewSimpleClientset()
+			for _, pod := range tt.pods {
+				client.CoreV1().Pods(pod.Namespace).Create(pod)
+			}
+			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, 0)
+			podLister := kubeInformerFactory.Core().V1().Pods().Lister()
+			kubeInformerFactory.Start(ctx.Done())
+			kubeInformerFactory.WaitForCacheSync(ctx.Done())
+
+			got := shouldRecover(tt.tc, label.TiFlashLabelVal, podLister)
+			if got != tt.want {
+				t.Fatalf("wants %v, got %v", tt.want, got)
+			}
+			got = shouldRecover(tt.tc, label.TiKVLabelVal, podLister)
+			if got != tt.want {
+				t.Fatalf("wants %v, got %v", tt.want, got)
+			}
+			got = shouldRecover(tt.tc, label.PDLabelVal, podLister)
+			if got != false {
+				t.Fatalf("wants %v, got %v", false, got)
 			}
 		})
 	}
