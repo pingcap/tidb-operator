@@ -16,7 +16,6 @@ package dmapi
 import (
 	"crypto/tls"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -59,15 +58,15 @@ func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string,
 		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.ClusterClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
-			return &masterClient{url: MasterClientURL(namespace, dcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
 		}
 
-		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig)
+		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
 	}
 
 	key := masterClientKey(scheme, namespace, dcName)
 	if _, ok := mc.masterClients[key]; !ok {
-		mc.masterClients[key] = NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, nil)
+		mc.masterClients[key] = NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, nil, false)
 	}
 	return mc.masterClients[key]
 }
@@ -85,26 +84,24 @@ func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName str
 		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.ClusterClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
-			return &masterClient{url: MasterPeerClientURL(namespace, dcName, podName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
 		}
 
-		return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig)
+		return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
 	}
 
-	return &masterClient{url: MasterPeerClientURL(namespace, dcName, podName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+	return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
 }
 
-// masterClientKey returns the master client key
-func masterClientKey(scheme string, namespace string, clusterName string) string {
+func masterClientKey(scheme, namespace, clusterName string) string {
 	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, namespace)
 }
 
-// MasterClientURL builds the url of master client
-func MasterClientURL(namespace string, clusterName string, scheme string) string {
+func MasterClientURL(namespace, clusterName, scheme string) string {
 	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, namespace)
 }
 
-func MasterPeerClientURL(namespace string, clusterName, podName, scheme string) string {
+func MasterPeerClientURL(namespace, clusterName, podName, scheme string) string {
 	return fmt.Sprintf("%s://%s.%s-dm-master-peer.%s:8261", scheme, podName, clusterName, namespace)
 }
 

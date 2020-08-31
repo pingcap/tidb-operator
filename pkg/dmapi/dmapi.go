@@ -226,11 +226,7 @@ func (mc *masterClient) DeleteWorker(name string) error {
 }
 
 // NewMasterClient returns a new MasterClient
-func NewMasterClient(url string, timeout time.Duration, tlsConfig *tls.Config) MasterClient {
-	var disableKeepalive bool
-	if tlsConfig != nil {
-		disableKeepalive = true
-	}
+func NewMasterClient(url string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) MasterClient {
 	return &masterClient{
 		url: url,
 		httpClient: &http.Client{
