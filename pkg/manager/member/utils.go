@@ -179,6 +179,10 @@ func TiKVGroupPodName(tgName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiKVGroupMemberName(tgName), ordinal)
 }
 
+func DMMasterPodName(dcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dcName), ordinal)
+}
+
 // CombineAnnotations merges two annotations maps
 func CombineAnnotations(a, b map[string]string) map[string]string {
 	if a == nil {

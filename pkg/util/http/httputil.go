@@ -57,3 +57,25 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	}
 	return body, err
 }
+
+// PutBodyOK returns the body or an error if the response is not okay
+func PutBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
+	req, err := http.NewRequest("PUT", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer DeferClose(res.Body)
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode >= 400 {
+		errMsg := fmt.Errorf("Error response %v URL %s,body response: %s", res.StatusCode, apiURL, string(body[:]))
+		return nil, errMsg
+	}
+	return body, err
+}
