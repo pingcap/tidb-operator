@@ -67,6 +67,14 @@ func (dc *DMCluster) MasterStsDesiredReplicas() int32 {
 	return dc.Spec.Master.Replicas + int32(len(dc.Status.Master.FailureMembers))
 }
 
+func (dc *DMCluster) MasterStsActualReplicas() int32 {
+	stsStatus := dc.Status.Master.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 // TODO: support fail-over
 func (dc *DMCluster) WorkerStsDesiredReplicas() int32 {
 	if dc.Spec.Worker == nil {
@@ -116,6 +124,10 @@ func (dc *DMCluster) MasterVersion() string {
 
 func (dc *DMCluster) MasterUpgrading() bool {
 	return dc.Status.Master.Phase == UpgradePhase
+}
+
+func (dc *DMCluster) MasterScaling() bool {
+	return dc.Status.Master.Phase == ScalePhase
 }
 
 func (dc *DMCluster) MasterIsAvailable() bool {

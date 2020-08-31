@@ -48,40 +48,40 @@ const (
 )
 
 type masterMemberManager struct {
-	masterControl dmapi.MasterControlInterface
-	setControl    controller.StatefulSetControlInterface
-	svcControl    controller.ServiceControlInterface
-	//podControl    controller.PodControlInterface
-	typedControl controller.TypedControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
-	epsLister    corelisters.EndpointsLister
-	pvcLister    corelisters.PersistentVolumeClaimLister
+	masterControl  dmapi.MasterControlInterface
+	setControl     controller.StatefulSetControlInterface
+	svcControl     controller.ServiceControlInterface
+	typedControl   controller.TypedControlInterface
+	setLister      v1.StatefulSetLister
+	svcLister      corelisters.ServiceLister
+	podLister      corelisters.PodLister
+	epsLister      corelisters.EndpointsLister
+	pvcLister      corelisters.PersistentVolumeClaimLister
+	masterUpgrader DMUpgrader
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
 func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	//podControl controller.PodControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
-	pvcLister corelisters.PersistentVolumeClaimLister) manager.DMManager {
+	pvcLister corelisters.PersistentVolumeClaimLister,
+	masterUpgrader DMUpgrader) manager.DMManager {
 	return &masterMemberManager{
 		masterControl,
 		setControl,
 		svcControl,
-		//podControl,
 		typedControl,
 		setLister,
 		svcLister,
 		podLister,
 		epsLister,
-		pvcLister}
+		pvcLister,
+		masterUpgrader}
 }
 
 func (mmm *masterMemberManager) Sync(dc *v1alpha1.DMCluster) error {
@@ -237,12 +237,11 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		}
 	}
 
-	// TODO: dm add rolling update later
-	// if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
-	//	if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
-	//		return err
-	//	}
-	// }
+	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
+		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
+			return err
+		}
+	}
 
 	// TODO: dm add scaler
 	//if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
