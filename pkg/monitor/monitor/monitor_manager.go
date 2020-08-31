@@ -293,10 +293,6 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 			Resources: []string{"pods"},
 			Verbs:     []string{"get", "list", "watch"},
 		},
-		{
-			NonResourceURLs: []string{"/metrics"},
-			Verbs:           []string{"get"},
-		},
 	}
 	if supported, err := utildiscovery.IsAPIGroupVersionSupported(mm.discoveryInterface, "security.openshift.io/v1"); err != nil {
 		return nil, err
