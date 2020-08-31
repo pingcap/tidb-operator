@@ -47,13 +47,13 @@ var (
 				OverlapThreshold: pointer.Float64Ptr(0.6),
 				FlashProxy: &v1alpha1.FlashProxy{
 					Addr:          pointer.StringPtr("0.0.0.0:20170"),
-					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
-				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
+				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test:10080"),
 			},
 			HTTPPort:               pointer.Int32Ptr(8123),
 			HTTPSPort:              pointer.Int32Ptr(8123),
@@ -94,7 +94,7 @@ var (
 			},
 			FlashRaft: &v1alpha1.FlashRaft{
 				KVStorePath:   pointer.StringPtr("/data0/kvstore"),
-				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				PDAddr:        pointer.StringPtr("test-pd.test:2379"),
 				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
@@ -123,9 +123,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:3930"),
 				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
-				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20292"),
 			},
 		},
 	}
@@ -148,13 +148,13 @@ var (
 				OverlapThreshold: pointer.Float64Ptr(0.6),
 				FlashProxy: &v1alpha1.FlashProxy{
 					Addr:          pointer.StringPtr("0.0.0.0:20170"),
-					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
-				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
+				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test:10080"),
 			},
 			HTTPPort:               pointer.Int32Ptr(8123),
 			InternalServerHTTPPort: pointer.Int32Ptr(9009),
@@ -194,7 +194,7 @@ var (
 			},
 			FlashRaft: &v1alpha1.FlashRaft{
 				KVStorePath:   pointer.StringPtr("/data0/kvstore"),
-				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				PDAddr:        pointer.StringPtr("test-pd.test:2379"),
 				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
@@ -222,9 +222,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:3930"),
 				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
-				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20292"),
 			},
 		},
 	}
@@ -247,13 +247,13 @@ var (
 				OverlapThreshold: pointer.Float64Ptr(0.6),
 				FlashProxy: &v1alpha1.FlashProxy{
 					Addr:          pointer.StringPtr("0.0.0.0:20170"),
-					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20170"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20170"),
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 					LogFile:       pointer.StringPtr("/data0/logs/proxy.log"),
 				},
-				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
-				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10080"),
+				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test:10080"),
 			},
 			HTTPSPort:              pointer.Int32Ptr(8123),
 			InternalServerHTTPPort: pointer.Int32Ptr(9009),
@@ -293,7 +293,7 @@ var (
 			},
 			FlashRaft: &v1alpha1.FlashRaft{
 				KVStorePath:   pointer.StringPtr("/data0/kvstore"),
-				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				PDAddr:        pointer.StringPtr("test-pd.test:2379"),
 				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
@@ -326,9 +326,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:3930"),
 				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
-				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20292"),
 			},
 			Security: &v1alpha1.TiKVSecurityConfig{
 				CAPath:   pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey)),
@@ -356,13 +356,13 @@ var (
 				OverlapThreshold: pointer.Float64Ptr(0.7),
 				FlashProxy: &v1alpha1.FlashProxy{
 					Addr:          pointer.StringPtr("0.0.0.0:20171"),
-					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20171"),
+					AdvertiseAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20171"),
 					Config:        pointer.StringPtr("/data0/proxy1.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy1"),
 					LogFile:       pointer.StringPtr("/data0/logs/proxy1.log"),
 				},
-				ServiceAddr:    pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3931"),
-				TiDBStatusAddr: pointer.StringPtr("test-tidb.test.svc:10081"),
+				ServiceAddr:    pointer.StringPtr("0.0.0.0:3930"),
+				TiDBStatusAddr: pointer.StringPtr("test-tidb.test:10081"),
 			},
 			HTTPPort:               pointer.Int32Ptr(8121),
 			InternalServerHTTPPort: pointer.Int32Ptr(9001),
@@ -402,7 +402,7 @@ var (
 			},
 			FlashRaft: &v1alpha1.FlashRaft{
 				KVStorePath:   pointer.StringPtr("/data1/kvstore"),
-				PDAddr:        pointer.StringPtr("test-pd.test.svc:2379"),
+				PDAddr:        pointer.StringPtr("test-pd.test:2379"),
 				StorageEngine: pointer.StringPtr("dt"),
 			},
 			FlashStatus: &v1alpha1.FlashStatus{
@@ -430,9 +430,9 @@ var (
 		ProxyConfig: &v1alpha1.ProxyConfig{
 			LogLevel: pointer.StringPtr("info1"),
 			Server: &v1alpha1.FlashServerConfig{
-				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:3930"),
+				EngineAddr:          pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:3930"),
 				StatusAddr:          pointer.StringPtr("0.0.0.0:20292"),
-				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:20292"),
+				AdvertiseStatusAddr: pointer.StringPtr("test-tiflash-POD_NUM.test-tiflash-peer.test:20292"),
 			},
 		},
 	}

@@ -8441,6 +8441,8 @@ spec:
                               type: integer
                             flash_cluster:
                               properties:
+                                log:
+                                  type: string
                                 master_ttl:
                                   format: int32
                                   type: integer
@@ -8454,13 +8456,30 @@ spec:
                             overlap_threshold:
                               format: double
                               type: number
+                            proxy:
+                              properties:
+                                addr:
+                                  type: string
+                                advertise-addr:
+                                  type: string
+                                config:
+                                  type: string
+                                data-dir:
+                                  type: string
+                                log-file:
+                                  type: string
+                              type: object
                           type: object
                         logger:
                           properties:
                             count:
                               format: int32
                               type: integer
+                            errorlog:
+                              type: string
                             level:
+                              type: string
+                            log:
                               type: string
                             size:
                               type: string
@@ -8473,6 +8492,1085 @@ spec:
                           type: integer
                         path_realtime_mode:
                           type: boolean
+                        tmp_path:
+                          type: string
+                      type: object
+                    proxy:
+                      properties:
+                        coprocessor:
+                          properties:
+                            batch-split-limit:
+                              format: int64
+                              type: integer
+                            region-max-keys:
+                              format: int64
+                              type: integer
+                            region-max-size:
+                              type: string
+                            region-split-keys:
+                              format: int64
+                              type: integer
+                            region-split-size:
+                              type: string
+                            split-region-on-table:
+                              type: boolean
+                          type: object
+                        gc:
+                          properties:
+                            "\tbatch-keys":
+                              format: int64
+                              type: integer
+                            "\tmax-write-bytes-per-sec":
+                              type: string
+                          type: object
+                        import:
+                          properties:
+                            import-dir:
+                              type: string
+                            max-open-engines:
+                              format: int64
+                              type: integer
+                            max-prepare-duration:
+                              type: string
+                            num-import-jobs:
+                              format: int64
+                              type: integer
+                            num-import-sst-jobs:
+                              format: int64
+                              type: integer
+                            num-threads:
+                              format: int64
+                              type: integer
+                            region-split-size:
+                              type: string
+                            stream-channel-window:
+                              format: int64
+                              type: integer
+                            upload-speed-limit:
+                              type: string
+                          type: object
+                        log-file:
+                          type: string
+                        log-level:
+                          type: string
+                        log-rotation-timespan:
+                          type: string
+                        panic-when-unexpected-key-or-data:
+                          type: boolean
+                        pd:
+                          properties:
+                            endpoints:
+                              items:
+                                type: string
+                              type: array
+                            retry-interval:
+                              type: string
+                            retry-log-every:
+                              format: int64
+                              type: integer
+                            retry-max-count:
+                              format: int64
+                              type: integer
+                          type: object
+                        raftdb:
+                          properties:
+                            allow-concurrent-memtable-write:
+                              type: boolean
+                            bytes-per-sync:
+                              type: string
+                            compaction-readahead-size:
+                              type: string
+                            create-if-missing:
+                              type: boolean
+                            defaultcf:
+                              properties:
+                                block-based-bloom-filter:
+                                  type: boolean
+                                block-cache-size:
+                                  type: string
+                                block-size:
+                                  type: string
+                                bloom-filter-bits-per-key:
+                                  format: int64
+                                  type: integer
+                                cache-index-and-filter-blocks:
+                                  type: boolean
+                                compaction-pri:
+                                  format: int64
+                                  type: integer
+                                compaction-style:
+                                  format: int64
+                                  type: integer
+                                compression-per-level:
+                                  items:
+                                    type: string
+                                  type: array
+                                disable-auto-compactions:
+                                  type: boolean
+                                disable-block-cache:
+                                  type: boolean
+                                dynamic-level-bytes:
+                                  type: boolean
+                                enable-doubly-skiplist:
+                                  type: boolean
+                                force-consistency-checks:
+                                  type: boolean
+                                hard-pending-compaction-bytes-limit:
+                                  type: string
+                                level0-file-num-compaction-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-slowdown-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-stop-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                max-bytes-for-level-base:
+                                  type: string
+                                max-bytes-for-level-multiplier:
+                                  format: int64
+                                  type: integer
+                                max-compaction-bytes:
+                                  type: string
+                                max-write-buffer-number:
+                                  format: int64
+                                  type: integer
+                                min-write-buffer-number-to-merge:
+                                  format: int64
+                                  type: integer
+                                num-levels:
+                                  format: int64
+                                  type: integer
+                                optimize-filters-for-hits:
+                                  type: boolean
+                                pin-l0-filter-and-index-blocks:
+                                  type: boolean
+                                prop-keys-index-distance:
+                                  format: int64
+                                  type: integer
+                                prop-size-index-distance:
+                                  format: int64
+                                  type: integer
+                                read-amp-bytes-per-bit:
+                                  format: int64
+                                  type: integer
+                                soft-pending-compaction-bytes-limit:
+                                  type: string
+                                target-file-size-base:
+                                  type: string
+                                titan:
+                                  properties:
+                                    blob-cache-size:
+                                      type: string
+                                    blob-file-compression:
+                                      type: string
+                                    blob-run-mode:
+                                      type: string
+                                    discardable-ratio:
+                                      format: double
+                                      type: number
+                                    gc-merge-rewrite:
+                                      type: boolean
+                                    level_merge:
+                                      type: boolean
+                                    max-gc-batch-size:
+                                      type: string
+                                    merge-small-file-threshold:
+                                      type: string
+                                    min-blob-size:
+                                      type: string
+                                    min-gc-batch-size:
+                                      type: string
+                                    sample-ratio:
+                                      format: double
+                                      type: number
+                                  type: object
+                                use-bloom-filter:
+                                  type: boolean
+                                whole-key-filtering:
+                                  type: boolean
+                                write-buffer-size:
+                                  type: string
+                              type: object
+                            enable-pipelined-write:
+                              type: boolean
+                            enable-statistics:
+                              type: boolean
+                            info-log-dir:
+                              type: string
+                            info-log-keep-log-file-num:
+                              format: int64
+                              type: integer
+                            info-log-max-size:
+                              type: string
+                            info-log-roll-time:
+                              type: string
+                            max-background-jobs:
+                              format: int64
+                              type: integer
+                            max-manifest-file-size:
+                              type: string
+                            max-open-files:
+                              format: int64
+                              type: integer
+                            max-sub-compactions:
+                              format: int64
+                              type: integer
+                            max-total-wal-size:
+                              type: string
+                            stats-dump-period:
+                              type: string
+                            use-direct-io-for-flush-and-compaction:
+                              type: boolean
+                            wal-bytes-per-sync:
+                              type: string
+                            wal-dir:
+                              type: string
+                            wal-recovery-mode:
+                              type: string
+                            wal-size-limit:
+                              type: string
+                            wal-ttl-seconds:
+                              format: int64
+                              type: integer
+                            writable-file-max-buffer-size:
+                              type: string
+                          type: object
+                        raftstore:
+                          properties:
+                            abnormal-leader-missing-duration:
+                              type: string
+                            allow-remove-leader:
+                              type: boolean
+                            apply-early:
+                              type: boolean
+                            apply-max-batch-size:
+                              format: int64
+                              type: integer
+                            apply-pool-size:
+                              format: int64
+                              type: integer
+                            apply-yield-duration:
+                              type: string
+                            clean-stale-peer-delay:
+                              type: string
+                            cleanup-import-sst-interval:
+                              type: string
+                            consistency-check-interval:
+                              type: string
+                            dev-assert:
+                              type: boolean
+                            hibernate-regions:
+                              type: boolean
+                            leader-transfer-max-log-lag:
+                              format: int64
+                              type: integer
+                            lock-cf-compact-bytes-threshold:
+                              type: string
+                            lock-cf-compact-interval:
+                              type: string
+                            max-leader-missing-duration:
+                              type: string
+                            max-peer-down-duration:
+                              type: string
+                            merge-check-tick-interval:
+                              type: string
+                            merge-max-log-gap:
+                              format: int64
+                              type: integer
+                            messages-per-tick:
+                              format: int64
+                              type: integer
+                            notify-capacity:
+                              format: int64
+                              type: integer
+                            pd-heartbeat-tick-interval:
+                              type: string
+                            pd-store-heartbeat-tick-interval:
+                              type: string
+                            peer-stale-state-check-interval:
+                              type: string
+                            perf-level:
+                              format: int64
+                              type: integer
+                            prevote:
+                              type: boolean
+                            raft-base-tick-interval:
+                              type: string
+                            raft-election-timeout-ticks:
+                              format: int64
+                              type: integer
+                            raft-entry-cache-life-time:
+                              type: string
+                            raft-entry-max-size:
+                              type: string
+                            raft-heartbeat-ticks:
+                              format: int64
+                              type: integer
+                            raft-log-gc-count-limit:
+                              format: int64
+                              type: integer
+                            raft-log-gc-size-limit:
+                              type: string
+                            raft-log-gc-threshold:
+                              format: int64
+                              type: integer
+                            raft-log-gc-tick-interval:
+                              type: string
+                            raft-max-inflight-msgs:
+                              format: int64
+                              type: integer
+                            raft-max-size-per-msg:
+                              type: string
+                            raft-reject-transfer-leader-duration:
+                              type: string
+                            raft-store-max-leader-lease:
+                              type: string
+                            region-compact-check-interval:
+                              type: string
+                            region-compact-check-step:
+                              format: int64
+                              type: integer
+                            region-compact-min-tombstones:
+                              format: int64
+                              type: integer
+                            region-compact-tombstones-percent:
+                              format: int64
+                              type: integer
+                            region-split-check-diff:
+                              type: string
+                            report-region-flow-interval:
+                              type: string
+                            right-derive-when-split:
+                              type: boolean
+                            snap-apply-batch-size:
+                              type: string
+                            snap-gc-timeout:
+                              type: string
+                            snap-mgr-gc-tick-interval:
+                              type: string
+                            split-region-check-tick-interval:
+                              type: string
+                            store-max-batch-size:
+                              format: int64
+                              type: integer
+                            store-pool-size:
+                              format: int64
+                              type: integer
+                            store-reschedule-duration:
+                              type: string
+                            sync-log:
+                              type: boolean
+                            use-delete-range:
+                              type: boolean
+                          type: object
+                        readpool:
+                          properties:
+                            coprocessor:
+                              properties:
+                                high-concurrency:
+                                  format: int64
+                                  type: integer
+                                low-concurrency:
+                                  format: int64
+                                  type: integer
+                                max-tasks-per-worker-high:
+                                  format: int64
+                                  type: integer
+                                max-tasks-per-worker-low:
+                                  format: int64
+                                  type: integer
+                                max-tasks-per-worker-normal:
+                                  format: int64
+                                  type: integer
+                                normal-concurrency:
+                                  format: int64
+                                  type: integer
+                                stack-size:
+                                  type: string
+                                use-unified-pool:
+                                  type: boolean
+                              type: object
+                            storage:
+                              properties:
+                                high-concurrency:
+                                  format: int64
+                                  type: integer
+                                low-concurrency:
+                                  format: int64
+                                  type: integer
+                                max-tasks-per-worker-high:
+                                  format: int64
+                                  type: integer
+                                max-tasks-per-worker-low:
+                                  format: int64
+                                  type: integer
+                                max-tasks-per-worker-normal:
+                                  format: int64
+                                  type: integer
+                                normal-concurrency:
+                                  format: int64
+                                  type: integer
+                                stack-size:
+                                  type: string
+                                use-unified-pool:
+                                  type: boolean
+                              type: object
+                            unified:
+                              properties:
+                                max-tasks-per-worker:
+                                  format: int32
+                                  type: integer
+                                max-thread-count:
+                                  format: int32
+                                  type: integer
+                                min-thread-count:
+                                  format: int32
+                                  type: integer
+                                stack-size:
+                                  type: string
+                              type: object
+                          type: object
+                        rocksdb:
+                          properties:
+                            auto-tuned:
+                              type: boolean
+                            bytes-per-sync:
+                              type: string
+                            compaction-readahead-size:
+                              type: string
+                            create-if-missing:
+                              type: boolean
+                            defaultcf:
+                              properties:
+                                block-based-bloom-filter:
+                                  type: boolean
+                                block-cache-size:
+                                  type: string
+                                block-size:
+                                  type: string
+                                bloom-filter-bits-per-key:
+                                  format: int64
+                                  type: integer
+                                cache-index-and-filter-blocks:
+                                  type: boolean
+                                compaction-pri:
+                                  format: int64
+                                  type: integer
+                                compaction-style:
+                                  format: int64
+                                  type: integer
+                                compression-per-level:
+                                  items:
+                                    type: string
+                                  type: array
+                                disable-auto-compactions:
+                                  type: boolean
+                                disable-block-cache:
+                                  type: boolean
+                                dynamic-level-bytes:
+                                  type: boolean
+                                enable-doubly-skiplist:
+                                  type: boolean
+                                force-consistency-checks:
+                                  type: boolean
+                                hard-pending-compaction-bytes-limit:
+                                  type: string
+                                level0-file-num-compaction-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-slowdown-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-stop-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                max-bytes-for-level-base:
+                                  type: string
+                                max-bytes-for-level-multiplier:
+                                  format: int64
+                                  type: integer
+                                max-compaction-bytes:
+                                  type: string
+                                max-write-buffer-number:
+                                  format: int64
+                                  type: integer
+                                min-write-buffer-number-to-merge:
+                                  format: int64
+                                  type: integer
+                                num-levels:
+                                  format: int64
+                                  type: integer
+                                optimize-filters-for-hits:
+                                  type: boolean
+                                pin-l0-filter-and-index-blocks:
+                                  type: boolean
+                                prop-keys-index-distance:
+                                  format: int64
+                                  type: integer
+                                prop-size-index-distance:
+                                  format: int64
+                                  type: integer
+                                read-amp-bytes-per-bit:
+                                  format: int64
+                                  type: integer
+                                soft-pending-compaction-bytes-limit:
+                                  type: string
+                                target-file-size-base:
+                                  type: string
+                                titan:
+                                  properties:
+                                    blob-cache-size:
+                                      type: string
+                                    blob-file-compression:
+                                      type: string
+                                    blob-run-mode:
+                                      type: string
+                                    discardable-ratio:
+                                      format: double
+                                      type: number
+                                    gc-merge-rewrite:
+                                      type: boolean
+                                    level_merge:
+                                      type: boolean
+                                    max-gc-batch-size:
+                                      type: string
+                                    merge-small-file-threshold:
+                                      type: string
+                                    min-blob-size:
+                                      type: string
+                                    min-gc-batch-size:
+                                      type: string
+                                    sample-ratio:
+                                      format: double
+                                      type: number
+                                  type: object
+                                use-bloom-filter:
+                                  type: boolean
+                                whole-key-filtering:
+                                  type: boolean
+                                write-buffer-size:
+                                  type: string
+                              type: object
+                            enable-pipelined-write:
+                              type: boolean
+                            enable-statistics:
+                              type: boolean
+                            info-log-dir:
+                              type: string
+                            info-log-keep-log-file-num:
+                              format: int64
+                              type: integer
+                            info-log-max-size:
+                              type: string
+                            info-log-roll-time:
+                              type: string
+                            lockcf:
+                              properties:
+                                block-based-bloom-filter:
+                                  type: boolean
+                                block-cache-size:
+                                  type: string
+                                block-size:
+                                  type: string
+                                bloom-filter-bits-per-key:
+                                  format: int64
+                                  type: integer
+                                cache-index-and-filter-blocks:
+                                  type: boolean
+                                compaction-pri:
+                                  format: int64
+                                  type: integer
+                                compaction-style:
+                                  format: int64
+                                  type: integer
+                                compression-per-level:
+                                  items:
+                                    type: string
+                                  type: array
+                                disable-auto-compactions:
+                                  type: boolean
+                                disable-block-cache:
+                                  type: boolean
+                                dynamic-level-bytes:
+                                  type: boolean
+                                enable-doubly-skiplist:
+                                  type: boolean
+                                force-consistency-checks:
+                                  type: boolean
+                                hard-pending-compaction-bytes-limit:
+                                  type: string
+                                level0-file-num-compaction-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-slowdown-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-stop-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                max-bytes-for-level-base:
+                                  type: string
+                                max-bytes-for-level-multiplier:
+                                  format: int64
+                                  type: integer
+                                max-compaction-bytes:
+                                  type: string
+                                max-write-buffer-number:
+                                  format: int64
+                                  type: integer
+                                min-write-buffer-number-to-merge:
+                                  format: int64
+                                  type: integer
+                                num-levels:
+                                  format: int64
+                                  type: integer
+                                optimize-filters-for-hits:
+                                  type: boolean
+                                pin-l0-filter-and-index-blocks:
+                                  type: boolean
+                                prop-keys-index-distance:
+                                  format: int64
+                                  type: integer
+                                prop-size-index-distance:
+                                  format: int64
+                                  type: integer
+                                read-amp-bytes-per-bit:
+                                  format: int64
+                                  type: integer
+                                soft-pending-compaction-bytes-limit:
+                                  type: string
+                                target-file-size-base:
+                                  type: string
+                                titan:
+                                  properties:
+                                    blob-cache-size:
+                                      type: string
+                                    blob-file-compression:
+                                      type: string
+                                    blob-run-mode:
+                                      type: string
+                                    discardable-ratio:
+                                      format: double
+                                      type: number
+                                    gc-merge-rewrite:
+                                      type: boolean
+                                    level_merge:
+                                      type: boolean
+                                    max-gc-batch-size:
+                                      type: string
+                                    merge-small-file-threshold:
+                                      type: string
+                                    min-blob-size:
+                                      type: string
+                                    min-gc-batch-size:
+                                      type: string
+                                    sample-ratio:
+                                      format: double
+                                      type: number
+                                  type: object
+                                use-bloom-filter:
+                                  type: boolean
+                                whole-key-filtering:
+                                  type: boolean
+                                write-buffer-size:
+                                  type: string
+                              type: object
+                            max-background-jobs:
+                              format: int64
+                              type: integer
+                            max-manifest-file-size:
+                              type: string
+                            max-open-files:
+                              format: int64
+                              type: integer
+                            max-sub-compactions:
+                              format: int64
+                              type: integer
+                            max-total-wal-size:
+                              type: string
+                            raftcf:
+                              properties:
+                                block-based-bloom-filter:
+                                  type: boolean
+                                block-cache-size:
+                                  type: string
+                                block-size:
+                                  type: string
+                                bloom-filter-bits-per-key:
+                                  format: int64
+                                  type: integer
+                                cache-index-and-filter-blocks:
+                                  type: boolean
+                                compaction-pri:
+                                  format: int64
+                                  type: integer
+                                compaction-style:
+                                  format: int64
+                                  type: integer
+                                compression-per-level:
+                                  items:
+                                    type: string
+                                  type: array
+                                disable-auto-compactions:
+                                  type: boolean
+                                disable-block-cache:
+                                  type: boolean
+                                dynamic-level-bytes:
+                                  type: boolean
+                                enable-doubly-skiplist:
+                                  type: boolean
+                                force-consistency-checks:
+                                  type: boolean
+                                hard-pending-compaction-bytes-limit:
+                                  type: string
+                                level0-file-num-compaction-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-slowdown-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-stop-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                max-bytes-for-level-base:
+                                  type: string
+                                max-bytes-for-level-multiplier:
+                                  format: int64
+                                  type: integer
+                                max-compaction-bytes:
+                                  type: string
+                                max-write-buffer-number:
+                                  format: int64
+                                  type: integer
+                                min-write-buffer-number-to-merge:
+                                  format: int64
+                                  type: integer
+                                num-levels:
+                                  format: int64
+                                  type: integer
+                                optimize-filters-for-hits:
+                                  type: boolean
+                                pin-l0-filter-and-index-blocks:
+                                  type: boolean
+                                prop-keys-index-distance:
+                                  format: int64
+                                  type: integer
+                                prop-size-index-distance:
+                                  format: int64
+                                  type: integer
+                                read-amp-bytes-per-bit:
+                                  format: int64
+                                  type: integer
+                                soft-pending-compaction-bytes-limit:
+                                  type: string
+                                target-file-size-base:
+                                  type: string
+                                titan:
+                                  properties:
+                                    blob-cache-size:
+                                      type: string
+                                    blob-file-compression:
+                                      type: string
+                                    blob-run-mode:
+                                      type: string
+                                    discardable-ratio:
+                                      format: double
+                                      type: number
+                                    gc-merge-rewrite:
+                                      type: boolean
+                                    level_merge:
+                                      type: boolean
+                                    max-gc-batch-size:
+                                      type: string
+                                    merge-small-file-threshold:
+                                      type: string
+                                    min-blob-size:
+                                      type: string
+                                    min-gc-batch-size:
+                                      type: string
+                                    sample-ratio:
+                                      format: double
+                                      type: number
+                                  type: object
+                                use-bloom-filter:
+                                  type: boolean
+                                whole-key-filtering:
+                                  type: boolean
+                                write-buffer-size:
+                                  type: string
+                              type: object
+                            rate-bytes-per-sec:
+                              type: string
+                            rate-limiter-mode:
+                              format: int64
+                              type: integer
+                            stats-dump-period:
+                              type: string
+                            titan:
+                              properties:
+                                dirname:
+                                  type: string
+                                disable-gc:
+                                  type: boolean
+                                enabled:
+                                  type: boolean
+                                max-background-gc:
+                                  format: int64
+                                  type: integer
+                                purge-obsolete-files-period:
+                                  type: string
+                              type: object
+                            use-direct-io-for-flush-and-compaction:
+                              type: boolean
+                            wal-bytes-per-sync:
+                              type: string
+                            wal-recovery-mode:
+                              format: int64
+                              type: integer
+                            wal-size-limit:
+                              type: string
+                            wal-ttl-seconds:
+                              format: int64
+                              type: integer
+                            writable-file-max-buffer-size:
+                              type: string
+                            writecf:
+                              properties:
+                                block-based-bloom-filter:
+                                  type: boolean
+                                block-cache-size:
+                                  type: string
+                                block-size:
+                                  type: string
+                                bloom-filter-bits-per-key:
+                                  format: int64
+                                  type: integer
+                                cache-index-and-filter-blocks:
+                                  type: boolean
+                                compaction-pri:
+                                  format: int64
+                                  type: integer
+                                compaction-style:
+                                  format: int64
+                                  type: integer
+                                compression-per-level:
+                                  items:
+                                    type: string
+                                  type: array
+                                disable-auto-compactions:
+                                  type: boolean
+                                disable-block-cache:
+                                  type: boolean
+                                dynamic-level-bytes:
+                                  type: boolean
+                                enable-doubly-skiplist:
+                                  type: boolean
+                                force-consistency-checks:
+                                  type: boolean
+                                hard-pending-compaction-bytes-limit:
+                                  type: string
+                                level0-file-num-compaction-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-slowdown-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                level0-stop-writes-trigger:
+                                  format: int64
+                                  type: integer
+                                max-bytes-for-level-base:
+                                  type: string
+                                max-bytes-for-level-multiplier:
+                                  format: int64
+                                  type: integer
+                                max-compaction-bytes:
+                                  type: string
+                                max-write-buffer-number:
+                                  format: int64
+                                  type: integer
+                                min-write-buffer-number-to-merge:
+                                  format: int64
+                                  type: integer
+                                num-levels:
+                                  format: int64
+                                  type: integer
+                                optimize-filters-for-hits:
+                                  type: boolean
+                                pin-l0-filter-and-index-blocks:
+                                  type: boolean
+                                prop-keys-index-distance:
+                                  format: int64
+                                  type: integer
+                                prop-size-index-distance:
+                                  format: int64
+                                  type: integer
+                                read-amp-bytes-per-bit:
+                                  format: int64
+                                  type: integer
+                                soft-pending-compaction-bytes-limit:
+                                  type: string
+                                target-file-size-base:
+                                  type: string
+                                titan:
+                                  properties:
+                                    blob-cache-size:
+                                      type: string
+                                    blob-file-compression:
+                                      type: string
+                                    blob-run-mode:
+                                      type: string
+                                    discardable-ratio:
+                                      format: double
+                                      type: number
+                                    gc-merge-rewrite:
+                                      type: boolean
+                                    level_merge:
+                                      type: boolean
+                                    max-gc-batch-size:
+                                      type: string
+                                    merge-small-file-threshold:
+                                      type: string
+                                    min-blob-size:
+                                      type: string
+                                    min-gc-batch-size:
+                                      type: string
+                                    sample-ratio:
+                                      format: double
+                                      type: number
+                                  type: object
+                                use-bloom-filter:
+                                  type: boolean
+                                whole-key-filtering:
+                                  type: boolean
+                                write-buffer-size:
+                                  type: string
+                              type: object
+                          type: object
+                        security:
+                          properties:
+                            ca-path:
+                              type: string
+                            cert-path:
+                              type: string
+                            cipher-file:
+                              type: string
+                            encryption: {}
+                            key-path:
+                              type: string
+                            override-ssl-target:
+                              type: string
+                          type: object
+                        server:
+                          properties:
+                            advertise-status-addr:
+                              type: string
+                            concurrent-recv-snap-limit:
+                              format: int32
+                              type: integer
+                            concurrent-send-snap-limit:
+                              format: int32
+                              type: integer
+                            enable-request-batch:
+                              type: boolean
+                            end-point-batch-row-limit:
+                              format: int32
+                              type: integer
+                            end-point-enable-batch-if-possible:
+                              format: int32
+                              type: integer
+                            end-point-recursion-limit:
+                              format: int32
+                              type: integer
+                            end-point-request-max-handle-duration:
+                              type: string
+                            end-point-stream-batch-row-limit:
+                              format: int32
+                              type: integer
+                            end-point-stream-channel-size:
+                              format: int32
+                              type: integer
+                            engine-addr:
+                              type: string
+                            grpc-compression-type:
+                              type: string
+                            grpc-concurrency:
+                              format: int32
+                              type: integer
+                            grpc-concurrent-stream:
+                              format: int32
+                              type: integer
+                            grpc-keepalive-time:
+                              type: string
+                            grpc-keepalive-timeout:
+                              type: string
+                            grpc-memory-pool-quota:
+                              type: string
+                            grpc-raft-conn-num:
+                              format: int32
+                              type: integer
+                            grpc-stream-initial-window-size:
+                              type: string
+                            heavy-load-threshold:
+                              format: int32
+                              type: integer
+                            heavy-load-wait-duration:
+                              type: string
+                            labels:
+                              type: object
+                            request-batch-enable-cross-command:
+                              type: boolean
+                            request-batch-wait-duration:
+                              type: string
+                            snap-max-total-size:
+                              type: string
+                            snap-max-write-bytes-per-sec:
+                              type: string
+                            stats-concurrency:
+                              format: int32
+                              type: integer
+                            status-addr:
+                              type: string
+                            status-thread-pool-size:
+                              type: string
+                          type: object
+                        storage:
+                          properties:
+                            block-cache:
+                              properties:
+                                capacity:
+                                  type: string
+                                high-pri-pool-ratio:
+                                  format: double
+                                  type: number
+                                memory-allocator:
+                                  type: string
+                                num-shard-bits:
+                                  format: int64
+                                  type: integer
+                                shared:
+                                  type: boolean
+                                strict-capacity-limit:
+                                  type: boolean
+                              type: object
+                            max-key-size:
+                              format: int64
+                              type: integer
+                            reserve-space:
+                              type: string
+                            scheduler-concurrency:
+                              format: int64
+                              type: integer
+                            scheduler-notify-capacity:
+                              format: int64
+                              type: integer
+                            scheduler-pending-write-threshold:
+                              type: string
+                            scheduler-worker-pool-size:
+                              format: int64
+                              type: integer
+                          type: object
                       type: object
                   type: object
                 configUpdateStrategy:
