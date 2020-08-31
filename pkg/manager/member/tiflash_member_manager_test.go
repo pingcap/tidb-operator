@@ -19,8 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/utils/pointer"
-
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -40,6 +38,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
