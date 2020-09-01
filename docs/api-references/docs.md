@@ -1664,6 +1664,18 @@ TidbClusterRef
 <p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>pdAddress</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDAddress is the external pd address, if configured, the pds in this TidbCluster will join to this configured pd address.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -18569,6 +18581,18 @@ TidbClusterRef
 <td>
 <em>(Optional)</em>
 <p>Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pdAddress</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PDAddress is the external pd address, if configured, the pds in this TidbCluster will join to this configured pd address.</p>
 </td>
 </tr>
 </tbody>

@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -106,6 +107,9 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiCDC != nil {
 		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
 	}
+	if spec.PDAddress != nil {
+		allErrs = append(allErrs, validatePDAddress(spec.PDAddress, fldPath.Child("pdAddress"))...)
+	}
 	return allErrs
 }
 
@@ -113,6 +117,21 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	return allErrs
+}
+
+func validatePDAddress(arrayOfAddresses []string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	addressRegex := "^http://.*:[0-9]+$"
+	pdAddressRegexp := regexp.MustCompile(addressRegex)
+	for i, address := range arrayOfAddresses {
+		idxPath := fldPath.Index(i)
+		if !pdAddressRegexp.MatchString(address) {
+			errMsg := validation.RegexError("a pdAddress must start with 'http://', and end up with port number",
+				addressRegex, "http://xxx:2379")
+			allErrs = append(allErrs, field.Invalid(idxPath, address, errMsg))
+		}
+	}
 	return allErrs
 }
 
