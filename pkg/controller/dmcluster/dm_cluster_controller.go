@@ -102,6 +102,7 @@ func NewController(
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
 	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
+	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
 	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	dcc := &Controller{
@@ -130,6 +131,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				workerScaler,
 			),
 			meta.NewReclaimPolicyDMManager(
 				pvcInformer.Lister(),

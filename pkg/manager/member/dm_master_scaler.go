@@ -17,16 +17,13 @@ import (
 	"fmt"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/pingcap/tidb-operator/pkg/label"
-
-	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
+	"github.com/pingcap/tidb-operator/pkg/label"
+
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
@@ -80,25 +77,6 @@ func (msd *masterScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, 
 		return fmt.Errorf("DMCluster: %s/%s's dm-master status sync failed, can't scale out now", ns, dcName)
 	}
 
-	if len(dc.Status.Master.FailureMembers) != 0 {
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-		return nil
-	}
-
-	healthCount := 0
-	totalCount := *oldSet.Spec.Replicas
-	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
-	for _, i := range podOrdinals {
-		podName := ordinalPodName(v1alpha1.DMMasterMemberType, dcName, i)
-		if member, ok := dc.Status.Master.Members[podName]; ok && member.Health {
-			healthCount++
-		}
-	}
-	if healthCount < int(totalCount) {
-		return fmt.Errorf("DMCluster: %s/%s's dm-master %d/%d is ready, can't scale out now",
-			ns, dcName, healthCount, totalCount)
-	}
-
 	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
 	return nil
 }
@@ -124,10 +102,10 @@ func (msd *masterScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, n
 
 	klog.Infof("scaling in dm-master statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 
-	if controller.PodWebhookEnabled {
-		setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
-		return nil
-	}
+	//if controller.PodWebhookEnabled {
+	//	setReplicasAndDeleteSlots(newSet, replicas, deleteSlots)
+	//	return nil
+	//}
 
 	// If the dm-master pod was dm-master leader during scale-in, we would evict dm-master leader first
 	// If the dm-master statefulSet would be scale-in to zero and the dm-master-0 was going to be deleted,

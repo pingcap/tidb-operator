@@ -53,6 +53,7 @@ type workerMemberManager struct {
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
+	workerScaler Scaler
 }
 
 // NewWorkerMemberManager returns a *ticdcMemberManager
@@ -63,7 +64,8 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister) manager.DMManager {
+	podLister corelisters.PodLister,
+	workerScaler Scaler) manager.DMManager {
 	return &workerMemberManager{
 		masterControl,
 		setControl,
@@ -73,6 +75,7 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 		setLister,
 		svcLister,
 		podLister,
+		workerScaler,
 	}
 }
 
@@ -209,6 +212,10 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 			return err
 		}
 		return nil
+	}
+
+	if err := wmm.workerScaler.Scale(dc, oldSts, newSts); err != nil {
+		return err
 	}
 
 	return updateStatefulSet(wmm.setControl, dc, newSts, oldSts)
@@ -489,10 +496,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			ServiceName:         controller.DMWorkerPeerMemberName(dcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.WorkerStsDesiredReplicas()),
-				}},
+				Type: apps.RollingUpdateStatefulSetStrategyType},
 		},
 	}
 
