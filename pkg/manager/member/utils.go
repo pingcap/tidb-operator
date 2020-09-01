@@ -31,7 +31,10 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -379,4 +382,59 @@ func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbC
 		},
 	}
 	return cm, nil
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelisters.PodLister) bool {
+	var stores map[string]v1alpha1.TiKVStore
+	var failureStores map[string]v1alpha1.TiKVFailureStore
+	var ordinals sets.Int32
+	var podPrefix string
+
+	switch component {
+	case label.TiKVLabelVal:
+		stores = tc.Status.TiKV.Stores
+		failureStores = tc.Status.TiKV.FailureStores
+		ordinals = tc.TiKVStsDesiredOrdinals(true)
+		podPrefix = controller.TiKVMemberName(tc.Name)
+	case label.TiFlashLabelVal:
+		stores = tc.Status.TiFlash.Stores
+		failureStores = tc.Status.TiFlash.FailureStores
+		ordinals = tc.TiFlashStsDesiredOrdinals(true)
+		podPrefix = controller.TiFlashMemberName(tc.Name)
+	default:
+		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, tc.Namespace, tc.Name)
+		return false
+	}
+	if failureStores == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of tidb cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range ordinals {
+		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
+		pod, err := podLister.Pods(tc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", tc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		var exist bool
+		for _, v := range stores {
+			if v.PodName == pod.Name {
+				exist = true
+				if v.State != v1alpha1.TiKVStateUp {
+					return false
+				}
+			}
+		}
+		if !exist {
+			return false
+		}
+	}
+	return true
 }
