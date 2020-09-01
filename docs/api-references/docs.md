@@ -9942,18 +9942,6 @@ Kubernetes meta/v1.Time
 <td>
 </td>
 </tr>
-<tr>
-<td>
-<code>recoverFailover</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="tidbmember">TiDBMember</h3>
@@ -10665,6 +10653,18 @@ LogTailerSpec
 <td>
 <em>(Optional)</em>
 <p>LogTailer is the configurations of the log tailers for TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
 </tbody>
@@ -14101,40 +14101,6 @@ uint
 <p>Optional: Defaults to 1024</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>recoverFailover</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tikvstatus">TiKVStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tikvgroupstatus">TiKVGroupStatus</a>, 
-<a href="#tidbclusterstatus">TidbClusterStatus</a>)
-</p>
-<p>
-<p>TiKVStatus is TiKV status</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 11a4647... support recover from failover for tiflash and tikv (#3189)
 <tr>
 <td>
 <code>grpc-memory-pool-quota</code></br>
@@ -14541,6 +14507,18 @@ TiKVConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tikv-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
 </tbody>

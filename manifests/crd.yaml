@@ -13587,34 +13587,11 @@ spec:
                     - name
                     type: object
                   type: array
-<<<<<<< HEAD
                 recommendedReplicas:
                   format: int32
                   type: integer
               required:
               - currentReplicas
-=======
-                windowsOptions:
-                  properties:
-                    gmsaCredentialSpec:
-                      type: string
-                    gmsaCredentialSpecName:
-                      type: string
-                    runAsUserName:
-                      type: string
-                  type: object
-              type: object
-            priorityClassName:
-              type: string
-            privileged:
-              type: boolean
-            recoverFailover:
-              type: boolean
-            replicas:
-              format: int32
-              type: integer
-            requests:
->>>>>>> 11a4647... support recover from failover for tiflash and tikv (#3189)
               type: object
           type: object
       type: object

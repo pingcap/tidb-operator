@@ -29,16 +29,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-<<<<<<< HEAD
-	"k8s.io/klog"
-=======
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/utils/pointer"
->>>>>>> 11a4647... support recover from failover for tiflash and tikv (#3189)
 )
 
 const (
@@ -340,35 +334,6 @@ func copyAnnotations(src map[string]string) map[string]string {
 	}
 	return dst
 }
-<<<<<<< HEAD
-=======
-
-func getTikVConfigMapForTiKVSpec(tikvSpec *v1alpha1.TiKVSpec, tc *v1alpha1.TidbCluster, scriptModel *TiKVStartScriptModel) (*corev1.ConfigMap, error) {
-	config := tikvSpec.Config
-	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(tikvClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(tikvClusterCertPath, corev1.TLSPrivateKeyKey))
-	}
-	confText, err := MarshalTOML(config)
-	if err != nil {
-		return nil, err
-	}
-	startScript, err := RenderTiKVStartScript(scriptModel)
-	if err != nil {
-		return nil, err
-	}
-	cm := &corev1.ConfigMap{
-		Data: map[string]string{
-			"config-file":    transformTiKVConfigMap(string(confText), tc),
-			"startup-script": startScript,
-		},
-	}
-	return cm, nil
-}
 
 // shouldRecover checks whether we should perform recovery operation.
 func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelisters.PodLister) bool {
@@ -424,4 +389,3 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 	}
 	return true
 }
->>>>>>> 11a4647... support recover from failover for tiflash and tikv (#3189)
