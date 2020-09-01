@@ -8614,6 +8614,8 @@ spec:
                   type: string
                 privileged:
                   type: boolean
+                recoverFailover:
+                  type: boolean
                 replicas:
                   format: int32
                   type: integer
@@ -11228,6 +11230,8 @@ spec:
                 priorityClassName:
                   type: string
                 privileged:
+                  type: boolean
+                recoverFailover:
                   type: boolean
                 replicas:
                   format: int32
@@ -21616,6 +21620,8 @@ spec:
             priorityClassName:
               type: string
             privileged:
+              type: boolean
+            recoverFailover:
               type: boolean
             replicas:
               format: int32
