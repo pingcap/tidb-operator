@@ -11601,6 +11601,18 @@ Imported from v4.0.2.
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Labels are labels for TiDB server</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbfailuremember">TiDBFailureMember</h3>
