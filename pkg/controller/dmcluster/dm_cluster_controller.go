@@ -97,8 +97,9 @@ func NewController(
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	// podControl := controller.NewRealPodControl(kubeCli, masterControl, podInformer.Lister(), recorder)
+	//podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
 
 	dcc := &Controller{
 		kubeClient: kubeCli,
@@ -109,13 +110,13 @@ func NewController(
 				masterControl,
 				setControl,
 				svcControl,
-				// podControl,
 				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
+				masterUpgrader,
 			),
 			mm.NewWorkerMemberManager(
 				masterControl,

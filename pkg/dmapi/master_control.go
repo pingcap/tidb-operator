@@ -16,7 +16,6 @@ package dmapi
 import (
 	"crypto/tls"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -26,13 +25,11 @@ import (
 	"k8s.io/klog"
 )
 
-// Namespace is a newtype of a string
-type Namespace pdapi.Namespace
-
 // MasterControlInterface is an interface that knows how to manage and get dm cluster's master client
 type MasterControlInterface interface {
 	// GetMasterClient provides MasterClient of the dm cluster.
-	GetMasterClient(namespace Namespace, tcName string, tlsEnabled bool) MasterClient
+	GetMasterClient(namespace string, dcName string, tlsEnabled bool) MasterClient
+	GetMasterPeerClient(namespace string, dcName, podName string, tlsEnabled bool) MasterClient
 }
 
 // defaultMasterControl is the default implementation of MasterControlInterface.
@@ -48,7 +45,7 @@ func NewDefaultMasterControl(kubeCli kubernetes.Interface) MasterControlInterfac
 }
 
 // GetMasterClient provides a MasterClient of real dm-master cluster, if the MasterClient not existing, it will create new one.
-func (mc *defaultMasterControl) GetMasterClient(namespace Namespace, dcName string, tlsEnabled bool) MasterClient {
+func (mc *defaultMasterControl) GetMasterClient(namespace string, dcName string, tlsEnabled bool) MasterClient {
 	mc.mutex.Lock()
 	defer mc.mutex.Unlock()
 
@@ -61,27 +58,53 @@ func (mc *defaultMasterControl) GetMasterClient(namespace Namespace, dcName stri
 		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.ClusterClientTLSSecretName(dcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
-			return &masterClient{url: MasterClientURL(namespace, dcName, scheme), httpClient: &http.Client{Timeout: DefaultTimeout}}
+			return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
 		}
 
-		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig)
+		return NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, tlsConfig, true)
 	}
 
 	key := masterClientKey(scheme, namespace, dcName)
 	if _, ok := mc.masterClients[key]; !ok {
-		mc.masterClients[key] = NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, nil)
+		mc.masterClients[key] = NewMasterClient(MasterClientURL(namespace, dcName, scheme), DefaultTimeout, nil, false)
 	}
 	return mc.masterClients[key]
 }
 
+func (mc *defaultMasterControl) GetMasterPeerClient(namespace string, dcName string, podName string, tlsEnabled bool) MasterClient {
+	mc.mutex.Lock()
+	defer mc.mutex.Unlock()
+
+	var tlsConfig *tls.Config
+	var err error
+	var scheme = "http"
+
+	if tlsEnabled {
+		scheme = "https"
+		tlsConfig, err = pdapi.GetTLSConfig(mc.kubeCli, pdapi.Namespace(namespace), dcName, util.ClusterClientTLSSecretName(dcName))
+		if err != nil {
+			klog.Errorf("Unable to get tls config for dm cluster %q, master client may not work: %v", dcName, err)
+			return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
+		}
+
+		return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
+	}
+
+	return NewMasterClient(MasterPeerClientURL(namespace, dcName, podName, scheme), DefaultTimeout, tlsConfig, true)
+}
+
 // masterClientKey returns the master client key
-func masterClientKey(scheme string, namespace Namespace, clusterName string) string {
-	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, string(namespace))
+func masterClientKey(scheme, namespace, clusterName string) string {
+	return fmt.Sprintf("%s.%s.%s", scheme, clusterName, namespace)
 }
 
 // MasterClientURL builds the url of master client
-func MasterClientURL(namespace Namespace, clusterName string, scheme string) string {
-	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, string(namespace))
+func MasterClientURL(namespace, clusterName, scheme string) string {
+	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, namespace)
+}
+
+func MasterPeerClientURL(namespace, clusterName, podName, scheme string) string {
+	return fmt.Sprintf("%s://%s.%s-dm-master-peer.%s:8261", scheme, podName, clusterName, namespace)
 }
 
 // FakeMasterControl implements a fake version of MasterControlInterface.
@@ -95,6 +118,6 @@ func NewFakeMasterControl(kubeCli kubernetes.Interface) *FakeMasterControl {
 	}
 }
 
-func (fmc *FakeMasterControl) SetMasterClient(namespace Namespace, tcName string, masterClient MasterClient) {
+func (fmc *FakeMasterControl) SetMasterClient(namespace string, tcName string, masterClient MasterClient) {
 	fmc.defaultMasterControl.masterClients[masterClientKey("http", namespace, tcName)] = masterClient
 }

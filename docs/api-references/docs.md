@@ -11614,6 +11614,18 @@ Imported from v4.0.2.
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Labels are labels for TiDB server</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbfailuremember">TiDBFailureMember</h3>
@@ -12444,6 +12456,18 @@ LogTailerSpec
 <td>
 <em>(Optional)</em>
 <p>LogTailer is the configurations of the log tailers for TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
 </tbody>
@@ -16364,6 +16388,18 @@ TiKVConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tikv-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
 </tbody>
