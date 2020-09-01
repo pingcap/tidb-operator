@@ -308,7 +308,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 	envVars = append(envVars, storageEnv...)
 	envVars = append(envVars, corev1.EnvVar{
 		Name:  "BR_LOG_TO_TERM",
-		Value: string(1),
+		Value: string(rune(1)),
 	})
 
 	args := []string{
