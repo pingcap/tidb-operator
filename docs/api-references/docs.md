@@ -9506,9 +9506,46 @@ int64
 </td>
 <td>
 <em>(Optional)</em>
+<<<<<<< HEAD
 <p>TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
 If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error</p>
 </td>
+=======
+<p>When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics.
+If this config is set to <code>false</code> on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable <code>tidb_enable_telemetry</code>.
+See PingCAP privacy policy for details: <a href="https://pingcap.com/en/privacy-policy/">https://pingcap.com/en/privacy-policy/</a>.
+Imported from v4.0.2.
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Labels are labels for TiDB server</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbfailuremember">TiDBFailureMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbstatus">TiDBStatus</a>)
+</p>
+<p>
+<p>TiDBFailureMember is the tidb failure member information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+>>>>>>> cab6fb9... add labels for tidb server (#3188)
 </tr>
 <tr>
 <td>
