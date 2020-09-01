@@ -25,4 +25,5 @@ const (
 type Failover interface {
 	Failover(*v1alpha1.TidbCluster) error
 	Recover(*v1alpha1.TidbCluster)
+	RemoveUndesiredFailures(*v1alpha1.TidbCluster)
 }
