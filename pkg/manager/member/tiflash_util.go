@@ -193,13 +193,13 @@ func setTiFlashProxyConfigDefault(config *v1alpha1.ProxyConfig, clusterName, ns 
 		config.Server = &v1alpha1.FlashServerConfig{}
 	}
 	if config.Server.EngineAddr == nil {
-		config.Server.EngineAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+		config.Server.EngineAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
 	}
 	if config.Server.StatusAddr == nil {
 		config.Server.StatusAddr = pointer.StringPtr("0.0.0.0:20292")
 	}
 	if config.Server.AdvertiseStatusAddr == nil {
-		config.Server.AdvertiseStatusAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+		config.Server.AdvertiseStatusAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20292", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
 	}
 }
 
@@ -294,9 +294,9 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.CommonConfig, externalCluste
 func setTiFlashFlashConfigDefault(config *v1alpha1.Flash, externalClusterName string, clusterName, ns string) {
 	if config.TiDBStatusAddr == nil {
 		if len(externalClusterName) > 0 {
-			config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s:10080", controller.TiDBMemberName(externalClusterName), ns))
+			config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(externalClusterName), ns))
 		} else {
-			config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s:10080", controller.TiDBMemberName(clusterName), ns))
+			config.TiDBStatusAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:10080", controller.TiDBMemberName(clusterName), ns))
 		}
 	}
 	if config.ServiceAddr == nil {
@@ -325,7 +325,7 @@ func setTiFlashFlashProxyConfigDefault(config *v1alpha1.FlashProxy, clusterName,
 		config.Addr = pointer.StringPtr("0.0.0.0:20170")
 	}
 	if config.AdvertiseAddr == nil {
-		config.AdvertiseAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+		config.AdvertiseAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:20170", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
 	}
 	if config.DataDir == nil {
 		config.DataDir = pointer.StringPtr("/data0/proxy")
@@ -387,7 +387,7 @@ func setTiFlashApplicationConfigDefault(config *v1alpha1.FlashApplication) {
 
 func setTiFlashRaftConfigDefault(config *v1alpha1.FlashRaft, clusterName, ns string) {
 	if config.PDAddr == nil {
-		config.PDAddr = pointer.StringPtr(fmt.Sprintf("%s.%s:2379", controller.PDMemberName(clusterName), ns))
+		config.PDAddr = pointer.StringPtr(fmt.Sprintf("%s.%s.svc:2379", controller.PDMemberName(clusterName), ns))
 	}
 	if config.KVStorePath == nil {
 		config.KVStorePath = pointer.StringPtr("/data0/kvstore")
