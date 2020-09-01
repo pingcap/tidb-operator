@@ -1762,7 +1762,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info</p>
+MetricsUrl represents the url to fetch the metrics info
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -1777,7 +1778,8 @@ TidbMonitorRef
 <td>
 <em>(Optional)</em>
 <p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl</p>
+Operator will use MetricsUrl
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -1806,6 +1808,20 @@ TidbAutoScalerSpec
 <td>
 <em>(Optional)</em>
 <p>TiDB represents the auto-scaling spec for tidb</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="#autoresource">
+[]AutoResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
 </td>
 </tr>
 </table>
@@ -2326,6 +2342,130 @@ TidbMonitorStatus
 </td>
 <td>
 <p>Most recently observed status of the TidbMonitor</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="autoresource">AutoResource</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
+</p>
+<p>
+<p>AutoResource describes the resource type definitions</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resource_type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ResourceType identifies a specific resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cpu</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>CPU defines the CPU of this resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>memory</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>Memory defines the memory of this resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>Storage defines the storage of this resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>count</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Count defines the max availabel count of this resource type</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="autorule">AutoRule</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
+</p>
+<p>
+<p>AutoRule describes the rules for auto-scaling with PD API</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>max</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Max defines the threshold to scale out</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>min</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>Min defines the threshold to scale in</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resource_type</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>ResourceType defines the resource types that can be used for scaling</p>
 </td>
 </tr>
 </tbody>
@@ -3099,7 +3239,8 @@ int32
 </td>
 <td>
 <p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-It cannot be less than minReplicas.</p>
+It cannot be less than minReplicas.
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -3113,7 +3254,21 @@ int32
 <em>(Optional)</em>
 <p>minReplicas is the lower limit for the number of replicas to which the autoscaler
 can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-available.</p>
+available.
+Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rules</code></br>
+<em>
+<a href="#autorule">
+map[k8s.io/api/core/v1.ResourceName]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule
+</a>
+</em>
+</td>
+<td>
+<p>Rules defines the rules for auto-scaling with PD API</p>
 </td>
 </tr>
 <tr>
@@ -3153,6 +3308,7 @@ If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
 </td>
 <td>
 <em>(Optional)</em>
+<p>Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -3164,15 +3320,16 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus</p>
+<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus
+Deprecated</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>externalEndpoint</code></br>
+<code>external</code></br>
 <em>
-<a href="#externalendpoint">
-ExternalEndpoint
+<a href="#externalconfig">
+ExternalConfig
 </a>
 </em>
 </td>
@@ -4060,6 +4217,7 @@ CrdKind
 <a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
 </p>
 <p>
+<p>Deprecated</p>
 </p>
 <table>
 <thead>
@@ -4853,10 +5011,55 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="externalendpoint">ExternalEndpoint</h3>
+<h3 id="externalconfig">ExternalConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
+</p>
+<p>
+<p>ExternalConfig represents the external config.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+<a href="#externalendpoint">
+ExternalEndpoint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalEndpoint makes the auto-scaler controller able to query the
+external service to fetch the recommended replicas for TiKV/TiDB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
+It cannot be less than minReplicas.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="externalendpoint">ExternalEndpoint</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#externalconfig">ExternalConfig</a>)
 </p>
 <p>
 <p>ExternalEndpoint describes the external service endpoint
@@ -17209,7 +17412,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info</p>
+MetricsUrl represents the url to fetch the metrics info
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -17224,7 +17428,8 @@ TidbMonitorRef
 <td>
 <em>(Optional)</em>
 <p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl</p>
+Operator will use MetricsUrl
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -17253,6 +17458,20 @@ TidbAutoScalerSpec
 <td>
 <em>(Optional)</em>
 <p>TiDB represents the auto-scaling spec for tidb</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="#autoresource">
+[]AutoResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
 </td>
 </tr>
 </tbody>
@@ -17945,7 +18164,7 @@ TidbMonitorRef
 </tr>
 <tr>
 <td>
-<code>auto-scaler,omitempyt</code></br>
+<code>auto-scaler</code></br>
 <em>
 <a href="#tidbclusterautoscalerref">
 TidbClusterAutoScalerRef
