@@ -5727,6 +5727,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec"),
 						},
 					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas", "storageClaims"},
 			},
@@ -7911,6 +7918,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of tikv-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
+						},
+					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
