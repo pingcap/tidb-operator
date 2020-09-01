@@ -96,6 +96,10 @@ func (tf *tidbFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
 }
 
+func (tf *tidbFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+	return
+}
+
 type fakeTiDBFailover struct {
 }
 
@@ -110,4 +114,7 @@ func (ftf *fakeTiDBFailover) Failover(_ *v1alpha1.TidbCluster) error {
 
 func (ftf *fakeTiDBFailover) Recover(tc *v1alpha1.TidbCluster) {
 	tc.Status.TiDB.FailureMembers = nil
+}
+func (ftf *fakeTiDBFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
+	return
 }

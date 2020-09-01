@@ -12433,6 +12433,18 @@ LogTailerSpec
 <p>LogTailer is the configurations of the log tailers for TiFlash</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvbackupconfig">TiKVBackupConfig</h3>
@@ -16351,6 +16363,18 @@ TiKVConfig
 <td>
 <em>(Optional)</em>
 <p>Config is the Configuration of tikv-servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
 </tbody>
