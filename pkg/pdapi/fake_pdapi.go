@@ -253,5 +253,10 @@ func (pc *FakePDClient) TransferPDLeader(memberName string) error {
 }
 
 func (pc *FakePDClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
+	if reaction, ok := pc.reactions[GetAutoscalingPlansActionType]; ok {
+		action := &Action{}
+		result, err := reaction(action)
+		return result.([]Plan), err
+	}
 	return nil, nil
 }
