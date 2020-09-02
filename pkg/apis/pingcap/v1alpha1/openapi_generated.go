@@ -53,7 +53,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash":                         schema_pkg_apis_pingcap_v1alpha1_Flash(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster":                  schema_pkg_apis_pingcap_v1alpha1_FlashCluster(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger":                   schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashProxy":                    schema_pkg_apis_pingcap_v1alpha1_FlashProxy(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashSecurity":                 schema_pkg_apis_pingcap_v1alpha1_FlashSecurity(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashServerConfig":             schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider":            schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec":                    schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec":                   schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref),
@@ -86,6 +88,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Plugin":                        schema_pkg_apis_pingcap_v1alpha1_Plugin(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PreparedPlanCache":             schema_pkg_apis_pingcap_v1alpha1_PreparedPlanCache(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusConfiguration":       schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig":                   schema_pkg_apis_pingcap_v1alpha1_ProxyConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyProtocol":                 schema_pkg_apis_pingcap_v1alpha1_ProxyProtocol(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec":                      schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Restore":                       schema_pkg_apis_pingcap_v1alpha1_Restore(ref),
@@ -1067,6 +1070,13 @@ func schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref common.ReferenceCallback)
 				Description: "CommonConfig is the configuration of TiFlash process.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"tmp_path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to \"/data0/tmp\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"path_realtime_mode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to false",
@@ -1844,11 +1854,16 @@ func schema_pkg_apis_pingcap_v1alpha1_Flash(ref common.ReferenceCallback) common
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster"),
 						},
 					},
+					"proxy": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashProxy"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashProxy"},
 	}
 }
 
@@ -1859,6 +1874,13 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashCluster(ref common.ReferenceCallback)
 				Description: "FlashCluster is the configuration of [flash.flash_cluster] section.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"log": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/flash_cluster_manager.log",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"refresh_interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 20",
@@ -1893,9 +1915,23 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref common.ReferenceCallback) 
 				Description: "FlashLogger is the configuration of [logger] section.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"errorlog": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/error.log",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"size": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 100M",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/server.log",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1912,6 +1948,54 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref common.ReferenceCallback) 
 							Description: "Optional: Defaults to 10",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_FlashProxy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "FlashProxy is the configuration of [flash.proxy] section.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 0.0.0.0:20170",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"advertise-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"data-dir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/proxy",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"config": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/proxy.toml",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-file": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/proxy.log",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -1938,6 +2022,218 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashSecurity(ref common.ReferenceCallback
 									},
 								},
 							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "FlashServerConfig is the configuration of Proxy server.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"engine-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default to 0.0.0.0:20292",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"advertise-status-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status-thread-pool-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 1",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-compression-type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to none",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 4",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-concurrent-stream": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 1024",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-memory-pool-quota": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 32G",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-raft-conn-num": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-stream-initial-window-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 2MB",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-keepalive-time": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-keepalive-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 3s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"concurrent-send-snap-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 32",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"concurrent-recv-snap-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 32",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"end-point-recursion-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 1000",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"end-point-stream-channel-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-batch-row-limit": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-stream-batch-row-limit": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-enable-batch-if-possible": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-request-max-handle-duration": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"snap-max-write-bytes-per-sec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 100MB",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"snap-max-total-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"stats-concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"heavy-load-threshold": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"heavy-load-wait-duration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 60s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"enable-request-batch": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"request-batch-enable-cross-command": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"request-batch-wait-duration": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 				},
@@ -4162,6 +4458,102 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_ProxyConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProxyConfig is the configuration of TiFlash proxy process. All the configurations are same with those of TiKV except adding `engine-addr` in the TiKVServerConfig",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"log-level": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to info",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-file": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"log-rotation-timespan": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 24h",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"panic-when-unexpected-key-or-data": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"server": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashServerConfig"),
+						},
+					},
+					"storage": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"),
+						},
+					},
+					"raftstore": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig"),
+						},
+					},
+					"rocksdb": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig"),
+						},
+					},
+					"coprocessor": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig"),
+						},
+					},
+					"readpool": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVReadPoolConfig"),
+						},
+					},
+					"raftdb": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig"),
+						},
+					},
+					"import": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig"),
+						},
+					},
+					"gc": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig"),
+						},
+					},
+					"pd": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig"),
+						},
+					},
+					"security": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVReadPoolConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_ProxyProtocol(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5672,6 +6064,21 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Labels are labels for TiDB server",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -6419,11 +6826,17 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashConfig(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig"),
 						},
 					},
+					"proxy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "proxyConfig is the Configuration of proxy process",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"},
 	}
 }
 
@@ -6676,6 +7089,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "LogTailer is the configurations of the log tailers for TiFlash",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec"),
+						},
+					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
@@ -7918,6 +8338,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGroupSpec(ref common.ReferenceCallback
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of tikv-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
+						},
+					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"clusterName": {
@@ -9202,6 +9629,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of tikv-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVConfig"),
+						},
+					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
