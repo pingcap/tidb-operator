@@ -6504,6 +6504,8 @@ spec:
                             type: string
                           type: array
                       type: object
+                    labels:
+                      type: object
                     lease:
                       type: string
                     log:
@@ -8611,6 +8613,8 @@ spec:
                 priorityClassName:
                   type: string
                 privileged:
+                  type: boolean
+                recoverFailover:
                   type: boolean
                 replicas:
                   format: int32
@@ -11226,6 +11230,8 @@ spec:
                 priorityClassName:
                   type: string
                 privileged:
+                  type: boolean
+                recoverFailover:
                   type: boolean
                 replicas:
                   format: int32
@@ -18435,6 +18441,8 @@ spec:
                         type: string
                       type: array
                   type: object
+                labels:
+                  type: object
                 lease:
                   type: string
                 log:
@@ -21612,6 +21620,8 @@ spec:
             priorityClassName:
               type: string
             privileged:
+              type: boolean
+            recoverFailover:
               type: boolean
             replicas:
               format: int32

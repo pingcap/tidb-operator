@@ -306,25 +306,6 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 			Verbs:         []string{"use"},
 		})
 	}
-	if controller.ClusterScoped {
-		policyRules = append(policyRules, rbac.PolicyRule{
-			NonResourceURLs: []string{"/metrics"},
-			Verbs:           []string{"get"},
-		})
-		cr := getMonitorClusterRole(monitor, policyRules)
-		cr, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, cr)
-		if err != nil {
-			klog.Errorf("tm[%s/%s]'s clusterrole failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-			return nil, err
-		}
-		crb := getMonitorClusterRoleBinding(sa, cr, monitor)
-		_, err = mm.typedControl.CreateOrUpdateClusterRoleBinding(monitor, crb)
-		if err != nil {
-			klog.Errorf("tm[%s/%s]'s clusterRoleBinding failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
-			return nil, err
-		}
-		return sa, nil
-	}
 
 	role := getMonitorRole(monitor, policyRules)
 	role, err = mm.typedControl.CreateOrUpdateRole(monitor, role)
