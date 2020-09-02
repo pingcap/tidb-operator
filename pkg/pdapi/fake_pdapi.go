@@ -41,6 +41,7 @@ const (
 	GetEvictLeaderSchedulersActionType ActionType = "GetEvictLeaderSchedulers"
 	GetPDLeaderActionType              ActionType = "GetPDLeader"
 	TransferPDLeaderActionType         ActionType = "TransferPDLeader"
+	GetAutoscalingPlansActionType      ActionType = "GetAutoscalingPlans"
 )
 
 type NotFoundReaction struct {
@@ -249,4 +250,8 @@ func (pc *FakePDClient) TransferPDLeader(memberName string) error {
 		return err
 	}
 	return nil
+}
+
+func (pc *FakePDClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
+	return nil, nil
 }
