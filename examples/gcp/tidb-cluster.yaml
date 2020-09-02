@@ -32,12 +32,12 @@ spec:
     replicas: 3
     requests:
       storage: "100Gi"
-      annotations:
-        tidb.pingcap.com/sysctl-init: "true"
-      podSecurityContext:
-        sysctls:
-        - name: net.core.somaxconn
-          value: "32768"
+    annotations:
+      tidb.pingcap.com/sysctl-init: "true"
+    podSecurityContext:
+      sysctls:
+      - name: net.core.somaxconn
+        value: "32768"
     config: {}
     nodeSelector:
       dedicated: tikv
