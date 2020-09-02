@@ -11311,7 +11311,22 @@ string
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>disable-block-cache</code></br>
+=======
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>slow-log-file</code></br>
+>>>>>>> 9dd264a... Added spec.tikv.config.log-format and spec.tikv.config.server.max-grpc-send-msg-len (#3199)
 <em>
 bool
 </em>
@@ -14024,7 +14039,23 @@ bool
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>cleanup-import-sst-interval</code></br>
+=======
+<code>max-grpc-send-msg-len</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10485760</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>grpc-compression-type</code></br>
+>>>>>>> 9dd264a... Added spec.tikv.config.log-format and spec.tikv.config.server.max-grpc-send-msg-len (#3199)
 <em>
 string
 </em>

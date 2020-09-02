@@ -4846,6 +4846,11 @@ func (in *TiKVConfig) DeepCopyInto(out *TiKVConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LogFormat != nil {
+		in, out := &in.LogFormat, &out.LogFormat
+		*out = new(string)
+		**out = **in
+	}
 	if in.SlowLogFile != nil {
 		in, out := &in.SlowLogFile, &out.SlowLogFile
 		*out = new(string)
@@ -6044,6 +6049,11 @@ func (in *TiKVServerConfig) DeepCopyInto(out *TiKVServerConfig) {
 	if in.StatusThreadPoolSize != nil {
 		in, out := &in.StatusThreadPoolSize, &out.StatusThreadPoolSize
 		*out = new(string)
+		**out = **in
+	}
+	if in.MaxGrpcSendMsgLen != nil {
+		in, out := &in.MaxGrpcSendMsgLen, &out.MaxGrpcSendMsgLen
+		*out = new(uint)
 		**out = **in
 	}
 	if in.GrpcCompressionType != nil {

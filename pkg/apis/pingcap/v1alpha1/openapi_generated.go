@@ -1787,6 +1787,13 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"grpc-compression-type": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to none",
@@ -6573,6 +6580,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 							Format: "",
 						},
 					},
+					"log-format": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"slow-log-file": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -7559,7 +7572,18 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVRaftstoreConfig(ref common.ReferenceCa
 							Format:      "",
 						},
 					},
+<<<<<<< HEAD
 					"region-compact-check-interval": {
+=======
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-compression-type": {
+>>>>>>> 9dd264a... Added spec.tikv.config.log-format and spec.tikv.config.server.max-grpc-send-msg-len (#3199)
 						SchemaProps: spec.SchemaProps{
 							Description: "/ Interval (ms) to check whether start compaction for a region. Optional: Defaults to 5m",
 							Type:        []string{"string"},
