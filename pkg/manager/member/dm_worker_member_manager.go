@@ -548,7 +548,7 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 }
 
 func isWorkerPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
-	ordinals := dc.WorkerStsDesiredOrdinals(true)
+	ordinals := dc.WorkerStsDesiredOrdinals(false)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
 		klog.Errorf("unexpected pod name %q: %v", podName, err)
