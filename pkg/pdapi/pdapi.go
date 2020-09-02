@@ -584,9 +584,7 @@ func (pc *pdClient) filterLeaderEvictScheduler(evictLeaderSchedulers []string) (
 			schedulerIds = append(schedulerIds, fmt.Sprintf("%s-%v", evictSchedulerLeader, k))
 		}
 	} else {
-		for _, s := range evictLeaderSchedulers {
-			schedulerIds = append(schedulerIds, s)
-		}
+		schedulerIds = append(schedulerIds, evictLeaderSchedulers...)
 	}
 	return schedulerIds, nil
 }

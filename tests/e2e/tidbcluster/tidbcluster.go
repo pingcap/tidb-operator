@@ -330,7 +330,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
 
-		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
+		ginkgo.By("Adopt orphaned service created by helm")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
 			return nil
