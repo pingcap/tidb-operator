@@ -92,7 +92,7 @@ func (tf *tikvFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tf *tikvFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	for key, failureStore := range tc.Status.TiKV.FailureStores {
 		if !tf.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
@@ -101,6 +101,11 @@ func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
 			delete(tc.Status.TiKV.FailureStores, key)
 		}
 	}
+}
+
+func (tf *tikvFailover) Recover(tc *v1alpha1.TidbCluster) {
+	tc.Status.TiKV.FailureStores = nil
+	klog.Infof("TiKV recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 
 type fakeTiKVFailover struct{}
@@ -115,5 +120,8 @@ func (ftf *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
 }
 
 func (ftf *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
+	return
+}
+func (ftf *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
 	return
 }

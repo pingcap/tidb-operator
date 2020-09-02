@@ -220,6 +220,11 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	// Recover failed stores if any before generating desired statefulset
 	if len(tc.Status.TiKV.FailureStores) > 0 {
+		tkmm.tikvFailover.RemoveUndesiredFailures(tc)
+	}
+	if len(tc.Status.TiKV.FailureStores) > 0 &&
+		tc.Spec.TiKV.RecoverFailover &&
+		shouldRecover(tc, label.TiKVLabelVal, tkmm.podLister) {
 		tkmm.tikvFailover.Recover(tc)
 	}
 

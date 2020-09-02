@@ -166,7 +166,7 @@ func (td *tidbDiscovery) DiscoverDM(advertisePeerUrl string) (string, error) {
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, dc.Scheme(), advertisePeerUrl), nil
 	}
 
-	masterClient := td.masterControl.GetMasterClient(dmapi.Namespace(dc.GetNamespace()), dc.GetName(), dc.IsTLSClusterEnabled())
+	masterClient := td.masterControl.GetMasterClient(dc.GetNamespace(), dc.GetName(), dc.IsTLSClusterEnabled())
 	mastersInfos, err := masterClient.GetMasters()
 	if err != nil {
 		return "", err

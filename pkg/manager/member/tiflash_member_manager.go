@@ -211,6 +211,11 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 
 	// Recover failed stores if any before generating desired statefulset
 	if len(tc.Status.TiFlash.FailureStores) > 0 {
+		tfmm.tiflashFailover.RemoveUndesiredFailures(tc)
+	}
+	if len(tc.Status.TiFlash.FailureStores) > 0 &&
+		tc.Spec.TiFlash.RecoverFailover &&
+		shouldRecover(tc, label.TiFlashLabelVal, tfmm.podLister) {
 		tfmm.tiflashFailover.Recover(tc)
 	}
 
