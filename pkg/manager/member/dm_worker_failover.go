@@ -95,6 +95,11 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 }
 
 func (wf *workerFailover) Recover(dc *v1alpha1.DMCluster) {
+	dc.Status.Worker.FailureMembers = nil
+	klog.Infof("dm-worker recover: clear FailureWorkers, %s/%s", dc.GetNamespace(), dc.GetName())
+}
+
+func (wf *workerFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
 	for key, failureWorker := range dc.Status.Worker.FailureMembers {
 		if !wf.isPodDesired(dc, failureWorker.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete

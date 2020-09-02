@@ -15776,6 +15776,8 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                recoverFailover:
+                  type: boolean
                 replicas:
                   format: int32
                   type: integer

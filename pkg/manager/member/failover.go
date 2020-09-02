@@ -32,4 +32,5 @@ type Failover interface {
 type DMFailover interface {
 	Failover(*v1alpha1.DMCluster) error
 	Recover(*v1alpha1.DMCluster)
+	RemoveUndesiredFailures(*v1alpha1.DMCluster)
 }

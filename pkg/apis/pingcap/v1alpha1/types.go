@@ -1704,6 +1704,10 @@ type WorkerSpec struct {
 	// Config is the Configuration of dm-worker-servers
 	// +optional
 	Config *WorkerConfig `json:"config,omitempty"`
+
+	// RecoverFailover indicates that Operator can recover the failover Pods
+	// +optional
+	RecoverFailover bool `json:"recoverFailover,omitempty"`
 }
 
 // DMClusterCondition is dm cluster condition

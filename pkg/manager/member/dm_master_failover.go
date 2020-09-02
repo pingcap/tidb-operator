@@ -123,6 +123,10 @@ func (mf *masterFailover) Recover(dc *v1alpha1.DMCluster) {
 	klog.Infof("dm-master failover: clearing dm-master failoverMembers, %s/%s", dc.GetNamespace(), dc.GetName())
 }
 
+func (mf *masterFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
+	return
+}
+
 func (mf *masterFailover) tryToMarkAPeerAsFailure(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
@@ -241,13 +245,6 @@ func (mf *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) erro
 	return nil
 }
 
-func setDMMemberDeleted(dc *v1alpha1.DMCluster, podName string) {
-	failureMember := dc.Status.Master.FailureMembers[podName]
-	failureMember.MemberDeleted = true
-	dc.Status.Master.FailureMembers[podName] = failureMember
-	klog.Infof("dm-master failover: set dm-master member: %s/%s deleted", dc.GetName(), podName)
-}
-
 func (mf *masterFailover) isPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
 	ordinals := dc.MasterStsDesiredOrdinals(true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
@@ -256,4 +253,11 @@ func (mf *masterFailover) isPodDesired(dc *v1alpha1.DMCluster, podName string) b
 		return false
 	}
 	return ordinals.Has(ordinal)
+}
+
+func setDMMemberDeleted(dc *v1alpha1.DMCluster, podName string) {
+	failureMember := dc.Status.Master.FailureMembers[podName]
+	failureMember.MemberDeleted = true
+	dc.Status.Master.FailureMembers[podName] = failureMember
+	klog.Infof("dm-master failover: set dm-master member: %s/%s deleted", dc.GetName(), podName)
 }

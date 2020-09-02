@@ -19541,6 +19541,18 @@ WorkerConfig
 <p>Config is the Configuration of dm-worker-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="workerstatus">WorkerStatus</h3>

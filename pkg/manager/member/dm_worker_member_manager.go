@@ -202,6 +202,11 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 
 	// Recover failed workers if any before generating desired statefulset
 	if len(dc.Status.Worker.FailureMembers) > 0 {
+		wmm.workerFailover.RemoveUndesiredFailures(dc)
+	}
+	if len(dc.Status.Worker.FailureMembers) > 0 &&
+		dc.Spec.Worker.RecoverFailover &&
+		shouldRecoverDM(dc, label.DMWorkerLabelVal, wmm.podLister) {
 		wmm.workerFailover.Recover(dc)
 	}
 
