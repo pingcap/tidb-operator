@@ -92,7 +92,6 @@ func (m *mockPrometheus) SetResponse(w http.ResponseWriter, r *http.Request) {
 
 	m.addIntoMaps(mp, string(b))
 	writeResponse(w, "ok")
-	return
 }
 
 func (m *mockPrometheus) ServeTargets(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +130,7 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 		} else if memberType == "tikv" {
 			key = fmt.Sprintf(calculate.TikvSumCpuMetricsPattern, name, duration)
 		}
-		m.responses[fmt.Sprintf("%s", key)] = response
+		m.responses[key] = response
 		klog.Infof("add key: %s with value: %s", key, response)
 	} else if currentType == "storage" {
 		key := ""
@@ -139,7 +138,7 @@ func (m *mockPrometheus) addIntoMaps(mp *MonitorParams, response string) {
 		stype := mp.StorageType
 		klog.Infof("cluster=%s, storageType=%s, response =%s", cluster, stype, response)
 		key = fmt.Sprintf(calculate.TikvSumStorageMetricsPattern, cluster, stype)
-		m.responses[fmt.Sprintf("%s", key)] = response
+		m.responses[key] = response
 		klog.Infof("add key: %s with value: %s", key, response)
 	}
 }
