@@ -819,6 +819,7 @@ func newFakeTiDBMemberManager() (*tidbMemberManager, *controller.FakeStatefulSet
 		podInformer.Lister(),
 		cmInformer.Lister(),
 		secretInformer.Lister(),
+		tcInformer.Lister(),
 		tidbUpgrader,
 		true,
 		tidbFailover,
@@ -1141,7 +1142,8 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts := getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
+			tmm, _, _, _, _ := newFakeTiDBMemberManager()
+			sts := tmm.getNewTiDBSetForTidbCluster(&tt.tc, tt.cm)
 			tt.testSts(sts)
 		})
 	}
@@ -1408,7 +1410,8 @@ func TestTiDBInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts := getNewTiDBSetForTidbCluster(&tt.tc, nil)
+			tmm, _, _, _, _ := newFakeTiDBMemberManager()
+			sts := tmm.getNewTiDBSetForTidbCluster(&tt.tc, nil)
 			if diff := cmp.Diff(tt.expectedInit, sts.Spec.Template.Spec.InitContainers); diff != "" {
 				t.Errorf("unexpected InitContainers in Statefulset (-want, +got): %s", diff)
 			}

@@ -1465,7 +1465,8 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts, err := getNewStatefulSet(&tt.tc, nil)
+			pmm, _, _, _, _, _ := newFakeTiFlashMemberManager(&tt.tc)
+			sts, err := pmm.getNewStatefulSet(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
 			}

@@ -2069,7 +2069,8 @@ func TestTiKVInitContainers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sts, err := getNewTiKVSetForTidbCluster(&tt.tc, nil)
+			pmm, _, _, _, _, _ := newFakeTiKVMemberManager(&tt.tc)
+			sts, err := pmm.getNewTiKVSetForTidbCluster(&tt.tc, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error %v, wantErr %v", err, tt.wantErr)
 			}
