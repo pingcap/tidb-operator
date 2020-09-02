@@ -9512,6 +9512,9 @@ spec:
                               type: string
                             labels:
                               type: object
+                            max-grpc-send-msg-len:
+                              format: int32
+                              type: integer
                             request-batch-enable-cross-command:
                               type: boolean
                             request-batch-wait-duration:
@@ -11154,6 +11157,8 @@ spec:
                       type: object
                     log-file:
                       type: string
+                    log-format:
+                      type: string
                     log-level:
                       type: string
                     log-rotation-size:
@@ -12133,6 +12138,9 @@ spec:
                           type: string
                         labels:
                           type: object
+                        max-grpc-send-msg-len:
+                          format: int32
+                          type: integer
                         request-batch-enable-cross-command:
                           type: boolean
                         request-batch-wait-duration:

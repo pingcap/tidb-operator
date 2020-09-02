@@ -1787,6 +1787,13 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"grpc-compression-type": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to none",
@@ -6573,6 +6580,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 							Format: "",
 						},
 					},
+					"log-format": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"slow-log-file": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -7908,6 +7921,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 							Description: "Optional: Defaults to 1",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 					"grpc-compression-type": {
