@@ -53,6 +53,7 @@ type workerMemberManager struct {
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
+	workerScaler Scaler
 }
 
 // NewWorkerMemberManager returns a *ticdcMemberManager
@@ -63,7 +64,8 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister) manager.DMManager {
+	podLister corelisters.PodLister,
+	workerScaler Scaler) manager.DMManager {
 	return &workerMemberManager{
 		masterControl,
 		setControl,
@@ -73,10 +75,11 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 		setLister,
 		svcLister,
 		podLister,
+		workerScaler,
 	}
 }
 
-func (wmm *workerMemberManager) Sync(dc *v1alpha1.DMCluster) error {
+func (wmm *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
@@ -211,6 +214,10 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 		return nil
 	}
 
+	if err := wmm.workerScaler.Scale(dc, oldSts, newSts); err != nil {
+		return err
+	}
+
 	return updateStatefulSet(wmm.setControl, dc, newSts, oldSts)
 }
 
@@ -259,6 +266,16 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 		}
 
 		workerStatus[name] = status
+
+		// offline the workers that already been scaled-in
+		if status.Stage == "offline" {
+			if !isWorkerPodDesired(dc, name) {
+				err := dmClient.DeleteWorker(name)
+				if err != nil {
+					klog.Errorf("fail to remove worker %s, err: %s", worker.Name, err)
+				}
+			}
+		}
 	}
 
 	dc.Status.Worker.Synced = true
@@ -489,10 +506,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			ServiceName:         controller.DMWorkerPeerMemberName(dcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
-				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.WorkerStsDesiredReplicas()),
-				}},
+				Type: apps.RollingUpdateStatefulSetStrategyType},
 		},
 	}
 
@@ -544,4 +558,14 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	return cm, nil
+}
+
+func isWorkerPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
+	ordinals := dc.WorkerStsDesiredOrdinals(false)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }
