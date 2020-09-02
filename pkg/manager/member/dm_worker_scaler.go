@@ -77,7 +77,10 @@ func (wsd *workerScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, 
 	return nil
 }
 
-// We need remove member from cluster before reducing statefulset replicas
+// Different from dm-master, we need remove member from cluster **after** reducing statefulset replicas
+// Now it will be removed in syncing worker status. For dm-worker we can't remove its register info from dm-master
+// when it's still alive. So we delete it later after its keepalive lease is outdated or revoked.
+// We can defer deleting dm-worker register info because dm-master will patch replication task through keepalive info.
 // only remove one member at a time when scale down
 func (wsd *workerScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	dc, ok := meta.(*v1alpha1.DMCluster)
