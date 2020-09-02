@@ -300,7 +300,7 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.Flash, externalClusterName st
 		}
 	}
 	if config.ServiceAddr == nil {
-		config.ServiceAddr = pointer.StringPtr(fmt.Sprintf("%s-POD_NUM.%s.%s.svc:3930", controller.TiFlashMemberName(clusterName), controller.TiFlashPeerMemberName(clusterName), ns))
+		config.ServiceAddr = pointer.StringPtr("0.0.0.0:3930")
 	}
 	if config.OverlapThreshold == nil {
 		o := 0.6

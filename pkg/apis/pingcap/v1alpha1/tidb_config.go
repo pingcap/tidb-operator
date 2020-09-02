@@ -150,6 +150,9 @@ type TiDBConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	EnableTelemetry *bool `toml:"enable-telemetry,omitempty" json:"enable-telemetry,omitempty"`
+	// Labels are labels for TiDB server
+	// +optional
+	Labels map[string]string `toml:"labels,omitempty" json:"labels,omitempty"`
 }
 
 // Log is the log section of config.

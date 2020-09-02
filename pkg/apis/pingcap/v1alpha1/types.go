@@ -411,6 +411,10 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
+
+	// RecoverFailover indicates that Operator can recover the failover Pods
+	// +optional
+	RecoverFailover bool `json:"recoverFailover,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -454,6 +458,10 @@ type TiFlashSpec struct {
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+
+	// RecoverFailover indicates that Operator can recover the failover Pods
+	// +optional
+	RecoverFailover bool `json:"recoverFailover,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
