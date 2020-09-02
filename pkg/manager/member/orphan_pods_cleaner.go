@@ -78,15 +78,13 @@ func (opc *orphanPodsCleaner) Clean(meta metav1.Object) (map[string]string, erro
 		err      error
 		podMeta  runtime.Object
 	)
-	switch meta.(type) {
+	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		tc := meta.(*v1alpha1.TidbCluster)
-		selector, err = label.New().Instance(tc.GetInstanceName()).Selector()
-		podMeta = tc
+		selector, err = label.New().Instance(meta.GetInstanceName()).Selector()
+		podMeta = meta
 	case *v1alpha1.DMCluster:
-		dc := meta.(*v1alpha1.DMCluster)
-		selector, err = label.NewDM().Instance(dc.GetInstanceName()).Selector()
-		podMeta = dc
+		selector, err = label.NewDM().Instance(meta.GetInstanceName()).Selector()
+		podMeta = meta
 	default:
 		err = fmt.Errorf("orphanPodsCleaner.Clean: unknown meta spec %s", meta)
 	}

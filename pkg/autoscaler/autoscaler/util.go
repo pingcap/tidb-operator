@@ -45,7 +45,7 @@ func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSe
 	if err != nil {
 		return false, fmt.Errorf("tac[%s/%s] parse last auto-scaling timestamp failed,err:%v", tac.Namespace, tac.Name, err)
 	}
-	if intervalSeconds > int32(time.Now().Sub(time.Unix(t, 0)).Seconds()) {
+	if intervalSeconds > int32(time.Since(time.Unix(t, 0)).Seconds()) {
 		return false, nil
 	}
 	return true, nil

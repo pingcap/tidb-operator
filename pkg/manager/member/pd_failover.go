@@ -256,7 +256,6 @@ func (pf *pdFailover) isPodDesired(tc *v1alpha1.TidbCluster, podName string) boo
 }
 
 func (pf *pdFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	return
 }
 
 func setMemberDeleted(tc *v1alpha1.TidbCluster, podName string) {
@@ -278,9 +277,7 @@ func (fpf *fakePDFailover) Failover(_ *v1alpha1.TidbCluster) error {
 }
 
 func (fpf *fakePDFailover) Recover(_ *v1alpha1.TidbCluster) {
-	return
 }
 
 func (fpf *fakePDFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
-	return
 }
