@@ -13176,6 +13176,17 @@ string
 </tr>
 <tr>
 <td>
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>slow-log-file</code></br>
 <em>
 string
@@ -15906,6 +15917,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 1</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-grpc-send-msg-len</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10485760</p>
 </td>
 </tr>
 <tr>
