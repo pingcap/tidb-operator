@@ -1731,14 +1731,14 @@ const (
 
 // MasterStatus is dm-master status
 type MasterStatus struct {
-	Synced          bool                       `json:"synced,omitempty"`
-	Phase           MemberPhase                `json:"phase,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members         map[string]MasterMember    `json:"members,omitempty"`
-	Leader          MasterMember               `json:"leader,omitempty"`
-	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
-	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
-	Image           string                     `json:"image,omitempty"`
+	Synced          bool                           `json:"synced,omitempty"`
+	Phase           MemberPhase                    `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
+	Members         map[string]MasterMember        `json:"members,omitempty"`
+	Leader          MasterMember                   `json:"leader,omitempty"`
+	FailureMembers  map[string]MasterFailureMember `json:"failureMembers,omitempty"`
+	UnjoinedMembers map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
+	Image           string                         `json:"image,omitempty"`
 }
 
 // MasterMember is dm-master member status
@@ -1764,18 +1764,25 @@ type MasterFailureMember struct {
 
 // WorkerStatus is dm-worker status
 type WorkerStatus struct {
-	Synced      bool                    `json:"synced,omitempty"`
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     map[string]WorkerMember `json:"members,omitempty"`
-	Image       string                  `json:"image,omitempty"`
+	Synced         bool                           `json:"synced,omitempty"`
+	Phase          MemberPhase                    `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
+	Members        map[string]WorkerMember        `json:"members,omitempty"`
+	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
+	Image          string                         `json:"image,omitempty"`
 }
 
-// WorkerMember is dm-Worker member status
+// WorkerMember is dm-worker member status
 type WorkerMember struct {
 	Name  string `json:"name,omitempty"`
 	Addr  string `json:"addr,omitempty"`
 	Stage string `json:"stage"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// WorkerFailureMember is the dm-worker failure member information
+type WorkerFailureMember struct {
+	PodName   string      `json:"podName,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }

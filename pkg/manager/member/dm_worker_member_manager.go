@@ -49,10 +49,12 @@ type workerMemberManager struct {
 	setControl    controller.StatefulSetControlInterface
 	svcControl    controller.ServiceControlInterface
 	//podControl    controller.PodControlInterface
-	typedControl controller.TypedControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
+	typedControl   controller.TypedControlInterface
+	setLister      v1.StatefulSetLister
+	svcLister      corelisters.ServiceLister
+	podLister      corelisters.PodLister
+	autoFailover   bool
+	workerFailover DMFailover
 }
 
 // NewWorkerMemberManager returns a *ticdcMemberManager
@@ -63,7 +65,9 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister) manager.DMManager {
+	podLister corelisters.PodLister,
+	autoFailover bool,
+	workerFailover DMFailover) manager.DMManager {
 	return &workerMemberManager{
 		masterControl,
 		setControl,
@@ -73,7 +77,8 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 		setLister,
 		svcLister,
 		podLister,
-	}
+		autoFailover,
+		workerFailover}
 }
 
 func (wmm *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
@@ -194,6 +199,12 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 	if err != nil {
 		return err
 	}
+
+	// Recover failed workers if any before generating desired statefulset
+	if len(dc.Status.Worker.FailureMembers) > 0 {
+		wmm.workerFailover.Recover(dc)
+	}
+
 	newSts, err := getNewWorkerSetForDMCluster(dc, cm)
 	if err != nil {
 		return err
@@ -209,6 +220,17 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 			return err
 		}
 		return nil
+	}
+
+	// Perform failover logic if necessary. Note that this will only update
+	// DMCluster status. The actual scaling performs in next sync loop (if a
+	// new replica needs to be added).
+	if wmm.autoFailover && dc.Spec.Worker.MaxFailoverCount != nil {
+		if dc.WorkerAllPodsStarted() && !dc.WorkerAllMembersReady() {
+			if err := wmm.workerFailover.Failover(dc); err != nil {
+				return err
+			}
+		}
 	}
 
 	return updateStatefulSet(wmm.setControl, dc, newSts, oldSts)
@@ -490,9 +512,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.WorkerStsDesiredReplicas()),
-				}},
+			},
 		},
 	}
 
