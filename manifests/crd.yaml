@@ -6495,6 +6495,8 @@ spec:
                             type: string
                           type: array
                       type: object
+                    labels:
+                      type: object
                     lease:
                       type: string
                     log:
