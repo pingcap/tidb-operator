@@ -3516,6 +3516,18 @@ Optional: Defaults to range</p>
 <tbody>
 <tr>
 <td>
+<code>tmp_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to &ldquo;/data0/tmp&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>path_realtime_mode</code></br>
 <em>
 bool
@@ -3552,26 +3564,15 @@ int64
 </tr>
 <tr>
 <td>
-<code>tcp_port_secure</code></br>
+<code>flash</code></br>
 <em>
-int32
+<a href="#flash">
+Flash
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 9000</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>https_port</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 8123</p>
 </td>
 </tr>
 <tr>
@@ -5254,6 +5255,85 @@ FlashCluster
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#flashproxy">
+FlashProxy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashcluster">FlashCluster</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#flash">Flash</a>)
+</p>
+<p>
+<p>FlashCluster is the configuration of [flash.flash_cluster] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/flash_cluster_manager.log</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>refresh_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 20</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>update_rule_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master_ttl</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 60</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="flashlogger">FlashLogger</h3>
@@ -5274,6 +5354,18 @@ FlashCluster
 <tbody>
 <tr>
 <td>
+<code>errorlog</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/error.log</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>size</code></br>
 <em>
 string
@@ -5282,6 +5374,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 100M</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/server.log</p>
 </td>
 </tr>
 <tr>
@@ -5310,6 +5414,84 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="flashproxy">FlashProxy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#flash">Flash</a>)
+</p>
+<p>
+<p>FlashProxy is the configuration of [flash.proxy] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0.0.0.0:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-dir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/proxy</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/proxy.toml</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/proxy.log</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="flashsecurity">FlashSecurity</h3>
 <p>
 (<em>Appears on:</em>
@@ -5334,6 +5516,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5345,6 +5528,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5356,6 +5540,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5368,6 +5553,75 @@ string
 <td>
 <em>(Optional)</em>
 <p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashserverconfig">FlashServerConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>)
+</p>
+<p>
+<p>FlashServerConfig is the configuration of Proxy server.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engine-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to 0.0.0.0:20292</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-status-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>TiKVServerConfig</code></br>
+<em>
+<a href="#tikvserverconfig">
+TiKVServerConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVServerConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -9484,6 +9738,214 @@ PrometheusConfiguration
 </tr>
 </tbody>
 </table>
+<h3 id="proxyconfig">ProxyConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashconfig">TiFlashConfig</a>)
+</p>
+<p>
+<p>ProxyConfig is the configuration of TiFlash proxy process.
+All the configurations are same with those of TiKV except adding <code>engine-addr</code> in the TiKVServerConfig</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-rotation-timespan</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 24h</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>panic-when-unexpected-key-or-data</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>server</code></br>
+<em>
+<a href="#flashserverconfig">
+FlashServerConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+<a href="#tikvstorageconfig">
+TiKVStorageConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftstore</code></br>
+<em>
+<a href="#tikvraftstoreconfig">
+TiKVRaftstoreConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>rocksdb</code></br>
+<em>
+<a href="#tikvdbconfig">
+TiKVDbConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>coprocessor</code></br>
+<em>
+<a href="#tikvcoprocessorconfig">
+TiKVCoprocessorConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>readpool</code></br>
+<em>
+<a href="#tikvreadpoolconfig">
+TiKVReadPoolConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftdb</code></br>
+<em>
+<a href="#tikvraftdbconfig">
+TiKVRaftDBConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>import</code></br>
+<em>
+<a href="#tikvimportconfig">
+TiKVImportConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>gc</code></br>
+<em>
+<a href="#tikvgcconfig">
+TiKVGCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pd</code></br>
+<em>
+<a href="#tikvpdconfig">
+TiKVPDConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#tikvsecurityconfig">
+TiKVSecurityConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="proxyprotocol">ProxyProtocol</h3>
 <p>
 (<em>Appears on:</em>
@@ -11803,6 +12265,18 @@ Imported from v4.0.2.
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Labels are labels for TiDB server</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbfailuremember">TiDBFailureMember</h3>
@@ -12482,6 +12956,20 @@ CommonConfig
 <td>
 <em>(Optional)</em>
 <p>commonConfig is the Configuration of TiFlash process</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#proxyconfig">
+ProxyConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>proxyConfig is the Configuration of proxy process</p>
 </td>
 </tr>
 </tbody>
@@ -13390,6 +13878,17 @@ string
 </tr>
 <tr>
 <td>
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>slow-log-file</code></br>
 <em>
 string
@@ -13629,6 +14128,7 @@ TiKVBackupConfig
 <h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13848,6 +14348,7 @@ bool
 <h3 id="tikvdbconfig">TiKVDbConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14322,6 +14823,7 @@ Kubernetes meta/v1.Time
 <h3 id="tikvgcconfig">TiKVGCConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14439,6 +14941,7 @@ TiKVStatus
 <h3 id="tikvimportconfig">TiKVImportConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14619,6 +15122,7 @@ If the type set to kms, this config should be filled</p>
 <h3 id="tikvpdconfig">TiKVPDConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14759,6 +15263,7 @@ bool
 <h3 id="tikvraftdbconfig">TiKVRaftDBConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15042,6 +15547,7 @@ TiKVCfConfig
 <h3 id="tikvraftstoreconfig">TiKVRaftstoreConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15718,6 +16224,7 @@ bool
 <h3 id="tikvreadpoolconfig">TiKVReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15774,6 +16281,7 @@ TiKVStorageReadPoolConfig
 <h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -16097,6 +16605,7 @@ If the type set to kms, this config should be filled</p>
 <h3 id="tikvserverconfig">TiKVServerConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#flashserverconfig">FlashServerConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -16120,6 +16629,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 1</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-grpc-send-msg-len</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10485760</p>
 </td>
 </tr>
 <tr>
@@ -16683,6 +17204,7 @@ string
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>

@@ -4681,6 +4681,13 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
@@ -5458,6 +5465,11 @@ func (in *TiKVConfig) DeepCopyInto(out *TiKVConfig) {
 	}
 	if in.LogFile != nil {
 		in, out := &in.LogFile, &out.LogFile
+		*out = new(string)
+		**out = **in
+	}
+	if in.LogFormat != nil {
+		in, out := &in.LogFormat, &out.LogFormat
 		*out = new(string)
 		**out = **in
 	}
@@ -6754,6 +6766,11 @@ func (in *TiKVServerConfig) DeepCopyInto(out *TiKVServerConfig) {
 	if in.StatusThreadPoolSize != nil {
 		in, out := &in.StatusThreadPoolSize, &out.StatusThreadPoolSize
 		*out = new(string)
+		**out = **in
+	}
+	if in.MaxGrpcSendMsgLen != nil {
+		in, out := &in.MaxGrpcSendMsgLen, &out.MaxGrpcSendMsgLen
+		*out = new(uint)
 		**out = **in
 	}
 	if in.GrpcCompressionType != nil {
