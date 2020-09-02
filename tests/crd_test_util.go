@@ -591,8 +591,7 @@ func (ctu *CrdTestUtil) pumpMembersReadyFn(tc *v1alpha1.TidbCluster) (bool, erro
 }
 
 func (ctu *CrdTestUtil) pumpHealth(tc *v1alpha1.TidbCluster, podName string) bool {
-	var addr string
-	addr = fmt.Sprintf("%s.%s-pump.%s:8250", podName, tc.Name, tc.Namespace)
+	addr := fmt.Sprintf("%s.%s-pump.%s:8250", podName, tc.Name, tc.Namespace)
 	pumpHealthURL := fmt.Sprintf("http://%s/status", addr)
 	res, err := http.Get(pumpHealthURL)
 	if err != nil {
