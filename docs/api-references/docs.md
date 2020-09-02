@@ -5050,8 +5050,7 @@ int32
 </em>
 </td>
 <td>
-<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-It cannot be less than minReplicas.</p>
+<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.</p>
 </td>
 </tr>
 </tbody>

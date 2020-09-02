@@ -1849,7 +1849,7 @@ func schema_pkg_apis_pingcap_v1alpha1_ExternalConfig(ref common.ReferenceCallbac
 					},
 					"maxReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas.",
+							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
