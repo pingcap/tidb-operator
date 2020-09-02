@@ -10,6 +10,14 @@ This document describes how to back up the data of the TiDB cluster in Kubernete
 
 The backup method described in this document is implemented using CustomResourceDefinition (CRD) in TiDB Operator v1.1 or later versions. For the backup method implemented using Helm Charts, refer to [Back up and Restore TiDB Cluster Data Using Helm Charts](backup-and-restore-using-helm-charts.md).
 
+## Required database account privileges
+
+* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the backup, the `Backup` CR needs a database account with these privileges to adjust the GC time.
+* SELECT
+* RELOAD
+* LOCK TABLES
+* REPLICATION CLIENT
+
 ## Ad-hoc full backup to GCS
 
 Ad-hoc full backup describes a backup operation by creating a `Backup` custom resource (CR) object. TiDB Operator performs the specific backup operation based on this `Backup` object. If an error occurs during the backup process, TiDB Operator does not retry and you need to handle this error manually.

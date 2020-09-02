@@ -133,6 +133,10 @@ Before you restore data from Amazon S3 storage, you need to grant AWS account pe
     >
     > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 4.
 
+## Required database account privileges
+
+* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the restoration, the `Restore` CR needs a database account with these privileges to adjust the GC time.
+
 ## Restoration process
 
 + If you grant permissions by importing AccessKey and SecretKey, create the `Restore` CR, and restore cluster data as described below:

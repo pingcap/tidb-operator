@@ -21,6 +21,18 @@ This document shows an example in which the backup data stored in the specified 
 
 Refer to [Prerequisites](restore-from-aws-s3-using-br.md#prerequisites).
 
+## Required database account privileges
+
+| Privileges | Scope |
+|:----|:------|
+| SELECT | Tables |
+| INSERT | Tables |
+| UPDATE | Tables |
+| DELETE | Tables |
+| CREATE | Databases, tables |
+| DROP | Databases, tables |
+| ALTER | Tables |
+
 ## Restoration process
 
 > **Note:**

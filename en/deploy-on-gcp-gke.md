@@ -328,7 +328,7 @@ An instance of a `tidb-cluster` module corresponds to a TiDB cluster in the GKE 
       gke_cluster_location       = local.location
       gke_cluster_name           = ${gke_cluster_name}
       cluster_name               = "example-tidb-cluster"
-      cluster_version            = "v3.0.1"
+      cluster_version            = "v4.0.4"
       kubeconfig_path            = local.kubeconfig
       tidb_cluster_chart_version = "v1.0.0"
       pd_instance_type           = "n1-standard-1"
@@ -677,7 +677,7 @@ module "tidb-cluster-a" {
   gke_cluster_location       = var.GCP_REGION
   gke_cluster_name           = locals.gke_name
   cluster_name               = "tidb-cluster-a"
-  cluster_version            = "v3.0.1"
+  cluster_version            = "v4.0.4"
   kubeconfig_path            = module.tidb-operator.kubeconfig_path
   tidb_cluster_chart_version = "v1.0.0"
   pd_instance_type           = "n1-standard-1"
@@ -695,7 +695,7 @@ module "tidb-cluster-b" {
   gke_cluster_location       = var.GCP_REGION
   gke_cluster_name           = locals.gke_name
   cluster_name               = "tidb-cluster-b"
-  cluster_version            = "v3.0.1"
+  cluster_version            = "v4.0.4"
   kubeconfig_path            = module.tidb-operator.kubeconfig_path
   tidb_cluster_chart_version = "v1.0.0"
   pd_instance_type           = "n1-standard-1"

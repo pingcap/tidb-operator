@@ -30,6 +30,18 @@ This document shows an example in which the backup data stored in the specified 
     kubectl create secret generic restore-demo2-tidb-secret --from-literal=user=root --from-literal=password=${password} --namespace=test2
     ```
 
+## Required database account privileges
+
+| Privileges | Scope |
+|:----|:------|
+| SELECT | Tables |
+| INSERT | Tables |
+| UPDATE | Tables |
+| DELETE | Tables |
+| CREATE | Databases, tables |
+| DROP | Databases, tables |
+| ALTER | Tables |
+
 ## Restoration process
 
 1. Create the restore custom resource (CR) and restore the backup data to the TiDB cluster:

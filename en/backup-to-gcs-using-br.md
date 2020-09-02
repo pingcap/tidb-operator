@@ -43,6 +43,10 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     kubectl create secret generic backup-demo1-tidb-secret --from-literal=password=<password> --namespace=test1
     ```
 
+### Required database account privileges
+
+* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the backup, the `Backup` CR needs a database account with these privileges to adjust the GC time.
+
 ### Process of ad-hoc full backup
 
 1. Create the `Backup` CR, and back up cluster data to GCS as described below:

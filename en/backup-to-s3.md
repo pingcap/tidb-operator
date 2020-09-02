@@ -25,6 +25,14 @@ For the current S3-compatible storage types, Ceph and Amazon S3 work normally as
 
 Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequisites-for-ad-hoc-full-backup).
 
+### Required database account privileges
+
+* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the backup, the `Backup` CR needs a database account with these privileges to adjust the GC time.
+* SELECT
+* RELOAD
+* LOCK TABLES
+* REPLICATION CLIENT
+
 ### Ad-hoc backup process
 
 > **Note:**

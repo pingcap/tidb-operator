@@ -162,6 +162,10 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
     >
     > `arn:aws:iam::123456789012:role/user` is the IAM role created in Step 4.
 
+### Required database account privileges
+
+* The `SELECT` and `UPDATE` privileges of the `mysql.tidb` table: Before and after the backup, the `Backup` CR needs a database account with these privileges to adjust the GC time.
+
 ### Process of ad-hoc full backup
 
 - If you grant permissions by importing AccessKey and SecretKey, create the `Backup` CR, and back up cluster data as described below:
