@@ -14,8 +14,13 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func (dc *DMCluster) Scheme() string {
@@ -92,6 +97,17 @@ func (dc *DMCluster) WorkerStsDesiredReplicas() int32 {
 	return dc.Spec.Worker.Replicas
 }
 
+func (dc *DMCluster) WorkerStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	if dc.Spec.Worker == nil {
+		return sets.Int32{}
+	}
+	replicas := dc.Spec.Worker.Replicas
+	if !excludeFailover {
+		replicas = dc.WorkerStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMWorkerLabelVal))
+}
+
 func (dc *DMCluster) GetInstanceName() string {
 	return dc.Name
 }
@@ -136,6 +152,33 @@ func (dc *DMCluster) MasterUpgrading() bool {
 
 func (dc *DMCluster) MasterScaling() bool {
 	return dc.Status.Master.Phase == ScalePhase
+}
+
+func (dc *DMCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
+	deleteSlots = sets.NewInt32()
+	annotations := dc.GetAnnotations()
+	if annotations == nil {
+		return deleteSlots
+	}
+	var key string
+	if component == label.DMMasterLabelVal {
+		key = label.AnnDMMasterDeleteSlots
+	} else if component == label.DMWorkerLabelVal {
+		key = label.AnnDMWorkerDeleteSlots
+	} else {
+		return
+	}
+	value, ok := annotations[key]
+	if !ok {
+		return
+	}
+	var slice []int32
+	err := json.Unmarshal([]byte(value), &slice)
+	if err != nil {
+		return
+	}
+	deleteSlots.Insert(slice...)
+	return
 }
 
 func (dc *DMCluster) MasterIsAvailable() bool {
