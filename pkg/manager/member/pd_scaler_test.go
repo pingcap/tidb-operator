@@ -432,7 +432,7 @@ func newFakePDScaler() (*pdScaler, *pdapi.FakePDControl, cache.Indexer, *control
 	pdControl := pdapi.NewFakePDControl(kubeCli)
 	pvcControl := controller.NewFakePVCControl(pvcInformer)
 
-	return &pdScaler{generalScaler{pdControl, pvcInformer.Lister(), pvcControl}},
+	return &pdScaler{generalScaler{pvcInformer.Lister(), pvcControl}, pdControl},
 		pdControl, pvcInformer.Informer().GetIndexer(), pvcControl
 }
 

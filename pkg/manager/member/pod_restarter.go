@@ -21,12 +21,13 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type PodRestarter interface {
-	Sync(tc *v1alpha1.TidbCluster) error
+	Sync(meta metav1.Object) error
 }
 
 type podRestarter struct {
@@ -38,19 +39,32 @@ func NewPodRestarter(kubeCli kubernetes.Interface, podLister corelisters.PodList
 	return &podRestarter{kubeCli: kubeCli, podLister: podLister}
 }
 
-func (gr *podRestarter) Sync(tc *v1alpha1.TidbCluster) error {
-
-	namespace := tc.Namespace
-	selector, err := label.New().Instance(tc.Name).Selector()
+func (gr *podRestarter) Sync(meta metav1.Object) error {
+	namespace := meta.GetNamespace()
+	var (
+		selector labels.Selector
+		err      error
+		metaType string
+	)
+	switch meta.(type) {
+	case *v1alpha1.TidbCluster:
+		selector, err = label.New().Instance(meta.GetName()).Selector()
+		metaType = "tc"
+	case *v1alpha1.DMCluster:
+		selector, err = label.NewDM().Instance(meta.GetName()).Selector()
+		metaType = "dc"
+	default:
+		err = fmt.Errorf("podRestarter.Sync: unknown meta spec %s", meta)
+	}
 	if err != nil {
 		return err
 	}
-	tcPods, err := gr.podLister.Pods(namespace).List(selector)
+	metaPods, err := gr.podLister.Pods(namespace).List(selector)
 	if err != nil {
-		return fmt.Errorf("podRestarter.Sync: failed to get pods list for cluster %s/%s, selector %s, error: %s", namespace, tc.GetName(), selector, err)
+		return fmt.Errorf("podRestarter.Sync: failed to get pods list for cluster %s/%s, selector %s, error: %s", namespace, meta.GetName(), selector, err)
 	}
 	requeue := false
-	for _, pod := range tcPods {
+	for _, pod := range metaPods {
 		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
 			requeue = true
 			err = gr.restart(pod)
@@ -60,7 +74,7 @@ func (gr *podRestarter) Sync(tc *v1alpha1.TidbCluster) error {
 		}
 	}
 	if requeue {
-		return controller.RequeueErrorf("tc[%s/%s] is under restarting", namespace, tc.Name)
+		return controller.RequeueErrorf("%s[%s/%s] is under restarting", metaType, namespace, meta.GetName())
 	}
 	return nil
 }
@@ -83,6 +97,6 @@ func NewFakePodRestarter() *FakeRestarter {
 	return &FakeRestarter{}
 }
 
-func (fsr *FakeRestarter) Sync(tc *v1alpha1.TidbCluster) error {
+func (fsr *FakeRestarter) Sync(meta metav1.Object) error {
 	return nil
 }
