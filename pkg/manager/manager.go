@@ -31,5 +31,5 @@ type TiKVGroupManager interface {
 
 type DMManager interface {
 	// Sync implements the logic for syncing dmcluster.
-	Sync(*v1alpha1.DMCluster) error
+	SyncDM(*v1alpha1.DMCluster) error
 }
