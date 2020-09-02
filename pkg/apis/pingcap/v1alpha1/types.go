@@ -1552,6 +1552,11 @@ type DMClusterSpec struct {
 	// +optional
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
 
+	// TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+	// that used by dm-master and dm-worker.
+	// +optional
+	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
+
 	// Whether Hostnetwork is enabled for DM cluster Pods
 	// Optional: Defaults to false
 	// +optional
