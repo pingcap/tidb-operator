@@ -2822,6 +2822,18 @@ Optional: Defaults to range</p>
 <tbody>
 <tr>
 <td>
+<code>tmp_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to &ldquo;/data0/tmp&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>path_realtime_mode</code></br>
 <em>
 bool
@@ -2858,26 +2870,15 @@ int64
 </tr>
 <tr>
 <td>
-<code>tcp_port_secure</code></br>
+<code>flash</code></br>
 <em>
-int32
+<a href="#flash">
+Flash
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 9000</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>https_port</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 8123</p>
 </td>
 </tr>
 <tr>
@@ -3443,7 +3444,6 @@ CrdKind
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>TiDBMonitor</code></br>
 <em>
 <a href="#crdkind">
@@ -3452,21 +3452,10 @@ CrdKind
 </em>
 </td>
 <td>
-=======
-<code>tmp_path</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to &ldquo;/data0/tmp&rdquo;</p>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </td>
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>TiDBInitializer</code></br>
 <em>
 <a href="#crdkind">
@@ -3475,25 +3464,11 @@ CrdKind
 </em>
 </td>
 <td>
-=======
-<code>path_realtime_mode</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to false</p>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </td>
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>TidbClusterAutoScaler</code></br>
-=======
-<code>mark_cache_size</code></br>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <em>
 <a href="#crdkind">
 CrdKind
@@ -3515,37 +3490,17 @@ CrdKind
 <table>
 <thead>
 <tr>
-<<<<<<< HEAD
 <th>Field</th>
 <th>Description</th>
-=======
-<td>
-<code>minmax_index_cache_size</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 5368709120</p>
-</td>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>MetricSpec</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#metricspec-v2beta2-autoscaling">
 Kubernetes autoscaling/v2beta2.MetricSpec
-=======
-<code>flash</code></br>
-<em>
-<a href="#flash">
-Flash
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </a>
 </em>
 </td>
@@ -3554,7 +3509,6 @@ Flash
 (Members of <code>MetricSpec</code> are embedded into this type.)
 </p>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>metrics contains the specifications for which to use to calculate the
 desired replica count (the maximum replica count across all metrics will
 be used).  The desired replica count is calculated multiplying the
@@ -3563,8 +3517,6 @@ number of pods.  Ergo, metrics used must decrease as the pod count is
 increased, and vice-versa.  See the individual metric source types for
 more information about how each type of metric must respond.
 If not set, the auto-scaling won&rsquo;t happen.</p>
-=======
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </td>
 </tr>
 <tr>
@@ -4016,6 +3968,85 @@ FlashCluster
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#flashproxy">
+FlashProxy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashcluster">FlashCluster</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#flash">Flash</a>)
+</p>
+<p>
+<p>FlashCluster is the configuration of [flash.flash_cluster] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/flash_cluster_manager.log</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>refresh_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 20</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>update_rule_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master_ttl</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 60</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="flashlogger">FlashLogger</h3>
@@ -4036,6 +4067,18 @@ FlashCluster
 <tbody>
 <tr>
 <td>
+<code>errorlog</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/error.log</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>size</code></br>
 <em>
 string
@@ -4044,6 +4087,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 100M</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/server.log</p>
 </td>
 </tr>
 <tr>
@@ -4072,6 +4127,84 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="flashproxy">FlashProxy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#flash">Flash</a>)
+</p>
+<p>
+<p>FlashProxy is the configuration of [flash.proxy] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0.0.0.0:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-dir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/proxy</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/proxy.toml</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/proxy.log</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="flashsecurity">FlashSecurity</h3>
 <p>
 (<em>Appears on:</em>
@@ -4096,6 +4229,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -4107,6 +4241,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -4118,6 +4253,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -4130,6 +4266,75 @@ string
 <td>
 <em>(Optional)</em>
 <p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashserverconfig">FlashServerConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>)
+</p>
+<p>
+<p>FlashServerConfig is the configuration of Proxy server.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engine-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to 0.0.0.0:20292</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-status-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>TiKVServerConfig</code></br>
+<em>
+<a href="#tikvserverconfig">
+TiKVServerConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVServerConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -5108,85 +5313,6 @@ Kubernetes core/v1.PullPolicy
 <em>(Optional)</em>
 </td>
 </tr>
-<tr>
-<td>
-<code>proxy</code></br>
-<em>
-<a href="#flashproxy">
-FlashProxy
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="flashcluster">FlashCluster</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#flash">Flash</a>)
-</p>
-<p>
-<p>FlashCluster is the configuration of [flash.flash_cluster] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>log</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data0/logs/flash_cluster_manager.log</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>refresh_interval</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 20</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>update_rule_interval</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 10</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>master_ttl</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 60</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="networks">Networks</h3>
@@ -5207,47 +5333,7 @@ int32
 <tbody>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>ip</code></br>
-=======
-<code>errorlog</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data0/logs/error.log</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>size</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 100M</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>log</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data0/logs/server.log</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>level</code></br>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <em>
 string
 </em>
@@ -5258,89 +5344,7 @@ string
 </tr>
 </tbody>
 </table>
-<<<<<<< HEAD
 <h3 id="opentracing">OpenTracing</h3>
-=======
-<h3 id="flashproxy">FlashProxy</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#flash">Flash</a>)
-</p>
-<p>
-<p>FlashProxy is the configuration of [flash.proxy] section.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 0.0.0.0:20170</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>advertise-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>data-dir</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data0/proxy</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>config</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data0/proxy.toml</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>log-file</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to /data0/logs/proxy.log</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="flashsecurity">FlashSecurity</h3>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <p>
 (<em>Appears on:</em>
 <a href="#tidbconfig">TiDBConfig</a>)
@@ -5365,11 +5369,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>Optional: Defaults to false</p>
-=======
-<p>Be set automatically by Operator</p>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </td>
 </tr>
 <tr>
@@ -5383,7 +5383,6 @@ OpenTracingSampler
 </td>
 <td>
 <em>(Optional)</em>
-<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5397,7 +5396,6 @@ OpenTracingReporter
 </td>
 <td>
 <em>(Optional)</em>
-<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5413,80 +5411,7 @@ bool
 </tr>
 </tbody>
 </table>
-<<<<<<< HEAD
 <h3 id="opentracingreporter">OpenTracingReporter</h3>
-=======
-<h3 id="flashserverconfig">FlashServerConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>)
-</p>
-<p>
-<p>FlashServerConfig is the configuration of Proxy server.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>engine-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>status-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Default to 0.0.0.0:20292</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>advertise-status-addr</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>TiKVServerConfig</code></br>
-<em>
-<a href="#tikvserverconfig">
-TiKVServerConfig
-</a>
-</em>
-</td>
-<td>
-<p>
-(Members of <code>TiKVServerConfig</code> are embedded into this type.)
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="gcsstorageprovider">GcsStorageProvider</h3>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <p>
 (<em>Appears on:</em>
 <a href="#opentracing">OpenTracing</a>)
@@ -7405,229 +7330,6 @@ uint
 <p>Optional: Defaults to 1024</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="proxyconfig">ProxyConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tiflashconfig">TiFlashConfig</a>)
-</p>
-<p>
-<p>ProxyConfig is the configuration of TiFlash proxy process.
-All the configurations are same with those of TiKV except adding <code>engine-addr</code> in the TiKVServerConfig</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>log-level</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to info</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>log-file</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>log-rotation-timespan</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 24h</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>panic-when-unexpected-key-or-data</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>server</code></br>
-<em>
-<a href="#flashserverconfig">
-FlashServerConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>storage</code></br>
-<em>
-<a href="#tikvstorageconfig">
-TiKVStorageConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>raftstore</code></br>
-<em>
-<a href="#tikvraftstoreconfig">
-TiKVRaftstoreConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>rocksdb</code></br>
-<em>
-<a href="#tikvdbconfig">
-TiKVDbConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>coprocessor</code></br>
-<em>
-<a href="#tikvcoprocessorconfig">
-TiKVCoprocessorConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>readpool</code></br>
-<em>
-<a href="#tikvreadpoolconfig">
-TiKVReadPoolConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>raftdb</code></br>
-<em>
-<a href="#tikvraftdbconfig">
-TiKVRaftDBConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>import</code></br>
-<em>
-<a href="#tikvimportconfig">
-TiKVImportConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>gc</code></br>
-<em>
-<a href="#tikvgcconfig">
-TiKVGCConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>pd</code></br>
-<em>
-<a href="#tikvpdconfig">
-TiKVPDConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>security</code></br>
-<em>
-<a href="#tikvsecurityconfig">
-TiKVSecurityConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="proxyprotocol">ProxyProtocol</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbconfig">TiDBConfig</a>)
-</p>
-<p>
-<p>ProxyProtocol is the PROXY protocol section of the config.</p>
-</p>
-<table>
-<thead>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>pseudo-estimate-ratio</code></br>
@@ -8128,6 +7830,214 @@ IngressSpec
 <em>
 <a href="#prometheusconfiguration">
 PrometheusConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="proxyconfig">ProxyConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashconfig">TiFlashConfig</a>)
+</p>
+<p>
+<p>ProxyConfig is the configuration of TiFlash proxy process.
+All the configurations are same with those of TiKV except adding <code>engine-addr</code> in the TiKVServerConfig</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-rotation-timespan</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 24h</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>panic-when-unexpected-key-or-data</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>server</code></br>
+<em>
+<a href="#flashserverconfig">
+FlashServerConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+<a href="#tikvstorageconfig">
+TiKVStorageConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftstore</code></br>
+<em>
+<a href="#tikvraftstoreconfig">
+TiKVRaftstoreConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>rocksdb</code></br>
+<em>
+<a href="#tikvdbconfig">
+TiKVDbConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>coprocessor</code></br>
+<em>
+<a href="#tikvcoprocessorconfig">
+TiKVCoprocessorConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>readpool</code></br>
+<em>
+<a href="#tikvreadpoolconfig">
+TiKVReadPoolConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftdb</code></br>
+<em>
+<a href="#tikvraftdbconfig">
+TiKVRaftDBConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>import</code></br>
+<em>
+<a href="#tikvimportconfig">
+TiKVImportConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>gc</code></br>
+<em>
+<a href="#tikvgcconfig">
+TiKVGCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pd</code></br>
+<em>
+<a href="#tikvpdconfig">
+TiKVPDConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#tikvsecurityconfig">
+TiKVSecurityConfig
 </a>
 </em>
 </td>
@@ -10698,20 +10608,6 @@ Kubernetes core/v1.PullPolicy
 Deprecated, use TidbCluster.HelperImagePullPolicy instead</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>proxy</code></br>
-<em>
-<a href="#proxyconfig">
-ProxyConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>proxyConfig is the Configuration of proxy process</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="tidbspec">TiDBSpec</h3>
@@ -11068,6 +10964,20 @@ CommonConfig
 <td>
 <em>(Optional)</em>
 <p>commonConfig is the Configuration of TiFlash process</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#proxyconfig">
+ProxyConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>proxyConfig is the Configuration of proxy process</p>
 </td>
 </tr>
 </tbody>
@@ -11850,30 +11760,9 @@ uint
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
 <p>If TiKV load is greater than this, TiDB will wait for a while to avoid little batch.
 Optional: Defaults to 200</p>
 </td>
-=======
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-<p>TiKVCoprocessorConfig is the configuration of TiKV Coprocessor component.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </tr>
 <tr>
 <td>
@@ -12060,41 +11949,6 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<<<<<<< HEAD
-=======
-<p>Optional: Defaults to true</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tikvdbconfig">TiKVDbConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-<p>TiKVDbConfig is the rocksdb config.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>wal-recovery-mode</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 2</p>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </td>
 </tr>
 <tr>
@@ -12271,6 +12125,7 @@ TiKVBackupConfig
 <h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12490,6 +12345,7 @@ bool
 <h3 id="tikvdbconfig">TiKVDbConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -12585,27 +12441,6 @@ bool
 <p>Optional: Defaults to true</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvgcconfig">TiKVGCConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>max-open-files</code></br>
@@ -12676,27 +12511,6 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvimportconfig">TiKVImportConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>info-log-keep-log-file-num</code></br>
@@ -12832,27 +12646,6 @@ TiKVCfConfig
 <em>(Optional)</em>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvpdconfig">TiKVPDConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>writecf</code></br>
@@ -12977,12 +12770,7 @@ It used in master key rotation, the data key should decryption by previous maste
 <h3 id="tikvfailurestore">TiKVFailureStore</h3>
 <p>
 (<em>Appears on:</em>
-<<<<<<< HEAD
 <a href="#tikvstatus">TiKVStatus</a>)
-=======
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 </p>
 <p>
 <p>TiKVFailureStore is the tikv failure store information</p>
@@ -13032,6 +12820,7 @@ Kubernetes meta/v1.Time
 <h3 id="tikvgcconfig">TiKVGCConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13072,6 +12861,7 @@ string
 <h3 id="tikvimportconfig">TiKVImportConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13252,6 +13042,7 @@ If the type set to kms, this config should be filled</p>
 <h3 id="tikvpdconfig">TiKVPDConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13325,7 +13116,6 @@ Optional: Defaults to 10</p>
 <h3 id="tikvpessimistictxn">TiKVPessimisticTxn</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13393,6 +13183,7 @@ bool
 <h3 id="tikvraftdbconfig">TiKVRaftDBConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13676,6 +13467,7 @@ TiKVCfConfig
 <h3 id="tikvraftstoreconfig">TiKVRaftstoreConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13970,27 +13762,6 @@ string
 <p>Optional: Defaults to 60s</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvreadpoolconfig">TiKVReadPoolConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>pd-store-heartbeat-tick-interval</code></br>
@@ -14025,27 +13796,6 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>lock-cf-compact-interval</code></br>
@@ -14249,28 +13999,6 @@ string
 <p>/ Interval to re-propose merge.</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvserverconfig">TiKVServerConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#flashserverconfig">FlashServerConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-<p>TiKVServerConfig is the configuration of TiKV server.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>use-delete-range</code></br>
@@ -14416,6 +14144,7 @@ bool
 <h3 id="tikvreadpoolconfig">TiKVReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14472,6 +14201,7 @@ TiKVStorageReadPoolConfig
 <h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14795,6 +14525,7 @@ If the type set to kms, this config should be filled</p>
 <h3 id="tikvserverconfig">TiKVServerConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#flashserverconfig">FlashServerConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14940,28 +14671,6 @@ uint
 <p>Optional: Defaults to 32</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-</tbody>
-</table>
-<h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#proxyconfig">ProxyConfig</a>, 
-<a href="#tikvconfig">TiKVConfig</a>)
-</p>
-<p>
-<p>TiKVStorageConfig is the config of storage</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 <tr>
 <td>
 <code>end-point-recursion-limit</code></br>
@@ -15401,6 +15110,7 @@ string
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>

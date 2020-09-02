@@ -5860,11 +5860,17 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashConfig(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig"),
 						},
 					},
+					"proxy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "proxyConfig is the Configuration of proxy process",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"},
 	}
 }
 
@@ -6147,20 +6153,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVBackupConfig(ref common.ReferenceCallb
 							Format: "int64",
 						},
 					},
-					"proxy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "proxyConfig is the Configuration of proxy process",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"),
-						},
-					},
 				},
 			},
 		},
-<<<<<<< HEAD
-=======
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"},
->>>>>>> 95fce22... update default configuration for tiflash (#3191)
 	}
 }
 
