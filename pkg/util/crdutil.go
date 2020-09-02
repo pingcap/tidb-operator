@@ -353,28 +353,20 @@ func addAdditionalPrinterColumnsForCRD(crd *extensionsobj.CustomResourceDefiniti
 	switch crdKind.Kind {
 	case v1alpha1.DefaultCrdKinds.TiDBCluster.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbClusteradditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.DMCluster.Kind:
 		crd.Spec.AdditionalPrinterColumns = dmClusteradditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.Backup.Kind:
 		crd.Spec.AdditionalPrinterColumns = backupAdditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.Restore.Kind:
 		crd.Spec.AdditionalPrinterColumns = restoreAdditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.BackupSchedule.Kind:
 		crd.Spec.AdditionalPrinterColumns = bksAdditionalPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.TiDBMonitor.Kind:
 		crd.Spec.AdditionalPrinterColumns = []extensionsobj.CustomResourceColumnDefinition{}
-		break
 	case v1alpha1.DefaultCrdKinds.TiDBInitializer.Kind:
 		crd.Spec.AdditionalPrinterColumns = tidbInitializerPrinterColumns
-		break
 	case v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler.Kind:
 		crd.Spec.AdditionalPrinterColumns = autoScalerPrinterColumns
 	default:
-		break
 	}
 }

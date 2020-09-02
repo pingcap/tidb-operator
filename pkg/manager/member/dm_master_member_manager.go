@@ -769,9 +769,7 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 			}
 		} else {
 			if dc.Status.Master.UnjoinedMembers != nil {
-				if _, ok := dc.Status.Master.UnjoinedMembers[pod.Name]; ok {
-					delete(dc.Status.Master.UnjoinedMembers, pod.Name)
-				}
+				delete(dc.Status.Master.UnjoinedMembers, pod.Name)
 			}
 		}
 	}
