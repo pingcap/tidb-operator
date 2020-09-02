@@ -76,7 +76,7 @@ func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, n
 			return nil
 		}
 		status = &tc.Status.TiKV
-	case *v1alpha1.TiDBGroup:
+	case *v1alpha1.TiKVGroup:
 		tg := meta.(*v1alpha1.TiKVGroup)
 		status = &tg.Status.TiKVStatus
 	default:
