@@ -33,15 +33,9 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
-type TiKVScaler interface {
-	Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error
-	ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error
-	ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error
-	SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error
-}
-
 type tikvScaler struct {
 	generalScaler
+	pdControl pdapi.PDControlInterface
 	podLister corelisters.PodLister
 }
 
@@ -50,7 +44,7 @@ func NewTiKVScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface,
 	podLister corelisters.PodLister) *tikvScaler {
-	return &tikvScaler{generalScaler{pdControl, pvcLister, pvcControl}, podLister}
+	return &tikvScaler{generalScaler{pvcLister, pvcControl}, pdControl, podLister}
 }
 
 func (tsd *tikvScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
@@ -257,7 +251,7 @@ func (tsd *tikvScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.Statef
 type fakeTiKVScaler struct{}
 
 // NewFakeTiKVScaler returns a fake tikv Scaler
-func NewFakeTiKVScaler() TiKVScaler {
+func NewFakeTiKVScaler() Scaler {
 	return &fakeTiKVScaler{}
 }
 
