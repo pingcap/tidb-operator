@@ -18,8 +18,6 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/util"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -39,16 +37,6 @@ func NewWorkerFailover(workerFailoverPeriod time.Duration,
 		recorder}
 }
 
-func (wf *workerFailover) isPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
-	ordinals := dc.WorkerStsDesiredOrdinals(true)
-	ordinal, err := util.GetOrdinalFromPodName(podName)
-	if err != nil {
-		klog.Errorf("unexpected pod name %q: %v", podName, err)
-		return false
-	}
-	return ordinals.Has(ordinal)
-}
-
 func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
@@ -57,7 +45,7 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 		if worker.LastTransitionTime.IsZero() {
 			continue
 		}
-		if !wf.isPodDesired(dc, podName) {
+		if isWorkerPodDesired(dc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
@@ -101,7 +89,7 @@ func (wf *workerFailover) Recover(dc *v1alpha1.DMCluster) {
 
 func (wf *workerFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
 	for key, failureWorker := range dc.Status.Worker.FailureMembers {
-		if !wf.isPodDesired(dc, failureWorker.PodName) {
+		if isWorkerPodDesired(dc, failureWorker.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
