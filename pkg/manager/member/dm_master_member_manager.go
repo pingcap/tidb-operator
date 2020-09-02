@@ -255,7 +255,6 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		return err
 	}
 
-	// TODO: dm add auto failover
 	// Perform failover logic if necessary. Note that this will only update
 	// DMCluster status. The actual scaling performs in next sync loop (if a
 	// new replica needs to be added).

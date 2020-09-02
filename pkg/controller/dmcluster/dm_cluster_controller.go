@@ -106,6 +106,7 @@ func NewController(
 	masterFailover := mm.NewMasterFailover(cli, masterControl, masterFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
 	workerFailover := mm.NewWorkerFailover(workerFailoverPeriod, recorder)
 	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
+	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
 	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	dcc := &Controller{
@@ -136,6 +137,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				workerScaler,
 				autoFailover,
 				workerFailover,
 			),

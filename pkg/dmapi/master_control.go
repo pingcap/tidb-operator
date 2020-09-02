@@ -101,6 +101,7 @@ func MasterClientURL(namespace, clusterName, scheme string) string {
 	return fmt.Sprintf("%s://%s-dm-master.%s:8261", scheme, clusterName, namespace)
 }
 
+// MasterClientURL builds the url of master peer client. It's used to evict leader because dm can't forward evict leader command now
 func MasterPeerClientURL(namespace, clusterName, podName, scheme string) string {
 	return fmt.Sprintf("%s://%s.%s-dm-master-peer.%s:8261", scheme, podName, clusterName, namespace)
 }
