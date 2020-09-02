@@ -2065,6 +2065,13 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"grpc-compression-type": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to none",
