@@ -66,7 +66,7 @@ type tikvMemberManager struct {
 	tidbLister                   listers.TidbClusterLister
 	autoFailover                 bool
 	tikvFailover                 Failover
-	tikvScaler                   TiKVScaler
+	tikvScaler                   Scaler
 	tikvUpgrader                 TiKVUpgrader
 	recorder                     record.EventRecorder
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
@@ -85,7 +85,7 @@ func NewTiKVMemberManager(
 	tidbLister listers.TidbClusterLister,
 	autoFailover bool,
 	tikvFailover Failover,
-	tikvScaler TiKVScaler,
+	tikvScaler Scaler,
 	tikvUpgrader TiKVUpgrader,
 	recorder record.EventRecorder) manager.Manager {
 	kvmm := tikvMemberManager{
