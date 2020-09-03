@@ -352,9 +352,9 @@ type TiKVImportConfig struct {
 type TiKVGCConfig struct {
 	// +optional
 	// Optional: Defaults to 512
-	BatchKeys *int64 `json:"	batch-keys,omitempty" toml:"	batch-keys,omitempty"`
+	BatchKeys *int64 `json:"batch-keys,omitempty" toml:"batch-keys,omitempty"`
 	// +optional
-	MaxWriteBytesPerSec *string `json:"	max-write-bytes-per-sec,omitempty" toml:"	max-write-bytes-per-sec,omitempty"`
+	MaxWriteBytesPerSec *string `json:"max-write-bytes-per-sec,omitempty" toml:"max-write-bytes-per-sec,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
