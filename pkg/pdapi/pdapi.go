@@ -672,7 +672,7 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 
 func (pc *pdClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, autoscalingPrefix)
-	body, err := httputil.DoBodyOK(pc.httpClient, apiURL, "POST")
+	body, err := httputil.PostBodyOK(pc.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}

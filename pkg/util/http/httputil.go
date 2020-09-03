@@ -68,6 +68,11 @@ func DeleteBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 	return DoBodyOK(httpClient, apiURL, "DELETE")
 }
 
+// PostBodyOK will POST and returns the body or an error if the response is not okay
+func PostBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
+	return DoBodyOK(httpClient, apiURL, "POST")
+}
+
 // DoBodyOK returns the body or an error if the response is not okay
 func DoBodyOK(httpClient *http.Client, apiURL, method string) ([]byte, error) {
 	req, err := http.NewRequest(method, apiURL, nil)
