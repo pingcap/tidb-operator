@@ -477,23 +477,23 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref common.ReferenceCallback) com
 				Description: "AutoRule describes the rules for auto-scaling with PD API",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"max": {
+					"max_threshold": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Max defines the threshold to scale out",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
 					},
-					"min": {
+					"min_threshold": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Min defines the threshold to scale in",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
 					},
-					"resource_type": {
+					"resource_types": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ResourceType defines the resource types that can be used for scaling",
+							Description: "ResourceTypes defines the resource types that can be used for scaling",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

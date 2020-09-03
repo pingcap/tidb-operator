@@ -225,8 +225,9 @@ type Resource struct {
 	// The basic unit of memory is byte.
 	Memory uint64 `json:"memory"`
 	// The basic unit of storage is byte.
-	Storage uint64  `json:"storage"`
-	Count   *uint64 `json:"count,omitempty"`
+	Storage uint64 `json:"storage"`
+	// If count is not set, it indicates no limit.
+	Count *uint64 `json:"count,omitempty"`
 }
 
 // Plan is the final result of auto scaling, which indicates how to scale in or scale out.
