@@ -486,7 +486,7 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref common.ReferenceCallback) com
 					},
 					"min_threshold": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MinThreshold defines the threshold to scale in",
+							Description: "MinThreshold defines the threshold to scale in, not applicable to `storage` rule",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
@@ -506,6 +506,7 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref common.ReferenceCallback) com
 						},
 					},
 				},
+				Required: []string{"max_threshold"},
 			},
 		},
 	}
