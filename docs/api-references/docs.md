@@ -2437,35 +2437,35 @@ int32
 <tbody>
 <tr>
 <td>
-<code>max</code></br>
+<code>max_threshold</code></br>
 <em>
 float64
 </em>
 </td>
 <td>
-<p>Max defines the threshold to scale out</p>
+<p>MaxThreshold defines the threshold to scale out</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>min</code></br>
+<code>min_threshold</code></br>
 <em>
 float64
 </em>
 </td>
 <td>
-<p>Min defines the threshold to scale in</p>
+<p>MinThreshold defines the threshold to scale in, not applicable to <code>storage</code> rule</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>resource_type</code></br>
+<code>resource_types</code></br>
 <em>
 []string
 </em>
 </td>
 <td>
-<p>ResourceType defines the resource types that can be used for scaling</p>
+<p>ResourceTypes defines the resource types that can be used for scaling</p>
 </td>
 </tr>
 </tbody>
