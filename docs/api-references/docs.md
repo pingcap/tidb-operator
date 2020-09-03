@@ -12329,11 +12329,7 @@ int64
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>max-tasks-per-worker-low</code></br>
-=======
-<code>batch-keys</code></br>
->>>>>>> 91c0cc4... Fix wrong tag (#3218)
 <em>
 int64
 </em>
@@ -12345,11 +12341,7 @@ int64
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>stack-size</code></br>
-=======
-<code>max-write-bytes-per-sec</code></br>
->>>>>>> 91c0cc4... Fix wrong tag (#3218)
 <em>
 string
 </em>
@@ -12866,7 +12858,7 @@ Kubernetes meta/v1.Time
 <tbody>
 <tr>
 <td>
-<code>	batch-keys</code></br>
+<code>batch-keys</code></br>
 <em>
 int64
 </em>
@@ -12878,7 +12870,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>	max-write-bytes-per-sec</code></br>
+<code>max-write-bytes-per-sec</code></br>
 <em>
 string
 </em>
