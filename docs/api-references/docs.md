@@ -2454,7 +2454,7 @@ float64
 </em>
 </td>
 <td>
-<p>MinThreshold defines the threshold to scale in</p>
+<p>MinThreshold defines the threshold to scale in, not applicable to <code>storage</code> rule</p>
 </td>
 </tr>
 <tr>
