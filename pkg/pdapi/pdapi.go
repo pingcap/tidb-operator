@@ -189,6 +189,7 @@ type MembersInfo struct {
 	EtcdLeader *pdpb.Member         `json:"etcd_leader,omitempty"`
 }
 
+// Below copied from github.com/tikv/pd/pkg/autoscaling
 // Strategy within a HTTP request provides rules and resources to help make decision for auto scaling.
 type Strategy struct {
 	Rules     []*Rule     `json:"rules"`
@@ -223,8 +224,8 @@ type Resource struct {
 	// The basic unit of memory is byte.
 	Memory uint64 `json:"memory"`
 	// The basic unit of storage is byte.
-	Storage uint64 `json:"storage"`
-	Count   uint64 `json:"count"`
+	Storage uint64  `json:"storage"`
+	Count   *uint64 `json:"count,omitempty"`
 }
 
 // Plan is the final result of auto scaling, which indicates how to scale in or scale out.
@@ -672,7 +673,11 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 
 func (pc *pdClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
 	apiURL := fmt.Sprintf("%s/%s", pc.url, autoscalingPrefix)
-	body, err := httputil.PostBodyOK(pc.httpClient, apiURL)
+	data, err := json.Marshal(strategy)
+	if err != nil {
+		return nil, err
+	}
+	body, err := httputil.PostBodyOK(pc.httpClient, apiURL, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
