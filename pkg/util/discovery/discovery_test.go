@@ -37,6 +37,11 @@ func TestIsAPIGroupVersionSupported(t *testing.T) {
 			groupVersion: "apiextensions.k8s.io/v1",
 			wantOK:       false,
 		},
+		{
+			name:         "bad version",
+			groupVersion: "apiextensions.k8s.io/v1/0",
+			wantOK:       false,
+		},
 	}
 
 	for _, tt := range tests {

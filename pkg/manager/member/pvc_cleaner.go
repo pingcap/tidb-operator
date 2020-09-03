@@ -87,16 +87,14 @@ func (rpc *realPVCCleaner) Clean(meta metav1.Object) (map[string]string, error) 
 // reclaimPV reclaims PV used by tidb cluster if necessary.
 func (rpc *realPVCCleaner) reclaimPV(meta metav1.Object) (map[string]string, error) {
 	var clusterType string
-	switch meta.(type) {
+	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		tc := meta.(*v1alpha1.TidbCluster)
-		if !tc.IsPVReclaimEnabled() {
+		if !meta.IsPVReclaimEnabled() {
 			return nil, nil
 		}
 		clusterType = "tidbcluster"
 	case *v1alpha1.DMCluster:
-		dc := meta.(*v1alpha1.DMCluster)
-		if !dc.IsPVReclaimEnabled() {
+		if !meta.IsPVReclaimEnabled() {
 			return nil, nil
 		}
 		clusterType = "dmcluster"
@@ -299,13 +297,11 @@ func (rpc *realPVCCleaner) listAllPVCs(meta metav1.Object) ([]*corev1.Persistent
 		selector labels.Selector
 		err      error
 	)
-	switch meta.(type) {
+	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		tc := meta.(*v1alpha1.TidbCluster)
-		selector, err = label.New().Instance(tc.GetInstanceName()).Selector()
+		selector, err = label.New().Instance(meta.GetInstanceName()).Selector()
 	case *v1alpha1.DMCluster:
-		dc := meta.(*v1alpha1.DMCluster)
-		selector, err = label.NewDM().Instance(dc.GetInstanceName()).Selector()
+		selector, err = label.NewDM().Instance(meta.GetInstanceName()).Selector()
 	default:
 		err = fmt.Errorf("realPVCCleaner.listAllPVCs: unknown meta spec %s", meta)
 	}

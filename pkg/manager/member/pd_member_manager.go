@@ -864,10 +864,7 @@ func (pmm *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set
 			}
 		} else {
 			if tc.Status.PD.UnjoinedMembers != nil {
-				if _, ok := tc.Status.PD.UnjoinedMembers[pod.Name]; ok {
-					delete(tc.Status.PD.UnjoinedMembers, pod.Name)
-				}
-
+				delete(tc.Status.PD.UnjoinedMembers, pod.Name)
 			}
 		}
 	}
