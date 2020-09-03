@@ -12329,7 +12329,11 @@ int64
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>max-tasks-per-worker-low</code></br>
+=======
+<code>batch-keys</code></br>
+>>>>>>> 91c0cc4... Fix wrong tag (#3218)
 <em>
 int64
 </em>
@@ -12341,7 +12345,11 @@ int64
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>stack-size</code></br>
+=======
+<code>max-write-bytes-per-sec</code></br>
+>>>>>>> 91c0cc4... Fix wrong tag (#3218)
 <em>
 string
 </em>

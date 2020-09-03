@@ -8510,10 +8510,10 @@ spec:
                           type: object
                         gc:
                           properties:
-                            "\tbatch-keys":
+                            batch-keys:
                               format: int64
                               type: integer
-                            "\tmax-write-bytes-per-sec":
+                            max-write-bytes-per-sec:
                               type: string
                           type: object
                         import:
@@ -11123,10 +11123,10 @@ spec:
                       type: object
                     gc:
                       properties:
-                        "\tbatch-keys":
+                        batch-keys:
                           format: int64
                           type: integer
-                        "\tmax-write-bytes-per-sec":
+                        max-write-bytes-per-sec:
                           type: string
                       type: object
                     import:
@@ -13604,6 +13604,157 @@ spec:
                             required:
                             - topologyKey
                             type: object
+<<<<<<< HEAD
+=======
+                          namespaces:
+                            items:
+                              type: string
+                            type: array
+                          topologyKey:
+                            type: string
+                        required:
+                        - topologyKey
+                        type: object
+                      type: array
+                  type: object
+              type: object
+            annotations:
+              type: object
+            baseImage:
+              type: string
+            clusterName:
+              type: string
+            config:
+              properties:
+                backup:
+                  properties:
+                    num-threads:
+                      format: int64
+                      type: integer
+                  type: object
+                coprocessor:
+                  properties:
+                    batch-split-limit:
+                      format: int64
+                      type: integer
+                    region-max-keys:
+                      format: int64
+                      type: integer
+                    region-max-size:
+                      type: string
+                    region-split-keys:
+                      format: int64
+                      type: integer
+                    region-split-size:
+                      type: string
+                    split-region-on-table:
+                      type: boolean
+                  type: object
+                gc:
+                  properties:
+                    batch-keys:
+                      format: int64
+                      type: integer
+                    max-write-bytes-per-sec:
+                      type: string
+                  type: object
+                import:
+                  properties:
+                    import-dir:
+                      type: string
+                    max-open-engines:
+                      format: int64
+                      type: integer
+                    max-prepare-duration:
+                      type: string
+                    num-import-jobs:
+                      format: int64
+                      type: integer
+                    num-import-sst-jobs:
+                      format: int64
+                      type: integer
+                    num-threads:
+                      format: int64
+                      type: integer
+                    region-split-size:
+                      type: string
+                    stream-channel-window:
+                      format: int64
+                      type: integer
+                    upload-speed-limit:
+                      type: string
+                  type: object
+                log-file:
+                  type: string
+                log-format:
+                  type: string
+                log-level:
+                  type: string
+                log-rotation-size:
+                  type: string
+                log-rotation-timespan:
+                  type: string
+                panic-when-unexpected-key-or-data:
+                  type: boolean
+                pd:
+                  properties:
+                    endpoints:
+                      items:
+                        type: string
+                      type: array
+                    retry-interval:
+                      type: string
+                    retry-log-every:
+                      format: int64
+                      type: integer
+                    retry-max-count:
+                      format: int64
+                      type: integer
+                  type: object
+                pessimistic-txn:
+                  properties:
+                    enabled:
+                      type: boolean
+                    pipelined:
+                      type: boolean
+                    wait-for-lock-timeout:
+                      type: string
+                    wake-up-delay-duration:
+                      type: string
+                  type: object
+                raftdb:
+                  properties:
+                    allow-concurrent-memtable-write:
+                      type: boolean
+                    bytes-per-sync:
+                      type: string
+                    compaction-readahead-size:
+                      type: string
+                    create-if-missing:
+                      type: boolean
+                    defaultcf:
+                      properties:
+                        block-based-bloom-filter:
+                          type: boolean
+                        block-cache-size:
+                          type: string
+                        block-size:
+                          type: string
+                        bloom-filter-bits-per-key:
+                          format: int64
+                          type: integer
+                        cache-index-and-filter-blocks:
+                          type: boolean
+                        compaction-pri:
+                          format: int64
+                          type: integer
+                        compaction-style:
+                          format: int64
+                          type: integer
+                        compression-per-level:
+                          items:
+                            type: string
+>>>>>>> 91c0cc4... Fix wrong tag (#3218)
                           type: array
                       type: object
                   type: object
