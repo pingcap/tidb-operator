@@ -423,13 +423,14 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			Containers: containers,
 			Volumes:    volumes,
 
-			Affinity:        spec.Affinity(),
-			Tolerations:     spec.Tolerations(),
-			NodeSelector:    spec.NodeSelector(),
-			SchedulerName:   spec.SchedulerName(),
-			SecurityContext: spec.PodSecurityContext(),
-			HostNetwork:     spec.HostNetwork(),
-			DNSPolicy:       spec.DnsPolicy(),
+			Affinity:         spec.Affinity(),
+			Tolerations:      spec.Tolerations(),
+			NodeSelector:     spec.NodeSelector(),
+			SchedulerName:    spec.SchedulerName(),
+			SecurityContext:  spec.PodSecurityContext(),
+			HostNetwork:      spec.HostNetwork(),
+			DNSPolicy:        spec.DnsPolicy(),
+			ImagePullSecrets: spec.ImagePullSecrets(),
 		},
 	}
 
