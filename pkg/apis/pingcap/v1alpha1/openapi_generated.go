@@ -479,14 +479,14 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref common.ReferenceCallback) com
 				Properties: map[string]spec.Schema{
 					"max_threshold": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Max defines the threshold to scale out",
+							Description: "MaxThreshold defines the threshold to scale out",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
 					},
 					"min_threshold": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Min defines the threshold to scale in",
+							Description: "MinThreshold defines the threshold to scale in",
 							Type:        []string{"number"},
 							Format:      "double",
 						},
