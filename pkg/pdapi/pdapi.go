@@ -189,7 +189,8 @@ type MembersInfo struct {
 	EtcdLeader *pdpb.Member         `json:"etcd_leader,omitempty"`
 }
 
-// Below copied from github.com/tikv/pd/pkg/autoscaling
+// below copied from github.com/tikv/pd/pkg/autoscaling
+
 // Strategy within a HTTP request provides rules and resources to help make decision for auto scaling.
 type Strategy struct {
 	Rules     []*Rule     `json:"rules"`
