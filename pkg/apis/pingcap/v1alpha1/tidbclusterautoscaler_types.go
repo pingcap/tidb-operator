@@ -106,12 +106,12 @@ type AutoResource struct {
 // +k8s:openapi-gen=true
 // AutoRule describes the rules for auto-scaling with PD API
 type AutoRule struct {
-	// Max defines the threshold to scale out
-	Max *float64 `json:"max,omitempty"`
-	// Min defines the threshold to scale in
-	Min *float64 `json:"min,omitempty"`
-	// ResourceType defines the resource types that can be used for scaling
-	ResourceType []string `json:"resource_type,omitempty"`
+	// MaxThreshold defines the threshold to scale out
+	MaxThreshold float64 `json:"max_threshold"`
+	// MinThreshold defines the threshold to scale in, not applicable to `storage` rule
+	MinThreshold *float64 `json:"min_threshold,omitempty"`
+	// ResourceTypes defines the resource types that can be used for scaling
+	ResourceTypes []string `json:"resource_types,omitempty"`
 }
 
 // +k8s:openapi-gen=true
