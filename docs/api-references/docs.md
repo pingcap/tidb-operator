@@ -14838,7 +14838,7 @@ Kubernetes meta/v1.Time
 <tbody>
 <tr>
 <td>
-<code>	batch-keys</code></br>
+<code>batch-keys</code></br>
 <em>
 int64
 </em>
@@ -14850,7 +14850,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>	max-write-bytes-per-sec</code></br>
+<code>max-write-bytes-per-sec</code></br>
 <em>
 string
 </em>

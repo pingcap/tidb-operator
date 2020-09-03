@@ -8519,10 +8519,10 @@ spec:
                           type: object
                         gc:
                           properties:
-                            "\tbatch-keys":
+                            batch-keys:
                               format: int64
                               type: integer
-                            "\tmax-write-bytes-per-sec":
+                            max-write-bytes-per-sec:
                               type: string
                           type: object
                         import:
@@ -11132,10 +11132,10 @@ spec:
                       type: object
                     gc:
                       properties:
-                        "\tbatch-keys":
+                        batch-keys:
                           format: int64
                           type: integer
-                        "\tmax-write-bytes-per-sec":
+                        max-write-bytes-per-sec:
                           type: string
                       type: object
                     import:
@@ -21560,10 +21560,10 @@ spec:
                   type: object
                 gc:
                   properties:
-                    "\tbatch-keys":
+                    batch-keys:
                       format: int64
                       type: integer
-                    "\tmax-write-bytes-per-sec":
+                    max-write-bytes-per-sec:
                       type: string
                   type: object
                 import:
