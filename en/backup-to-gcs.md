@@ -173,6 +173,7 @@ kubectl get bk -n test1 -owide
 
     ```sql
     update mysql.tidb set VARIABLE_VALUE = '10m' where VARIABLE_NAME = 'tikv_gc_life_time';
+    ```
 
 * `.spec.cleanPolicy`: The clean policy of the backup data when the backup CR is deleted.
 

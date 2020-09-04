@@ -258,7 +258,7 @@ After `terraform apply` is successfully executed, perform the following steps to
     > **Note:**
     >
     > You need to install the MySQL client before you connect to TiDB via MySQL. If you use CentOS, install the client by executing `sudo yum install -y mysql`.
-    > `${tidb_ilb_ip} is the IP address of the Internal LoadBalancer acquired in step 1.
+    > `${tidb_ilb_ip}` is the IP address of the Internal LoadBalancer acquired in step 1.
 
 ## Interact with the GKE cluster
 

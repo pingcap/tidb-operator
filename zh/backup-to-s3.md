@@ -244,9 +244,9 @@ Amazon S3 支持以下几种 `storageClass` 类型：
 
 {{< copyable "shell-regular" >}}
 
- ```shell
- kubectl get bk -n test1 -owide
- ```
+```shell
+kubectl get bk -n test1 -owide
+```
 
 更多 `Backup` CR 字段的详细解释:
 
@@ -524,6 +524,7 @@ Amazon S3 支持以下几种 `storageClass` 类型：
       #  - "test.*"
         # storageClassName: local-storage
         storageSize: 10Gi
+    ```
 
 定时全量备份创建完成后，可以通过以下命令查看定时全量备份的状态：
 

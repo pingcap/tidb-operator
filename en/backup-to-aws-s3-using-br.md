@@ -333,9 +333,9 @@ After creating the `Backup` CR, use the following command to check the backup st
 
 {{< copyable "shell-regular" >}}
 
- ```shell
- kubectl get bk -n test1 -o wide
- ```
+```shell
+kubectl get bk -n test1 -o wide
+```
 
 <details>
 <summary>More <code>Backup</code> CR parameter description</summary>
@@ -361,6 +361,7 @@ After creating the `Backup` CR, use the following command to check the backup st
 
     ```sql
     update mysql.tidb set VARIABLE_VALUE = '10m' where VARIABLE_NAME = 'tikv_gc_life_time';
+    ```
 
 - * `.spec.cleanPolicy`: The clean policy of the backup data when the backup CR is deleted.
 
