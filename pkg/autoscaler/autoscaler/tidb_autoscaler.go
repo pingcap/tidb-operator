@@ -43,14 +43,14 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	var targetReplicas int32
-	if tac.Spec.TiDB.ExternalEndpoint.Endpoint == nil {
+	if tac.Spec.TiDB.External == nil {
 		instances := filterTidbInstances(tc)
 		targetReplicas, err = calculateTidbMetrics(tac, sts, instances)
 		if err != nil {
 			return err
 		}
 	} else {
-		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.ExternalEndpoint.Endpoint, am.kubecli)
+		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
 			return err
