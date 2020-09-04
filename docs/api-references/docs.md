@@ -3335,7 +3335,7 @@ ExternalConfig
 </td>
 <td>
 <em>(Optional)</em>
-<p>ExternalEndpoint makes the auto-scaler controller able to query the external service
+<p>External makes the auto-scaler controller able to query the external service
 to fetch the recommended replicas for TiKV/TiDB</p>
 </td>
 </tr>

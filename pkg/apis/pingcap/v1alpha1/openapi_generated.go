@@ -1060,7 +1060,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"external": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
@@ -10165,7 +10165,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 					},
 					"external": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
@@ -11335,7 +11335,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"external": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
