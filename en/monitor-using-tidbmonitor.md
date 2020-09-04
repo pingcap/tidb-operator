@@ -58,7 +58,8 @@ spec:
 
 > **Note:**
 >
-> Currently, one TidbMonitor can monitor only one TidbCluster.
+> * One TidbMonitor can monitor only one TidbCluster.
+> * `spec.clusters[0].name` needs to be set to the TidbCluster name of your TiDB Cluster.
 
 You can also quickly deploy TidbMonitor using the following command:
 
