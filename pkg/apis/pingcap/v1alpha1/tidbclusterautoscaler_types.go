@@ -121,10 +121,25 @@ type BasicAutoScalerSpec struct {
 	// MetricsTimeDuration describes the Time duration to be queried in the Prometheus
 	// +optional
 	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
-	// ExternalEndpoint makes the auto-scaler controller able to query the external service
+	// External makes the auto-scaler controller able to query the external service
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
+<<<<<<< HEAD
 	ExternalEndpoint *ExternalEndpoint `json:"externalEndpoint,omitempty"`
+=======
+	External *ExternalConfig `json:"external,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// ExternalConfig represents the external config.
+type ExternalConfig struct {
+	// ExternalEndpoint makes the auto-scaler controller able to query the
+	// external service to fetch the recommended replicas for TiKV/TiDB
+	// +optional
+	Endpoint ExternalEndpoint `json:"endpoint"`
+	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
+	MaxReplicas int32 `json:"maxReplicas"`
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 }
 
 type CustomMetric struct {

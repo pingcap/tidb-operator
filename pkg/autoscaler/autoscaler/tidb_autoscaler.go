@@ -43,14 +43,22 @@ func (am *autoScalerManager) syncTiDB(tc *v1alpha1.TidbCluster, tac *v1alpha1.Ti
 		return nil
 	}
 	var targetReplicas int32
+<<<<<<< HEAD
 	if tac.Spec.TiDB.ExternalEndpoint == nil {
+=======
+	if tac.Spec.TiDB.External == nil {
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 		instances := filterTidbInstances(tc)
 		targetReplicas, err = calculateTidbMetrics(tac, sts, instances)
 		if err != nil {
 			return err
 		}
 	} else {
+<<<<<<< HEAD
 		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.ExternalEndpoint, am.kubecli)
+=======
+		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
 			return err

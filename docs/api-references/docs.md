@@ -3476,6 +3476,12 @@ CrdKind
 </em>
 </td>
 <td>
+<<<<<<< HEAD
+=======
+<em>(Optional)</em>
+<p>External makes the auto-scaler controller able to query the external service
+to fetch the recommended replicas for TiKV/TiDB</p>
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 </td>
 </tr>
 </tbody>

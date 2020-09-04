@@ -939,8 +939,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"externalEndpoint": {
 						SchemaProps: spec.SchemaProps{
+<<<<<<< HEAD
 							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
+=======
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 						},
 					},
 				},
@@ -8097,8 +8102,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 					},
 					"request-batch-wait-duration": {
 						SchemaProps: spec.SchemaProps{
+<<<<<<< HEAD
 							Type:   []string{"string"},
 							Format: "",
+=======
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 						},
 					},
 				},
@@ -9432,9 +9442,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 					},
 					"tlsClientSecretName": {
 						SchemaProps: spec.SchemaProps{
+<<<<<<< HEAD
 							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate Optional: Defaults to nil",
 							Type:        []string{"string"},
 							Format:      "",
+=======
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 						},
 					},
 				},

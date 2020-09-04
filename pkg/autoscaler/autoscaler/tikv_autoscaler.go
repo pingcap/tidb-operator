@@ -78,8 +78,13 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 		return nil
 	}
 
+<<<<<<< HEAD
 	// check externalEndpoint
 	if tac.Spec.TiKV.ExternalEndpoint != nil {
+=======
+	// check externalConfig
+	if tac.Spec.TiKV.External != nil {
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 		return calculateTiKVExternalService(tc, tac, sts, kubecli)
 	}
 
@@ -119,7 +124,11 @@ func calculateTiKVMetrics(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.Tidb
 }
 
 func calculateTiKVExternalService(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, sts *appsv1.StatefulSet, kubecli kubernetes.Interface) error {
+<<<<<<< HEAD
 	targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.ExternalEndpoint, kubecli)
+=======
+	targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.External.Endpoint, kubecli)
+>>>>>>> 8a5b920... fix the panic problem (#3222)
 	if err != nil {
 		klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
 		return err
