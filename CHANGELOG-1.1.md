@@ -1,3 +1,7 @@
+> **Note:**
+>
+> Starting from September 2, 2020, all release notes of TiDB Operator will be maintained in [pingcap/docs-tidb-operator](https://github.com/pingcap/docs-tidb-operator). You can read the release notes of all versions of TiDB Operator at [PingCAP Docs](https://docs.pingcap.com/tidb-in-kubernetes/stable/release-1.1.4).
+
 # TiDB Operator v1.1.4 Release Notes
 
 ## Notable changes
