@@ -107,7 +107,7 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 		}
 		// If ExternalEndpoint is not provided, we would set default metrics
-		if spec.ExternalEndpoint == nil && spec.MetricsTimeDuration == nil {
+		if spec.External == nil && spec.MetricsTimeDuration == nil {
 			spec.MetricsTimeDuration = pointer.StringPtr("3m")
 		}
 	}

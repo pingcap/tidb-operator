@@ -162,10 +162,10 @@ type BasicAutoScalerSpec struct {
 	// Deprecated
 	// +optional
 	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
-	// ExternalEndpoint makes the auto-scaler controller able to query the external service
+	// External makes the auto-scaler controller able to query the external service
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
-	ExternalEndpoint *ExternalConfig `json:"external,omitempty"`
+	External *ExternalConfig `json:"external,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -174,7 +174,7 @@ type ExternalConfig struct {
 	// ExternalEndpoint makes the auto-scaler controller able to query the
 	// external service to fetch the recommended replicas for TiKV/TiDB
 	// +optional
-	Endpoint *ExternalEndpoint `json:"endpoint"`
+	Endpoint ExternalEndpoint `json:"endpoint"`
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	MaxReplicas int32 `json:"maxReplicas"`
 }
