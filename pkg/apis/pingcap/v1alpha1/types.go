@@ -247,7 +247,7 @@ type TidbClusterStatus struct {
 	PD         PDStatus                  `json:"pd,omitempty"`
 	TiKV       TiKVStatus                `json:"tikv,omitempty"`
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
-	Pump       PumpStatus                `josn:"pump,omitempty"`
+	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	Monitor    *TidbMonitorRef           `json:"monitor,omitempty"`
