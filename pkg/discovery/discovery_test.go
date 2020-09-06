@@ -391,6 +391,78 @@ func TestDiscoveryDiscovery(t *testing.T) {
 				g.Expect(s).To(Equal("--join=demo-pd-0.demo-pd-peer.default.svc:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379,demo-pd-3.demo-pd-peer.default.svc:2379"))
 			},
 		},
+		{
+			name: "pdAddress exists, 3 pd replicas, the 3rd pd send request",
+			ns:   "default",
+			url:  "demo-pd-2.demo-pd-peer.default.svc:2380",
+			tc: func() *v1alpha1.TidbCluster {
+				tc := newTC()
+				tc.Spec.PDAddress = []string{"http://address0:2379", "http://address1:2379", "http://address2:2379"}
+				return tc
+			}(),
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+						"demo-pd-1": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(2))
+				g.Expect(s).To(Equal("--join=http://address0:2379,http://address1:2379,http://address2:2379"))
+			},
+		},
+		{
+			name: "pdAddress exists, 3 pd replicas, get members success, the 1st pd send request",
+			ns:   "default",
+			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
+			tc: func() *v1alpha1.TidbCluster {
+				tc := newTC()
+				tc.Spec.PDAddress = []string{
+					"http://address0:2379",
+					"http://address1:2379",
+					"http://address2:2379",
+				}
+				return tc
+			}(),
+			getMembersFn: func() (*pdapi.MembersInfo, error) {
+				return &pdapi.MembersInfo{
+					Members: []*pdpb.Member{
+						{
+							PeerUrls: []string{"http://address0:2380"},
+						},
+						{
+							PeerUrls: []string{"http://address1:2380"},
+						},
+						{
+							PeerUrls: []string{"http://address2:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-1.demo-pd-peer.default.svc:2380"},
+						},
+						{
+							PeerUrls: []string{"demo-pd-2.demo-pd-peer.default.svc:2380"},
+						},
+					},
+				}, nil
+			},
+			clusters: map[string]*clusterInfo{
+				"default/demo": {
+					resourceVersion: "1",
+					peers: map[string]struct{}{
+						"demo-pd-0": {},
+					},
+				},
+			},
+			expectFn: func(g *GomegaWithT, td *tidbDiscovery, s string, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(td.clusters["default/demo"].peers)).To(Equal(0))
+				g.Expect(s).To(Equal("--join=http://address0:2379,http://address1:2379,http://address2:2379,demo-pd-1.demo-pd-peer.default.svc:2379,demo-pd-2.demo-pd-peer.default.svc:2379"))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

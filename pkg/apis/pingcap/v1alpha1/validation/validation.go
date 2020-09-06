@@ -122,13 +122,13 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 
 func validatePDAddress(arrayOfAddresses []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	addressRegex := "^http://.*:[0-9]+$"
+	addressRegex := "^http://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]:[0-9]+$"
 	pdAddressRegexp := regexp.MustCompile(addressRegex)
 	for i, address := range arrayOfAddresses {
 		idxPath := fldPath.Index(i)
 		if !pdAddressRegexp.MatchString(address) {
 			errMsg := validation.RegexError("a pdAddress must start with 'http://', and end up with port number",
-				addressRegex, "http://xxx:2379")
+				addressRegex, "http://1.2.3.4:2379")
 			allErrs = append(allErrs, field.Invalid(idxPath, address, errMsg))
 		}
 	}

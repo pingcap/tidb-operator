@@ -355,3 +355,43 @@ func TestValidateLocalDescendingPath(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePDAddress(t *testing.T) {
+	successCases := [][]string{
+		{
+			"http://1.2.3.4:2379",
+			"http://test-pd-0.test-pd-peer.default.svc:2380",
+			"http://test:2379",
+		},
+	}
+
+	for _, c := range successCases {
+		errs := validatePDAddress(c, field.NewPath("pdAddress"))
+		if len(errs) > 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := [][]string{
+		{
+			"https://1.2.3.4:2379",
+		},
+		{
+			"http://1.2.3.4",
+		},
+		{
+			"http://1.2.3.4:2380",
+			"http://test",
+		},
+		{
+			"test-pd-0.test-pd-peer.default.svc:2380",
+		},
+	}
+
+	for _, c := range errorCases {
+		errs := validatePDAddress(c, field.NewPath("pdAddress"))
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", c)
+		}
+	}
+}
