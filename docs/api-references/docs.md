@@ -1666,14 +1666,14 @@ TidbClusterRef
 </tr>
 <tr>
 <td>
-<code>pdAddress</code></br>
+<code>pdAddresses</code></br>
 <em>
 []string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>PDAddress is the external pd address, if configured, the pds in this TidbCluster will join to this configured pd address.</p>
+<p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
 </td>
 </tr>
 </table>
@@ -18585,14 +18585,14 @@ TidbClusterRef
 </tr>
 <tr>
 <td>
-<code>pdAddress</code></br>
+<code>pdAddresses</code></br>
 <em>
 []string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>PDAddress is the external pd address, if configured, the pds in this TidbCluster will join to this configured pd address.</p>
+<p>PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.</p>
 </td>
 </tr>
 </tbody>

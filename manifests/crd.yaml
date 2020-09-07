@@ -2099,7 +2099,7 @@ spec:
               required:
               - replicas
               type: object
-            pdAddress:
+            pdAddresses:
               items:
                 type: string
               type: array

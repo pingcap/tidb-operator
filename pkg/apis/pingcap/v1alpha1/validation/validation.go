@@ -16,11 +16,11 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -122,14 +122,14 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 
 func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	addressRegex := "^http://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]:[0-9]+$"
-	pdAddressRegexp := regexp.MustCompile(addressRegex)
 	for i, address := range arrayOfAddresses {
 		idxPath := fldPath.Index(i)
-		if !pdAddressRegexp.MatchString(address) {
-			errMsg := validation.RegexError("a pdAddress must start with 'http://', and end up with port number",
-				addressRegex, "http://1.2.3.4:2379")
-			allErrs = append(allErrs, field.Invalid(idxPath, address, errMsg))
+		u, err := url.Parse(address)
+
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(idxPath, address, err.Error()))
+		} else if u.Scheme != "http" {
+			allErrs = append(allErrs, field.Invalid(idxPath, address, "Support 'http' scheme only."))
 		}
 	}
 	return allErrs

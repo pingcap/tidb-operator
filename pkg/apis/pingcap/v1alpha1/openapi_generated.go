@@ -10736,9 +10736,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef"),
 						},
 					},
-					"pdAddress": {
+					"pdAddresses": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PDAddress is the external pd address, if configured, the pds in this TidbCluster will join to this configured pd address.",
+							Description: "PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

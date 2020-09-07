@@ -366,7 +366,7 @@ func TestValidatePDAddresses(t *testing.T) {
 	}
 
 	for _, c := range successCases {
-		errs := validatePDAddresses(c, field.NewPath("pdAddress"))
+		errs := validatePDAddresses(c, field.NewPath("pdAddresses"))
 		if len(errs) > 0 {
 			t.Errorf("expected success: %v", errs)
 		}
@@ -377,11 +377,8 @@ func TestValidatePDAddresses(t *testing.T) {
 			"https://1.2.3.4:2379",
 		},
 		{
-			"http://1.2.3.4",
-		},
-		{
 			"http://1.2.3.4:2380",
-			"http://test",
+			"https://1.2.3.4:2379",
 		},
 		{
 			"test-pd-0.test-pd-peer.default.svc:2380",
@@ -389,7 +386,7 @@ func TestValidatePDAddresses(t *testing.T) {
 	}
 
 	for _, c := range errorCases {
-		errs := validatePDAddresses(c, field.NewPath("pdAddress"))
+		errs := validatePDAddresses(c, field.NewPath("pdAddresses"))
 		if len(errs) == 0 {
 			t.Errorf("expected failure for %s", c)
 		}
