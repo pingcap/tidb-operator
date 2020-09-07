@@ -45,7 +45,7 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 		if worker.LastTransitionTime.IsZero() {
 			continue
 		}
-		if isWorkerPodDesired(dc, podName) {
+		if !isWorkerPodDesired(dc, podName) {
 			// we should ignore the store record of deleted pod, otherwise the
 			// record of deleted pod may be added back to failure stores
 			// (before it enters into Offline/Tombstone state)
@@ -66,7 +66,7 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 			if dc.Spec.Worker.MaxFailoverCount != nil && *dc.Spec.Worker.MaxFailoverCount > 0 {
 				maxFailoverCount := *dc.Spec.Worker.MaxFailoverCount
 				if len(dc.Status.Worker.FailureMembers) >= int(maxFailoverCount) {
-					klog.Warningf("%s/%s failure workers count reached the limit: %d", ns, dcName, dc.Spec.Worker.MaxFailoverCount)
+					klog.Warningf("%s/%s failure workers count reached the limit: %d", ns, dcName, *dc.Spec.Worker.MaxFailoverCount)
 					return nil
 				}
 				dc.Status.Worker.FailureMembers[podName] = v1alpha1.WorkerFailureMember{
