@@ -56,7 +56,6 @@ func addMetricsStatusIntoMetricsStatusList(metrics v1alpha1.MetricsStatus, basic
 		}
 	}
 	basicStatus.MetricsStatusList = append(basicStatus.MetricsStatusList, metrics)
-	return
 }
 
 const (

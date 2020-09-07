@@ -29,7 +29,7 @@ func (qm *QMVMManager) Name() string {
 }
 
 func (qm *QMVMManager) ListVMs() ([]*VM, error) {
-	shell := fmt.Sprintf("qm list")
+	shell := "qm list"
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
