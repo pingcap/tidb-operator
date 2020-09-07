@@ -41,3 +41,6 @@ kubeconfig
 /_artifacts/
 
 .DS_Store
+
+# VSCode
+.vscode/

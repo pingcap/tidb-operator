@@ -1,12 +1,15 @@
 run:
   timeout: 10m
+  skip-files:
+    - "tests/pkg/apiserver/apis/example/zz_generated.*\\.go$"
+
 
 linters:
   enable:
     - goimports
+    - gosimple
   disable:
     # Enable once related errors are fixed or ignored explicitly 
     - staticcheck
-    - gosimple
     - structcheck
     - errcheck

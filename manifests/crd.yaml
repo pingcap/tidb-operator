@@ -8519,10 +8519,10 @@ spec:
                           type: object
                         gc:
                           properties:
-                            "\tbatch-keys":
+                            batch-keys:
                               format: int64
                               type: integer
-                            "\tmax-write-bytes-per-sec":
+                            max-write-bytes-per-sec:
                               type: string
                           type: object
                         import:
@@ -9521,6 +9521,9 @@ spec:
                               type: string
                             labels:
                               type: object
+                            max-grpc-send-msg-len:
+                              format: int32
+                              type: integer
                             request-batch-enable-cross-command:
                               type: boolean
                             request-batch-wait-duration:
@@ -11129,10 +11132,10 @@ spec:
                       type: object
                     gc:
                       properties:
-                        "\tbatch-keys":
+                        batch-keys:
                           format: int64
                           type: integer
-                        "\tmax-write-bytes-per-sec":
+                        max-write-bytes-per-sec:
                           type: string
                       type: object
                     import:
@@ -11162,6 +11165,8 @@ spec:
                           type: string
                       type: object
                     log-file:
+                      type: string
+                    log-format:
                       type: string
                     log-level:
                       type: string
@@ -12142,6 +12147,9 @@ spec:
                           type: string
                         labels:
                           type: object
+                        max-grpc-send-msg-len:
+                          format: int32
+                          type: integer
                         request-batch-enable-cross-command:
                           type: boolean
                         request-batch-wait-duration:
@@ -17951,31 +17959,52 @@ spec:
               required:
               - name
               type: object
+            resources:
+              items:
+                properties:
+                  count:
+                    format: int32
+                    type: integer
+                  cpu: {}
+                  memory: {}
+                  resource_type:
+                    type: string
+                  storage: {}
+                type: object
+              type: array
             tidb:
               properties:
-                externalEndpoint:
+                external:
                   properties:
-                    host:
-                      type: string
-                    path:
-                      type: string
-                    port:
+                    endpoint:
+                      properties:
+                        host:
+                          type: string
+                        path:
+                          type: string
+                        port:
+                          format: int32
+                          type: integer
+                        tlsSecret:
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                          required:
+                          - name
+                          - namespace
+                          type: object
+                      required:
+                      - host
+                      - port
+                      - path
+                      type: object
+                    maxReplicas:
                       format: int32
                       type: integer
-                    tlsSecret:
-                      properties:
-                        name:
-                          type: string
-                        namespace:
-                          type: string
-                      required:
-                      - name
-                      - namespace
-                      type: object
                   required:
-                  - host
-                  - port
-                  - path
+                  - maxReplicas
                   type: object
                 maxReplicas:
                   format: int32
@@ -17988,6 +18017,8 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
+                rules:
+                  type: object
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
@@ -17999,29 +18030,37 @@ spec:
               type: object
             tikv:
               properties:
-                externalEndpoint:
+                external:
                   properties:
-                    host:
-                      type: string
-                    path:
-                      type: string
-                    port:
+                    endpoint:
+                      properties:
+                        host:
+                          type: string
+                        path:
+                          type: string
+                        port:
+                          format: int32
+                          type: integer
+                        tlsSecret:
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                          required:
+                          - name
+                          - namespace
+                          type: object
+                      required:
+                      - host
+                      - port
+                      - path
+                      type: object
+                    maxReplicas:
                       format: int32
                       type: integer
-                    tlsSecret:
-                      properties:
-                        name:
-                          type: string
-                        namespace:
-                          type: string
-                      required:
-                      - name
-                      - namespace
-                      type: object
                   required:
-                  - host
-                  - port
-                  - path
+                  - maxReplicas
                   type: object
                 maxReplicas:
                   format: int32
@@ -18034,6 +18073,8 @@ spec:
                 minReplicas:
                   format: int32
                   type: integer
+                rules:
+                  type: object
                 scaleInIntervalSeconds:
                   format: int32
                   type: integer
@@ -21519,10 +21560,10 @@ spec:
                   type: object
                 gc:
                   properties:
-                    "\tbatch-keys":
+                    batch-keys:
                       format: int64
                       type: integer
-                    "\tmax-write-bytes-per-sec":
+                    max-write-bytes-per-sec:
                       type: string
                   type: object
                 import:
@@ -21552,6 +21593,8 @@ spec:
                       type: string
                   type: object
                 log-file:
+                  type: string
+                log-format:
                   type: string
                 log-level:
                   type: string
@@ -22532,6 +22575,9 @@ spec:
                       type: string
                     labels:
                       type: object
+                    max-grpc-send-msg-len:
+                      format: int32
+                      type: integer
                     request-batch-enable-cross-command:
                       type: boolean
                     request-batch-wait-duration:

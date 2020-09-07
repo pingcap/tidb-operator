@@ -57,6 +57,7 @@ type masterMemberManager struct {
 	podLister      corelisters.PodLister
 	epsLister      corelisters.EndpointsLister
 	pvcLister      corelisters.PersistentVolumeClaimLister
+	masterScaler   Scaler
 	masterUpgrader DMUpgrader
 }
 
@@ -70,6 +71,7 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
+	masterScaler Scaler,
 	masterUpgrader DMUpgrader) manager.DMManager {
 	return &masterMemberManager{
 		masterControl,
@@ -81,10 +83,11 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 		podLister,
 		epsLister,
 		pvcLister,
+		masterScaler,
 		masterUpgrader}
 }
 
-func (mmm *masterMemberManager) Sync(dc *v1alpha1.DMCluster) error {
+func (mmm *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	// Sync dm-master Service
 	if err := mmm.syncMasterServiceForDMCluster(dc); err != nil {
 		return err
@@ -237,18 +240,19 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		}
 	}
 
-	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
-		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
-			return err
-		}
+	// Scaling takes precedence over upgrading because:
+	// - if a dm-master fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
+		return err
 	}
 
-	// TODO: dm add scaler
-	//if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
-	//	return err
-	//}
-
 	// TODO: dm add auto failover
+	// Perform failover logic if necessary. Note that this will only update
+	// DMCluster status. The actual scaling performs in next sync loop (if a
+	// new replica needs to be added).
 	// if mmm.autoFailover {
 	//	if mmm.shouldRecover(tc) {
 	//		mmm.masterFailover.Recover(tc)
@@ -258,6 +262,12 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 	//		}
 	//	}
 	// }
+
+	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
+		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
+			return err
+		}
+	}
 
 	return updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
 }
@@ -277,10 +287,12 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 	if err != nil {
 		return err
 	}
-	if upgrading {
-		dc.Status.Master.Phase = v1alpha1.UpgradePhase
-	} else if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
+
+	// Scaling takes precedence over upgrading.
+	if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
 		dc.Status.Master.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
+		dc.Status.Master.Phase = v1alpha1.UpgradePhase
 	} else {
 		dc.Status.Master.Phase = v1alpha1.NormalPhase
 	}
@@ -757,9 +769,7 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 			}
 		} else {
 			if dc.Status.Master.UnjoinedMembers != nil {
-				if _, ok := dc.Status.Master.UnjoinedMembers[pod.Name]; ok {
-					delete(dc.Status.Master.UnjoinedMembers, pod.Name)
-				}
+				delete(dc.Status.Master.UnjoinedMembers, pod.Name)
 			}
 		}
 	}
