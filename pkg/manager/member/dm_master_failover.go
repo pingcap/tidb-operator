@@ -98,7 +98,7 @@ func (mf *masterFailover) Failover(dc *v1alpha1.DMCluster) error {
 			ns, dcName, healthCount, dc.MasterStsDesiredReplicas(), dc.Spec.Master.Replicas, len(dc.Status.Master.FailureMembers))
 	}
 
-	failureReplicas := getDMFailureReplicas(dc)
+	failureReplicas := getDMMasterFailureReplicas(dc)
 	if failureReplicas >= int(*dc.Spec.Master.MaxFailoverCount) {
 		klog.Errorf("dm-master failover replicas (%d) reaches the limit (%d), skip failover", failureReplicas, *dc.Spec.Master.MaxFailoverCount)
 		return nil
@@ -200,12 +200,12 @@ func (mf *masterFailover) tryToDeleteAFailureMember(dc *v1alpha1.DMCluster) erro
 	// invoke deleteMember api to delete a member from the dm-master cluster
 	err := controller.GetMasterClient(mf.masterControl, dc).DeleteMaster(failurePodName)
 	if err != nil {
-		klog.Errorf("dm-master failover: failed to delete member: %s, %v", failurePodName, err)
+		klog.Errorf("dm-master failover: failed to delete member: [%s/%s], %v", ns, failurePodName, err)
 		return err
 	}
-	klog.Infof("dm-master failover: delete member: %s successfully", failurePodName)
+	klog.Infof("dm-master failover: delete member: [%s/%s] successfully", ns, failurePodName)
 	mf.recorder.Eventf(dc, apiv1.EventTypeWarning, "DMMasterMemberDeleted",
-		"%s deleted from dmcluster", failurePodName)
+		"[%s/%s] deleted from dmcluster", ns, failurePodName)
 
 	// The order of old PVC deleting and the new Pod creating is not guaranteed by Kubernetes.
 	// If new Pod is created before old PVC deleted, new Pod will reuse old PVC.
@@ -249,7 +249,7 @@ func (mf *masterFailover) isPodDesired(dc *v1alpha1.DMCluster, podName string) b
 	ordinals := dc.MasterStsDesiredOrdinals(true)
 	ordinal, err := util.GetOrdinalFromPodName(podName)
 	if err != nil {
-		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		klog.Errorf("unexpected pod name %s/%q: %v", dc.GetName(), podName, err)
 		return false
 	}
 	return ordinals.Has(ordinal)

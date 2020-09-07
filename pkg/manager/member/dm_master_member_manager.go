@@ -524,7 +524,7 @@ func (mmm *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulS
 	return false, nil
 }
 
-func getDMFailureReplicas(dc *v1alpha1.DMCluster) int {
+func getDMMasterFailureReplicas(dc *v1alpha1.DMCluster) int {
 	failureReplicas := 0
 	for _, failureMember := range dc.Status.Master.FailureMembers {
 		if failureMember.MemberDeleted {
@@ -605,7 +605,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	setName := controller.DMMasterMemberName(dcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8261), baseMasterSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
-	failureReplicas := getDMFailureReplicas(dc)
+	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	masterContainer := corev1.Container{
 		Name:            v1alpha1.DMMasterMemberType.String(),

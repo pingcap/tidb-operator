@@ -73,7 +73,7 @@ func (wf *workerFailover) Failover(dc *v1alpha1.DMCluster) error {
 					PodName:   podName,
 					CreatedAt: metav1.Now(),
 				}
-				msg := fmt.Sprintf("worker[%s] is Offline", worker.Name)
+				msg := fmt.Sprintf("worker[%s/%s] is Offline", ns, worker.Name)
 				wf.recorder.Event(dc, corev1.EventTypeWarning, unHealthEventReason, fmt.Sprintf(unHealthEventMsgPattern, "worker", podName, msg))
 			}
 		}
@@ -89,7 +89,7 @@ func (wf *workerFailover) Recover(dc *v1alpha1.DMCluster) {
 
 func (wf *workerFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
 	for key, failureWorker := range dc.Status.Worker.FailureMembers {
-		if isWorkerPodDesired(dc, failureWorker.PodName) {
+		if !isWorkerPodDesired(dc, failureWorker.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
 			// slots feature. We should remove the record of undesired pods,
 			// otherwise an extra replacement pod will be created.
