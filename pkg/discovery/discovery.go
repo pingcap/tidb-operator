@@ -84,7 +84,7 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	keyName := fmt.Sprintf("%s/%s", ns, tcName)
 	// TODO: the replicas should be the total replicas of pd sets.
 	replicas := tc.Spec.PD.Replicas
-	pdAddress := tc.Spec.PDAddress
+	pdAddresses := tc.Spec.PDAddresses
 
 	currentCluster := td.clusters[keyName]
 	if currentCluster == nil || currentCluster.resourceVersion != tc.ResourceVersion {
@@ -98,8 +98,8 @@ func (td *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 
 	if len(currentCluster.peers) == int(replicas) {
 		delete(currentCluster.peers, podName)
-		if len(pdAddress) != 0 {
-			return fmt.Sprintf("--join=%s", strings.Join(pdAddress, ",")), nil
+		if len(pdAddresses) != 0 {
+			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
 		return fmt.Sprintf("--initial-cluster=%s=%s://%s", podName, tc.Scheme(), advertisePeerUrl), nil
 	}

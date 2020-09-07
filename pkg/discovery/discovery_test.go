@@ -392,12 +392,12 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
-			name: "pdAddress exists, 3 pd replicas, the 3rd pd send request",
+			name: "pdAddresses exists, 3 pd replicas, the 3rd pd send request",
 			ns:   "default",
 			url:  "demo-pd-2.demo-pd-peer.default.svc:2380",
 			tc: func() *v1alpha1.TidbCluster {
 				tc := newTC()
-				tc.Spec.PDAddress = []string{"http://address0:2379", "http://address1:2379", "http://address2:2379"}
+				tc.Spec.PDAddresses = []string{"http://address0:2379", "http://address1:2379", "http://address2:2379"}
 				return tc
 			}(),
 			clusters: map[string]*clusterInfo{
@@ -416,12 +416,12 @@ func TestDiscoveryDiscovery(t *testing.T) {
 			},
 		},
 		{
-			name: "pdAddress exists, 3 pd replicas, get members success, the 1st pd send request",
+			name: "pdAddresses exists, 3 pd replicas, get members success, the 1st pd send request",
 			ns:   "default",
 			url:  "demo-pd-0.demo-pd-peer.default.svc:2380",
 			tc: func() *v1alpha1.TidbCluster {
 				tc := newTC()
-				tc.Spec.PDAddress = []string{
+				tc.Spec.PDAddresses = []string{
 					"http://address0:2379",
 					"http://address1:2379",
 					"http://address2:2379",

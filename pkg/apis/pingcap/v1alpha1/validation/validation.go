@@ -107,8 +107,8 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiCDC != nil {
 		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
 	}
-	if spec.PDAddress != nil {
-		allErrs = append(allErrs, validatePDAddress(spec.PDAddress, fldPath.Child("pdAddress"))...)
+	if spec.PDAddresses != nil {
+		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
 	}
 	return allErrs
 }
@@ -120,7 +120,7 @@ func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList 
 	return allErrs
 }
 
-func validatePDAddress(arrayOfAddresses []string, fldPath *field.Path) field.ErrorList {
+func validatePDAddresses(arrayOfAddresses []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	addressRegex := "^http://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]:[0-9]+$"
 	pdAddressRegexp := regexp.MustCompile(addressRegex)

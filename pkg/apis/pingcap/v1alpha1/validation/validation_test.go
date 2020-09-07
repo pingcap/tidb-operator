@@ -356,7 +356,7 @@ func TestValidateLocalDescendingPath(t *testing.T) {
 	}
 }
 
-func TestValidatePDAddress(t *testing.T) {
+func TestValidatePDAddresses(t *testing.T) {
 	successCases := [][]string{
 		{
 			"http://1.2.3.4:2379",
@@ -366,7 +366,7 @@ func TestValidatePDAddress(t *testing.T) {
 	}
 
 	for _, c := range successCases {
-		errs := validatePDAddress(c, field.NewPath("pdAddress"))
+		errs := validatePDAddresses(c, field.NewPath("pdAddress"))
 		if len(errs) > 0 {
 			t.Errorf("expected success: %v", errs)
 		}
@@ -389,7 +389,7 @@ func TestValidatePDAddress(t *testing.T) {
 	}
 
 	for _, c := range errorCases {
-		errs := validatePDAddress(c, field.NewPath("pdAddress"))
+		errs := validatePDAddresses(c, field.NewPath("pdAddress"))
 		if len(errs) == 0 {
 			t.Errorf("expected failure for %s", c)
 		}

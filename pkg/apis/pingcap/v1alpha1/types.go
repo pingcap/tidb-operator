@@ -240,9 +240,9 @@ type TidbClusterSpec struct {
 	// +optional
 	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 
-	// PDAddress is the external pd address, if configured, the pds in this TidbCluster will join to this configured pd address.
+	// PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.
 	// +optional
-	PDAddress []string `json:"pdAddress,omitempty"`
+	PDAddresses []string `json:"pdAddresses,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
