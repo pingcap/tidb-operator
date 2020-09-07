@@ -252,16 +252,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return err
 	}
 
-	if !tc.Status.PD.Synced {
-		force := NeedForceUpgrade(tc.Annotations)
-		if force {
-			tc.Status.PD.Phase = v1alpha1.UpgradePhase
-			setUpgradePartition(newPDSet, 0)
-			errSTS := updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
-			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
-		}
-	}
-
 	if pmm.autoFailover {
 		if pmm.shouldRecover(tc) {
 			pmm.pdFailover.Recover(tc)
@@ -269,6 +259,16 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 			if err := pmm.pdFailover.Failover(tc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !tc.Status.PD.Synced {
+		force := NeedForceUpgrade(tc.Annotations)
+		if force {
+			tc.Status.PD.Phase = v1alpha1.UpgradePhase
+			setUpgradePartition(newPDSet, 0)
+			errSTS := updateStatefulSet(pmm.setControl, tc, newPDSet, oldPDSet)
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd needs force upgrade, %v", ns, tcName, errSTS)
 		}
 	}
 
