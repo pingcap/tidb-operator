@@ -45,7 +45,7 @@ func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSe
 	if err != nil {
 		return false, fmt.Errorf("tac[%s/%s] parse last auto-scaling timestamp failed,err:%v", tac.Namespace, tac.Name, err)
 	}
-	if intervalSeconds > int32(time.Now().Sub(time.Unix(t, 0)).Seconds()) {
+	if intervalSeconds > int32(time.Since(time.Unix(t, 0)).Seconds()) {
 		return false, nil
 	}
 	return true, nil
@@ -107,7 +107,7 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler) {
 			spec.ScaleInIntervalSeconds = pointer.Int32Ptr(500)
 		}
 		// If ExternalEndpoint is not provided, we would set default metrics
-		if spec.ExternalEndpoint == nil && spec.MetricsTimeDuration == nil {
+		if spec.External == nil && spec.MetricsTimeDuration == nil {
 			spec.MetricsTimeDuration = pointer.StringPtr("3m")
 		}
 	}

@@ -293,7 +293,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	envVars = append(envVars, storageEnv...)
 	envVars = append(envVars, corev1.EnvVar{
 		Name:  "BR_LOG_TO_TERM",
-		Value: string(1),
+		Value: string(rune(1)),
 	})
 	args := []string{
 		"restore",

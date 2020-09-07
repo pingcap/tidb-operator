@@ -34,6 +34,8 @@ type MasterClient interface {
 	GetWorkers() ([]*WorkersInfo, error)
 	GetLeader() (MembersLeader, error)
 	EvictLeader() error
+	DeleteMaster(name string) error
+	DeleteWorker(name string) error
 }
 
 var (
@@ -193,6 +195,34 @@ func (mc *masterClient) EvictLeader() error {
 	}
 
 	return nil
+}
+
+func (mc *masterClient) deleteMember(query string) error {
+	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
+	body, err := httputil.DeleteBodyOK(mc.httpClient, apiURL)
+	if err != nil {
+		return err
+	}
+	deleteMemeberResp := &RespHeader{}
+	err = json.Unmarshal(body, deleteMemeberResp)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal delete member resp: %s, query: %s, err: %s", body, query, err)
+	}
+	if !deleteMemeberResp.Result {
+		return fmt.Errorf("unable to delete member, query: %s, err: %s", query, deleteMemeberResp.Msg)
+	}
+
+	return nil
+}
+
+func (mc *masterClient) DeleteMaster(name string) error {
+	query := "/master/" + name
+	return mc.deleteMember(query)
+}
+
+func (mc *masterClient) DeleteWorker(name string) error {
+	query := "/worker/" + name
+	return mc.deleteMember(query)
 }
 
 // NewMasterClient returns a new MasterClient

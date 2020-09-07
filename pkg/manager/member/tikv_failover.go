@@ -120,8 +120,7 @@ func (ftf *fakeTiKVFailover) Failover(_ *v1alpha1.TidbCluster) error {
 }
 
 func (ftf *fakeTiKVFailover) Recover(_ *v1alpha1.TidbCluster) {
-	return
 }
+
 func (ftf *fakeTiKVFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
-	return
 }
