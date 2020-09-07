@@ -565,25 +565,6 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
 		})
 	}
-	if tc.IsHeterogeneous() {
-		originTcName := tc.Spec.Cluster.Name
-		originTidbCluster, err := tmm.tidbLister.TidbClusters(ns).Get(originTcName)
-		if errors.IsNotFound(err) {
-			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
-			return nil
-		}
-		if originTidbCluster.IsTLSClusterEnabled() {
-			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
-			})
-		}
-		if tc.Spec.TiDB.IsTLSClientEnabled() {
-			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
-			})
-		}
-	}
-
 	vols := []corev1.Volume{
 		annVolume,
 		{Name: "config", VolumeSource: corev1.VolumeSource{
@@ -631,6 +612,17 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
 			return nil
 		}
+
+		if originTidbCluster.IsTLSClusterEnabled() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tidb-tls", ReadOnly: true, MountPath: clusterCertPath,
+			})
+		}
+		if originTidbCluster.Spec.TiDB.IsTLSClientEnabled() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tidb-server-tls", ReadOnly: true, MountPath: serverCertPath,
+			})
+		}
 		if originTidbCluster.IsTLSClusterEnabled() {
 			vols = append(vols, corev1.Volume{
 				Name: "tidb-tls", VolumeSource: corev1.VolumeSource{
@@ -640,7 +632,7 @@ func (tmm *tidbMemberManager) getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbClust
 				},
 			})
 		}
-		if tc.Spec.TiDB.IsTLSClientEnabled() {
+		if originTidbCluster.Spec.TiDB.IsTLSClientEnabled() {
 			secretName := tlsClientSecretName(originTidbCluster)
 			vols = append(vols, corev1.Volume{
 				Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{

@@ -399,12 +399,12 @@ func (tkmm *tikvMemberManager) getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbClus
 			klog.Infof("TidbCluster has been deleted %v", originTidbCluster)
 			return nil, nil
 		}
-		if tc.IsTLSClusterEnabled() {
+		if originTidbCluster.IsTLSClusterEnabled() {
 			volMounts = append(volMounts, corev1.VolumeMount{
 				Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
 			})
 		}
-		if tc.IsTLSClusterEnabled() {
+		if originTidbCluster.IsTLSClusterEnabled() {
 			vols = append(vols, corev1.Volume{
 				Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
