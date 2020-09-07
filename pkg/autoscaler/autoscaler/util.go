@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -192,4 +193,15 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 		}
 	}
 	return result
+}
+
+const groupLabelKey = "group"
+
+func findAutoscalingGroupNameInLabels(labels []*metapb.StoreLabel) string {
+	for _, label := range labels {
+		if label.Key == groupLabelKey {
+			return label.Value
+		}
+	}
+	return ""
 }

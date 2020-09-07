@@ -23,13 +23,110 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	promClient "github.com/prometheus/client_golang/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
+
+func (am *autoScalerManager) syncTiKVByPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, tikvPlans []pdapi.Plan) error {
+	if tac.Spec.TiKV == nil {
+		return nil
+	}
+	if tac.Status.TiKV == nil {
+		return nil
+	}
+
+	groupNames := sets.String{}
+	groupPlanMap := make(map[string]pdapi.Plan)
+	for _, plan := range tikvPlans {
+		groupName := findAutoscalingGroupNameInLabels(plan.Labels)
+		groupNames.Insert(groupName)
+		groupPlanMap[groupName] = plan
+	}
+	requirement, err := labels.NewRequirement(label.AutoScalingGroupLabelKey, selection.In, groupNames.List())
+	if err != nil {
+		return err
+	}
+	tclist, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(v1.ListOptions{
+		LabelSelector: requirement.String(),
+	})
+	if err != nil {
+		return err
+	}
+
+	existedGroups := sets.String{}
+	groupTcMap := make(map[string]v1alpha1.TidbCluster)
+	for _, tc := range tclist.Items {
+		groupName := tc.Labels[label.AutoScalingGroupLabelKey]
+		existedGroups.Insert(groupName)
+		groupTcMap[groupName] = tc
+	}
+
+	toDelete := existedGroups.Difference(groupNames)
+	toCreate := groupNames.Difference(existedGroups)
+	toSync := groupNames.Intersection(existedGroups)
+
+	for _, group := range toDelete.List() {
+		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(groupTcMap[group].Name, nil)
+		klog.Errorf("cannot remove TidbCluster %v\n", err)
+	}
+
+	for _, group := range toSync.List() {
+		actual, expected := groupTcMap[group], groupPlanMap[group]
+		actual.Spec.TiKV.Replicas = int32(expected.Count)
+		_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(&actual)
+		klog.Errorf("cannot update TidbCluster %v\n", err)
+	}
+
+	for _, group := range toCreate.List() {
+		plan := groupPlanMap[group]
+		var resource v1alpha1.AutoResource
+		for _, res := range tac.Spec.Resources {
+			if res.ResourceType == plan.ResourceType {
+				resource = res
+				break
+			}
+		}
+		resList := corev1.ResourceList{
+			corev1.ResourceCPU:     resource.CPU,
+			corev1.ResourceStorage: resource.Storage,
+			corev1.ResourceMemory:  resource.Memory,
+		}
+		tc := &v1alpha1.TidbCluster{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      group,
+				Namespace: tc.Namespace,
+			},
+			Spec: v1alpha1.TidbClusterSpec{
+				TiKV: &v1alpha1.TiKVSpec{
+					Replicas: int32(plan.Count),
+					ResourceRequirements: corev1.ResourceRequirements{
+						Limits:   resList,
+						Requests: resList,
+					},
+				},
+				Cluster: &v1alpha1.TidbClusterRef{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+		}
+		_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		if err != nil {
+			klog.Errorf("cannot create new TidbCluster %v\n", err)
+		}
+	}
+
+	return nil
+}
 
 func (am *autoScalerManager) syncTiKV(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	if tac.Spec.TiKV == nil {

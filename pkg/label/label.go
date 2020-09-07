@@ -61,6 +61,8 @@ const (
 
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
+	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
+	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
 
 	// High availability is realized based on the topology
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
@@ -121,14 +123,8 @@ const (
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
 	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
-	// AnnTiKVAutoScalingGroup describes the autoscaling group of the TiKV
-	AnnTiKVAutoScalingGroup = "tikv.tidb.pingcap.com/autoscaling-group"
-	// AnnTiDBAutoScalingGroup describes the autoscaling group of the TiDB
-	AnnTiDBAutoScalingGroup = "tidb.tidb.pingcap.com/autoscaling-group"
-	// AnnTiKVAutoScalingResourceType describes the autoscaling resource type of the TiKV
-	AnnTiKVAutoScalingResourceType = "tikv.tidb.pingcap.com/autoscaling-resource-type"
-	// AnnTiDBAutoScalingResourceType describes the autoscaling resource type of the TiDB
-	AnnTiDBAutoScalingResourceType = "tidb.tidb.pingcap.com/autoscaling-resource-type"
+	// AnnAutoScalingResourceType describes the autoscaling resource type of the TiDB
+	AnnAutoScalingResourceType = "tidb.pingcap.com/autoscaling-resource-type"
 
 	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
 	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"

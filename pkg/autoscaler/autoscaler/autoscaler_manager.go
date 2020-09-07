@@ -114,10 +114,18 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 
 	// Construct PD Auto-scaling strategy
 	strategy := autoscalerToStrategy(tac)
+
+	// Request PD for auto-scaling plans
 	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {
 		klog.Errorf("cannot get auto-scaling plans %v", err)
 		return err
+	}
+
+	// Distinguish plans
+	plansMap := make(map[string][]pdapi.Plan)
+	for _, plan := range plans {
+		plansMap[plan.Component] = append(plansMap[plan.Component], plan)
 	}
 
 	oldTikvReplicas := tc.Spec.TiKV.Replicas
