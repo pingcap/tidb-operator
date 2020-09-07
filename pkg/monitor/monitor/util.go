@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -48,11 +49,14 @@ func buildTidbMonitorLabel(name string) map[string]string {
 func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
 	var releaseNamespaces []string
+	var releaseClusters []string
 	for _, cluster := range monitor.Spec.Clusters {
 		releaseNamespaces = append(releaseNamespaces, cluster.Namespace)
+		releaseClusters = append(releaseClusters, cluster.Name)
 	}
 
-	targetPattern, err := config.NewRegexp(tc.Name)
+	relabelConfigsRegex := strings.Join(releaseClusters, "|")
+	targetPattern, err := config.NewRegexp(relabelConfigsRegex)
 	if err != nil {
 		return nil, err
 	}
@@ -120,18 +124,6 @@ func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccoun
 	return sa
 }
 
-func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
-	return &rbac.ClusterRole{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Rules: policyRules,
-	}
-}
-
 func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.Role {
 	return &rbac.Role{
 		ObjectMeta: meta.ObjectMeta{
@@ -141,30 +133,6 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule
 			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
 		Rules: policyRules,
-	}
-}
-
-func getMonitorClusterRoleBinding(sa *core.ServiceAccount, cr *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
-	return &rbac.ClusterRoleBinding{
-		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectName(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
-		},
-		Subjects: []rbac.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      sa.Name,
-				Namespace: sa.Namespace,
-				APIGroup:  "",
-			},
-		},
-		RoleRef: rbac.RoleRef{
-			Kind:     "ClusterRole",
-			Name:     cr.Name,
-			APIGroup: "rbac.authorization.k8s.io",
-		},
 	}
 }
 
@@ -370,6 +338,12 @@ chmod 777 /data/prometheus /data/grafana
 			})
 
 	}
+	for k, v := range monitor.Spec.Initializer.Envs {
+		util.AppendOverwriteEnv(container.Env, []core.EnvVar{{
+			Name:  k,
+			Value: v,
+		}})
+	}
 	return container
 }
 
@@ -505,14 +479,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 			},
 		},
 	}
-	for k, v := range monitor.Spec.Grafana.Envs {
-		c.Env = append(c.Env, core.EnvVar{
-			Name:  k,
-			Value: v,
-		})
-	}
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
+	}
+	for k, v := range monitor.Spec.Grafana.Envs {
+		util.AppendOverwriteEnv(c.Env, []core.EnvVar{{
+			Name:  k,
+			Value: v,
+		}})
 	}
 	sort.Sort(util.SortEnvByName(c.Env))
 	return c

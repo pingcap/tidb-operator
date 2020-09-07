@@ -31,6 +31,13 @@ const (
 	TiKVStateOffline string = "Offline"
 	// TiKVStateTombstone represents status of Tombstone of TiKV
 	TiKVStateTombstone string = "Tombstone"
+
+	// DMWorkerStateFree represents status of free of dm-worker
+	DMWorkerStateFree string = "free"
+	// DMWorkerStateBound represents status of bound of dm-worker
+	DMWorkerStateBound string = "bound"
+	// DMWorkerStateOffline represents status of offline of dm-worker
+	DMWorkerStateOffline string = "offline"
 )
 
 // MemberType represents member type
@@ -47,6 +54,10 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc container type
 	TiCDCMemberType MemberType = "ticdc"
+	// DMMasterMemberType is dm-master container type
+	DMMasterMemberType MemberType = "dm-master"
+	// DMWorkerMemberType is dm-worker container type
+	DMWorkerMemberType MemberType = "dm-worker"
 	// SlowLogTailerMemberType is tidb log tailer container type
 	SlowLogTailerMemberType MemberType = "slowlog"
 	// UnknownMemberType is unknown container type
@@ -224,6 +235,10 @@ type TidbClusterSpec struct {
 	// EnableDynamicConfiguration indicates whether DynamicConfiguration is enabled for the tidbcluster
 	// +optional
 	EnableDynamicConfiguration *bool `json:"enableDynamicConfiguration,omitempty"`
+
+	// Cluster is the external cluster, if configured, the components in this TidbCluster will join to this configured cluster.
+	// +optional
+	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 }
 
 // TidbClusterStatus represents the current status of a tidb cluster.
@@ -236,7 +251,7 @@ type TidbClusterStatus struct {
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	Monitor    *TidbMonitorRef           `json:"monitor,omitempty"`
-	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempyt"`
+	AutoScaler *TidbClusterAutoScalerRef `json:"auto-scaler,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
@@ -396,6 +411,10 @@ type TiKVSpec struct {
 	// Config is the Configuration of tikv-servers
 	// +optional
 	Config *TiKVConfig `json:"config,omitempty"`
+
+	// RecoverFailover indicates that Operator can recover the failover Pods
+	// +optional
+	RecoverFailover bool `json:"recoverFailover,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -439,6 +458,10 @@ type TiFlashSpec struct {
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
 	LogTailer *LogTailerSpec `json:"logTailer,omitempty"`
+
+	// RecoverFailover indicates that Operator can recover the failover Pods
+	// +optional
+	RecoverFailover bool `json:"recoverFailover,omitempty"`
 }
 
 // TiCDCSpec contains details of TiCDC members
@@ -1157,6 +1180,8 @@ type BackupSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
+	TableFilter []string `json:"tableFilter,omitempty"`
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -1173,7 +1198,7 @@ type BackupSpec struct {
 type DumplingConfig struct {
 	// Options means options for backup data to remote storage with dumpling.
 	Options []string `json:"options,omitempty"`
-	// TableFilter means Table filter expression for 'db.table' matching
+	// Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching
 	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
@@ -1184,9 +1209,9 @@ type BRConfig struct {
 	Cluster string `json:"cluster"`
 	// Namespace of backup/restore cluster
 	ClusterNamespace string `json:"clusterNamespace,omitempty"`
-	// DB is the specific DB which will be backed-up or restored
+	// Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. DB is the specific DB which will be backed-up or restored
 	DB string `json:"db,omitempty"`
-	// Table is the specific table which will be backed-up or restored
+	// Deprecated from BR v4.0.3. Please use `Spec.TableFilter` instead. Table is the specific table which will be backed-up or restored
 	Table string `json:"table,omitempty"`
 	// LogLevel is the log level
 	LogLevel string `json:"logLevel,omitempty"`
@@ -1407,6 +1432,8 @@ type RestoreSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
+	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
@@ -1436,4 +1463,327 @@ type IngressSpec struct {
 	// ingress supports SNI.
 	// +optional
 	TLS []extensionsv1beta1.IngressTLS `json:"tls,omitempty"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// +k8s:openapi-gen=true
+// DMCluster is the control script's spec
+type DMCluster struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ObjectMeta `json:"metadata"`
+
+	// Spec defines the behavior of a dm cluster
+	Spec DMClusterSpec `json:"spec"`
+
+	// +k8s:openapi-gen=false
+	// Most recently observed status of the dm cluster
+	Status DMClusterStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// +k8s:openapi-gen=true
+// DMClusterList is DMCluster list
+type DMClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ListMeta `json:"metadata"`
+
+	Items []DMCluster `json:"items"`
+}
+
+// +k8s:openapi-gen=true
+// DMDiscoverySpec contains details of Discovery members for dm
+type DMDiscoverySpec struct {
+	// Address indicates the existed TiDB discovery address
+	Address string `json:"address"`
+}
+
+// +k8s:openapi-gen=true
+// DMClusterSpec describes the attributes that a user creates on a dm cluster
+type DMClusterSpec struct {
+	// Discovery spec
+	Discovery DMDiscoverySpec `json:"discovery"`
+
+	// dm-master cluster spec
+	// +optional
+	Master MasterSpec `json:"master"`
+
+	// dm-worker cluster spec
+	// +optional
+	Worker *WorkerSpec `json:"worker,omitempty"`
+
+	// Indicates that the dm cluster is paused and will not be processed by
+	// the controller.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
+
+	// TODO: remove optional after defaulting logic introduced
+	// dm cluster version
+	// +optional
+	Version string `json:"version"`
+
+	// SchedulerName of DM cluster Pods
+	// +kubebuilder:default=tidb-scheduler
+	SchedulerName string `json:"schedulerName,omitempty"`
+
+	// Persistent volume reclaim policy applied to the PVs that consumed by DM cluster
+	// +kubebuilder:default=Retain
+	PVReclaimPolicy *corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+
+	// ImagePullPolicy of DM cluster Pods
+	// +kubebuilder:default=IfNotPresent
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+	// Optional: Defaults to false
+	// +optional
+	EnablePVReclaim *bool `json:"enablePVReclaim,omitempty"`
+
+	// Whether enable the TLS connection between DM server components
+	// Optional: Defaults to nil
+	// +optional
+	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
+
+	// Whether Hostnetwork is enabled for DM cluster Pods
+	// Optional: Defaults to false
+	// +optional
+	HostNetwork *bool `json:"hostNetwork,omitempty"`
+
+	// Affinity of DM cluster Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// PriorityClassName of DM cluster Pods
+	// Optional: Defaults to omitted
+	// +optional
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
+
+	// Base node selectors of DM cluster Pods, components may add or override selectors upon this respectively
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Base annotations of DM cluster Pods, components may add or override selectors upon this respectively
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Time zone of DM cluster Pods
+	// Optional: Defaults to UTC
+	// +optional
+	Timezone string `json:"timezone,omitempty"`
+
+	// Base tolerations of DM cluster Pods, components may add more tolerations upon this respectively
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+}
+
+// DMClusterStatus represents the current status of a dm cluster.
+type DMClusterStatus struct {
+	Master MasterStatus `json:"master,omitempty"`
+	Worker WorkerStatus `json:"worker,omitempty"`
+
+	// Represents the latest available observations of a dm cluster's state.
+	// +optional
+	Conditions []DMClusterCondition `json:"conditions,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// MasterSpec contains details of dm-master members
+type MasterSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/dm
+	// +optional
+	BaseImage string `json:"baseImage,omitempty"`
+
+	// Service defines a Kubernetes service of Master cluster.
+	// Optional: Defaults to `.spec.services` in favor of backward compatibility
+	// +optional
+	Service *MasterServiceSpec `json:"service,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// The storageClassName of the persistent volume for dm-master data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageSize is the request storage size for dm-master.
+	// Defaults to "10Gi".
+	// +optional
+	StorageSize string `json:"storageSize,omitempty"`
+
+	// Subdirectory within the volume to store dm-master Data. By default, the data
+	// is stored in the root directory of volume which is mounted at
+	// /var/lib/dm-master.
+	// Specifying this will change the data directory to a subdirectory, e.g.
+	// /var/lib/dm-master/data if you set the value to "data".
+	// It's dangerous to change this value for a running cluster as it will
+	// upgrade your cluster to use a new storage directory.
+	// Defaults to "" (volume's root).
+	// +optional
+	DataSubDir string `json:"dataSubDir,omitempty"`
+
+	// Config is the Configuration of dm-master-servers
+	// +optional
+	Config *MasterConfig `json:"config,omitempty"`
+}
+
+type MasterServiceSpec struct {
+	ServiceSpec `json:",inline"`
+
+	// ExternalTrafficPolicy of the service
+	// Optional: Defaults to omitted
+	// +optional
+	ExternalTrafficPolicy *corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"` // Expose the tidb cluster mysql port to MySQLNodePort
+
+	// Optional: Defaults to 0
+	// +optional
+	MasterNodePort *int `json:"masterNodePort,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// WorkerSpec contains details of dm-worker members
+type WorkerSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +kubebuilder:default=pingcap/dm
+	// +optional
+	BaseImage string `json:"baseImage,omitempty"`
+
+	// MaxFailoverCount limit the max replicas could be added in failover, 0 means no failover.
+	// Optional: Defaults to 3
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
+
+	// The storageClassName of the persistent volume for dm-worker data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// StorageSize is the request storage size for dm-worker.
+	// Defaults to "10Gi".
+	// +optional
+	StorageSize string `json:"storageSize,omitempty"`
+
+	// Subdirectory within the volume to store dm-worker Data. By default, the data
+	// is stored in the root directory of volume which is mounted at
+	// /var/lib/dm-worker.
+	// Specifying this will change the data directory to a subdirectory, e.g.
+	// /var/lib/dm-worker/data if you set the value to "data".
+	// It's dangerous to change this value for a running cluster as it will
+	// upgrade your cluster to use a new storage directory.
+	// Defaults to "" (volume's root).
+	// +optional
+	DataSubDir string `json:"dataSubDir,omitempty"`
+
+	// Config is the Configuration of dm-worker-servers
+	// +optional
+	Config *WorkerConfig `json:"config,omitempty"`
+}
+
+// DMClusterCondition is dm cluster condition
+type DMClusterCondition struct {
+	// Type of the condition.
+	Type DMClusterConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// The reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// A human readable message indicating details about the transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+// DMClusterConditionType represents a dm cluster condition value.
+type DMClusterConditionType string
+
+const (
+	// DMClusterReady indicates that the dm cluster is ready or not.
+	// This is defined as:
+	// - All statefulsets are up to date (currentRevision == updateRevision).
+	// - All Master members are healthy.
+	// - All Worker pods are up.
+	DMClusterReady DMClusterConditionType = "Ready"
+)
+
+// MasterStatus is dm-master status
+type MasterStatus struct {
+	Synced          bool                       `json:"synced,omitempty"`
+	Phase           MemberPhase                `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
+	Members         map[string]MasterMember    `json:"members,omitempty"`
+	Leader          MasterMember               `json:"leader,omitempty"`
+	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
+	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
+	Image           string                     `json:"image,omitempty"`
+}
+
+// MasterMember is dm-master member status
+type MasterMember struct {
+	Name string `json:"name"`
+	// member id is actually a uint64, but apimachinery's json only treats numbers as int64/float64
+	// so uint64 may overflow int64 and thus convert to float64
+	ID        string `json:"id"`
+	ClientURL string `json:"clientURL"`
+	Health    bool   `json:"health"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// MasterFailureMember is the dm-master failure member information
+type MasterFailureMember struct {
+	PodName       string      `json:"podName,omitempty"`
+	MemberID      string      `json:"memberID,omitempty"`
+	PVCUID        types.UID   `json:"pvcUID,omitempty"`
+	MemberDeleted bool        `json:"memberDeleted,omitempty"`
+	CreatedAt     metav1.Time `json:"createdAt,omitempty"`
+}
+
+// WorkerStatus is dm-worker status
+type WorkerStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Members     map[string]WorkerMember `json:"members,omitempty"`
+	Image       string                  `json:"image,omitempty"`
+}
+
+// WorkerMember is dm-Worker member status
+type WorkerMember struct {
+	Name  string `json:"name,omitempty"`
+	Addr  string `json:"addr,omitempty"`
+	Stage string `json:"stage"`
+	// Last time the health transitioned from one to another.
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }

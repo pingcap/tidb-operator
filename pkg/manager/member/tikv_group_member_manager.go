@@ -64,7 +64,7 @@ type tikvGroupMemberManager struct {
 	svcControl        controller.ServiceControlInterface
 	setControl        controller.StatefulSetControlInterface
 	typedControl      controller.TypedControlInterface
-	tikvGroupScaler   TiKVScaler
+	tikvGroupScaler   Scaler
 	tikvGroupUpgrader *TikvGroupUpgrader
 	pdControl         pdapi.PDControlInterface
 }
@@ -77,7 +77,7 @@ func NewTiKVGroupMemberManager(
 	svcControl controller.ServiceControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	typedControl controller.TypedControlInterface,
-	tikvGroupScaler TiKVScaler,
+	tikvGroupScaler Scaler,
 	tikvUpgrader *TikvGroupUpgrader,
 	pdControl pdapi.PDControlInterface) manager.TiKVGroupManager {
 	return &tikvGroupMemberManager{
@@ -450,7 +450,7 @@ func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbClust
 		enableAdvertiseStatusAddr = false
 	}
 	scriptModel := &TiKVStartScriptModel{
-		Scheme:                    tc.Scheme(),
+		PDAddress:                 tc.Scheme() + "://${CLUSTER_NAME}-pd:2379",
 		EnableAdvertiseStatusAddr: enableAdvertiseStatusAddr,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tg.Spec.DataSubDir),
 		AdvertiseStatusAddr:       "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc",

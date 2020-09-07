@@ -431,7 +431,6 @@ func TestHAFilter(t *testing.T) {
 		podFn              func(string, string, int32) *apiv1.Pod
 		nodesFn            func() []apiv1.Node
 		podListFn          func(string, string, string) (*apiv1.PodList, error)
-		podGetFn           func(string, string) (*apiv1.Pod, error)
 		pvcGetFn           func(string, string) (*apiv1.PersistentVolumeClaim, error)
 		tcGetFn            func(string, string) (*v1alpha1.TidbCluster, error)
 		scheduledNodeGetFn func(string) (*apiv1.Node, error)
@@ -746,6 +745,19 @@ func TestHAFilter(t *testing.T) {
 				g.Expect(len(nodes)).To(Equal(1))
 				g.Expect(nodes[0].Labels[topologyKey]).To(Equal("zone3"))
 				g.Expect(nodes[0].Name).To(Equal("kube-node-3"))
+			},
+		},
+		{
+			name:               "three topologies, three pods scheduled, desired replica is 4, return three topologies",
+			podFn:              newHATiKVPod,
+			nodesFn:            fakeThreeNodes,
+			podListFn:          podListFn(map[string][]int32{"kube-node-1": {0}, "kube-node-2": {1}, "kube-node-3": {2}}),
+			acquireLockFn:      acquireSuccess,
+			tcGetFn:            tcGetThreeAndOneFailoverReplicaFn,
+			scheduledNodeGetFn: fakeZeroScheduledNode,
+			expectFn: func(nodes []apiv1.Node, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(nodes)).To(Equal(3))
 			},
 		},
 		{
@@ -1163,6 +1175,26 @@ func tcGetTwoReplicasFn(ns string, tcName string) (*v1alpha1.TidbCluster, error)
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{Replicas: 2},
+		},
+	}, nil
+}
+
+func tcGetThreeAndOneFailoverReplicaFn(ns string, tcName string) (*v1alpha1.TidbCluster, error) {
+	return &v1alpha1.TidbCluster{
+		TypeMeta: metav1.TypeMeta{Kind: "TidbCluster", APIVersion: "v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tcName,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: &v1alpha1.TiKVSpec{Replicas: 3},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				FailureStores: map[string]v1alpha1.TiKVFailureStore{
+					fmt.Sprintf("%s-tikv-1", tcName): {},
+				},
+			},
 		},
 	}, nil
 }

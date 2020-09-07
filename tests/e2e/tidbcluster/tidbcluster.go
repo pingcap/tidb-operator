@@ -41,6 +41,7 @@ import (
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	utilpod "github.com/pingcap/tidb-operator/tests/e2e/util/pod"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/util/proxiedpdclient"
 	"github.com/pingcap/tidb-operator/tests/pkg/apimachinery"
 	"github.com/pingcap/tidb-operator/tests/pkg/blockwriter"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
@@ -329,7 +330,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
 
-		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
+		ginkgo.By("Adopt orphaned service created by helm")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
 			return nil
@@ -797,7 +798,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get("e2e-monitor-monitor", metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected fetch tidbmonitor pvc success")
 		pvName = pvc.Spec.VolumeName
-
 		err = wait.Poll(5*time.Second, 5*time.Minute, func() (done bool, err error) {
 			prometheusSvc, err := c.CoreV1().Services(ns).Get(fmt.Sprintf("%s-prometheus", tm.Name), metav1.GetOptions{})
 			if err != nil {
@@ -980,15 +980,23 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[Feature: TLS]", func() {
-		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
+		ginkgo.BeforeEach(func() {
 			ginkgo.By("Installing cert-manager")
 			err := installCertManager(f.ClientSet)
 			framework.ExpectNoError(err, "failed to install cert-manager")
+		})
 
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Deleting cert-manager")
+			err := deleteCertManager(f.ClientSet)
+			framework.ExpectNoError(err, "failed to delete cert-manager")
+		})
+
+		ginkgo.It("TLS for MySQL Client and TLS between TiDB components", func() {
 			tcName := "tls"
 
 			ginkgo.By("Installing tidb issuer")
-			err = installTiDBIssuer(ns, tcName)
+			err := installTiDBIssuer(ns, tcName)
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
 			ginkgo.By("Installing tidb server and client certificate")
@@ -1017,10 +1025,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
-				Replicas:             2,
+				Replicas:             1,
 				BaseImage:            "pingcap/tidb-binlog",
 				ResourceRequirements: fixture.WithStorage(fixture.BurstbleSmall, "1Gi"),
-				GenericConfig:        tcconfig.New(map[string]interface{}{}),
+				GenericConfig: tcconfig.New(map[string]interface{}{
+					"addr": "0.0.0.0:8250",
+				}),
 			}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
@@ -1129,10 +1139,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
-
-			ginkgo.By("Deleting cert-manager")
-			err = deleteCertManager(f.ClientSet)
-			framework.ExpectNoError(err, "failed to delete cert-manager")
 		})
 	})
 
@@ -1230,6 +1236,61 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		framework.Logf("nodePort tidbcluster tidb service NodePort haven't changed after update")
 	})
 
+	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
+		// Create TidbCluster with NodePort to check whether node port would change
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
+		originTc.Spec.PD.Replicas = 1
+		originTc.Spec.TiKV.Replicas = 1
+		originTc.Spec.TiDB.Replicas = 1
+		err := genericCli.Create(context.TODO(), originTc)
+		framework.ExpectNoError(err, "Expected TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected TiDB cluster ready")
+
+		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4UpgradeVersion)
+		heterogeneousTc.Spec.PD = nil
+		heterogeneousTc.Spec.TiKV.Replicas = 1
+		heterogeneousTc.Spec.TiDB.Replicas = 1
+		heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
+			BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
+				{Resources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{
+						v1.ResourceStorage: resource.MustParse("10G"),
+					},
+				}},
+			}}
+		heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+			Name: originTc.Name,
+		}
+		err = genericCli.Create(context.TODO(), heterogeneousTc)
+		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster created")
+		err = oa.WaitForTidbClusterReady(heterogeneousTc, 15*time.Minute, 15*time.Second)
+		framework.ExpectNoError(err, "Expected Heterogeneous TiDB cluster ready")
+		err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
+			var err error
+			if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+				e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+				return false, nil
+			}
+			e2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, originTc.Name, false)
+			framework.ExpectNoError(err, "create pdClient error")
+			defer cancel()
+			storeInfo, err := pdClient.GetStores()
+			if err != nil {
+				e2elog.Logf("failed to get stores, %v", err)
+			}
+			if storeInfo.Count != 3 {
+				e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
+				return false, nil
+			}
+			e2elog.Logf("check heterogeneous tc successfully")
+			return true, nil
+		})
+		framework.ExpectNoError(err)
+
+	})
+
 	ginkgo.It("[Feature: CDC]", func() {
 		ginkgo.By("Creating cdc cluster")
 		fromTc := fixture.GetTidbCluster(ns, "cdc-source", utilimage.TiDBV4Version)
@@ -1279,6 +1340,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		framework.Logf("CDC works as expected")
 	})
+
 })
 
 func newTidbClusterConfig(cfg *tests.Config, ns, clusterName, password, tidbVersion string) tests.TidbClusterConfig {

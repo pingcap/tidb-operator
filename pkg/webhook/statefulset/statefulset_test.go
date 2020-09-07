@@ -15,6 +15,7 @@ package statefulset
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	asapps "github.com/pingcap/advanced-statefulset/client/apis/apps/v1"
@@ -28,6 +29,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/pointer"
 )
 
@@ -228,7 +230,9 @@ func runTest(t *testing.T, tt testcase, asts bool) {
 	}
 
 	cli := fake.NewSimpleClientset()
-	ac := NewStatefulSetAdmissionControl(cli)
+	ac := NewStatefulSetAdmissionControl()
+	ac.initialized = true
+	ac.operatorCli = cli
 	ar := &admission.AdmissionRequest{
 		Name:      "foo",
 		Namespace: v1.NamespaceDefault,
@@ -258,7 +262,7 @@ func runTest(t *testing.T, tt testcase, asts bool) {
 	if tt.tc != nil {
 		cli.PingcapV1alpha1().TidbClusters(tt.tc.Namespace).Create(tt.tc)
 	}
-	resp := ac.AdmitStatefulSets(ar)
+	resp := ac.Validate(ar)
 	if resp.Allowed != tt.wantAllowed {
 		t.Errorf("want allowed %v, got %v", tt.wantAllowed, resp.Allowed)
 	}
@@ -281,5 +285,18 @@ func TestStatefulSetAdmissionControl_ASTS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			runTest(t, tt, true)
 		})
+	}
+}
+
+func TestValidatingResource(t *testing.T) {
+	w := NewStatefulSetAdmissionControl()
+	wantGvr := schema.GroupVersionResource{
+		Group:    "admission.tidb.pingcap.com",
+		Version:  "v1alpha1",
+		Resource: "statefulsetvalidations",
+	}
+	gvr, _ := w.ValidatingResource()
+	if !reflect.DeepEqual(wantGvr, gvr) {
+		t.Fatalf("want: %v, got: %v", wantGvr, gvr)
 	}
 }

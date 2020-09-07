@@ -14,8 +14,9 @@
 package util
 
 import (
-	. "github.com/onsi/gomega"
 	"testing"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestMakeDockerSocketMount(t *testing.T) {

@@ -14,9 +14,10 @@
 package main
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/tkctl/debug"
 	"log"
 	"os"
+
+	"github.com/pingcap/tidb-operator/pkg/tkctl/debug"
 )
 
 func main() {

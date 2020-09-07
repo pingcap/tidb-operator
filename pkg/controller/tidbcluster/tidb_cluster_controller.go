@@ -89,6 +89,7 @@ func NewController(
 	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
+	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
@@ -195,6 +196,11 @@ func NewController(
 				pvInformer.Lister(),
 				pvControl,
 			),
+			mm.NewPVCResizer(
+				kubeCli,
+				pvcInformer,
+				scInformer,
+			),
 			mm.NewPumpMemberManager(
 				setControl,
 				svcControl,
@@ -281,7 +287,6 @@ func (tcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
 func (tcc *Controller) worker() {
 	for tcc.processNextWorkItem() {
-		// revive:disable:empty-block
 	}
 }
 

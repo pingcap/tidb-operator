@@ -19,17 +19,15 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/kvproto/pkg/pdpb"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	pdUtils "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	admission "k8s.io/api/admission/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8sTesting "k8s.io/client-go/testing"
@@ -83,7 +81,8 @@ func TestPDDeleterDelete(t *testing.T) {
 			}
 		}
 
-		podAdmissionControl := newPodAdmissionControl(kubeCli)
+		cli := fake.NewSimpleClientset()
+		podAdmissionControl := newPodAdmissionControl(nil, kubeCli, cli)
 		pdControl := pdapi.NewFakePDControl(kubeCli)
 		fakePDClient := controller.NewFakePDClient(pdControl, tc)
 
@@ -303,13 +302,4 @@ func newOwnerStatefulSetForPDPodAdmissionControl() *apps.StatefulSet {
 	sts.Status.CurrentRevision = "1"
 	sts.Status.UpdateRevision = "1"
 	return &sts
-}
-
-func newPVCForDeletePod() *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorUtils.OrdinalPVCName(v1alpha1.PDMemberType, pdStsName, deletePDPodOrdinal),
-			Namespace: namespace,
-		},
-	}
 }

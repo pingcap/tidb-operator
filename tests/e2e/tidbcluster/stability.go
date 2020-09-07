@@ -409,7 +409,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			}
 
 			ginkgo.By("Mark stores of failed tikv pods as tombstone")
-			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false, nil)
+			pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, clusterName, false)
 			framework.ExpectNoError(err)
 			defer func() {
 				if cancel != nil {
@@ -1020,7 +1020,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			err = e2epod.WaitForPodNotFoundInNamespace(c, podName, ns, time.Minute*5)
 			framework.ExpectNoError(err)
 
-			ginkgo.By(fmt.Sprintf("Waiting for the record of failed pod to be removed from failure stores"))
+			ginkgo.By("Waiting for the record of failed pod to be removed from failure stores")
 			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
 				exist := false
 				for _, failureStore := range tc.Status.TiKV.FailureStores {

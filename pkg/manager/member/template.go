@@ -52,7 +52,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}
 ARGS="--store=tikv \
 --advertise-address=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc \
 --host=0.0.0.0 \
---path=${CLUSTER_NAME}-pd:2379 \
+--path={{ .Path }} \
 --config=/etc/tidb/tidb.toml
 "
 
@@ -77,10 +77,10 @@ exec /tidb-server ${ARGS}
 `))
 
 type TidbStartScriptModel struct {
-	ClusterName     string
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
+	Path            string
 }
 
 func RenderTiDBStartScript(model *TidbStartScriptModel) (string, error) {
@@ -220,7 +220,7 @@ fi
 
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
-ARGS="--pd={{ .Scheme }}://${CLUSTER_NAME}-pd:2379 \
+ARGS="--pd={{ .PDAddress }} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc:20160 \
 --addr=0.0.0.0:20160 \
 --status-addr=0.0.0.0:20180 \{{if .EnableAdvertiseStatusAddr }}
@@ -241,10 +241,10 @@ exec /tikv-server ${ARGS}
 `))
 
 type TiKVStartScriptModel struct {
-	Scheme                    string
 	EnableAdvertiseStatusAddr bool
 	AdvertiseStatusAddr       string
 	DataDir                   string
+	PDAddress                 string
 }
 
 func RenderTiKVStartScript(model *TiKVStartScriptModel) (string, error) {
@@ -360,4 +360,168 @@ func renderTemplateFunc(tpl *template.Template, model interface{}) (string, erro
 		return "", err
 	}
 	return buff.String(), nil
+}
+
+// dmMasterStartScriptTpl is the dm-master start script
+// Note: changing this will cause a rolling-update of dm-master cluster
+var dmMasterStartScriptTpl = template.Must(template.New("dm-master-start-script").Parse(`#!/bin/sh
+
+# This script is used to start dm-master containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+# the general form of variable PEER_SERVICE_NAME is: "<clusterName>-dm-master-peer"
+cluster_name=` + "`" + `echo ${PEER_SERVICE_NAME} | sed 's/-dm-master-peer//'` + "`" +
+	`
+domain="${POD_NAME}.${PEER_SERVICE_NAME}"
+discovery_url={{ .DiscoveryURL }}
+encoded_domain_url=` + "`" + `echo ${domain}:8291 | base64 | tr "\n" " " | sed "s/ //g"` + "`" +
+	`
+elapseTime=0
+period=1
+threshold=30
+while true; do
+sleep ${period}
+elapseTime=$(( elapseTime+period ))
+
+if [[ ${elapseTime} -ge ${threshold} ]]
+then
+echo "waiting for dm-master cluster ready timeout" >&2
+exit 1
+fi
+
+if nslookup ${domain} 2>/dev/null
+then
+echo "nslookup domain ${domain} success"
+break
+else
+echo "nslookup domain ${domain} failed" >&2
+fi
+done
+
+ARGS="--data-dir={{ .DataDir }} \
+--name=${POD_NAME} \
+--peer-urls={{ .Scheme }}://0.0.0.0:8291 \
+--advertise-peer-urls={{ .Scheme }}://${domain}:8291 \
+--master-addr=0.0.0.0:8261 \
+--advertise-addr=${domain}:8261 \
+--config=/etc/dm-master/dm-master.toml \
+"
+
+if [[ -f {{ .DataDir }}/join ]]
+then
+# The content of the join file is:
+#   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
+# The --join args must be:
+#   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
+join=` + "`" + `cat {{ .DataDir }}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
+join=${join%,}
+ARGS="${ARGS} --join=${join}"
+elif [[ ! -d {{ .DataDir }}/member/wal ]]
+then
+until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do
+echo "waiting for discovery service to return start args ..."
+sleep $((RANDOM % 5))
+done
+ARGS="${ARGS}${result}"
+fi
+
+echo "starting dm-master ..."
+sleep $((RANDOM % 10))
+echo "/dm-master ${ARGS}"
+exec /dm-master ${ARGS}
+`))
+
+type DMMasterStartScriptModel struct {
+	Scheme       string
+	DataDir      string
+	DiscoveryURL string
+}
+
+func RenderDMMasterStartScript(model *DMMasterStartScriptModel) (string, error) {
+	return renderTemplateFunc(dmMasterStartScriptTpl, model)
+}
+
+// dmWorkerStartScriptTpl is the dm-worker start script
+// Note: changing this will cause a rolling-update of dm-worker cluster
+var dmWorkerStartScriptTpl = template.Must(template.New("dm-worker-start-script").Parse(`#!/bin/sh
+
+# This script is used to start dm-worker containers in kubernetes cluster
+
+# Use DownwardAPIVolumeFiles to store informations of the cluster:
+# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
+#
+#   runmode="normal/debug"
+#
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+
+# Use HOSTNAME if POD_NAME is unset for backward compatibility.
+POD_NAME=${POD_NAME:-$HOSTNAME}
+# TODO: dm-worker will support data-dir in the future
+ARGS="--name=${POD_NAME} \
+--join={{ .MasterAddress }} \
+--advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}:8262 \
+--worker-addr=0.0.0.0:8262 \
+--config=/etc/dm-worker/dm-worker.toml
+"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS=" --labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting dm-worker ..."
+echo "/dm-worker ${ARGS}"
+exec /dm-worker ${ARGS}
+`))
+
+type DMWorkerStartScriptModel struct {
+	DataDir       string
+	MasterAddress string
+}
+
+func RenderDMWorkerStartScript(model *DMWorkerStartScriptModel) (string, error) {
+	return renderTemplateFunc(dmWorkerStartScriptTpl, model)
 }

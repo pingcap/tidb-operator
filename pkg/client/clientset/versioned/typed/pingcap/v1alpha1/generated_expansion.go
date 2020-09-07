@@ -19,6 +19,8 @@ type BackupExpansion interface{}
 
 type BackupScheduleExpansion interface{}
 
+type DMClusterExpansion interface{}
+
 type DataResourceExpansion interface{}
 
 type RestoreExpansion interface{}

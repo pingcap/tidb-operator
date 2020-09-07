@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -53,8 +54,9 @@ func TestServer(t *testing.T) {
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
 	fakePDControl := pdapi.NewFakePDControl(kubeCli)
+	faleMasterControl := dmapi.NewFakeMasterControl(kubeCli)
 	pdClient := pdapi.NewFakePDClient()
-	s := NewServer(fakePDControl, cli, kubeCli)
+	s := NewServer(fakePDControl, faleMasterControl, cli, kubeCli)
 	httpServer := httptest.NewServer(s.(*server).container.ServeMux)
 	defer httpServer.Close()
 
@@ -68,7 +70,9 @@ func TestServer(t *testing.T) {
 		if len(pdMemberInfos.Members) <= 0 {
 			return nil, fmt.Errorf("no members yet")
 		}
-		return pdMemberInfos, nil
+		// as pdMemberInfos.Members maybe modified, we must return a copy
+		ret := *pdMemberInfos
+		return &ret, nil
 	})
 	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, pdClient)

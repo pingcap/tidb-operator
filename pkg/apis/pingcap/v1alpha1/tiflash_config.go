@@ -24,23 +24,27 @@ type TiFlashConfig struct {
 
 	// proxyConfig is the Configuration of proxy process
 	// +optional
-	// +k8s:openapi-gen=false
 	ProxyConfig *ProxyConfig `json:"proxy,omitempty"`
 }
 
 // FlashServerConfig is the configuration of Proxy server.
-// +k8s:openapi-gen=false
+// +k8s:openapi-gen=true
 type FlashServerConfig struct {
+	// Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930
 	// +optional
 	EngineAddr *string `json:"engine-addr,omitempty" toml:"engine-addr,omitempty"`
+	// Default to 0.0.0.0:20292
 	// +optional
-	StatusAddr       *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
-	TiKVServerConfig `json:",inline"`
+	StatusAddr *string `json:"status-addr,omitempty" toml:"status-addr,omitempty"`
+	// Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292
+	// +optional
+	AdvertiseStatusAddr *string `json:"advertise-status-addr,omitempty" toml:"advertise-status-addr,omitempty"`
+	TiKVServerConfig    `json:",inline"`
 }
 
 // ProxyConfig is the configuration of TiFlash proxy process.
 // All the configurations are same with those of TiKV except adding `engine-addr` in the TiKVServerConfig
-// +k8s:openapi-gen=false
+// +k8s:openapi-gen=true
 type ProxyConfig struct {
 	// Optional: Defaults to info
 	// +optional
@@ -81,7 +85,6 @@ type ProxyConfig struct {
 type CommonConfig struct {
 	// Optional: Defaults to "/data0/tmp"
 	// +optional
-	// +k8s:openapi-gen=false
 	TmpPath *string `json:"tmp_path,omitempty" toml:"tmp_path,omitempty"`
 
 	// Optional: Defaults to "TiFlash"
@@ -124,6 +127,14 @@ type CommonConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	HTTPPort *int32 `json:"http_port,omitempty" toml:"http_port,omitempty"`
+	// Optional: Defaults to 9000
+	// +optional
+	// +k8s:openapi-gen=false
+	TCPPortSecure *int32 `json:"tcp_port_secure,omitempty" toml:"tcp_port_secure,omitempty"`
+	// Optional: Defaults to 8123
+	// +optional
+	// +k8s:openapi-gen=false
+	HTTPSPort *int32 `json:"https_port,omitempty" toml:"https_port,omitempty"`
 	// Optional: Defaults to 9009
 	// +optional
 	// +k8s:openapi-gen=false
@@ -150,6 +161,9 @@ type CommonConfig struct {
 	// +optional
 	// +k8s:openapi-gen=false
 	FlashProfile *FlashProfile `json:"profiles,omitempty" toml:"profiles,omitempty"`
+	// +optional
+	// +k8s:openapi-gen=false
+	Security *FlashSecurity `json:"security,omitempty" toml:"security,omitempty"`
 }
 
 // FlashProfile is the configuration of [profiles] section.
@@ -273,14 +287,12 @@ type FlashApplication struct {
 type FlashLogger struct {
 	// Optional: Defaults to /data0/logs/error.log
 	// +optional
-	// +k8s:openapi-gen=false
 	ErrorLog *string `json:"errorlog,omitempty" toml:"errorlog,omitempty"`
 	// Optional: Defaults to 100M
 	// +optional
 	Size *string `json:"size,omitempty" toml:"size,omitempty"`
 	// Optional: Defaults to /data0/logs/server.log
 	// +optional
-	// +k8s:openapi-gen=false
 	ServerLog *string `json:"log,omitempty" toml:"log,omitempty"`
 	// Optional: Defaults to information
 	// +optional
@@ -308,7 +320,6 @@ type Flash struct {
 	// +optional
 	FlashCluster *FlashCluster `json:"flash_cluster,omitempty" toml:"flash_cluster,omitempty"`
 	// +optional
-	// +k8s:openapi-gen=false
 	FlashProxy *FlashProxy `json:"proxy,omitempty" toml:"proxy,omitempty"`
 }
 
@@ -321,7 +332,6 @@ type FlashCluster struct {
 	ClusterManagerPath *string `json:"cluster_manager_path,omitempty" toml:"cluster_manager_path,omitempty"`
 	// Optional: Defaults to /data0/logs/flash_cluster_manager.log
 	// +optional
-	// +k8s:openapi-gen=false
 	ClusterLog *string `json:"log,omitempty" toml:"log,omitempty"`
 	// Optional: Defaults to 20
 	// +optional
@@ -335,11 +345,12 @@ type FlashCluster struct {
 }
 
 // FlashProxy is the configuration of [flash.proxy] section.
-// +k8s:openapi-gen=false
+// +k8s:openapi-gen=true
 type FlashProxy struct {
 	// Optional: Defaults to 0.0.0.0:20170
 	// +optional
 	Addr *string `json:"addr,omitempty" toml:"addr,omitempty"`
+	// Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170
 	// +optional
 	AdvertiseAddr *string `json:"advertise-addr,omitempty" toml:"advertise-addr,omitempty"`
 	// Optional: Defaults to /data0/proxy
@@ -351,4 +362,23 @@ type FlashProxy struct {
 	// Optional: Defaults to /data0/logs/proxy.log
 	// +optional
 	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+type FlashSecurity struct {
+	// +k8s:openapi-gen=false
+	// Be set automatically by Operator
+	// +optional
+	CAPath *string `json:"ca_path,omitempty" toml:"ca_path,omitempty"`
+	// +k8s:openapi-gen=false
+	// Be set automatically by Operator
+	// +optional
+	CertPath *string `json:"cert_path,omitempty" toml:"cert_path,omitempty"`
+	// +k8s:openapi-gen=false
+	// Be set automatically by Operator
+	// +optional
+	KeyPath *string `json:"key_path,omitempty" toml:"key_path,omitempty"`
+	// CertAllowedCN is the Common Name that allowed
+	// +optional
+	CertAllowedCN []string `json:"cert_allowed_cn,omitempty" toml:"cert_allowed_cn,omitempty"`
 }

@@ -1,0 +1,176 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: "local-storage"
+provisioner: "kubernetes.io/no-provisioner"
+volumeBindingMode: "WaitForFirstConsumer"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-provisioner-config
+  namespace: kube-system
+data:
+  setPVOwnerRef: "true"
+  useNodeNameOnly: "true"
+  nodeLabelsForPV: |
+    - kubernetes.io/hostname
+  storageClassMap: |
+    local-storage:
+      hostDir: /mnt/disks
+      mountDir: /mnt/disks
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-volume-provisioner
+  namespace: kube-system
+  labels:
+    app: local-volume-provisioner
+spec:
+  selector:
+    matchLabels:
+      app: local-volume-provisioner
+  template:
+    metadata:
+      labels:
+        app: local-volume-provisioner
+    spec:
+      tolerations:
+        - key: dedicated
+          operator: Exists
+      serviceAccountName: local-storage-admin
+      hostPID: true
+      initContainers:
+        - name: setup
+          image: alpine
+          command:
+            - nsenter
+            - -t
+            - "1"
+            - -m
+            - -u
+            - -i
+            - -n
+            - -p
+            - --
+            - bash
+            - -c
+            - |
+              # According to https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html
+              # NVMe device names are in the format /dev/nvme[0-26]n1
+              # and when the device is parted, it has /dev/nvme[0-26]n1p[1-xxx]
+              # if the disk is parted, we will ignore the entire device
+              # and if the disk is already formatted, then it will have a blkid, it should also be ignored
+              for i in `seq 0 26`; do
+                if [ ! -e "/dev/nvme${i}" ]; then
+                  continue
+                fi
+                if [ ! -e "/dev/nvme${i}n1" ]; then
+                  continue
+                fi
+                if ls /dev/nvme${i}n1p* > /dev/null 2>&1; then
+                  echo "disk /dev/nvme${i}n1 already parted, skipping"
+                else
+                  echo "disk /dev/nvme${i}n1 is not parted"
+                  if ! blkid /dev/nvme${i}n1 > /dev/null; then
+                    echo "/dev/nvme${i}n1 not formatted"
+                    mkfs -t ext4 /dev/nvme${i}n1
+                    DISK_UUID=$(blkid -s UUID -o value /dev/nvme${i}n1)
+                    mkdir -p /mnt/disks/$DISK_UUID
+                    echo UUID=`blkid -s UUID -o value /dev/nvme${i}n1` /mnt/disks/$DISK_UUID ext4 defaults 0 2 | tee -a /etc/fstab
+                  fi
+                fi
+              done
+              mount -a
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - mountPath: /mnt/disks
+            name: disks
+            mountPropagation: Bidirectional
+      containers:
+        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.4"
+          name: provisioner
+          securityContext:
+            privileged: true
+          env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: JOB_CONTAINER_IMAGE
+            value: "quay.io/external_storage/local-volume-provisioner:v2.3.4"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /etc/provisioner/config
+              name: provisioner-config
+              readOnly: true
+            - mountPath: /mnt/disks
+              name: disks
+              mountPropagation: "HostToContainer"
+      volumes:
+        - name: provisioner-config
+          configMap:
+            name: local-provisioner-config
+        - name: disks
+          hostPath:
+            path: /mnt/disks
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: local-storage-admin
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-storage-provisioner-pv-binding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: local-storage-admin
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: system:persistent-volume-provisioner
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: local-storage-provisioner-node-clusterrole
+  namespace: kube-system
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-storage-provisioner-node-binding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: local-storage-admin
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: local-storage-provisioner-node-clusterrole
+  apiGroup: rbac.authorization.k8s.io

@@ -16,16 +16,16 @@ package get
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/alias"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/config"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/readable"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -174,7 +174,6 @@ func (o *GetOptions) Complete(tkcContext *config.TkcContext, cmd *cobra.Command,
 			o.GetTiKV = true
 			o.GetTiDB = true
 			o.GetVolume = true
-			break
 		case kindPD:
 			o.GetPD = true
 		case kindTiKV:
@@ -354,9 +353,7 @@ func (o *GetOptions) printGeneric(objs []runtime.Object) error {
 			},
 			ListMeta: metav1.ListMeta{},
 		}
-		for _, obj := range objs {
-			list.Items = append(list.Items, obj)
-		}
+		list.Items = append(list.Items, objs...)
 
 		listData, err := json.Marshal(list)
 		if err != nil {

@@ -16,6 +16,7 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
@@ -29,7 +30,12 @@ import (
 	"k8s.io/klog"
 )
 
+// mutatePod mutates the pod by setting hotRegion label if the pod is created by AutoScaling
 func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
+	if !features.DefaultFeatureGate.Enabled(features.AutoScaling) {
+		return util.ARSuccess()
+	}
+
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
 		return util.ARFail(err)
@@ -56,11 +62,8 @@ func (pc *PodAdmissionControl) mutatePod(ar *admissionv1beta1.AdmissionRequest) 
 		return util.ARFail(err)
 	}
 
-	if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-		err := pc.tikvHotRegionSchedule(tc, pod)
-		if err != nil {
-			return util.ARFail(err)
-		}
+	if err := pc.tikvHotRegionSchedule(tc, pod); err != nil {
+		return util.ARFail(err)
 	}
 
 	patch, err := util.CreateJsonPatch(original, pod)

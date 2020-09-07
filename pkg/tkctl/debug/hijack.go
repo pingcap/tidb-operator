@@ -16,7 +16,6 @@ package debug
 import (
 	"context"
 	"fmt"
-	"github.com/pingcap/tidb-operator/pkg/tkctl/streams"
 	"io"
 	"runtime"
 	"sync"
@@ -25,6 +24,7 @@ import (
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/pkg/term"
+	"github.com/pingcap/tidb-operator/pkg/tkctl/streams"
 	"github.com/sirupsen/logrus"
 )
 

@@ -16,8 +16,12 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
+	"github.com/openshift/generic-admission-server/pkg/apiserver"
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
@@ -33,13 +37,20 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
 type PodAdmissionControl struct {
+	lock           sync.RWMutex
+	initialized    bool
+	resyncDuration time.Duration
 	// kubernetes client interface
 	kubeCli kubernetes.Interface
 	// operator client interface
@@ -56,6 +67,9 @@ type PodAdmissionControl struct {
 	recorder record.EventRecorder
 }
 
+var _ apiserver.ValidatingAdmissionHook = &PodAdmissionControl{}
+var _ apiserver.MutatingAdmissionHook = &PodAdmissionControl{}
+
 const (
 	stsControllerServiceAccounts = "system:serviceaccount:kube-system:statefulset-controller"
 	podDeleteMsgPattern          = "pod [%s] deleted"
@@ -69,8 +83,7 @@ var (
 	AstsControllerServiceAccounts string
 )
 
-func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.Interface, PdControl pdapi.PDControlInterface, extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, informerFactory informers.SharedInformerFactory, recorder record.EventRecorder) *PodAdmissionControl {
-
+func NewPodAdmissionControl(extraServiceAccounts []string, evictRegionLeaderTimeout time.Duration, resyncDuration time.Duration) *PodAdmissionControl {
 	serviceAccounts := sets.NewString(stsControllerServiceAccounts)
 	for _, sa := range extraServiceAccounts {
 		serviceAccounts.Insert(sa)
@@ -80,14 +93,27 @@ func NewPodAdmissionControl(kubeCli kubernetes.Interface, operatorCli versioned.
 	}
 	EvictLeaderTimeout = evictRegionLeaderTimeout
 	return &PodAdmissionControl{
-		kubeCli:         kubeCli,
-		operatorCli:     operatorCli,
-		pdControl:       PdControl,
 		serviceAccounts: serviceAccounts,
-		recorder:        recorder,
-		tikvGroupLister: informerFactory.Pingcap().V1alpha1().TiKVGroups().Lister(),
-		tcLister:        informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+		resyncDuration:  resyncDuration,
 	}
+}
+
+func (w *PodAdmissionControl) ValidatingResource() (plural schema.GroupVersionResource, singular string) {
+	return schema.GroupVersionResource{
+			Group:    "admission.tidb.pingcap.com",
+			Version:  "v1alpha1",
+			Resource: "podvalidations",
+		},
+		"podvalidation"
+}
+
+func (w *PodAdmissionControl) MutatingResource() (plural schema.GroupVersionResource, singular string) {
+	return schema.GroupVersionResource{
+			Group:    "admission.tidb.pingcap.com",
+			Version:  "v1alpha1",
+			Resource: "podmutations",
+		},
+		"podmutation"
 }
 
 // admitPayload used to simply the param to make each function more easier
@@ -104,14 +130,29 @@ type admitPayload struct {
 	controllerDesc controllerDesc
 }
 
-func (pc *PodAdmissionControl) MutatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) Admit(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	pc.lock.RLock()
+	defer pc.lock.RUnlock()
+	if !pc.initialized {
+		return &admission.AdmissionResponse{
+			Allowed: false,
+		}
+	}
+
 	if ar.Operation != admission.Create && ar.Operation != admission.Update {
 		return util.ARSuccess()
 	}
 	return pc.mutatePod(ar)
 }
 
-func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) Validate(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+	pc.lock.RLock()
+	defer pc.lock.RUnlock()
+	if !pc.initialized {
+		return &admission.AdmissionResponse{
+			Allowed: false,
+		}
+	}
 
 	name := ar.Name
 	namespace := ar.Namespace
@@ -128,7 +169,7 @@ func (pc *PodAdmissionControl) AdmitPods(ar *admission.AdmissionRequest) *admiss
 	case admission.Delete:
 		return pc.admitDeletePods(name, namespace)
 	case admission.Create:
-		return pc.AdmitCreatePods(ar)
+		return pc.admintCreatePods(ar)
 	default:
 		klog.Infof("Admit to %s pod[%s/%s]", operation, namespace, name)
 		return util.ARSuccess()
@@ -211,7 +252,7 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		return util.ARFail(err)
 	}
 	// Force Upgraded,Admit to Upgrade
-	if memberUtils.NeedForceUpgrade(tc) {
+	if memberUtils.NeedForceUpgrade(tc.Annotations) {
 		klog.Infof("tc[%s/%s] is force upgraded, admit to delete pod[%s/%s]", namespace, tcName, namespace, name)
 		return util.ARSuccess()
 	}
@@ -219,8 +260,14 @@ func (pc *PodAdmissionControl) processAdmitDeletePDPod(pod *core.Pod, ownerState
 		pod:              pod,
 		controller:       tc,
 		ownerStatefulSet: ownerStatefulSet,
-		pdClient:         pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled()),
 	}
+
+	if tc.IsHeterogeneous() {
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+	} else {
+		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+	}
+
 	return pc.admitDeletePdPods(payload)
 }
 
@@ -249,7 +296,12 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, tcName, namespace, name)
 			return util.ARFail(err)
 		}
-		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+		if tc.IsHeterogeneous() {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		} else {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tcName, tc.IsTLSClusterEnabled())
+		}
+
 		payload.controller = tc
 		payload.controllerDesc = controllerDesc{
 			name:      tcName,
@@ -275,7 +327,12 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerTcName, namespace, name)
 			return util.ARFail(err)
 		}
-		payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTcName, tc.IsTLSClusterEnabled())
+		if tc.IsHeterogeneous() {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
+		} else {
+			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTcName, tc.IsTLSClusterEnabled())
+		}
+
 		payload.controller = tg
 		payload.controllerDesc = controllerDesc{
 			name:      tgName,
@@ -292,7 +349,7 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 // Webhook server receive request to create pod
 // if this pod wasn't member of tidbcluster, just let the request pass.
 // Currently we only check with tikv pod
-func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) *admission.AdmissionResponse {
 	pod := &core.Pod{}
 	if err := json.Unmarshal(ar.Object.Raw, pod); err != nil {
 		klog.Errorf("Could not unmarshal raw object: %v", err)
@@ -350,9 +407,78 @@ func (pc *PodAdmissionControl) AdmitCreatePods(ar *admission.AdmissionRequest) *
 	}
 
 	if l.IsTiKV() {
-		pdClient := pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.IsTLSClusterEnabled())
+
+		var pdClient pdapi.PDClient
+		if ownerTc.IsHeterogeneous() {
+			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Spec.Cluster.Name, ownerTc.IsTLSClusterEnabled())
+		} else {
+			pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTc.Name, ownerTc.IsTLSClusterEnabled())
+		}
 		return pc.admitCreateTiKVPod(pod, pdClient)
 	}
 
 	return util.ARSuccess()
+}
+
+func (a *PodAdmissionControl) initialize(cli versioned.Interface, kubeCli kubernetes.Interface, pdControl pdapi.PDControlInterface, recorder record.EventRecorder, stopCh <-chan struct{}) error {
+	a.operatorCli = cli
+	a.kubeCli = kubeCli
+	a.pdControl = pdControl
+	a.recorder = recorder
+
+	// informer factory
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, a.resyncDuration)
+
+	// initialize listers
+	a.tcLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
+	a.tikvGroupLister = informerFactory.Pingcap().V1alpha1().TiKVGroups().Lister()
+
+	// Start informer factories after all controller are initialized.
+	informerFactory.Start(stopCh)
+
+	// Wait for all started informers' cache were synced.
+	for v, synced := range informerFactory.WaitForCacheSync(wait.NeverStop) {
+		if !synced {
+			klog.Fatalf("error syncing informer for %v", v)
+		}
+	}
+
+	a.initialized = true
+	return nil
+}
+
+// Initialize implements AdmissionHook.Initialize interface. It's is called as
+// a post-start hook.
+func (a *PodAdmissionControl) Initialize(cfg *rest.Config, stopCh <-chan struct{}) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	cli, err := versioned.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	var kubeCli kubernetes.Interface
+	kubeCli, err = kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+	asCli, err := asclientset.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	if features.DefaultFeatureGate.Enabled(features.AdvancedStatefulSet) {
+		// If AdvancedStatefulSet is enabled, we hijack the Kubernetes client to use
+		// AdvancedStatefulSet.
+		kubeCli = helper.NewHijackClient(kubeCli, asCli)
+	}
+
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(klog.Infof)
+	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
+		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, core.EventSource{Component: "tidb-admission-controller"})
+
+	return a.initialize(cli, kubeCli, pdapi.NewDefaultPDControl(kubeCli), recorder, stopCh)
 }

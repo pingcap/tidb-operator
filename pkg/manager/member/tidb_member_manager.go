@@ -47,8 +47,6 @@ const (
 	clusterCertPath = "/var/lib/tidb-tls"
 	// serverCertPath is where the tidb-server cert stored (if any)
 	serverCertPath = "/var/lib/tidb-server-tls"
-	// serviceAccountCAPath is where is CABundle of serviceaccount locates
-	serviceAccountCAPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	// tlsSecretRootCAKey is the key used in tls secret for the root CA.
 	// When user use self-signed certificates, the root CA must be provided. We
 	// following the same convention used in Kubernetes service token.
@@ -108,7 +106,7 @@ func (tmm *tidbMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 
-	if !tc.TiKVIsAvailable() {
+	if tc.Spec.TiKV != nil && !tc.TiKVIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for TiKV cluster running", ns, tcName)
 	}
 	if tc.Spec.Pump != nil {
@@ -395,12 +393,19 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	}
 
 	plugins := tc.Spec.TiDB.Plugins
-	startScript, err := RenderTiDBStartScript(&TidbStartScriptModel{
-		ClusterName:     tc.Name,
+	tidbStartScriptModel := &TidbStartScriptModel{
 		EnablePlugin:    len(plugins) > 0,
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
-	})
+	}
+
+	if tc.IsHeterogeneous() {
+		tidbStartScriptModel.Path = controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
+	} else {
+		tidbStartScriptModel.Path = controller.PDMemberName(tc.Name) + ":2379"
+	}
+
+	startScript, err := RenderTiDBStartScript(tidbStartScriptModel)
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +750,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	tidbLabel := label.New().Instance(instanceName).TiDB()
 	podAnnotations := CombineAnnotations(controller.AnnProm(10080), baseTiDBSpec.Annotations())
-	stsAnnotations := getStsAnnotations(tc, label.TiDBLabelVal)
+	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiDBLabelVal)
 	tidbSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBMemberName(tcName),

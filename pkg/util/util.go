@@ -16,6 +16,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -26,7 +27,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -217,6 +220,27 @@ func AppendEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
 	return a
 }
 
+// AppendOverwriteEnv appends envs b into a and overwrites the envs whose names already exist
+// in b.
+// Note that this will not change relative order of envs.
+func AppendOverwriteEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
+	for _, valNew := range b {
+		matched := false
+		for j, valOld := range a {
+			// It's possible there are multiple instances of the same variable in this array,
+			// so we just overwrite all of them rather than trying to resolve dupes here.
+			if valNew.Name == valOld.Name {
+				a[j] = valNew
+				matched = true
+			}
+		}
+		if !matched {
+			a = append(a, valNew)
+		}
+	}
+	return a
+}
+
 // IsOwnedByTidbCluster checks if the given object is owned by TidbCluster.
 // Schema Kind and Group are checked, Version is ignored.
 func IsOwnedByTidbCluster(obj metav1.Object) (bool, *metav1.OwnerReference) {
@@ -251,4 +275,29 @@ func RetainManagedFields(desiredSvc, existedSvc *corev1.Service) {
 			}
 		}
 	}
+}
+
+// AppendEnvIfPresent appends the given environment if present
+func AppendEnvIfPresent(envs []corev1.EnvVar, name string) []corev1.EnvVar {
+	for _, e := range envs {
+		if e.Name == name {
+			return envs
+		}
+	}
+	if val, ok := os.LookupEnv(name); ok {
+		envs = append(envs, corev1.EnvVar{
+			Name:  name,
+			Value: val,
+		})
+	}
+	return envs
+}
+
+// MustNewRequirement calls NewRequirement and panics on failure.
+func MustNewRequirement(key string, op selection.Operator, vals []string) *labels.Requirement {
+	r, err := labels.NewRequirement(key, op, vals)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }

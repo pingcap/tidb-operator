@@ -46,7 +46,7 @@ webhooks:
       service:
         name: kubernetes
         namespace: default
-        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/podvalidations"
       {{- if .Values.admissionWebhook.cabundle }}
       caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
@@ -82,7 +82,7 @@ webhooks:
       service:
         name: kubernetes
         namespace: default
-        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/statefulsetvalidations"
       {{- if .Values.admissionWebhook.cabundle }}
       caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
@@ -90,7 +90,7 @@ webhooks:
       {{- end }}
     rules:
       - operations: [ "UPDATE" ]
-        apiGroups: [ "apps", "" ]
+        apiGroups: [ "apps" ]
         apiVersions: ["v1beta1", "v1"]
         resources: ["statefulsets"]
       - operations: [ "UPDATE" ]
@@ -117,7 +117,7 @@ webhooks:
       service:
         name: kubernetes
         namespace: default
-        path: "/apis/admission.tidb.pingcap.com/v1alpha1/admissionreviews"
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/pingcapresourcevalidations"
       {{- if .Values.admissionWebhook.cabundle }}
       caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
@@ -148,7 +148,7 @@ webhooks:
       service:
         name: kubernetes
         namespace: default
-        path: "/apis/admission.tidb.pingcap.com/v1alpha1/mutatingreviews"
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/pingcapresourcemutations"
       {{- if .Values.admissionWebhook.cabundle }}
       caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}
@@ -185,7 +185,7 @@ webhooks:
       service:
         name: kubernetes
         namespace: default
-        path: "/apis/admission.tidb.pingcap.com/v1alpha1/mutatingreviews"
+        path: "/apis/admission.tidb.pingcap.com/v1alpha1/podmutations"
       {{- if .Values.admissionWebhook.cabundle }}
       caBundle: {{ .Values.admissionWebhook.cabundle }}
       {{- else }}

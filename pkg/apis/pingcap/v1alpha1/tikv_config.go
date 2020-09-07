@@ -24,6 +24,8 @@ type TiKVConfig struct {
 	// +optional
 	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 	// +optional
+	LogFormat *string `json:"log-format,omitempty" toml:"log-format,omitempty"`
+	// +optional
 	SlowLogFile *string `json:"slow-log-file,omitempty" toml:"slow-log-file,omitempty"`
 	// +optional
 	SlowLogThreshold *string `json:"slow-log-threshold,omitempty" toml:"slow-log-threshold,omitempty"`
@@ -80,6 +82,7 @@ type TiKVUnifiedReadPoolConfig struct {
 	MinThreadCount *int32 `json:"min-thread-count,omitempty" toml:"min-thread-count,omitempty"`
 	// +optional
 	MaxThreadCount *int32 `json:"max-thread-count,omitempty" toml:"max-thread-count,omitempty"`
+	// Deprecated in v4.0.0
 	// +optional
 	StackSize *string `json:"stack-size,omitempty" toml:"stack-size,omitempty"`
 	// +optional
@@ -349,9 +352,9 @@ type TiKVImportConfig struct {
 type TiKVGCConfig struct {
 	// +optional
 	// Optional: Defaults to 512
-	BatchKeys *int64 `json:"	batch-keys,omitempty" toml:"	batch-keys,omitempty"`
+	BatchKeys *int64 `json:"batch-keys,omitempty" toml:"batch-keys,omitempty"`
 	// +optional
-	MaxWriteBytesPerSec *string `json:"	max-write-bytes-per-sec,omitempty" toml:"	max-write-bytes-per-sec,omitempty"`
+	MaxWriteBytesPerSec *string `json:"max-write-bytes-per-sec,omitempty" toml:"max-write-bytes-per-sec,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
@@ -548,6 +551,7 @@ type TiKVTitanDBConfig struct {
 type TiKVStorageConfig struct {
 	// +optional
 	MaxKeySize *int64 `json:"max-key-size,omitempty" toml:"max-key-size,omitempty"`
+	// Deprecated in v4.0.0
 	// +optional
 	SchedulerNotifyCapacity *int64 `json:"scheduler-notify-capacity,omitempty" toml:"scheduler-notify-capacity,omitempty"`
 	// +optional
@@ -594,6 +598,9 @@ type TiKVServerConfig struct {
 	// Optional: Defaults to 1
 	// +optional
 	StatusThreadPoolSize *string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
+	// Optional: Defaults to 10485760
+	// +optional
+	MaxGrpcSendMsgLen *uint `json:"max-grpc-send-msg-len,omitempty" toml:"max-grpc-send-msg-len,omitempty"`
 	// Optional: Defaults to none
 	// +optional
 	GrpcCompressionType *string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`

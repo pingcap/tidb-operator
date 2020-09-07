@@ -178,7 +178,7 @@ func TestComponentAccessor(t *testing.T) {
 	testFn := func(test *testcase, t *testing.T) {
 		t.Log(test.name)
 
-		accessor := &componentAccessorImpl{test.cluster, test.component}
+		accessor := buildTidbClusterComponentAccessor(test.cluster, test.component)
 		test.expectFn(g, accessor)
 	}
 	affinity := &corev1.Affinity{

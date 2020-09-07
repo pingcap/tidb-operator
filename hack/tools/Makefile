@@ -16,6 +16,7 @@ export GO111MODULE=on
 GOBIN ?= $(shell go env GOPATH)/bin
 DEP_PROGS=\
 	$(GOBIN)/misspell\
+	$(GOBIN)/goimports\
 	$(GOBIN)/golangci-lint
 
 .PHONY: all
@@ -38,3 +39,6 @@ $(GOBIN)/golangci-lint: deps
 
 $(GOBIN)/misspell: deps
 	go install github.com/client9/misspell/cmd/misspell
+
+$(GOBIN)/goimports: deps
+	go install golang.org/x/tools/cmd/goimports

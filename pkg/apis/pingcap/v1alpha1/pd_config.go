@@ -25,11 +25,6 @@ package v1alpha1
 
 // initially copied from PD v3.0.6
 
-const (
-	defaultEnableTelemetry  = true
-	defaultDisableTelemetry = false
-)
-
 // PDConfig is the configuration of pd-server
 // +k8s:openapi-gen=true
 type PDConfig struct {
@@ -118,6 +113,7 @@ type PDConfig struct {
 	// +optional
 	LabelProperty *PDLabelPropertyConfig `toml:"label-property,omitempty" json:"label-property,omitempty"`
 
+	// Deprecated in v4.0.0
 	// NamespaceClassifier is for classifying stores/regions into different
 	// namespaces.
 	// Optional: Defaults to true
@@ -419,7 +415,7 @@ type PDLabelPropertyConfig map[string]PDStoreLabels
 // PDSecurityConfig is the configuration for supporting tls.
 // +k8s:openapi-gen=true
 type PDSecurityConfig struct {
-	// CAPath is the path of file that contains list of trusted SSL CAs. if set, following four settings shouldn't be empty
+	// CAPath is the path of file that contains list of trusted SSL CAs.
 	// +optional
 	CAPath *string `toml:"cacert-path,omitempty" json:"cacert-path,omitempty"`
 	// CertPath is the path of file that contains X509 certificate in PEM format.
@@ -462,6 +458,7 @@ type FileLogConfig struct {
 	// Log filename, leave empty to disable file log.
 	// +optional
 	Filename *string `toml:"filename,omitempty" json:"filename,omitempty"`
+	// Deprecated in v4.0.0
 	// Is log rotate enabled.
 	// +optional
 	LogRotate *bool `toml:"log-rotate,omitempty" json:"log-rotate,omitempty"`

@@ -40,6 +40,9 @@ var (
 	// controllerKind contains the schema.GroupVersionKind for tidbcluster controller type.
 	ControllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
 
+	// DMControllerKind contains the schema.GroupVersionKind for dmcluster controller type.
+	DMControllerKind = v1alpha1.SchemeGroupVersion.WithKind("DMCluster")
+
 	// BackupControllerKind contains the schema.GroupVersionKind for backup controller type.
 	BackupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
 
@@ -71,11 +74,6 @@ var (
 
 	// PodWebhookEnabled is the key to indicate whether pod admission webhook is set up.
 	PodWebhookEnabled bool
-)
-
-const (
-	// defaultTiDBSlowLogImage is default image of tidb log tailer
-	defaultTiDBLogTailerImage = "busybox:1.26.2"
 )
 
 // RequeueError is used to requeue the item, this error type should't be considered as a real error
@@ -127,6 +125,20 @@ func GetOwnerRef(tc *v1alpha1.TidbCluster) metav1.OwnerReference {
 		Kind:               ControllerKind.Kind,
 		Name:               tc.GetName(),
 		UID:                tc.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetDMOwnerRef returns DMCluster's OwnerReference
+func GetDMOwnerRef(dc *v1alpha1.DMCluster) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         DMControllerKind.GroupVersion().String(),
+		Kind:               DMControllerKind.Kind,
+		Name:               dc.GetName(),
+		UID:                dc.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}
@@ -299,6 +311,26 @@ func PumpPeerMemberName(clusterName string) string {
 // DiscoveryMemberName returns the name of tidb discovery
 func DiscoveryMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-discovery", clusterName)
+}
+
+// DMMasterMemberName returns dm-master member name
+func DMMasterMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-master", clusterName)
+}
+
+// DMMasterPeerMemberName returns dm-master peer service name
+func DMMasterPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-master-peer", clusterName)
+}
+
+// DMWorkerMemberName returns dm-worker member name
+func DMWorkerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-worker", clusterName)
+}
+
+// DMWorkerPeerMemberName returns dm-worker peer service name
+func DMWorkerPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-dm-worker-peer", clusterName)
 }
 
 // AnnProm adds annotations for prometheus scraping metrics

@@ -75,12 +75,10 @@ func main() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 	go writer.Start(db)
-	select {
-	case sig := <-signalCh:
-		klog.Infof("signal %v received, stopping blockwriter", sig)
-		writer.Stop()
-		return
-	}
+
+	sig := <-signalCh
+	klog.Infof("signal %v received, stopping blockwriter", sig)
+	writer.Stop()
 }
 
 func initDB() error {
