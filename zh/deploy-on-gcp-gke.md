@@ -152,7 +152,7 @@ gcloud compute instances create bastion \
     {{< copyable "shell-regular" >}}
 
     ```shell
-    gcloud compuete ssh bastion
+    gcloud compute ssh tidb@bastion
     ```
 
 2. 安装 MySQL 客户端：
@@ -332,6 +332,12 @@ spec:
 
 GCP 可以实例类型提供额外的[本地存储卷](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd)。可以为 TiKV 节点池选择这一类型的实例，以便提供更高的 IOPS 和低延迟。
 
+> **警告：**
+>
+> 运行中的 TiDB 集群不能动态更换 storage class，可创建一个新的 TiDB 集群测试。
+>
+> 由于 GKE 升级过程中节点重建，本地盘数据会[丢失](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/local-ssd)。由于 GKE 升级或其他原因造成的节点重建，会导致需要迁移 TiKV 数据，如果无法接受这一点，则不建议在生产环境中使用本地盘。
+
 1. 为 TiKV 创建附带本地存储的节点组。
 
     {{< copyable "shell-regular" >}}
@@ -355,6 +361,4 @@ GCP 可以实例类型提供额外的[本地存储卷](https://cloud.google.com/
 
 3. 使用本地存储。
 
-    完成前面步骤后，local-volume-provisioner 即可发现集群内所有本地 SSD 盘。修改 tidb-cluster.yaml 中 `tikv.storageClassName` 为 `local-storage` 即可。
-
-    运行中的 TiDB 集群不能动态更换 storage class，可创建一个新的 TiDB 集群测试。
+    完成前面步骤后，local-volume-provisioner 即可发现集群内所有本地 SSD 盘。在 tidb-cluster.yaml 中添加 `tikv.storageClassName` 字段并设置为 `local-storage` 即可。

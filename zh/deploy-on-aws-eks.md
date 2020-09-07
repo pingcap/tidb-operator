@@ -381,6 +381,8 @@ AWS 部分实例类型提供额外的 [NVMe SSD 本地存储卷](https://docs.aw
 
 > **注意：**
 >
+> 运行中的 TiDB 集群不能动态更换 storage class，可创建一个新的 TiDB 集群测试。
+>
 > 由于 EKS 升级过程中节点重建，本地盘数据会[丢失](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime)。由于 EKS 升级或其他原因造成的节点重建，会导致需要迁移 TiKV 数据，如果无法接受这一点，则不建议在生产环境中使用本地盘。
 
 了解哪些实例可提供本地存储卷，可以查看 [AWS 实例列表](https://aws.amazon.com/ec2/instance-types/)。以下以 `c5d.4xlarge` 为例：
@@ -421,6 +423,4 @@ AWS 部分实例类型提供额外的 [NVMe SSD 本地存储卷](https://docs.aw
 
 3. 使用本地存储。
 
-    完成前面步骤后，local-volume-provisioner 即可发现集群内所有本地 NVMe SSD 盘。修改 tidb-cluster.yaml 中 `tikv.storageClassName` 为 `local-storage` 即可。
-
-    运行中的 TiDB 集群不能动态更换 storage class，可创建一个新的 TiDB 集群测试。
+    完成前面步骤后，local-volume-provisioner 即可发现集群内所有本地 NVMe SSD 盘。在 tidb-cluster.yaml 中添加 `tikv.storageClassName` 字段并设置为 `local-storage` 即可。
