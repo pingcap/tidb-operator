@@ -25,6 +25,7 @@ import (
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +44,7 @@ type autoScalerManager struct {
 	cli       versioned.Interface
 	tcLister  v1alpha1listers.TidbClusterLister
 	tcControl controller.TidbClusterControlInterface
+	pdControl pdapi.PDControlInterface
 	taLister  v1alpha1listers.TidbClusterAutoScalerLister
 	stsLister appslisters.StatefulSetLister
 	recorder  record.EventRecorder
@@ -61,6 +63,7 @@ func NewAutoScalerManager(
 		cli:       cli,
 		tcLister:  tcLister,
 		tcControl: controller.NewRealTidbClusterControl(cli, tcLister, recorder),
+		pdControl: pdapi.NewDefaultPDControl(kubecli),
 		taLister:  informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		stsLister: stsLister,
 		recorder:  recorder,
@@ -108,6 +111,15 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	defaultTAC(tac)
+
+	// Construct PD Auto-scaling strategy
+	strategy := autoscalerToStrategy(tac)
+	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
+	if err != nil {
+		klog.Errorf("cannot get auto-scaling plans %v", err)
+		return err
+	}
+
 	oldTikvReplicas := tc.Spec.TiKV.Replicas
 	if err := am.syncTiKV(tc, tac); err != nil {
 		tc.Spec.TiKV.Replicas = oldTikvReplicas

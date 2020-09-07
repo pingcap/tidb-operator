@@ -121,6 +121,15 @@ const (
 	// AnnTiDBAutoScalingOutOrdinals describe the tidb pods' ordinal list which is created by auto-scaling out
 	AnnTiDBAutoScalingOutOrdinals = "tidb.tidb.pingcap.com/scale-out-ordinals"
 
+	// AnnTiKVAutoScalingGroup describes the autoscaling group of the TiKV
+	AnnTiKVAutoScalingGroup = "tikv.tidb.pingcap.com/autoscaling-group"
+	// AnnTiDBAutoScalingGroup describes the autoscaling group of the TiDB
+	AnnTiDBAutoScalingGroup = "tidb.tidb.pingcap.com/autoscaling-group"
+	// AnnTiKVAutoScalingResourceType describes the autoscaling resource type of the TiKV
+	AnnTiKVAutoScalingResourceType = "tikv.tidb.pingcap.com/autoscaling-resource-type"
+	// AnnTiDBAutoScalingResourceType describes the autoscaling resource type of the TiDB
+	AnnTiDBAutoScalingResourceType = "tidb.tidb.pingcap.com/autoscaling-resource-type"
+
 	// AnnSkipTLSWhenConnectTiDB describes whether skip TLS when connecting to TiDB Server
 	AnnSkipTLSWhenConnectTiDB = "tidb.tidb.pingcap.com/skip-tls-when-connect-tidb"
 

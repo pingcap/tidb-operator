@@ -20,6 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -145,4 +146,50 @@ func genMetricsEndpoint(tac *v1alpha1.TidbClusterAutoScaler) (string, error) {
 		return *tac.Spec.MetricsUrl, nil
 	}
 	return fmt.Sprintf("http://%s-prometheus.%s.svc:9090", tac.Spec.Monitor.Name, tac.Spec.Monitor.Namespace), nil
+}
+
+func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler) *pdapi.Strategy {
+	strategy := &pdapi.Strategy{
+		Resources: make([]*pdapi.Resource, 0, len(tac.Spec.Resources)),
+	}
+
+	for _, res := range tac.Spec.Resources {
+		strategy.Resources = append(strategy.Resources, &pdapi.Resource{
+			CPU:          res.CPU.AsDec().UnscaledBig().Uint64(),
+			Memory:       res.Memory.AsDec().UnscaledBig().Uint64(),
+			Storage:      res.Storage.AsDec().UnscaledBig().Uint64(),
+			ResourceType: res.ResourceType,
+		})
+	}
+
+	if tac.Spec.TiDB != nil {
+		strategy.Rules = append(strategy.Rules, autoRulesToStrategyRule("tidb", tac.Spec.TiDB.Rules))
+	}
+
+	if tac.Spec.TiKV != nil {
+		strategy.Rules = append(strategy.Rules, autoRulesToStrategyRule("tikv", tac.Spec.TiKV.Rules))
+	}
+	return strategy
+}
+
+func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1alpha1.AutoRule) *pdapi.Rule {
+	result := &pdapi.Rule{
+		Component: component,
+	}
+	for res, rule := range rules {
+		switch res {
+		case corev1.ResourceCPU:
+			result.CPURule = &pdapi.CPURule{
+				MaxThreshold:  rule.MaxThreshold,
+				MinThreshold:  *rule.MinThreshold,
+				ResourceTypes: rule.ResourceTypes,
+			}
+		case corev1.ResourceStorage:
+			result.StorageRule = &pdapi.StorageRule{
+				MinThreshold:  1.0 - rule.MaxThreshold,
+				ResourceTypes: rule.ResourceTypes,
+			}
+		}
+	}
+	return result
 }

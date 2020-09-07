@@ -22,6 +22,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/pointer"
 )
 
@@ -305,6 +307,46 @@ func TestGenMetricsEndpoint(t *testing.T) {
 	r, err = genMetricsEndpoint(tac)
 	g.Expect(err).Should(BeNil())
 	g.Expect(r).Should(Equal(u))
+}
+
+func TestAutoscalerToStrategy(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tac := newTidbClusterAutoScaler()
+	tac.Spec.Resources = []v1alpha1.AutoResource{
+		{
+			ResourceType: "resource_a",
+			CPU:          resource.MustParse("1000m"),
+			Memory:       resource.MustParse("8Gi"),
+			Storage:      resource.MustParse("1000Gi"),
+			Count:        pointer.Int32Ptr(2),
+		},
+		{
+			ResourceType: "resource_b",
+			CPU:          resource.MustParse("2000m"),
+			Memory:       resource.MustParse("4Gi"),
+			Storage:      resource.MustParse("2000Gi"),
+			Count:        pointer.Int32Ptr(4),
+		},
+	}
+	tac.Spec.TiDB.Rules = make(map[v1.ResourceName]v1alpha1.AutoRule)
+	tac.Spec.TiKV.Rules = make(map[v1.ResourceName]v1alpha1.AutoRule)
+	tac.Spec.TiDB.Rules[v1.ResourceCPU] = v1alpha1.AutoRule{
+		MaxThreshold:  0.8,
+		MinThreshold:  pointer.Float64Ptr(0.2),
+		ResourceTypes: []string{"resource_a"},
+	}
+	tac.Spec.TiKV.Rules[v1.ResourceCPU] = v1alpha1.AutoRule{
+		MaxThreshold:  0.8,
+		MinThreshold:  pointer.Float64Ptr(0.2),
+		ResourceTypes: []string{"resource_a", "resource_b"},
+	}
+	tac.Spec.TiKV.Rules[v1.ResourceStorage] = v1alpha1.AutoRule{
+		MaxThreshold:  0.8,
+		ResourceTypes: []string{"resource_a"},
+	}
+	strategy := autoscalerToStrategy(tac)
+	g.Expect(len(strategy.Resources)).Should(Equal(2))
+	g.Expect(len(strategy.Rules)).Should(Equal(2))
 }
 
 func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
