@@ -123,9 +123,7 @@ func (mf *masterFailover) Recover(dc *v1alpha1.DMCluster) {
 	klog.Infof("dm-master failover: clearing dm-master failoverMembers, %s/%s", dc.GetNamespace(), dc.GetName())
 }
 
-func (mf *masterFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {
-	return
-}
+func (mf *masterFailover) RemoveUndesiredFailures(dc *v1alpha1.DMCluster) {}
 
 func (mf *masterFailover) tryToMarkAPeerAsFailure(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
