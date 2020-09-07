@@ -82,7 +82,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v1"
 				set.Status.Replicas = 3
-				set.Spec.Replicas = func() *int32 { var i int32; i = 3; return &i }()
+				set.Spec.Replicas = func() *int32 { var i int32 = 3; return &i }()
 			},
 			expectUpgrading: true,
 		},
@@ -94,7 +94,7 @@ func TestStatefulSetIsUpgrading(t *testing.T) {
 				set.Status.CurrentRevision = "v1"
 				set.Status.UpdateRevision = "v1"
 				set.Status.Replicas = 3
-				set.Spec.Replicas = func() *int32 { var i int32; i = 2; return &i }()
+				set.Spec.Replicas = func() *int32 { var i int32 = 2; return &i }()
 			},
 			expectUpgrading: false,
 		},

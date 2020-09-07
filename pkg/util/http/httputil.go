@@ -60,17 +60,22 @@ func GetBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 
 // PutBodyOK will PUT and returns the body or an error if the response is not okay
 func PutBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
-	return DoBodyOK(httpClient, apiURL, "PUT")
+	return DoBodyOK(httpClient, apiURL, "PUT", nil)
 }
 
 // DeleteBodyOK will DELETE and returns the body or an error if the response is not okay
 func DeleteBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
-	return DoBodyOK(httpClient, apiURL, "DELETE")
+	return DoBodyOK(httpClient, apiURL, "DELETE", nil)
+}
+
+// PostBodyOK will POST and returns the body or an error if the response is not okay
+func PostBodyOK(httpClient *http.Client, apiURL string, reqBody io.Reader) ([]byte, error) {
+	return DoBodyOK(httpClient, apiURL, "POST", reqBody)
 }
 
 // DoBodyOK returns the body or an error if the response is not okay
-func DoBodyOK(httpClient *http.Client, apiURL, method string) ([]byte, error) {
-	req, err := http.NewRequest(method, apiURL, nil)
+func DoBodyOK(httpClient *http.Client, apiURL, method string, reqBody io.Reader) ([]byte, error) {
+	req, err := http.NewRequest(method, apiURL, reqBody)
 	if err != nil {
 		return nil, err
 	}

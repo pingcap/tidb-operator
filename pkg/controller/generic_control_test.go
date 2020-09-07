@@ -44,8 +44,7 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		var c client.Client
-		c = fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -193,8 +192,7 @@ func TestCreateOrUpdateDeployment(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		var c client.Client
-		c = fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)
@@ -348,8 +346,7 @@ func TestCreateOrUpdateService(t *testing.T) {
 	testFn := func(tt *testCase) {
 		t.Log(tt.name)
 
-		var c client.Client
-		c = fake.NewFakeClientWithScheme(scheme.Scheme)
+		c := fake.NewFakeClientWithScheme(scheme.Scheme)
 		withTracker := NewFakeClientWithTracker(c)
 		recorder := record.NewFakeRecorder(10)
 		control := NewRealGenericControl(withTracker, recorder)

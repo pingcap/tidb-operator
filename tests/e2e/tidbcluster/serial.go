@@ -535,6 +535,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 		})
 
 		ginkgo.It("auto-scaling TidbCluster", func() {
+			ginkgo.Skip("auto-scaling TidbCluster")
 			clusterName := "auto-scaling"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
 			tc.Spec.PD.Replicas = 1

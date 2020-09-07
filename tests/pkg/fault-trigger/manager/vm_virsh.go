@@ -30,7 +30,7 @@ func (m *VirshVMManager) Name() string {
 
 // ListVMs lists vms
 func (m *VirshVMManager) ListVMs() ([]*VM, error) {
-	shell := fmt.Sprintf("virsh list --all")
+	shell := "virsh list --all"
 	cmd := exec.Command("/bin/sh", "-c", shell)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
