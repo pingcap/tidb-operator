@@ -93,7 +93,7 @@ var DefaultCrdKinds = CrdKinds{
 	Backup:                CrdKind{Plural: BackupName, Kind: BackupKind, ShortNames: []string{"bk"}, SpecName: SpecPath + BackupKind},
 	Restore:               CrdKind{Plural: RestoreName, Kind: RestoreKind, ShortNames: []string{"rt"}, SpecName: SpecPath + RestoreKind},
 	BackupSchedule:        CrdKind{Plural: BackupScheduleName, Kind: BackupScheduleKind, ShortNames: []string{"bks"}, SpecName: SpecPath + BackupScheduleKind},
-	TiDBMonitor:           CrdKind{Plural: TiDBMonitorName, Kind: TiDBMonitorKind, ShortNames: []string{}, SpecName: SpecPath + TiDBMonitorKind},
+	TiDBMonitor:           CrdKind{Plural: TiDBMonitorName, Kind: TiDBMonitorKind, ShortNames: []string{"tm"}, SpecName: SpecPath + TiDBMonitorKind},
 	TiDBInitializer:       CrdKind{Plural: TiDBInitializerName, Kind: TiDBInitializerKind, ShortNames: []string{"ti"}, SpecName: SpecPath + TiDBInitializerKind},
 	TidbClusterAutoScaler: CrdKind{Plural: TidbClusterAutoScalerName, Kind: TidbClusterAutoScalerKind, ShortNames: []string{"ta"}, SpecName: SpecPath + TidbClusterAutoScalerKind},
 	TiKVGroup:             CrdKind{Plural: TiKVGroupName, Kind: TiKVGroupKind, ShortNames: []string{}, SpecName: SpecPath + TiKVGroupKind},
