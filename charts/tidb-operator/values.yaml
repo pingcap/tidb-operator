@@ -154,7 +154,7 @@ advancedStatefulset:
   image: pingcap/advanced-statefulset:v0.4.0
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
-  logLevel: 2
+  logLevel: 4
   replicas: 1
   resources:
     limits:
