@@ -16544,7 +16544,7 @@ TiDBStatus
 </tr>
 <tr>
 <td>
-<code>Pump</code></br>
+<code>pump</code></br>
 <em>
 <a href="#pumpstatus">
 PumpStatus

@@ -13805,6 +13805,8 @@ spec:
   names:
     kind: TidbMonitor
     plural: tidbmonitors
+    shortNames:
+    - tm
   scope: Namespaced
   validation:
     openAPIV3Schema:
