@@ -7,7 +7,7 @@ This document presents a design to support canary deployments TiDB-Operator.
 ## Motivation
 
 When upgrade TiDB-Operator, users may want to deploy multiple cluster-scoped TiDB-Operators in the same Kubernetes cluster.
-And choose some specific tidb clusters will be managed by new  version TiDB-Operator, the others are still managed by old version. When the new version TiDB-Operator is fully tested, replace the old one.
+And choose some specific TiDB clusters will be managed by the new version TiDB-Operator, the others are still managed by the old version. When the new version TiDB-Operator is fully tested, replace the old one.
 
 ### Goals
 
