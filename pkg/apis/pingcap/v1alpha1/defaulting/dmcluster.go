@@ -16,6 +16,7 @@ package defaulting
 import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -55,6 +56,9 @@ func setMasterSpecDefault(dc *v1alpha1.DMCluster) {
 			dc.Spec.Master.BaseImage = defaultMasterImage
 		}
 	}
+	if dc.Spec.Master.MaxFailoverCount == nil {
+		dc.Spec.Master.MaxFailoverCount = pointer.Int32Ptr(3)
+	}
 }
 
 func setWorkerSpecDefault(dc *v1alpha1.DMCluster) {
@@ -62,5 +66,8 @@ func setWorkerSpecDefault(dc *v1alpha1.DMCluster) {
 		if dc.Spec.Worker.BaseImage == "" {
 			dc.Spec.Worker.BaseImage = defaultWorkerImage
 		}
+	}
+	if dc.Spec.Worker.MaxFailoverCount == nil {
+		dc.Spec.Worker.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 }
