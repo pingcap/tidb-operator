@@ -9,7 +9,6 @@ linters:
     - structcheck
     - goimports
     - gosimple
-  disable:
-    # Enable once related errors are fixed or ignored explicitly
     - staticcheck
+  disable:
     - errcheck
