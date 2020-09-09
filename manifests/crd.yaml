@@ -2062,6 +2062,8 @@ spec:
                     type:
                       type: string
                   type: object
+                serviceAccount:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3565,6 +3567,8 @@ spec:
                   type: object
                 schedulerName:
                   type: string
+                serviceAccount:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3594,6 +3598,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            serviceAccount:
               type: string
             ticdc:
               properties:
@@ -7052,6 +7058,8 @@ spec:
                       format: int32
                       type: integer
                   type: object
+                serviceAccount:
+                  type: string
                 slowLogTailer:
                   properties:
                     limits:
