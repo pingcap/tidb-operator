@@ -236,12 +236,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
-			return err
-		}
-	}
-
 	if tmm.autoFailover {
 		if tmm.shouldRecover(tc) {
 			tmm.tidbFailover.Recover(tc)
@@ -249,6 +243,12 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 			if err := tmm.tidbFailover.Failover(tc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+			return err
 		}
 	}
 
@@ -796,11 +796,11 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	if err != nil {
 		return err
 	}
-	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
+	if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
+	} else if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
 		tc.Status.PD.Phase != v1alpha1.UpgradePhase && tc.Status.Pump.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	} else if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
-		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}
