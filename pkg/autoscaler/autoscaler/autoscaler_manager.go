@@ -161,18 +161,12 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster, tac 
 	now := time.Now()
 	tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", now.Unix())
 	if tac.Spec.TiKV != nil {
-		if oldTc.Status.TiKV.StatefulSet != nil {
-			tac.Status.TiKV.CurrentReplicas = oldTc.Status.TiKV.StatefulSet.CurrentReplicas
-		}
 		tac.Status.TiKV.LastAutoScalingTimestamp = &metav1.Time{Time: now}
 	} else {
 		tac.Status.TiKV = nil
 	}
 
 	if tac.Spec.TiDB != nil {
-		if oldTc.Status.TiDB.StatefulSet != nil {
-			tac.Status.TiDB.CurrentReplicas = oldTc.Status.TiDB.StatefulSet.CurrentReplicas
-		}
 		tac.Status.TiDB.LastAutoScalingTimestamp = &metav1.Time{Time: now}
 	} else {
 		tac.Status.TiDB = nil

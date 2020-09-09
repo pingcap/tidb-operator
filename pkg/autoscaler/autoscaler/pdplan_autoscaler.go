@@ -14,6 +14,8 @@
 package autoscaler
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -22,7 +24,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -88,18 +92,23 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			if err != nil {
 				return err
 			}
-			updated := monitor.DeepCopy()
-			clusters := make([]v1alpha1.TidbClusterRef, 0, len(updated.Spec.Clusters)-1)
-			for _, cluster := range updated.Spec.Clusters {
+			newTm := monitor.DeepCopy()
+			clusters := make([]v1alpha1.TidbClusterRef, 0, len(newTm.Spec.Clusters)-1)
+			for _, cluster := range newTm.Spec.Clusters {
 				if cluster.Name != deleteTc.Name {
 					clusters = append(clusters, cluster)
 				}
 			}
-			updated.Spec.Clusters = clusters
-			_, err = am.cli.PingcapV1alpha1().TidbMonitors(monitor.Namespace).Update(updated)
-			if err != nil {
-				return err
-			}
+			newTm.Spec.Clusters = clusters
+			am.updateTidbMonitor(newTm, func(oldClusters []v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef {
+				clusters := make([]v1alpha1.TidbClusterRef, 0, len(oldClusters)-1)
+				for _, cluster := range oldClusters {
+					if cluster.Name != deleteTc.Name {
+						clusters = append(clusters, cluster)
+					}
+				}
+				return clusters
+			})
 		}
 	}
 	return nil
@@ -211,10 +220,42 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			if err != nil {
 				return err
 			}
-			updated := monitor.DeepCopy()
-			updated.Spec.Clusters = append(updated.Spec.Clusters, v1alpha1.TidbClusterRef{Name: created.Name, Namespace: created.Namespace})
-			am.cli.PingcapV1alpha1().TidbMonitors(updated.Namespace).Update(updated)
+			clusterRef := v1alpha1.TidbClusterRef{Name: created.Name, Namespace: created.Namespace}
+			newTm := monitor.DeepCopy()
+			newTm.Spec.Clusters = append(newTm.Spec.Clusters, clusterRef)
+			am.updateTidbMonitor(monitor,
+				func(clusters []v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef {
+					return append(clusters, clusterRef)
+				})
 		}
 	}
 	return nil
+}
+
+func (am *autoScalerManager) updateTidbMonitor(tm *v1alpha1.TidbMonitor, onConflict func([]v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef) error {
+	ns := tm.GetNamespace()
+	tmName := tm.GetName()
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		_, updateErr = am.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		if updateErr == nil {
+			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, updateErr)
+		if updated, err := am.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			tm = updated.DeepCopy()
+			tm.Spec.Clusters = onConflict(tm.Spec.Clusters)
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
+		}
+		return updateErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
+	}
+	return err
 }
