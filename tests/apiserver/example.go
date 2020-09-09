@@ -391,8 +391,7 @@ func (c *E2eContext) Do() {
 		a, err = c.V1Alpha1.Get(name, metav1.GetOptions{})
 		g.Expect(err).ShouldNot(g.HaveOccurred(), "expected getting in v1alpha1 again success")
 		// simply write back
-		a, err = c.V1Alpha1.Update(a)
-		var _ = a // never used
+		_, err = c.V1Alpha1.Update(a)
 		g.Expect(err).ShouldNot(g.HaveOccurred())
 		b, err = c.V1Beta1.Get(name, metav1.GetOptions{})
 		g.Expect(err).ShouldNot(g.HaveOccurred())

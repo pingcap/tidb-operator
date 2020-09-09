@@ -2610,10 +2610,6 @@ func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bo
 	getCntFn := func(db *sql.DB, tableName string) (int, error) {
 		var cnt int
 		row := db.QueryRow(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
-		if err != nil {
-			return cnt, fmt.Errorf("failed to select count(*) from %s, %v", tableName, err)
-		}
-
 		err := row.Scan(&cnt)
 		if err != nil {
 			return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
