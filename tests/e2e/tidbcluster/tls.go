@@ -489,25 +489,18 @@ func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, n
 		defer db.Close()
 		defer cancel()
 
-		rows, err := db.Query("SELECT name from test.city limit 1")
+		row := db.QueryRow("SELECT name from test.city limit 1")
+		var name string
+
+		err = row.Scan(&name)
 		if err != nil {
-			framework.Logf("can't select from %s/%s, %v", ns, tcName, err)
+			framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
-		var name string
-		for rows.Next() {
-			err := rows.Scan(&name)
-			if err != nil {
-				framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
-				return false, nil
-			}
 
-			framework.Logf("TABLE test.city name = %s", name)
-			if name == "beijing" {
-				return true, nil
-			}
-
-			break
+		framework.Logf("TABLE test.city name = %s", name)
+		if name == "beijing" {
+			return true, nil
 		}
 
 		return false, nil
