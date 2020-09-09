@@ -200,8 +200,7 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 			}
 
 			generateArgs, err := ConstructBRGlobalOptionsForBackup(backup)
-			if err != nil {
-			}
+			g.Expect(err).To(Succeed())
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}
@@ -278,8 +277,7 @@ func TestConstructBRGlobalOptionsForRestore(t *testing.T) {
 			}
 
 			generateArgs, err := ConstructBRGlobalOptionsForRestore(restore)
-			if err != nil {
-			}
+			g.Expect(err).To(Succeed())
 			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
 		})
 	}
