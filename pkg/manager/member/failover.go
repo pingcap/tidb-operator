@@ -27,3 +27,10 @@ type Failover interface {
 	Recover(*v1alpha1.TidbCluster)
 	RemoveUndesiredFailures(*v1alpha1.TidbCluster)
 }
+
+// DMFailover implements the logic for dm-master/dm-worker's failover and recovery.
+type DMFailover interface {
+	Failover(*v1alpha1.DMCluster) error
+	Recover(*v1alpha1.DMCluster)
+	RemoveUndesiredFailures(*v1alpha1.DMCluster)
+}
