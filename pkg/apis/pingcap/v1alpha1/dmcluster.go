@@ -76,6 +76,19 @@ func (dc *DMCluster) WorkerAllMembersReady() bool {
 	return true
 }
 
+func (dc *DMCluster) MasterAutoFailovering() bool {
+	if len(dc.Status.Master.FailureMembers) == 0 {
+		return false
+	}
+
+	for _, failureMember := range dc.Status.Master.FailureMembers {
+		if !failureMember.MemberDeleted {
+			return true
+		}
+	}
+	return false
+}
+
 func (dc *DMCluster) MasterStsDesiredReplicas() int32 {
 	return dc.Spec.Master.Replicas + int32(len(dc.Status.Master.FailureMembers))
 }
@@ -88,13 +101,28 @@ func (dc *DMCluster) MasterStsActualReplicas() int32 {
 	return stsStatus.Replicas
 }
 
-// TODO: support fail-over
+func (dc *DMCluster) MasterStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	replicas := dc.Spec.Master.Replicas
+	if !excludeFailover {
+		replicas = dc.MasterStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMMasterLabelVal))
+}
+
+func (dc *DMCluster) WorkerStsActualReplicas() int32 {
+	stsStatus := dc.Status.Worker.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (dc *DMCluster) WorkerStsDesiredReplicas() int32 {
 	if dc.Spec.Worker == nil {
 		return 0
 	}
 
-	return dc.Spec.Worker.Replicas
+	return dc.Spec.Worker.Replicas + int32(len(dc.Status.Worker.FailureMembers))
 }
 
 func (dc *DMCluster) WorkerStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
@@ -179,6 +207,14 @@ func (dc *DMCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
 	}
 	deleteSlots.Insert(slice...)
 	return
+}
+
+func (dc *DMCluster) MasterAllPodsStarted() bool {
+	return dc.MasterStsDesiredReplicas() == dc.MasterStsActualReplicas()
+}
+
+func (dc *DMCluster) WorkerAllPodsStarted() bool {
+	return dc.WorkerStsDesiredReplicas() == dc.WorkerStsActualReplicas()
 }
 
 func (dc *DMCluster) MasterIsAvailable() bool {
