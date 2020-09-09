@@ -112,6 +112,9 @@ type TidbClusterSpec struct {
 	// Discovery spec
 	Discovery DiscoverySpec `json:"discovery,omitempty"`
 
+	// Specify a Service Account
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// PD cluster spec
 	PD PDSpec `json:"pd"`
 
@@ -283,6 +286,9 @@ type DiscoverySpec struct {
 type PDSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for pd
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
@@ -510,6 +516,9 @@ type TiDBSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
+	// Specify a Service Account for tidb
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
@@ -570,6 +579,9 @@ type TiDBSpec struct {
 type PumpSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for pump
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
