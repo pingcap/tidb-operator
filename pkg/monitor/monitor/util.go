@@ -338,12 +338,14 @@ chmod 777 /data/prometheus /data/grafana
 			})
 
 	}
+	var envOverrides []core.EnvVar
 	for k, v := range monitor.Spec.Initializer.Envs {
-		util.AppendOverwriteEnv(container.Env, []core.EnvVar{{
+		envOverrides = append(envOverrides, core.EnvVar{
 			Name:  k,
 			Value: v,
-		}})
+		})
 	}
+	container.Env = util.AppendOverwriteEnv(container.Env, envOverrides)
 	return container
 }
 
@@ -482,12 +484,14 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	if monitor.Spec.Grafana.ImagePullPolicy != nil {
 		c.ImagePullPolicy = *monitor.Spec.Grafana.ImagePullPolicy
 	}
+	var envOverrides []core.EnvVar
 	for k, v := range monitor.Spec.Grafana.Envs {
-		util.AppendOverwriteEnv(c.Env, []core.EnvVar{{
+		envOverrides = append(envOverrides, core.EnvVar{
 			Name:  k,
 			Value: v,
-		}})
+		})
 	}
+	c.Env = util.AppendOverwriteEnv(c.Env, envOverrides)
 	sort.Sort(util.SortEnvByName(c.Env))
 	return c
 }
