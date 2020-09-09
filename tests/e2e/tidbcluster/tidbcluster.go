@@ -1219,7 +1219,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 					return false, nil
 				}
 				e2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
-				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tcName, false)
+				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tcName, true)
 				framework.ExpectNoError(err, "create pdClient error")
 				defer cancel()
 				storeInfo, err := pdClient.GetStores()
