@@ -2071,6 +2071,8 @@ spec:
                     type:
                       type: string
                   type: object
+                serviceAccount:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3574,6 +3576,8 @@ spec:
                   type: object
                 schedulerName:
                   type: string
+                serviceAccount:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3603,6 +3607,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            serviceAccount:
               type: string
             ticdc:
               properties:
@@ -7061,6 +7067,8 @@ spec:
                       format: int32
                       type: integer
                   type: object
+                serviceAccount:
+                  type: string
                 slowLogTailer:
                   properties:
                     limits:
@@ -15784,6 +15792,8 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                recoverFailover:
+                  type: boolean
                 replicas:
                   format: int32
                   type: integer
@@ -17236,6 +17246,8 @@ spec:
   names:
     kind: TidbMonitor
     plural: tidbmonitors
+    shortNames:
+    - tm
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -20137,6 +20149,8 @@ spec:
                   format: int32
                   type: integer
               type: object
+            serviceAccount:
+              type: string
             slowLogTailer:
               properties:
                 limits:

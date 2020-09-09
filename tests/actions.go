@@ -2609,18 +2609,12 @@ func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bo
 
 	getCntFn := func(db *sql.DB, tableName string) (int, error) {
 		var cnt int
-		rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+		row := db.QueryRow(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+		err := row.Scan(&cnt)
 		if err != nil {
-			return cnt, fmt.Errorf("failed to select count(*) from %s, %v", tableName, err)
+			return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
 		}
-		for rows.Next() {
-			err := rows.Scan(&cnt)
-			if err != nil {
-				return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
-			}
-			return cnt, nil
-		}
-		return cnt, fmt.Errorf("can not find count of table %s", tableName)
+		return cnt, nil
 	}
 
 	for i := 0; i < tableNum; i++ {

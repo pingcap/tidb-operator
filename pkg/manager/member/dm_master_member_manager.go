@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
-
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +34,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -59,6 +59,8 @@ type masterMemberManager struct {
 	pvcLister      corelisters.PersistentVolumeClaimLister
 	masterScaler   Scaler
 	masterUpgrader DMUpgrader
+	autoFailover   bool
+	masterFailover DMFailover
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
@@ -72,7 +74,9 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	masterScaler Scaler,
-	masterUpgrader DMUpgrader) manager.DMManager {
+	masterUpgrader DMUpgrader,
+	autoFailover bool,
+	masterFailover DMFailover) manager.DMManager {
 	return &masterMemberManager{
 		masterControl,
 		setControl,
@@ -84,7 +88,9 @@ func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 		epsLister,
 		pvcLister,
 		masterScaler,
-		masterUpgrader}
+		masterUpgrader,
+		autoFailover,
+		masterFailover}
 }
 
 func (mmm *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
@@ -249,19 +255,18 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		return err
 	}
 
-	// TODO: dm add auto failover
 	// Perform failover logic if necessary. Note that this will only update
 	// DMCluster status. The actual scaling performs in next sync loop (if a
 	// new replica needs to be added).
-	// if mmm.autoFailover {
-	//	if mmm.shouldRecover(tc) {
-	//		mmm.masterFailover.Recover(tc)
-	//	} else if dc.MasterAllPodsStarted() && !dc.MasterAllMembersReady() || tc.MasterAutoFailovering() {
-	//		if err := mmm.masterFailover.Failover(tc); err != nil {
-	//			return err
-	//		}
-	//	}
-	// }
+	if mmm.autoFailover {
+		if mmm.shouldRecover(dc) {
+			mmm.masterFailover.Recover(dc)
+		} else if dc.MasterAllPodsStarted() && !dc.MasterAllMembersReady() || dc.MasterAutoFailovering() {
+			if err := mmm.masterFailover.Failover(dc); err != nil {
+				return err
+			}
+		}
+	}
 
 	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
 		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
@@ -270,6 +275,33 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 	}
 
 	return updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func (mmm *masterMemberManager) shouldRecover(dc *v1alpha1.DMCluster) bool {
+	if dc.Status.Master.FailureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of dm cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range dc.MasterStsDesiredOrdinals(true) {
+		name := fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dc.GetName()), ordinal)
+		pod, err := mmm.podLister.Pods(dc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		status, ok := dc.Status.Master.Members[pod.Name]
+		if !ok || !status.Health {
+			return false
+		}
+	}
+	return true
 }
 
 func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *apps.StatefulSet) error {
@@ -492,16 +524,15 @@ func (mmm *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulS
 	return false, nil
 }
 
-// TODO: uncomment it after dm failover is supported
-//func getDMFailureReplicas(dc *v1alpha1.DMCluster) int {
-//	failureReplicas := 0
-//	for _, failureMember := range dc.Status.Master.FailureMembers {
-//		if failureMember.MemberDeleted {
-//			failureReplicas++
-//		}
-//	}
-//	return failureReplicas
-//}
+func getDMMasterFailureReplicas(dc *v1alpha1.DMCluster) int {
+	failureReplicas := 0
+	for _, failureMember := range dc.Status.Master.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
 
 func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := dc.Namespace
@@ -574,6 +605,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	setName := controller.DMMasterMemberName(dcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8261), baseMasterSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
+	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	masterContainer := corev1.Container{
 		Name:            v1alpha1.DMMasterMemberType.String(),
@@ -647,7 +679,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			OwnerReferences: []metav1.OwnerReference{controller.GetDMOwnerRef(dc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(dc.MasterStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas)),
 			Selector: masterLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -675,7 +707,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.MasterStsDesiredReplicas()),
+					Partition: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas)),
 				}},
 		},
 	}

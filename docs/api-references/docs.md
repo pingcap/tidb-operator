@@ -1315,6 +1315,17 @@ DiscoverySpec
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -6466,6 +6477,10 @@ DMSecurityConfig
 </table>
 <h3 id="masterfailuremember">MasterFailureMember</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>)
+</p>
+<p>
 <p>MasterFailureMember is the dm-master failure member information</p>
 </p>
 <table>
@@ -7022,8 +7037,8 @@ MasterMember
 <td>
 <code>failureMembers</code></br>
 <em>
-<a href="#pdfailuremember">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureMember
+<a href="#masterfailuremember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterFailureMember
 </a>
 </em>
 </td>
@@ -7770,7 +7785,6 @@ DashboardConfig
 <h3 id="pdfailuremember">PDFailureMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#masterstatus">MasterStatus</a>, 
 <a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
@@ -8866,6 +8880,17 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pd</p>
 </td>
 </tr>
 <tr>
@@ -10034,6 +10059,17 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pump</p>
 </td>
 </tr>
 <tr>
@@ -12645,6 +12681,17 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for tidb</p>
 </td>
 </tr>
 <tr>
@@ -18222,6 +18269,17 @@ DiscoverySpec
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -18637,7 +18695,7 @@ TiDBStatus
 </tr>
 <tr>
 <td>
-<code>Pump</code></br>
+<code>pump</code></br>
 <em>
 <a href="#pumpstatus">
 PumpStatus
@@ -19537,13 +19595,53 @@ DMSecurityConfig
 </tr>
 </tbody>
 </table>
+<h3 id="workerfailuremember">WorkerFailureMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
+<p>WorkerFailureMember is the dm-worker failure member information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>createdAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="workermember">WorkerMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#workerstatus">WorkerStatus</a>)
 </p>
 <p>
-<p>WorkerMember is dm-Worker member status</p>
+<p>WorkerMember is dm-worker member status</p>
 </p>
 <table>
 <thead>
@@ -19739,6 +19837,18 @@ WorkerConfig
 <p>Config is the Configuration of dm-worker-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="workerstatus">WorkerStatus</h3>
@@ -19797,6 +19907,18 @@ Kubernetes apps/v1.StatefulSetStatus
 <em>
 <a href="#workermember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureMembers</code></br>
+<em>
+<a href="#workerfailuremember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerFailureMember
 </a>
 </em>
 </td>

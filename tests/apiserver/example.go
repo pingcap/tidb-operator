@@ -248,6 +248,8 @@ func (c *E2eContext) Do() {
 		var eventWatched sync.WaitGroup
 		done := make(chan struct{})
 		go func() {
+			// nolint(staticcheck)
+			// SA2000: should call eventWatched.Add(1) before starting the goroutine to avoid a race
 			eventWatched.Add(1)
 			o, err := c.V1Alpha1.Create(&v1alpha1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -389,7 +391,7 @@ func (c *E2eContext) Do() {
 		a, err = c.V1Alpha1.Get(name, metav1.GetOptions{})
 		g.Expect(err).ShouldNot(g.HaveOccurred(), "expected getting in v1alpha1 again success")
 		// simply write back
-		a, err = c.V1Alpha1.Update(a)
+		_, err = c.V1Alpha1.Update(a)
 		g.Expect(err).ShouldNot(g.HaveOccurred())
 		b, err = c.V1Beta1.Get(name, metav1.GetOptions{})
 		g.Expect(err).ShouldNot(g.HaveOccurred())

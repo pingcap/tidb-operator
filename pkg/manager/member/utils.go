@@ -438,3 +438,53 @@ func shouldRecover(tc *v1alpha1.TidbCluster, component string, podLister corelis
 	}
 	return true
 }
+
+// shouldRecover checks whether we should perform recovery operation.
+func shouldRecoverDM(dc *v1alpha1.DMCluster, component string, podLister corelisters.PodLister) bool {
+	var members map[string]v1alpha1.WorkerMember
+	var failureMembers map[string]v1alpha1.WorkerFailureMember
+	var ordinals sets.Int32
+	var podPrefix string
+
+	switch component {
+	case label.DMWorkerLabelVal:
+		members = dc.Status.Worker.Members
+		failureMembers = dc.Status.Worker.FailureMembers
+		ordinals = dc.WorkerStsDesiredOrdinals(true)
+		podPrefix = controller.DMWorkerMemberName(dc.Name)
+	default:
+		klog.Warningf("Unexpected component %s for %s/%s in shouldRecover", component, dc.Namespace, dc.Name)
+		return false
+	}
+	if failureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of dm cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range ordinals {
+		name := fmt.Sprintf("%s-%d", podPrefix, ordinal)
+		pod, err := podLister.Pods(dc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		var exist bool
+		for _, v := range members {
+			if v.Name == pod.Name {
+				exist = true
+				if v.Stage == v1alpha1.DMWorkerStateOffline {
+					return false
+				}
+			}
+		}
+		if !exist {
+			return false
+		}
+	}
+	return true
+}

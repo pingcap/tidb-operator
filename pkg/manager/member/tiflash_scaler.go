@@ -62,9 +62,6 @@ func (tfs *tiflashScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet,
 
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-	if tc.TiFlashUpgrading() {
-		return nil
-	}
 
 	klog.Infof("scaling out tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := tfs.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.TiFlashMemberType, ordinal)
@@ -87,13 +84,6 @@ func (tfs *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, 
 	// we can only remove one member at a time when scaling in
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
-
-	// tiflash can not scale in when it is upgrading
-	if tc.TiFlashUpgrading() {
-		klog.Infof("TidbCluster: [%s/%s]'s tiflash is upgrading, postpone the scale in until the upgrade completes",
-			ns, tcName)
-		return nil
-	}
 
 	klog.Infof("scaling in tiflash statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	// We need delete store from cluster before decreasing the statefulset replicas
@@ -123,7 +113,7 @@ func (tfs *tiflashScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, 
 				}
 				klog.Infof("tiflash scale in: delete store %d for tiflash %s/%s successfully", id, ns, podName)
 			}
-			return controller.RequeueErrorf("TiFlash %s/%s store %d  still in cluster, state: %s", ns, podName, id, state)
+			return controller.RequeueErrorf("TiFlash %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
 		}
 	}
 	for id, store := range tc.Status.TiFlash.TombstoneStores {

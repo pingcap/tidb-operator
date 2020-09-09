@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	defaultTableNum    int = 64
-	defaultConcurrency     = 128
-	defaultBatchSize       = 100
-	defaultRawSize         = 100
+	defaultTableNum    = 64
+	defaultConcurrency = 128
+	defaultBatchSize   = 100
+	defaultRawSize     = 100
 )
 
 // Config defines the config of operator tests

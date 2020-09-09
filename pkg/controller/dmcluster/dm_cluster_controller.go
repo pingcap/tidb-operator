@@ -74,6 +74,8 @@ func NewController(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
+	masterFailoverPeriod time.Duration,
+	workerFailoverPeriod time.Duration,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
 	eventBroadcaster.StartLogging(klog.V(2).Infof)
@@ -101,6 +103,8 @@ func NewController(
 	podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
 	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
+	masterFailover := mm.NewMasterFailover(cli, masterControl, masterFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
+	workerFailover := mm.NewWorkerFailover(workerFailoverPeriod, recorder)
 	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
 	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
 	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
@@ -122,6 +126,8 @@ func NewController(
 				pvcInformer.Lister(),
 				masterScaler,
 				masterUpgrader,
+				autoFailover,
+				masterFailover,
 			),
 			mm.NewWorkerMemberManager(
 				masterControl,
@@ -132,6 +138,8 @@ func NewController(
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				workerScaler,
+				autoFailover,
+				workerFailover,
 			),
 			meta.NewReclaimPolicyDMManager(
 				pvcInformer.Lister(),
