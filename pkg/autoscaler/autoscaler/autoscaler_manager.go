@@ -43,6 +43,7 @@ type autoScalerManager struct {
 	kubecli   kubernetes.Interface
 	cli       versioned.Interface
 	tcLister  v1alpha1listers.TidbClusterLister
+	tmLister  v1alpha1listers.TidbMonitorLister
 	tcControl controller.TidbClusterControlInterface
 	pdControl pdapi.PDControlInterface
 	taLister  v1alpha1listers.TidbClusterAutoScalerLister
@@ -57,7 +58,6 @@ func NewAutoScalerManager(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	recorder record.EventRecorder) *autoScalerManager {
 	tcLister := informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
-	stsLister := kubeInformerFactory.Apps().V1().StatefulSets().Lister()
 	return &autoScalerManager{
 		kubecli:   kubecli,
 		cli:       cli,
@@ -65,7 +65,8 @@ func NewAutoScalerManager(
 		tcControl: controller.NewRealTidbClusterControl(cli, tcLister, recorder),
 		pdControl: pdapi.NewDefaultPDControl(kubecli),
 		taLister:  informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
-		stsLister: stsLister,
+		tmLister:  informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
+		stsLister: kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
 		recorder:  recorder,
 	}
 }

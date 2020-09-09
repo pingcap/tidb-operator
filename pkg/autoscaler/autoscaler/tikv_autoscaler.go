@@ -55,38 +55,87 @@ func (am *autoScalerManager) syncTiKVByPlans(tc *v1alpha1.TidbCluster, tac *v1al
 	if err != nil {
 		return err
 	}
-	tclist, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).List(v1.ListOptions{
-		LabelSelector: requirement.String(),
-	})
+	selector := labels.NewSelector().Add(*requirement)
+
+	tcList, err := am.tcLister.List(selector)
 	if err != nil {
 		return err
 	}
 
 	existedGroups := sets.String{}
-	groupTcMap := make(map[string]v1alpha1.TidbCluster)
-	for _, tc := range tclist.Items {
+	groupTcMap := make(map[string]*v1alpha1.TidbCluster)
+	for _, tc := range tcList {
 		groupName := tc.Labels[label.AutoScalingGroupLabelKey]
 		existedGroups.Insert(groupName)
 		groupTcMap[groupName] = tc
 	}
 
 	toDelete := existedGroups.Difference(groupNames)
-	toCreate := groupNames.Difference(existedGroups)
+	err = am.deleteAutoscalingClusters(tc, toDelete.UnsortedList(), groupTcMap)
+	if err != nil {
+		return err
+	}
+
 	toSync := groupNames.Intersection(existedGroups)
-
-	for _, group := range toDelete.List() {
-		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(groupTcMap[group].Name, nil)
-		klog.Errorf("cannot remove TidbCluster %v\n", err)
+	err = am.updateAutoscalingClusters(toSync.UnsortedList(), groupTcMap, groupPlanMap)
+	if err != nil {
+		return err
 	}
 
-	for _, group := range toSync.List() {
-		actual, expected := groupTcMap[group], groupPlanMap[group]
+	toCreate := groupNames.Difference(existedGroups)
+	err = am.createAutoscalingClusters(tc, tac, toCreate.UnsortedList(), groupPlanMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
+	for _, group := range groupsToDelete {
+		deleteTc := groupTcMap[group]
+		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
+		if err != nil {
+			return err
+		}
+
+		// Remove the cluster in the monitor
+		if monitorRef := deleteTc.Status.Monitor; monitorRef != nil {
+			monitor, err := am.tmLister.TidbMonitors(monitorRef.Namespace).Get(monitorRef.Name)
+			if err != nil {
+				return err
+			}
+			updated := monitor.DeepCopy()
+			clusters := make([]v1alpha1.TidbClusterRef, 0, len(updated.Spec.Clusters)-1)
+			for _, cluster := range updated.Spec.Clusters {
+				if cluster.Name != deleteTc.Name {
+					clusters = append(clusters, cluster)
+				}
+			}
+			updated.Spec.Clusters = clusters
+			_, err = am.cli.PingcapV1alpha1().TidbMonitors(monitor.Namespace).Update(updated)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (am *autoScalerManager) updateAutoscalingClusters(groups []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
+	for _, group := range groups {
+		actual, expected := groupTcMap[group].DeepCopy(), groupPlanMap[group]
 		actual.Spec.TiKV.Replicas = int32(expected.Count)
-		_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Update(&actual)
-		klog.Errorf("cannot update TidbCluster %v\n", err)
+		_, err := am.cli.PingcapV1alpha1().TidbClusters(actual.Namespace).Update(actual)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
-	for _, group := range toCreate.List() {
+func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
+	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		var resource v1alpha1.AutoResource
 		for _, res := range tac.Spec.Resources {
@@ -119,12 +168,23 @@ func (am *autoScalerManager) syncTiKVByPlans(tc *v1alpha1.TidbCluster, tac *v1al
 				},
 			},
 		}
-		_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+
+		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 		if err != nil {
 			klog.Errorf("cannot create new TidbCluster %v\n", err)
+			return err
+		}
+
+		if monitorRef := tc.Status.Monitor; monitorRef != nil {
+			monitor, err := am.tmLister.TidbMonitors(monitorRef.Namespace).Get(monitorRef.Name)
+			if err != nil {
+				return err
+			}
+			updated := monitor.DeepCopy()
+			updated.Spec.Clusters = append(updated.Spec.Clusters, v1alpha1.TidbClusterRef{Name: created.Name, Namespace: created.Namespace})
+			am.cli.PingcapV1alpha1().TidbMonitors(updated.Namespace).Update(updated)
 		}
 	}
-
 	return nil
 }
 
