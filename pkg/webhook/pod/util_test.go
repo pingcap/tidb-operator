@@ -148,6 +148,7 @@ func TestCheckTiKVFormerPodStatus(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		t.Log("test: ", test.name)
 		kubeCli, _ := newFakeComponent()
 		slots := sets.NewInt32(test.deleteSlots...)
 		tc := newTidbClusterForPodAdmissionControl(test.stsReplicas, test.stsReplicas)
