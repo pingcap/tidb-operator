@@ -17,6 +17,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -111,8 +112,22 @@ func (am *autoScalerManager) updateAutoscalingClusters(groups []string, groupTcM
 
 		switch component {
 		case "tikv":
+			sts, err := am.stsLister.StatefulSets(actual.Namespace).Get(operatorUtils.GetStatefulSetName(actual, v1alpha1.TiKVMemberType))
+			if err != nil {
+				return err
+			}
+			if !checkAutoScalingPrerequisites(actual, sts, v1alpha1.TiKVMemberType) {
+				continue
+			}
 			actual.Spec.TiKV.Replicas = int32(expected.Count)
 		case "tidb":
+			sts, err := am.stsLister.StatefulSets(actual.Namespace).Get(operatorUtils.GetStatefulSetName(actual, v1alpha1.TiDBMemberType))
+			if err != nil {
+				return err
+			}
+			if !checkAutoScalingPrerequisites(actual, sts, v1alpha1.TiDBMemberType) {
+				continue
+			}
 			actual.Spec.TiDB.Replicas = int32(expected.Count)
 		}
 
@@ -187,7 +202,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 		if err != nil {
-			klog.Errorf("cannot create new TidbCluster %v\n", err)
+			klog.Errorf("cannot create new TidbCluster err:%v\n", err)
 			return err
 		}
 
