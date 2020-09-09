@@ -795,6 +795,17 @@ DiscoverySpec
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -1358,22 +1369,7 @@ string
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>cluster</code></br>
-=======
-<code>serviceAccount</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Specify a Service Account</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pd</code></br>
->>>>>>> 8dc2228... Add serviceAccount for pump/pd/tidb (#3246)
 <em>
 <a href="#tidbclusterref">
 TidbClusterRef
@@ -6986,6 +6982,17 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pd</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>replicas</code></br>
 <em>
 int32
@@ -8154,6 +8161,17 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pump</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>replicas</code></br>
 <em>
 int32
@@ -8878,31 +8896,8 @@ string
 <table>
 <thead>
 <tr>
-<<<<<<< HEAD
 <th>Field</th>
 <th>Description</th>
-=======
-<td>
-<code>serviceAccount</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Specify a Service Account for pd</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>replicas</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<p>The desired ready replicas</p>
-</td>
->>>>>>> 8dc2228... Add serviceAccount for pump/pd/tidb (#3246)
 </tr>
 </thead>
 <tbody>
@@ -10126,22 +10121,7 @@ PreparedPlanCache
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>opentracing</code></br>
-=======
-<code>serviceAccount</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Specify a Service Account for pump</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>replicas</code></br>
->>>>>>> 8dc2228... Add serviceAccount for pump/pd/tidb (#3246)
 <em>
 <a href="#opentracing">
 OpenTracing
@@ -10719,6 +10699,17 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for tidb</p>
 </td>
 </tr>
 <tr>
@@ -12495,22 +12486,7 @@ int64
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
 <code>max-manifest-file-size</code></br>
-=======
-<code>serviceAccount</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Specify a Service Account for tidb</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>replicas</code></br>
->>>>>>> 8dc2228... Add serviceAccount for pump/pd/tidb (#3246)
 <em>
 string
 </em>
@@ -16006,238 +15982,6 @@ TidbAutoScalerSpec
 </tr>
 </thead>
 <tbody>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>discovery</code></br>
-<em>
-<a href="#discoveryspec">
-DiscoverySpec
-</a>
-</em>
-</td>
-<td>
-<p>Discovery spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>serviceAccount</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Specify a Service Account</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pd</code></br>
-<em>
-<a href="#pdspec">
-PDSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>PD cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tidb</code></br>
-<em>
-<a href="#tidbspec">
-TiDBSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TiDB cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tikv</code></br>
-<em>
-<a href="#tikvspec">
-TiKVSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TiKV cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tiflash</code></br>
-<em>
-<a href="#tiflashspec">
-TiFlashSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TiFlash cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>ticdc</code></br>
-<em>
-<a href="#ticdcspec">
-TiCDCSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TiCDC cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pump</code></br>
-<em>
-<a href="#pumpspec">
-PumpSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Pump cluster spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>helper</code></br>
-<em>
-<a href="#helperspec">
-HelperSpec
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Helper spec</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>paused</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Indicates that the tidb cluster is paused and will not be processed by
-the controller.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>version</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>TODO: remove optional after defaulting logic introduced
-TiDB cluster version</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>schedulerName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>SchedulerName of TiDB cluster Pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pvReclaimPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumereclaimpolicy-v1-core">
-Kubernetes core/v1.PersistentVolumeReclaimPolicy
-</a>
-</em>
-</td>
-<td>
-<p>Persistent volume reclaim policy applied to the PVs that consumed by TiDB cluster</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>imagePullPolicy</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pullpolicy-v1-core">
-Kubernetes core/v1.PullPolicy
-</a>
-</em>
-</td>
-<td>
-<p>ImagePullPolicy of TiDB cluster Pods</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>imagePullSecrets</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
-[]Kubernetes core/v1.LocalObjectReference
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>configUpdateStrategy</code></br>
-<em>
-<a href="#configupdatestrategy">
-ConfigUpdateStrategy
-</a>
-</em>
-</td>
-<td>
-<p>ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-UpdateStrategyInPlace will update the ConfigMap of configuration in-place and an extra rolling-update of the
-cluster component is needed to reload the configuration change.
-UpdateStrategyRollingUpdate will create a new ConfigMap with the new configuration and rolling-update the
-related components to use the new ConfigMap, that is, the new configuration will be applied automatically.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>enablePVReclaim</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
-Optional: Defaults to false</p>
-</td>
-</tr>
->>>>>>> 8dc2228... Add serviceAccount for pump/pd/tidb (#3246)
 <tr>
 <td>
 <code>tikv</code></br>
@@ -16442,6 +16186,17 @@ DiscoverySpec
 </td>
 <td>
 <p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
 </td>
 </tr>
 <tr>
