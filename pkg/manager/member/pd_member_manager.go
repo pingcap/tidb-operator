@@ -243,6 +243,25 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
 
+	// Scaling takes precedence over upgrading because:
+	// - if a pd fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	if err := pmm.pdScaler.Scale(tc, oldPDSet, newPDSet); err != nil {
+		return err
+	}
+
+	if pmm.autoFailover {
+		if pmm.shouldRecover(tc) {
+			pmm.pdFailover.Recover(tc)
+		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
+			if err := pmm.pdFailover.Failover(tc); err != nil {
+				return err
+			}
+		}
+	}
+
 	if !tc.Status.PD.Synced {
 		force := NeedForceUpgrade(tc.Annotations)
 		if force {
@@ -256,20 +275,6 @@ func (pmm *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClu
 	if !templateEqual(newPDSet, oldPDSet) || tc.Status.PD.Phase == v1alpha1.UpgradePhase {
 		if err := pmm.pdUpgrader.Upgrade(tc, oldPDSet, newPDSet); err != nil {
 			return err
-		}
-	}
-
-	if err := pmm.pdScaler.Scale(tc, oldPDSet, newPDSet); err != nil {
-		return err
-	}
-
-	if pmm.autoFailover {
-		if pmm.shouldRecover(tc) {
-			pmm.pdFailover.Recover(tc)
-		} else if tc.PDAllPodsStarted() && !tc.PDAllMembersReady() || tc.PDAutoFailovering() {
-			if err := pmm.pdFailover.Failover(tc); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -318,10 +323,12 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	if err != nil {
 		return err
 	}
-	if upgrading {
-		tc.Status.PD.Phase = v1alpha1.UpgradePhase
-	} else if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
+
+	// Scaling takes precedence over upgrading.
+	if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.PD.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
+		tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 	}
