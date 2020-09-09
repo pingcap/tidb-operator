@@ -38,6 +38,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/pointer"
 )
 
 func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
@@ -478,6 +479,9 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		tc := newTidbClusterForPD()
 		tc.Status.PD.Phase = v1alpha1.NormalPhase
 		set := &apps.StatefulSet{
+			Spec: apps.StatefulSetSpec{
+				Replicas: pointer.Int32Ptr(0),
+			},
 			Status: status,
 		}
 		if test.updateTC != nil {
