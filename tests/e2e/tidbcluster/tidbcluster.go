@@ -1233,6 +1233,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				e2elog.Logf("check heterogeneous tc successfully")
 				return true, nil
 			})
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
