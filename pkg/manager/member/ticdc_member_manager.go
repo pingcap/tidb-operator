@@ -336,6 +336,9 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster) (*apps.StatefulSet, error)
 	podSpec := baseTiCDCSpec.BuildPodSpec()
 	podSpec.Containers = []corev1.Container{ticdcContainer}
 	podSpec.ServiceAccountName = tc.Spec.TiCDC.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
 
 	if tc.IsTLSClusterEnabled() {
 		podSpec.Volumes = []corev1.Volume{
