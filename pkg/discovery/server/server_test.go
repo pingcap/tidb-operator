@@ -14,6 +14,7 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -31,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
@@ -77,21 +79,22 @@ func TestServer(t *testing.T) {
 	cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
 	fakePDControl.SetPDClient(pdapi.Namespace(tc.Namespace), tc.Name, pdClient)
 
-	var wg sync.WaitGroup
 	var (
 		initial int32
 		join    int32
 	)
+
+	errg, _ := errgroup.WithContext(context.Background())
+
 	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+		i := i
+		errg.Go(func() error {
 			for {
 				svc := fmt.Sprintf(`foo-pd-%d.foo-pd-peer.default.svc:2380`, i)
 				url := httpServer.URL + fmt.Sprintf("/new/%s", base64.StdEncoding.EncodeToString([]byte(svc)))
 				resp, err := http.Get(url)
 				if err != nil {
-					t.Fatal(err)
+					return err
 				}
 				if resp.StatusCode != http.StatusOK {
 					time.Sleep(time.Millisecond * 100)
@@ -99,7 +102,7 @@ func TestServer(t *testing.T) {
 				}
 				data, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					t.Fatal(err)
+					return err
 				}
 				lock.Lock()
 				pdMemberInfos.Members = append(pdMemberInfos.Members, &pdpb.Member{
@@ -114,11 +117,15 @@ func TestServer(t *testing.T) {
 				} else if strings.HasPrefix(string(data), "--initial-cluster=") {
 					atomic.AddInt32(&initial, 1)
 				}
-				break
+				return nil
 			}
-		}(i)
+		})
 	}
-	wg.Wait()
+
+	err := errg.Wait()
+	if err != nil {
+		t.Errorf("get pd info failed: %v", err)
+	}
 
 	if initial != 1 {
 		t.Errorf("initial expects 1, got %d", initial)
