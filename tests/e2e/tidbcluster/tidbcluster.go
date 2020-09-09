@@ -1168,7 +1168,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = installTiDBComponentsCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
 			err = installTiDBComponentsCertificates(ns, heterogeneousTcName)
-			framework.ExpectNoError(err, "failed to install tidb components certificates")
+			framework.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
 			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
@@ -1191,11 +1191,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
-
+			ginkgo.By("Creating heterogeneous tidb cluster")
 			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4Version)
+			heterogeneousTc.Spec.PD.Replicas = 1
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
-			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1,
+			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1, ComponentSpec: v1alpha1.ComponentSpec{Version: pointer.StringPtr("4.0.5")},
 				BaseImage: "pingcap/tiflash", StorageClaims: []v1alpha1.StorageClaim{
 					{Resources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{
@@ -1203,15 +1204,15 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						},
 					}},
 				}}
-			heterogeneousTc.Spec.TiFlash.Version = pointer.StringPtr("4.0.5")
 			heterogeneousTc.Spec.Cluster.Name = tcName
+
 			heterogeneousTc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			err = genericCli.Create(context.TODO(), tc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
-
+			ginkgo.By("Checking heterogeneous tidb cluster status")
 			err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
 				var err error
 				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
