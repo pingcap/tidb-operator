@@ -522,6 +522,9 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	podSpec.Containers = append([]corev1.Container{tiflashContainer}, buildTiFlashSidecarContainers(tc)...)
 	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
 
 	tiflashset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
