@@ -15788,6 +15788,8 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                recoverFailover:
+                  type: boolean
                 replicas:
                   format: int32
                   type: integer
@@ -17240,6 +17242,8 @@ spec:
   names:
     kind: TidbMonitor
     plural: tidbmonitors
+    shortNames:
+    - tm
   scope: Namespaced
   validation:
     openAPIV3Schema:
