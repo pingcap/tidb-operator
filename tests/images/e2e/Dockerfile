@@ -37,7 +37,6 @@ ADD bin/e2e.test /usr/local/bin/
 ADD bin/webhook /usr/local/bin/
 ADD bin/blockwriter /usr/local/bin/
 ADD bin/apiserver /usr/local/bin/
-ADD bin/mock-prometheus /bin/prometheus
 
 ADD entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
