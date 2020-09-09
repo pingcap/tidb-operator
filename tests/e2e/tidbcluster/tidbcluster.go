@@ -1212,6 +1212,28 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
 
+			err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
+				var err error
+				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
+					e2elog.Logf("failed to get tidbcluster: %s/%s, %v", ns, heterogeneousTc.Name, err)
+					return false, nil
+				}
+				e2elog.Logf("start check heterogeneous cluster storeInfo: %s/%s", ns, heterogeneousTc.Name)
+				pdClient, cancel, err := proxiedpdclient.NewProxiedPDClient(c, fw, ns, tcName, false)
+				framework.ExpectNoError(err, "create pdClient error")
+				defer cancel()
+				storeInfo, err := pdClient.GetStores()
+				if err != nil {
+					e2elog.Logf("failed to get stores, %v", err)
+				}
+				if storeInfo.Count != 4 {
+					e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
+					return false, nil
+				}
+				e2elog.Logf("check heterogeneous tc successfully")
+				return true, nil
+			})
+
 			ginkgo.By("Ensure Dashboard use custom secret")
 			foundSecretName := false
 			pdSts, err := stsGetter.StatefulSets(ns).Get(controller.PDMemberName(tcName), metav1.GetOptions{})
