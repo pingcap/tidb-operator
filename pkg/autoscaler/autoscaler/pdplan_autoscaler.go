@@ -66,7 +66,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 	}
 
 	toUpdate := groupNames.Intersection(existedGroups)
-	err = am.updateAutoscalingClusters(toUpdate.UnsortedList(), groupTcMap, groupPlanMap)
+	err = am.updateAutoscalingClusters(tac, toUpdate.UnsortedList(), groupTcMap, groupPlanMap)
 	if err != nil {
 		return err
 	}
@@ -116,10 +116,14 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	return nil
 }
 
-func (am *autoScalerManager) updateAutoscalingClusters(groups []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
+func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groups []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
 	for _, group := range groups {
 		actual, oldTc, expected := groupTcMap[group].DeepCopy(), groupTcMap[group], groupPlanMap[group]
 		component := expected.Component
+
+		if !checkAutoscalingComponent(tac, component) {
+			continue
+		}
 
 		switch component {
 		case "tikv":
@@ -154,6 +158,11 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		component := plan.Component
+
+		if !checkAutoscalingComponent(tac, component) {
+			continue
+		}
+
 		resource, ok := findAutoResource(tac.Spec.Resources, plan.ResourceType)
 		if !ok {
 			return fmt.Errorf("unknown resource type %v", plan.ResourceType)
@@ -203,6 +212,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			}
 		}
 
+		// Patch custom labels
 		autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
 		autoTc.Labels[label.AutoComponentLabelKey] = component
 		autoTc.Labels[label.AutoScalingGroupLabelKey] = group
