@@ -198,6 +198,21 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				Limits:   resList,
 				Requests: resList,
 			}
+			if autoTc.Spec.TiKV.Config == nil {
+				autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
+					Server: &v1alpha1.TiKVServerConfig{
+						Labels: map[string]string{},
+					},
+				}
+			}
+			if autoTc.Spec.TiKV.Config.Server == nil {
+				autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
+					Labels: map[string]string{},
+				}
+			}
+			if autoTc.Spec.TiKV.Config.Server.Labels == nil {
+				autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+			}
 			for k, v := range plan.Labels {
 				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
 			}
@@ -207,12 +222,23 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				Limits:   resList,
 				Requests: resList,
 			}
+			if autoTc.Spec.TiDB.Config == nil {
+				autoTc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
+					Labels: map[string]string{},
+				}
+			}
+			if autoTc.Spec.TiDB.Config.Labels == nil {
+				autoTc.Spec.TiDB.Config.Labels = map[string]string{}
+			}
 			for k, v := range plan.Labels {
 				autoTc.Spec.TiDB.Config.Labels[k] = v
 			}
 		}
 
 		// Patch custom labels
+		if autoTc.Labels == nil {
+			autoTc.Labels = map[string]string{}
+		}
 		autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
 		autoTc.Labels[label.AutoComponentLabelKey] = component
 		autoTc.Labels[label.AutoScalingGroupLabelKey] = group
