@@ -75,8 +75,6 @@ func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, n
 			return nil
 		}
 		status = &meta.Status.TiKV
-	case *v1alpha1.TiKVGroup:
-		status = &meta.Status.TiKVStatus
 	default:
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}

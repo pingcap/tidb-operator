@@ -31,10 +31,6 @@ type Interface interface {
 	DataResources() DataResourceInformer
 	// Restores returns a RestoreInformer.
 	Restores() RestoreInformer
-	// TiDBGroups returns a TiDBGroupInformer.
-	TiDBGroups() TiDBGroupInformer
-	// TiKVGroups returns a TiKVGroupInformer.
-	TiKVGroups() TiKVGroupInformer
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
 	// TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
@@ -79,16 +75,6 @@ func (v *version) DataResources() DataResourceInformer {
 // Restores returns a RestoreInformer.
 func (v *version) Restores() RestoreInformer {
 	return &restoreInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// TiDBGroups returns a TiDBGroupInformer.
-func (v *version) TiDBGroups() TiDBGroupInformer {
-	return &tiDBGroupInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// TiKVGroups returns a TiKVGroupInformer.
-func (v *version) TiKVGroups() TiKVGroupInformer {
-	return &tiKVGroupInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TidbClusters returns a TidbClusterInformer.

@@ -456,7 +456,3 @@ func (l Label) IsManagedByTiDBOperator() bool {
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
 }
-
-func (l Label) IsGroupPod() bool {
-	return l[NameLabelKey] == "tidb-cluster-group"
-}
