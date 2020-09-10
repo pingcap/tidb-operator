@@ -154,13 +154,9 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		component := plan.Component
-
-		var resource v1alpha1.AutoResource
-		for _, res := range tac.Spec.Resources {
-			if res.ResourceType == plan.ResourceType {
-				resource = res
-				break
-			}
+		resource, ok := findAutoResource(tac.Spec.Resources, plan.ResourceType)
+		if !ok {
+			return fmt.Errorf("unknown resource type %v", plan.ResourceType)
 		}
 		resList := corev1.ResourceList{
 			corev1.ResourceCPU:     resource.CPU,
@@ -209,6 +205,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 		autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
 		autoTc.Labels[label.AutoComponentLabelKey] = component
+		autoTc.Labels[label.AutoScalingGroupLabelKey] = group
 
 		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {

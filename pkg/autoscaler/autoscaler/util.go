@@ -214,3 +214,12 @@ func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, l
 
 	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
 }
+
+func findAutoResource(resources []v1alpha1.AutoResource, resourceType string) (v1alpha1.AutoResource, bool) {
+	for _, res := range resources {
+		if res.ResourceType == resourceType {
+			return res, true
+		}
+	}
+	return v1alpha1.AutoResource{}, false
+}
