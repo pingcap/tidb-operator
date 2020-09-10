@@ -1191,6 +1191,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
+
 			ginkgo.By("Creating heterogeneous tidb cluster")
 			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4Version)
 			heterogeneousTc.Spec.PD.Replicas = 0
