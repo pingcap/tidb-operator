@@ -1210,7 +1210,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 			heterogeneousTc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
-			err = genericCli.Create(context.TODO(), tc)
+			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err)
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
