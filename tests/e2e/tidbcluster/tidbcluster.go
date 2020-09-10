@@ -1156,6 +1156,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err = installTiDBCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
+			ginkgo.By("Installing heterogeneous tidb server and client certificate")
+			err = installTiDBCertificates(ns, heterogeneousTcName)
+			framework.ExpectNoError(err, "failed to install heterogeneous tidb server and client certificate")
+
 			ginkgo.By("Installing separate tidbInitializer client certificate")
 			err = installTiDBInitializerCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install separate tidbInitializer client certificate")
@@ -1209,6 +1213,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name: tcName,
 			}
 
+			heterogeneousTc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err)
