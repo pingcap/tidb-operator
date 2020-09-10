@@ -1171,12 +1171,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
-			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
-			tc.Spec.PD.Replicas = 3
-			tc.Spec.PD.TLSClientSecretName = &dashTLSName
-			tc.Spec.TiKV.Replicas = 3
-			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			tc.Spec.Pump = &v1alpha1.PumpSpec{
@@ -1209,7 +1207,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				Name: tcName,
 			}
 
-			heterogeneousTc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err)
@@ -1230,7 +1227,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				if err != nil {
 					e2elog.Logf("failed to get stores, %v", err)
 				}
-				if storeInfo.Count != 4 {
+				if storeInfo.Count != 2 {
 					e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
 					return false, nil
 				}
