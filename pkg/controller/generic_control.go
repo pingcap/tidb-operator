@@ -484,8 +484,8 @@ func (c *realGenericControlInterface) Delete(controller, obj runtime.Object) err
 // RecordControllerEvent is a generic method to record event for controller
 func (c *realGenericControlInterface) RecordControllerEvent(verb string, controller runtime.Object, obj runtime.Object, err error) {
 	var controllerName string
-	controllerGVK, err := InferObjectKind(controller)
-	if err != nil {
+	controllerGVK, err2 := InferObjectKind(controller)
+	if err2 != nil {
 		klog.Warningf("Cannot get GVK for controller %v: %v", controller, err)
 	}
 	if accessor, ok := controller.(metav1.ObjectMetaAccessor); ok {
