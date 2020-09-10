@@ -1204,7 +1204,9 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 						},
 					}},
 				}}
-			heterogeneousTc.Spec.Cluster.Name = tcName
+			heterogeneousTc.Spec.Cluster = &v1alpha1.TidbClusterRef{
+				Name: tcName,
+			}
 
 			heterogeneousTc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
