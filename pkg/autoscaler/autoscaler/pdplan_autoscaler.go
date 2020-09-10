@@ -207,6 +207,9 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			}
 		}
 
+		autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
+		autoTc.Labels[label.AutoComponentLabelKey] = component
+
 		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {
 			klog.Errorf("cannot create new TidbCluster err:%v\n", err)
