@@ -192,14 +192,6 @@ func RenderPDStartScript(model *PDStartScriptModel) (string, error) {
 
 var tikvStartScriptTpl = template.Must(template.New("tikv-start-script").Parse(`#!/bin/sh
 
-# This script is used to start tikv containers in kubernetes cluster
-
-# Use DownwardAPIVolumeFiles to store informations of the cluster:
-# https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api
-#
-#   runmode="normal/debug"
-#
-
 set -uo pipefail
 
 ANNOTATIONS="/etc/podinfo/annotations"
