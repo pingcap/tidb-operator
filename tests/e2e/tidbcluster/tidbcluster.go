@@ -1193,7 +1193,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 			ginkgo.By("Creating heterogeneous tidb cluster")
 			heterogeneousTc := fixture.GetTidbCluster(ns, heterogeneousTcName, utilimage.TiDBV4Version)
-			heterogeneousTc.Spec.PD.Replicas = 1
+			heterogeneousTc.Spec.PD.Replicas = 0
 			heterogeneousTc.Spec.TiKV.Replicas = 1
 			heterogeneousTc.Spec.TiDB.Replicas = 1
 			heterogeneousTc.Spec.TiFlash = &v1alpha1.TiFlashSpec{Replicas: 1, ComponentSpec: v1alpha1.ComponentSpec{Version: pointer.StringPtr("4.0.5")},
