@@ -1171,8 +1171,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
+			dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
 			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV4Version)
 			tc.Spec.PD.Replicas = 1
+			tc.Spec.PD.TLSClientSecretName = &dashTLSName
 			tc.Spec.TiKV.Replicas = 1
 			tc.Spec.TiDB.Replicas = 1
 			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
