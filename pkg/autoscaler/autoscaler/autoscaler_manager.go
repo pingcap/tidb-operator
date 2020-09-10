@@ -16,7 +16,6 @@ package autoscaler
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -26,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -104,9 +102,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err := am.syncAutoScaling(tc, tac); err != nil {
 		return err
 	}
-	if err := am.syncTidbClusterReplicas(tac, tc, oldTc); err != nil {
-		return err
-	}
+
 	return am.updateAutoScaling(oldTc, tac)
 }
 
@@ -133,27 +129,6 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	return nil
 }
 
-func (am *autoScalerManager) syncTidbClusterReplicas(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster, oldTc *v1alpha1.TidbCluster) error {
-	if tc.Spec.TiDB.Replicas == oldTc.Spec.TiDB.Replicas && tc.Spec.TiKV.Replicas == oldTc.Spec.TiKV.Replicas {
-		return nil
-	}
-	newTc := tc.DeepCopy()
-	_, err := am.tcControl.UpdateTidbCluster(newTc, &newTc.Status, &oldTc.Status)
-	if err != nil {
-		return err
-	}
-	reason := fmt.Sprintf("Successful %s", strings.Title("auto-scaling"))
-	msg := ""
-	if tc.Spec.TiDB.Replicas != oldTc.Spec.TiDB.Replicas {
-		msg = fmt.Sprintf("%s auto-scaling tidb from %d to %d", msg, oldTc.Spec.TiDB.Replicas, tc.Spec.TiDB.Replicas)
-	}
-	if tc.Spec.TiKV.Replicas != oldTc.Spec.TiKV.Replicas {
-		msg = fmt.Sprintf("%s auto-scaling tikv from %d to %d", msg, oldTc.Spec.TiKV.Replicas, tc.Spec.TiKV.Replicas)
-	}
-	am.recorder.Event(tac, corev1.EventTypeNormal, reason, msg)
-	return nil
-}
-
 func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	if tac.Annotations == nil {
 		tac.Annotations = map[string]string{}
@@ -161,12 +136,18 @@ func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster, tac 
 	now := time.Now()
 	tac.Annotations[label.AnnLastSyncingTimestamp] = fmt.Sprintf("%d", now.Unix())
 	if tac.Spec.TiKV != nil {
+		if tac.Status.TiKV == nil {
+			tac.Status.TiKV = &v1alpha1.TikvAutoScalerStatus{}
+		}
 		tac.Status.TiKV.LastAutoScalingTimestamp = &metav1.Time{Time: now}
 	} else {
 		tac.Status.TiKV = nil
 	}
 
 	if tac.Spec.TiDB != nil {
+		if tac.Status.TiDB == nil {
+			tac.Status.TiDB = &v1alpha1.TidbAutoScalerStatus{}
+		}
 		tac.Status.TiDB.LastAutoScalingTimestamp = &metav1.Time{Time: now}
 	} else {
 		tac.Status.TiDB = nil
