@@ -33,6 +33,10 @@ import (
 const groupLabelKey = "group"
 
 func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan) error {
+	if plans == nil {
+		return nil
+	}
+
 	groupNames := sets.String{}
 	groupPlanMap := make(map[string]pdapi.Plan)
 	for _, plan := range plans {
@@ -192,7 +196,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 		switch component {
 		case "tikv":
-			autoTc.Spec.TiKV = autoTc.Spec.TiKV.DeepCopy()
+			autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
 			autoTc.Spec.TiKV.Replicas = int32(plan.Count)
 			autoTc.Spec.TiKV.ResourceRequirements = corev1.ResourceRequirements{
 				Limits:   resList,
@@ -217,7 +221,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
 			}
 		case "tidb":
-			autoTc.Spec.TiDB = autoTc.Spec.TiDB.DeepCopy()
+			autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
 			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
 				Limits:   resList,
 				Requests: resList,

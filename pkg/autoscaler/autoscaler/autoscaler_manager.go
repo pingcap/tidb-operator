@@ -113,10 +113,9 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	defaultTAC(tac)
 
-	klog.Infof("TidbClusterAutoScaler %v", tac)
 	// Construct PD Auto-scaling strategy
 	strategy := autoscalerToStrategy(tac)
-	klog.Infof("Auto Scaling Strategy %v", strategy)
+
 	// Request PD for auto-scaling plans
 	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
 	if err != nil {

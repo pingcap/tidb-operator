@@ -155,11 +155,13 @@ func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler) *pdapi.Strategy {
 	}
 
 	for _, res := range tac.Spec.Resources {
+		count := uint64(*res.Count)
 		strategy.Resources = append(strategy.Resources, &pdapi.Resource{
 			CPU:          res.CPU.AsDec().UnscaledBig().Uint64(),
 			Memory:       res.Memory.AsDec().UnscaledBig().Uint64(),
 			Storage:      res.Storage.AsDec().UnscaledBig().Uint64(),
 			ResourceType: res.ResourceType,
+			Count:        &count,
 		})
 	}
 
@@ -227,9 +229,9 @@ func findAutoResource(resources []v1alpha1.AutoResource, resourceType string) (v
 func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component string) bool {
 	switch component {
 	case "tidb":
-		return tas.Spec.TiDB == nil
+		return tas.Spec.TiDB != nil
 	case "tikv":
-		return tas.Spec.TiKV == nil
+		return tas.Spec.TiKV != nil
 	}
 	return false
 }
