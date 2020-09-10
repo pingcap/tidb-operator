@@ -30,11 +30,13 @@ import (
 	"k8s.io/klog"
 )
 
+const groupLabelKey = "group"
+
 func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan) error {
 	groupNames := sets.String{}
 	groupPlanMap := make(map[string]pdapi.Plan)
 	for _, plan := range plans {
-		groupName := findAutoscalingGroupNameInLabels(plan.Labels)
+		groupName := plan.Labels[groupLabelKey]
 		groupNames.Insert(groupName)
 		groupPlanMap[groupName] = plan
 	}
@@ -152,10 +154,6 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		component := plan.Component
-		labels := make(map[string]string)
-		for _, label := range plan.Labels {
-			labels[label.Key] = label.Value
-		}
 
 		var resource v1alpha1.AutoResource
 		for _, res := range tac.Spec.Resources {
@@ -169,9 +167,14 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			corev1.ResourceStorage: resource.Storage,
 			corev1.ResourceMemory:  resource.Memory,
 		}
-		tc := &v1alpha1.TidbCluster{
+
+		autoTcName, err := genAutoClusterName(tac, component, plan.Labels, resource)
+		if err != nil {
+			return err
+		}
+		autoTc := &v1alpha1.TidbCluster{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      group,
+				Name:      autoTcName,
 				Namespace: tc.Namespace,
 			},
 			Spec: v1alpha1.TidbClusterSpec{
@@ -184,32 +187,27 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 		switch component {
 		case "tikv":
-			tc.Spec.TiKV = &v1alpha1.TiKVSpec{
-				Replicas: int32(plan.Count),
-				ResourceRequirements: corev1.ResourceRequirements{
-					Limits:   resList,
-					Requests: resList,
-				},
-				Config: &v1alpha1.TiKVConfig{
-					Server: &v1alpha1.TiKVServerConfig{
-						Labels: labels,
-					},
-				},
+			autoTc.Spec.TiKV = autoTc.Spec.TiKV.DeepCopy()
+			autoTc.Spec.TiKV.Replicas = int32(plan.Count)
+			autoTc.Spec.TiKV.ResourceRequirements = corev1.ResourceRequirements{
+				Limits:   resList,
+				Requests: resList,
+			}
+			for k, v := range plan.Labels {
+				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
 			}
 		case "tidb":
-			tc.Spec.TiDB = &v1alpha1.TiDBSpec{
-				Replicas: int32(plan.Count),
-				ResourceRequirements: corev1.ResourceRequirements{
-					Limits:   resList,
-					Requests: resList,
-				},
-				Config: &v1alpha1.TiDBConfig{
-					Labels: labels,
-				},
+			autoTc.Spec.TiDB = autoTc.Spec.TiDB.DeepCopy()
+			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
+				Limits:   resList,
+				Requests: resList,
+			}
+			for k, v := range plan.Labels {
+				autoTc.Spec.TiDB.Config.Labels[k] = v
 			}
 		}
 
-		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(tc)
+		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {
 			klog.Errorf("cannot create new TidbCluster err:%v\n", err)
 			return err
@@ -221,9 +219,9 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				return err
 			}
 			clusterRef := v1alpha1.TidbClusterRef{Name: created.Name, Namespace: created.Namespace}
-			newTm := monitor.DeepCopy()
-			newTm.Spec.Clusters = append(newTm.Spec.Clusters, clusterRef)
-			am.updateTidbMonitor(monitor,
+			updatedTm := monitor.DeepCopy()
+			updatedTm.Spec.Clusters = append(updatedTm.Spec.Clusters, clusterRef)
+			am.updateTidbMonitor(updatedTm,
 				func(clusters []v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef {
 					return append(clusters, clusterRef)
 				})

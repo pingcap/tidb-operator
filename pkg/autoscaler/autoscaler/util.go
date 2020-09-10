@@ -14,11 +14,11 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
@@ -195,13 +195,22 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 	return result
 }
 
-const groupLabelKey = "group"
+const autoClusterPrefix = "auto-"
 
-func findAutoscalingGroupNameInLabels(labels []*metapb.StoreLabel) string {
-	for _, label := range labels {
-		if label.Key == groupLabelKey {
-			return label.Value
-		}
+func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, labels map[string]string, resource v1alpha1.AutoResource) (string, error) {
+	seed := map[string]interface{}{
+		"namespace": tas.Namespace,
+		"tas":       tas.Name,
+		"component": component,
+		"cpu":       resource.CPU.AsDec().UnscaledBig().Uint64(),
+		"storage":   resource.Storage.AsDec().UnscaledBig().Uint64(),
+		"memory":    resource.Memory.AsDec().UnscaledBig().Uint64(),
+		"labels":    labels,
 	}
-	return ""
+	marshaled, err := json.Marshal(seed)
+	if err != nil {
+		return "", err
+	}
+
+	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
 }
