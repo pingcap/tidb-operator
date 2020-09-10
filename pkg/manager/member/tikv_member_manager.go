@@ -352,6 +352,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
+		}, corev1.VolumeMount{
+			Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
 		})
 	}
 
@@ -379,6 +381,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiKVLabelVal),
+				},
+			},
+		}, corev1.Volume{
+			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterClientTLSSecretName(tc.Name),
 				},
 			},
 		})
