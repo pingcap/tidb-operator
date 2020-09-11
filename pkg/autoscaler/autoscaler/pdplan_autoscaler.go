@@ -33,23 +33,20 @@ import (
 const groupLabelKey = "group"
 
 func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, plans []pdapi.Plan) error {
-	if plans == nil {
-		return nil
-	}
-
-	groupNames := sets.String{}
+	planGroups := sets.String{}
 	groupPlanMap := make(map[string]pdapi.Plan)
 	for _, plan := range plans {
 		groupName := plan.Labels[groupLabelKey]
-		groupNames.Insert(groupName)
+		planGroups.Insert(groupName)
 		groupPlanMap[groupName] = plan
 	}
-	requirement, err := labels.NewRequirement(label.AutoScalingGroupLabelKey, selection.In, groupNames.List())
+
+	// Filter all autoscaled TidbClusters
+	requirement, err := labels.NewRequirement(label.AutoScalingGroupLabelKey, selection.In, planGroups.List())
 	if err != nil {
 		return err
 	}
 	selector := labels.NewSelector().Add(*requirement)
-
 	tcList, err := am.tcLister.List(selector)
 	if err != nil {
 		return err
@@ -63,19 +60,20 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 		groupTcMap[groupName] = tc
 	}
 
-	toDelete := existedGroups.Difference(groupNames)
+	// Calculate difference then update, delete or create
+	toDelete := existedGroups.Difference(planGroups)
 	err = am.deleteAutoscalingClusters(tc, toDelete.UnsortedList(), groupTcMap)
 	if err != nil {
 		return err
 	}
 
-	toUpdate := groupNames.Intersection(existedGroups)
+	toUpdate := planGroups.Intersection(existedGroups)
 	err = am.updateAutoscalingClusters(tac, toUpdate.UnsortedList(), groupTcMap, groupPlanMap)
 	if err != nil {
 		return err
 	}
 
-	toCreate := groupNames.Difference(existedGroups)
+	toCreate := planGroups.Difference(existedGroups)
 	err = am.createAutoscalingClusters(tc, tac, toCreate.UnsortedList(), groupPlanMap)
 	if err != nil {
 		return err
@@ -130,7 +128,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 		}
 
 		switch component {
-		case "tikv":
+		case v1alpha1.TiKVMemberType.String():
 			sts, err := am.stsLister.StatefulSets(actual.Namespace).Get(operatorUtils.GetStatefulSetName(actual, v1alpha1.TiKVMemberType))
 			if err != nil {
 				return err
@@ -139,7 +137,7 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 				continue
 			}
 			actual.Spec.TiKV.Replicas = int32(expected.Count)
-		case "tidb":
+		case v1alpha1.TiDBMemberType.String():
 			sts, err := am.stsLister.StatefulSets(actual.Namespace).Get(operatorUtils.GetStatefulSetName(actual, v1alpha1.TiDBMemberType))
 			if err != nil {
 				return err
@@ -181,10 +179,17 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		if err != nil {
 			return err
 		}
+
 		autoTc := &v1alpha1.TidbCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      autoTcName,
 				Namespace: tc.Namespace,
+			},
+			Status: v1alpha1.TidbClusterStatus{
+				AutoScaler: &v1alpha1.TidbClusterAutoScalerRef{
+					Name:      tac.Name,
+					Namespace: tac.Namespace,
+				},
 			},
 			Spec: v1alpha1.TidbClusterSpec{
 				Cluster: &v1alpha1.TidbClusterRef{
@@ -195,7 +200,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		}
 
 		switch component {
-		case "tikv":
+		case v1alpha1.TiKVMemberType.String():
 			autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
 			autoTc.Spec.TiKV.Replicas = int32(plan.Count)
 			autoTc.Spec.TiKV.ResourceRequirements = corev1.ResourceRequirements{
@@ -220,7 +225,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			for k, v := range plan.Labels {
 				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
 			}
-		case "tidb":
+		case v1alpha1.TiDBMemberType.String():
 			autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
 			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
 				Limits:   resList,
