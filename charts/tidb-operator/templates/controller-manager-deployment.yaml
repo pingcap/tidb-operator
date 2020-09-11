@@ -29,6 +29,26 @@ spec:
       imagePullSecrets:
   {{ toYaml .Values.imagePullSecrets | indent 6 }}
     {{- end }}
+
+      {{- with .Values.controllerManager.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- with .Values.controllerManager.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- with .Values.controllerManager.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+
+      {{- if .Values.controllerManager.priorityClassName }}
+      priorityClassName: {{ .Values.controllerManager.priorityClassName }}
+      {{- end }}
+
       containers:
       - name: tidb-operator
         image: {{ .Values.operatorImage }}
@@ -73,23 +93,3 @@ spec:
                 fieldPath: metadata.namespace
           - name: TZ
             value: {{ .Values.timezone | default "UTC" }}
-
-      {{- with .Values.controllerManager.nodeSelector }}
-      nodeSelector:
-{{ toYaml . | indent 8 }}
-      {{- end }}
-
-      {{- with .Values.controllerManager.affinity }}
-      affinity:
-{{ toYaml . | indent 8 }}
-      {{- end }}
-
-      {{- with .Values.controllerManager.tolerations }}
-      tolerations:
-{{ toYaml . | indent 8 }}
-      {{- end }}
-
-      {{- if .Values.controllerManager.priorityClassName }}
-      priorityClassName: {{ .Values.controllerManager.priorityClassName }}
-      {{- end }}
-

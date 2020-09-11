@@ -19,7 +19,9 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
@@ -51,21 +53,19 @@ import (
 )
 
 func main() {
-	cliCfg := controller.DefaultCLIConfig()
-	cliCfg.AddFlag(flag.CommandLine)
-	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
-	flag.Parse()
+	cliCfg := controller.DefaultCLIConfig().InitFlags()
+	features.DefaultFeatureGate.AddFlag(cliCfg.FlagSet)
 
 	if cliCfg.PrintVersion {
 		version.PrintVersionInfo()
-		os.Exit(0)
+		return
 	}
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
 	version.LogVersionInfo()
-	flag.VisitAll(func(flag *flag.Flag) {
+	cliCfg.FlagSet.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
@@ -204,5 +204,25 @@ func main() {
 		})
 	}, cliCfg.WaitDuration)
 
-	klog.Fatal(http.ListenAndServe(":6060", nil))
+	srv := http.Server{Addr: ":6060"}
+	closeSignalChan := make(chan os.Signal, 1)
+	signal.Notify(
+		closeSignalChan,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+
+	// gracefully shutdown the server
+	go func() {
+		sig := <-closeSignalChan
+		klog.V(1).Infof("got %s signal, exit.\n", sig)
+		if err := srv.Shutdown(context.Background()); err != nil {
+			klog.Fatal(err)
+		}
+		close(closeSignalChan)
+	}()
+
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		klog.Fatal(err)
+	}
 }

@@ -48,6 +48,12 @@ GINKGO_STREAM=${GINKGO_STREAM:-y}
 SKIP_GINKGO=${SKIP_GINKGO:-}
 # We don't delete namespace on failure by default for easier debugging in local development.
 DELETE_NAMESPACE_ON_FAILURE=${DELETE_NAMESPACE_ON_FAILURE:-false}
+GITHUB_RUN_ID=${GITHUB_RUN_ID:-}
+BUILD_NUMBER=${BUILD_NUMBER:-$GITHUB_RUN_ID}
+GIT_BRANCH=${GIT_BRANCH:-}
+GIT_COMMIT=${GIT_COMMIT:-}
+PR_ID=${PR_ID:-}
+CODECOV_TOKEN=${CODECOV_TOKEN:-}
 
 if [ -z "$KUBECONFIG" ]; then
     echo "error: KUBECONFIG is required"
@@ -67,6 +73,9 @@ echo "GINKGO_PARALLEL: $GINKGO_PARALLEL"
 echo "GINKGO_NO_COLOR: $GINKGO_NO_COLOR"
 echo "GINKGO_STREAM: $GINKGO_STREAM"
 echo "DELETE_NAMESPACE_ON_FAILURE: $DELETE_NAMESPACE_ON_FAILURE"
+echo "GIT_BRANCH: $GIT_BRANCH"
+echo "GIT_COMMIT: $GIT_COMMIT"
+echo "PR_ID: $PR_ID"
 
 function e2e::__wait_for_ds() {
     local ns="$1"
@@ -329,6 +338,7 @@ e2e_args=(
     /usr/local/bin/ginkgo
     ${ginkgo_args[@]:-}
     /usr/local/bin/e2e.test
+    -test.coverprofile=/tmp/e2e.coverage.txt
     --
     --clean-start=true
     --delete-namespace-on-failure="${DELETE_NAMESPACE_ON_FAILURE}"
@@ -356,6 +366,11 @@ docker_args=(
     --env KUBECONFIG=/etc/kubernetes/admin.conf
     --env KUBECONTEXT=$KUBECONTEXT
     --env KUBE_SSH_USER=$KUBE_SSH_USER
+    --env BUILD=$BUILD_NUMBER
+    --env BRANCH=$GIT_BRANCH
+    --env COMMIT=$GIT_COMMIT
+    --env PR=$PR_ID
+    --env CODECOV_TOKEN=$CODECOV_TOKEN
 )
 
 if [ "$PROVIDER" == "eks" ]; then

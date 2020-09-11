@@ -24,6 +24,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     ./aws/install && \
     rm -r aws awscliv2.zip
 RUN curl -L "https://github.com/jetstack/cert-manager/releases/download/v0.11.1/cert-manager.yaml" -o "/cert-manager.yaml"
+RUN curl -L "https://codecov.io/bash" -o "/codecov" && chmod 755 /codecov
 ADD minio /minio
 
 ADD tidb-operator /charts/e2e/tidb-operator

@@ -14,12 +14,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -38,20 +41,32 @@ var (
 	printVersion bool
 	port         int
 	proxyPort    int
+	flagSet      *flag.FlagSet
 )
 
 func init() {
-	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
-	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
-	flag.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")
-	flag.IntVar(&proxyPort, "proxy-port", 10262, "The port that the tidb discovery's proxy service runs on (default 10262)")
-	flag.Parse()
+	flagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagSet.BoolVar(&printVersion, "V", false, "Show version and quit")
+	flagSet.BoolVar(&printVersion, "version", false, "Show version and quit")
+	flagSet.IntVar(&port, "port", 10261, "The port that the tidb discovery's http service runs on (default 10261)")
+	flagSet.IntVar(&proxyPort, "proxy-port", 10262, "The port that the tidb discovery's proxy service runs on (default 10262)")
+
+	i := func() int {
+		for i, f := range os.Args {
+			if f == "--" {
+				return i
+			}
+		}
+		return 0
+	}()
+
+	flagSet.Parse(os.Args[i+1:])
 }
 
 func main() {
 	if printVersion {
 		version.PrintVersionInfo()
-		os.Exit(0)
+		return
 	}
 	version.LogVersionInfo()
 
@@ -79,10 +94,10 @@ func main() {
 	if len(tcName) < 1 {
 		klog.Fatal("ENV TC_NAME is not set")
 	}
-	tcTls := false
+	tcTLS := false
 	tlsEnabled := os.Getenv("TC_TLS_ENABLED")
 	if tlsEnabled == strconv.FormatBool(true) {
-		tcTls = true
+		tcTLS = true
 	}
 
 	go wait.Forever(func() {
@@ -94,9 +109,29 @@ func main() {
 	go wait.Forever(func() {
 		addr := fmt.Sprintf("0.0.0.0:%d", proxyPort)
 		klog.Infof("starting TiDB Proxy server, listening on %s", addr)
-		proxyServer := server.NewProxyServer(tcName, tcTls)
+		proxyServer := server.NewProxyServer(tcName, tcTLS)
 		proxyServer.ListenAndServe(addr)
 	}, 5*time.Second)
 
-	klog.Fatal(http.ListenAndServe(":6060", nil))
+	srv := http.Server{Addr: ":6060"}
+	closeSignalChan := make(chan os.Signal, 1)
+	signal.Notify(
+		closeSignalChan,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+
+	// gracefully shutdown the server
+	go func() {
+		sig := <-closeSignalChan
+		klog.V(1).Infof("got %s signal, exit.\n", sig)
+		if err := srv.Shutdown(context.Background()); err != nil {
+			klog.Fatal(err)
+		}
+		close(closeSignalChan)
+	}()
+
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		klog.Fatal(err)
+	}
 }

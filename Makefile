@@ -19,7 +19,9 @@ GO_BUILD := $(GO) build -trimpath
 DOCKER_REGISTRY ?= localhost:5000
 DOCKER_REPO ?= ${DOCKER_REGISTRY}/pingcap
 IMAGE_TAG ?= latest
-TEST_COVER_PACKAGES:=go list ./cmd/backup-manager/app/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+TEST_COVER_PACKAGES:=go list ./cmd/... ./pkg/... | grep -vE "pkg/client" | grep -vE "pkg/tkctl" | grep -vE "pkg/apis" | sed 's|github.com/pingcap/tidb-operator/|./|' | tr '\n' ','
+
+GOTEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
 
 default: build
 
@@ -33,25 +35,41 @@ docker:
 else
 docker: build
 endif
+ifeq ($(E2E),y)
+	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" -f images/tidb-operator/Dockerfile.e2e images/tidb-operator
+else
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" images/tidb-operator
+endif
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
 
 build: controller-manager scheduler discovery admission-webhook backup-manager
 
 controller-manager:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go
+ifeq ($(E2E),y)
+	$(GOTEST) -c -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager ./cmd/controller-manager
+else
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager ./cmd/controller-manager
+endif
 
 scheduler:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler cmd/scheduler/main.go
+ifeq ($(E2E),y)
+	$(GOTEST) -c -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler ./cmd/scheduler
+else
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-scheduler ./cmd/scheduler
+endif
 
 discovery:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery cmd/discovery/main.go
+ifeq ($(E2E),y)
+	$(GOTEST) -c -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery ./cmd/discovery
+else
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-discovery ./cmd/discovery
+endif
 
 admission-webhook:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook cmd/admission-webhook/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-admission-webhook ./cmd/admission-webhook
 
 backup-manager:
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/tidb-backup-manager cmd/backup-manager/main.go
+	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-backup-manager/bin/tidb-backup-manager ./cmd/backup-manager
 
 ifeq ($(NO_BUILD),y)
 backup-docker:
@@ -83,7 +101,7 @@ endif
 
 e2e-build:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
-	$(GO) test -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
+	$(GOTEST) -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/mock-prometheus ./tests/cmd/mock-monitor
@@ -117,7 +135,7 @@ fault-trigger:
 ifeq ($(GO_COVER),y)
 test:
 	@echo "Run unit tests"
-	@go test -cover ./cmd/backup-manager/app/... ./pkg/... -coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic && echo -e "\nUnit tests run successfully!"
+	@go test -cover -covermode=atomic -coverprofile=coverage.txt -coverpkg=$$($(TEST_COVER_PACKAGES)) ./cmd/backup-manager/app/... ./pkg/... && echo -e "\nUnit tests run successfully!"
 else
 test:
 	@echo "Run unit tests"
@@ -126,7 +144,7 @@ endif
 
 ALL_CHECKS = EOF codegen terraform boilerplate openapi-spec crd-groups spelling
 
-check: $(addprefix check-,$(ALL_CHECKS)) lint tidy 
+check: $(addprefix check-,$(ALL_CHECKS)) lint tidy
 
 check-%:
 	./hack/verify-$*.sh

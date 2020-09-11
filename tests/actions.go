@@ -952,12 +952,12 @@ func (oa *operatorActions) CleanTidbClusterOrDie(info *TidbClusterConfig) {
 func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error {
 	klog.Infof("checking tidb cluster [%s/%s] status", info.Namespace, info.ClusterName)
 	if info.Clustrer != nil {
-		return oa.crdUtil.WaitForTidbClusterReady(info.Clustrer, 120*time.Minute, 1*time.Minute)
+		return oa.crdUtil.WaitForTidbClusterReady(info.Clustrer, 5*time.Minute, 1*time.Minute)
 	}
 
 	ns := info.Namespace
 	tcName := info.ClusterName
-	if err := wait.Poll(oa.pollInterval, 120*time.Minute, func() (bool, error) {
+	if err := wait.Poll(oa.pollInterval, 10*time.Minute, func() (bool, error) {
 		var tc *v1alpha1.TidbCluster
 		var err error
 		if tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Get(tcName, metav1.GetOptions{}); err != nil {
@@ -1035,7 +1035,7 @@ func (oa *operatorActions) CheckTidbClusterStatus(info *TidbClusterConfig) error
 		return true, nil
 	}); err != nil {
 		klog.Errorf("check tidb cluster status failed: %s", err.Error())
-		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 120 minutes", ns, tcName)
+		return fmt.Errorf("failed to waiting for tidbcluster %s/%s ready in 10 minutes", ns, tcName)
 	}
 
 	return nil

@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/utils/pointer"
 )
 
 // OperatorKillerConfig describes configuration for operator killer.
@@ -79,7 +80,9 @@ func (k *OperatorKiller) Run(stopCh <-chan struct{}) {
 				framework.Logf("pod %s/%s is not ready or crashed before, skip deleting", pod.Namespace, pod.Name)
 				continue
 			}
-			err = k.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+			err = k.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{
+				GracePeriodSeconds: pointer.Int64Ptr(60),
+			})
 			if err != nil {
 				framework.Logf("failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 			} else {

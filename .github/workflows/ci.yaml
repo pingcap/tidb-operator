@@ -5,6 +5,9 @@ on:
     branches:
     - master
     - release-*
+  push:
+    branches:
+      - ci-*
 
 jobs:
 
@@ -41,7 +44,7 @@ jobs:
         elif [[ "$job" == "build" ]]; then
           make docker e2e-docker cli debug-build-docker
         elif [[ "$job" == "test" ]]; then
-          make test GOFLAGS=-race GO_COVER=y
+          make test GOFLAGS='-race' GO_COVER=y
         else
           make $job
         fi

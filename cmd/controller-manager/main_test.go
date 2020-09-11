@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2020 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,9 @@
 package main
 
 import (
-	"os"
-
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app"
+	"testing"
 )
 
-func main() {
-	if err := app.Run(); err != nil {
-		os.Exit(1)
-	}
+func TestMain(t *testing.T) {
+	main()
 }

@@ -28,6 +28,7 @@ echo "info: create a Kubernetes cluster"
 $KIND_BIN create cluster
 
 echo "info: start tidb-operator"
+hack/e2e-patch.sh
 hack/local-up-operator.sh
 
 echo "info: testing examples"

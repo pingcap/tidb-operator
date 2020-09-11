@@ -14,10 +14,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -34,27 +37,39 @@ import (
 var (
 	printVersion bool
 	port         int
+	flagSet      *flag.FlagSet
 )
 
 func init() {
-	flag.BoolVar(&printVersion, "V", false, "Show version and quit")
-	flag.BoolVar(&printVersion, "version", false, "Show version and quit")
-	flag.IntVar(&port, "port", 10262, "The port that the tidb scheduler's http service runs on (default 10262)")
-	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
-	flag.Parse()
+	flagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagSet.BoolVar(&printVersion, "V", false, "Show version and quit")
+	flagSet.BoolVar(&printVersion, "version", false, "Show version and quit")
+	flagSet.IntVar(&port, "port", 10262, "The port that the tidb scheduler's http service runs on (default 10262)")
+	features.DefaultFeatureGate.AddFlag(flagSet)
+
+	i := func() int {
+		for i, f := range os.Args {
+			if f == "--" {
+				return i
+			}
+		}
+		return 0
+	}()
+
+	flagSet.Parse(os.Args[i+1:])
 }
 
 func main() {
 	if printVersion {
 		version.PrintVersionInfo()
-		os.Exit(0)
+		return
 	}
 	version.LogVersionInfo()
 
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	flag.CommandLine.VisitAll(func(flag *flag.Flag) {
+	flagSet.VisitAll(func(flag *flag.Flag) {
 		klog.V(1).Infof("FLAG: --%s=%q", flag.Name, flag.Value)
 	})
 
@@ -74,5 +89,26 @@ func main() {
 	go wait.Forever(func() {
 		server.StartServer(kubeCli, cli, port)
 	}, 5*time.Second)
-	klog.Fatal(http.ListenAndServe(":6060", nil))
+
+	srv := http.Server{Addr: ":6060"}
+	closeSignalChan := make(chan os.Signal, 1)
+	signal.Notify(
+		closeSignalChan,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+
+	// gracefully shutdown the server
+	go func() {
+		sig := <-closeSignalChan
+		klog.V(1).Infof("got %s signal, exit.\n", sig)
+		if err := srv.Shutdown(context.Background()); err != nil {
+			klog.Fatal(err)
+		}
+		close(closeSignalChan)
+	}()
+
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		klog.Fatal(err)
+	}
 }

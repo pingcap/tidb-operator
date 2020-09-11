@@ -15,6 +15,7 @@ package controller
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -73,6 +74,8 @@ type CLIConfig struct {
 	// PodWebhookEnabled is the key to indicate whether pod admission
 	// webhook is set up.
 	PodWebhookEnabled bool
+	// FlagSet is the command flags for the binary
+	FlagSet *flag.FlagSet
 }
 
 // DefaultCLIConfig returns the default command line configuration
@@ -97,27 +100,43 @@ func DefaultCLIConfig() *CLIConfig {
 	}
 }
 
-// AddFlag adds a flag for setting global feature gates to the specified FlagSet.
-func (c *CLIConfig) AddFlag(_ *flag.FlagSet) {
-	flag.BoolVar(&c.PrintVersion, "V", false, "Show version and quit")
-	flag.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
-	flag.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
-	flag.BoolVar(&c.ClusterScoped, "cluster-scoped", c.ClusterScoped, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
-	flag.BoolVar(&c.AutoFailover, "auto-failover", c.AutoFailover, "Auto failover")
-	flag.DurationVar(&c.PDFailoverPeriod, "pd-failover-period", c.PDFailoverPeriod, "PD failover period default(5m)")
-	flag.DurationVar(&c.TiKVFailoverPeriod, "tikv-failover-period", c.TiKVFailoverPeriod, "TiKV failover period default(5m)")
-	flag.DurationVar(&c.TiFlashFailoverPeriod, "tiflash-failover-period", c.TiFlashFailoverPeriod, "TiFlash failover period default(5m)")
-	flag.DurationVar(&c.TiDBFailoverPeriod, "tidb-failover-period", c.TiDBFailoverPeriod, "TiDB failover period")
-	flag.DurationVar(&c.MasterFailoverPeriod, "dm-master-failover-period", c.MasterFailoverPeriod, "dm-master failover period")
-	flag.DurationVar(&c.WorkerFailoverPeriod, "dm-worker-failover-period", c.WorkerFailoverPeriod, "dm-worker failover period")
-	flag.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
-	flag.BoolVar(&c.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
-	flag.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
+// InitFlags adds flags for setting global feature gates to the FlagSet.
+func (c *CLIConfig) InitFlags() *CLIConfig {
+	c.FlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	c.FlagSet.BoolVar(&c.PrintVersion, "V", false, "Show version and quit")
+	c.FlagSet.BoolVar(&c.PrintVersion, "version", false, "Show version and quit")
+	c.FlagSet.IntVar(&c.Workers, "workers", c.Workers, "The number of workers that are allowed to sync concurrently. Larger number = more responsive management, but more CPU (and network) load")
+	c.FlagSet.BoolVar(&c.ClusterScoped, "cluster-scoped", c.ClusterScoped, "Whether tidb-operator should manage kubernetes cluster wide TiDB Clusters")
+	c.FlagSet.BoolVar(&c.AutoFailover, "auto-failover", c.AutoFailover, "Auto failover")
+	c.FlagSet.DurationVar(&c.PDFailoverPeriod, "pd-failover-period", c.PDFailoverPeriod, "PD failover period default(5m)")
+	c.FlagSet.DurationVar(&c.TiKVFailoverPeriod, "tikv-failover-period", c.TiKVFailoverPeriod, "TiKV failover period default(5m)")
+	c.FlagSet.DurationVar(&c.TiFlashFailoverPeriod, "tiflash-failover-period", c.TiFlashFailoverPeriod, "TiFlash failover period default(5m)")
+	c.FlagSet.DurationVar(&c.TiDBFailoverPeriod, "tidb-failover-period", c.TiDBFailoverPeriod, "TiDB failover period")
+	c.FlagSet.DurationVar(&c.MasterFailoverPeriod, "dm-master-failover-period", c.MasterFailoverPeriod, "dm-master failover period")
+	c.FlagSet.DurationVar(&c.WorkerFailoverPeriod, "dm-worker-failover-period", c.WorkerFailoverPeriod, "dm-worker failover period")
+	c.FlagSet.DurationVar(&c.ResyncDuration, "resync-duration", c.ResyncDuration, "Resync time of informer")
+	c.FlagSet.BoolVar(&c.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
+	c.FlagSet.StringVar(&c.TiDBBackupManagerImage, "tidb-backup-manager-image", c.TiDBBackupManagerImage, "The image of backup manager tool")
 	// TODO: actually we just want to use the same image with tidb-controller-manager, but DownwardAPI cannot get image ID, see if there is any better solution
-	flag.StringVar(&c.TiDBDiscoveryImage, "tidb-discovery-image", c.TiDBDiscoveryImage, "The image of the tidb discovery service")
-	flag.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
+	c.FlagSet.StringVar(&c.TiDBDiscoveryImage, "tidb-discovery-image", c.TiDBDiscoveryImage, "The image of the tidb discovery service")
+	c.FlagSet.BoolVar(&c.PodWebhookEnabled, "pod-webhook-enabled", false, "Whether Pod admission webhook is enabled")
+
+	i := func() int {
+		for i, f := range os.Args {
+			if f == "--" {
+				return i
+			}
+		}
+		return 0
+	}()
+
+	c.FlagSet.Parse(os.Args[i+1:])
+
+	return c
 }
 
+// Controls is a collection of controller interfaces
 type Controls struct {
 	JobControl         JobControlInterface
 	ConfigMapControl   ConfigMapControlInterface

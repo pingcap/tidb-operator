@@ -25,11 +25,27 @@ if (!env.DEFAULT_E2E_ARGS) {
     env.DEFAULT_E2E_ARGS = ""
 }
 
+if (!env.ghprbSourceBranch) {
+    SRC_BRANCH = ""
+} else {
+    SRC_BRANCH = env.ghprbSourceBranch
+}
+
+if (!env.ghprbActualCommit) {
+    GIT_COMMIT = ""
+} else {
+    GIT_COMMIT = env.ghprbActualCommit
+}
+
+if (env.ghprbPullId) {
+    PR_ID = env.ghprbPullId
+}
+
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
         string(name: 'GIT_REF', defaultValue: env.DEFAULT_GIT_REF, description: 'git ref spec to checkout, e.g. master, release-1.1'),
-        string(name: 'RELEASE_VER', defaultValue: '', description: "the version string in released tarball"),
+        string(name: 'RELEASE_VER', defaultValue: '', description: "the version string in released tarball, e.g. v1.2-nightly"),
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
         string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes'),
         string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'"),
@@ -186,12 +202,21 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             """
                         }
                         stage('Run') {
-                            sh """#!/bin/bash
-                            export GOPATH=${WORKSPACE}/go
-                            export ARTIFACTS=${ARTIFACTS}
-                            export RUNNER_SUITE_NAME=${name}
-                            ${code}
-                            """
+                            withCredentials([
+                            string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
+                        ]) {
+                                sh """#!/bin/bash
+                                export GOPATH=${WORKSPACE}/go
+                                export ARTIFACTS=${ARTIFACTS}
+                                export RUNNER_SUITE_NAME=${name}
+                                export BUILD_NUMBER=${BUILD_NUMBER}
+                                export SRC_BRANCH=${SRC_BRANCH}
+                                export GIT_COMMIT=${GIT_COMMIT}
+                                export PR_ID=${PR_ID}
+                                export CODECOV_TOKEN=${CODECOV_TOKEN}
+                                ${code}
+                                """
+                            }
                         }
                     }
                 } finally {
@@ -219,7 +244,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
 
 
 try {
-
     def GITHASH
     def IMAGE_TAG
 
@@ -290,7 +314,7 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: building"
-                            make build e2e-build
+                            E2E=y make build e2e-build
                             if [ "${GIT_REF}" == "master" ]; then
                                 echo "info: run unit tests and report coverage results for master branch"
                                 make test GOFLAGS='-race' GO_COVER=y
@@ -301,15 +325,27 @@ try {
                     }
 
                     stage("Prepare for e2e") {
-                        withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        withCredentials([
+                            usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                            string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
+                        ]) {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: logging into hub.pingcap.net"
                             docker login -u \$USERNAME --password-stdin hub.pingcap.net <<< \$PASSWORD
+
                             echo "info: build and push images for e2e"
-                            NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
+                            echo "info: - patch charts to enable coverage profile"
+                            BUILD_NUMBER=${BUILD_NUMBER} SRC_BRANCH=${SRC_BRANCH} GIT_COMMIT=${GIT_COMMIT} PR_ID=${PR_ID} CODECOV_TOKEN=${CODECOV_TOKEN} \
+                            ./hack/e2e-patch.sh || echo "warn: hack/e2e-patch.sh not found, ignore and continue"
+
+                            echo "info: - build and push images for e2e"
+                            E2E=y NO_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} make docker-push e2e-docker-push
+
                             echo "info: download binaries for e2e"
-                            SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
+                            SRC_BRANCH=${SRC_BRANCH} GIT_COMMIT=${GIT_COMMIT} PR_ID=${PR_ID} \
+                            E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y SKIP_UP=y SKIP_TEST=y SKIP_DOWN=y ./hack/e2e.sh
+
                             echo "info: change ownerships for jenkins"
                             # we run as root in our pods, this is required
                             # otherwise jenkins agent will fail because of the lack of permission
@@ -323,7 +359,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=true GINKGO_NO_COLOR=y"
         build("tidb-operator", "${GLOBALS} GINKGO_NODES=${params.GINKGO_NODES} ./hack/e2e.sh -- ${params.E2E_ARGS}")
 
         if (GIT_REF ==~ /^(master|)$/ || GIT_REF ==~ /^(release-.*)$/

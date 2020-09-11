@@ -142,7 +142,7 @@ fi
 
 if [ -z "$SKIP_IMAGE_BUILD" ]; then
     echo "info: building docker images"
-    DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
+    E2E=y DOCKER_REGISTRY=$DOCKER_REGISTRY IMAGE_TAG=$IMAGE_TAG make docker
 else
     echo "info: skip building docker images"
 fi
