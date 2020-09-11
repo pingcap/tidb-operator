@@ -1217,9 +1217,10 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			heterogeneousTc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 			err = genericCli.Create(context.TODO(), heterogeneousTc)
 			framework.ExpectNoError(err)
+			ginkgo.By("Waiting heterogeneous tls tidb cluster ready")
 			err = oa.WaitForTidbClusterReady(heterogeneousTc, 30*time.Minute, 15*time.Second)
 			framework.ExpectNoError(err)
-			ginkgo.By("Checking heterogeneous tidb cluster status")
+			ginkgo.By("Checking heterogeneous tls tidb cluster status")
 			err = wait.PollImmediate(15*time.Second, 15*time.Minute, func() (bool, error) {
 				var err error
 				if _, err = cli.PingcapV1alpha1().TidbClusters(ns).Get(heterogeneousTc.Name, metav1.GetOptions{}); err != nil {
