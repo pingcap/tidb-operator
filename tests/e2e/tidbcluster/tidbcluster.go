@@ -1143,7 +1143,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 		ginkgo.It("TLS for MySQL Client and TLS between Heterogeneous TiDB components", func() {
 			tcName := "tls"
-			heterogeneousTcName := "heterogeneous"
+			heterogeneousTcName := "heterogeneousTls"
 
 			ginkgo.By("Installing tidb issuer")
 			err := installTiDBIssuer(ns, tcName)
