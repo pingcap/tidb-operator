@@ -49,8 +49,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 		changed          bool
 	}
 
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
+	testFn := func(test testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 		test.update(tc)
 
@@ -120,7 +119,7 @@ func TestPDScalerScaleOut(t *testing.T) {
 			pvcDeleteErr:     false,
 			statusSyncFailed: false,
 			err:              false,
-			changed:          false,
+			changed:          true,
 		},
 		{
 			name:             "cache don't have pvc",
@@ -226,8 +225,10 @@ func TestPDScalerScaleOut(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
 	}
 }
 
@@ -246,8 +247,7 @@ func TestPDScalerScaleIn(t *testing.T) {
 		isMemberStillRemain bool
 	}
 
-	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
+	testFn := func(test testcase, t *testing.T) {
 		tc := newTidbClusterForPD()
 
 		if test.pdUpgrading {
@@ -346,14 +346,14 @@ func TestPDScalerScaleIn(t *testing.T) {
 			isMemberStillRemain: false,
 		},
 		{
-			name:                "pd is upgrading",
+			name:                "able to scale in while pd is upgrading",
 			pdUpgrading:         true,
 			hasPVC:              true,
 			pvcUpdateErr:        false,
 			deleteMemberErr:     false,
 			statusSyncFailed:    false,
 			err:                 false,
-			changed:             false,
+			changed:             true,
 			isLeader:            false,
 			isMemberStillRemain: false,
 		},
@@ -419,8 +419,10 @@ func TestPDScalerScaleIn(t *testing.T) {
 		},
 	}
 
-	for i := range tests {
-		testFn(&tests[i], t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
 	}
 }
 
