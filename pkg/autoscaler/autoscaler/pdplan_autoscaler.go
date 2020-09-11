@@ -261,12 +261,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		}
 
 		// Patch custom labels
-		if autoTc.Labels == nil {
-			autoTc.Labels = map[string]string{}
-		}
-		autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
-		autoTc.Labels[label.AutoComponentLabelKey] = component
-		autoTc.Labels[label.AutoScalingGroupLabelKey] = group
+		patchAutoscalingLabels(autoTc, tac, component, group)
 
 		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {

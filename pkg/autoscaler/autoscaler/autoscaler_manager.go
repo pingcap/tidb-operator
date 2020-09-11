@@ -108,7 +108,7 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	defaultTAC(tac)
-
+	// TODO: sync from external endpoints if specified
 	// Construct PD Auto-scaling strategy
 	strategy := autoscalerToStrategy(tac)
 
