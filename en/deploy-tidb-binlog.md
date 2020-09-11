@@ -42,7 +42,7 @@ TiDB Binlog is disabled in the TiDB cluster by default. To create a TiDB cluster
 
     Edit `version`, `replicas`, `storageClassName`, and `requests.storage` according to your cluster.
 
-    To deploy the enterprise version of Pump, edit the YAML file above to set `spec.pump.baseImage` to the enterprise image (`pingcap/tidb-binlog-enterprise`).
+    To deploy Enterprise Edition of Pump, edit the YAML file above to set `spec.pump.baseImage` to the enterprise image (`pingcap/tidb-binlog-enterprise`).
 
     For example:
 
@@ -203,7 +203,7 @@ To deploy multiple drainers using the `tidb-drainer` Helm chart for a TiDB clust
 
     For complete configuration details, refer to [TiDB Binlog Drainer Configurations in Kubernetes](configure-tidb-binlog-drainer.md).
 
-    To deploy the enterprise version of Drainer, edit the YAML file above to set `baseImage` to the enterprise image (`pingcap/tidb-binlog-enterprise`).
+    To deploy Enterprise Edition of Drainer, edit the YAML file above to set `baseImage` to the enterprise image (`pingcap/tidb-binlog-enterprise`).
 
     For example:
 

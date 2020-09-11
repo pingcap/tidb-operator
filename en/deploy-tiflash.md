@@ -41,7 +41,7 @@ spec:
       storageClassName: local-storage
 ```
 
-To deploy the enterprise version of TiFlash, edit the `dm.yaml` file above to set `spec.tiflash.baseImage` to the enterprise image (`pingcap/tiflash-enterprise`).
+To deploy Enterprise Edition of TiFlash, edit the `dm.yaml` file above to set `spec.tiflash.baseImage` to the enterprise image (`pingcap/tiflash-enterprise`).
 
 For example:
 

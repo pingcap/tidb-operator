@@ -180,7 +180,7 @@ This section describes how to deploy a TiDB cluster.
 
     To complete the CR file configuration, refer to [TiDB Operator API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure Cluster using TidbCluster](configure-a-tidb-cluster.md).
 
-    To deploy the enterprise version of TiDB/PD/TiKV, edit the `db.yaml` file to set `spec.<tidb/pd/tikv>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv>-enterprise`).
+    To deploy Enterprise Edition of TiDB/PD/TiKV, edit the `db.yaml` file to set `spec.<tidb/pd/tikv>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv>-enterprise`).
 
     For example:
 

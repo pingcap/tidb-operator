@@ -23,7 +23,7 @@ If the TiDB cluster is deployed directly using TidbCluster CR, or deployed using
 
     > **Note:**
     >
-    > If you want to upgrade to the enterprise version, edit the `db.yaml` file to set `spec.<tidb/pd/tikv/tiflash/ticdc/pump>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv/tiflash/ticdc/tidb-binlog>-enterprise`).
+    > If you want to upgrade to Enterprise Edition, edit the `db.yaml` file to set `spec.<tidb/pd/tikv/tiflash/ticdc/pump>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv/tiflash/ticdc/tidb-binlog>-enterprise`).
     >
     > For example, change `spec.pd.baseImage` from `pingcap/pd` to `pingcap/pd-enterprise`.
 
@@ -85,7 +85,7 @@ If you continue to manage your cluster using Helm, refer to the following steps 
 
     > **Note:**
     >
-    > If you want to upgrade to the enterprise version, set the value of `<tidb/pd/tikv>.image` to the enterprise image.
+    > If you want to upgrade to Enterprise Edition, set the value of `<tidb/pd/tikv>.image` to the enterprise image.
     >
     > For example, change `pd.image` from `pingcap/pd:v4.0.4` to `pingcap/pd-enterprise:v4.0.4`.
 

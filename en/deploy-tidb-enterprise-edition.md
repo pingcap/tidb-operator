@@ -44,7 +44,7 @@ spec:
 
 + If you are deploying a new cluster:
 
-    Refer to [Configure a TiDB Cluster in Kubernetes](configure-a-tidb-cluster.md) to configure `tidb-cluster.yaml` and the enterprise edition image as described above, and run the `kubectl apply -f tidb-cluster.yaml -n ${namespace}` command to deploy the TiDB Enterprise Edition cluster and related tools.
+    Refer to [Configure a TiDB Cluster in Kubernetes](configure-a-tidb-cluster.md) to configure `tidb-cluster.yaml` and Enterprise Edition image as described above, and run the `kubectl apply -f tidb-cluster.yaml -n ${namespace}` command to deploy the TiDB Enterprise Edition cluster and related tools.
 
 + If you want to switch an existing Community Edition cluster to Enterprise Edition:
 

@@ -6,181 +6,84 @@ aliases: ['/docs/tidb-in-kubernetes/dev/deploy-on-aws-eks/']
 
 # Deploy TiDB on AWS EKS
 
-This document describes how to deploy a TiDB cluster on AWS EKS with your laptop (Linux or macOS) for development or testing.
+This document describes how to deploy a TiDB cluster on AWS Elastic Kubernetes Service (EKS).
 
 ## Prerequisites
 
 Before deploying a TiDB cluster on AWS EKS, make sure the following requirements are satisfied:
 
-* [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) >= 1.16.73, to control AWS resources
+* Install [Helm](https://helm.sh/docs/intro/install/): used for deploying TiDB Operator.
+* Complete all operations in [Getting started with eksctl](https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html).
 
-    You must [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) `awscli` before it can interact with AWS. The fastest way is using the `aws configure` command:
+    This guide includes the following contents:
 
-    {{< copyable "shell-regular" >}}
+    * Install and configure `awscli`.
+    * Install and configure `eksctl` that is used for creating Kubernetes clusters.
+    * Install `kubectl`.
 
-    ```shell
-    aws configure
-    ```
-
-    Replace AWS Access Key ID and AWS Secret Access Key with your own keys:
-
-    ```
-    AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
-    AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-    Default region name [None]: us-west-2
-    Default output format [None]: json
-    ```
-
-    > **Note:**
-    >
-    > The access key must have at least permissions to create VPC, EBS, EC2, and role.
-
-* [terraform](https://learn.hashicorp.com/terraform/getting-started/install.html) >= 0.12
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) >= 1.12
-* [helm](https://helm.sh/docs/using_helm/#installing-the-helm-client) >= 2.11.0 && < 3.0.0 && != [2.16.4](https://github.com/helm/helm/issues/7797)
-* [jq](https://stedolan.github.io/jq/download/)
-* [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html) installed in `PATH`, to authenticate with AWS
-
-    The easiest way to install `aws-iam-authenticator` is to download the prebuilt binary as shown below:
-
-    Download the binary for Linux:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/linux/amd64/aws-iam-authenticator
-    ```
-
-    Or, download binary for macOS:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/darwin/amd64/aws-iam-authenticator
-    ```
-
-    Then execute the following commands:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    chmod +x ./aws-iam-authenticator && \
-    sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
-    ```
+> **Note:**
+>
+> The operations described in this document requires at least the [minumum privileges needed by `eksctl`](https://eksctl.io/usage/minimum-iam-policies/) and the [services privileges needed to create a Linux bastion host](https://docs.aws.amazon.com/quickstart/latest/linux-bastion/architecture.html#aws-services).
 
 ## Deploy
 
 This section describes how to deploy EKS, TiDB operator, the TiDB cluster, and the monitoring component.
 
-### Deploy EKS, TiDB Operator, and TiDB cluster node pool
+### Create EKS and the node pool
 
-Use the following commands to deploy EKS, TiDB Operator, and the TiDB cluster node pool.
+{{< copyable "shell-regular" >}}
 
-Get the code from Github:
+```yaml
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: <clusterName>
+  region: us-west-2
+
+nodeGroups:
+  - name: admin
+    desiredCapacity: 1
+    labels:
+      dedicated: admin
+
+  - name: tidb
+    desiredCapacity: 2
+    labels:
+      dedicated: tidb
+    taints:
+      dedicated: tidb:NoSchedule
+
+  - name: pd
+    desiredCapacity: 3
+    labels:
+      dedicated: pd
+    taints:
+      dedicated: pd:NoSchedule
+
+  - name: tikv
+    desiredCapacity: 3
+    labels:
+      dedicated: tikv
+    taints:
+      dedicated: tikv:NoSchedule
+```
+
+Save the configuration above as `cluster.yaml`, and replace `<clusterName>` with your desired cluster name. Execute the following command to create the cluster:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-git clone --depth=1 https://github.com/pingcap/tidb-operator && \
-cd tidb-operator/deploy/aws
+eksctl create cluster -f cluster.yaml
 ```
-
-The EKS deployment scripts provide two options:
-
-* Deploy a cluster for demo or quick experience
-
-    The demo deployment creates a new VPC, a t2.micro instance as the bastion host and an EKS cluster with the following Amazon EC2 instances as worker nodes:
-    
-    * 1 c5.large instance for PD
-    * 3 m5.large instances for TiKV
-    * 1 c5.large instance for TiDB
-    * 1 c5.large instance for monitor
-
-    To use the demo setup, run the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    cp demo.tfvars terraform.tfvars
-    ```
-
-* Deploy a cluster for the production environment
-
-    The production setup creates a new VPC, a t2.micro instance as the bastion host and an EKS cluster with the following Amazon EC2 instances as worker nodes:
-
-    * 3 c5.xlarge instances for PD
-    * 3 m5.2xlarge instances for TiKV
-    * 2 c5.2xlarge instances for TiDB
-    * 1 c5.2xlarge instance for monitor
-
-    To use the production setup, run the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    cp prod.tfvars terraform.tfvars
-    ```
-
-In addition to the setups mentioned above, you can also modify `terraform.tfvars` to set the value of variables and configure the cluster as needed. See the configurable variables and their descriptions in `variables.tf`.
-
-The following is an example of how to configure the EKS cluster name, the TiDB cluster name, the TiDB Operator version, and the number of PD, TiKV and TiDB nodes:
-
-```
-default_cluster_pd_count   = 3
-default_cluster_tikv_count = 3
-default_cluster_tidb_count = 2
-default_cluster_name = "tidb"
-eks_name = "my-cluster"
-operator_version = "v1.1.4"
-```
-
-* To deploy TiFlash in the cluster, set `create_tiflash_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiFlash node pool by modifying `cluster_tiflash_count` and `cluster_tiflash_instance_type`. By default, the value of `cluster_tiflash_count` is `2`, and the value of `cluster_tiflash_instance_type` is `i3.4xlarge`.
-
-* To deploy TiCDC in the cluster, set `create_cdc_node_pool = true` in `terraform.tfvars`. You can also configure the node count and instance type of the TiCDC node pool by modifying `cluster_cdc_count` and `cluster_cdc_instance_type`. By default, the value of `cluster_cdc_count` is `3`, and the value of `cluster_cdc_instance_type` is `c5.2xlarge`.
 
 > **Note:**
 >
-> Check the `operator_version` in the `variables.tf` file for the default TiDB Operator version of the current scripts. If the default version is not your desired one, configure `operator_version` in `terraform.tfvars`.
+> - After executing the command above, you need to wait until the EKS cluster is successfully created and the node group is created and added in the EKS cluster. This process might take 5 to 10 minutes.
+> - For more cluster configuration, refer to [`eksctl` documentation](https://eksctl.io/usage/creating-and-managing-clusters/#using-config-files).
 
-After configuration, execute the `terraform` command to initialize and deploy the cluster:
+### Deploy TiDB Operator
 
-{{< copyable "shell-regular" >}}
-
-```shell
-terraform init
-```
-
-{{< copyable "shell-regular" >}}
-
-```shell
-terraform apply
-```
-
-It might take 10 minutes or more to finish the process. After `terraform apply` is executed successfully, some useful information is printed to the console.
-
-A successful deployment will give the output like:
-
-```
-Apply complete! Resources: 67 added, 0 changed, 0 destroyed.
-
-Outputs:
-
-bastion_ip = [
-  "34.219.204.217",
-]
-default-cluster_monitor-dns = not_created
-default-cluster_tidb-dns = not_created
-eks_endpoint = https://9A9A5ABB8303DDD35C0C2835A1801723.yl4.us-west-2.eks.amazonaws.com
-eks_version = 1.12
-kubeconfig_filename = credentials/kubeconfig_my-cluster
-region = us-west-2
-```
-
-You can use the `terraform output` command to get the output again.
-
-> **Note:**
->
-> EKS versions earlier than 1.14 do not support auto enabling cross-zone load balancing via Network Load Balancer (NLB). Therefore, unbalanced pressure distributed among TiDB instances can be expected in default settings. It is strongly recommended that you refer to [AWS Documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/enable-disable-crosszone-lb.html#enable-cross-zone) to manually enable cross-zone load balancing for a production environment.
+To deploy TiDB Operator in the Kubernetes cluster, refer to the [*Deploy TiDB Operator* section](get-started.md#deploy-tidb-operator) in Getting Started.
 
 ### Deploy TiDB cluster and monitor
 
@@ -189,99 +92,29 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cp manifests/db.yaml.example db.yaml && cp manifests/db-monitor.yaml.example db-monitor.yaml
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-cluster.yaml &&
+    curl -LO https://raw.githubusercontent.com/pingcap/tidb-operator/master/examples/aws/tidb-monitor.yaml
     ```
-
-    To complete the CR file configuration, refer to [API documentation](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure a TiDB Cluster Using TidbCluster](configure-a-tidb-cluster.md).
-
-    * To deploy TiFlash, configure `spec.tiflash` in `db.yaml` as follows:
-
-        ```yaml
-        spec:
-          ...
-          tiflash:
-            baseImage: pingcap/tiflash
-            maxFailoverCount: 3
-            nodeSelector:
-              dedicated: CLUSTER_NAME-tiflash
-            replicas: 1
-            storageClaims:
-            - resources:
-                requests:
-                  storage: 100Gi
-              storageClassName: local-storage
-            tolerations:
-            - effect: NoSchedule
-              key: dedicated
-              operator: Equal
-              value: CLUSTER_NAME-tiflash
-        ```
-
-        Modify `replicas`, `storageClaims[].resources.requests.storage`, and `storageClassName` according to your needs.
-
-        > **Warning:**
-        >
-        > Since TiDB Operator will mount PVs automatically in the **order** of the items in the `storageClaims` list, if you need to add more disks to TiFlash, make sure to append the new item only to the **end** of the original items, and **DO NOT** modify the order of the original items.
-
-    * To deploy TiCDC, configure `spec.ticdc` in `db.yaml` as follows:
-
-        ```yaml
-        spec:
-          ...
-          ticdc:
-            baseImage: pingcap/ticdc
-            nodeSelector:
-              dedicated: CLUSTER_NAME-cdc
-            replicas: 3
-            tolerations:
-            - effect: NoSchedule
-              key: dedicated
-              operator: Equal
-              value: CLUSTER_NAME-cdc
-        ```
-
-        Modify `replicas` according to your needs.
-
-    To deploy the enterprise version of TiDB/PD/TiKV/TiFlash/TiCDC, edit the `db.yaml` file to set `spec.<tidb/pd/tikv/tiflash/ticdc>.baseImage` to the enterprise image (`pingcap/<tidb/pd/tikv/tiflash/ticdc>-enterprise`).
-
-    For example:
-
-    ```yaml
-    spec:
-      ...
-      pd:
-        baseImage: pingcap/pd-enterprise
-      ...
-      tikv:
-        baseImage: pingcap/tikv-enterprise
-    ```
-
-    > **Note:**
-    >
-    > * Replace all `CLUSTER_NAME` in `db.yaml` and `db-monitor.yaml` files with `default_cluster_name` configured during EKS deployment.
-    > * Make sure that during EKS deployment, the number of PD, TiKV, TiFlash, TiCDC, or TiDB nodes is >= the value of the `replicas` field of the corresponding component in `db.yaml`.
-    > * Make sure that `spec.initializer.version` in `db-monitor.yaml` and `spec.version` in `db.yaml` are the same to ensure normal monitor display.
-    > * As the data on the instance stores on the node [does not persist](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime) during the EKS upgrade, it is not recommended to use instance stores as TiKV storage in the production environment. It is recommended to use the EBS. You can refer to [Kubernetes Documentation](https://kubernetes.io/docs/concepts/storage/storage-classes/#aws-ebs) to create the `StorageClass` as needed and modify the `spec.tikv.storageClassName` in `db.yaml`.
 
 2. Create `Namespace`:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create namespace ${namespace}
+    kubectl create namespace tidb-cluster
     ```
 
     > **Note:**
     >
-    > A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. You can give it a name that is easy to memorize, such as the same name as `default_cluster_name`.
+    > A [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) is a virtual cluster backed by the same physical cluster. This document takes `tidb-cluster` as an example. If you want to use other namespace, modify the corresponding arguments of `-n` or `--namespace`.
 
 3. Deploy the TiDB cluster:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db.yaml -n ${namespace} &&
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} create -f db-monitor.yaml -n ${namespace}
+    kubectl create -f tidb-cluster.yaml -n tidb-cluster &&
+    kubectl create -f tidb-monitor.yaml -n tidb-cluster
     ```
 
 4. View the startup status of the TiDB cluster:
@@ -289,7 +122,7 @@ You can use the `terraform output` command to get the output again.
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get pods -n ${namespace}
+    kubectl get pods -n tidb-cluster
     ```
 
     When all the Pods are in the `Running` or `Ready` state, the TiDB cluster is successfully started. For example:
@@ -300,236 +133,92 @@ You can use the `terraform output` command to get the output again.
     tidb-monitor-6fbcc68669-dsjlc     3/3     Running   0          47h
     tidb-pd-0                         1/1     Running   0          47h
     tidb-pd-1                         1/1     Running   0          46h
+    tidb-pd-2                         1/1     Running   0          46h
     tidb-tidb-0                       2/2     Running   0          47h
     tidb-tidb-1                       2/2     Running   0          46h
     tidb-tikv-0                       1/1     Running   0          47h
     tidb-tikv-1                       1/1     Running   0          47h
     tidb-tikv-2                       1/1     Running   0          47h
-    tidb-tikv-3                       1/1     Running   0          46h
     ```
-
-### Enable cross-zone load balancing for the LoadBalancer of the TiDB service
-
-Due to an [issue](https://github.com/kubernetes/kubernetes/issues/82595) of AWS Network Load Balancer (NLB), the NLB created for the TiDB service cannot automatically enable cross-zone load balancing. You can manually enable it by taking the following steps:
-
-1. Get the name of the NLB created for the TiDB service:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get svc ${default_cluster_name}-tidb -n ${namespace}
-    ```
-
-    This is an example of the output:
-
-    ```
-    kubectl --kubeconfig credentials/kubeconfig_test get svc test-tidb -n test
-    NAME        TYPE           CLUSTER-IP      EXTERNAL-IP                                                                     PORT(S)                          AGE
-    tidb-tidb   LoadBalancer   172.20.39.180   a7aa544c49f914930b3b0532022e7d3c-83c0c97d8b659075.elb.us-west-2.amazonaws.com   4000:32387/TCP,10080:31486/TCP   3m46s
-    ```
-
-    In the value of the `EXTERNAL-IP` field, the first field that is separated by `-` is the name of NLB. In the example above, the NLB name is `a7aa544c49f914930b3b0532022e7d3c`.
-
-2. Get the LoadBalancerArn for the NLB:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    aws elbv2 describe-load-balancers | grep ${LoadBalancerName}
-    ```
-
-    `${LoadBalancerName}` is the NLB name obtained in Step 1.
-
-    This is an example of the output:
-
-    ```
-    aws elbv2 describe-load-balancers | grep a7aa544c49f914930b3b0532022e7d3c
-              "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075",
-              "DNSName": "a7aa544c49f914930b3b0532022e7d3c-83c0c97d8b659075.elb.us-west-2.amazonaws.com",
-              "LoadBalancerName": "a7aa544c49f914930b3b0532022e7d3c",
-    ```
-
-    The value of the `LoadBalancerArn` field is the NLB LoadBalancerArn.
-
-3. View the NLB attributes:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    aws elbv2 describe-load-balancer-attributes --load-balancer-arn ${LoadBalancerArn}
-    ```
-
-    `${LoadBalancerArn}` is the NLB LoadBalancerArn obtained in Step 2.
-
-    This is an example of the output:
-
-    ```
-    aws elbv2 describe-load-balancer-attributes --load-balancer-arn "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075"
-    {
-      "Attributes": [
-          {
-              "Key": "access_logs.s3.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "load_balancing.cross_zone.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "access_logs.s3.prefix",
-              "Value": ""
-          },
-          {
-              "Key": "deletion_protection.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "access_logs.s3.bucket",
-              "Value": ""
-          }
-      ]
-    }
-    ```
-
-    If the value of `load_balancing.cross_zone.enabled` is `false`, continue the next step to enable cross-zone load balancing.
-
-4. Enable cross-zone load balancing for NLB:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    aws elbv2 modify-load-balancer-attributes --load-balancer-arn ${LoadBalancerArn} --attributes Key=load_balancing.cross_zone.enabled,Value=true
-    ```
-
-    `${LoadBalancerArn}` is the NLB LoadBalancerArn obtained in Step 2.
-
-    This is an example of the output:
-
-    ```
-    aws elbv2 modify-load-balancer-attributes --load-balancer-arn "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075" --attributes Key=load_balancing.cross_zone.enabled,Value=true
-    {
-      "Attributes": [
-          {
-              "Key": "load_balancing.cross_zone.enabled",
-              "Value": "true"
-          },
-          {
-              "Key": "access_logs.s3.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "access_logs.s3.prefix",
-              "Value": ""
-          },
-          {
-              "Key": "deletion_protection.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "access_logs.s3.bucket",
-              "Value": ""
-          }
-      ]
-    }
-    ```
-
-5. Confirm that the NLB cross-zone load balancing attribute is enabled:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    aws elbv2 describe-load-balancer-attributes --load-balancer-arn ${LoadBalancerArn}
-    ```
-
-    `${LoadBalancerArn}` is the NLB LoadBalancerArn obtained in Step 2.
-
-    This is an example of the output:
-
-    ```
-    aws elbv2 describe-load-balancer-attributes --load-balancer-arn "arn:aws:elasticloadbalancing:us-west-2:687123456789:loadbalancer/net/a7aa544c49f914930b3b0532022e7d3c/83c0c97d8b659075"
-    {
-      "Attributes": [
-          {
-              "Key": "access_logs.s3.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "load_balancing.cross_zone.enabled",
-              "Value": "true"
-          },
-          {
-              "Key": "access_logs.s3.prefix",
-              "Value": ""
-          },
-          {
-              "Key": "deletion_protection.enabled",
-              "Value": "false"
-          },
-          {
-              "Key": "access_logs.s3.bucket",
-              "Value": ""
-          }
-      ]
-    }
-    ```
-
-    Confirm that the value of `load_balancing.cross_zone.enabled` is `true`.
 
 ## Access the database
 
-After deploying the cluster, to access the deployed TiDB cluster, use the following commands to first `ssh` into the bastion machine, and then connect it via MySQL client (replace the `${}` parts with values from the output):
+After you deploy a TiDB cluster, you can access the TiDB database via MySQL client.
+
+### Prepare a host that can access the cluster
+
+The LoadBalancer created for your TiDB cluster is an intranet LoadBalancer. You can create a [bastion host](https://aws.amazon.com/quickstart/architecture/linux-bastion/) in the cluster VPC to access the database. To create a bastion host on AWS console, refer to [AWS documentation](https://aws.amazon.com/quickstart/architecture/linux-bastion/).
+
+Select the cluster's VPC and Subnet, and verify whether the cluster name is correct in the dropdown box. You can view the cluster's VPC and Subnet by running the following command:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-ssh -i credentials/${eks_name}.pem centos@${bastion_ip}
+eksctl get cluster -n <clusterName>
 ```
 
-{{< copyable "shell-regular" >}}
+Allow the bastion host to access the Internet. Select the correct key pair so that you can log in to the host via SSH.
 
-```shell
-mysql -h ${tidb_lb} -P 4000 -u root
-```
+> **Note:**
+>
+> - In addition to the bastion host, you can also connect the existing machine to the cluster VPC by [VPC Peering](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html).
+> - If the EKS cluster is created in an existing VPC, you can use the host inside the VPC.
 
-The default value of `eks_name` is `my-cluster`. If the DNS name is not resolvable, be patient and wait a few minutes.
+### Install the MySQL client and connect
 
-`tidb_lb` is the LoadBalancer of TiDB Service. To check this value, run `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get svc ${default_cluster_name}-tidb -n ${namespace}` and view the `EXTERNAL-IP` field in the output information.
+After the bastion host is created, you can connect to the bastion host via SSH and access the TiDB cluster via the MySQL client.
 
-You can interact with the EKS cluster using `kubectl` and `helm` with the kubeconfig file `credentials/kubeconfig_${eks_name}` in the following two ways.
-
-- By specifying `--kubeconfig` argument:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace}
-    ```
+1. Connect to the bastion host via SSH:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    helm --kubeconfig credentials/kubeconfig_${eks_name} ls
+    ssh [-i /path/to/your/private-key.pem] ec2-user@<bastion-public-dns-name>
     ```
 
-- Or by setting the `KUBECONFIG` environment variable:
+2. Install the MySQL client:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    export KUBECONFIG=$PWD/credentials/kubeconfig_${eks_name}
+    sudo yum install mysql -y
     ```
+
+3. Connect the client to the TiDB cluster:
 
     {{< copyable "shell-regular" >}}
 
     ```shell
-    kubectl get po -n ${namespace}
+    mysql -h <tidb-nlb-dnsname> -P 4000 -u root
     ```
 
-    {{< copyable "shell-regular" >}}
+    For example:
 
     ```shell
-    helm ls
+    $ mysql -h abfc623004ccb4cc3b363f3f37475af1-9774d22c27310bc1.elb.us-west-2.amazonaws.com -P 4000 -u root
+    Welcome to the MariaDB monitor.  Commands end with ; or \g.
+    Your MySQL connection id is 1189
+    Server version: 5.7.25-TiDB-v4.0.2 TiDB Server (Apache License 2.0) Community Edition, MySQL 5.7 compatible
+
+    Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+    Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+    MySQL [(none)]> show status;
+    +--------------------+--------------------------------------+
+    | Variable_name      | Value                                |
+    +--------------------+--------------------------------------+
+    | Ssl_cipher         |                                      |
+    | Ssl_cipher_list    |                                      |
+    | Ssl_verify_mode    | 0                                    |
+    | Ssl_version        |                                      |
+    | ddl_schema_version | 22                                   |
+    | server_id          | ed4ba88b-436a-424d-9087-977e897cf5ec |
+    +--------------------+--------------------------------------+
+    6 rows in set (0.00 sec)
     ```
+
+    `<tidb-nlb-dnsname>` is the LoadBalancer domain name of the TiDB service. You can view the domain name in the `EXTERNAL-IP` field by executing `kubectl get svc basic-tidb -n tidb-cluster`.
 
 > **Note:**
 >
@@ -537,9 +226,25 @@ You can interact with the EKS cluster using `kubectl` and `helm` with the kubeco
 
 ## Monitor
 
-You can access the `<monitor-lb>:3000` address (printed in outputs) using your web browser to view monitoring metrics.
+Obtain the LoadBalancer domain name of Grafana:
 
-`monitor-lb` is the LoadBalancer of the cluster Monitor Service. To check this value, run `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get svc ${default_cluster_name}-grafana -n ${namespace}` and view the `EXTERNAL-IP` field in the output information.
+{{< copyable "shell-regular" >}}
+
+```shell
+kubectl -n tidb-cluster get svc basic-grafana
+```
+
+For example:
+
+```
+$ kubectl get svc basic-grafana
+NAME            TYPE           CLUSTER-IP      EXTERNAL-IP                                                             PORT(S)          AGE
+basic-grafana   LoadBalancer   10.100.199.42   a806cfe84c12a4831aa3313e792e3eed-1964630135.us-west-2.elb.amazonaws.com 3000:30761/TCP   121m
+```
+
+In the output above, the `EXTERNAL-IP` column is the LoadBalancer domain name.
+
+You can access the `<grafana-lb>:3000` address using your web browser to view monitoring metrics. Replace `<grafana-lb>` with the LoadBalancer domain name.
 
 The initial Grafana login credentials are:
 
@@ -548,237 +253,181 @@ The initial Grafana login credentials are:
 
 ## Upgrade
 
-To upgrade the TiDB cluster, edit the `spec.version` by `kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}`.
+To upgrade the TiDB cluster, edit the `spec.version` by executing `kubectl edit tc basic -n tidb-cluster`.
 
-The upgrading doesn't finish immediately. You can watch the upgrading progress by `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace} --watch`.
+The upgrade process does not finish immediately. You can watch the upgrade progress by executing `kubectl get pods -n tidb-cluster --watch`.
 
-## Scale
+## Scale out
 
-To scale out the TiDB cluster, modify the `default_cluster_tikv_count`, `cluster_tiflash_count`, `cluster_cdc_count`, or `default_cluster_tidb_count` variable in the `terraform.tfvars` file to your desired count, and then run `terraform apply` to scale out the number of the corresponding component nodes.
+Before scaling out the cluster, you need to scale out the corresponding node group so that the new instances have enough resources for operation.
 
-After the scaling, modify the `replicas` of the corresponding component by the following command:
-
-{{< copyable "shell-regular" >}}
-
-```
-kubectl --kubeconfig credentials/kubeconfig_${eks_name} edit tc ${default_cluster_name} -n ${namespace}
-```
-
-For example, to scale out the TiDB nodes, you can modify the number of TiDB instances from 2 to 4:
-
-```hcl
-default_cluster_tidb_count = 4
-```
-
-After the nodes scale out, modify the `spec.tidb.replicas` in `TidbCluster` to scale out the Pod.
-
-> **Note:**
->
-> Currently, scaling in is NOT supported because we cannot determine which node to scale in.
-> Scaling out needs a few minutes to complete, you can watch the scaling out progress by `kubectl --kubeconfig credentials/kubeconfig_${eks_name} get po -n ${namespace} --watch`.
-
-## Customize
-
-This section describes how to customize the AWS related resources and TiDB Operator.
-
-### Customize AWS related resources
-
-An Amazon EC2 instance is also created by default as the bastion machine to connect to the created TiDB cluster. This is because the TiDB service is exposed as an [Internal Elastic Load Balancer](https://aws.amazon.com/blogs/aws/internal-elastic-load-balancers/). The EC2 instance has MySQL and Sysbench pre-installed, so you can use SSH to log into the EC2 instance and connect to TiDB using the ELB endpoint. You can disable the bastion instance creation by setting `create_bastion` to `false` if you already have an EC2 instance in the VPC.
-
-### Customize TiDB Operator
-
-To customize the TiDB Operator, modify the `operator_values` parameter in `terraform.tfvars` to pass the customized contents of `values.yaml`. For example:
-
-```hcl
-operator_values = "./operator_values.yaml"
-```
-
-## Manage multiple TiDB clusters
-
-An instance of `tidb-cluster` module corresponds to a TiDB cluster in the EKS cluster. If you want to create a node pool for a new TiDB cluster, edit `./cluster.tf` and add a new instance of `tidb-cluster` module:
-
-```hcl
-module example-cluster {
-  source = "../modules/aws/tidb-cluster"
-  eks = local.eks
-  subnets = local.subnets
-  region = var.region
-  cluster_name    = "example"
-  ssh_key_name                  = module.key-pair.key_name
-  pd_count                      = 1
-  pd_instance_type              = "c5.large"
-  tikv_count                    = 1
-  tikv_instance_type            = "c5d.large"
-  tidb_count                    = 1
-  tidb_instance_type            = "c4.large"
-  monitor_instance_type         = "c5.large"
-  create_tidb_cluster_release   = false
-}
-```
-
-> **Note:**
->
-> The `cluster_name` of each cluster must be unique.
-
-When you finish the modification, execute `terraform init` and `terraform apply` to create the nodes pool for the TiDB cluster.
-
-Finally, [deploy TiDB cluster and monitor](#deploy-tidb-cluster-and-monitor).
-
-## Destroy clusters
-
-1. [Destroy the TiDB clusters](destroy-a-tidb-cluster.md).
-
-2. Destroy the EKS cluster by the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ``` shell
-    terraform destroy
-    ```
-
-    If the following error occurs during `terraform destroy`:
-
-    ```
-    Error: Get http://localhost/apis/apps/v1/namespaces/kube-system/deployments/tiller-deploy: dial tcp [::1]:80: connect: connection refused
-    ```
-
-    Run the following command:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    terraform state rm module.tidb-operator.helm_release.tidb-operator
-    ```
-
-    And then run `terraform destroy` again.
-
-> **Note:**
->
-> * This will destroy your EKS cluster.
-> * If you do not need the data on the volumes anymore, you have to manually delete the EBS volumes in AWS console after running `terraform destroy`.
-
-## Manage multiple Kubernetes clusters
-
-This section describes the best practice to manage multiple Kubernetes clusters, each with one or more TiDB clusters installed.
-
-The Terraform module in our case typically combines several sub-modules:
-
-- A `tidb-operator` module, which creates the EKS cluster and [deploy TiDB Operator](deploy-tidb-operator.md) on the EKS cluster
-- A `tidb-cluster` module, which creates the resource pool required by the TiDB cluster
-- A `VPC` module, a `bastion` module and a `key-pair` module that are dedicated to TiDB on AWS
-
-The best practice for managing multiple Kubernetes clusters is creating a new directory for each of your Kubernetes clusters, and combine the above modules according to your needs via Terraform scripts so that the Terraform states among clusters do not interfere with each other, and it is convenient to expand. Here's an example:
+The following example shows how to scale out the `tikv` group of the `<clusterName>` cluster to 4 nodes:
 
 {{< copyable "shell-regular" >}}
 
 ```shell
-# assume we are in the project root
-mkdir -p deploy/aws-staging
-vim deploy/aws-staging/main.tf
+eksctl scale nodegroup --cluster <clusterName> --name tikv --nodes 4 --nodes-min 4 --nodes-max 4
 ```
 
-The content of `deploy/aws-staging/main.tf` could be:
+After that, execute `kubectl edit tc basic -n tidb-cluster`, and modify each component's `replicas` to the desired number of replicas. The scaling-out process is then completed.
 
-```hcl
-provider "aws" {
-  region = "us-west-1"
-}
+For more information on managing node groups, refer to [`eksctl` documentation](https://eksctl.io/usage/managing-nodegroups/).
 
-# Creates an SSH key to log in the bastion and the Kubernetes node
-module "key-pair" {
-  source = "../modules/aws/key-pair"
+## Deploy TiFlash/TiCDC
 
-  name = "another-eks-cluster"
-  path = "${path.cwd}/credentials/"
-}
+### Add node groups
 
-# Provisions a VPC
-module "vpc" {
-  source = "../modules/aws/vpc"
+In the configuration file of eksctl (`cluster.yaml`), add the following two items to add a node group for TiFlash/TiCDC respectively. `desiredCapacity` is the number of nodes you desire.
 
-  vpc_name = "another-eks-cluster"
-}
-
-# Provisions an EKS control plane with TiDB Operator installed
-module "tidb-operator" {
-  source = "../modules/aws/tidb-operator"
-
-  eks_name           = "another-eks-cluster"
-  config_output_path = "credentials/"
-  subnets            = module.vpc.private_subnets
-  vpc_id             = module.vpc.vpc_id
-  ssh_key_name       = module.key-pair.key_name
-}
-
-# HACK: enforces Helm to depend on the EKS
-resource "local_file" "kubeconfig" {
-  depends_on        = [module.tidb-operator.eks]
-  sensitive_content = module.tidb-operator.eks.kubeconfig
-  filename          = module.tidb-operator.eks.kubeconfig_filename
-}
-provider "helm" {
-  alias    = "eks"
-  insecure = true
-  install_tiller = false
-  kubernetes {
-    config_path = local_file.kubeconfig.filename
-  }
-}
-
-# Provisions a node pool for the TiDB cluster in the EKS cluster
-module "tidb-cluster-a" {
-  source = "../modules/aws/tidb-cluster"
-  providers = {
-    helm = "helm.eks"
-  }
-
-  cluster_name = "tidb-cluster-a"
-  eks          = module.tidb-operator.eks
-  ssh_key_name = module.key-pair.key_name
-  subnets      = module.vpc.private_subnets
-}
-
-# Provisions a node pool for another TiDB cluster in the EKS cluster
-module "tidb-cluster-b" {
-  source = "../modules/aws/tidb-cluster"
-  providers = {
-    helm = "helm.eks"
-  }
-
-  cluster_name = "tidb-cluster-b"
-  eks          = module.tidb-operator.eks
-  ssh_key_name = module.key-pair.key_name
-  subnets      = module.vpc.private_subnets
-}
-
-# Provisions a bastion machine to access the TiDB service and worker nodes
-module "bastion" {
-  source = "../modules/aws/bastion"
-
-  bastion_name             = "another-eks-cluster-bastion"
-  key_name                 = module.key-pair.key_name
-  public_subnets           = module.vpc.public_subnets
-  vpc_id                   = module.vpc.vpc_id
-  target_security_group_id = module.tidb-operator.eks.worker_security_group_id
-  enable_ssh_to_workers    = true
-}
-
-output "bastion_ip" {
-  description = "Bastion IP address"
-  value       = module.bastion.bastion_ip
-}
+```
+- name: tiflash
+    desiredCapacity: 3
+    labels:
+      role: tiflash
+    taints:
+      dedicated: tiflash:NoSchedule
+  - name: ticdc
+    desiredCapacity: 1
+    labels:
+      role: ticdc
+    taints:
+      dedicated: ticdc:NoSchedule
 ```
 
-As shown in the code above, you can omit most of the parameters in each of the module calls because there are reasonable defaults, and it is easy to customize the configuration. For example, just delete the bastion module call if you do not need it.
+- If the cluster is not created, execute `eksctl create cluster -f cluster.yaml` to create the cluster and node groups.
+- If the cluster is already created, execute `eksctl create nodegroup -f cluster.yaml` to create the node groups. The existing node groups are ignored and will not be created again.
 
-To customize each field, you can refer to the default Terraform module. Also, you can always refer to the `variables.tf` file of each module to learn about all the available parameters.
+### Configure and deploy
 
-In addition, you can easily integrate these modules into your own Terraform workflow. If you are familiar with Terraform, this is our recommended way of use.
++ If you want to deploy TiFlash, configure `spec.tiflash` in `tidb-cluster.yaml`:
+
+    ```yaml
+    spec:
+      ...
+      tiflash:
+        baseImage: pingcap/tiflash
+        replicas: 1
+        storageClaims:
+        - resources:
+            requests:
+              storage: 100Gi
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: tiflash
+    ```
+
+    > **Warning:**
+    >
+    > TiDB Operator automatically mount PVs **in the order of the configuration** in the `storageClaims` list. Therefore, if you need to add disks for TiFlash, make sure that you add the disks **only to the end of the original configuration** in the list. In addition, you must **not** alter the order of the original configuration.
+
++ If you want to deploy TiCDC, configure `spec.ticdc` in `tidb-cluster.yaml`:
+
+    ```yaml
+    spec:
+      ...
+      ticdc:
+        baseImage: pingcap/ticdc
+        replicas: 1
+        tolerations:
+        - effect: NoSchedule
+          key: dedicated
+          operator: Equal
+          value: ticdc
+    ```
+
+    Modify `replicas` according to your needs.
+
+Finally, execute `kubectl -n tidb-cluster apply -f tidb-cluster.yaml` to update the TiDB cluster configuration.
+
+For detailed CR configuration, refer to [API references](https://github.com/pingcap/tidb-operator/blob/master/docs/api-references/docs.md) and [Configure a TiDB Cluster](configure-a-tidb-cluster.md).
+
+## Deploy TiDB Enterprise Edition
+
+If you need to deploy TiDB/PD/TiKV/TiFlash/TiCDC Enterprise Edition, configure `spec.<tidb/pd/tikv/tiflash/ticdc>.baseImage` in `tidb-cluster.yaml` as the enterprise image. The image format is `pingcap/<tidb/pd/tikv/tiflash/ticdc>-enterprise`.
+
+For example:
+
+```yaml
+spec:
+  ...
+  pd:
+    baseImage: pingcap/pd-enterprise
+  ...
+  tikv:
+    baseImage: pingcap/tikv-enterprise
+```
+
+## Use other EBS volume types
+
+AWS EBS supports multiple volume types. If you need low latency and high throughput, you can choose the `io1` type. The steps are as follows:
+
+1. Create a storage class for `io1`:
+
+    ```
+    kind: StorageClass
+    apiVersion: storage.k8s.io/v1
+    metadata:
+      name: io1
+    provisioner: kubernetes.io/aws-ebs
+    parameters:
+      type: io1
+      fsType: ext4
+    ```
+
+2. In `tidb-cluster.yaml`, specify the `io1` storage class to apply for the `io1` volume type through the `storageClassName` field.
+
+For more information about the storage class configuration and EBS volume types, refer to [Storage Class documentation](https://kubernetes.io/docs/concepts/storage/storage-classes/) and [EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html).
+
+## Use local storage
+
+Some AWS instance types provide additional [NVMe SSD local store volumes](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html). You can choose such instances for the TiKV node pool to achieve higher IOPS and lower latency.
 
 > **Note:**
 >
-> * When creating a new directory, please pay attention to its relative path to Terraform modules, which affects the `source` parameter during module calls.
-> * If you want to use these modules outside the tidb-operator project, make sure you copy the whole `modules` directory and keep the relative path of each module inside the directory unchanged.
-> * Due to limitation [hashicorp/terraform#2430](https://github.com/hashicorp/terraform/issues/2430#issuecomment-370685911) of Terraform, the hack processing of Helm provider is necessary in the above example. It is recommended that you keep it in your own Terraform scripts.
+> During the EKS upgrade, data in the local storage will be [lost](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-lifetime) due to the node reconstruction. When the node reconstruction occurs, you need to migrate data in TiKV. If you do not want to migrate data, it is recommended not to use the local disk in the production environment.
 
-If you are unwilling to write Terraform code, you can also copy the `deploy/aws` directory to create new Kubernetes clusters. But note that you cannot copy a directory that you have already run `terraform apply` against, when the Terraform state already exists in local. In this case, it is recommended to clone a new repository before copying the directory.
+For instance types that provide local volumes, see [AWS Instance Types](https://aws.amazon.com/ec2/instance-types/). Take `c5d.4xlarge` as an example:
+
+1. Create a node group with local storage for TiKV.
+
+    Modify the instance type of the TiKV node group in the `eksctl` configuration file to `c5d.4xlarge`:
+
+    ```
+      - name: tikv
+        instanceType: c5d.4xlarge
+        labels:
+          role: tikv
+        taints:
+          dedicated: tikv:NoSchedule
+        ...
+    ```
+
+    Create the node group:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    eksctl create nodegroups -f cluster.yaml
+    ```
+
+    If the TiKV node group already exists, you can either delete the old group and then create a new one, or change the group name to avoid conflict.
+
+2. Deploy the local volume provisioner.
+
+    You need to use the [local-volume-provisioner](https://sigs.k8s.io/sig-storage-local-static-provisioner) to discover and manage the local storage. Executing the following command deploys and creates a `local-storage` storage class:
+
+    {{< copyable "shell-regular" >}}
+
+    ```shell
+    kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/eks/local-volume-provisioner.yaml
+    ```
+
+3. Use the local storage.
+
+    After the steps above, the local volume provisioner can discover all the local NVMe SSD disks in the cluster.
+
+    Modify `tikv.storageClassName` in the `tidb-cluster.yaml` file to `local-storage`.
+
+    You cannot dynamically change the storage class of a running TiDB cluster. You can create a new cluster for testing.
