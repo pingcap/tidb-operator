@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
@@ -83,19 +84,25 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 }
 
 func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
+	var errs []error
 	for _, group := range groupsToDelete {
 		deleteTc := groupTcMap[group]
+
+		// Remove cluster
 		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
 		// Remove the cluster in the monitor
 		if monitorRef := deleteTc.Status.Monitor; monitorRef != nil {
 			monitor, err := am.tmLister.TidbMonitors(monitorRef.Namespace).Get(monitorRef.Name)
 			if err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
+
 			newTm := monitor.DeepCopy()
 			clusters := make([]v1alpha1.TidbClusterRef, 0, len(newTm.Spec.Clusters)-1)
 			for _, cluster := range newTm.Spec.Clusters {
@@ -104,7 +111,8 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				}
 			}
 			newTm.Spec.Clusters = clusters
-			am.updateTidbMonitor(newTm, func(oldClusters []v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef {
+
+			err = am.updateTidbMonitor(newTm, func(oldClusters []v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef {
 				clusters := make([]v1alpha1.TidbClusterRef, 0, len(oldClusters)-1)
 				for _, cluster := range oldClusters {
 					if cluster.Name != deleteTc.Name {
@@ -113,12 +121,14 @@ func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				}
 				return clusters
 			})
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return errorutils.NewAggregate(errs)
 }
 
 func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groups []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
+	var errs []error
 	for _, group := range groups {
 		actual, oldTc, expected := groupTcMap[group].DeepCopy(), groupTcMap[group], groupPlanMap[group]
 		component := expected.Component
@@ -131,7 +141,8 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 		case v1alpha1.TiKVMemberType.String():
 			sts, err := am.stsLister.StatefulSets(actual.Namespace).Get(operatorUtils.GetStatefulSetName(actual, v1alpha1.TiKVMemberType))
 			if err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
 			if !checkAutoScalingPrerequisites(actual, sts, v1alpha1.TiKVMemberType) {
 				continue
@@ -140,7 +151,8 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 		case v1alpha1.TiDBMemberType.String():
 			sts, err := am.stsLister.StatefulSets(actual.Namespace).Get(operatorUtils.GetStatefulSetName(actual, v1alpha1.TiDBMemberType))
 			if err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
 			if !checkAutoScalingPrerequisites(actual, sts, v1alpha1.TiDBMemberType) {
 				continue
@@ -150,13 +162,15 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 
 		_, err := am.tcControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 	}
-	return nil
+	return errorutils.NewAggregate(errs)
 }
 
 func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
+	var errs []error
 	for _, group := range groupsToCreate {
 		plan := groupPlanMap[group]
 		component := plan.Component
@@ -167,7 +181,8 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 		resource, ok := findAutoResource(tac.Spec.Resources, plan.ResourceType)
 		if !ok {
-			return fmt.Errorf("unknown resource type %v", plan.ResourceType)
+			errs = append(errs, fmt.Errorf("unknown resource type %v", plan.ResourceType))
+			continue
 		}
 		resList := corev1.ResourceList{
 			corev1.ResourceCPU:     resource.CPU,
@@ -177,7 +192,8 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 		autoTcName, err := genAutoClusterName(tac, component, plan.Labels, resource)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
 		autoTc := &v1alpha1.TidbCluster{
@@ -255,24 +271,33 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		created, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {
 			klog.Errorf("cannot create new TidbCluster err:%v\n", err)
-			return err
+			errs = append(errs, err)
+			continue
 		}
 
+		// Add new cluster to monitor
 		if monitorRef := tc.Status.Monitor; monitorRef != nil {
 			monitor, err := am.tmLister.TidbMonitors(monitorRef.Namespace).Get(monitorRef.Name)
 			if err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
+
 			clusterRef := v1alpha1.TidbClusterRef{Name: created.Name, Namespace: created.Namespace}
 			updatedTm := monitor.DeepCopy()
 			updatedTm.Spec.Clusters = append(updatedTm.Spec.Clusters, clusterRef)
-			am.updateTidbMonitor(updatedTm,
+			err = am.updateTidbMonitor(updatedTm,
 				func(clusters []v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef {
 					return append(clusters, clusterRef)
 				})
+
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
 		}
 	}
-	return nil
+	return errorutils.NewAggregate(errs)
 }
 
 func (am *autoScalerManager) updateTidbMonitor(tm *v1alpha1.TidbMonitor, onConflict func([]v1alpha1.TidbClusterRef) []v1alpha1.TidbClusterRef) error {
