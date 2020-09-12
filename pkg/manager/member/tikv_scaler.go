@@ -103,6 +103,14 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 	switch meta.(type) {
 	case *v1alpha1.TidbCluster:
+		tc ,_ := meta.(*v1alpha1.TidbCluster)
+		storesInfo, err := controller.GetPDClient(tsd.pdControl, tc).GetStores()
+		if err != nil {
+			return fmt.Errorf("failed to get stores info when scaling in TiKV")
+		}
+		if storesInfo.Count <= 3 {
+			return fmt.Errorf("it is not allowed to scale in TiKV when stores number(%d) <= 3", storesInfo.Count)
+		}
 		podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
 	case *v1alpha1.TiKVGroup:
 		podName = TiKVGroupPodName(meta.GetName(), ordinal)
