@@ -1149,15 +1149,12 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			err := installTiDBIssuer(ns, tcName)
 			framework.ExpectNoError(err, "failed to generate tidb issuer template")
 
-			err = installTiDBIssuer(ns, heterogeneousTcName)
-			framework.ExpectNoError(err, "failed to generate heterogeneous tidb issuer template")
-
 			ginkgo.By("Installing tidb server and client certificate")
 			err = installTiDBCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
 
 			ginkgo.By("Installing heterogeneous tidb server and client certificate")
-			err = installTiDBCertificates(ns, heterogeneousTcName)
+			err = installHeterogeneousTiDBCertificates(ns, heterogeneousTcName, tcName)
 			framework.ExpectNoError(err, "failed to install heterogeneous tidb server and client certificate")
 
 			ginkgo.By("Installing separate tidbInitializer client certificate")
@@ -1171,7 +1168,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			ginkgo.By("Installing tidb components certificates")
 			err = installTiDBComponentsCertificates(ns, tcName)
 			framework.ExpectNoError(err, "failed to install tidb components certificates")
-			err = installTiDBComponentsCertificates(ns, heterogeneousTcName)
+			err = installHeterogeneousTiDBComponentsCertificates(ns, heterogeneousTcName, tcName)
 			framework.ExpectNoError(err, "failed to install heterogeneous tidb components certificates")
 
 			ginkgo.By("Creating tidb cluster")
