@@ -1,8 +1,20 @@
-# A Basic heterogeneous cluster example
+# A Basic heterogeneous tls cluster example
 
 
-The following steps will create a basic TiDB cluster , then we can create a heterogeneous cluster contains one tikv and one tidb.
+The following steps will create a basic tls TiDB cluster , then we can create a heterogeneous cluster contains one tikv and one tidb.
 
+## Install tls certificate
+The following commands is assumed to be executed in this directory.
+
+Install the basic certificate:
+```bash
+> kubectl -n <namespace> apply -f cert-manager/basic/
+```
+
+Install the heterogeneous certificate:
+```bash
+> kubectl -n <namespace> apply -f cert-manager/heterogeneous/
+```
 
 
 ## Install basic cluster

@@ -1232,7 +1232,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 				if err != nil {
 					e2elog.Logf("failed to get stores, %v", err)
 				}
-				if storeInfo.Count != 2 {
+				if storeInfo.Count != 3 {
 					e2elog.Logf("failed to check stores (current: %d)", storeInfo.Count)
 					return false, nil
 				}
