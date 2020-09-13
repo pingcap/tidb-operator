@@ -1142,7 +1142,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		})
 
 		ginkgo.It("TLS for MySQL Client and TLS between Heterogeneous TiDB components", func() {
-			tcName := "tls"
+			tcName := "origintls"
 			heterogeneousTcName := "heterogeneoustls"
 
 			ginkgo.By("Installing tidb issuer")
@@ -1283,7 +1283,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			framework.ExpectNoError(err)
 
 			drainerConfig := &tests.DrainerConfig{
-				DrainerName:       "tls-drainer",
+				DrainerName:       "origintls-drainer",
 				OperatorTag:       cfg.OperatorTag,
 				SourceClusterName: tcName,
 				Namespace:         ns,
