@@ -292,6 +292,39 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-tiflash-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-tiflash-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-tiflash"
+  - "{{ .ClusterName }}-tiflash.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tiflash.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tiflash-peer"
+  - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tiflash-peer"
+  - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
 `
 
 var tidbClientCertificateTmpl = `
