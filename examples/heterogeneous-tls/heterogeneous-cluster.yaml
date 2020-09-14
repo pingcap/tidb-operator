@@ -9,7 +9,7 @@ spec:
   tlsCluster:
     enabled: true
   configUpdateStrategy: RollingUpdate
-  version: v4.0.5
+  version: v4.0.6
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
@@ -36,7 +36,7 @@ spec:
       enabled: true
   tiflash:
     baseImage: pingcap/tiflash
-    version: v4.0.5
+    version: v4.0.6
     maxFailoverCount: 1
     replicas: 1
     storageClaims:
