@@ -524,7 +524,11 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	podSpec.Volumes = append(vols, baseTiFlashSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
-	podSpec.Containers = append([]corev1.Container{tiflashContainer}, buildTiFlashSidecarContainers(tc)...)
+	containers, err := buildTiFlashSidecarContainers(tc)
+	if err != nil {
+		return nil, err
+	}
+	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
 	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
 	if podSpec.ServiceAccountName == "" {
@@ -582,13 +586,16 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 }
 
 func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	config := getTiFlashConfig(tc)
-
-	configText, err := MarshalTOML(config.CommonConfig)
+	config, err := getTiFlashConfig(tc)
 	if err != nil {
 		return nil, err
 	}
-	proxyText, err := MarshalTOML(config.ProxyConfig)
+
+	configText, err := MarshalTOML(config.Config["config"])
+	if err != nil {
+		return nil, err
+	}
+	proxyText, err := MarshalTOML(config.Config["proxy"])
 	if err != nil {
 		return nil, err
 	}

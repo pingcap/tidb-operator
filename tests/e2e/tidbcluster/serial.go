@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -489,11 +490,11 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 			framework.ExpectError(err, "Could not set instance label with value other than cluster name")
 
 			err = controller.GuaranteedUpdate(genericCli, newTC, func() error {
-				newTC.Spec.PD.Config = &v1alpha1.PDConfig{
+				newTC.Spec.PD.GenericConfig = mustConfig(&v1alpha1.PDConfig{
 					Replication: &v1alpha1.PDReplicationConfig{
 						MaxReplicas: func() *uint64 { i := uint64(5); return &i }(),
 					},
-				}
+				})
 				return nil
 			})
 			framework.ExpectError(err, "PD replication config is immutable through CR")
@@ -1201,4 +1202,13 @@ func setPartitionAnnotation(namespace, tcName, component string, ordinal int) er
 		return fmt.Errorf("fail to set annotation for [%s/%s], component: %s, partition: %d, err: %v, output: %s", namespace, tcName, component, ordinal, err, output)
 	}
 	return nil
+}
+
+func mustConfig(x interface{}) config.GenericConfig {
+	c, err := config.FromJsonObject(x)
+	if err != nil {
+		panic(err)
+	}
+
+	return c
 }

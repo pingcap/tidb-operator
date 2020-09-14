@@ -559,30 +559,31 @@ func volumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storage
 // In https://github.com/tikv/tikv/pull/7197 , these 2 configurations become string type from int32 type, so we add
 // this transforming steps to make tikv config compatible with both 4.0.0 version or under 4.0.0 version
 func transformTiKVConfigMap(srcStr string, tc *v1alpha1.TidbCluster) string {
-	config := tc.Spec.TiKV.Config
-	if config == nil {
+	config := tc.Spec.TiKV.GenericConfig
+	if config.Config == nil {
 		return srcStr
 	}
-	if config.TiKVPessimisticTxn != nil {
-		if config.TiKVPessimisticTxn.WaitForLockTimeout != nil {
-			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WaitForLockTimeout, 10, 64)
-			if err == nil {
-				waitForLockTimeOutKey := "wait-for-lock-timeout"
-				old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
-				newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, *config.TiKVPessimisticTxn.WaitForLockTimeout)
-				srcStr = strings.ReplaceAll(srcStr, old, newString)
-			}
-		}
-		if config.TiKVPessimisticTxn.WakeUpDelayDuration != nil {
-			_, err := strconv.ParseInt(*config.TiKVPessimisticTxn.WakeUpDelayDuration, 10, 64)
-			if err == nil {
-				wakeUpDelayDuration := "wake-up-delay-duration"
-				old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, *config.TiKVPessimisticTxn.WakeUpDelayDuration)
-				srcStr = strings.ReplaceAll(srcStr, old, newString)
-			}
+
+	if v := config.Get("pessimistic-txn.wait-for-lock-timeout"); v != nil && v.IsString() {
+		_, err := strconv.ParseInt(v.AsString(), 10, 64)
+		if err == nil {
+			waitForLockTimeOutKey := "wait-for-lock-timeout"
+			old := fmt.Sprintf(`%s = "%s"`, waitForLockTimeOutKey, v.AsString())
+			newString := fmt.Sprintf(`%s = %s`, waitForLockTimeOutKey, v.AsString())
+			srcStr = strings.ReplaceAll(srcStr, old, newString)
 		}
 	}
+
+	if v := config.Get("pessimistic-txn.wake-up-delay-duration"); v != nil && v.IsString() {
+		_, err := strconv.ParseInt(v.AsString(), 10, 64)
+		if err == nil {
+			wakeUpDelayDuration := "wake-up-delay-duration"
+			old := fmt.Sprintf(`%s = "%s"`, wakeUpDelayDuration, v.AsString())
+			newString := fmt.Sprintf(`%s = %s`, wakeUpDelayDuration, v.AsString())
+			srcStr = strings.ReplaceAll(srcStr, old, newString)
+		}
+	}
+
 	return srcStr
 }
 

@@ -761,10 +761,10 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 }
 
 func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
-	config := tc.Spec.PD.Config
-	if config == nil {
+	// TODO safe to remove this? keeping this, what if config is nil and tc.IsTLSClusterEnabled() is true?
+	config := tc.Spec.PD.GenericConfig
+	if config.Config == nil {
 		return nil, nil
 	}
 
@@ -775,35 +775,23 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.PDSecurityConfig{}
-		}
-		config.Security.CAPath = pointer.StringPtr(path.Join(pdClusterCertPath, tlsSecretRootCAKey))
-		config.Security.CertPath = pointer.StringPtr(path.Join(pdClusterCertPath, corev1.TLSCertKey))
-		config.Security.KeyPath = pointer.StringPtr(path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.cacert-path", path.Join(pdClusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cert-path", path.Join(pdClusterCertPath, corev1.TLSCertKey))
+		config.Set("security.key-path", path.Join(pdClusterCertPath, corev1.TLSPrivateKeyKey))
 	}
+
 	// Versions below v4.0 do not support Dashboard
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
-		if config.Dashboard == nil {
-			config.Dashboard = &v1alpha1.DashboardConfig{}
-		}
-		config.Dashboard.TiDBCAPath = pointer.StringPtr(path.Join(tidbClientCertPath, tlsSecretRootCAKey))
-		config.Dashboard.TiDBCertPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSCertKey))
-		config.Dashboard.TiDBKeyPath = pointer.StringPtr(path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("dashboard.tidb-cacert-path", path.Join(tidbClientCertPath, tlsSecretRootCAKey))
+		config.Set("dashboard.tidb-cert-path", path.Join(tidbClientCertPath, corev1.TLSCertKey))
+		config.Set("dashboard.tidb-key-path", path.Join(tidbClientCertPath, corev1.TLSPrivateKeyKey))
 	}
 
 	if tc.Spec.PD.EnableDashboardInternalProxy != nil {
-		if config.Dashboard != nil {
-			// EnableDashboardInternalProxy has a higher priority to cover the configuration in Dashboard
-			config.Dashboard.InternalProxy = pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy)
-		} else {
-			config.Dashboard = &v1alpha1.DashboardConfig{
-				InternalProxy: pointer.BoolPtr(*tc.Spec.PD.EnableDashboardInternalProxy),
-			}
-		}
+		config.Set("dashboard.internal-proxy", *tc.Spec.PD.EnableDashboardInternalProxy)
 	}
 
-	confText, err := MarshalTOML(config)
+	confText, err := MarshalTOML(config.Config)
 	if err != nil {
 		return nil, err
 	}

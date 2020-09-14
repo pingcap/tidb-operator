@@ -36,7 +36,7 @@ endif
 	docker build --tag "${DOCKER_REPO}/tidb-operator:${IMAGE_TAG}" images/tidb-operator
 	docker build --tag "${DOCKER_REPO}/tidb-backup-manager:${IMAGE_TAG}" images/tidb-backup-manager
 
-build: controller-manager scheduler discovery admission-webhook apiserver backup-manager
+build: controller-manager scheduler discovery admission-webhook apiserver backup-manager stability-test-build e2e-build
 
 controller-manager:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o images/tidb-operator/bin/tidb-controller-manager cmd/controller-manager/main.go

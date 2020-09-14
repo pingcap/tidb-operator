@@ -512,9 +512,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			ginkgo.By("Update tidb configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.TiDB.Config.TokenLimit = func(i uint) *uint {
-					return &i
-				}(2000)
+				tc.Spec.TiDB.GenericConfig.Set("token-limit", 2000)
 				tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
@@ -865,11 +863,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			clusterName := "scale"
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
 			tc.Spec.PD.Replicas = 1
-			tc.Spec.PD.Config.Schedule = &v1alpha1.PDScheduleConfig{
-				// By default, PD set the state of disconnected store to Down
-				// after 30 minutes. Use a short time in testing.
-				MaxStoreDownTime: pointer.StringPtr("1m"),
-			}
+			// By default, PD set the state of disconnected store to Down
+			// after 30 minutes. Use a short time in testing.
+			tc.Spec.PD.GenericConfig.Set("schedule.max-store-down-time", "1m")
 			tc.Spec.TiKV.Replicas = 3
 			tc.Spec.TiDB.Replicas = 1
 			err := genericCli.Create(context.TODO(), tc)
@@ -895,7 +891,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			ginkgo.By("Upgrade TiKV configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.TiKV.Config.LogLevel = pointer.StringPtr("info")
+				tc.Spec.TiKV.GenericConfig.Set("log-level", "info")
 				tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
@@ -954,7 +950,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			ginkgo.By("Upgrade PD configuration")
 			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
 			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-				tc.Spec.PD.Config.Log.Level = pointer.StringPtr("info")
+				tc.Spec.PD.GenericConfig.Set("log.level", "info")
 				tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 				return nil
 			})
@@ -1030,9 +1026,7 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV3Version)
 			tc.Spec.SchedulerName = ""
 			tc.Spec.PD.Replicas = 1
-			tc.Spec.PD.Config.Schedule = &v1alpha1.PDScheduleConfig{
-				MaxStoreDownTime: pointer.StringPtr("1m"),
-			}
+			tc.Spec.PD.GenericConfig.Set("schedule.max-store-down-time", "1m")
 			tc.Spec.TiDB.Replicas = 1
 			tc.Spec.TiKV.Replicas = 3
 			err := genericCli.Create(context.TODO(), tc)

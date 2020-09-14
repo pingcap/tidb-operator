@@ -593,11 +593,11 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		tc, err = cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Get(cluster.ClusterName, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Expected get tidbcluster")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
-			tc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{}
+			tc.Spec.TiDB.GenericConfig = tcconfig.New(map[string]interface{}{})
 			tc.Spec.TiDB.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{}
+			tc.Spec.TiKV.GenericConfig = tcconfig.New(map[string]interface{}{})
 			tc.Spec.TiKV.ConfigUpdateStrategy = &updateStrategy
-			tc.Spec.PD.Config = &v1alpha1.PDConfig{}
+			tc.Spec.PD.GenericConfig = tcconfig.New(map[string]interface{}{})
 			tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
 			return nil
 		})

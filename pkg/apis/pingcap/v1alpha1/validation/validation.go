@@ -24,6 +24,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	corev1 "k8s.io/api/core/v1"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -129,7 +130,7 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 func validateTiFlashSpec(spec *v1alpha1.TiFlashSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
-	allErrs = append(allErrs, validateTiFlashConfig(spec.Config, fldPath)...)
+	allErrs = append(allErrs, validateTiFlashConfig(spec.GenericConfig, fldPath)...)
 	if len(spec.StorageClaims) < 1 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.StorageClaims"),
 			spec.StorageClaims, "storageClaims should be configured at least one item."))
@@ -143,9 +144,16 @@ func validateTiCDCSpec(spec *v1alpha1.TiCDCSpec, fldPath *field.Path) field.Erro
 	return allErrs
 }
 
-func validateTiFlashConfig(config *v1alpha1.TiFlashConfig, path *field.Path) field.ErrorList {
+func validateTiFlashConfig(gconfig config.GenericConfig, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if config == nil {
+	if gconfig.Config == nil {
+		return allErrs
+	}
+
+	config := new(v1alpha1.TiFlashConfig)
+	err := gconfig.UnmarshalToml(config)
+	if err != nil {
+		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
 	}
 
@@ -367,7 +375,7 @@ func ValidateUpdateTidbCluster(old, tc *v1alpha1.TidbCluster) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("labels"), tc.Labels,
 			"The instance must not be mutate or set value other than the cluster name"))
 	}
-	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD.Config, tc.Spec.PD.Config, field.NewPath("spec.pd.config"))...)
+	allErrs = append(allErrs, validateUpdatePDConfig(old.Spec.PD.GenericConfig, tc.Spec.PD.GenericConfig, field.NewPath("spec.pd.config"))...)
 	allErrs = append(allErrs, disallowUsingLegacyAPIInNewCluster(old, tc)...)
 
 	return allErrs
@@ -430,10 +438,24 @@ func disallowUsingLegacyAPIInNewCluster(old, tc *v1alpha1.TidbCluster) field.Err
 	return allErrs
 }
 
-func validateUpdatePDConfig(old, conf *v1alpha1.PDConfig, path *field.Path) field.ErrorList {
+func validateUpdatePDConfig(gold, gconf config.GenericConfig, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// for newly created cluster, both old and new are non-nil, guaranteed by validation
-	if old == nil || conf == nil {
+	if gold.Config == nil || gconf.Config == nil {
+		return allErrs
+	}
+
+	old := new(v1alpha1.PDConfig)
+	err := gold.UnmarshalToml(old)
+	if err != nil {
+		allErrs = append(allErrs, field.InternalError(nil, err))
+		return allErrs
+	}
+
+	conf := new(v1alpha1.PDConfig)
+	err = gold.UnmarshalToml(gconf)
+	if err != nil {
+		allErrs = append(allErrs, field.InternalError(nil, err))
 		return allErrs
 	}
 

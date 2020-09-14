@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1347,7 +1348,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 }
 
 func TestGetPDConfigMap(t *testing.T) {
-	g := NewGomegaWithT(t)
 	updateStrategy := v1alpha1.ConfigUpdateStrategyInPlace
 	testCases := []struct {
 		name     string
@@ -1381,7 +1381,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.PDConfig{
+						GenericConfig: mustConfig(t, &v1alpha1.PDConfig{
 							Schedule: &v1alpha1.PDScheduleConfig{
 								MaxStoreDownTime:         pointer.StringPtr("5m"),
 								DisableRemoveDownReplica: pointer.BoolPtr(true),
@@ -1390,7 +1390,7 @@ func TestGetPDConfigMap(t *testing.T) {
 								MaxReplicas:    func() *uint64 { i := uint64(5); return &i }(),
 								LocationLabels: []string{"node", "rack"},
 							},
-						},
+						}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -1423,13 +1423,13 @@ func TestGetPDConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `[schedule]
-  max-store-down-time = "5m"
-  disable-remove-down-replica = true
-
-[replication]
-  max-replicas = 5
+					"config-file": `[replication]
   location-labels = ["node", "rack"]
+  max-replicas = 5
+
+[schedule]
+  disable-remove-down-replica = true
+  max-store-down-time = "5m"
 `,
 				},
 			},
@@ -1446,7 +1446,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v3.1.0",
 						},
-						Config: &v1alpha1.PDConfig{},
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1499,7 +1499,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:v4.0.0-rc.1",
 						},
-						Config: &v1alpha1.PDConfig{},
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1556,7 +1556,7 @@ func TestGetPDConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: "pingcap/pd:nightly",
 						},
-						Config: &v1alpha1.PDConfig{},
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
 						TLSClient: &v1alpha1.TiDBTLSClient{
@@ -1605,6 +1605,7 @@ func TestGetPDConfigMap(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
 			cm, err := getPDConfigMap(&tt.tc)
 			g.Expect(err).To(Succeed())
 			if tt.expected == nil {
@@ -2335,4 +2336,15 @@ func hasTLSVolMount(sts *apps.StatefulSet) bool {
 		}
 	}
 	return false
+}
+
+func mustConfig(t *testing.T, x interface{}) config.GenericConfig {
+	c, err := config.FromJsonObject(x)
+	if err != nil {
+		t.Log("from json object failed: ", err)
+		t.Fail()
+		t.FailNow()
+	}
+
+	return c
 }

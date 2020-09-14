@@ -364,30 +364,25 @@ func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *a
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-
-	config := tc.Spec.TiDB.Config
-	if config == nil {
+	config := tc.Spec.TiDB.GenericConfig
+	if config.Config == nil {
 		return nil, nil
 	}
 
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.Security{}
-		}
-		config.Security.ClusterSSLCA = pointer.StringPtr(path.Join(clusterCertPath, tlsSecretRootCAKey))
-		config.Security.ClusterSSLCert = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSCertKey))
-		config.Security.ClusterSSLKey = pointer.StringPtr(path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.cluster-ssl-ca", path.Join(clusterCertPath, tlsSecretRootCAKey))
+		config.Set("security.cluster-ssl-cert", path.Join(clusterCertPath, corev1.TLSCertKey))
+		config.Set("security.cluster-ssl-key", path.Join(clusterCertPath, corev1.TLSPrivateKeyKey))
 	}
+
 	if tc.Spec.TiDB.IsTLSClientEnabled() {
-		if config.Security == nil {
-			config.Security = &v1alpha1.Security{}
-		}
-		config.Security.SSLCA = pointer.StringPtr(path.Join(serverCertPath, tlsSecretRootCAKey))
-		config.Security.SSLCert = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSCertKey))
-		config.Security.SSLKey = pointer.StringPtr(path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
+		config.Set("security.ssl-ca", path.Join(serverCertPath, tlsSecretRootCAKey))
+		config.Set("security.ssl-cert", path.Join(serverCertPath, corev1.TLSCertKey))
+		config.Set("security.ssl-key", path.Join(serverCertPath, corev1.TLSPrivateKeyKey))
 	}
-	confText, err := MarshalTOML(config)
+
+	confText, err := MarshalTOML(config.Config)
 	if err != nil {
 		return nil, err
 	}

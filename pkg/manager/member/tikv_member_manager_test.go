@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -2124,7 +2125,7 @@ func TestGetTiKVConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiKVConfig{
+						GenericConfig: mustConfig(t, &v1alpha1.TiKVConfig{
 							Raftstore: &v1alpha1.TiKVRaftstoreConfig{
 								SyncLog:              pointer.BoolPtr(false),
 								RaftBaseTickInterval: pointer.StringPtr("1s"),
@@ -2132,7 +2133,7 @@ func TestGetTiKVConfigMap(t *testing.T) {
 							Server: &v1alpha1.TiKVServerConfig{
 								GrpcKeepaliveTimeout: pointer.StringPtr("30s"),
 							},
-						},
+						}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
@@ -2165,12 +2166,12 @@ func TestGetTiKVConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					"startup-script": "",
-					"config-file": `[server]
-  grpc-keepalive-timeout = "30s"
-
-[raftstore]
-  sync-log = false
+					"config-file": `[raftstore]
   raft-base-tick-interval = "1s"
+  sync-log = false
+
+[server]
+  grpc-keepalive-timeout = "30s"
 `,
 				},
 			},
@@ -2226,10 +2227,9 @@ func TestTransformTiKVConfigMap(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tc := newTidbClusterForTiKV()
-			tc.Spec.TiKV.Config.TiKVPessimisticTxn = &v1alpha1.TiKVPessimisticTxn{
-				WaitForLockTimeout:  pointer.StringPtr(test.waitForLockTimeout),
-				WakeUpDelayDuration: pointer.StringPtr(test.wakeUpDelayDuration),
-			}
+			tc.Spec.TiKV.GenericConfig.Set("pessimistic-txn.wait-for-lock-timeout", test.waitForLockTimeout)
+			tc.Spec.TiKV.GenericConfig.Set("pessimistic-txn.wake-up-delay-duration", test.wakeUpDelayDuration)
+
 			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(test.result).Should(Equal(transformTiKVConfigMap(string(confText), tc)))
@@ -2257,9 +2257,7 @@ func TestTiKVBackupConfig(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tc := newTidbClusterForTiKV()
-			tc.Spec.TiKV.Config.Backup = &v1alpha1.TiKVBackupConfig{
-				NumThreads: pointer.Int64Ptr(test.numThreads),
-			}
+			tc.Spec.TiKV.GenericConfig.Set("backup.num-threads", test.numThreads)
 			confText, err := MarshalTOML(tc.Spec.TiKV.Config)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(test.result).Should(Equal(string(confText)))
@@ -2287,7 +2285,7 @@ func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
 				},
 				Replicas:         3,
 				StorageClassName: pointer.StringPtr("my-storage-class"),
-				Config:           &v1alpha1.TiKVConfig{},
+				GenericConfig:    config.New(map[string]interface{}{}),
 			},
 			PD:   &v1alpha1.PDSpec{},
 			TiDB: &v1alpha1.TiDBSpec{},

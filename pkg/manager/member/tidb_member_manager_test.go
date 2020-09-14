@@ -27,6 +27,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -1036,7 +1037,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiDBConfig{},
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1715,9 +1716,9 @@ func TestGetTiDBConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						Config: &v1alpha1.TiDBConfig{
+						GenericConfig: mustConfig(t, &v1alpha1.TiDBConfig{
 							Lease: pointer.StringPtr("45s"),
-						},
+						}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1768,8 +1769,8 @@ func TestGetTiDBConfigMap(t *testing.T) {
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ConfigUpdateStrategy: &updateStrategy,
 						},
-						TLSClient: &v1alpha1.TiDBTLSClient{Enabled: true},
-						Config:    &v1alpha1.TiDBConfig{},
+						TLSClient:     &v1alpha1.TiDBTLSClient{Enabled: true},
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					PD:   &v1alpha1.PDSpec{},
 					TiKV: &v1alpha1.TiKVSpec{},
@@ -1803,12 +1804,12 @@ func TestGetTiDBConfigMap(t *testing.T) {
 				Data: map[string]string{
 					"startup-script": "",
 					"config-file": `[security]
-  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
-  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
-  ssl-key = "/var/lib/tidb-server-tls/tls.key"
   cluster-ssl-ca = "/var/lib/tidb-tls/ca.crt"
   cluster-ssl-cert = "/var/lib/tidb-tls/tls.crt"
   cluster-ssl-key = "/var/lib/tidb-tls/tls.key"
+  ssl-ca = "/var/lib/tidb-server-tls/ca.crt"
+  ssl-cert = "/var/lib/tidb-server-tls/tls.crt"
+  ssl-key = "/var/lib/tidb-server-tls/tls.key"
 `,
 				},
 			},

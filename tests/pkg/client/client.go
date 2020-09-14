@@ -19,8 +19,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/juju/errors"
 	asclientset "github.com/pingcap/advanced-statefulset/client/client/clientset/versioned"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/typed/pingcap/v1alpha1"
 	exampleagg "github.com/pingcap/tidb-operator/tests/pkg/apiserver/client/clientset/versioned"
@@ -129,7 +129,7 @@ func SetMasterURL(url string) {
 
 func LoadConfig() (*rest.Config, error) {
 	cfg, err := clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)
-	return cfg, errors.Trace(err)
+	return cfg, errors.AddStack(err)
 }
 
 func buildClientsOrDie(cfg *rest.Config) (versioned.Interface, kubernetes.Interface, asclientset.Interface, aggregatorclientset.Interface, apiextensionsclientset.Interface) {

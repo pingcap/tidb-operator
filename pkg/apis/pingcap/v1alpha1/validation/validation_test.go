@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,16 +45,16 @@ func TestValidateAnnotations(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
-						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						BaseImage:     "pingcap/pd",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
-						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						BaseImage:     "pingcap/tikv",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
-						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						BaseImage:     "pingcap/tidb",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 				},
 			},
@@ -68,16 +69,16 @@ func TestValidateAnnotations(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
-						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						BaseImage:     "pingcap/pd",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
-						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						BaseImage:     "pingcap/tikv",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
-						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						BaseImage:     "pingcap/tidb",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 				},
 			},
@@ -109,16 +110,16 @@ func TestValidateAnnotations(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
-						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						BaseImage:     "pingcap/pd",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
-						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						BaseImage:     "pingcap/tikv",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
-						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						BaseImage:     "pingcap/tidb",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 				},
 			},
@@ -145,16 +146,16 @@ func TestValidateAnnotations(t *testing.T) {
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: "v3.0.8",
 					PD: &v1alpha1.PDSpec{
-						BaseImage: "pingcap/pd",
-						Config:    &v1alpha1.PDConfig{},
+						BaseImage:     "pingcap/pd",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiKV: &v1alpha1.TiKVSpec{
-						BaseImage: "pingcap/tikv",
-						Config:    &v1alpha1.TiKVConfig{},
+						BaseImage:     "pingcap/tikv",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 					TiDB: &v1alpha1.TiDBSpec{
-						BaseImage: "pingcap/tidb",
-						Config:    &v1alpha1.TiDBConfig{},
+						BaseImage:     "pingcap/tidb",
+						GenericConfig: config.New(map[string]interface{}{}),
 					},
 				},
 			},

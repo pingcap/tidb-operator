@@ -16,12 +16,91 @@ package config
 import (
 	"testing"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 type Simple struct {
 	A string
 	B int
+}
+
+func TestGetSet(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	c := New(map[string]interface{}{})
+	c.Set("a.b.c1", 1)
+	c.Set("a.b.c2", 2)
+	c.Set("a.b1", 1)
+	c.Set("a.b2", 2)
+	c.Set("a1", 1)
+	c.Set("a2", 2)
+
+	kv := map[string]int64{
+		"a.b.c1": 1,
+		"a.b.c2": 2,
+		"a.b1":   1,
+		"a.b2":   2,
+		"a1":     1,
+		"a2":     2,
+	}
+
+	for k, v := range kv {
+		c.Set(k, v)
+	}
+
+	for k, v := range kv {
+		g.Expect(c.Get(k).AsInt()).Should(Equal(v))
+	}
+
+	data, err := json.Marshal(c.Config)
+	g.Expect(err).Should(BeNil())
+	c.Config = make(map[string]interface{})
+	err = json.Unmarshal(data, &c.Config)
+	g.Expect(err).Should(BeNil())
+	for k, v := range kv {
+		g.Expect(c.Get(k).AsInt()).Should(Equal(v))
+	}
+
+	for i := 0; i < 100; i++ {
+		c.Set("a.b1", i)
+		get := c.Get("a.b1").AsInt()
+		g.Expect(int(get)).Should(Equal(i))
+	}
+}
+
+func fromJSON(data []byte) (c *GenericConfig, err error) {
+	mp := make(map[string]interface{})
+	err = json.Unmarshal(data, &mp)
+	if err != nil {
+		return nil, err
+	}
+
+	tmp := New(mp)
+	return &tmp, nil
+}
+
+func TestJsonPatchDefaults(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	defaults := []byte(`{"name": "John", "age": 24, "height": 3.21, "a": {"a1": 1, "a2": 2}}`)
+	custom := []byte(`{"name":"Jane", "a": {"a2": 22, "a3": 33}}`)
+	merged := []byte(`{"a":{"a1":1,"a2":22,"a3":33},"age":24,"height":3.21,"name":"Jane"}`)
+
+	defaultsMp := map[string]interface{}{}
+	err := json.Unmarshal(defaults, &defaultsMp)
+	g.Expect(err).Should(BeNil())
+
+	customConfig, err := fromJSON(custom)
+	g.Expect(err).Should(BeNil())
+	mergedConfig, err := customConfig.JsonPatchDefaults(defaultsMp)
+	g.Expect(err).Should(BeNil())
+
+	mergedData, err := json.Marshal(mergedConfig.Config)
+	g.Expect(err).Should(BeNil())
+	eq := jsonpatch.Equal(mergedData, merged)
+	g.Expect(eq).Should(BeTrue())
 }
 
 func TestDeepCopyJsonObject(t *testing.T) {

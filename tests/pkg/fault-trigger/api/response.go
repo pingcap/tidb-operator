@@ -30,7 +30,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/juju/errors"
+	"github.com/pingcap/errors"
 	"k8s.io/klog"
 )
 
@@ -65,7 +65,7 @@ func (r *Response) payload(payload interface{}) *Response {
 func ExtractResponse(data []byte) ([]byte, error) {
 	respData := &Response{}
 	if err := json.Unmarshal(data, respData); err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.AddStack(err)
 	}
 
 	if respData.StatusCode != http.StatusOK {

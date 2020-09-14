@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 )
@@ -32,9 +33,9 @@ const (
 	defaultServerLog  = "/data0/logs/server.log"
 )
 
-func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) []corev1.Container {
+func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container, error) {
 	spec := tc.Spec.TiFlash
-	config := spec.Config.DeepCopy()
+	gconfig := spec.GenericConfig.DeepCopy()
 	image := tc.HelperImage()
 	pullPolicy := tc.HelperImagePullPolicy()
 	var containers []corev1.Container
@@ -42,15 +43,22 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) []corev1.Container 
 	if spec.LogTailer != nil {
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
 	}
-	if config == nil {
-		config = &v1alpha1.TiFlashConfig{}
+	if gconfig.Config == nil {
+		gconfig.Config = map[string]interface{}{}
 	}
+
+	config := new(v1alpha1.TiFlashConfig)
+	err := gconfig.UnmarshalToml(config)
+	if err != nil {
+		return nil, err
+	}
+
 	setTiFlashLogConfigDefault(config)
 	containers = append(containers, buildSidecarContainer("serverlog", *config.CommonConfig.FlashLogger.ServerLog, image, pullPolicy, resource))
 	containers = append(containers, buildSidecarContainer("errorlog", *config.CommonConfig.FlashLogger.ErrorLog, image, pullPolicy, resource))
 	containers = append(containers, buildSidecarContainer("proxylog", *config.CommonConfig.Flash.FlashProxy.LogFile, image, pullPolicy, resource))
 	containers = append(containers, buildSidecarContainer("clusterlog", *config.CommonConfig.Flash.FlashCluster.ClusterLog, image, pullPolicy, resource))
-	return containers
+	return containers, nil
 }
 
 func buildSidecarContainer(name, path, image string,
@@ -89,57 +97,62 @@ func buildSidecarContainer(name, path, image string,
 	}
 }
 
-func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
-	config := tc.Spec.TiFlash.Config.DeepCopy()
-	if config == nil {
-		config = &v1alpha1.TiFlashConfig{}
+func getTiFlashConfig(tc *v1alpha1.TidbCluster) (*config.GenericConfig, error) {
+	gconfig := tc.Spec.TiFlash.GenericConfig.DeepCopy()
+	if gconfig.Config == nil {
+		gconfig.Config = map[string]interface{}{}
 	}
 
-	if config.CommonConfig == nil {
-		config.CommonConfig = &v1alpha1.CommonConfig{}
-	}
-	if config.CommonConfig.FlashDataPath == nil {
+	if v := gconfig.Get("config.path"); v == nil {
 		var paths []string
 		for k := range tc.Spec.TiFlash.StorageClaims {
 			paths = append(paths, fmt.Sprintf("/data%d/db", k))
 		}
 		if len(paths) > 0 {
 			dataPath := strings.Join(paths, ",")
-			config.CommonConfig.FlashDataPath = pointer.StringPtr(dataPath)
+			gconfig.Set("config.path", dataPath)
 		}
 	}
+
+	flashConfig := new(v1alpha1.TiFlashConfig)
 
 	if tc.IsHeterogeneous() {
-		setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Namespace)
+		setTiFlashConfigDefault(flashConfig, tc.Spec.Cluster.Name, tc.Name, tc.Namespace)
 	} else {
-		setTiFlashConfigDefault(config, "", tc.Name, tc.Namespace)
+		setTiFlashConfigDefault(flashConfig, "", tc.Name, tc.Namespace)
 	}
 
+	var err error
+	gconfig, err = gconfig.JsonPatchDefaults(flashConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// Note the config of tiflash use "_" by convention, others(proxy) use "-".
 	if tc.IsTLSClusterEnabled() {
-		if config.CommonConfig.Security == nil {
-			config.CommonConfig.Security = &v1alpha1.FlashSecurity{}
+		gconfig.Set("proxy.security.ca-path", path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
+		gconfig.Set("proxy.security.cert-path", path.Join(tiflashCertPath, corev1.TLSCertKey))
+		gconfig.Set("proxy.security.key-path", path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+		gconfig.Set("config.security.ca_path", path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
+		gconfig.Set("config.security.cert_path", path.Join(tiflashCertPath, corev1.TLSCertKey))
+		gconfig.Set("config.security.key_path", path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
+
+		common := gconfig.Get("config.security.cert_allowed_cn")
+		proxy := gconfig.Get("proxy.security.cert-allowed-cn")
+		if common != nil && proxy == nil {
+			gconfig.Set("proxy.security.cert-allowed-cn", common.Interface())
 		}
-		if config.ProxyConfig.Security == nil {
-			config.ProxyConfig.Security = &v1alpha1.TiKVSecurityConfig{}
-		}
-		config.ProxyConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
-		config.ProxyConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
-		config.ProxyConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
-		config.CommonConfig.Security.CAPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.ServiceAccountRootCAKey))
-		config.CommonConfig.Security.CertPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSCertKey))
-		config.CommonConfig.Security.KeyPath = pointer.StringPtr(path.Join(tiflashCertPath, corev1.TLSPrivateKeyKey))
-		if len(config.CommonConfig.Security.CertAllowedCN) > 0 && len(config.ProxyConfig.Security.CertAllowedCN) == 0 {
-			config.ProxyConfig.Security.CertAllowedCN = config.CommonConfig.Security.CertAllowedCN
-		}
+
 		// unset the http ports
-		config.CommonConfig.HTTPPort = nil
-		config.CommonConfig.TCPPort = nil
+		gconfig.Set("config.http_port", nil)
+		gconfig.Set("config.tcp_port", nil)
 	} else {
 		// unset the https ports
-		config.CommonConfig.HTTPSPort = nil
-		config.CommonConfig.TCPPortSecure = nil
+		gconfig.Set("config.https_port", nil)
+		gconfig.Set("config.tcp_port_secure", nil)
 	}
-	return config
+
+	return gconfig, nil
 }
 
 func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfig) {

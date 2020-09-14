@@ -3213,11 +3213,7 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(PDConfig)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	if in.TLSClientSecretName != nil {
 		in, out := &in.TLSClientSecretName, &out.TLSClientSecretName
 		*out = new(string)
@@ -4397,11 +4393,7 @@ func (in *TiCDCSpec) DeepCopyInto(out *TiCDCSpec) {
 	*out = *in
 	in.ComponentSpec.DeepCopyInto(&out.ComponentSpec)
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(TiCDCConfig)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	return
 }
 
@@ -4940,11 +4932,7 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(TiDBConfig)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	if in.Lifecycle != nil {
 		in, out := &in.Lifecycle, &out.Lifecycle
 		*out = new(v1.Lifecycle)
@@ -5062,11 +5050,7 @@ func (in *TiFlashSpec) DeepCopyInto(out *TiFlashSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(TiFlashConfig)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	if in.LogTailer != nil {
 		in, out := &in.LogTailer, &out.LogTailer
 		*out = new(LogTailerSpec)
@@ -6944,11 +6928,7 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(TiKVConfig)
-		(*in).DeepCopyInto(*out)
-	}
+	in.GenericConfig.DeepCopyInto(&out.GenericConfig)
 	return
 }
 

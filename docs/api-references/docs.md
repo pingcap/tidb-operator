@@ -7478,10 +7478,6 @@ time.Duration
 </table>
 <h3 id="pdconfig">PDConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#pdspec">PDSpec</a>)
-</p>
-<p>
 <p>PDConfig is the configuration of pd-server</p>
 </p>
 <table>
@@ -8269,7 +8265,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>strictly-match-label,string</code></br>
+<code>strictly-match-label</code></br>
 <em>
 bool
 </em>
@@ -8283,7 +8279,7 @@ Imported from v3.1.0</p>
 </tr>
 <tr>
 <td>
-<code>enable-placement-rules,string</code></br>
+<code>enable-placement-rules</code></br>
 <em>
 bool
 </em>
@@ -8545,7 +8541,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-raft-learner,string</code></br>
+<code>disable-raft-learner</code></br>
 <em>
 bool
 </em>
@@ -8558,7 +8554,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-remove-down-replica,string</code></br>
+<code>disable-remove-down-replica</code></br>
 <em>
 bool
 </em>
@@ -8572,7 +8568,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-replace-offline-replica,string</code></br>
+<code>disable-replace-offline-replica</code></br>
 <em>
 bool
 </em>
@@ -8586,7 +8582,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-make-up-replica,string</code></br>
+<code>disable-make-up-replica</code></br>
 <em>
 bool
 </em>
@@ -8600,7 +8596,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-remove-extra-replica,string</code></br>
+<code>disable-remove-extra-replica</code></br>
 <em>
 bool
 </em>
@@ -8614,7 +8610,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-location-replacement,string</code></br>
+<code>disable-location-replacement</code></br>
 <em>
 bool
 </em>
@@ -8628,7 +8624,7 @@ Immutable, change should be made through pd-ctl after cluster creation</p>
 </tr>
 <tr>
 <td>
-<code>disable-namespace-relocation,string</code></br>
+<code>disable-namespace-relocation</code></br>
 <em>
 bool
 </em>
@@ -8669,7 +8665,7 @@ map[string]string
 </tr>
 <tr>
 <td>
-<code>enable-one-way-merge,string</code></br>
+<code>enable-one-way-merge</code></br>
 <em>
 bool
 </em>
@@ -8682,7 +8678,7 @@ Imported from v3.1.0</p>
 </tr>
 <tr>
 <td>
-<code>enable-cross-table-merge,string</code></br>
+<code>enable-cross-table-merge</code></br>
 <em>
 bool
 </em>
@@ -8837,7 +8833,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>use-region-storage,string</code></br>
+<code>use-region-storage</code></br>
 <em>
 bool
 </em>
@@ -9006,14 +9002,15 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 </tr>
 <tr>
 <td>
-<code>config</code></br>
+<code>GenericConfig</code></br>
 <em>
-<a href="#pdconfig">
-PDConfig
-</a>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>Config is the Configuration of pd-servers</p>
 </td>
@@ -11474,11 +11471,8 @@ string
 </table>
 <h3 id="ticdcconfig">TiCDCConfig</h3>
 <p>
-(<em>Appears on:</em>
-<a href="#ticdcspec">TiCDCSpec</a>)
-</p>
-<p>
-<p>TiCDCConfig is the configuration of tidbcdc</p>
+<p>TiCDCConfig is the configuration of tidbcdc
+Change to &ldquo;gc-ttl&rdquo; style like other component?</p>
 </p>
 <table>
 <thead>
@@ -11624,14 +11618,15 @@ string
 </tr>
 <tr>
 <td>
-<code>config</code></br>
+<code>GenericConfig</code></br>
 <em>
-<a href="#ticdcconfig">
-TiCDCConfig
-</a>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidbcdc servers</p>
 </td>
@@ -11779,10 +11774,6 @@ Optional: Defaults to nil</p>
 </tbody>
 </table>
 <h3 id="tidbconfig">TiDBConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tidbspec">TiDBSpec</a>)
-</p>
 <p>
 <p>TiDBConfig is the configuration of tidb-server
 For more detail, refer to <a href="https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/">https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/</a></p>
@@ -12855,14 +12846,15 @@ TiDBSlowLogTailerSpec
 </tr>
 <tr>
 <td>
-<code>config</code></br>
+<code>GenericConfig</code></br>
 <em>
-<a href="#tidbconfig">
-TiDBConfig
-</a>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>Config is the Configuration of tidb-servers</p>
 </td>
@@ -13016,10 +13008,6 @@ kubectl create secret generic <clusterName>-tidb-client-secret &ndash;namespace=
 </tbody>
 </table>
 <h3 id="tiflashconfig">TiFlashConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tiflashspec">TiFlashSpec</a>)
-</p>
 <p>
 <p>TiFlashConfig is the configuration of TiFlash.</p>
 </p>
@@ -13184,14 +13172,15 @@ TiFlash supports multiple disks.</p>
 </tr>
 <tr>
 <td>
-<code>config</code></br>
+<code>GenericConfig</code></br>
 <em>
-<a href="#tiflashconfig">
-TiFlashConfig
-</a>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>Config is the Configuration of TiFlash</p>
 </td>
@@ -13925,10 +13914,6 @@ CoprocessorCache
 </tbody>
 </table>
 <h3 id="tikvconfig">TiKVConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tikvspec">TiKVSpec</a>)
-</p>
 <p>
 <p>TiKVConfig is the configuration of TiKV.</p>
 </p>
@@ -17174,14 +17159,15 @@ Defaults to &ldquo;&rdquo; (volume&rsquo;s root).</p>
 </tr>
 <tr>
 <td>
-<code>config</code></br>
+<code>GenericConfig</code></br>
 <em>
-<a href="#tikvconfig">
-TiKVConfig
-</a>
+github.com/pingcap/tidb-operator/pkg/util/config.GenericConfig
 </em>
 </td>
 <td>
+<p>
+(Members of <code>GenericConfig</code> are embedded into this type.)
+</p>
 <em>(Optional)</em>
 <p>Config is the Configuration of tikv-servers</p>
 </td>

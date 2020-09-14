@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -360,9 +361,9 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 		Spec: v1alpha1.TidbClusterSpec{
 			Version: "v3.0.8",
 			PD: &v1alpha1.PDSpec{
-				Replicas:  3,
-				BaseImage: "pingcap/pd",
-				Config:    &v1alpha1.PDConfig{},
+				Replicas:      3,
+				BaseImage:     "pingcap/pd",
+				GenericConfig: config.New(map[string]interface{}{}),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10G"),
@@ -370,9 +371,9 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 				},
 			},
 			TiKV: &v1alpha1.TiKVSpec{
-				Replicas:  3,
-				BaseImage: "pingcap/tikv",
-				Config:    &v1alpha1.TiKVConfig{},
+				Replicas:      3,
+				BaseImage:     "pingcap/tikv",
+				GenericConfig: config.New(map[string]interface{}{}),
 				ResourceRequirements: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("10G"),
@@ -380,9 +381,9 @@ func newTidbClusterForTidbClusterControl() *v1alpha1.TidbCluster {
 				},
 			},
 			TiDB: &v1alpha1.TiDBSpec{
-				Replicas:  2,
-				BaseImage: "pingcap/tidb",
-				Config:    &v1alpha1.TiDBConfig{},
+				Replicas:      2,
+				BaseImage:     "pingcap/tidb",
+				GenericConfig: config.New(map[string]interface{}{}),
 			},
 		},
 	}

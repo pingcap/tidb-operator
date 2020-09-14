@@ -619,32 +619,44 @@ func (tc *TidbCluster) SkipTLSWhenConnectTiDB() bool {
 }
 
 func (tc *TidbCluster) TiCDCTimezone() string {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.Timezone != nil {
-		return *tc.Spec.TiCDC.Config.Timezone
+	if tc.Spec.TiCDC != nil {
+		v := tc.Spec.TiCDC.GenericConfig.Get("timezone")
+		if v != nil {
+			return v.AsString()
+		}
 	}
 
 	return tc.Timezone()
 }
 
 func (tc *TidbCluster) TiCDCGCTTL() int32 {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.GCTTL != nil {
-		return *tc.Spec.TiCDC.Config.GCTTL
+	if tc.Spec.TiCDC != nil {
+		v := tc.Spec.TiCDC.GenericConfig.Get("gcTTL")
+		if v != nil {
+			return int32(v.AsInt())
+		}
 	}
 
 	return 86400
 }
 
 func (tc *TidbCluster) TiCDCLogFile() string {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.LogFile != nil {
-		return *tc.Spec.TiCDC.Config.LogFile
+	if tc.Spec.TiCDC != nil {
+		v := tc.Spec.TiCDC.GenericConfig.Get("logFile")
+		if v != nil {
+			return v.AsString()
+		}
 	}
 
 	return "/dev/stderr"
 }
 
 func (tc *TidbCluster) TiCDCLogLevel() string {
-	if tc.Spec.TiCDC != nil && tc.Spec.TiCDC.Config != nil && tc.Spec.TiCDC.Config.LogLevel != nil {
-		return *tc.Spec.TiCDC.Config.LogLevel
+	if tc.Spec.TiCDC != nil {
+		v := tc.Spec.TiCDC.GenericConfig.Get("logLevel")
+		if v != nil {
+			return v.AsString()
+		}
 	}
 
 	return "info"

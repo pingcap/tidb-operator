@@ -302,7 +302,7 @@ func (tcc *Controller) processNextWorkItem() bool {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
 			klog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(perrors.Annotatef(err, "TidbCluster '%v' sync failed requeuing", key.(string)))
 		}
 		tcc.queue.AddRateLimited(key)
 	} else {

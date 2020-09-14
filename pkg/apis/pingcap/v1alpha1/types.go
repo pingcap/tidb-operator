@@ -355,7 +355,7 @@ type PDSpec struct {
 
 	// Config is the Configuration of pd-servers
 	// +optional
-	Config *PDConfig `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 
 	// TLSClientSecretName is the name of secret which stores tidb server client certificate
 	// which used by Dashboard.
@@ -416,7 +416,7 @@ type TiKVSpec struct {
 
 	// Config is the Configuration of tikv-servers
 	// +optional
-	Config *TiKVConfig `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
@@ -459,7 +459,7 @@ type TiFlashSpec struct {
 
 	// Config is the Configuration of TiFlash
 	// +optional
-	Config *TiFlashConfig `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 
 	// LogTailer is the configurations of the log tailers for TiFlash
 	// +optional
@@ -490,11 +490,12 @@ type TiCDCSpec struct {
 
 	// Config is the Configuration of tidbcdc servers
 	// +optional
-	Config *TiCDCConfig `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
 // +k8s:openapi-gen=true
+// Change to "gc-ttl" style like other component?
 type TiCDCConfig struct {
 	// Time zone of TiCDC
 	// Optional: Defaults to UTC
@@ -591,7 +592,7 @@ type TiDBSpec struct {
 
 	// Config is the Configuration of tidb-servers
 	// +optional
-	Config *TiDBConfig `json:"config,omitempty"`
+	config.GenericConfig `json:",inline"`
 
 	// Lifecycle describes actions that the management system should take in response to container lifecycle
 	// events. For the PostStart and PreStop lifecycle handlers, management of the container blocks

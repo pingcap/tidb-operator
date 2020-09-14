@@ -78,29 +78,19 @@ func setTidbSpecDefault(tc *v1alpha1.TidbCluster) {
 			tc.Spec.TiDB.BaseImage = defaultTiDBImage
 		}
 	}
+
+	// Start set config if need.
+	if tc.Spec.TiDB.Config == nil {
+		return
+	}
+
 	if tc.Spec.TiDB.MaxFailoverCount == nil {
 		tc.Spec.TiDB.MaxFailoverCount = pointer.Int32Ptr(3)
 	}
 
-	// we only set default log
-	if tc.Spec.TiDB.Config != nil {
-		if tc.Spec.TiDB.Config.Log == nil {
-			tc.Spec.TiDB.Config.Log = &v1alpha1.Log{
-				File: &v1alpha1.FileLogConfig{
-					MaxBackups: &tidbLogMaxBackups,
-				},
-			}
-		} else {
-			if tc.Spec.TiDB.Config.Log.File == nil {
-				tc.Spec.TiDB.Config.Log.File = &v1alpha1.FileLogConfig{
-					MaxBackups: &tidbLogMaxBackups,
-				}
-			} else {
-				if tc.Spec.TiDB.Config.Log.File.MaxBackups == nil {
-					tc.Spec.TiDB.Config.Log.File.MaxBackups = &tidbLogMaxBackups
-				}
-			}
-		}
+	backupKey := "log.file.max-backups"
+	if v := tc.Spec.TiDB.GenericConfig.Get(backupKey); v == nil {
+		tc.Spec.TiDB.GenericConfig.Set(backupKey, tidbLogMaxBackups)
 	}
 }
 

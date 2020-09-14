@@ -20,11 +20,11 @@ package v1alpha1
 type TiFlashConfig struct {
 	// commonConfig is the Configuration of TiFlash process
 	// +optional
-	CommonConfig *CommonConfig `json:"config,omitempty"`
+	CommonConfig *CommonConfig `json:"config,omitempty" toml:"config,omitempty"`
 
 	// proxyConfig is the Configuration of proxy process
 	// +optional
-	ProxyConfig *ProxyConfig `json:"proxy,omitempty"`
+	ProxyConfig *ProxyConfig `json:"proxy,omitempty" toml:"proxy,omitempty"`
 }
 
 // FlashServerConfig is the configuration of Proxy server.

@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/tkctl/util"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
 	corev1 "k8s.io/api/core/v1"
@@ -107,7 +108,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
-				Config: &v1alpha1.PDConfig{
+				GenericConfig: mustConfig(&v1alpha1.PDConfig{
 					Log: &v1alpha1.PDLogConfig{
 						Level: pointer.StringPtr("info"),
 					},
@@ -115,7 +116,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 					Schedule: &v1alpha1.PDScheduleConfig{
 						MaxStoreDownTime: pointer.StringPtr("5m"),
 					},
-				},
+				}),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.PDMemberType),
 				},
@@ -126,7 +127,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				BaseImage:            "pingcap/tikv",
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config:               tikvConfig,
+				GenericConfig:        mustConfig(tikvConfig),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 				},
@@ -144,11 +145,11 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				},
 				SeparateSlowLog:  pointer.BoolPtr(true),
 				MaxFailoverCount: pointer.Int32Ptr(3),
-				Config: &v1alpha1.TiDBConfig{
+				GenericConfig: mustConfig(&v1alpha1.TiDBConfig{
 					Log: &v1alpha1.Log{
 						Level: pointer.StringPtr("info"),
 					},
-				},
+				}),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiDBMemberType),
 				},
@@ -173,7 +174,7 @@ func GetTiKVGroup(ns, name, clusterName, version string) *v1alpha1.TiKVGroup {
 				Replicas:             3,
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
 				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config:               tikvConfig,
+				GenericConfig:        mustConfig(tikvConfig),
 				ComponentSpec: v1alpha1.ComponentSpec{
 					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
 					Image:    fmt.Sprintf("pingcap/tikv:%s", version),
@@ -566,4 +567,13 @@ func AddPumpForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 		}),
 	}
 	return tc
+}
+
+func mustConfig(x interface{}) config.GenericConfig {
+	c, err := config.FromJsonObject(x)
+	if err != nil {
+		panic(err)
+	}
+
+	return c
 }

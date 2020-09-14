@@ -179,10 +179,8 @@ func run() {
 		// configuration change
 		for _, cluster := range clusters {
 			cluster.Clustrer.Spec.PD.Replicas = int32(cfg.PDMaxReplicas)
-			grpcConcurrency := uint(cfg.TiKVGrpcConcurrency)
-			cluster.Clustrer.Spec.TiKV.Config.Server.GrpcConcurrency = &grpcConcurrency
-			tokenLimit := uint(cfg.TiDBTokenLimit)
-			cluster.Clustrer.Spec.TiDB.Config.TokenLimit = &tokenLimit
+			cluster.Clustrer.Spec.TiKV.GenericConfig.Set("server.grpc-concurrency", cfg.TiKVGrpcConcurrency)
+			cluster.Clustrer.Spec.TiDB.GenericConfig.Set("token-limit", cfg.TiDBTokenLimit)
 			crdUtil.UpdateTidbClusterOrDie(cluster.Clustrer)
 			crdUtil.WaitTidbClusterReadyOrDie(cluster.Clustrer, 60*time.Minute)
 		}

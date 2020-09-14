@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -698,11 +699,9 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 }
 
 func TestBuildTiFlashSidecarContainers(t *testing.T) {
-	g := NewGomegaWithT(t)
-
 	type testcase struct {
 		name        string
-		flashConfig *v1alpha1.TiFlashConfig
+		flashConfig config.GenericConfig
 		expect      []corev1.Container
 		resource    bool
 	}
@@ -710,22 +709,22 @@ func TestBuildTiFlashSidecarContainers(t *testing.T) {
 	tests := []*testcase{
 		{
 			name:        "nil config",
-			flashConfig: nil,
+			flashConfig: config.New(nil),
 			expect:      defaultSideCarContainers,
 		},
 		{
 			name:        "empty config",
-			flashConfig: &v1alpha1.TiFlashConfig{},
+			flashConfig: config.New(map[string]interface{}{}),
 			expect:      defaultSideCarContainers,
 		},
 		{
 			name:        "custom config",
-			flashConfig: &customTiFlashLogConfig,
+			flashConfig: mustConfig(t, &customTiFlashLogConfig),
 			expect:      customSideCarContainers,
 		},
 		{
 			name:        "custom resource config",
-			flashConfig: &customTiFlashLogConfig,
+			flashConfig: mustConfig(t, &customTiFlashLogConfig),
 			expect:      customResourceSideCarContainers,
 			resource:    true,
 		},
@@ -734,7 +733,7 @@ func TestBuildTiFlashSidecarContainers(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tc := newTidbCluster()
-			tc.Spec.TiFlash.Config = test.flashConfig
+			tc.Spec.TiFlash.GenericConfig = test.flashConfig
 			if test.resource {
 				tc.Spec.TiFlash.LogTailer = &v1alpha1.LogTailerSpec{}
 				tc.Spec.TiFlash.LogTailer.ResourceRequirements = corev1.ResourceRequirements{
@@ -745,11 +744,17 @@ func TestBuildTiFlashSidecarContainers(t *testing.T) {
 					},
 				}
 			}
-			cs := buildTiFlashSidecarContainers(tc)
-			g.Expect(cs).To(Equal(test.expect))
+			cs, err := buildTiFlashSidecarContainers(tc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(test.expect, cs); diff != "" {
+				t.Fatalf("test %s unexpected configuration (-want, +got): %s", test.name, diff)
+			}
 		})
 	}
 }
+
 func TestSetTiFlashConfigDefault(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -814,6 +819,7 @@ func TestGetTiFlashConfig(t *testing.T) {
 	cnConfig := defaultTiFlashTLSConfig.DeepCopy()
 	cnConfig.ProxyConfig.Security.CertAllowedCN = append(cnConfig.ProxyConfig.Security.CertAllowedCN, "TiDB")
 	cnConfig.CommonConfig.Security.CertAllowedCN = append(cnConfig.CommonConfig.Security.CertAllowedCN, "TiDB")
+
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -844,7 +850,7 @@ func TestGetTiFlashConfig(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiFlash: &v1alpha1.TiFlashSpec{
-						Config: &v1alpha1.TiFlashConfig{
+						GenericConfig: mustConfig(t, &v1alpha1.TiFlashConfig{
 							CommonConfig: &v1alpha1.CommonConfig{
 								Security: &v1alpha1.FlashSecurity{
 									CertAllowedCN: []string{
@@ -852,7 +858,7 @@ func TestGetTiFlashConfig(t *testing.T) {
 									},
 								},
 							},
-						},
+						}),
 					},
 					TLSCluster: &v1alpha1.TLSCluster{
 						Enabled: true,
@@ -897,8 +903,13 @@ func TestGetTiFlashConfig(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			config := getTiFlashConfig(&tt.tc)
-			if diff := cmp.Diff(*tt.expected, *config); diff != "" {
+			g := NewGomegaWithT(t)
+			config, err := getTiFlashConfig(&tt.tc)
+			g.Expect(err).Should(BeNil())
+			flashConfig := new(v1alpha1.TiFlashConfig)
+			err = config.UnmarshalToml(flashConfig)
+			g.Expect(err).Should(BeNil())
+			if diff := cmp.Diff(*tt.expected, *flashConfig); diff != "" {
 				t.Fatalf("unexpected configuration (-want, +got): %s", diff)
 			}
 		})
