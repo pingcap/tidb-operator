@@ -2538,6 +2538,11 @@ func (in *PDConfig) DeepCopyInto(out *PDConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.InitialClusterToken != nil {
+		in, out := &in.InitialClusterToken, &out.InitialClusterToken
+		*out = new(string)
+		**out = **in
+	}
 	if in.LeaderLease != nil {
 		in, out := &in.LeaderLease, &out.LeaderLease
 		*out = new(int64)

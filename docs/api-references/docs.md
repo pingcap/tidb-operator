@@ -4903,6 +4903,21 @@ bool
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-experimental</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, experimental TiDB Dashboard features will be available.
+These features are incomplete or not well tested. Suggest not to enable in
+production.
+Optional: Defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="discoveryspec">DiscoverySpec</h3>
@@ -7498,6 +7513,18 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initial-cluster-token</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>set different tokens to prevent communication between PDs in different clusters.</p>
 </td>
 </tr>
 <tr>
