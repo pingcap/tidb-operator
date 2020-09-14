@@ -25,7 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -235,4 +237,33 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 		}
 	}
 	return errorutils.NewAggregate(errs)
+}
+
+func (am *autoScalerManager) updateTidbMonitor(tm *v1alpha1.TidbMonitor) error {
+	ns := tm.GetNamespace()
+	tmName := tm.GetName()
+	monitorSpec := tm.Spec.DeepCopy()
+
+	// don't wait due to limited number of clients, but backoff after the default number of steps
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var updateErr error
+		_, updateErr = am.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
+		if updateErr == nil {
+			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
+			return nil
+		}
+		klog.V(4).Infof("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, updateErr)
+		if updated, err := am.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			tm = updated.DeepCopy()
+			tm.Spec = *monitorSpec
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
+		}
+		return updateErr
+	})
+	if err != nil {
+		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
+	}
+	return err
 }
