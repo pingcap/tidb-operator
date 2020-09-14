@@ -156,7 +156,7 @@ type DashboardConfig struct {
 	// production.
 	// Optional: Defaults to false
 	// +optional
-	EnableExperimental bool `toml:"enable-experimental" json:"enable-experimental"`
+	EnableExperimental *bool `toml:"enable-experimental" json:"enable-experimental"`
 }
 
 // PDLogConfig serializes log related config in toml/json.

@@ -1170,6 +1170,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableExperimental != nil {
+		in, out := &in.EnableExperimental, &out.EnableExperimental
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
