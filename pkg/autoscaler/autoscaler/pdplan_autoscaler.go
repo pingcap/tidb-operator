@@ -17,14 +17,15 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -130,35 +131,108 @@ func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbCluster
 }
 
 func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
-	// TODO in next PR
-	return nil
-}
+	var errs []error
+	for _, group := range groupsToCreate {
+		plan := groupPlanMap[group]
+		component := plan.Component
 
-func (am *autoScalerManager) updateTidbMonitor(tm *v1alpha1.TidbMonitor) error {
-	ns := tm.GetNamespace()
-	tmName := tm.GetName()
-	monitorSpec := tm.Spec.DeepCopy()
+		if !checkAutoscalingComponent(tac, component) {
+			continue
+		}
 
-	// don't wait due to limited number of clients, but backoff after the default number of steps
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var updateErr error
-		_, updateErr = am.cli.PingcapV1alpha1().TidbMonitors(ns).Update(tm)
-		if updateErr == nil {
-			klog.Infof("TidbMonitor: [%s/%s] updated successfully", ns, tmName)
-			return nil
+		resource, ok := tac.Spec.Resources[plan.ResourceType]
+		if !ok {
+			errs = append(errs, fmt.Errorf("unknown resource type %v for group %s tac[%s/%s]", plan.ResourceType, plan.Labels[groupLabelKey], tac.Namespace, tac.Name))
+			continue
 		}
-		klog.V(4).Infof("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, updateErr)
-		if updated, err := am.tmLister.TidbMonitors(ns).Get(tmName); err == nil {
-			// make a copy so we don't mutate the shared cache
-			tm = updated.DeepCopy()
-			tm.Spec = *monitorSpec
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbMonitor %s/%s from lister: %v", ns, tmName, err))
+		resList := corev1.ResourceList{
+			corev1.ResourceCPU:    resource.CPU,
+			corev1.ResourceMemory: resource.Memory,
 		}
-		return updateErr
-	})
-	if err != nil {
-		klog.Errorf("failed to update TidbMonitor: [%s/%s], error: %v", ns, tmName, err)
+
+		autoTcName, err := genAutoClusterName(tac, component, plan.Labels, resource)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		autoTc := &v1alpha1.TidbCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      autoTcName,
+				Namespace: tc.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					controller.GetTiDBClusterAutoscalerOwnerRef(tac),
+				},
+			},
+			Status: v1alpha1.TidbClusterStatus{
+				AutoScaler: &v1alpha1.TidbClusterAutoScalerRef{
+					Name:      tac.Name,
+					Namespace: tac.Namespace,
+				},
+			},
+			Spec: v1alpha1.TidbClusterSpec{
+				Cluster: &v1alpha1.TidbClusterRef{
+					Name:      tc.Name,
+					Namespace: tc.Namespace,
+				},
+			},
+		}
+
+		switch component {
+		case v1alpha1.TiKVMemberType.String():
+			resList[corev1.ResourceStorage] = resource.Storage
+
+			autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
+			autoTc.Spec.TiKV.Replicas = int32(plan.Count)
+			autoTc.Spec.TiKV.ResourceRequirements = corev1.ResourceRequirements{
+				Limits:   resList,
+				Requests: resList,
+			}
+			if autoTc.Spec.TiKV.Config == nil {
+				autoTc.Spec.TiKV.Config = &v1alpha1.TiKVConfig{
+					Server: &v1alpha1.TiKVServerConfig{
+						Labels: map[string]string{},
+					},
+				}
+			}
+			if autoTc.Spec.TiKV.Config.Server == nil {
+				autoTc.Spec.TiKV.Config.Server = &v1alpha1.TiKVServerConfig{
+					Labels: map[string]string{},
+				}
+			}
+			if autoTc.Spec.TiKV.Config.Server.Labels == nil {
+				autoTc.Spec.TiKV.Config.Server.Labels = map[string]string{}
+			}
+			for k, v := range plan.Labels {
+				autoTc.Spec.TiKV.Config.Server.Labels[k] = v
+			}
+		case v1alpha1.TiDBMemberType.String():
+			autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
+			autoTc.Spec.TiDB.ResourceRequirements = corev1.ResourceRequirements{
+				Limits:   resList,
+				Requests: resList,
+			}
+			if autoTc.Spec.TiDB.Config == nil {
+				autoTc.Spec.TiDB.Config = &v1alpha1.TiDBConfig{
+					Labels: map[string]string{},
+				}
+			}
+			if autoTc.Spec.TiDB.Config.Labels == nil {
+				autoTc.Spec.TiDB.Config.Labels = map[string]string{}
+			}
+			for k, v := range plan.Labels {
+				autoTc.Spec.TiDB.Config.Labels[k] = v
+			}
+		}
+
+		// Patch custom labels
+		patchAutoscalingLabels(autoTc, tac, component, group)
+
+		_, err = am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
 	}
-	return err
+	return errorutils.NewAggregate(errs)
 }

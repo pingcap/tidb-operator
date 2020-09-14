@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -362,6 +363,26 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 	return result
 }
 
+const autoClusterPrefix = "auto-"
+
+func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, labels map[string]string, resource v1alpha1.AutoResource) (string, error) {
+	seed := map[string]interface{}{
+		"namespace": tas.Namespace,
+		"tas":       tas.Name,
+		"component": component,
+		"cpu":       resource.CPU.AsDec().UnscaledBig().Uint64(),
+		"storage":   resource.Storage.AsDec().UnscaledBig().Uint64(),
+		"memory":    resource.Memory.AsDec().UnscaledBig().Uint64(),
+		"labels":    labels,
+	}
+	marshaled, err := json.Marshal(seed)
+	if err != nil {
+		return "", err
+	}
+
+	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
+}
+
 func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component string) bool {
 	switch component {
 	case "tidb":
@@ -370,4 +391,13 @@ func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component st
 		return tas.Spec.TiKV != nil
 	}
 	return false
+}
+
+func patchAutoscalingLabels(autoTc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component, group string) {
+	if autoTc.Labels == nil {
+		autoTc.Labels = map[string]string{}
+	}
+	autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
+	autoTc.Labels[label.AutoComponentLabelKey] = component
+	autoTc.Labels[label.AutoScalingGroupLabelKey] = group
 }

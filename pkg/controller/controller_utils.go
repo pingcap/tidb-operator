@@ -199,6 +199,19 @@ func GetTiDBMonitorOwnerRef(monitor *v1alpha1.TidbMonitor) metav1.OwnerReference
 	}
 }
 
+func GetTiDBClusterAutoscalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         tidbMonitorControllerkind.GroupVersion().String(),
+		Kind:               tidbMonitorControllerkind.Kind,
+		Name:               tac.GetName(),
+		UID:                tac.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
 // GetServiceType returns member's service type
 func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.ServiceType {
 	for _, svc := range services {
