@@ -14910,7 +14910,7 @@ string
 <td>
 <code>enable-compaction-filter</code></br>
 <em>
-boolean
+bool
 </em>
 </td>
 <td>
