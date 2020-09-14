@@ -1,9 +1,9 @@
 # A basic heterogeneous TLS cluster example
 
 
-The following steps will create a basic tls TiDB cluster , then we can create a heterogeneous cluster contains one tikv and one tidb.
+The following steps will create a basic TLS TiDB cluster , then we can create a heterogeneous cluster contains one tikv and one tidb.
 
-## Install tls certificate
+## Install TLS certificate
 The following commands is assumed to be executed in this directory.
 
 Install the basic certificate:
