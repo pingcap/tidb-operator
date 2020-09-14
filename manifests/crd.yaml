@@ -8532,6 +8532,8 @@ spec:
                               type: integer
                             max-write-bytes-per-sec:
                               type: string
+                            enable-compaction-filter:
+                              type: boolean
                           type: object
                         import:
                           properties:
