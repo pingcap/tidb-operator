@@ -1,4 +1,4 @@
-# A Basic heterogeneous tls cluster example
+# A basic heterogeneous TLS cluster example
 
 
 The following steps will create a basic tls TiDB cluster , then we can create a heterogeneous cluster contains one tikv and one tidb.

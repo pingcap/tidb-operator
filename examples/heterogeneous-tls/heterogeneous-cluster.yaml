@@ -9,7 +9,7 @@ spec:
   tlsCluster:
     enabled: true
   configUpdateStrategy: RollingUpdate
-  version: v4.0.4
+  version: v4.0.5
   timezone: UTC
   pvReclaimPolicy: Delete
   discovery: {}
