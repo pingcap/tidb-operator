@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: basic-selfsigned-ca-issuer
+  namespace: default
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: basic-ca
+  namespace: default
+spec:
+  secretName: basic-ca-secret
+  commonName: "TiDB"
+  isCA: true
+  issuerRef:
+    name: basic-selfsigned-ca-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: basic-tidb-issuer
+  namespace: default
+spec:
+  ca:
+    secretName: basic-ca-secret
