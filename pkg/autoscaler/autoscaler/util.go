@@ -361,13 +361,3 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 	}
 	return result
 }
-
-func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component string) bool {
-	switch component {
-	case "tidb":
-		return tas.Spec.TiDB != nil
-	case "tikv":
-		return tas.Spec.TiKV != nil
-	}
-	return false
-}
