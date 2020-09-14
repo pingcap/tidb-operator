@@ -1315,6 +1315,17 @@ DiscoverySpec
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>pd</code></br>
 <em>
 <a href="#pdspec">
@@ -1762,7 +1773,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info</p>
+MetricsUrl represents the url to fetch the metrics info
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -1777,7 +1789,8 @@ TidbMonitorRef
 <td>
 <em>(Optional)</em>
 <p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl</p>
+Operator will use MetricsUrl
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -1806,6 +1819,20 @@ TidbAutoScalerSpec
 <td>
 <em>(Optional)</em>
 <p>TiDB represents the auto-scaling spec for tidb</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="#autoresource">
+[]AutoResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
 </td>
 </tr>
 </table>
@@ -2326,6 +2353,130 @@ TidbMonitorStatus
 </td>
 <td>
 <p>Most recently observed status of the TidbMonitor</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="autoresource">AutoResource</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
+</p>
+<p>
+<p>AutoResource describes the resource type definitions</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resource_type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ResourceType identifies a specific resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cpu</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>CPU defines the CPU of this resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>memory</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>Memory defines the memory of this resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+k8s.io/apimachinery/pkg/api/resource.Quantity
+</em>
+</td>
+<td>
+<p>Storage defines the storage of this resource type</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>count</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Count defines the max availabel count of this resource type</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="autorule">AutoRule</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
+</p>
+<p>
+<p>AutoRule describes the rules for auto-scaling with PD API</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>max_threshold</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>MaxThreshold defines the threshold to scale out</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>min_threshold</code></br>
+<em>
+float64
+</em>
+</td>
+<td>
+<p>MinThreshold defines the threshold to scale in, not applicable to <code>storage</code> rule</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resource_types</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>ResourceTypes defines the resource types that can be used for scaling</p>
 </td>
 </tr>
 </tbody>
@@ -3099,7 +3250,8 @@ int32
 </td>
 <td>
 <p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
-It cannot be less than minReplicas.</p>
+It cannot be less than minReplicas.
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -3113,7 +3265,21 @@ int32
 <em>(Optional)</em>
 <p>minReplicas is the lower limit for the number of replicas to which the autoscaler
 can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
-available.</p>
+available.
+Deprecated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rules</code></br>
+<em>
+<a href="#autorule">
+map[k8s.io/api/core/v1.ResourceName]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule
+</a>
+</em>
+</td>
+<td>
+<p>Rules defines the rules for auto-scaling with PD API</p>
 </td>
 </tr>
 <tr>
@@ -3153,6 +3319,7 @@ If not set, the default ScaleOutIntervalSeconds will be set to 300</p>
 </td>
 <td>
 <em>(Optional)</em>
+<p>Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -3164,21 +3331,22 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus</p>
+<p>MetricsTimeDuration describes the Time duration to be queried in the Prometheus
+Deprecated</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>externalEndpoint</code></br>
+<code>external</code></br>
 <em>
-<a href="#externalendpoint">
-ExternalEndpoint
+<a href="#externalconfig">
+ExternalConfig
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ExternalEndpoint makes the auto-scaler controller able to query the external service
+<p>External makes the auto-scaler controller able to query the external service
 to fetch the recommended replicas for TiKV/TiDB</p>
 </td>
 </tr>
@@ -3359,6 +3527,18 @@ Optional: Defaults to range</p>
 <tbody>
 <tr>
 <td>
+<code>tmp_path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to &ldquo;/data0/tmp&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>path_realtime_mode</code></br>
 <em>
 bool
@@ -3395,26 +3575,15 @@ int64
 </tr>
 <tr>
 <td>
-<code>tcp_port_secure</code></br>
+<code>flash</code></br>
 <em>
-int32
+<a href="#flash">
+Flash
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 9000</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>https_port</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Optional: Defaults to 8123</p>
 </td>
 </tr>
 <tr>
@@ -4060,6 +4229,7 @@ CrdKind
 <a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
 </p>
 <p>
+<p>Deprecated</p>
 </p>
 <table>
 <thead>
@@ -4853,10 +5023,54 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="externalendpoint">ExternalEndpoint</h3>
+<h3 id="externalconfig">ExternalConfig</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
+</p>
+<p>
+<p>ExternalConfig represents the external config.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+<a href="#externalendpoint">
+ExternalEndpoint
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ExternalEndpoint makes the auto-scaler controller able to query the
+external service to fetch the recommended replicas for TiKV/TiDB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="externalendpoint">ExternalEndpoint</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#externalconfig">ExternalConfig</a>)
 </p>
 <p>
 <p>ExternalEndpoint describes the external service endpoint
@@ -5052,6 +5266,85 @@ FlashCluster
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#flashproxy">
+FlashProxy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashcluster">FlashCluster</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#flash">Flash</a>)
+</p>
+<p>
+<p>FlashCluster is the configuration of [flash.flash_cluster] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/flash_cluster_manager.log</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>refresh_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 20</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>update_rule_interval</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>master_ttl</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 60</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="flashlogger">FlashLogger</h3>
@@ -5072,6 +5365,18 @@ FlashCluster
 <tbody>
 <tr>
 <td>
+<code>errorlog</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/error.log</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>size</code></br>
 <em>
 string
@@ -5080,6 +5385,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 100M</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/server.log</p>
 </td>
 </tr>
 <tr>
@@ -5108,6 +5425,84 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="flashproxy">FlashProxy</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#flash">Flash</a>)
+</p>
+<p>
+<p>FlashProxy is the configuration of [flash.proxy] section.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 0.0.0.0:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data-dir</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/proxy</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/proxy.toml</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to /data0/logs/proxy.log</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="flashsecurity">FlashSecurity</h3>
 <p>
 (<em>Appears on:</em>
@@ -5132,6 +5527,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5143,6 +5539,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5154,6 +5551,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>Be set automatically by Operator</p>
 </td>
 </tr>
 <tr>
@@ -5166,6 +5564,75 @@ string
 <td>
 <em>(Optional)</em>
 <p>CertAllowedCN is the Common Name that allowed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="flashserverconfig">FlashServerConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>)
+</p>
+<p>
+<p>FlashServerConfig is the configuration of Proxy server.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>engine-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to 0.0.0.0:20292</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>advertise-status-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>TiKVServerConfig</code></br>
+<em>
+<a href="#tikvserverconfig">
+TiKVServerConfig
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiKVServerConfig</code> are embedded into this type.)
+</p>
 </td>
 </tr>
 </tbody>
@@ -6010,6 +6477,10 @@ DMSecurityConfig
 </table>
 <h3 id="masterfailuremember">MasterFailureMember</h3>
 <p>
+(<em>Appears on:</em>
+<a href="#masterstatus">MasterStatus</a>)
+</p>
+<p>
 <p>MasterFailureMember is the dm-master failure member information</p>
 </p>
 <table>
@@ -6566,8 +7037,8 @@ MasterMember
 <td>
 <code>failureMembers</code></br>
 <em>
-<a href="#pdfailuremember">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDFailureMember
+<a href="#masterfailuremember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.MasterFailureMember
 </a>
 </em>
 </td>
@@ -7314,7 +7785,6 @@ DashboardConfig
 <h3 id="pdfailuremember">PDFailureMember</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#masterstatus">MasterStatus</a>, 
 <a href="#pdstatus">PDStatus</a>)
 </p>
 <p>
@@ -8414,6 +8884,17 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pd</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>replicas</code></br>
 <em>
 int32
@@ -9282,6 +9763,214 @@ PrometheusConfiguration
 </tr>
 </tbody>
 </table>
+<h3 id="proxyconfig">ProxyConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashconfig">TiFlashConfig</a>)
+</p>
+<p>
+<p>ProxyConfig is the configuration of TiFlash proxy process.
+All the configurations are same with those of TiKV except adding <code>engine-addr</code> in the TiKVServerConfig</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>log-level</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-file</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>log-rotation-timespan</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 24h</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>panic-when-unexpected-key-or-data</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>server</code></br>
+<em>
+<a href="#flashserverconfig">
+FlashServerConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+<a href="#tikvstorageconfig">
+TiKVStorageConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftstore</code></br>
+<em>
+<a href="#tikvraftstoreconfig">
+TiKVRaftstoreConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>rocksdb</code></br>
+<em>
+<a href="#tikvdbconfig">
+TiKVDbConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>coprocessor</code></br>
+<em>
+<a href="#tikvcoprocessorconfig">
+TiKVCoprocessorConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>readpool</code></br>
+<em>
+<a href="#tikvreadpoolconfig">
+TiKVReadPoolConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>raftdb</code></br>
+<em>
+<a href="#tikvraftdbconfig">
+TiKVRaftDBConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>import</code></br>
+<em>
+<a href="#tikvimportconfig">
+TiKVImportConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>gc</code></br>
+<em>
+<a href="#tikvgcconfig">
+TiKVGCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pd</code></br>
+<em>
+<a href="#tikvpdconfig">
+TiKVPDConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#tikvsecurityconfig">
+TiKVSecurityConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="proxyprotocol">ProxyProtocol</h3>
 <p>
 (<em>Appears on:</em>
@@ -9370,6 +10059,17 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for pump</p>
 </td>
 </tr>
 <tr>
@@ -11998,6 +12698,17 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for tidb</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>replicas</code></br>
 <em>
 int32
@@ -12305,6 +13016,20 @@ CommonConfig
 <td>
 <em>(Optional)</em>
 <p>commonConfig is the Configuration of TiFlash process</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy</code></br>
+<em>
+<a href="#proxyconfig">
+ProxyConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>proxyConfig is the Configuration of proxy process</p>
 </td>
 </tr>
 </tbody>
@@ -13213,6 +13938,17 @@ string
 </tr>
 <tr>
 <td>
+<code>log-format</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>slow-log-file</code></br>
 <em>
 string
@@ -13452,6 +14188,7 @@ TiKVBackupConfig
 <h3 id="tikvcoprocessorconfig">TiKVCoprocessorConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -13671,6 +14408,7 @@ bool
 <h3 id="tikvdbconfig">TiKVDbConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14145,6 +14883,7 @@ Kubernetes meta/v1.Time
 <h3 id="tikvgcconfig">TiKVGCConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14159,7 +14898,7 @@ Kubernetes meta/v1.Time
 <tbody>
 <tr>
 <td>
-<code>	batch-keys</code></br>
+<code>batch-keys</code></br>
 <em>
 int64
 </em>
@@ -14171,7 +14910,7 @@ int64
 </tr>
 <tr>
 <td>
-<code>	max-write-bytes-per-sec</code></br>
+<code>max-write-bytes-per-sec</code></br>
 <em>
 string
 </em>
@@ -14262,6 +15001,7 @@ TiKVStatus
 <h3 id="tikvimportconfig">TiKVImportConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14442,6 +15182,7 @@ If the type set to kms, this config should be filled</p>
 <h3 id="tikvpdconfig">TiKVPDConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14582,6 +15323,7 @@ bool
 <h3 id="tikvraftdbconfig">TiKVRaftDBConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -14865,6 +15607,7 @@ TiKVCfConfig
 <h3 id="tikvraftstoreconfig">TiKVRaftstoreConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15541,6 +16284,7 @@ bool
 <h3 id="tikvreadpoolconfig">TiKVReadPoolConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15597,6 +16341,7 @@ TiKVStorageReadPoolConfig
 <h3 id="tikvsecurityconfig">TiKVSecurityConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15920,6 +16665,7 @@ If the type set to kms, this config should be filled</p>
 <h3 id="tikvserverconfig">TiKVServerConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#flashserverconfig">FlashServerConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -15943,6 +16689,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Optional: Defaults to 1</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-grpc-send-msg-len</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 10485760</p>
 </td>
 </tr>
 <tr>
@@ -16506,6 +17264,7 @@ string
 <h3 id="tikvstorageconfig">TiKVStorageConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#proxyconfig">ProxyConfig</a>, 
 <a href="#tikvconfig">TiKVConfig</a>)
 </p>
 <p>
@@ -17234,7 +17993,8 @@ string
 <td>
 <em>(Optional)</em>
 <p>We used prometheus to fetch the metrics resources until the pd could provide it.
-MetricsUrl represents the url to fetch the metrics info</p>
+MetricsUrl represents the url to fetch the metrics info
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -17249,7 +18009,8 @@ TidbMonitorRef
 <td>
 <em>(Optional)</em>
 <p>TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
-Operator will use MetricsUrl</p>
+Operator will use MetricsUrl
+Deprecated</p>
 </td>
 </tr>
 <tr>
@@ -17278,6 +18039,20 @@ TidbAutoScalerSpec
 <td>
 <em>(Optional)</em>
 <p>TiDB represents the auto-scaling spec for tidb</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="#autoresource">
+[]AutoResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
 </td>
 </tr>
 </tbody>
@@ -17503,6 +18278,17 @@ DiscoverySpec
 </td>
 <td>
 <p>Discovery spec</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account</p>
 </td>
 </tr>
 <tr>
@@ -17922,7 +18708,7 @@ TiDBStatus
 </tr>
 <tr>
 <td>
-<code>Pump</code></br>
+<code>pump</code></br>
 <em>
 <a href="#pumpstatus">
 PumpStatus
@@ -17970,7 +18756,7 @@ TidbMonitorRef
 </tr>
 <tr>
 <td>
-<code>auto-scaler,omitempyt</code></br>
+<code>auto-scaler</code></br>
 <em>
 <a href="#tidbclusterautoscalerref">
 TidbClusterAutoScalerRef
@@ -18822,13 +19608,53 @@ DMSecurityConfig
 </tr>
 </tbody>
 </table>
+<h3 id="workerfailuremember">WorkerFailureMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#workerstatus">WorkerStatus</a>)
+</p>
+<p>
+<p>WorkerFailureMember is the dm-worker failure member information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>createdAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="workermember">WorkerMember</h3>
 <p>
 (<em>Appears on:</em>
 <a href="#workerstatus">WorkerStatus</a>)
 </p>
 <p>
-<p>WorkerMember is dm-Worker member status</p>
+<p>WorkerMember is dm-worker member status</p>
 </p>
 <table>
 <thead>
@@ -19024,6 +19850,18 @@ WorkerConfig
 <p>Config is the Configuration of dm-worker-servers</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>recoverFailover</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecoverFailover indicates that Operator can recover the failover Pods</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="workerstatus">WorkerStatus</h3>
@@ -19082,6 +19920,18 @@ Kubernetes apps/v1.StatefulSetStatus
 <em>
 <a href="#workermember">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerMember
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>failureMembers</code></br>
+<em>
+<a href="#workerfailuremember">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerFailureMember
 </a>
 </em>
 </td>

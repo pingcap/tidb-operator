@@ -14,8 +14,13 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/tidb-operator/pkg/label"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func (dc *DMCluster) Scheme() string {
@@ -31,6 +36,14 @@ func (dc *DMCluster) Timezone() string {
 		return defaultTimeZone
 	}
 	return tz
+}
+
+func (dc *DMCluster) IsPVReclaimEnabled() bool {
+	enabled := dc.Spec.EnablePVReclaim
+	if enabled == nil {
+		return defaultEnablePVReclaim
+	}
+	return *enabled
 }
 
 func (dc *DMCluster) IsTLSClusterEnabled() bool {
@@ -63,6 +76,19 @@ func (dc *DMCluster) WorkerAllMembersReady() bool {
 	return true
 }
 
+func (dc *DMCluster) MasterAutoFailovering() bool {
+	if len(dc.Status.Master.FailureMembers) == 0 {
+		return false
+	}
+
+	for _, failureMember := range dc.Status.Master.FailureMembers {
+		if !failureMember.MemberDeleted {
+			return true
+		}
+	}
+	return false
+}
+
 func (dc *DMCluster) MasterStsDesiredReplicas() int32 {
 	return dc.Spec.Master.Replicas + int32(len(dc.Status.Master.FailureMembers))
 }
@@ -75,13 +101,39 @@ func (dc *DMCluster) MasterStsActualReplicas() int32 {
 	return stsStatus.Replicas
 }
 
-// TODO: support fail-over
+func (dc *DMCluster) MasterStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	replicas := dc.Spec.Master.Replicas
+	if !excludeFailover {
+		replicas = dc.MasterStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMMasterLabelVal))
+}
+
+func (dc *DMCluster) WorkerStsActualReplicas() int32 {
+	stsStatus := dc.Status.Worker.StatefulSet
+	if stsStatus == nil {
+		return 0
+	}
+	return stsStatus.Replicas
+}
+
 func (dc *DMCluster) WorkerStsDesiredReplicas() int32 {
 	if dc.Spec.Worker == nil {
 		return 0
 	}
 
-	return dc.Spec.Worker.Replicas
+	return dc.Spec.Worker.Replicas + int32(len(dc.Status.Worker.FailureMembers))
+}
+
+func (dc *DMCluster) WorkerStsDesiredOrdinals(excludeFailover bool) sets.Int32 {
+	if dc.Spec.Worker == nil {
+		return sets.Int32{}
+	}
+	replicas := dc.Spec.Worker.Replicas
+	if !excludeFailover {
+		replicas = dc.WorkerStsDesiredReplicas()
+	}
+	return helper.GetPodOrdinalsFromReplicasAndDeleteSlots(replicas, dc.getDeleteSlots(label.DMWorkerLabelVal))
 }
 
 func (dc *DMCluster) GetInstanceName() string {
@@ -128,6 +180,41 @@ func (dc *DMCluster) MasterUpgrading() bool {
 
 func (dc *DMCluster) MasterScaling() bool {
 	return dc.Status.Master.Phase == ScalePhase
+}
+
+func (dc *DMCluster) getDeleteSlots(component string) (deleteSlots sets.Int32) {
+	deleteSlots = sets.NewInt32()
+	annotations := dc.GetAnnotations()
+	if annotations == nil {
+		return deleteSlots
+	}
+	var key string
+	if component == label.DMMasterLabelVal {
+		key = label.AnnDMMasterDeleteSlots
+	} else if component == label.DMWorkerLabelVal {
+		key = label.AnnDMWorkerDeleteSlots
+	} else {
+		return
+	}
+	value, ok := annotations[key]
+	if !ok {
+		return
+	}
+	var slice []int32
+	err := json.Unmarshal([]byte(value), &slice)
+	if err != nil {
+		return
+	}
+	deleteSlots.Insert(slice...)
+	return
+}
+
+func (dc *DMCluster) MasterAllPodsStarted() bool {
+	return dc.MasterStsDesiredReplicas() == dc.MasterStsActualReplicas()
+}
+
+func (dc *DMCluster) WorkerAllPodsStarted() bool {
+	return dc.WorkerStsDesiredReplicas() == dc.WorkerStsActualReplicas()
 }
 
 func (dc *DMCluster) MasterIsAvailable() bool {

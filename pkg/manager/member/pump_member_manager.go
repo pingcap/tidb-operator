@@ -414,22 +414,29 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 		},
 	}
 
+	serviceAccountName := tc.Spec.Pump.ServiceAccount
+	if serviceAccountName == "" {
+		serviceAccountName = tc.Spec.ServiceAccount
+	}
+
 	podTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: podAnnos,
 			Labels:      pumpLabel,
 		},
 		Spec: corev1.PodSpec{
-			Containers: containers,
-			Volumes:    volumes,
+			Containers:         containers,
+			ServiceAccountName: serviceAccountName,
+			Volumes:            volumes,
 
-			Affinity:        spec.Affinity(),
-			Tolerations:     spec.Tolerations(),
-			NodeSelector:    spec.NodeSelector(),
-			SchedulerName:   spec.SchedulerName(),
-			SecurityContext: spec.PodSecurityContext(),
-			HostNetwork:     spec.HostNetwork(),
-			DNSPolicy:       spec.DnsPolicy(),
+			Affinity:         spec.Affinity(),
+			Tolerations:      spec.Tolerations(),
+			NodeSelector:     spec.NodeSelector(),
+			SchedulerName:    spec.SchedulerName(),
+			SecurityContext:  spec.PodSecurityContext(),
+			HostNetwork:      spec.HostNetwork(),
+			DNSPolicy:        spec.DnsPolicy(),
+			ImagePullSecrets: spec.ImagePullSecrets(),
 		},
 	}
 

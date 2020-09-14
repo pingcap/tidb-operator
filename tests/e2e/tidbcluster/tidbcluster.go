@@ -330,7 +330,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 			e2elog.Failf("Expected TiDB service created by helm chart is orphaned: %v", err)
 		}
 
-		ginkgo.By(fmt.Sprintf("Adopt orphaned service created by helm"))
+		ginkgo.By("Adopt orphaned service created by helm")
 		err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 			tc.Spec.TiDB.Service = &v1alpha1.TiDBServiceSpec{}
 			return nil
@@ -1238,7 +1238,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 
 	ginkgo.It("Heterogeneous: Add heterogeneous cluster into an existing cluster  ", func() {
 		// Create TidbCluster with NodePort to check whether node port would change
-		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4Version)
+		originTc := fixture.GetTidbCluster(ns, "origin", utilimage.TiDBV4UpgradeVersion)
 		originTc.Spec.PD.Replicas = 1
 		originTc.Spec.TiKV.Replicas = 1
 		originTc.Spec.TiDB.Replicas = 1
@@ -1247,7 +1247,7 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		err = oa.WaitForTidbClusterReady(originTc, 30*time.Minute, 15*time.Second)
 		framework.ExpectNoError(err, "Expected TiDB cluster ready")
 
-		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4Version)
+		heterogeneousTc := fixture.GetTidbCluster(ns, "heterogeneous", utilimage.TiDBV4UpgradeVersion)
 		heterogeneousTc.Spec.PD = nil
 		heterogeneousTc.Spec.TiKV.Replicas = 1
 		heterogeneousTc.Spec.TiDB.Replicas = 1

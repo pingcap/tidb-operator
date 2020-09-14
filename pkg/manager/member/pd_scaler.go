@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 )
@@ -31,33 +32,36 @@ import (
 
 type pdScaler struct {
 	generalScaler
+	pdControl pdapi.PDControlInterface
 }
 
 // NewPDScaler returns a Scaler
 func NewPDScaler(pdControl pdapi.PDControlInterface,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface) Scaler {
-	return &pdScaler{generalScaler{pdControl, pvcLister, pvcControl}}
+	return &pdScaler{generalScaler{pvcLister, pvcControl}, pdControl}
 }
 
-func (psd *pdScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (psd *pdScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	scaling, _, _, _ := scaleOne(oldSet, newSet)
 	if scaling > 0 {
-		return psd.ScaleOut(tc, oldSet, newSet)
+		return psd.ScaleOut(meta, oldSet, newSet)
 	} else if scaling < 0 {
-		return psd.ScaleIn(tc, oldSet, newSet)
+		return psd.ScaleIn(meta, oldSet, newSet)
 	}
-	return psd.SyncAutoScalerAnn(tc, oldSet)
+	return psd.SyncAutoScalerAnn(meta, oldSet)
 }
 
-func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (psd *pdScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc, ok := meta.(*v1alpha1.TidbCluster)
+	if !ok {
+		return nil
+	}
+
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
-	if tc.PDUpgrading() {
-		return nil
-	}
 
 	klog.Infof("scaling out pd statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())
 	_, err := psd.deleteDeferDeletingPVC(tc, oldSet.GetName(), v1alpha1.PDMemberType, ordinal)
@@ -94,17 +98,18 @@ func (psd *pdScaler) ScaleOut(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet
 
 // We need remove member from cluster before reducing statefulset replicas
 // only remove one member at a time when scale down
-func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (psd *pdScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	tc, ok := meta.(*v1alpha1.TidbCluster)
+	if !ok {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 	_, ordinal, replicas, deleteSlots := scaleOne(oldSet, newSet)
 	resetReplicas(newSet, oldSet)
 	memberName := fmt.Sprintf("%s-pd-%d", tc.GetName(), ordinal)
 	setName := oldSet.GetName()
-
-	if tc.PDUpgrading() {
-		return nil
-	}
 
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed,can't scale in now", ns, tcName)
@@ -189,7 +194,7 @@ func (psd *pdScaler) ScaleIn(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet,
 	return nil
 }
 
-func (psd *pdScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+func (psd *pdScaler) SyncAutoScalerAnn(meta metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }
 
@@ -200,25 +205,25 @@ func NewFakePDScaler() Scaler {
 	return &fakePDScaler{}
 }
 
-func (fsd *fakePDScaler) Scale(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakePDScaler) Scale(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
-		return fsd.ScaleOut(tc, oldSet, newSet)
+		return fsd.ScaleOut(meta, oldSet, newSet)
 	} else if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
-		return fsd.ScaleIn(tc, oldSet, newSet)
+		return fsd.ScaleIn(meta, oldSet, newSet)
 	}
 	return nil
 }
 
-func (fsd *fakePDScaler) ScaleOut(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakePDScaler) ScaleOut(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas+1, nil)
 	return nil
 }
 
-func (fsd *fakePDScaler) ScaleIn(_ *v1alpha1.TidbCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (fsd *fakePDScaler) ScaleIn(_ metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	setReplicasAndDeleteSlots(newSet, *oldSet.Spec.Replicas-1, nil)
 	return nil
 }
 
-func (fsd *fakePDScaler) SyncAutoScalerAnn(tc *v1alpha1.TidbCluster, actual *apps.StatefulSet) error {
+func (fsd *fakePDScaler) SyncAutoScalerAnn(tc metav1.Object, actual *apps.StatefulSet) error {
 	return nil
 }

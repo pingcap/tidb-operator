@@ -43,9 +43,17 @@ func TestIsSubMapOf(t *testing.T) {
 
 	g.Expect(IsSubMapOf(
 		nil,
+		nil)).To(BeTrue())
+	g.Expect(IsSubMapOf(
+		nil,
 		map[string]string{
 			"k1": "v1",
 		})).To(BeTrue())
+	g.Expect(IsSubMapOf(
+		map[string]string{
+			"k1": "v1",
+		},
+		nil)).To(BeFalse())
 	g.Expect(IsSubMapOf(
 		map[string]string{
 			"k1": "v1",

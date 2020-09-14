@@ -64,7 +64,7 @@ type tikvMemberManager struct {
 	nodeLister                   corelisters.NodeLister
 	autoFailover                 bool
 	tikvFailover                 Failover
-	tikvScaler                   TiKVScaler
+	tikvScaler                   Scaler
 	tikvUpgrader                 TiKVUpgrader
 	recorder                     record.EventRecorder
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
@@ -82,7 +82,7 @@ func NewTiKVMemberManager(
 	nodeLister corelisters.NodeLister,
 	autoFailover bool,
 	tikvFailover Failover,
-	tikvScaler TiKVScaler,
+	tikvScaler Scaler,
 	tikvUpgrader TiKVUpgrader,
 	recorder record.EventRecorder) manager.Manager {
 	kvmm := tikvMemberManager{
@@ -356,6 +356,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
+		}, corev1.VolumeMount{
+			Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
 		})
 	}
 
@@ -383,6 +385,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name: "tikv-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiKVLabelVal),
+				},
+			},
+		}, corev1.Volume{
+			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterClientTLSSecretName(tc.Name),
 				},
 			},
 		})
@@ -495,6 +503,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.InitContainers = initContainers
 	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

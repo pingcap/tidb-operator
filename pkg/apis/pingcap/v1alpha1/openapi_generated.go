@@ -27,6 +27,8 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource":                  schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule":                      schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig":                      schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Backup":                        schema_pkg_apis_pingcap_v1alpha1_Backup(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupList":                    schema_pkg_apis_pingcap_v1alpha1_BackupList(ref),
@@ -48,12 +50,15 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec":                 schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig":                schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig":                schema_pkg_apis_pingcap_v1alpha1_ExternalConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint":              schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash":                         schema_pkg_apis_pingcap_v1alpha1_Flash(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster":                  schema_pkg_apis_pingcap_v1alpha1_FlashCluster(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger":                   schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashProxy":                    schema_pkg_apis_pingcap_v1alpha1_FlashProxy(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashSecurity":                 schema_pkg_apis_pingcap_v1alpha1_FlashSecurity(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashServerConfig":             schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider":            schema_pkg_apis_pingcap_v1alpha1_GcsStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.HelperSpec":                    schema_pkg_apis_pingcap_v1alpha1_HelperSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.IngressSpec":                   schema_pkg_apis_pingcap_v1alpha1_IngressSpec(ref),
@@ -86,6 +91,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Plugin":                        schema_pkg_apis_pingcap_v1alpha1_Plugin(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PreparedPlanCache":             schema_pkg_apis_pingcap_v1alpha1_PreparedPlanCache(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PrometheusConfiguration":       schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig":                   schema_pkg_apis_pingcap_v1alpha1_ProxyConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyProtocol":                 schema_pkg_apis_pingcap_v1alpha1_ProxyProtocol(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PumpSpec":                      schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Restore":                       schema_pkg_apis_pingcap_v1alpha1_Restore(ref),
@@ -414,6 +420,95 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                  schema_pkg_apis_meta_v1_TypeMeta(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":             schema_pkg_apis_meta_v1_UpdateOptions(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                schema_pkg_apis_meta_v1_WatchEvent(ref),
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AutoResource describes the resource type definitions",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resource_type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceType identifies a specific resource type",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"cpu": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CPU defines the CPU of this resource type",
+							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+						},
+					},
+					"memory": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Memory defines the memory of this resource type",
+							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+						},
+					},
+					"storage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Storage defines the storage of this resource type",
+							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+						},
+					},
+					"count": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Count defines the max availabel count of this resource type",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AutoRule describes the rules for auto-scaling with PD API",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"max_threshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxThreshold defines the threshold to scale out",
+							Type:        []string{"number"},
+							Format:      "double",
+						},
+					},
+					"min_threshold": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinThreshold defines the threshold to scale in, not applicable to `storage` rule",
+							Type:        []string{"number"},
+							Format:      "double",
+						},
+					},
+					"resource_types": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceTypes defines the resource types that can be used for scaling",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"max_threshold"},
+			},
+		},
 	}
 }
 
@@ -903,16 +998,30 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 				Properties: map[string]spec.Schema{
 					"maxReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas.",
+							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas. Deprecated",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
 					"minReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available.",
+							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available. Deprecated",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"rules": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Rules defines the rules for auto-scaling with PD API",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule"),
+									},
+								},
+							},
 						},
 					},
 					"scaleInIntervalSeconds": {
@@ -931,7 +1040,8 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Deprecated",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -943,15 +1053,15 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 					},
 					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus",
+							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus Deprecated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"externalEndpoint": {
+					"external": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
 				},
@@ -959,7 +1069,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
 	}
 }
 
@@ -1067,6 +1177,13 @@ func schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref common.ReferenceCallback)
 				Description: "CommonConfig is the configuration of TiFlash process.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"tmp_path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to \"/data0/tmp\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"path_realtime_mode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to false",
@@ -1728,6 +1845,35 @@ func schema_pkg_apis_pingcap_v1alpha1_Experimental(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_ExternalConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ExternalConfig represents the external config.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"endpoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
+						},
+					},
+					"maxReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"maxReplicas"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1844,11 +1990,16 @@ func schema_pkg_apis_pingcap_v1alpha1_Flash(ref common.ReferenceCallback) common
 							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster"),
 						},
 					},
+					"proxy": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashProxy"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashCluster", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashProxy"},
 	}
 }
 
@@ -1859,6 +2010,13 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashCluster(ref common.ReferenceCallback)
 				Description: "FlashCluster is the configuration of [flash.flash_cluster] section.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"log": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/flash_cluster_manager.log",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"refresh_interval": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 20",
@@ -1893,9 +2051,23 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref common.ReferenceCallback) 
 				Description: "FlashLogger is the configuration of [logger] section.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"errorlog": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/error.log",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"size": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 100M",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/server.log",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1912,6 +2084,54 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref common.ReferenceCallback) 
 							Description: "Optional: Defaults to 10",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_FlashProxy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "FlashProxy is the configuration of [flash.proxy] section.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 0.0.0.0:20170",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"advertise-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20170",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"data-dir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/proxy",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"config": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/proxy.toml",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-file": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to /data0/logs/proxy.log",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -1938,6 +2158,225 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashSecurity(ref common.ReferenceCallback
 									},
 								},
 							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_FlashServerConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "FlashServerConfig is the configuration of Proxy server.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"engine-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:3930",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default to 0.0.0.0:20292",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"advertise-status-addr": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default to {clusterName}-tiflash-POD_NUM.{clusterName}-tiflash-peer.{namespace}:20292",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status-thread-pool-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 1",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-compression-type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to none",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 4",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-concurrent-stream": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 1024",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-memory-pool-quota": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 32G",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-raft-conn-num": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"grpc-stream-initial-window-size": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 2MB",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-keepalive-time": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"grpc-keepalive-timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 3s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"concurrent-send-snap-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 32",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"concurrent-recv-snap-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 32",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"end-point-recursion-limit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 1000",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"end-point-stream-channel-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-batch-row-limit": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-stream-batch-row-limit": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-enable-batch-if-possible": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"end-point-request-max-handle-duration": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"snap-max-write-bytes-per-sec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 100MB",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"snap-max-total-size": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"stats-concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"heavy-load-threshold": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int32",
+						},
+					},
+					"heavy-load-wait-duration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 60s",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+					"enable-request-batch": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"request-batch-enable-cross-command": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"request-batch-wait-duration": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 				},
@@ -3787,6 +4226,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							},
 						},
 					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for pd",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The desired ready replicas",
@@ -4162,6 +4608,102 @@ func schema_pkg_apis_pingcap_v1alpha1_PrometheusConfiguration(ref common.Referen
 	}
 }
 
+func schema_pkg_apis_pingcap_v1alpha1_ProxyConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProxyConfig is the configuration of TiFlash proxy process. All the configurations are same with those of TiKV except adding `engine-addr` in the TiKVServerConfig",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"log-level": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to info",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"log-file": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"log-rotation-timespan": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 24h",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"panic-when-unexpected-key-or-data": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"server": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashServerConfig"),
+						},
+					},
+					"storage": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"),
+						},
+					},
+					"raftstore": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig"),
+						},
+					},
+					"rocksdb": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig"),
+						},
+					},
+					"coprocessor": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig"),
+						},
+					},
+					"readpool": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVReadPoolConfig"),
+						},
+					},
+					"raftdb": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig"),
+						},
+					},
+					"import": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig"),
+						},
+					},
+					"gc": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig"),
+						},
+					},
+					"pd": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig"),
+						},
+					},
+					"security": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashServerConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVCoprocessorConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVDbConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVGCConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVImportConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVPDConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftDBConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVRaftstoreConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVReadPoolConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVSecurityConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVStorageConfig"},
+	}
+}
+
 func schema_pkg_apis_pingcap_v1alpha1_ProxyProtocol(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4378,6 +4920,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 									},
 								},
 							},
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for pump",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"replicas": {
@@ -5971,6 +6520,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBGroupSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for tidb",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The desired ready replicas",
@@ -6340,6 +6896,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for tidb",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The desired ready replicas",
@@ -6441,11 +7004,17 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashConfig(ref common.ReferenceCallback
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig"),
 						},
 					},
+					"proxy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "proxyConfig is the Configuration of proxy process",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ProxyConfig"},
 	}
 }
 
@@ -7133,6 +7702,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVConfig(ref common.ReferenceCallback) c
 							Format: "",
 						},
 					},
+					"log-format": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"slow-log-file": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -7606,14 +8181,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGCConfig(ref common.ReferenceCallback)
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"	batch-keys": {
+					"batch-keys": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to 512",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},
 					},
-					"	max-write-bytes-per-sec": {
+					"max-write-bytes-per-sec": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
@@ -8817,6 +9392,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVServerConfig(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"max-grpc-send-msg-len": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Defaults to 10485760",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"grpc-compression-type": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Optional: Defaults to none",
@@ -9556,16 +10138,30 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 				Properties: map[string]spec.Schema{
 					"maxReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas.",
+							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas. Deprecated",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
 					"minReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available.",
+							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available. Deprecated",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"rules": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Rules defines the rules for auto-scaling with PD API",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule"),
+									},
+								},
+							},
 						},
 					},
 					"scaleInIntervalSeconds": {
@@ -9584,7 +10180,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Deprecated",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -9596,15 +10193,15 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus",
+							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus Deprecated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"externalEndpoint": {
+					"external": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
 				},
@@ -9612,7 +10209,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
 	}
 }
 
@@ -9826,14 +10423,14 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 					},
 					"metricsUrl": {
 						SchemaProps: spec.SchemaProps{
-							Description: "We used prometheus to fetch the metrics resources until the pd could provide it. MetricsUrl represents the url to fetch the metrics info",
+							Description: "We used prometheus to fetch the metrics resources until the pd could provide it. MetricsUrl represents the url to fetch the metrics info Deprecated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"monitor": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set, Operator will use MetricsUrl",
+							Description: "TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set, Operator will use MetricsUrl Deprecated",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorRef"),
 						},
 					},
@@ -9849,12 +10446,25 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec"),
 						},
 					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"cluster"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"},
 	}
 }
 
@@ -9966,6 +10576,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "Discovery spec",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec"),
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"pd": {
@@ -10698,16 +11315,30 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 				Properties: map[string]spec.Schema{
 					"maxReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas.",
+							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out. It cannot be less than minReplicas. Deprecated",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
 					},
 					"minReplicas": {
 						SchemaProps: spec.SchemaProps{
-							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available.",
+							Description: "minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is available. Deprecated",
 							Type:        []string{"integer"},
 							Format:      "int32",
+						},
+					},
+					"rules": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Rules defines the rules for auto-scaling with PD API",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule"),
+									},
+								},
+							},
 						},
 					},
 					"scaleInIntervalSeconds": {
@@ -10726,7 +11357,8 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metrics": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Deprecated",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -10738,15 +11370,15 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 					},
 					"metricsTimeDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus",
+							Description: "MetricsTimeDuration describes the Time duration to be queried in the Prometheus Deprecated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"externalEndpoint": {
+					"external": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
+							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
 						},
 					},
 				},
@@ -10754,7 +11386,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomMetric", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
 	}
 }
 
@@ -11145,6 +11777,13 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of dm-worker-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfig"),
+						},
+					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},

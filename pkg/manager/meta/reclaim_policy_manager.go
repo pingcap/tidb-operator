@@ -66,6 +66,16 @@ func NewReclaimPolicyTiKVGroupManager(pvcLister corelisters.PersistentVolumeClai
 	}
 }
 
+func NewReclaimPolicyDMManager(pvcLister corelisters.PersistentVolumeClaimLister,
+	pvLister corelisters.PersistentVolumeLister,
+	pvControl controller.PVControlInterface) manager.DMManager {
+	return &reclaimPolicyManager{
+		pvcLister,
+		pvLister,
+		pvControl,
+	}
+}
+
 func (rpm *reclaimPolicyManager) Sync(tc *v1alpha1.TidbCluster) error {
 	return rpm.sync(v1alpha1.TiDBClusterKind, tc, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
 }
@@ -76,6 +86,10 @@ func (rpm *reclaimPolicyManager) SyncMonitor(tm *v1alpha1.TidbMonitor) error {
 
 func (rpm *reclaimPolicyManager) SyncTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) error {
 	return rpm.sync(v1alpha1.TiKVGroupKind, tg, tc.IsPVReclaimEnabled(), *tc.Spec.PVReclaimPolicy)
+}
+
+func (rpm *reclaimPolicyManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	return rpm.sync(v1alpha1.DMClusterKind, dc, dc.IsPVReclaimEnabled(), *dc.Spec.PVReclaimPolicy)
 }
 
 func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVReclaimEnabled bool, policy corev1.PersistentVolumeReclaimPolicy) error {
@@ -94,6 +108,8 @@ func (rpm *reclaimPolicyManager) sync(kind string, obj runtime.Object, isPVRecla
 		selector, err = label.NewMonitor().Instance(instanceName).Monitor().Selector()
 	case v1alpha1.TiKVGroupKind:
 		selector, err = label.NewGroup().Instance(instanceName).TiKV().Selector()
+	case v1alpha1.DMClusterKind:
+		selector, err = label.NewDM().Instance(instanceName).Selector()
 	default:
 		return fmt.Errorf("unsupported kind %s", kind)
 	}

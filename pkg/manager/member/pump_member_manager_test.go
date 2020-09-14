@@ -726,8 +726,11 @@ func TestGetNewPumpConfigMap(t *testing.T) {
 func TestSyncTiDBClusterStatus(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name        string
-		updateTC    func(*appsv1.StatefulSet)
+		name     string
+		updateTC func(*appsv1.StatefulSet)
+		// TODO check work as expected
+		// `upgradingFn` is unused
+		// nolint(structcheck)
 		upgradingFn func(corelisters.PodLister, *appsv1.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
 		errExpectFn func(*GomegaWithT, error)
 		tcExpectFn  func(*GomegaWithT, *v1alpha1.TidbCluster)

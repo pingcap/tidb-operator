@@ -63,6 +63,8 @@ func TestTidbClusterControllerAddStatefuSet(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log("test: ", test.name)
+
 		tc := newTidbCluster()
 		set := test.modifySet(tc)
 
@@ -130,6 +132,8 @@ func TestTidbClusterControllerUpdateStatefuSet(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
+		t.Log("test: ", test.name)
+
 		tc := newTidbCluster()
 		set1 := newStatefuSet(tc)
 		set2 := test.updateSet(set1)
