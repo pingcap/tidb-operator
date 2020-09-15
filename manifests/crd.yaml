@@ -8521,6 +8521,8 @@ spec:
                             batch-keys:
                               format: int64
                               type: integer
+                            enable-compaction-filter:
+                              type: boolean
                             max-write-bytes-per-sec:
                               type: string
                           type: object
@@ -11134,6 +11136,8 @@ spec:
                         batch-keys:
                           format: int64
                           type: integer
+                        enable-compaction-filter:
+                          type: boolean
                         max-write-bytes-per-sec:
                           type: string
                       type: object
