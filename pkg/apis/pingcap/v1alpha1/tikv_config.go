@@ -355,6 +355,8 @@ type TiKVGCConfig struct {
 	BatchKeys *int64 `json:"batch-keys,omitempty" toml:"batch-keys,omitempty"`
 	// +optional
 	MaxWriteBytesPerSec *string `json:"max-write-bytes-per-sec,omitempty" toml:"max-write-bytes-per-sec,omitempty"`
+	// +optional
+	EnableCompactionFilter *bool `json:"enable-compaction-filter,omitempty" toml:"enable-compaction-filter,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.

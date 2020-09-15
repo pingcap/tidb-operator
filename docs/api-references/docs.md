@@ -12449,6 +12449,38 @@ int64
 <em>(Optional)</em>
 </td>
 </tr>
+<<<<<<< HEAD
+=======
+<tr>
+<td>
+<code>enable-compaction-filter</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvgroupspec">TiKVGroupSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvgroup">TiKVGroup</a>)
+</p>
+<p>
+<p>TiKVGroupSpec describes the attributes that a user creates on a TiKVGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+>>>>>>> 003a53b... apis: add gc config for TiKV (#3270)
 <tr>
 <td>
 <code>wal-size-limit</code></br>
