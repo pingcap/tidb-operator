@@ -425,9 +425,9 @@ done
 
 ARGS="--data-dir={{ .DataDir }} \
 --name=${POD_NAME} \
---peer-urls={{ .Scheme }}://0.0.0.0:8291 \
---advertise-peer-urls={{ .Scheme }}://${domain}:8291 \
---master-addr=0.0.0.0:8261 \
+--peer-urls=127.0.0.1:8291 \
+--advertise-peer-urls=${domain}:8291 \
+--master-addr=:8261 \
 --advertise-addr=${domain}:8261 \
 --config=/etc/dm-master/dm-master.toml \
 "
