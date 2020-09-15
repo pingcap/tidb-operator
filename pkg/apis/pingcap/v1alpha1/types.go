@@ -1589,6 +1589,7 @@ type DMClusterStatus struct {
 	Master MasterStatus `json:"master,omitempty"`
 	Worker WorkerStatus `json:"worker,omitempty"`
 
+	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
 	// Represents the latest available observations of a dm cluster's state.
 	// +optional
 	Conditions []DMClusterCondition `json:"conditions,omitempty"`

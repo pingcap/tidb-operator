@@ -46,7 +46,7 @@ func buildTidbMonitorLabel(name string) map[string]string {
 
 // getMonitorConfigMap generate the Prometheus config and Grafana config for TidbMonitor,
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
-func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
+func getMonitorConfigMap(tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster, monitor *v1alpha1.TidbMonitor) (*core.ConfigMap, error) {
 
 	var releaseNamespaces []string
 	var releaseClusters []string
@@ -65,6 +65,7 @@ func getMonitorConfigMap(tc *v1alpha1.TidbCluster, monitor *v1alpha1.TidbMonitor
 		ReleaseNamespaces:  releaseNamespaces,
 		ReleaseTargetRegex: &targetPattern,
 		EnableTLSCluster:   tc.IsTLSClusterEnabled(),
+		EnableTLSDMCluster: dc != nil && dc.IsTLSClusterEnabled(),
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
@@ -160,11 +161,14 @@ func getMonitorRoleBinding(sa *core.ServiceAccount, role *rbac.Role, monitor *v1
 	}
 }
 
-func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) (*apps.Deployment, error) {
+func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secret *core.Secret, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) (*apps.Deployment, error) {
 	deployment := getMonitorDeploymentSkeleton(sa, monitor)
 	initContainer := getMonitorInitContainer(monitor, tc)
 	deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, initContainer)
-	prometheusContainer := getMonitorPrometheusContainer(monitor, tc)
+	if monitor.Spec.DMInitializer != nil && dc != nil {
+		deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, getMonitorDMInitContainer(monitor, dc))
+	}
+	prometheusContainer := getMonitorPrometheusContainer(monitor, tc, dc)
 	reloaderContainer := getMonitorReloaderContainer(monitor, tc)
 	deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, prometheusContainer, reloaderContainer)
 	additionalContainers := monitor.Spec.AdditionalContainers
@@ -175,7 +179,7 @@ func getMonitorDeployment(sa *core.ServiceAccount, config *core.ConfigMap, secre
 		grafanaContainer := getMonitorGrafanaContainer(secret, monitor, tc)
 		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, grafanaContainer)
 	}
-	volumes := getMonitorVolumes(config, monitor, tc)
+	volumes := getMonitorVolumes(config, monitor, tc, dc)
 	deployment.Spec.Template.Spec.Volumes = volumes
 	b, err := json.Marshal(deployment.Spec.Template.Spec)
 	if err != nil {
@@ -349,7 +353,121 @@ chmod 777 /data/prometheus /data/grafana
 	return container
 }
 
-func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) core.Container {
+func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMCluster) core.Container {
+	c := `mkdir -p /data/prometheus
+chmod 777 /data/prometheus
+/usr/bin/init.sh`
+	if monitor.Spec.Grafana != nil {
+		c = `mkdir -p /data/prometheus /data/grafana
+chmod 777 /data/prometheus /data/grafana
+/usr/bin/init.sh`
+	}
+	command := []string{
+		"/bin/sh",
+		"-c",
+		c,
+	}
+	alertManagerRulesVersion := dc.MasterImage()
+	if monitor.Spec.AlertManagerRulesVersion != nil {
+		alertManagerRulesVersion = fmt.Sprintf("dm:%s", *monitor.Spec.AlertManagerRulesVersion)
+	}
+	container := core.Container{
+		Name:  "monitor-dm-initializer",
+		Image: fmt.Sprintf("%s:%s", monitor.Spec.DMInitializer.BaseImage, monitor.Spec.DMInitializer.Version),
+		Env: []core.EnvVar{
+			{
+				Name:  "DM_CLUSTER_NAME",
+				Value: dc.Name,
+			},
+			{
+				Name:  "PROM_CONFIG_PATH",
+				Value: "/prometheus-rules",
+			},
+			{
+				Name:  "PROM_PERSISTENT_DIR",
+				Value: "/data",
+			},
+			{
+				Name:  "DM_VERSION",
+				Value: alertManagerRulesVersion,
+			},
+			{
+				Name:  "GF_TIDB_PROMETHEUS_URL",
+				Value: "http://127.0.0.1:9090",
+			},
+			{
+				Name:  "DM_CLUSTER_NAMESPACE",
+				Value: dc.Namespace,
+			},
+			{
+				Name:  "TZ",
+				Value: dc.Spec.Timezone,
+			},
+		},
+		Command: command,
+		SecurityContext: &core.SecurityContext{
+			RunAsUser: pointer.Int64Ptr(0),
+		},
+		VolumeMounts: []core.VolumeMount{
+			{
+				MountPath: "/prometheus-rules",
+				Name:      "prometheus-rules",
+				ReadOnly:  false,
+			},
+			{
+				MountPath: "/data",
+				Name:      "monitor-data",
+			},
+		},
+		Resources: controller.ContainerResource(monitor.Spec.DMInitializer.ResourceRequirements),
+	}
+
+	if monitor.Spec.DMInitializer.ImagePullPolicy != nil {
+		container.ImagePullPolicy = *monitor.Spec.DMInitializer.ImagePullPolicy
+	}
+
+	if monitor.Spec.KubePrometheusURL != nil {
+		container.Env = append(container.Env, core.EnvVar{
+			Name:  "GF_K8S_PROMETHEUS_URL",
+			Value: *monitor.Spec.KubePrometheusURL,
+		})
+	}
+
+	if monitor.Spec.Grafana != nil {
+		container.VolumeMounts = append(container.VolumeMounts, core.VolumeMount{
+
+			MountPath: "/etc/grafana/provisioning/datasources",
+			Name:      "datasource",
+			ReadOnly:  false,
+		}, core.VolumeMount{
+
+			MountPath: "/grafana-dashboard-definitions/tidb",
+			Name:      "grafana-dashboard",
+			ReadOnly:  false,
+		})
+		container.Env = append(container.Env,
+			core.EnvVar{
+				Name:  "GF_PROVISIONING_PATH",
+				Value: "/grafana-dashboard-definitions/tidb",
+			},
+			core.EnvVar{
+				Name:  "GF_DATASOURCE_PATH",
+				Value: "/etc/grafana/provisioning/datasources",
+			})
+
+	}
+	var envOverrides []core.EnvVar
+	for k, v := range monitor.Spec.DMInitializer.Envs {
+		envOverrides = append(envOverrides, core.EnvVar{
+			Name:  k,
+			Value: v,
+		})
+	}
+	container.Env = util.AppendOverwriteEnv(container.Env, envOverrides)
+	return container
+}
+
+func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) core.Container {
 	c := core.Container{
 		Name:      "prometheus",
 		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
@@ -406,6 +524,13 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.T
 		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
 			Name:      util.ClusterClientVolName,
 			MountPath: util.ClusterClientTLSPath,
+			ReadOnly:  true,
+		})
+	}
+	if dc != nil && dc.IsTLSClusterEnabled() {
+		c.VolumeMounts = append(c.VolumeMounts, core.VolumeMount{
+			Name:      util.DMClusterClientVolName,
+			MountPath: util.DMClusterClientTLSPath,
 			ReadOnly:  true,
 		})
 	}
@@ -539,7 +664,7 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.Tid
 	return c
 }
 
-func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster) []core.Volume {
+func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbCluster, dc *v1alpha1.DMCluster) []core.Volume {
 	volumes := []core.Volume{}
 	monitorData := core.Volume{
 		Name: "monitor-data",
@@ -625,6 +750,19 @@ func getMonitorVolumes(config *core.ConfigMap, monitor *v1alpha1.TidbMonitor, tc
 			},
 		}
 		volumes = append(volumes, tlsPDClient)
+	}
+	if dc != nil && dc.IsTLSClusterEnabled() {
+		defaultMode := int32(420)
+		tlsDMClient := core.Volume{
+			Name: util.DMClusterClientVolName,
+			VolumeSource: core.VolumeSource{
+				Secret: &core.SecretVolumeSource{
+					SecretName:  util.ClusterClientTLSSecretName(dc.Name),
+					DefaultMode: &defaultMode,
+				},
+			},
+		}
+		volumes = append(volumes, tlsDMClient)
 	}
 	return volumes
 }

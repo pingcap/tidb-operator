@@ -53,6 +53,7 @@ var (
 	cdcPattern       config.Regexp
 	importerPattern  config.Regexp
 	lightningPattern config.Regexp
+	dmWorkerPattern  config.Regexp
 	dashBoardConfig  = `{
     "apiVersion": 1,
     "providers": [
@@ -123,6 +124,10 @@ func init() {
 	if err != nil {
 		klog.Fatalf("monitor regex template parse error,%v", err)
 	}
+	dmWorkerPattern, err = config.NewRegexp("dm-worker")
+	if err != nil {
+		klog.Fatalf("monitor regex template parse error,%v", err)
+	}
 }
 
 type MonitorConfigModel struct {
@@ -130,6 +135,7 @@ type MonitorConfigModel struct {
 	ReleaseNamespaces  []string
 	ReleaseTargetRegex *config.Regexp
 	EnableTLSCluster   bool
+	EnableTLSDMCluster bool
 }
 
 func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
@@ -152,6 +158,7 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) *config.Config {
 			scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc")),
 			scrapeJob("importer", importerPattern, cmodel, buildAddressRelabelConfigByComponent("importer")),
 			scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning")),
+			scrapeJob("dm-worker", dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("dm-worker")),
 		},
 	}
 	return &c
@@ -183,6 +190,8 @@ func buildAddressRelabelConfigByComponent(kind string) *config.RelabelConfig {
 	case "tiflash":
 		return f()
 	case "ticdc":
+		return f()
+	case "dm-worker":
 		return f()
 	case "tiflash-proxy":
 		return &config.RelabelConfig{
@@ -387,10 +396,27 @@ func addTlsConfig(pc *config.Config) {
 	}
 }
 
+func addTlsDMConfig(pc *config.Config) {
+	for id, sconfig := range pc.ScrapeConfigs {
+		if sconfig.JobName == "dm-worker" {
+			sconfig.HTTPClientConfig.TLSConfig = config.TLSConfig{
+				CAFile:   path.Join(util.DMClusterClientTLSPath, corev1.ServiceAccountRootCAKey),
+				CertFile: path.Join(util.DMClusterClientTLSPath, corev1.TLSCertKey),
+				KeyFile:  path.Join(util.DMClusterClientTLSPath, corev1.TLSPrivateKeyKey),
+			}
+			pc.ScrapeConfigs[id] = sconfig
+			sconfig.Scheme = "https"
+		}
+	}
+}
+
 func RenderPrometheusConfig(model *MonitorConfigModel) (string, error) {
 	pc := newPrometheusConfig(model)
 	if model.EnableTLSCluster {
 		addTlsConfig(pc)
+	}
+	if model.EnableTLSDMCluster {
+		addTlsDMConfig(pc)
 	}
 	if len(model.AlertmanagerURL) > 0 {
 		addAlertManagerUrl(pc, model)
