@@ -1170,6 +1170,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableExperimental != nil {
+		in, out := &in.EnableExperimental, &out.EnableExperimental
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -2536,6 +2541,11 @@ func (in *PDConfig) DeepCopyInto(out *PDConfig) {
 	if in.EnableGRPCGateway != nil {
 		in, out := &in.EnableGRPCGateway, &out.EnableGRPCGateway
 		*out = new(bool)
+		**out = **in
+	}
+	if in.InitialClusterToken != nil {
+		in, out := &in.InitialClusterToken, &out.InitialClusterToken
+		*out = new(string)
 		**out = **in
 	}
 	if in.LeaderLease != nil {
@@ -4665,6 +4675,11 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 	if in.DelayCleanTableLock != nil {
 		in, out := &in.DelayCleanTableLock, &out.DelayCleanTableLock
 		*out = new(uint64)
+		**out = **in
+	}
+	if in.SkipRegisterToDashboard != nil {
+		in, out := &in.SkipRegisterToDashboard, &out.SkipRegisterToDashboard
+		*out = new(bool)
 		**out = **in
 	}
 	if in.EnableTelemetry != nil {

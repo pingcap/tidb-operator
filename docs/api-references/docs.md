@@ -4903,6 +4903,21 @@ bool
 Optional: Defaults to true</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-experimental</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, experimental TiDB Dashboard features will be available.
+These features are incomplete or not well tested. Suggest not to enable in
+production.
+Optional: Defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="discoveryspec">DiscoverySpec</h3>
@@ -7502,6 +7517,18 @@ bool
 </tr>
 <tr>
 <td>
+<code>initial-cluster-token</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>set different tokens to prevent communication between PDs in different clusters.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>lease</code></br>
 <em>
 int64
@@ -9251,7 +9278,7 @@ uint
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 1024</p>
+<p>Optional: Defaults to 512</p>
 </td>
 </tr>
 <tr>
@@ -12283,6 +12310,19 @@ uint64
 <td>
 <em>(Optional)</em>
 <p>imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skip-register-to-dashboard</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>imported from v4.0.5
+SkipRegisterToDashboard tells TiDB don&rsquo;t register itself to the dashboard.</p>
 </td>
 </tr>
 <tr>

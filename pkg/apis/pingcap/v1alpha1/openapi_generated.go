@@ -1728,6 +1728,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"enable-experimental": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When enabled, experimental TiDB Dashboard features will be available. These features are incomplete or not well tested. Suggest not to enable in production. Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -3365,6 +3372,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"initial-cluster-token": {
+						SchemaProps: spec.SchemaProps{
+							Description: "set different tokens to prevent communication between PDs in different clusters.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"lease": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LeaderLease time, if leader doesn't update its TTL in etcd after lease time, etcd will expire the leader key and other servers can campaign the leader again. Etcd only supports seconds TTL, so here is second too. Optional: Defaults to 3",
@@ -4371,7 +4385,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 					},
 					"query-feedback-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 1024",
+							Description: "Optional: Defaults to 512",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -6212,6 +6226,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Description: "imported from v3.1.0",
 							Type:        []string{"integer"},
 							Format:      "int64",
+						},
+					},
+					"skip-register-to-dashboard": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v4.0.5 SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"enable-telemetry": {
