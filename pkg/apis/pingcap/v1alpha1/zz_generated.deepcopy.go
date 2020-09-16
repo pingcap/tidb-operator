@@ -5916,6 +5916,11 @@ func (in *TiKVGCConfig) DeepCopyInto(out *TiKVGCConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.EnableCompactionFilter != nil {
+		in, out := &in.EnableCompactionFilter, &out.EnableCompactionFilter
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
