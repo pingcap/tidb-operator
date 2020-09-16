@@ -1343,6 +1343,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"enable-experimental": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When enabled, experimental TiDB Dashboard features will be available. These features are incomplete or not well tested. Suggest not to enable in production. Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -1670,13 +1677,6 @@ func schema_pkg_apis_pingcap_v1alpha1_FlashLogger(ref common.ReferenceCallback) 
 							Description: "Optional: Defaults to 10",
 							Type:        []string{"integer"},
 							Format:      "int32",
-						},
-					},
-					"enable-experimental": {
-						SchemaProps: spec.SchemaProps{
-							Description: "When enabled, experimental TiDB Dashboard features will be available. These features are incomplete or not well tested. Suggest not to enable in production. Optional: Defaults to false",
-							Type:        []string{"boolean"},
-							Format:      "",
 						},
 					},
 				},
@@ -2649,6 +2649,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"initial-cluster-token": {
+						SchemaProps: spec.SchemaProps{
+							Description: "set different tokens to prevent communication between PDs in different clusters.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"lease": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LeaderLease time, if leader doesn't update its TTL in etcd after lease time, etcd will expire the leader key and other servers can campaign the leader again. Etcd only supports seconds TTL, so here is second too. Optional: Defaults to 3",
@@ -3020,18 +3027,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDScheduleConfig(ref common.ReferenceCallb
 							Format:      "int64",
 						},
 					},
-<<<<<<< HEAD
 					"max-merge-region-size": {
-=======
-					"initial-cluster-token": {
-						SchemaProps: spec.SchemaProps{
-							Description: "set different tokens to prevent communication between PDs in different clusters.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"lease": {
->>>>>>> 439fe04... adapt configurations to v4.0.6 (#3180)
 						SchemaProps: spec.SchemaProps{
 							Description: "If both the size of region is smaller than MaxMergeRegionSize and the number of rows in region is smaller than MaxMergeRegionKeys, it will try to merge with adjacent regions. Immutable, change should be made through pd-ctl after cluster creation Optional: Defaults to 20",
 							Type:        []string{"integer"},
@@ -3666,7 +3662,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 					},
 					"query-feedback-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 1024",
+							Description: "Optional: Defaults to 512",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -4354,13 +4350,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 				Properties: map[string]spec.Schema{
 					"resources": {
 						SchemaProps: spec.SchemaProps{
-<<<<<<< HEAD
 							Ref: ref("k8s.io/api/core/v1.ResourceRequirements"),
-=======
-							Description: "Optional: Defaults to 512",
-							Type:        []string{"integer"},
-							Format:      "int32",
->>>>>>> 439fe04... adapt configurations to v4.0.6 (#3180)
 						},
 					},
 					"to": {
@@ -5515,6 +5505,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Format:      "int64",
 						},
 					},
+					"skip-register-to-dashboard": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v4.0.5 SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"enable-telemetry": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics. If this config is set to `false` on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable `tidb_enable_telemetry`. See PingCAP privacy policy for details: https://pingcap.com/en/privacy-policy/. Imported from v4.0.2. Optional: Defaults to true",
@@ -6192,18 +6189,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiFlashSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogTailerSpec"),
 						},
 					},
-<<<<<<< HEAD
 					"recoverFailover": {
-=======
-					"skip-register-to-dashboard": {
-						SchemaProps: spec.SchemaProps{
-							Description: "imported from v4.0.5 SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"enable-telemetry": {
->>>>>>> 439fe04... adapt configurations to v4.0.6 (#3180)
 						SchemaProps: spec.SchemaProps{
 							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
 							Type:        []string{"boolean"},
