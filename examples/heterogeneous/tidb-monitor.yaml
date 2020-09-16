@@ -1,13 +1,14 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbMonitor
 metadata:
-  name: basic
+  name: heterogeneous
 spec:
   clusters:
-  - name: basic
+    - name: basic
+    - name: heterogeneous
   prometheus:
     baseImage: prom/prometheus
-    version: v2.18.1
+    version: v2.11.1
   grafana:
     baseImage: grafana/grafana
     version: 6.1.6
