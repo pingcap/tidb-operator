@@ -4813,6 +4813,21 @@ int32
 <p>Optional: Defaults to 0</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-experimental</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, experimental TiDB Dashboard features will be available.
+These features are incomplete or not well tested. Suggest not to enable in
+production.
+Optional: Defaults to false</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="isolationread">IsolationRead</h3>
@@ -7156,7 +7171,23 @@ MemberPhase
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>statefulSet</code></br>
+=======
+<code>initial-cluster-token</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>set different tokens to prevent communication between PDs in different clusters.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lease</code></br>
+>>>>>>> 439fe04... adapt configurations to v4.0.6 (#3180)
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
 Kubernetes apps/v1.StatefulSetStatus
@@ -8858,8 +8889,21 @@ string
 <table>
 <thead>
 <tr>
+<<<<<<< HEAD
 <th>Field</th>
 <th>Description</th>
+=======
+<td>
+<code>query-feedback-limit</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 512</p>
+</td>
+>>>>>>> 439fe04... adapt configurations to v4.0.6 (#3180)
 </tr>
 </thead>
 <tbody>
@@ -10031,7 +10075,2079 @@ bool
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
 <code>txn-local-latches</code></br>
+=======
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of restore Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of restore Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="restorestatus">RestoreStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restore">Restore</a>)
+</p>
+<p>
+<p>RestoreStatus represents the current status of a tidb cluster restore.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>timeStarted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeStarted is the time at which the restore was started.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeCompleted</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeCompleted is the time at which the restore was completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CommitTs is the snapshot time point of tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="#restorecondition">
+[]RestoreCondition
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s3storageprovider">S3StorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#storageprovider">StorageProvider</a>)
+</p>
+<p>
+<p>S3StorageProvider represents a S3 compliant storage for storing backups.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>provider</code></br>
+<em>
+<a href="#s3storageprovidertype">
+S3StorageProviderType
+</a>
+</em>
+</td>
+<td>
+<p>Provider represents the specific storage provider that implements the S3 interface</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>region</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Region in which the S3 compatible bucket is located.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path is the full path where the backup is saved.
+The format of the path must be: &ldquo;<bucket-name>/<path-to-backup-file>&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bucket</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Bucket in which to store the backup data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Endpoint of S3 compatible storage service</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageClass represents the storage class</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>acl</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Acl represents access control permissions for this bucket</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretName is the name of secret which stores
+S3 compliant storage access key and secret key.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prefix of the data path.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sse</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SSE Sever-Side Encryption.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>options</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Options Rclone options for backup and restore with mydumper and lightning.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s3storageprovidertype">S3StorageProviderType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#s3storageprovider">S3StorageProvider</a>)
+</p>
+<p>
+<p>S3StorageProviderType represents the specific storage provider that implements the S3 interface</p>
+</p>
+<h3 id="secretref">SecretRef</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#externalendpoint">ExternalEndpoint</a>)
+</p>
+<p>
+<p>SecretRef indicates to secret ref</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="security">Security</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbconfig">TiDBConfig</a>)
+</p>
+<p>
+<p>Security is the security section of the config.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>skip-grant-table</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>ssl-ca</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>ssl-cert</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>ssl-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cluster-ssl-ca</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cluster-ssl-cert</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cluster-ssl-key</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>cluster-verify-cn</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterVerifyCN is the Common Name that allowed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="service">Service</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>Deprecated
+Service represent service type used in TidbCluster</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="servicespec">ServiceSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#grafanaspec">GrafanaSpec</a>, 
+<a href="#masterservicespec">MasterServiceSpec</a>, 
+<a href="#pdspec">PDSpec</a>, 
+<a href="#prometheusspec">PrometheusSpec</a>, 
+<a href="#reloaderspec">ReloaderSpec</a>, 
+<a href="#tidbservicespec">TiDBServiceSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#servicetype-v1-core">
+Kubernetes core/v1.ServiceType
+</a>
+</em>
+</td>
+<td>
+<p>Type of the real kubernetes service</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional annotations of the kubernetes service object</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>loadBalancerIP</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LoadBalancerIP is the loadBalancerIP of service
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterIP</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterIP is the clusterIP of service</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>portName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PortName is the name of service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>loadBalancerSourceRanges</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LoadBalancerSourceRanges is the loadBalancerSourceRanges of service
+If specified and supported by the platform, this will restrict traffic through the cloud-provider
+load-balancer will be restricted to the specified client IPs. This field will be ignored if the
+cloud-provider does not support the feature.&rdquo;
+More info: <a href="https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/">https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/</a>
+Optional: Defaults to omitted</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="status">Status</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbconfig">TiDBConfig</a>)
+</p>
+<p>
+<p>Status is the status section of the config.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metrics-addr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>metrics-interval</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 15</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>report-status</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>record-db-qps</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stmtsummary">StmtSummary</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbconfig">TiDBConfig</a>)
+</p>
+<p>
+<p>StmtSummary is the config for statement summary.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enable</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enable statement summary or not.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-internal-query</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enable summary internal query.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-stmt-count</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The maximum number of statements kept in memory.
+Optional: Defaults to 100</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-sql-length</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The maximum length of displayed normalized SQL and sample SQL.
+Optional: Defaults to 4096</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>refresh-interval</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The refresh interval of statement summary.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>history-size</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The maximum history size of statement summary.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storageclaim">StorageClaim</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiflashspec">TiFlashSpec</a>)
+</p>
+<p>
+<p>StorageClaim contains details of TiFlash storages</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represents the minimum resources the volume should have.
+More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources">https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Name of the StorageClass required by the claim.
+More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1">https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storagemetricsstatus">StorageMetricsStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#metricsstatus">MetricsStatus</a>)
+</p>
+<p>
+<p>StorageMetricsStatus describe the storage metrics status in the last auto-scaling reconciliation</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>storagePressure</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoragePressure indicates whether storage under pressure</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storagePressureStartTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StoragePressureStartTime indicates the timestamp of the StoragePressure fist become true from false or nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>availableStorage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>capacityStorage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>baselineAvailableStorage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BaselineAvailableStorage indicates the baseline for available storage size.
+This is calculated by the capacity storage size * storage auto-scaling baseline percent value
+If the AvailableStorage is less than the BaselineAvailableStorage, the database is under StoragePressure
+optional</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storageprovider">StorageProvider</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>StorageProvider defines the configuration for storing a backup in backend storage.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>s3</code></br>
+<em>
+<a href="#s3storageprovider">
+S3StorageProvider
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>gcs</code></br>
+<em>
+<a href="#gcsstorageprovider">
+GcsStorageProvider
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tlscluster">TLSCluster</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#dmclusterspec">DMClusterSpec</a>, 
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TLSCluster can enable TLS connection between TiDB server components
+<a href="https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/">https://pingcap.com/docs/stable/how-to/secure/enable-tls-between-components/</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enable mutual TLS authentication among TiDB components
+Once enabled, the mutual authentication applies to all components,
+and it does not support applying to only part of the components.
+The steps to enable this feature:
+1. Generate TiDB server components certificates and a client-side certifiacete for them.
+There are multiple ways to generate these certificates:
+- user-provided certificates: <a href="https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/">https://pingcap.com/docs/stable/how-to/secure/generate-self-signed-certificates/</a>
+- use the K8s built-in certificate signing system signed certificates: <a href="https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/">https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/</a>
+- or use cert-manager signed certificates: <a href="https://cert-manager.io/">https://cert-manager.io/</a>
+2. Create one secret object for one component which contains the certificates created above.
+The name of this Secret must be: <clusterName>-<componentName>-cluster-secret.
+For PD: kubectl create secret generic <clusterName>-pd-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+For TiKV: kubectl create secret generic <clusterName>-tikv-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+For TiDB: kubectl create secret generic <clusterName>-tidb-cluster-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+For Client: kubectl create secret generic <clusterName>-cluster-client-secret &ndash;namespace=<namespace> &ndash;from-file=tls.crt=<path/to/tls.crt> &ndash;from-file=tls.key=<path/to/tls.key> &ndash;from-file=ca.crt=<path/to/ca.crt>
+Same for other components.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdccapture">TiCDCCapture</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcstatus">TiCDCStatus</a>)
+</p>
+<p>
+<p>TiCDCCapture is TiCDC Capture status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcconfig">TiCDCConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticdcspec">TiCDCSpec</a>)
+</p>
+<p>
+<p>TiCDCConfig is the configuration of tidbcdc</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>timezone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time zone of TiCDC
+Optional: Defaults to UTC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gcTTL</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CDC GC safepoint TTL duration, specified in seconds
+Optional: Defaults to 86400</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogLevel is the log level
+Optional: Defaults to info</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logFile</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogFile is the log file
+Optional: Defaults to /dev/stderr</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcspec">TiCDCSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TiCDCSpec contains details of TiCDC members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiCDC</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+<a href="#ticdcconfig">
+TiCDCConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is the Configuration of tidbcdc servers</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticdcstatus">TiCDCStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCDCStatus is TiCDC status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>captures</code></br>
+<em>
+<a href="#ticdccapture">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCapture
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbaccessconfig">TiDBAccessConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>TiDBAccessConfig defines the configuration for access tidb cluster</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>host</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Host is the tidb cluster access address</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Port is the port number to use for connecting tidb cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>user</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>User is the user for login tidb cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretName is the name of secret which stores tidb cluster&rsquo;s password.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretName is the name of secret which stores tidb server client certificate
+Optional: Defaults to nil</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbconfig">TiDBConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+<p>TiDBConfig is the configuration of tidb-server
+For more detail, refer to <a href="https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/">https://pingcap.com/docs/stable/reference/configuration/tidb-server/configuration/</a></p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>cors</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>socket</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>lease</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 45s</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>run-ddl</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>split-table</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>token-limit</code></br>
+<em>
+uint
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 1000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>oom-use-tmp-storage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>tmp-storage-path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>oom-action</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to log</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-index-length</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 3072</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mem-quota-query</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 34359738368</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tmp-storage-quota</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TempStorageQuota describe the temporary storage Quota during query exector when OOMUseTmpStorage is enabled
+If the quota exceed the capacity of the TempStoragePath, the tidb-server would exit with fatal error</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-streaming</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-batch-dml</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>txn-local-latches</code></br>
+<em>
+<a href="#txnlocallatches">
+TxnLocalLatches
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Deprecated in v4.0.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lower-case-table-names</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>log</code></br>
+<em>
+<a href="#log">
+Log
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>security</code></br>
+<em>
+<a href="#security">
+Security
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#status">
+Status
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>performance</code></br>
+<em>
+<a href="#performance">
+Performance
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>prepared-plan-cache</code></br>
+<em>
+<a href="#preparedplancache">
+PreparedPlanCache
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>opentracing</code></br>
+<em>
+<a href="#opentracing">
+OpenTracing
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>proxy-protocol</code></br>
+<em>
+<a href="#proxyprotocol">
+ProxyProtocol
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikv-client</code></br>
+<em>
+<a href="#tikvclient">
+TiKVClient
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>binlog</code></br>
+<em>
+<a href="#binlog">
+Binlog
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>compatible-kill-query</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>plugin</code></br>
+<em>
+<a href="#plugin">
+Plugin
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pessimistic-txn</code></br>
+<em>
+<a href="#pessimistictxn">
+PessimisticTxn
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>check-mb4-value-in-utf8</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>alter-primary-key</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>treat-old-version-utf8-as-utf8mb4</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>split-region-max-num</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Optional: Defaults to 1000</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>stmt-summary</code></br>
+<em>
+<a href="#stmtsummary">
+StmtSummary
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>repair-mode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RepairMode indicates that the TiDB is in the repair mode for table meta.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>repair-table-list</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>isolation-read</code></br>
+<em>
+<a href="#isolationread">
+IsolationRead
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IsolationRead indicates that the TiDB reads data from which isolation level(engine and label).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>max-server-connections</code></br>
+<em>
+uint32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxServerConnections is the maximum permitted number of simultaneous client connections.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>new_collations_enabled_on_first_bootstrap</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NewCollationsEnabledOnFirstBootstrap indicates if the new collations are enabled, it effects only when a TiDB cluster bootstrapped on the first time.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>experimental</code></br>
+<em>
+<a href="#experimental">
+Experimental
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Experimental contains parameters for experimental features.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-dynamic-config</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDynamicConfig enables the TiDB to fetch configs from PD and update itself during runtime.
+see <a href="https://github.com/pingcap/tidb/pull/13660">https://github.com/pingcap/tidb/pull/13660</a> for more details.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-table-lock</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>delay-clean-table-lock</code></br>
+<em>
+uint64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>imported from v3.1.0</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skip-register-to-dashboard</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>imported from v4.0.5
+SkipRegisterToDashboard tells TiDB don&rsquo;t register itself to the dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-telemetry</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics.
+If this config is set to <code>false</code> on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable <code>tidb_enable_telemetry</code>.
+See PingCAP privacy policy for details: <a href="https://pingcap.com/en/privacy-policy/">https://pingcap.com/en/privacy-policy/</a>.
+Imported from v4.0.2.
+Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Labels are labels for TiDB server</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbfailuremember">TiDBFailureMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbstatus">TiDBStatus</a>)
+</p>
+<p>
+<p>TiDBFailureMember is the tidb failure member information</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>createdAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbgroupspec">TiDBGroupSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbgroup">TiDBGroup</a>)
+</p>
+<p>
+<p>TiDBGroupSpec describes the attributes that a user creates on a TiDBGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TiDBSpec</code></br>
+<em>
+<a href="#tidbspec">
+TiDBSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiDBSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClusterName describe the target TidbCluster in the same namespace</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbgroupstatus">TiDBGroupStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbgroup">TiDBGroup</a>)
+</p>
+<p>
+<p>Most recently observed status of the TiDBGroup</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>TiDBStatus</code></br>
+<em>
+<a href="#tidbstatus">
+TiDBStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TiDBStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbmember">TiDBMember</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbstatus">TiDBStatus</a>)
+</p>
+<p>
+<p>TiDBMember is TiDB member</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>health</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastTransitionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>Last time the health transitioned from one to another.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>node</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Node hosting pod of this TiDB member.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tidbservicespec">TiDBServiceSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbspec">TiDBSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ServiceSpec</code></br>
+>>>>>>> 439fe04... adapt configurations to v4.0.6 (#3180)
 <em>
 <a href="#txnlocallatches">
 TxnLocalLatches
