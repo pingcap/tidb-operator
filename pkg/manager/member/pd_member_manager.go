@@ -714,6 +714,7 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	if podSpec.ServiceAccountName == "" {
 		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
 	}
+	podSpec.SecurityContext = basePDSpec.PodSecurityContext().DeepCopy()
 
 	pdSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
