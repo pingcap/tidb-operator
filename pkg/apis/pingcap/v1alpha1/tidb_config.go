@@ -146,7 +146,7 @@ type TiDBConfig struct {
 	// imported from v4.0.5
 	// SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.
 	// +optional
-	SkipRegisterToDashboard *bool `toml:"skip-register-to-dashboard" json:"skip-register-to-dashboard"`
+	SkipRegisterToDashboard *bool `toml:"skip-register-to-dashboard,omitempty" json:"skip-register-to-dashboard,omitempty"`
 	// When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics.
 	// If this config is set to `false` on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable `tidb_enable_telemetry`.
 	// See PingCAP privacy policy for details: https://pingcap.com/en/privacy-policy/.

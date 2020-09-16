@@ -36,7 +36,7 @@ type PDConfig struct {
 
 	// set different tokens to prevent communication between PDs in different clusters.
 	// +optional
-	InitialClusterToken *string `toml:"initial-cluster-token" json:"initial-cluster-token"`
+	InitialClusterToken *string `toml:"initial-cluster-token,omitempty" json:"initial-cluster-token,omitempty"`
 
 	// LeaderLease time, if leader doesn't update its TTL
 	// in etcd after lease time, etcd will expire the leader key
@@ -156,7 +156,7 @@ type DashboardConfig struct {
 	// production.
 	// Optional: Defaults to false
 	// +optional
-	EnableExperimental *bool `toml:"enable-experimental" json:"enable-experimental"`
+	EnableExperimental *bool `toml:"enable-experimental,omitempty" json:"enable-experimental,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.
