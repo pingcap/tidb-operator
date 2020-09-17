@@ -736,3 +736,48 @@ func TestShouldRecover(t *testing.T) {
 		})
 	}
 }
+
+func TestTOMLEqual(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name  string
+		d1    string
+		d2    string
+		equal bool
+	}
+
+	tests := []*testcase{
+		{
+			d1:    "a = 1",
+			d2:    "a = 1",
+			equal: true,
+		},
+		{
+			d1:    "a = 1",
+			d2:    "a = 2",
+			equal: false,
+		},
+		{
+			d1:    "a =  1",
+			d2:    "a = 1",
+			equal: true,
+		},
+		{
+			d1:    "a =  1",
+			d2:    "a = 2",
+			equal: false,
+		},
+		{
+			d1:    "[user]\n[user.default]\np = 'ok'",
+			d2:    "[user.default]\np = 'ok'",
+			equal: true,
+		},
+	}
+
+	for _, test := range tests {
+		equal, err := TOMLEqual([]byte(test.d1), []byte(test.d2))
+		g.Expect(err).Should(BeNil())
+		t.Logf("check '%s' and '%s'", test.d1, test.d2)
+		g.Expect(equal).Should(Equal(test.equal))
+	}
+}

@@ -415,7 +415,7 @@ var preCheckConfigMapEqualFn = func(existing, desired runtime.Object) {
 	old := existing.(*corev1.ConfigMap)
 	new := existing.(*corev1.ConfigMap)
 
-	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml", "proxy_templ.toml"}
+	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
 
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]

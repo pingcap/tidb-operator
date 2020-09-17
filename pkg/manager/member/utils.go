@@ -233,7 +233,7 @@ func TOMLEqual(d1 []byte, d2 []byte) (bool, error) {
 		return false, err
 	}
 
-	return reflect.DeepEqual(m1, m1), nil
+	return reflect.DeepEqual(m1, m2), nil
 }
 
 // MarshalTOML is a template function that try to marshal a go value to toml
