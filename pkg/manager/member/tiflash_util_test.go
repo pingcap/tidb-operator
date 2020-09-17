@@ -106,6 +106,7 @@ var (
 			TmpPath:       pointer.StringPtr("/data0/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/0"),
 					},
@@ -206,6 +207,7 @@ var (
 			TmpPath: pointer.StringPtr("/data0/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/0"),
 					},
@@ -311,6 +313,7 @@ var (
 			TmpPath:       pointer.StringPtr("/data0/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/0"),
 					},
@@ -416,6 +419,7 @@ var (
 			TmpPath: pointer.StringPtr("/data1/tmp"),
 			FlashUser: &v1alpha1.FlashUser{
 				Default: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/1"),
 					},

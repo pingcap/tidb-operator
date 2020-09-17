@@ -486,6 +486,9 @@ func setTiFlashUsersConfigDefault(config *v1alpha1.FlashUser) {
 	if config.Default.Networks == nil {
 		config.Default.Networks = &v1alpha1.Networks{}
 	}
+	if config.Default.Password == nil {
+		config.Default.Password = pointer.StringPtr("")
+	}
 	setTiFlashNetworksConfigDefault(config.Default.Networks)
 }
 
