@@ -1826,13 +1826,14 @@ TidbAutoScalerSpec
 <code>resources</code></br>
 <em>
 <a href="#autoresource">
-[]AutoResource
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
+The key is resource_type name of the resource</p>
 </td>
 </tr>
 </table>
@@ -2373,17 +2374,6 @@ TidbMonitorStatus
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>resource_type</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ResourceType identifies a specific resource type</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>cpu</code></br>
@@ -18070,13 +18060,14 @@ TidbAutoScalerSpec
 <code>resources</code></br>
 <em>
 <a href="#autoresource">
-[]AutoResource
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
+The key is resource_type name of the resource</p>
 </td>
 </tr>
 </tbody>
