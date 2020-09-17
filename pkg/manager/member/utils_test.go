@@ -740,7 +740,6 @@ func TestShouldRecover(t *testing.T) {
 func TestTOMLEqual(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name  string
 		d1    string
 		d2    string
 		equal bool

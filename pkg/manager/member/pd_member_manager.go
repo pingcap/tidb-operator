@@ -413,7 +413,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 
 var preCheckConfigMapEqualFn = func(existing, desired runtime.Object) {
 	old := existing.(*corev1.ConfigMap)
-	new := existing.(*corev1.ConfigMap)
+	new := desired.(*corev1.ConfigMap)
 
 	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
 
@@ -422,11 +422,16 @@ var preCheckConfigMapEqualFn = func(existing, desired runtime.Object) {
 		newData, newOK := new.Data[k]
 
 		if !oldOK || !newOK {
-			return
+			continue
 		}
 
 		equal, err := TOMLEqual([]byte(oldData), []byte(newData))
-		klog.Warningf("compare %s and %s failed: %v", oldData, newData, err)
+		if err != nil {
+			klog.Warningf("compare %s and %s failed: %v", oldData, newData, err)
+		} else {
+			klog.V(3).Infof("compare %s and %s %v", oldData, newData, equal)
+		}
+
 		if err == nil && equal {
 			new.Data[k] = oldData
 		}
