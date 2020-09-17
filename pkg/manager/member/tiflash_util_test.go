@@ -113,6 +113,7 @@ var (
 					Quota:   pointer.StringPtr("default"),
 				},
 				Readonly: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/0"),
 					},
@@ -212,6 +213,7 @@ var (
 					Quota:   pointer.StringPtr("default"),
 				},
 				Readonly: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/0"),
 					},
@@ -316,6 +318,7 @@ var (
 					Quota:   pointer.StringPtr("default"),
 				},
 				Readonly: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/0"),
 					},
@@ -420,6 +423,7 @@ var (
 					Quota:   pointer.StringPtr("default1"),
 				},
 				Readonly: &v1alpha1.User{
+					Password: pointer.StringPtr(""),
 					Networks: &v1alpha1.Networks{
 						IP: pointer.StringPtr("::/1"),
 					},
