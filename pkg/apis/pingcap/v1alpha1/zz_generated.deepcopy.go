@@ -7442,9 +7442,9 @@ func (in *TidbClusterAutoScalerSpec) DeepCopyInto(out *TidbClusterAutoScalerSpec
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]AutoResource, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		*out = make(map[string]AutoResource, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return

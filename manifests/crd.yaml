@@ -17982,18 +17982,7 @@ spec:
               - name
               type: object
             resources:
-              items:
-                properties:
-                  count:
-                    format: int32
-                    type: integer
-                  cpu: {}
-                  memory: {}
-                  resource_type:
-                    type: string
-                  storage: {}
-                type: object
-              type: array
+              type: object
             tidb:
               properties:
                 external:
