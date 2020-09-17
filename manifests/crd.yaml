@@ -1725,6 +1725,8 @@ spec:
                       type: string
                     dashboard:
                       properties:
+                        enable-experimental:
+                          type: boolean
                         enable-telemetry:
                           type: boolean
                         internal-proxy:
@@ -1746,6 +1748,8 @@ spec:
                       type: boolean
                     force-new-cluster:
                       type: boolean
+                    initial-cluster-token:
+                      type: string
                     label-property:
                       type: object
                     lease:
@@ -6719,6 +6723,8 @@ spec:
                         ssl-key:
                           type: string
                       type: object
+                    skip-register-to-dashboard:
+                      type: boolean
                     socket:
                       type: string
                     split-region-max-num:
@@ -8530,6 +8536,8 @@ spec:
                             batch-keys:
                               format: int64
                               type: integer
+                            enable-compaction-filter:
+                              type: boolean
                             max-write-bytes-per-sec:
                               type: string
                           type: object
@@ -11143,6 +11151,8 @@ spec:
                         batch-keys:
                           format: int64
                           type: integer
+                        enable-compaction-filter:
+                          type: boolean
                         max-write-bytes-per-sec:
                           type: string
                       type: object
