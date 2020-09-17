@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
@@ -410,6 +411,28 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
+var preCheckConfigMapEqualFn = func(existing, desired runtime.Object) {
+	old := existing.(*corev1.ConfigMap)
+	new := existing.(*corev1.ConfigMap)
+
+	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml", "proxy_templ.toml"}
+
+	for _, k := range tomlField {
+		oldData, oldOK := old.Data[k]
+		newData, newOK := new.Data[k]
+
+		if !oldOK || !newOK {
+			return
+		}
+
+		equal, err := TOMLEqual([]byte(oldData), []byte(newData))
+		klog.Warningf("compare %s and %s failed: %v", oldData, newData, err)
+		if err == nil && equal {
+			new.Data[k] = oldData
+		}
+	}
+}
+
 // syncPDConfigMap syncs the configmap of PD
 func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
 
@@ -430,7 +453,7 @@ func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.
 		}
 	}
 
-	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
 }
 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {

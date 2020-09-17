@@ -360,7 +360,7 @@ func (tmm *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *a
 		}
 	}
 
-	return tmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return tmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
 }
 
 func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {

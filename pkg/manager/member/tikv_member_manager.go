@@ -292,7 +292,7 @@ func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *
 		}
 	}
 
-	return tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
 }
 
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {

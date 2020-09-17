@@ -276,7 +276,7 @@ func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *a
 		}
 	}
 
-	return tfmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return tfmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
 }
 
 func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {

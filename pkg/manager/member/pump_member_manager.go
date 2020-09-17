@@ -216,7 +216,7 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 		}
 	}
 
-	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
 }
 
 func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {

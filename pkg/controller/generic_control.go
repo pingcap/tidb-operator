@@ -40,7 +40,7 @@ type TypedControlInterface interface {
 	// CreateOrUpdateSecret create the desired secret or update the current one to desired state if already existed
 	CreateOrUpdateSecret(controller runtime.Object, secret *corev1.Secret) (*corev1.Secret, error)
 	// CreateOrUpdateConfigMap create the desired configmap or update the current one to desired state if already existed
-	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error)
+	CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap, preCheckEqualFn ...PreCheckEqualFn) (*corev1.ConfigMap, error)
 	// CreateOrUpdateClusterRole the desired clusterRole or update the current one to desired state if already existed
 	CreateOrUpdateClusterRole(controller runtime.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error)
 	// CreateOrUpdateClusterRoleBinding create the desired clusterRoleBinding or update the current one to desired state if already existed
@@ -232,7 +232,7 @@ func (w *typedWrapper) CreateOrUpdateServiceAccount(controller runtime.Object, s
 	return result.(*corev1.ServiceAccount), err
 }
 
-func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *corev1.ConfigMap, preCheckEqualFn ...PreCheckEqualFn) (*corev1.ConfigMap, error) {
 	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, func(existing, desired runtime.Object) error {
 		existingCm := existing.(*corev1.ConfigMap)
 		desiredCm := desired.(*corev1.ConfigMap)
@@ -243,7 +243,7 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller runtime.Object, cm *co
 			existingCm.Annotations[k] = v
 		}
 		return nil
-	}, true)
+	}, true, preCheckEqualFn...)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func (w *typedWrapper) Exist(key client.ObjectKey, obj runtime.Object) (bool, er
 
 // GenericControlInterface manages generic object that managed by an arbitrary controller
 type GenericControlInterface interface {
-	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error)
+	CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool, preCheck ...PreCheckEqualFn) (runtime.Object, error)
 	Create(controller, obj runtime.Object, setOwnerFlag bool) error
 	UpdateStatus(obj runtime.Object) error
 	Exist(key client.ObjectKey, obj runtime.Object) (bool, error)
@@ -369,6 +369,10 @@ type GenericControlInterface interface {
 // after POST/PUT to api-server (e.g. Defaulting), an annotation based technique could be used to avoid such
 // updating: set a last-applied-config annotation and diff the annotation instead of the real spec.
 type MergeFn func(existing, desired runtime.Object) error
+
+// PreCheckEqualFn if call before check existing and desired is logical equal.
+// We can modify existing and desired to make it equal and avoid update if need.
+type PreCheckEqualFn func(existing, desired runtime.Object)
 
 type realGenericControlInterface struct {
 	client   client.Client
@@ -399,7 +403,12 @@ func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj runtime.Ob
 // CreateOrUpdate create an object to the Kubernetes cluster for controller, if the object to create is existed,
 // call mergeFn to merge the change in new object to the existing object, then update the existing object.
 // The object will also be adopted by the given controller.
-func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
+func (c *realGenericControlInterface) CreateOrUpdate(
+	controller, obj runtime.Object,
+	mergeFn MergeFn,
+	setOwnerFlag bool,
+	preCheckEqualFn ...PreCheckEqualFn,
+) (runtime.Object, error) {
 
 	// controller-runtime/client will mutate the object pointer in-place,
 	// to be consistent with other methods in our controller, we copy the object
@@ -443,6 +452,10 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj runtime.Obj
 		}
 
 		// 5. check if the copy is actually mutated
+		if len(preCheckEqualFn) > 0 {
+			preCheckEqualFn[0](existing, mutated)
+		}
+
 		if !apiequality.Semantic.DeepEqual(existing, mutated) {
 			err := c.client.Update(context.TODO(), mutated)
 			return mutated, err
@@ -608,14 +621,14 @@ func (gc *FakeGenericControl) UpdateStatus(obj runtime.Object) error {
 	return gc.FakeCli.Status().Update(context.TODO(), obj)
 }
 
-func (gc *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
+func (gc *FakeGenericControl) CreateOrUpdate(controller, obj runtime.Object, fn MergeFn, setOwnerFlag bool, preCheckEqualFn ...PreCheckEqualFn) (runtime.Object, error) {
 	defer gc.createOrUpdateTracker.Inc()
 	if gc.createOrUpdateTracker.ErrorReady() {
 		defer gc.createOrUpdateTracker.Reset()
 		return nil, gc.createOrUpdateTracker.GetError()
 	}
 
-	return gc.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag)
+	return gc.control.CreateOrUpdate(controller, obj, fn, setOwnerFlag, preCheckEqualFn...)
 }
 
 func (gc *FakeGenericControl) Delete(controller, obj runtime.Object) error {

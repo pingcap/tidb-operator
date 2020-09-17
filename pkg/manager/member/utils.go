@@ -19,9 +19,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"reflect"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -218,13 +220,29 @@ func FindConfigMapVolume(podSpec *corev1.PodSpec, pred func(string) bool) string
 	return ""
 }
 
+func TOMLEqual(d1 []byte, d2 []byte) (bool, error) {
+	m1 := map[string]interface{}{}
+	err := UnmarshalTOML(d1, &m1)
+	if err != nil {
+		return false, err
+	}
+
+	m2 := map[string]interface{}{}
+	err = UnmarshalTOML(d2, &m2)
+	if err != nil {
+		return false, err
+	}
+
+	return reflect.DeepEqual(m1, m1), nil
+}
+
 // MarshalTOML is a template function that try to marshal a go value to toml
 func MarshalTOML(v interface{}) ([]byte, error) {
 	buff := new(bytes.Buffer)
 	encoder := toml.NewEncoder(buff)
 	err := encoder.Encode(v)
 	if err != nil {
-		return nil, err
+		return nil, perrors.AddStack(err)
 	}
 	data := buff.Bytes()
 	return data, nil
