@@ -49,7 +49,11 @@ func (tc *TidbCluster) PDImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -73,7 +77,11 @@ func (tc *TidbCluster) TiKVImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -105,7 +113,11 @@ func (tc *TidbCluster) TiFlashImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -119,7 +131,11 @@ func (tc *TidbCluster) TiCDCImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -141,7 +157,11 @@ func (tc *TidbCluster) TiDBImage() string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return image
 }
@@ -158,7 +178,11 @@ func (tc *TidbCluster) PumpImage() *string {
 		if version == nil {
 			version = &tc.Spec.Version
 		}
-		image = fmt.Sprintf("%s:%s", baseImage, *version)
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
 	}
 	return &image
 }

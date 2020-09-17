@@ -6,10 +6,9 @@ run:
 
 linters:
   enable:
+    - structcheck
     - goimports
     - gosimple
-  disable:
-    # Enable once related errors are fixed or ignored explicitly 
     - staticcheck
-    - structcheck
+  disable:
     - errcheck

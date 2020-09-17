@@ -1725,6 +1725,8 @@ spec:
                       type: string
                     dashboard:
                       properties:
+                        enable-experimental:
+                          type: boolean
                         enable-telemetry:
                           type: boolean
                         internal-proxy:
@@ -1746,6 +1748,8 @@ spec:
                       type: boolean
                     force-new-cluster:
                       type: boolean
+                    initial-cluster-token:
+                      type: string
                     label-property:
                       type: object
                     lease:
@@ -2071,6 +2075,8 @@ spec:
                     type:
                       type: string
                   type: object
+                serviceAccount:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3574,6 +3580,8 @@ spec:
                   type: object
                 schedulerName:
                   type: string
+                serviceAccount:
+                  type: string
                 storageClassName:
                   type: string
                 terminationGracePeriodSeconds:
@@ -3603,6 +3611,8 @@ spec:
             pvReclaimPolicy:
               type: string
             schedulerName:
+              type: string
+            serviceAccount:
               type: string
             ticdc:
               properties:
@@ -6713,6 +6723,8 @@ spec:
                         ssl-key:
                           type: string
                       type: object
+                    skip-register-to-dashboard:
+                      type: boolean
                     socket:
                       type: string
                     split-region-max-num:
@@ -7061,6 +7073,8 @@ spec:
                       format: int32
                       type: integer
                   type: object
+                serviceAccount:
+                  type: string
                 slowLogTailer:
                   properties:
                     limits:
@@ -8522,6 +8536,8 @@ spec:
                             batch-keys:
                               format: int64
                               type: integer
+                            enable-compaction-filter:
+                              type: boolean
                             max-write-bytes-per-sec:
                               type: string
                           type: object
@@ -11135,6 +11151,8 @@ spec:
                         batch-keys:
                           format: int64
                           type: integer
+                        enable-compaction-filter:
+                          type: boolean
                         max-write-bytes-per-sec:
                           type: string
                       type: object
@@ -15784,6 +15802,8 @@ spec:
                   type: object
                 priorityClassName:
                   type: string
+                recoverFailover:
+                  type: boolean
                 replicas:
                   format: int32
                   type: integer
@@ -17236,6 +17256,8 @@ spec:
   names:
     kind: TidbMonitor
     plural: tidbmonitors
+    shortNames:
+    - tm
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -17960,18 +17982,7 @@ spec:
               - name
               type: object
             resources:
-              items:
-                properties:
-                  count:
-                    format: int32
-                    type: integer
-                  cpu: {}
-                  memory: {}
-                  resource_type:
-                    type: string
-                  storage: {}
-                type: object
-              type: array
+              type: object
             tidb:
               properties:
                 external:
@@ -19789,6 +19800,8 @@ spec:
                     ssl-key:
                       type: string
                   type: object
+                skip-register-to-dashboard:
+                  type: boolean
                 socket:
                   type: string
                 split-region-max-num:
@@ -20137,6 +20150,8 @@ spec:
                   format: int32
                   type: integer
               type: object
+            serviceAccount:
+              type: string
             slowLogTailer:
               properties:
                 limits:
@@ -21563,6 +21578,8 @@ spec:
                     batch-keys:
                       format: int64
                       type: integer
+                    enable-compaction-filter:
+                      type: boolean
                     max-write-bytes-per-sec:
                       type: string
                   type: object

@@ -464,6 +464,9 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 						continue
 					}
 					if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "local-storage" {
+						// TODO check the localPVs as expected in someway?
+						// nolint(staticcheck)
+						// SA4010: this result of append is never used, except maybe in other appends
 						localPVs = append(localPVs, pvc.Spec.VolumeName)
 						err = c.CoreV1().PersistentVolumeClaims(ns).Delete(pvc.Name, &metav1.DeleteOptions{})
 						framework.ExpectNoError(err)
@@ -911,6 +914,65 @@ var _ = ginkgo.Describe("[tidb-operator][Stability]", func() {
 
 			ginkgo.By("Waiting for the new pod to be created")
 			newPodName := controller.TiKVMemberName(clusterName) + "-3"
+			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
+				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
+				if err != nil && !apierrors.IsNotFound(err) {
+					return false, nil
+				}
+				return !apierrors.IsNotFound(err), nil
+			})
+			framework.ExpectNoError(err)
+		})
+
+		// https://github.com/pingcap/tidb-operator/issues/2739
+		ginkgo.It("[Feature: AutoFailover] Failover can work if a pd fails to upgrade", func() {
+			clusterName := "scale"
+			tc := fixture.GetTidbCluster(ns, clusterName, utilimage.TiDBV4Version)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			err := genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 15*time.Second)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Fail a PD")
+			podName := controller.PDMemberName(clusterName) + "-1"
+			f.ExecCommandInContainer(podName, "pd", "sh", "-c", "rm -rf /var/lib/pd/*")
+
+			ginkgo.By("Waiting for the pd to be in unhealthy state")
+			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				for _, member := range tc.Status.PD.Members {
+					if member.Name == podName && !member.Health {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Upgrade PD configuration")
+			updateStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+			err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.PD.Config.Log.Level = pointer.StringPtr("info")
+				tc.Spec.PD.ConfigUpdateStrategy = &updateStrategy
+				return nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Waiting for the pd to be put into failsure members")
+			err = utiltidbcluster.WaitForTidbClusterCondition(cli, tc.Namespace, tc.Name, time.Minute*5, func(tc *v1alpha1.TidbCluster) (bool, error) {
+				for _, failureMember := range tc.Status.PD.FailureMembers {
+					if failureMember.PodName == podName {
+						return true, nil
+					}
+				}
+				return false, nil
+			})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Waiting for the new pod to be created")
+			newPodName := controller.PDMemberName(clusterName) + "-3"
 			err = wait.PollImmediate(time.Second*10, 1*time.Minute, func() (bool, error) {
 				_, err := c.CoreV1().Pods(ns).Get(newPodName, metav1.GetOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {

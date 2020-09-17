@@ -123,6 +123,9 @@ type TidbClusterSpec struct {
 	// Discovery spec
 	Discovery DiscoverySpec `json:"discovery,omitempty"`
 
+	// Specify a Service Account
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// PD cluster spec
 	// +optional
 	PD *PDSpec `json:"pd,omitempty"`
@@ -247,7 +250,7 @@ type TidbClusterStatus struct {
 	PD         PDStatus                  `json:"pd,omitempty"`
 	TiKV       TiKVStatus                `json:"tikv,omitempty"`
 	TiDB       TiDBStatus                `json:"tidb,omitempty"`
-	Pump       PumpStatus                `josn:"pump,omitempty"`
+	Pump       PumpStatus                `json:"pump,omitempty"`
 	TiFlash    TiFlashStatus             `json:"tiflash,omitempty"`
 	TiCDC      TiCDCStatus               `json:"ticdc,omitempty"`
 	Monitor    *TidbMonitorRef           `json:"monitor,omitempty"`
@@ -309,6 +312,9 @@ type DiscoverySpec struct {
 type PDSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for pd
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=1
@@ -536,6 +542,9 @@ type TiDBSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
+	// Specify a Service Account for tidb
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
 	Replicas int32 `json:"replicas"`
@@ -596,6 +605,9 @@ type TiDBSpec struct {
 type PumpSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for pump
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// The desired ready replicas
 	// +kubebuilder:validation:Minimum=0
@@ -1709,6 +1721,10 @@ type WorkerSpec struct {
 	// Config is the Configuration of dm-worker-servers
 	// +optional
 	Config *WorkerConfig `json:"config,omitempty"`
+
+	// RecoverFailover indicates that Operator can recover the failover Pods
+	// +optional
+	RecoverFailover bool `json:"recoverFailover,omitempty"`
 }
 
 // DMClusterCondition is dm cluster condition
@@ -1744,14 +1760,14 @@ const (
 
 // MasterStatus is dm-master status
 type MasterStatus struct {
-	Synced          bool                       `json:"synced,omitempty"`
-	Phase           MemberPhase                `json:"phase,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus    `json:"statefulSet,omitempty"`
-	Members         map[string]MasterMember    `json:"members,omitempty"`
-	Leader          MasterMember               `json:"leader,omitempty"`
-	FailureMembers  map[string]PDFailureMember `json:"failureMembers,omitempty"`
-	UnjoinedMembers map[string]UnjoinedMember  `json:"unjoinedMembers,omitempty"`
-	Image           string                     `json:"image,omitempty"`
+	Synced          bool                           `json:"synced,omitempty"`
+	Phase           MemberPhase                    `json:"phase,omitempty"`
+	StatefulSet     *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
+	Members         map[string]MasterMember        `json:"members,omitempty"`
+	Leader          MasterMember                   `json:"leader,omitempty"`
+	FailureMembers  map[string]MasterFailureMember `json:"failureMembers,omitempty"`
+	UnjoinedMembers map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
+	Image           string                         `json:"image,omitempty"`
 }
 
 // MasterMember is dm-master member status
@@ -1777,18 +1793,25 @@ type MasterFailureMember struct {
 
 // WorkerStatus is dm-worker status
 type WorkerStatus struct {
-	Synced      bool                    `json:"synced,omitempty"`
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     map[string]WorkerMember `json:"members,omitempty"`
-	Image       string                  `json:"image,omitempty"`
+	Synced         bool                           `json:"synced,omitempty"`
+	Phase          MemberPhase                    `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
+	Members        map[string]WorkerMember        `json:"members,omitempty"`
+	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
+	Image          string                         `json:"image,omitempty"`
 }
 
-// WorkerMember is dm-Worker member status
+// WorkerMember is dm-worker member status
 type WorkerMember struct {
 	Name  string `json:"name,omitempty"`
 	Addr  string `json:"addr,omitempty"`
 	Stage string `json:"stage"`
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
+// WorkerFailureMember is the dm-worker failure member information
+type WorkerFailureMember struct {
+	PodName   string      `json:"podName,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }

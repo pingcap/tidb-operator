@@ -57,7 +57,7 @@ spec:
   commonName: "TiDB CA"
   isCA: true
   issuerRef:
-    name: {{ .ClusterName }}-selfsigned-ca-issuer
+    name: {{ .ClusterRef }}-selfsigned-ca-issuer
     kind: Issuer
 ---
 apiVersion: cert-manager.io/v1alpha2
@@ -96,7 +96,7 @@ spec:
     - 127.0.0.1
     - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 ---
@@ -115,7 +115,7 @@ spec:
   usages:
     - client auth
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 `
@@ -150,7 +150,7 @@ spec:
   - 127.0.0.1
   - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 ---
@@ -183,7 +183,7 @@ spec:
   - 127.0.0.1
   - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 ---
@@ -216,7 +216,7 @@ spec:
   - 127.0.0.1
   - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 ---
@@ -235,7 +235,7 @@ spec:
   usages:
     - client auth
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 ---
@@ -262,7 +262,7 @@ spec:
   - 127.0.0.1
   - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 ---
@@ -289,7 +289,40 @@ spec:
   - 127.0.0.1
   - ::1
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .ClusterName }}-tiflash-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .ClusterName }}-tiflash-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  organization:
+  - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .ClusterName }}-tiflash"
+  - "{{ .ClusterName }}-tiflash.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tiflash.{{ .Namespace }}.svc"
+  - "{{ .ClusterName }}-tiflash-peer"
+  - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}"
+  - "{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-tiflash-peer"
+  - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-tiflash-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 `
@@ -310,7 +343,7 @@ spec:
   usages:
     - client auth
   issuerRef:
-    name: {{ .ClusterName }}-tidb-issuer
+    name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
 `
@@ -318,6 +351,7 @@ spec:
 type tcTmplMeta struct {
 	Namespace   string
 	ClusterName string
+	ClusterRef  string
 }
 
 type tcCliTmplMeta struct {
@@ -365,31 +399,39 @@ func deleteCertManager(cli clientset.Interface) error {
 }
 
 func installTiDBIssuer(ns, tcName string) error {
-	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName})
+	return installCert(tidbIssuerTmpl, tcTmplMeta{ns, tcName, tcName})
 }
 
 func installTiDBCertificates(ns, tcName string) error {
-	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName})
+	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName, tcName})
+}
+
+func installHeterogeneousTiDBCertificates(ns, tcName string, clusterRef string) error {
+	return installCert(tidbCertificatesTmpl, tcTmplMeta{ns, tcName, clusterRef})
 }
 
 func installTiDBComponentsCertificates(ns, tcName string) error {
-	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName})
+	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName, tcName})
+}
+
+func installHeterogeneousTiDBComponentsCertificates(ns, tcName string, clusterRef string) error {
+	return installCert(tidbComponentsCertificatesTmpl, tcTmplMeta{ns, tcName, clusterRef})
 }
 
 func installTiDBInitializerCertificates(ns, tcName string) error {
-	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "initializer"})
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "initializer"})
 }
 
 func installPDDashboardCertificates(ns, tcName string) error {
-	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "dashboard"})
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "dashboard"})
 }
 
 func installBackupCertificates(ns, tcName string) error {
-	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "backup"})
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "backup"})
 }
 
 func installRestoreCertificates(ns, tcName string) error {
-	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName}, "restore"})
+	return installCert(tidbClientCertificateTmpl, tcCliTmplMeta{tcTmplMeta{ns, tcName, tcName}, "restore"})
 }
 
 func installCert(tmplStr string, tp interface{}) error {
@@ -489,25 +531,18 @@ func dataInClusterIsCorrect(fw portforward.PortForward, c clientset.Interface, n
 		defer db.Close()
 		defer cancel()
 
-		rows, err := db.Query("SELECT name from test.city limit 1")
+		row := db.QueryRow("SELECT name from test.city limit 1")
+		var name string
+
+		err = row.Scan(&name)
 		if err != nil {
-			framework.Logf("can't select from %s/%s, %v", ns, tcName, err)
+			framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
 			return false, nil
 		}
-		var name string
-		for rows.Next() {
-			err := rows.Scan(&name)
-			if err != nil {
-				framework.Logf("can't scan from %s/%s, %v", ns, tcName, err)
-				return false, nil
-			}
 
-			framework.Logf("TABLE test.city name = %s", name)
-			if name == "beijing" {
-				return true, nil
-			}
-
-			break
+		framework.Logf("TABLE test.city name = %s", name)
+		if name == "beijing" {
+			return true, nil
 		}
 
 		return false, nil

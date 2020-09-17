@@ -430,13 +430,6 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref common.ReferenceCallback)
 				Description: "AutoResource describes the resource type definitions",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"resource_type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceType identifies a specific resource type",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"cpu": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CPU defines the CPU of this resource type",
@@ -463,6 +456,7 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref common.ReferenceCallback)
 						},
 					},
 				},
+				Required: []string{"cpu", "memory"},
 			},
 		},
 		Dependencies: []string{
@@ -1724,6 +1718,13 @@ func schema_pkg_apis_pingcap_v1alpha1_DashboardConfig(ref common.ReferenceCallba
 					"enable-telemetry": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When enabled, usage data will be sent to PingCAP for improving user experience. Optional: Defaults to true",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enable-experimental": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When enabled, experimental TiDB Dashboard features will be available. These features are incomplete or not well tested. Suggest not to enable in production. Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3365,6 +3366,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDConfig(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"initial-cluster-token": {
+						SchemaProps: spec.SchemaProps{
+							Description: "set different tokens to prevent communication between PDs in different clusters.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"lease": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LeaderLease time, if leader doesn't update its TTL in etcd after lease time, etcd will expire the leader key and other servers can campaign the leader again. Etcd only supports seconds TTL, so here is second too. Optional: Defaults to 3",
@@ -4226,6 +4234,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							},
 						},
 					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for pd",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"replicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The desired ready replicas",
@@ -4364,7 +4379,7 @@ func schema_pkg_apis_pingcap_v1alpha1_Performance(ref common.ReferenceCallback) 
 					},
 					"query-feedback-limit": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional: Defaults to 1024",
+							Description: "Optional: Defaults to 512",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -4913,6 +4928,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PumpSpec(ref common.ReferenceCallback) com
 									},
 								},
 							},
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for pump",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"replicas": {
@@ -6200,6 +6222,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBConfig(ref common.ReferenceCallback) c
 							Format:      "int64",
 						},
 					},
+					"skip-register-to-dashboard": {
+						SchemaProps: spec.SchemaProps{
+							Description: "imported from v4.0.5 SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"enable-telemetry": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics. If this config is set to `false` on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable `tidb_enable_telemetry`. See PingCAP privacy policy for details: https://pingcap.com/en/privacy-policy/. Imported from v4.0.2. Optional: Defaults to true",
@@ -6497,6 +6526,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBGroupSpec(ref common.ReferenceCallback
 									},
 								},
 							},
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for tidb",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"replicas": {
@@ -6866,6 +6902,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 									},
 								},
 							},
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account for tidb",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"replicas": {
@@ -8156,6 +8199,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGCConfig(ref common.ReferenceCallback)
 					"max-write-bytes-per-sec": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"enable-compaction-filter": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
 							Format: "",
 						},
 					},
@@ -10413,9 +10462,10 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
+							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
@@ -10541,6 +10591,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "Discovery spec",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec"),
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify a Service Account",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"pd": {
@@ -11735,6 +11792,13 @@ func schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the Configuration of dm-worker-servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfig"),
+						},
+					},
+					"recoverFailover": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
