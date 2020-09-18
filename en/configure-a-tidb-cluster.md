@@ -79,6 +79,10 @@ For the demonstration environment or functional verification, you can use networ
 >
 > If you set a storage class that does not exist in the TiDB cluster that you are creating, then the cluster creation goes to the Pending state. In this situation, you must [destroy the TiDB cluster in Kubernetes](destroy-a-tidb-cluster.md).
 
+### mountClusterClientSecret
+
+It is recommended that you configure `spec.pd.mountClusterClientSecret: true` and `spec.tikv.mountClusterClientSecret: true`, so that TiDB Operator can mount the `${cluster_name}-cluster-client-secret` certificates to the PD and TiKV containers automatically, which can make the [use of `pd-ctl` and `tikv-ctl`](enable-tls-between-components.md#configure-pd-ctl-tikv-ctl-and-connect-to-the-cluster) easier.
+
 ### Cluster topology
 
 #### PD/TiKV/TiDB

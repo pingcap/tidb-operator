@@ -1273,40 +1273,57 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/enable-tls-between-components/']
         kubectl apply -f restore.yaml
         ```
 
-## 第三步：配置 `pd-ctl` 连接集群
+## 第三步：配置 `pd-ctl`、`tikv-ctl` 连接集群
 
-1. 下载 `pd-ctl`。
+1. 挂载证书。
 
-    参考官网文档：[Download TiDB installation package](https://pingcap.com/docs/v3.0/reference/tools/pd-control/#download-tidb-installation-package)。
-
-2. 下载 Client 端证书。
-
-    Client 端证书就是[第一步](#第一步为-tidb-集群各个组件生成证书)中创建的那套 Client 证书，可以直接使用或者从 Kubernetes Secret 对象（之前创建的）里获取，这个 Secret 对象的名字是: `${cluster_name}-cluster-client-secret`。
+    通过下面命令配置 `spec.pd.mountClusterClientSecret: true` 和 `spec.tikv.mountClusterClientSecret: true`：
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > client-tls.crt
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > client-tls.key
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}'  | base64 --decode > client-ca.crt
+    kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
-3. 使用 `pd-ctl`，`tikv-ctl` 连接集群。
+    > **注意：**
+    >
+    > * 上面配置改动会滚动升级 PD 和 TiKV 集群。
+    > * 上面配置从 TiDB Operator v1.1.5 开始支持。
 
-    由于我们刚才在配置 PD/TiKV Server 端证书的时候，自定义填写了一些 `hosts`，所以需要通过这些 `hosts` 来连接 PD/TiKV 集群。
+2. 使用 `pd-ctl` 连接集群。
 
-    - 连接 PD 集群:
+    进入 PD Pod：
 
-        {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-        ``` shell
-        pd-ctl --cacert=client-ca.crt --cert=client-tls.crt --key=client-tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
-        ```
-    
-    - 连接 TiKV 集群：
+    ``` shell
+    kubectl exec -it ${cluster_name}-pd-0 -n ${namespace} sh
+    ```
 
-        {{< copyable "shell-regular" >}}
+    使用 `pd-ctl`：
 
-        ``` shell
-        tikv-ctl --ca-path=client-ca.crt --cert-path=client-tls.crt --key-path=client-tls.key --host ${cluster_name}-tikv-0.${cluster_name}-tikv-peer.${namespace}:20160 cluster
-        ```
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cd /var/lib/cluster-client-tls
+    /pd-ctl --cacert=ca.crt --cert=tls.crt --key=tls.key -u https://127.0.0.1:2379 member
+    ```
+
+3. 使用 `tikv-ctl` 连接集群。
+
+    进入 TiKV Pod：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl exec -it ${cluster_name}-tikv-0 -n ${namespace} sh
+    ```
+
+    使用 `tikv-ctl`：
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cd /var/lib/cluster-client-tls
+    /tikv-ctl --ca-path=ca.crt --cert-path=tls.crt --key-path=tls.key --host 127.0.0.1:20160 cluster
+    ```

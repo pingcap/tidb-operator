@@ -1293,40 +1293,57 @@ In this step, you need to perform the following operations:
         kubectl apply -f restore.yaml
         ```
 
-## Configure `pd-ctl` and connect to the cluster
+## Configure `pd-ctl`, `tikv-ctl` and connect to the cluster
 
-1. Download `pd-ctl`:
+1. Mount the certificates.
 
-    Refer to [Download TiDB installation package](https://pingcap.com/docs/stable/reference/tools/pd-control/#download-tidb-installation-package).
-
-2. Download the client-side certificate:
-
-    The client-side certificate is the client certificate you have created in [Generate certificates for components](#generate-certificates-for-components-of-the-tidb-cluster). You can directly use the certificate, or obtain it from the `${cluster_name}-cluster-client-secret` Kubernetes Secret object created before.
+    Configure `spec.pd.mountClusterClientSecret: true` and `spec.tikv.mountClusterClientSecret: true` with the following command:
 
     {{< copyable "shell-regular" >}}
 
     ``` shell
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.crt}' | base64 --decode > client-tls.crt
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.tls\.key}' | base64 --decode > client-tls.key
-    kubectl get secret -n ${namespace} ${cluster_name}-cluster-client-secret  -ojsonpath='{.data.ca\.crt}'  | base64 --decode > client-ca.crt
+    kubectl edit tc ${cluster_name} -n ${namespace}
     ```
 
-3. Connect to the PD and TiKV cluster using `pd-ctl` and `tikv-ctl`:
+    > **Note:**
+    >
+    > * The above configuration will trigger the rolling update of PD and TiKV cluster.
+    > * The above configurations are supported since TiDB Operator v1.1.5.
 
-    When you deploy the server-side certificate for the PD and TiKV component, some `hosts` are customized, so you need to use these `hosts` to connect to the PD and TiKV cluster.
+2. Use `pd-ctl` to connect to the PD cluster.
 
-    - Connect to the PD cluster:
+    Get into the PD Pod:
 
-        {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-        ```shell
-        pd-ctl --cacert=client-ca.crt --cert=client-tls.crt --key=client-tls.key -u https://${cluster_name}-pd.${namespace}.svc:2379 member
-        ```
+    ``` shell
+    kubectl exec -it ${cluster_name}-pd-0 -n ${namespace} sh
+    ```
 
-    - Connect to the TiKV cluster:
+    Use `pd-ctl`:
 
-        {{< copyable "shell-regular" >}}
+    {{< copyable "shell-regular" >}}
 
-        ```shell
-        tikv-ctl --ca-path=client-ca.crt --cert-path=client-tls.crt --key-path=client-tls.key --host ${cluster_name}-tikv-0.${cluster_name}-tikv-peer.${namespace}:20160 cluster
-        ```
+    ``` shell
+    cd /var/lib/cluster-client-tls
+    /pd-ctl --cacert=ca.crt --cert=tls.crt --key=tls.key -u https://127.0.0.1:2379 member
+    ```
+
+3. Use `tikv-ctl` to connect to the TiKV cluster.
+
+    Get into the TiKV Pod:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    kubectl exec -it ${cluster_name}-tikv-0 -n ${namespace} sh
+    ```
+
+    Use `tikv-ctl`:
+
+    {{< copyable "shell-regular" >}}
+
+    ``` shell
+    cd /var/lib/cluster-client-tls
+    /tikv-ctl --ca-path=ca.crt --cert-path=tls.crt --key-path=tls.key --host 127.0.0.1:20160 cluster
+    ```
