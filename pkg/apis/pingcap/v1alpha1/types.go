@@ -369,6 +369,10 @@ type PDSpec struct {
 	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -425,6 +429,10 @@ type TiKVSpec struct {
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
