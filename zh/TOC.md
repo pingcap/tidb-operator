@@ -85,6 +85,7 @@
   - [日志收集](logs-collection.md)
 + 版本发布历史
   + v1.1
+    - [1.1.5](releases/release-1.1.5.md)
     - [1.1.4](releases/release-1.1.4.md)
     - [1.1.3](releases/release-1.1.3.md)
     - [1.1.2](releases/release-1.1.2.md)
