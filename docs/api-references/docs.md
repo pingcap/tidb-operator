@@ -8555,6 +8555,39 @@ string
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
+<<<<<<< HEAD
+=======
+<tr>
+<td>
+<code>mountClusterClientSecret</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pdstatus">PDStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>PDStatus is PD status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+>>>>>>> f700c00... add switch for cluster client tls mounting (#3282)
 <tr>
 <td>
 <code>storageSize</code></br>
@@ -14729,6 +14762,40 @@ string
 <p>Optional: Defaults to 32G</p>
 </td>
 </tr>
+<<<<<<< HEAD
+=======
+<tr>
+<td>
+<code>mountClusterClientSecret</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tikvstatus">TiKVStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tikvgroupstatus">TiKVGroupStatus</a>, 
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiKVStatus is TiKV status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+>>>>>>> f700c00... add switch for cluster client tls mounting (#3282)
 <tr>
 <td>
 <code>grpc-raft-conn-num</code></br>
