@@ -14680,38 +14680,12 @@ spec:
                     required:
                     - name
                     type: object
-<<<<<<< HEAD
                   type: array
                 recommendedReplicas:
                   format: int32
                   type: integer
               required:
               - currentReplicas
-=======
-                required:
-                - name
-                type: object
-              type: array
-            hostNetwork:
-              type: boolean
-            imagePullPolicy:
-              type: string
-            imagePullSecrets:
-              items:
-                properties:
-                  name:
-                    type: string
-                type: object
-              type: array
-            limits:
-              type: object
-            maxFailoverCount:
-              format: int32
-              type: integer
-            mountClusterClientSecret:
-              type: boolean
-            nodeSelector:
->>>>>>> f700c00... add switch for cluster client tls mounting (#3282)
               type: object
             tikv:
               properties:
