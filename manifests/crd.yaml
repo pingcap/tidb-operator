@@ -1996,6 +1996,8 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
+                mountClusterClientSecret:
+                  type: boolean
                 nodeSelector:
                   type: object
                 podSecurityContext:
@@ -12302,6 +12304,8 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
+                mountClusterClientSecret:
+                  type: boolean
                 nodeSelector:
                   type: object
                 podSecurityContext:
@@ -17986,18 +17990,7 @@ spec:
               - name
               type: object
             resources:
-              items:
-                properties:
-                  count:
-                    format: int32
-                    type: integer
-                  cpu: {}
-                  memory: {}
-                  resource_type:
-                    type: string
-                  storage: {}
-                type: object
-              type: array
+              type: object
             tidb:
               properties:
                 external:
@@ -22742,6 +22735,8 @@ spec:
             maxFailoverCount:
               format: int32
               type: integer
+            mountClusterClientSecret:
+              type: boolean
             nodeSelector:
               type: object
             podSecurityContext:

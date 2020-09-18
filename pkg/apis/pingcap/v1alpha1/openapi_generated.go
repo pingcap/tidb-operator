@@ -430,13 +430,6 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref common.ReferenceCallback)
 				Description: "AutoResource describes the resource type definitions",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"resource_type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceType identifies a specific resource type",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"cpu": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CPU defines the CPU of this resource type",
@@ -463,6 +456,7 @@ func schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref common.ReferenceCallback)
 						},
 					},
 				},
+				Required: []string{"cpu", "memory"},
 			},
 		},
 		Dependencies: []string{
@@ -4304,6 +4298,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					"enableDashboardInternalProxy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"mountClusterClientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -8557,6 +8558,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGroupSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"mountClusterClientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"clusterName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName describe the target TidbCluster in the same namespace",
@@ -9855,6 +9863,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"mountClusterClientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -10474,9 +10489,10 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.Refer
 					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
+							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
