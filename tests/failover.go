@@ -310,7 +310,7 @@ func (oa *operatorActions) TruncateSSTFileThenCheckFailover(info *TidbClusterCon
 			return true, nil
 		}
 		tc.Status.TiKV.FailureStores = nil
-		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
+		_, err = oa.cli.PingcapV1alpha1().TidbClusters(ns).Update(tc)
 		if err != nil {
 			klog.Error(err.Error())
 		}
@@ -559,7 +559,7 @@ func (oa *operatorActions) CheckRecover(cluster *TidbClusterConfig) (bool, error
 	// recover tikv manually
 	if tc.Status.TiKV.FailureStores != nil {
 		tc.Status.TiKV.FailureStores = nil
-		tc, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
+		_, err = oa.cli.PingcapV1alpha1().TidbClusters(cluster.Namespace).Update(tc)
 		if err != nil {
 			klog.Errorf("failed to set status.tikv.failureStore to nil, %v", err)
 			return false, nil

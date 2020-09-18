@@ -34,6 +34,10 @@ type PDConfig struct {
 	// +optional
 	EnableGRPCGateway *bool `json:"enable-grpc-gateway,omitempty"`
 
+	// set different tokens to prevent communication between PDs in different clusters.
+	// +optional
+	InitialClusterToken *string `toml:"initial-cluster-token,omitempty" json:"initial-cluster-token,omitempty"`
+
 	// LeaderLease time, if leader doesn't update its TTL
 	// in etcd after lease time, etcd will expire the leader key
 	// and other servers can campaign the leader again.
@@ -147,6 +151,12 @@ type DashboardConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	EnableTelemetry *bool `toml:"enable-telemetry,omitempty" json:"enable-telemetry,omitempty" default:"true"`
+	// When enabled, experimental TiDB Dashboard features will be available.
+	// These features are incomplete or not well tested. Suggest not to enable in
+	// production.
+	// Optional: Defaults to false
+	// +optional
+	EnableExperimental *bool `toml:"enable-experimental,omitempty" json:"enable-experimental,omitempty"`
 }
 
 // PDLogConfig serializes log related config in toml/json.

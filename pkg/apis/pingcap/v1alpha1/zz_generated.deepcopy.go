@@ -1170,6 +1170,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableExperimental != nil {
+		in, out := &in.EnableExperimental, &out.EnableExperimental
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -2536,6 +2541,11 @@ func (in *PDConfig) DeepCopyInto(out *PDConfig) {
 	if in.EnableGRPCGateway != nil {
 		in, out := &in.EnableGRPCGateway, &out.EnableGRPCGateway
 		*out = new(bool)
+		**out = **in
+	}
+	if in.InitialClusterToken != nil {
+		in, out := &in.InitialClusterToken, &out.InitialClusterToken
+		*out = new(string)
 		**out = **in
 	}
 	if in.LeaderLease != nil {
@@ -4667,6 +4677,11 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 		*out = new(uint64)
 		**out = **in
 	}
+	if in.SkipRegisterToDashboard != nil {
+		in, out := &in.SkipRegisterToDashboard, &out.SkipRegisterToDashboard
+		*out = new(bool)
+		**out = **in
+	}
 	if in.EnableTelemetry != nil {
 		in, out := &in.EnableTelemetry, &out.EnableTelemetry
 		*out = new(bool)
@@ -5899,6 +5914,11 @@ func (in *TiKVGCConfig) DeepCopyInto(out *TiKVGCConfig) {
 	if in.MaxWriteBytesPerSec != nil {
 		in, out := &in.MaxWriteBytesPerSec, &out.MaxWriteBytesPerSec
 		*out = new(string)
+		**out = **in
+	}
+	if in.EnableCompactionFilter != nil {
+		in, out := &in.EnableCompactionFilter, &out.EnableCompactionFilter
+		*out = new(bool)
 		**out = **in
 	}
 	return
@@ -7422,9 +7442,9 @@ func (in *TidbClusterAutoScalerSpec) DeepCopyInto(out *TidbClusterAutoScalerSpec
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]AutoResource, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		*out = make(map[string]AutoResource, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return
