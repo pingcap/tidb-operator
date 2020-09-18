@@ -1996,6 +1996,8 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
+                mountClusterClientSecret:
+                  type: boolean
                 nodeSelector:
                   type: object
                 podSecurityContext:
@@ -12298,6 +12300,8 @@ spec:
                 maxFailoverCount:
                   format: int32
                   type: integer
+                mountClusterClientSecret:
+                  type: boolean
                 nodeSelector:
                   type: object
                 podSecurityContext:
@@ -22725,6 +22729,8 @@ spec:
             maxFailoverCount:
               format: int32
               type: integer
+            mountClusterClientSecret:
+              type: boolean
             nodeSelector:
               type: object
             podSecurityContext:

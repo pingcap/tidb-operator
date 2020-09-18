@@ -4302,6 +4302,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"mountClusterClientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -8545,6 +8552,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVGroupSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"mountClusterClientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"clusterName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterName describe the target TidbCluster in the same namespace",
@@ -9839,6 +9853,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 					"recoverFailover": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RecoverFailover indicates that Operator can recover the failover Pods",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"mountClusterClientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
