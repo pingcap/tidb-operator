@@ -570,9 +570,12 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "pd-tls", ReadOnly: true, MountPath: "/var/lib/pd-tls",
-		}, corev1.VolumeMount{
-			Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
 		})
+		if tc.Spec.PD.MountClusterClientSecret != nil && *tc.Spec.PD.MountClusterClientSecret {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
+			})
+		}
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
@@ -610,13 +613,16 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 					SecretName: util.ClusterTLSSecretName(tc.Name, label.PDLabelVal),
 				},
 			},
-		}, corev1.Volume{
-			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterClientTLSSecretName(tc.Name),
-				},
-			},
 		})
+		if tc.Spec.PD.MountClusterClientSecret != nil && *tc.Spec.PD.MountClusterClientSecret {
+			vols = append(vols, corev1.Volume{
+				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					},
+				},
+			})
+		}
 	}
 	if tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		clientSecretName := util.TiDBClientTLSSecretName(tc.Name)

@@ -2710,6 +2710,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.MountClusterClientSecret != nil {
+		in, out := &in.MountClusterClientSecret, &out.MountClusterClientSecret
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -6240,6 +6245,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		in, out := &in.Config, &out.Config
 		*out = new(TiKVConfig)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.MountClusterClientSecret != nil {
+		in, out := &in.MountClusterClientSecret, &out.MountClusterClientSecret
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
