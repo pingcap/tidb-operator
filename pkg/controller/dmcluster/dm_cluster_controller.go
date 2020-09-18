@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Masterminds/semver"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -197,7 +196,7 @@ func NewController(
 	setInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: dcc.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
-			dcc.updateStatefuSet(old, cur)
+			dcc.updateStatefulSet(old, cur)
 		},
 		DeleteFunc: dcc.deleteStatefulSet,
 	})
@@ -268,13 +267,6 @@ func (dcc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	clusterVersionLT2, err := clusterVersionLessThan2(dc.MasterVersion())
-	if err != nil {
-		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", dc.MasterVersion())
-	} else if clusterVersionLT2 {
-		klog.Errorf("dm version %s not supported, only support to deploy dm from v2.0", dc.MasterVersion())
-		return nil
-	}
 
 	return dcc.syncDMCluster(dc.DeepCopy())
 }
@@ -315,8 +307,8 @@ func (dcc *Controller) addStatefulSet(obj interface{}) {
 	dcc.enqueueDMCluster(dc)
 }
 
-// updateStatefuSet adds the dmcluster for the current and old statefulsets to the sync queue.
-func (dcc *Controller) updateStatefuSet(old, cur interface{}) {
+// updateStatefulSet adds the dmcluster for the current and old statefulsets to the sync queue.
+func (dcc *Controller) updateStatefulSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()
@@ -391,13 +383,4 @@ func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.State
 		return nil
 	}
 	return dc
-}
-
-func clusterVersionLessThan2(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return true, err
-	}
-
-	return v.Major() < 2, nil
 }

@@ -807,3 +807,22 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 	}
 	return nil
 }
+
+type FakeMasterMemberManager struct {
+	err error
+}
+
+func NewFakeMasterMemberManager() *FakeMasterMemberManager {
+	return &FakeMasterMemberManager{}
+}
+
+func (fpmm *FakeMasterMemberManager) SetSyncError(err error) {
+	fpmm.err = err
+}
+
+func (fpmm *FakeMasterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	if fpmm.err != nil {
+		return fpmm.err
+	}
+	return nil
+}

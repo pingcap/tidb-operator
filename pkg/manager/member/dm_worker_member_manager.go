@@ -584,3 +584,22 @@ func isWorkerPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
 	}
 	return ordinals.Has(ordinal)
 }
+
+type FakeWorkerMemberManager struct {
+	err error
+}
+
+func NewFakeWorkerMemberManager() *FakeWorkerMemberManager {
+	return &FakeWorkerMemberManager{}
+}
+
+func (ftmm *FakeWorkerMemberManager) SetSyncError(err error) {
+	ftmm.err = err
+}
+
+func (ftmm *FakeWorkerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
+	if ftmm.err != nil {
+		return ftmm.err
+	}
+	return nil
+}
