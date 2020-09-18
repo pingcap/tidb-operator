@@ -1336,7 +1336,6 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 		{
 			name: "PD with PodSecurityContext",
 			tc: v1alpha1.TidbCluster{
-
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "tc",
 					Namespace: "ns",
