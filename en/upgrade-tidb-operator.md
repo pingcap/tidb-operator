@@ -21,7 +21,7 @@ This document describes how to upgrade TiDB Operator and Kubernetes.
 
     > **Note:**
     >
-    > The `${version}` in this document represents the version of TiDB Operator, such as `v1.1.4`. You can check the currently supported version using the `helm search -l tidb-operator` command.
+    > The `${version}` in this document represents the version of TiDB Operator, such as `v1.1.5`. You can check the currently supported version using the `helm search -l tidb-operator` command.
 
 2. Get the `values.yaml` file of the `tidb-operator` chart that you want to install:
 
