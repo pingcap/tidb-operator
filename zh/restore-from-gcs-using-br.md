@@ -126,6 +126,18 @@ aliases: ['/docs-cn/tidb-in-kubernetes/dev/restore-from-gcs-using-br/']
     - "!db.table"
     ```
 
+以上示例中，`.spec.br` 中的一些参数项均可省略，如 `logLevel`、`statusAddr`、`concurrency`、`rateLimit`、`checksum`、`timeAgo`、`sendCredToTikv`。
+
+* `.spec.br.cluster`：代表需要备份的集群名字。
+* `.spec.br.clusterNamespace`：代表需要备份的集群所在的 `namespace`。
+* `.spec.br.logLevel`：代表日志的级别。默认为 `info`。
+* `.spec.br.statusAddr`：为 BR 进程监听一个进程状态的 HTTP 端口，方便用户调试。如果不填，则默认不监听。
+* `.spec.br.concurrency`：备份时每一个 TiKV 进程使用的线程数。备份时默认为 4，恢复时默认为 128。
+* `.spec.br.rateLimit`：是否对流量进行限制。单位为 MB/s，例如设置为 `4` 代表限速 4 MB/s，默认不限速。
+* `.spec.br.checksum`：是否在备份结束之后对文件进行验证。默认为 `true`。
+* `.spec.br.timeAgo`：备份 timeAgo 以前的数据，默认为空（备份当前数据），[支持](https://golang.org/pkg/time/#ParseDuration) "1.5h", "2h45m" 等数据。
+* `.spec.br.sendCredToTikv`：BR 进程是否将自己的 GCP 权限传输给 TiKV 进程。默认为 `true`。
+
 ## 故障诊断
 
 在使用过程中如果遇到问题，可以参考[故障诊断](deploy-failures.md)。
