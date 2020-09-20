@@ -1170,6 +1170,11 @@ func (in *DashboardConfig) DeepCopyInto(out *DashboardConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableExperimental != nil {
+		in, out := &in.EnableExperimental, &out.EnableExperimental
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -2538,6 +2543,11 @@ func (in *PDConfig) DeepCopyInto(out *PDConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.InitialClusterToken != nil {
+		in, out := &in.InitialClusterToken, &out.InitialClusterToken
+		*out = new(string)
+		**out = **in
+	}
 	if in.LeaderLease != nil {
 		in, out := &in.LeaderLease, &out.LeaderLease
 		*out = new(int64)
@@ -3215,6 +3225,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	}
 	if in.EnableDashboardInternalProxy != nil {
 		in, out := &in.EnableDashboardInternalProxy, &out.EnableDashboardInternalProxy
+		*out = new(bool)
+		**out = **in
+	}
+	if in.MountClusterClientSecret != nil {
+		in, out := &in.MountClusterClientSecret, &out.MountClusterClientSecret
 		*out = new(bool)
 		**out = **in
 	}
@@ -4667,6 +4682,11 @@ func (in *TiDBConfig) DeepCopyInto(out *TiDBConfig) {
 		*out = new(uint64)
 		**out = **in
 	}
+	if in.SkipRegisterToDashboard != nil {
+		in, out := &in.SkipRegisterToDashboard, &out.SkipRegisterToDashboard
+		*out = new(bool)
+		**out = **in
+	}
 	if in.EnableTelemetry != nil {
 		in, out := &in.EnableTelemetry, &out.EnableTelemetry
 		*out = new(bool)
@@ -5901,6 +5921,16 @@ func (in *TiKVGCConfig) DeepCopyInto(out *TiKVGCConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.EnableCompactionFilter != nil {
+		in, out := &in.EnableCompactionFilter, &out.EnableCompactionFilter
+		*out = new(bool)
+		**out = **in
+	}
+	if in.EnableCompactionFilterSkipVersionCheck != nil {
+		in, out := &in.EnableCompactionFilterSkipVersionCheck, &out.EnableCompactionFilterSkipVersionCheck
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -6929,6 +6959,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(TiKVConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.MountClusterClientSecret != nil {
+		in, out := &in.MountClusterClientSecret, &out.MountClusterClientSecret
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -7422,9 +7457,9 @@ func (in *TidbClusterAutoScalerSpec) DeepCopyInto(out *TidbClusterAutoScalerSpec
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]AutoResource, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		*out = make(map[string]AutoResource, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return

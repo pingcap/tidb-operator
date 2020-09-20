@@ -1826,13 +1826,14 @@ TidbAutoScalerSpec
 <code>resources</code></br>
 <em>
 <a href="#autoresource">
-[]AutoResource
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
+The key is resource_type name of the resource</p>
 </td>
 </tr>
 </table>
@@ -2373,17 +2374,6 @@ TidbMonitorStatus
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>resource_type</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ResourceType identifies a specific resource type</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>cpu</code></br>
@@ -4901,6 +4891,21 @@ bool
 <em>(Optional)</em>
 <p>When enabled, usage data will be sent to PingCAP for improving user experience.
 Optional: Defaults to true</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enable-experimental</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When enabled, experimental TiDB Dashboard features will be available.
+These features are incomplete or not well tested. Suggest not to enable in
+production.
+Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -7502,6 +7507,18 @@ bool
 </tr>
 <tr>
 <td>
+<code>initial-cluster-token</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>set different tokens to prevent communication between PDs in different clusters.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>lease</code></br>
 <em>
 int64
@@ -9016,6 +9033,18 @@ bool
 <p>EnableDashboardInternalProxy would directly set <code>internal-proxy</code> in the <code>PdConfig</code></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>mountClusterClientSecret</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -9251,7 +9280,7 @@ uint
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Defaults to 1024</p>
+<p>Optional: Defaults to 512</p>
 </td>
 </tr>
 <tr>
@@ -12287,6 +12316,19 @@ uint64
 </tr>
 <tr>
 <td>
+<code>skip-register-to-dashboard</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>imported from v4.0.5
+SkipRegisterToDashboard tells TiDB don&rsquo;t register itself to the dashboard.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>enable-telemetry</code></br>
 <em>
 bool
@@ -14906,6 +14948,28 @@ string
 <em>(Optional)</em>
 </td>
 </tr>
+<tr>
+<td>
+<code>enable-compaction-filter</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>compaction-filter-skip-version-check</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvgroupspec">TiKVGroupSpec</h3>
@@ -17147,6 +17211,18 @@ bool
 <p>RecoverFailover indicates that Operator can recover the failover Pods</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>mountClusterClientSecret</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MountClusterClientSecret indicates whether to mount <code>cluster-client-secret</code> to the Pod</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -18033,13 +18109,14 @@ TidbAutoScalerSpec
 <code>resources</code></br>
 <em>
 <a href="#autoresource">
-[]AutoResource
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV</p>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
+The key is resource_type name of the resource</p>
 </td>
 </tr>
 </tbody>
