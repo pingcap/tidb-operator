@@ -56,23 +56,6 @@ func checkStsAutoScalingInterval(tac *v1alpha1.TidbClusterAutoScaler, intervalSe
 	return true, nil
 }
 
-// checkAutoScalingPrerequisites would check the tidbcluster status to ensure the autoscaling would'n happen during
-// upgrading, scaling and syncing
-func checkAutoScalingPrerequisites(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet, memberType v1alpha1.MemberType) bool {
-	if !checkStsAutoScalingPrerequisites(sts) {
-		return false
-	}
-	switch memberType {
-	case v1alpha1.TiDBMemberType:
-		return tc.Status.TiDB.Phase == v1alpha1.NormalPhase
-	case v1alpha1.TiKVMemberType:
-		return tc.Status.TiKV.Synced && tc.Status.TiKV.Phase == v1alpha1.NormalPhase
-	default:
-		// Unknown MemberType
-		return false
-	}
-}
-
 // limitTargetReplicas would limit the calculated target replicas to ensure the min/max Replicas
 func limitTargetReplicas(targetReplicas int32, tac *v1alpha1.TidbClusterAutoScaler, memberType v1alpha1.MemberType) int32 {
 	var min, max int32
