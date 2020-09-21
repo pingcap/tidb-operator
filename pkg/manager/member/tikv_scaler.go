@@ -70,8 +70,6 @@ func (tsd *tikvScaler) ScaleOut(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	switch meta.(type) {
 	case *v1alpha1.TidbCluster:
 		pvcName = fmt.Sprintf("tikv-%s-tikv-%d", meta.GetName(), ordinal)
-	case *v1alpha1.TiKVGroup:
-		pvcName = fmt.Sprintf("tikv-%s-tikv-group-%d", meta.GetName(), ordinal)
 	default:
 		return fmt.Errorf("tikv.ScaleOut, failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}
@@ -112,8 +110,6 @@ func (tsd *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, new
 			return fmt.Errorf("it is not allowed to scale in TiKV when stores number(%d) <= 3", storesInfo.Count)
 		}
 		podName = ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
-	case *v1alpha1.TiKVGroup:
-		podName = TiKVGroupPodName(meta.GetName(), ordinal)
 	default:
 		return fmt.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s", meta.GetNamespace(), meta.GetName())
 	}

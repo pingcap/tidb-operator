@@ -159,8 +159,6 @@ func MemberPodName(controllerName, controllerKind string, ordinal int32, memberT
 	switch controllerKind {
 	case v1alpha1.TiDBClusterKind:
 		return fmt.Sprintf("%s-%s-%d", controllerName, memberType.String(), ordinal), nil
-	case v1alpha1.TiKVGroupKind:
-		return fmt.Sprintf("%s-%s-group-%d", controllerName, memberType.String(), ordinal), nil
 	default:
 		return "", fmt.Errorf("unknown controller kind[%s]", controllerKind)
 	}
@@ -176,10 +174,6 @@ func PdPodName(tcName string, ordinal int32) string {
 
 func tidbPodName(tcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", controller.TiDBMemberName(tcName), ordinal)
-}
-
-func TiKVGroupPodName(tgName string, ordinal int32) string {
-	return fmt.Sprintf("%s-%d", controller.TiKVGroupMemberName(tgName), ordinal)
 }
 
 func DMMasterPodName(dcName string, ordinal int32) string {

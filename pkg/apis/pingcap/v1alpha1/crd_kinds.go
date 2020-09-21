@@ -53,14 +53,6 @@ const (
 	TidbClusterAutoScalerKind    = "TidbClusterAutoScaler"
 	TidbClusterAutoScalerKindKey = "tidbclusterautoscaler"
 
-	TiKVGroupName    = "tikvgroups"
-	TiKVGroupKind    = "TiKVGroup"
-	TiKVGroupKindKey = "tikvgroup"
-
-	TiDBGroupName    = "tidbgroups"
-	TiDBGroupKind    = "TiDBGroup"
-	TiDBGroupKindKey = "tidbgroup"
-
 	SpecPath = "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1."
 )
 
@@ -82,8 +74,6 @@ type CrdKinds struct {
 	TiDBMonitor           CrdKind
 	TiDBInitializer       CrdKind
 	TidbClusterAutoScaler CrdKind
-	TiKVGroup             CrdKind
-	TiDBGroup             CrdKind
 }
 
 var DefaultCrdKinds = CrdKinds{
@@ -96,6 +86,4 @@ var DefaultCrdKinds = CrdKinds{
 	TiDBMonitor:           CrdKind{Plural: TiDBMonitorName, Kind: TiDBMonitorKind, ShortNames: []string{"tm"}, SpecName: SpecPath + TiDBMonitorKind},
 	TiDBInitializer:       CrdKind{Plural: TiDBInitializerName, Kind: TiDBInitializerKind, ShortNames: []string{"ti"}, SpecName: SpecPath + TiDBInitializerKind},
 	TidbClusterAutoScaler: CrdKind{Plural: TidbClusterAutoScalerName, Kind: TidbClusterAutoScalerKind, ShortNames: []string{"ta"}, SpecName: SpecPath + TidbClusterAutoScalerKind},
-	TiKVGroup:             CrdKind{Plural: TiKVGroupName, Kind: TiKVGroupKind, ShortNames: []string{}, SpecName: SpecPath + TiKVGroupKind},
-	TiDBGroup:             CrdKind{Plural: TiDBGroupName, Kind: TiDBGroupKind, ShortNames: []string{}, SpecName: SpecPath + TiDBGroupKind},
 }

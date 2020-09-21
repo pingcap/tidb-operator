@@ -173,7 +173,7 @@ func NewController(
 				pvcInformer,
 				scInformer,
 			),
-			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()),
+			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
 			podRestarter,
 			&dmClusterConditionUpdater{},
 			recorder,

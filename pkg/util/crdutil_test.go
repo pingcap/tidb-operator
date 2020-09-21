@@ -56,10 +56,6 @@ func TestGetCrdKindFromKindName(t *testing.T) {
 		Should(Equal(v1alpha1.DefaultCrdKinds.TiDBInitializer))
 	g.Expect(GetCrdKindFromKindName("TidbClusterAutoScaler")).
 		Should(Equal(v1alpha1.DefaultCrdKinds.TidbClusterAutoScaler))
-	g.Expect(GetCrdKindFromKindName("tikvgroup")).
-		Should(Equal(v1alpha1.DefaultCrdKinds.TiKVGroup))
-	g.Expect(GetCrdKindFromKindName("tidbgroup")).
-		Should(Equal(v1alpha1.DefaultCrdKinds.TiDBGroup))
 	_, err := GetCrdKindFromKindName("pingcap")
 	g.Expect(err).
 		Should(MatchError("unknown CrdKind Name"))
