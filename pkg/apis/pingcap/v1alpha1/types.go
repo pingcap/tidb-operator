@@ -116,13 +116,16 @@ type TidbClusterSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// PD cluster spec
-	PD PDSpec `json:"pd"`
+	// +optional
+	PD *PDSpec `json:"pd,omitempty"`
 
 	// TiDB cluster spec
-	TiDB TiDBSpec `json:"tidb"`
+	// +optional
+	TiDB *TiDBSpec `json:"tidb,omitempty"`
 
 	// TiKV cluster spec
-	TiKV TiKVSpec `json:"tikv"`
+	// +optional
+	TiKV *TiKVSpec `json:"tikv,omitempty"`
 
 	// TiFlash cluster spec
 	// +optional

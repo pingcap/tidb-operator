@@ -814,6 +814,7 @@ PDSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PD cluster spec</p>
 </td>
 </tr>
@@ -827,6 +828,7 @@ TiDBSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiDB cluster spec</p>
 </td>
 </tr>
@@ -840,6 +842,7 @@ TiKVSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiKV cluster spec</p>
 </td>
 </tr>
@@ -16299,6 +16302,7 @@ PDSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PD cluster spec</p>
 </td>
 </tr>
@@ -16312,6 +16316,7 @@ TiDBSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiDB cluster spec</p>
 </td>
 </tr>
@@ -16325,6 +16330,7 @@ TiKVSpec
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>TiKV cluster spec</p>
 </td>
 </tr>

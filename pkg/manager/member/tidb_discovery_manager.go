@@ -47,6 +47,10 @@ func NewTidbDiscoveryManager(typedControl controller.TypedControlInterface) Tidb
 
 func (m *realTidbDiscoveryManager) Reconcile(tc *v1alpha1.TidbCluster) error {
 
+	// If PD is not specified return
+	if tc.Spec.PD == nil {
+		return nil
+	}
 	meta, _ := getDiscoveryMeta(tc, controller.DiscoveryMemberName)
 
 	// Ensure RBAC

@@ -254,13 +254,13 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					Name:      "created-by-helm",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
 						},
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
@@ -271,7 +271,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 							},
 						},
 					},
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
@@ -322,12 +322,12 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 					Name:      "newly-created",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/tidb:%s", utilimage.TiDBV3Version),
 						},
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/tikv:%s", utilimage.TiDBV3Version),
 						},
@@ -337,7 +337,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 							},
 						},
 					},
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							Image: fmt.Sprintf("pingcap/pd:%s", utilimage.TiDBV3Version),
 						},
@@ -361,10 +361,10 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					Version: utilimage.TiDBV3Version,
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -372,7 +372,7 @@ var _ = ginkgo.Describe("[tidb-operator][Serial]", func() {
 							},
 						},
 					},
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{

@@ -330,7 +330,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 3,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -350,7 +350,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 3,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -411,7 +411,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 2,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -472,7 +472,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 2,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -533,7 +533,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 2,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -584,7 +584,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 2,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -645,7 +645,7 @@ func TestShouldRecover(t *testing.T) {
 					Namespace: v1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 2,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{

@@ -75,7 +75,11 @@ func TestPVCResizer(t *testing.T) {
 		{
 			name: "no PVCs",
 			tc: &v1alpha1.TidbCluster{
-				Spec: v1alpha1.TidbClusterSpec{},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+				},
 			},
 		},
 		{
@@ -86,13 +90,15 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			sc: newStorageClass("sc", true),
@@ -115,7 +121,9 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
@@ -144,6 +152,9 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 					TiFlash: &v1alpha1.TiFlashSpec{
 						StorageClaims: []v1alpha1.StorageClaim{
 							{
@@ -184,6 +195,9 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
+					PD:   &v1alpha1.PDSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 					Pump: &v1alpha1.PumpSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -209,13 +223,15 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			pvcs: []*v1.PersistentVolumeClaim{
@@ -234,13 +250,15 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			sc: newStorageClass("sc", false),
@@ -260,13 +278,15 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("1Gi"),
 							},
 						},
 					},
+					TiKV: &v1alpha1.TiKVSpec{},
+					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
 			sc: newStorageClass("sc", false),
