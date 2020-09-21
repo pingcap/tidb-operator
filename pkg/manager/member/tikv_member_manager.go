@@ -623,11 +623,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
-<<<<<<< HEAD
 	startScript, err := RenderTiKVStartScript(scriptModel)
-=======
-	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
->>>>>>> dd4c1e0... Make the spec.pd, spec.tidb, spec.tikv  and spec.discovery, optional in the TidbCluster CR (#3009)
 	if err != nil {
 		return nil, err
 	}
