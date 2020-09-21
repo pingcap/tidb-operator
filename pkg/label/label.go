@@ -62,6 +62,9 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
+	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
+
 	// High availability is realized based on the topology
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
