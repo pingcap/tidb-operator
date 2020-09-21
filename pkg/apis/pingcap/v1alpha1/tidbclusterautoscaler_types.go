@@ -82,11 +82,6 @@ type TidbClusterAutoScalerSpec struct {
 	// TiDB represents the auto-scaling spec for tidb
 	// +optional
 	TiDB *TidbAutoScalerSpec `json:"tidb,omitempty"`
-
-	// Resources represent the resource type definitions that can be used for TiDB/TiKV
-	// The key is resource_type name of the resource
-	// +optional
-	Resources map[string]AutoResource `json:"resources,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -165,6 +160,11 @@ type BasicAutoScalerSpec struct {
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
 	External *ExternalConfig `json:"external,omitempty"`
+
+	// Resources represent the resource type definitions that can be used for TiDB/TiKV
+	// The key is resource_type name of the resource
+	// +optional
+	Resources map[string]AutoResource `json:"resources,omitempty"`
 }
 
 // +k8s:openapi-gen=true

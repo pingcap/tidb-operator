@@ -1821,21 +1821,6 @@ TidbAutoScalerSpec
 <p>TiDB represents the auto-scaling spec for tidb</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>resources</code></br>
-<em>
-<a href="#autoresource">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
-The key is resource_type name of the resource</p>
-</td>
-</tr>
 </table>
 </td>
 </tr>
@@ -2361,7 +2346,7 @@ TidbMonitorStatus
 <h3 id="autoresource">AutoResource</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#tidbclusterautoscalerspec">TidbClusterAutoScalerSpec</a>)
+<a href="#basicautoscalerspec">BasicAutoScalerSpec</a>)
 </p>
 <p>
 <p>AutoResource describes the resource type definitions</p>
@@ -3338,6 +3323,21 @@ ExternalConfig
 <em>(Optional)</em>
 <p>External makes the auto-scaler controller able to query the external service
 to fetch the recommended replicas for TiKV/TiDB</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="#autoresource">
+map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
+The key is resource_type name of the resource</p>
 </td>
 </tr>
 </tbody>
@@ -18102,21 +18102,6 @@ TidbAutoScalerSpec
 <td>
 <em>(Optional)</em>
 <p>TiDB represents the auto-scaling spec for tidb</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>resources</code></br>
-<em>
-<a href="#autoresource">
-map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources represent the resource type definitions that can be used for TiDB/TiKV
-The key is resource_type name of the resource</p>
 </td>
 </tr>
 </tbody>

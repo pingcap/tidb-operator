@@ -446,6 +446,13 @@ func (in *BasicAutoScalerSpec) DeepCopyInto(out *BasicAutoScalerSpec) {
 		*out = new(ExternalConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = make(map[string]AutoResource, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	return
 }
 
@@ -7454,13 +7461,6 @@ func (in *TidbClusterAutoScalerSpec) DeepCopyInto(out *TidbClusterAutoScalerSpec
 		in, out := &in.TiDB, &out.TiDB
 		*out = new(TidbAutoScalerSpec)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.Resources != nil {
-		in, out := &in.Resources, &out.Resources
-		*out = make(map[string]AutoResource, len(*in))
-		for key, val := range *in {
-			(*out)[key] = *val.DeepCopy()
-		}
 	}
 	return
 }
