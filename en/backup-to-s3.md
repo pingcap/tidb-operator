@@ -222,9 +222,6 @@ Refer to [Ad-hoc full backup prerequisites](backup-to-aws-s3-using-br.md#prerequ
 
 In the examples above, all data of the TiDB cluster is exported and backed up to Amazon S3 and Ceph respectively. You can ignore the `acl`, `endpoint`, and `storageClass` configuration items in the Amazon S3 configuration. S3-compatible storage types other than Amazon S3 can also use a configuration similar to that of Amazon S3. You can also leave the configuration item fields empty if you do not need to configure these items as shown in the above Ceph configuration.
 
-<details>
-<summary>Configure the access-control list (ACL) policy</summary>
-
 Amazon S3 supports the following ACL polices:
 
 * `private`
@@ -235,11 +232,6 @@ Amazon S3 supports the following ACL polices:
 * `bucket-owner-full-control`
 
 If the ACL policy is not configured, the `private` policy is used by default. For the detailed description of these access control policies, refer to [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html).
-
-</details>
-
-<details>
-<summary>Configure <code>storageClass</code></summary>
 
 Amazon S3 supports the following `storageClass` types:
 
@@ -252,8 +244,6 @@ Amazon S3 supports the following `storageClass` types:
 
 If `storageClass` is not configured, `STANDARD_IA` is used by default. For the detailed description of these storage types, refer to [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-class-intro.html).
 
-</details>
-
 After creating the `Backup` CR, you can use the following command to check the backup status:
 
 {{< copyable "shell-regular" >}}
@@ -262,8 +252,7 @@ After creating the `Backup` CR, you can use the following command to check the b
 kubectl get bk -n test1 -owide
 ```
 
-<details>
-<summary>More <code>Backup</code> CR parameter description</summary>
+More `Backup` CR parameter description:
 
 * `.spec.metadata.namespace`: the namespace where the `Backup` CR is located.
 * `.spec.tikvGCLifeTime`: the temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
@@ -307,16 +296,26 @@ kubectl get bk -n test1 -owide
 * `spec.s3.region`: configures the Region where Amazon S3 is located if you want to use Amazon S3 for backup storage.
 * `.spec.s3.bucket`: the name of the bucket compatible with S3 storage.
 * `.spec.s3.prefix`: this field can be ignored. If you set this field, it will be used to make up the remote storage path `s3://${.spec.s3.bucket}/${.spec.s3.prefix}/backupName`.
-* `.spec.dumpling`: Dumpling-related configurations, with two major fields. One is the `options` field, which specifies some parameters needed by Dumpling, and the other is the `tableFilter` field, which allows Dumpling to back up a table that matches the [table filter rule](https://docs.pingcap.com/tidb/stable/table-filter). These configurations of Dumpling can be ignored by default. When not specified, the values of `options` and `tableFilter` (by default) is as follows:
+* `.spec.dumpling`: Dumpling-related configurations. You can specify Dumpling's operation parameters in the `options` field. See [Dumpling Option list](https://docs.pingcap.com/tidb/dev/dumpling-overview#option-list-of-dumpling) for more information. These configuration items of Dumpling can be ignored by default. When these items are not specified, the default values of `options` fields are as follows:
 
     ```
     options:
     - --threads=16
     - --rows=10000
+    ```
+
+* `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation.
+* `.spec.storageSize`: the PV size specified for the backup operation (`100 Gi` by default). This value must be greater than the size of the TiDB cluster to be backed up.
+
+    The PVC name corresponding to the `Backup` CR of a TiDB cluster is fixed. If the PVC already exists in the cluster namespace and the size is smaller than `spec.storageSize`, you need to delete this PVC and then run the Backup job.
+
+* `.spec.tableFilter`: Dumpling only backs up tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, the default value of `tableFilter` is as follows:
+
+    ```bash
     tableFilter:
     - "*.*"
     - "!/^(mysql|test|INFORMATION_SCHEMA|PERFORMANCE_SCHEMA|METRICS_SCHEMA|INSPECTION_SCHEMA)$/.*"
-   ```
+    ```
 
     > **Note:**
     >
@@ -328,17 +327,9 @@ kubectl get bk -n test1 -owide
     - "!db.table"
     ```
 
-* `.spec.storageClassName`: the persistent volume (PV) type specified for the backup operation.
-* `.spec.storageSize`: the PV size specified for the backup operation (`100 Gi` by default). This value must be greater than the size of the TiDB cluster to be backed up.
+Supported S3-compatible providers are as follows:
 
-    The PVC name corresponding to the `Backup` CR of a TiDB cluster is fixed. If the PVC already exists in the cluster namespace and the size is smaller than `spec.storageSize`, you need to delete this PVC and then run the Backup job.
-
-</details>
-
-<details>
-<summary>Supported S3-compatible <code>provider</code></summary>
-
-* `alibaba`：Alibaba Cloud Object Storage System (OSS) formerly Aliyun
+* `alibaba`：Alibaba Cloud Object Storage System (OSS), formerly Aliyun
 * `digitalocean`：Digital Ocean Spaces
 * `dreamhost`：Dreamhost DreamObjects
 * `ibmcos`：IBM COS S3
@@ -346,8 +337,6 @@ kubectl get bk -n test1 -owide
 * `netease`：Netease Object Storage (NOS)
 * `wasabi`：Wasabi Object Storage
 * `other`：Any other S3 compatible provider
-
-</details>
 
 ## Scheduled full backup to S3-compatible storage
 

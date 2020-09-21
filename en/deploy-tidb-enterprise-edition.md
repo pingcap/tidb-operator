@@ -14,14 +14,14 @@ This document describes how to deploy TiDB Enterprise Edition and related tools 
 ## Prerequisites
 
 * TiDB Operator is [deployed](deploy-tidb-operator.md).
-  
+
 ## Deploy the Enterprise Edition
 
 Currently, the difference between the deployment of TiDB Operator Enterprise Edition and Community Edition mainly lies in image naming. Compared with that of Community Edition, the image of Enterprise Edition has an extra `-enterprise` suffix.
 
 ```yaml
 spec:
-  version: v4.0.4
+  version: v4.0.6
   ...
   pd:
     baseImage: pingcap/pd-enterprise
@@ -57,7 +57,7 @@ spec:
 
 ```yaml
 spec:
-  version: v4.0.4
+  version: v4.0.6
   ...
   pd:
     baseImage: pingcap/pd

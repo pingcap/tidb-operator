@@ -297,8 +297,7 @@ Before you perform ad-hoc full backup, AWS account permissions need to be grante
 
 The above three examples uses three methods to grant permissions to back up data to Amazon S3 storage. The `acl`, `endpoint`, `storageClass` configuration items of Amazon S3 can be ignored.
 
-<details>
-<summary>Configure the access-control list (ACL) policy</summary>
+#### Configure ACL policies
 
 Amazon S3 supports the following ACL policies:
 
@@ -311,10 +310,7 @@ Amazon S3 supports the following ACL policies:
 
 If the ACL policy is not configured, the `private` policy is used by default. For the detailed description of these access control policies, refer to [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html).
 
-</details>
-
-<details>
-<summary>Configure <code>storageClass</code></summary>
+#### Configure storageClass types
 
 Amazon S3 supports the following `storageClass` types:
 
@@ -327,7 +323,7 @@ Amazon S3 supports the following `storageClass` types:
 
 If `storageClass` is not configured, `STANDARD_IA` is used by default. For the detailed description of these storage types, refer to [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-class-intro.html).
 
-</details>
+#### Configure Backup CR
 
 After creating the `Backup` CR, use the following command to check the backup status:
 
@@ -337,8 +333,7 @@ After creating the `Backup` CR, use the following command to check the backup st
 kubectl get bk -n test1 -o wide
 ```
 
-<details>
-<summary>More <code>Backup</code> CR parameter description</summary>
+More `Backup` CR parameter description:
 
 - `.spec.metadata.namespace`: the namespace where the `Backup` CR is located.
 - `.spec.tikvGCLifeTime`: the temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
@@ -389,12 +384,23 @@ kubectl get bk -n test1 -o wide
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
-</details>
+- `.spec.tableFilter`: BR only backs up tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR backs up all schemas except the system schemas.
 
-<details>
-<summary>Supported S3-compatible <code>provider</code></summary>
+    > **Note:**
+    >
+    > To use the table filter to exclude `db.table`, you need to add the `*.*` rule to include all tables first. For example:
 
-- `alibaba`：Alibaba Cloud Object Storage System (OSS) formerly Aliyun
+    ```
+    tableFilter:
+    - "*.*"
+    - "!db.table"
+    ```
+
+#### Configure S3-compatible providers
+
+Supported S3-compatible `provider`s are as follows:
+
+- `alibaba`：Alibaba Cloud Object Storage System (OSS), formerly Aliyun
 - `digitalocean`：Digital Ocean Spaces
 - `dreamhost`：Dreamhost DreamObjects
 - `ibmcos`：IBM COS S3
@@ -402,8 +408,6 @@ kubectl get bk -n test1 -o wide
 - `netease`：Netease Object Storage (NOS)
 - `wasabi`：Wasabi Object Storage
 - `other`：Any other S3 compatible provider
-
-</details>
 
 ## Scheduled full backup
 

@@ -98,9 +98,7 @@ This document shows an example in which the backup data stored in the specified 
 
 This example restores the backup data stored in the `spec.gcs.prefix` folder of the `spec.gcs.bucket` bucket on GCS to the TiDB cluster `spec.to.host`. For more information on the configuration items of BR and GCS, refer to [`backup-gcs.yaml`](backup-to-gcs-using-br.md#process-of-ad-hoc-full-backup).
 
-<details>
-
-<summary>More descriptions of fields in the <code>Restore</code> CR</summary>
+More descriptions of fields in the `Restore` CR are as follows:
 
 * `.spec.metadata.namespace`: The namespace where the `Restore` CR is located.
 * `.spec.to.host`: The address of the TiDB cluster to be restored.
@@ -110,14 +108,24 @@ This example restores the backup data stored in the `spec.gcs.prefix` folder of 
 * `.spec.to.tlsClientSecretName`: The secret of the certificate used during the restore.
 
     If [TLS](enable-tls-between-components.md) is enabled for the TiDB cluster, but you do not want to restore data using the `${cluster_name}-cluster-client-secret` as described in [Enable TLS between TiDB Components](enable-tls-between-components.md), you can use the `.spec.to.tlsClientSecretName` parameter to specify a secret for the restore. To generate the secret, run the following command:
- 
+
     {{< copyable "shell-regular" >}}
 
     ```shell
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
-    ```  
+    ```
 
-</details>
+* `.spec.tableFilter`: BR only restores tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR restores all schemas except the system schemas.
+
+    > **Note:**
+    >
+    > To use the table filter to exclude `db.table`, you need to add the `*.*` rule to include all tables first. For example:
+
+    ```
+    tableFilter:
+    - "*.*"
+    - "!db.table"
+    ```
 
 ## Troubleshooting
 

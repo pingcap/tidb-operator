@@ -288,6 +288,18 @@ More `Restore` CR fields are described as follows:
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
+* `.spec.tableFilter`: BR only restores tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR restores all schemas except the system schemas.
+
+    > **Note:**
+    >
+    > To use the table filter to exclude `db.table`, you need to add the `*.*` rule to include all tables first. For example:
+
+    ```
+    tableFilter:
+    - "*.*"
+    - "!db.table"
+    ```
+
 ## Troubleshooting
 
 If you encounter any problem during the restore process, refer to [Common Deployment Failures](deploy-failures.md).

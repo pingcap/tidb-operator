@@ -92,7 +92,7 @@ More `Restore` CRs are described as follows:
 * `.spec.to.port`: the port of the TiDB cluster to be restored.
 * `.spec.to.user`: the accessing user of the TiDB cluster to be restored.
 * `.spec.to.tidbSecretName`: the secret of the credential needed by the TiDB cluster to be restored.
-* `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration. If this item is not specified, the value of the `default-backup-storage-class-name` parameter (`standard` by default, specified when TiDB Operator is started) is used by default.
+* `.spec.storageClassName`: the persistent volume (PV) type specified for the restoration.
 * `.spec.storageSize`: the PV size specified for the restoration. This value must be greater than the size of the backed up TiDB cluster.
 
 > **Note:**

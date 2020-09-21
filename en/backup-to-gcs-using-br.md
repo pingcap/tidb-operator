@@ -96,8 +96,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     In the example above, some parameters in `spec.br` can be ignored, such as `logLevel`, `statusAddr`, `concurrency`, `rateLimit`, `checksum`, and `sendCredToTikv`.
 
-    <details>
-    <summary>Parameter description</summary>
+    More `br` parameter descriptions:
 
     * `spec.br.cluster`: The name of the cluster to be backed up.
     * `spec.br.clusterNamespace`: The `namespace` of the cluster to be backed up.
@@ -107,15 +106,10 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     * `spec.br.rateLimit`: The speed limit, in MB/s. If set to `4`, the speed limit is 4 MB/s. The speed limit is not set by default.
     * `spec.br.checksum`: Whether to verify the files after the backup is completed. Defaults to `true`.
     * `spec.br.sendCredToTikv`: Whether the BR process passes its GCP privileges to the TiKV process. Defaults to `true`.
-    
-    </details>
 
     This example backs up all data in the TiDB cluster to GCS. Some parameters in `spec.gcs` can be ignored, such as `location`, `objectAcl`, and `storageClass`.
 
     The `projectId` in the configuration is the unique identifier of a user project on GCP. For how to obtain the identifier, see [GCP Documentation](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
-
-    <details>
-    <summary>Configure <code>storageClass</code>.</summary>
 
     GCS supports the following `storageClass` types:
 
@@ -127,12 +121,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
 
     If you do not configure `storageClass`, the default type is `COLDLINE`. See [GCS Documentation](https://cloud.google.com/storage/docs/storage-classes) for details.
 
-    </details>
-
-    <details>
-    <summary>Configure the object access-control list (ACL) strategy</summary>
-
-    GCS supports the following ACL strategies:
+    GCS supports the following ACL policies:
 
     * `authenticatedRead`
     * `bucketOwnerFullControl`
@@ -141,8 +130,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     * `projectPrivate`
     * `publicRead`
 
-    If you do not configure the object ACL strategy, the default strategy is `private`. See [GCS Documentation](https://cloud.google.com/storage/docs/access-control/lists) for details.
-    </details>
+    If you do not configure the object ACL policy, the default policy is `private`. See [GCS Documentation](https://cloud.google.com/storage/docs/access-control/lists) for details.
 
 2. After creating the `Backup` CR, use the following command to check the backup status:
 
@@ -152,9 +140,7 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     kubectl get bk -n test1 -owide
     ```
 
-<details>
-
-<summary>More descriptions of fields in the <code>Backup</code> CR</summary>
+More descriptions of fields in the `Backup` CR:
 
 * `.spec.metadata.namespace`: The namespace where the `Backup` CR is located.
 * `.spec.tikvGCLifeTime`: The temporary `tikv_gc_lifetime` time setting during the backup. Defaults to 72h.
@@ -207,7 +193,17 @@ This document provides examples in which the data of the `demo1` TiDB cluster in
     kubectl create secret generic ${secret_name} --namespace=${namespace} --from-file=tls.crt=${cert_path} --from-file=tls.key=${key_path} --from-file=ca.crt=${ca_path}
     ```
 
-</details>
+* `.spec.tableFilter`: BR only backs up tables that match the [table filter rules](https://docs.pingcap.com/tidb/stable/table-filter/). This field can be ignored by default. If the field is not configured, BR backs up all schemas except the system schemas.
+
+    > **Note:**
+    >
+    > To use the table filter to exclude `db.table`, you need to add the `*.*` rule to include all tables first. For example:
+
+    ```
+    tableFilter:
+    - "*.*"
+    - "!db.table"
+    ```
 
 ## Scheduled full backup
 
