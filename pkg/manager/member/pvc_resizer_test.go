@@ -86,7 +86,7 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
@@ -115,7 +115,7 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
@@ -209,7 +209,7 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
@@ -234,7 +234,7 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("2Gi"),
@@ -260,7 +260,7 @@ func TestPVCResizer(t *testing.T) {
 					Name:      "tc",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						ResourceRequirements: v1.ResourceRequirements{
 							Requests: v1.ResourceList{
 								v1.ResourceStorage: resource.MustParse("1Gi"),
