@@ -623,15 +623,12 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
-
-	startScript, err := RenderTiKVStartScript(scriptModel)
-
 	if tc.IsHeterogeneous() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Name) + ":2379"
 	}
-
+	startScript, err := RenderTiKVStartScript(scriptModel)
 	if err != nil {
 		return nil, err
 	}
