@@ -84,19 +84,18 @@ type TidbClusterAutoScalerSpec struct {
 	TiDB *TidbAutoScalerSpec `json:"tidb,omitempty"`
 
 	// Resources represent the resource type definitions that can be used for TiDB/TiKV
+	// The key is resource_type name of the resource
 	// +optional
-	Resources []AutoResource `json:"resources,omitempty"`
+	Resources map[string]AutoResource `json:"resources,omitempty"`
 }
 
 // +k8s:openapi-gen=true
 // AutoResource describes the resource type definitions
 type AutoResource struct {
-	// ResourceType identifies a specific resource type
-	ResourceType string `json:"resource_type,omitempty"`
 	// CPU defines the CPU of this resource type
-	CPU resource.Quantity `json:"cpu,omitempty"`
+	CPU resource.Quantity `json:"cpu"`
 	// Memory defines the memory of this resource type
-	Memory resource.Quantity `json:"memory,omitempty"`
+	Memory resource.Quantity `json:"memory"`
 	// Storage defines the storage of this resource type
 	Storage resource.Quantity `json:"storage,omitempty"`
 	// Count defines the max availabel count of this resource type
