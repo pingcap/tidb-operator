@@ -116,6 +116,11 @@ type SvcConfig struct {
 
 // Sync fulfills the manager.Manager interface
 func (tkmm *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	// If tikv is not specified return
+	if tc.Spec.TiKV == nil {
+		return nil
+	}
+
 	ns := tc.GetNamespace()
 	tcName := tc.GetName()
 

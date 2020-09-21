@@ -63,7 +63,7 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			name: "pd(s) not healthy",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 					},
 				},
@@ -101,10 +101,10 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			name: "tikv(s) not healthy",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 					},
 				},
@@ -147,13 +147,13 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			name: "tidb(s) not healthy",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},
 				},
@@ -201,13 +201,13 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			name: "tiflash(s) not healthy",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{
@@ -269,13 +269,13 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			name: "all ready",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{
-					PD: v1alpha1.PDSpec{
+					PD: &v1alpha1.PDSpec{
 						Replicas: 1,
 					},
-					TiKV: v1alpha1.TiKVSpec{
+					TiKV: &v1alpha1.TiKVSpec{
 						Replicas: 1,
 					},
-					TiDB: v1alpha1.TiDBSpec{
+					TiDB: &v1alpha1.TiDBSpec{
 						Replicas: 1,
 					},
 					TiFlash: &v1alpha1.TiFlashSpec{

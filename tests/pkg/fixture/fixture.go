@@ -96,8 +96,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 			PVReclaimPolicy: &deletePVP,
 			SchedulerName:   "tidb-scheduler",
 			Timezone:        "Asia/Shanghai",
-
-			PD: v1alpha1.PDSpec{
+			PD: &v1alpha1.PDSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/pd",
 				ResourceRequirements: WithStorage(BurstbleSmall, "1Gi"),
@@ -115,7 +114,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				},
 			},
 
-			TiKV: v1alpha1.TiKVSpec{
+			TiKV: &v1alpha1.TiKVSpec{
 				Replicas:             3,
 				BaseImage:            "pingcap/tikv",
 				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
@@ -130,7 +129,7 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				},
 			},
 
-			TiDB: v1alpha1.TiDBSpec{
+			TiDB: &v1alpha1.TiDBSpec{
 				Replicas:             2,
 				BaseImage:            "pingcap/tidb",
 				ResourceRequirements: BurstbleMedium,

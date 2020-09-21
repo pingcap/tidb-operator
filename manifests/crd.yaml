@@ -12408,10 +12408,6 @@ spec:
               type: array
             version:
               type: string
-          required:
-          - pd
-          - tidb
-          - tikv
           type: object
       type: object
   version: v1alpha1

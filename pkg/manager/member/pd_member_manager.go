@@ -99,6 +99,11 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 }
 
 func (pmm *pdMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
+	// If pd is not specified return
+	if tc.Spec.PD == nil {
+		return nil
+	}
+
 	// Sync PD Service
 	if err := pmm.syncPDServiceForTidbCluster(tc); err != nil {
 		return err
