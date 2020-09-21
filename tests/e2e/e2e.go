@@ -190,26 +190,36 @@ func setupSuite() {
 }
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
-	ginkgo.By("Clear all helm releases")
-	helmClearCmd := "helm ls --all --short | xargs -n 1 -r helm delete --purge"
-	if err := exec.Command("sh", "-c", helmClearCmd).Run(); err != nil {
-		framework.Failf("failed to clear helm releases (cmd: %q, error: %v", helmClearCmd, err)
+	cleaners := []struct {
+		text string
+		cmd  string
+	}{
+		{
+			text: "Clear all helm releases",
+			cmd:  "helm ls --all --short | xargs -n 1 -r helm delete --purge",
+		},
+		{
+			text: "Clear tidb-operator apiservices",
+			cmd:  "kubectl delete apiservices -l app.kubernetes.io/name=tidb-operator",
+		},
+		{
+			text: "Clear tidb-operator validatingwebhookconfigurations",
+			cmd:  "kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator",
+		},
+		{
+			text: "Clear tidb-operator mutatingwebhookconfigurations",
+			cmd:  "kubectl delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator",
+		},
 	}
-	ginkgo.By("Clear tidb-operator apiservices")
-	clearAPIServicesCmd := "kubectl delete apiservices -l app.kubernetes.io/name=tidb-operator"
-	if err := exec.Command("sh", "-c", clearAPIServicesCmd).Run(); err != nil {
-		framework.Failf("failed to clear non-kubernetes apiservices (cmd: %q, error: %v", clearAPIServicesCmd, err)
+	for _, p := range cleaners {
+		ginkgo.By(p.text)
+		cmd := exec.Command("sh", "-c", p.cmd)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			framework.Failf("failed to %s (cmd: %q, error: %v, output: %s", p.text, p.cmd, err, string(output))
+		}
 	}
-	ginkgo.By("Clear tidb-operator validatingwebhookconfigurations")
-	clearValidatingWebhookConfigurationsCmd := "kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"
-	if err := exec.Command("sh", "-c", clearValidatingWebhookConfigurationsCmd).Run(); err != nil {
-		framework.Failf("failed to clear validatingwebhookconfigurations (cmd: %q, error: %v", clearValidatingWebhookConfigurationsCmd, err)
-	}
-	ginkgo.By("Clear tidb-operator mutatingwebhookconfigurations")
-	clearMutatingWebhookConfigurationsCmd := "kubectl delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"
-	if err := exec.Command("sh", "-c", clearMutatingWebhookConfigurationsCmd).Run(); err != nil {
-		framework.Failf("failed to clear mutatingwebhookconfigurations (cmd: %q, error: %v", clearMutatingWebhookConfigurationsCmd, err)
-	}
+
 	setupSuite()
 	// override with hard-coded value
 	e2econfig.TestConfig.ManifestDir = "/manifests"

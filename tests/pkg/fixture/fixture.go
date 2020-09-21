@@ -157,34 +157,6 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 	}
 }
 
-func GetTiKVGroup(ns, name, clusterName, version string) *v1alpha1.TiKVGroup {
-	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
-	// e.g. nightly.
-	if v, err := semver.NewVersion(version); err == nil && v.LessThan(tikvV4Beta) {
-		tikvConfig.Storage = nil
-	}
-	tg := &v1alpha1.TiKVGroup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-		Spec: v1alpha1.TiKVGroupSpec{
-			TiKVSpec: v1alpha1.TiKVSpec{
-				Replicas:             3,
-				ResourceRequirements: WithStorage(BurstbleMedium, "10Gi"),
-				MaxFailoverCount:     pointer.Int32Ptr(3),
-				Config:               tikvConfig,
-				ComponentSpec: v1alpha1.ComponentSpec{
-					Affinity: buildAffinity(name, ns, v1alpha1.TiKVMemberType),
-					Image:    fmt.Sprintf("pingcap/tikv:%s", version),
-				},
-			},
-			ClusterName: clusterName,
-		},
-	}
-	return tg
-}
-
 func buildAffinity(name, namespace string, memberType v1alpha1.MemberType) *corev1.Affinity {
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
