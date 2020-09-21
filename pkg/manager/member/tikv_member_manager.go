@@ -600,7 +600,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, nil
 	}
 
-<<<<<<< HEAD
 	// override CA if tls enabled
 	if tc.IsTLSClusterEnabled() {
 		if config.Security == nil {
@@ -615,8 +614,7 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if err != nil {
 		return nil, err
 	}
-=======
->>>>>>> 23d8fa3... TidbCluster controller update for cluster reference change (#3003)
+
 	scriptModel := &TiKVStartScriptModel{
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(tikvDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
@@ -625,17 +623,15 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		scriptModel.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc"
 		scriptModel.EnableAdvertiseStatusAddr = true
 	}
-<<<<<<< HEAD
+
 	startScript, err := RenderTiKVStartScript(scriptModel)
-=======
 
 	if tc.IsHeterogeneous() {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Spec.Cluster.Name) + ":2379"
 	} else {
 		scriptModel.PDAddress = tc.Scheme() + "://" + controller.PDMemberName(tc.Name) + ":2379"
 	}
-	cm, err := getTikVConfigMapForTiKVSpec(tc.Spec.TiKV, tc, scriptModel)
->>>>>>> 23d8fa3... TidbCluster controller update for cluster reference change (#3003)
+
 	if err != nil {
 		return nil, err
 	}
