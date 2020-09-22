@@ -15,7 +15,6 @@ And choose some specific TiDB clusters will be managed by the new version TiDB-O
 
 * Deploy multiple `tidb-operator` in one Kubernetes cluster
 * Manage `tidbcluster` which be selected
-* Don't manage `tidbcluster` which be excluded
 
 ### Non-Goals
 
@@ -24,8 +23,9 @@ And choose some specific TiDB clusters will be managed by the new version TiDB-O
 
 ## Proposal
 
-Add `labelSelector`
-When sync `tidbcluster` CRDs filter by `labelSelector`
+1. Add a flag to the operator like this `--selector` <label expression> where the label expression is key value pairs of labels and values. 
+2. Add `spec.labelSelector` in `tidb-operator` helm chart
+3. Sync `tidbcluster` CRs filter by `labelSelector`
 
 ### Design Details
 1. Components that need canary deployments: 
