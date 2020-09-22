@@ -231,9 +231,38 @@ func newFakeTidbClusterControl() (ControlInterface, *meta.FakeReclaimPolicyManag
 	tidbMemberManager := mm.NewFakeTiDBMemberManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
 	metaManager := meta.NewFakeMetaManager()
+<<<<<<< HEAD
 	opc := mm.NewFakeOrphanPodsCleaner()
 	pcc := mm.NewFakePVCCleaner()
 	control := NewDefaultTidbClusterControl(tcControl, pdMemberManager, tikvMemberManager, tidbMemberManager, reclaimPolicyManager, metaManager, opc, pcc, recorder)
+=======
+	orphanPodCleaner := mm.NewFakeOrphanPodsCleaner()
+	pvcCleaner := mm.NewFakePVCCleaner()
+	pumpMemberManager := mm.NewFakePumpMemberManager()
+	tiflashMemberManager := mm.NewFakeTiFlashMemberManager()
+	ticdcMemberManager := mm.NewFakeTiCDCMemberManager()
+	discoveryManager := mm.NewFakeDiscoveryManger()
+	statusManager := mm.NewFakeTidbClusterStatusManager()
+	pvcResizer := mm.NewFakePVCResizer()
+	control := NewDefaultTidbClusterControl(
+		tcUpdater,
+		pdMemberManager,
+		tikvMemberManager,
+		tidbMemberManager,
+		reclaimPolicyManager,
+		metaManager,
+		orphanPodCleaner,
+		pvcCleaner,
+		pvcResizer,
+		pumpMemberManager,
+		tiflashMemberManager,
+		ticdcMemberManager,
+		discoveryManager,
+		statusManager,
+		&tidbClusterConditionUpdater{},
+		recorder,
+	)
+>>>>>>> 18703b9... Remove the PodRestarter controller and `tidb.pingcap.com/pod-defer-deleting` annotation (#3296)
 
 	return control, reclaimPolicyManager, pdMemberManager, tikvMemberManager, tidbMemberManager, metaManager
 }

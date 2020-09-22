@@ -58,6 +58,17 @@ const (
 	AnnTiDBPartition string = "tidb.pingcap.com/tidb-partition"
 	// AnnForceUpgradeKey is tc annotation key to indicate whether force upgrade should be done
 	AnnForceUpgradeKey = "tidb.pingcap.com/force-upgrade"
+<<<<<<< HEAD
+=======
+	// AnnPDDeferDeleting is pd pod annotation key  in pod for defer for deleting pod
+	AnnPDDeferDeleting = "tidb.pingcap.com/pd-defer-deleting"
+	// AnnSysctlInit is pod annotation key to indicate whether configuring sysctls with init container
+	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
+	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
+	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
+	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
+	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
+>>>>>>> 18703b9... Remove the PodRestarter controller and `tidb.pingcap.com/pod-defer-deleting` annotation (#3296)
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"

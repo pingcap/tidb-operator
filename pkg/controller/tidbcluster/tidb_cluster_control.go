@@ -42,6 +42,7 @@ func NewDefaultTidbClusterControl(
 	metaManager manager.Manager,
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
+<<<<<<< HEAD
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultTidbClusterControl{
 		tcControl,
@@ -53,10 +54,38 @@ func NewDefaultTidbClusterControl(
 		orphanPodsCleaner,
 		pvcCleaner,
 		recorder,
+=======
+	pvcResizer member.PVCResizerInterface,
+	pumpMemberManager manager.Manager,
+	tiflashMemberManager manager.Manager,
+	ticdcMemberManager manager.Manager,
+	discoveryManager member.TidbDiscoveryManager,
+	tidbClusterStatusManager manager.Manager,
+	conditionUpdater TidbClusterConditionUpdater,
+	recorder record.EventRecorder) ControlInterface {
+	return &defaultTidbClusterControl{
+		tcControl:                tcControl,
+		pdMemberManager:          pdMemberManager,
+		tikvMemberManager:        tikvMemberManager,
+		tidbMemberManager:        tidbMemberManager,
+		reclaimPolicyManager:     reclaimPolicyManager,
+		metaManager:              metaManager,
+		orphanPodsCleaner:        orphanPodsCleaner,
+		pvcCleaner:               pvcCleaner,
+		pvcResizer:               pvcResizer,
+		pumpMemberManager:        pumpMemberManager,
+		tiflashMemberManager:     tiflashMemberManager,
+		ticdcMemberManager:       ticdcMemberManager,
+		discoveryManager:         discoveryManager,
+		tidbClusterStatusManager: tidbClusterStatusManager,
+		conditionUpdater:         conditionUpdater,
+		recorder:                 recorder,
+>>>>>>> 18703b9... Remove the PodRestarter controller and `tidb.pingcap.com/pod-defer-deleting` annotation (#3296)
 	}
 }
 
 type defaultTidbClusterControl struct {
+<<<<<<< HEAD
 	tcControl            controller.TidbClusterControlInterface
 	pdMemberManager      manager.Manager
 	tikvMemberManager    manager.Manager
@@ -66,6 +95,24 @@ type defaultTidbClusterControl struct {
 	orphanPodsCleaner    member.OrphanPodsCleaner
 	pvcCleaner           member.PVCCleanerInterface
 	recorder             record.EventRecorder
+=======
+	tcControl                controller.TidbClusterControlInterface
+	pdMemberManager          manager.Manager
+	tikvMemberManager        manager.Manager
+	tidbMemberManager        manager.Manager
+	reclaimPolicyManager     manager.Manager
+	metaManager              manager.Manager
+	orphanPodsCleaner        member.OrphanPodsCleaner
+	pvcCleaner               member.PVCCleanerInterface
+	pvcResizer               member.PVCResizerInterface
+	pumpMemberManager        manager.Manager
+	tiflashMemberManager     manager.Manager
+	ticdcMemberManager       manager.Manager
+	discoveryManager         member.TidbDiscoveryManager
+	tidbClusterStatusManager manager.Manager
+	conditionUpdater         TidbClusterConditionUpdater
+	recorder                 record.EventRecorder
+>>>>>>> 18703b9... Remove the PodRestarter controller and `tidb.pingcap.com/pod-defer-deleting` annotation (#3296)
 }
 
 // UpdateStatefulSet executes the core logic loop for a tidbcluster.
@@ -92,8 +139,24 @@ func (tcc *defaultTidbClusterControl) updateTidbCluster(tc *v1alpha1.TidbCluster
 		return err
 	}
 
+<<<<<<< HEAD
 	// cleaning all orphan pods(pd or tikv which don't have a related PVC) managed by operator
 	if _, err := tcc.orphanPodsCleaner.Clean(tc); err != nil {
+=======
+	// cleaning all orphan pods(pd, tikv or tiflash which don't have a related PVC) managed by operator
+	skipReasons, err := tcc.orphanPodsCleaner.Clean(tc)
+	if err != nil {
+		return err
+	}
+	if klog.V(10) {
+		for podName, reason := range skipReasons {
+			klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, tc.Namespace, tc.Name, reason)
+		}
+	}
+
+	// reconcile TiDB discovery service
+	if err := tcc.discoveryManager.Reconcile(tc); err != nil {
+>>>>>>> 18703b9... Remove the PodRestarter controller and `tidb.pingcap.com/pod-defer-deleting` annotation (#3296)
 		return err
 	}
 

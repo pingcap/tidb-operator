@@ -1,4 +1,4 @@
-// Copyright 2018 PingCAP, Inc.
+// Copyright 2020 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,22 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidbcluster
+package dmcluster
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
+	"github.com/Masterminds/semver"
 	perrors "github.com/pingcap/errors"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap.com/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
-	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap.com/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
 	"github.com/pingcap/tidb-operator/pkg/manager/meta"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
+
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,132 +41,118 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbCluster")
-
-// Controller controls tidbclusters.
+// Controller controls dmclusters.
 type Controller struct {
 	// kubernetes client interface
 	kubeClient kubernetes.Interface
 	// operator client interface
 	cli versioned.Interface
-	// control returns an interface capable of syncing a tidb cluster.
+	// control returns an interface capable of syncing a dm cluster.
 	// Abstracted out for testing.
 	control ControlInterface
-	// tcLister is able to list/get tidbclusters from a shared informer's store
-	tcLister listers.TidbClusterLister
-	// tcListerSynced returns true if the tidbcluster shared informer has synced at least once
-	tcListerSynced cache.InformerSynced
+	// dcLister is able to list/get dmclusters from a shared informer's store
+	dcLister listers.DMClusterLister
+	// dcListerSynced returns true if the dmclusters shared informer has synced at least once
+	dcListerSynced cache.InformerSynced
 	// setLister is able to list/get stateful sets from a shared informer's store
 	setLister appslisters.StatefulSetLister
 	// setListerSynced returns true if the statefulset shared informer has synced at least once
 	setListerSynced cache.InformerSynced
-	// tidbclusters that need to be synced.
+	// dmclusters that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
-// NewController creates a tidbcluster controller.
+// NewController creates a dm controller.
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
+	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
-	pdFailoverPeriod time.Duration,
-	tikvFailoverPeriod time.Duration,
-	tidbFailoverPeriod time.Duration,
+	masterFailoverPeriod time.Duration,
+	workerFailoverPeriod time.Duration,
 ) *Controller {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.V(2).Infof)
+	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
+	eventBroadcaster.StartLogging(klog.V(2).Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "tidb-controller-manager"})
 
-	tcInformer := informerFactory.Pingcap().V1alpha1().TidbClusters()
+	dcInformer := informerFactory.Pingcap().V1alpha1().DMClusters()
 	setInformer := kubeInformerFactory.Apps().V1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	epsInformer := kubeInformerFactory.Core().V1().Endpoints()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
-	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
+	//nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	//secretInformer := kubeInformerFactory.Core().V1().Secrets()
 
-	tcControl := controller.NewRealTidbClusterControl(cli, tcInformer.Lister(), recorder)
-	pdControl := pdapi.NewDefaultPDControl()
-	tidbControl := controller.NewDefaultTiDBControl()
+	dcControl := controller.NewRealDMClusterControl(cli, dcInformer.Lister(), recorder)
+	masterControl := dmapi.NewDefaultMasterControl(kubeCli)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	podControl := controller.NewRealPodControl(kubeCli, pdControl, podInformer.Lister(), recorder)
-	pdScaler := mm.NewPDScaler(pdControl, pvcInformer.Lister(), pvcControl)
-	tikvScaler := mm.NewTiKVScaler(pdControl, pvcInformer.Lister(), pvcControl, podInformer.Lister())
-	pdFailover := mm.NewPDFailover(cli, pdControl, pdFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
-	tikvFailover := mm.NewTiKVFailover(tikvFailoverPeriod)
-	tidbFailover := mm.NewTiDBFailover(tidbFailoverPeriod)
-	pdUpgrader := mm.NewPDUpgrader(pdControl, podControl, podInformer.Lister())
-	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
-	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
+	podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
+	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
+	masterFailover := mm.NewMasterFailover(cli, masterControl, masterFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
+	workerFailover := mm.NewWorkerFailover(workerFailoverPeriod, recorder)
+	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
+	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
 
-	tcc := &Controller{
+	dcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
-		control: NewDefaultTidbClusterControl(
-			tcControl,
-			mm.NewPDMemberManager(
-				pdControl,
+		control: NewDefaultDMClusterControl(
+			dcControl,
+			mm.NewMasterMemberManager(
+				masterControl,
 				setControl,
 				svcControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				epsInformer.Lister(),
-				podControl,
 				pvcInformer.Lister(),
-				pdScaler,
-				pdUpgrader,
+				masterScaler,
+				masterUpgrader,
 				autoFailover,
-				pdFailover,
+				masterFailover,
 			),
-			mm.NewTiKVMemberManager(
-				pdControl,
+			mm.NewWorkerMemberManager(
+				masterControl,
 				setControl,
 				svcControl,
+				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
-				nodeInformer.Lister(),
+				workerScaler,
 				autoFailover,
-				tikvFailover,
-				tikvScaler,
-				tikvUpgrader,
+				workerFailover,
 			),
-			mm.NewTiDBMemberManager(
-				setControl,
-				svcControl,
-				tidbControl,
-				setInformer.Lister(),
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				tidbUpgrader,
-				autoFailover,
-				tidbFailover,
-			),
-			meta.NewReclaimPolicyManager(
+			meta.NewReclaimPolicyDMManager(
 				pvcInformer.Lister(),
 				pvInformer.Lister(),
 				pvControl,
 			),
-			meta.NewMetaManager(
-				pvcInformer.Lister(),
-				pvcControl,
-				pvInformer.Lister(),
-				pvControl,
-				podInformer.Lister(),
-				podControl,
-			),
+			//meta.NewMetaManager(
+			//	pvcInformer.Lister(),
+			//	pvcControl,
+			//	pvInformer.Lister(),
+			//	pvControl,
+			//	podInformer.Lister(),
+			//	podControl,
+			//),
 			mm.NewOrphanPodsCleaner(
 				podInformer.Lister(),
 				podControl,
@@ -173,129 +160,139 @@ func NewController(
 				kubeCli,
 			),
 			mm.NewRealPVCCleaner(
+				kubeCli,
 				podInformer.Lister(),
 				pvcControl,
 				pvcInformer.Lister(),
+				pvInformer.Lister(),
+				pvControl,
 			),
-<<<<<<< HEAD
-=======
-			mm.NewTidbDiscoveryManager(typedControl),
-			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
-			&tidbClusterConditionUpdater{},
->>>>>>> 18703b9... Remove the PodRestarter controller and `tidb.pingcap.com/pod-defer-deleting` annotation (#3296)
+			mm.NewPVCResizer(
+				kubeCli,
+				pvcInformer,
+				scInformer,
+			),
+			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
+			&dmClusterConditionUpdater{},
 			recorder,
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
-			"tidbcluster",
+			"dmcluster",
 		),
 	}
 
-	tcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: tcc.enqueueTidbCluster,
+	dcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: dcc.enqueueDMCluster,
 		UpdateFunc: func(old, cur interface{}) {
-			tcc.enqueueTidbCluster(cur)
+			dcc.enqueueDMCluster(cur)
 		},
-		DeleteFunc: tcc.enqueueTidbCluster,
+		DeleteFunc: dcc.enqueueDMCluster,
 	})
-	tcc.tcLister = tcInformer.Lister()
-	tcc.tcListerSynced = tcInformer.Informer().HasSynced
+	dcc.dcLister = dcInformer.Lister()
+	dcc.dcListerSynced = dcInformer.Informer().HasSynced
 
 	setInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: tcc.addStatefulSet,
+		AddFunc: dcc.addStatefulSet,
 		UpdateFunc: func(old, cur interface{}) {
-			tcc.updateStatefuSet(old, cur)
+			dcc.updateStatefuSet(old, cur)
 		},
-		DeleteFunc: tcc.deleteStatefulSet,
+		DeleteFunc: dcc.deleteStatefulSet,
 	})
-	tcc.setLister = setInformer.Lister()
-	tcc.setListerSynced = setInformer.Informer().HasSynced
+	dcc.setLister = setInformer.Lister()
+	dcc.setListerSynced = setInformer.Informer().HasSynced
 
-	return tcc
+	return dcc
 }
 
-// Run runs the tidbcluster controller.
-func (tcc *Controller) Run(workers int, stopCh <-chan struct{}) {
+// Run runs the dmcluster controller.
+func (dcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer tcc.queue.ShutDown()
+	defer dcc.queue.ShutDown()
 
-	glog.Info("Starting tidbcluster controller")
-	defer glog.Info("Shutting down tidbcluster controller")
+	klog.Info("Starting dmcluster controller")
+	defer klog.Info("Shutting down dmcluster controller")
 
 	for i := 0; i < workers; i++ {
-		go wait.Until(tcc.worker, time.Second, stopCh)
+		go wait.Until(dcc.worker, time.Second, stopCh)
 	}
 
 	<-stopCh
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the the controller's queue is closed
-func (tcc *Controller) worker() {
-	for tcc.processNextWorkItem() {
-		// revive:disable:empty-block
+func (dcc *Controller) worker() {
+	for dcc.processNextWorkItem() {
 	}
 }
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
-func (tcc *Controller) processNextWorkItem() bool {
-	key, quit := tcc.queue.Get()
+func (dcc *Controller) processNextWorkItem() bool {
+	key, quit := dcc.queue.Get()
 	if quit {
 		return false
 	}
-	defer tcc.queue.Done(key)
-	if err := tcc.sync(key.(string)); err != nil {
+	defer dcc.queue.Done(key)
+	if err := dcc.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			glog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Infof("DMCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("TidbCluster: %v, sync failed %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("DMCluster: %v, sync failed %v, requeuing", key.(string), err))
 		}
-		tcc.queue.AddRateLimited(key)
+		dcc.queue.AddRateLimited(key)
 	} else {
-		tcc.queue.Forget(key)
+		dcc.queue.Forget(key)
 	}
 	return true
 }
 
-// sync syncs the given tidbcluster.
-func (tcc *Controller) sync(key string) error {
+// sync syncs the given dmcluster.
+func (dcc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		glog.V(4).Infof("Finished syncing TidbCluster %q (%v)", key, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing DMCluster %q (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	tc, err := tcc.tcLister.TidbClusters(ns).Get(name)
+	dc, err := dcc.dcLister.DMClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
-		glog.Infof("TidbCluster has been deleted %v", key)
+		klog.Infof("DMCluster has been deleted %v", key)
 		return nil
 	}
 	if err != nil {
 		return err
 	}
+	clusterVersionLT2, err := clusterVersionLessThan2(dc.MasterVersion())
+	if err != nil {
+		klog.V(4).Infof("cluster version: %s is not semantic versioning compatible", dc.MasterVersion())
+	} else if clusterVersionLT2 {
+		klog.Errorf("dm version %s not supported, only support to deploy dm from v2.0", dc.MasterVersion())
+		return nil
+	}
 
-	return tcc.syncTidbCluster(tc.DeepCopy())
+	return dcc.syncDMCluster(dc.DeepCopy())
 }
 
-func (tcc *Controller) syncTidbCluster(tc *v1alpha1.TidbCluster) error {
-	return tcc.control.UpdateTidbCluster(tc)
+func (dcc *Controller) syncDMCluster(dc *v1alpha1.DMCluster) error {
+	return dcc.control.UpdateDMCluster(dc)
 }
 
-// enqueueTidbCluster enqueues the given tidbcluster in the work queue.
-func (tcc *Controller) enqueueTidbCluster(obj interface{}) {
+// enqueueDMCluster enqueues the given dmcluster in the work queue.
+func (dcc *Controller) enqueueDMCluster(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	tcc.queue.Add(key)
+	dcc.queue.Add(key)
 }
 
-// addStatefulSet adds the tidbcluster for the statefulset to the sync queue
-func (tcc *Controller) addStatefulSet(obj interface{}) {
+// addStatefulSet adds the dmcluster for the statefulset to the sync queue
+func (dcc *Controller) addStatefulSet(obj interface{}) {
 	set := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
 	setName := set.GetName()
@@ -303,21 +300,21 @@ func (tcc *Controller) addStatefulSet(obj interface{}) {
 	if set.DeletionTimestamp != nil {
 		// on a restart of the controller manager, it's possible a new statefulset shows up in a state that
 		// is already pending deletion. Prevent the statefulset from being a creation observation.
-		tcc.deleteStatefulSet(set)
+		dcc.deleteStatefulSet(set)
 		return
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	tc := tcc.resolveTidbClusterFromSet(ns, set)
-	if tc == nil {
+	dc := dcc.resolveDMClusterFromSet(ns, set)
+	if dc == nil {
 		return
 	}
-	glog.V(4).Infof("StatefuSet %s/%s created, TidbCluster: %s/%s", ns, setName, ns, tc.Name)
-	tcc.enqueueTidbCluster(tc)
+	klog.V(4).Infof("StatefulSet %s/%s created, DMCluster: %s/%s", ns, setName, ns, dc.Name)
+	dcc.enqueueDMCluster(dc)
 }
 
-// updateStatefuSet adds the tidbcluster for the current and old statefulsets to the sync queue.
-func (tcc *Controller) updateStatefuSet(old, cur interface{}) {
+// updateStatefuSet adds the dmcluster for the current and old statefulsets to the sync queue.
+func (dcc *Controller) updateStatefuSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
 	ns := curSet.GetNamespace()
@@ -329,16 +326,16 @@ func (tcc *Controller) updateStatefuSet(old, cur interface{}) {
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	tc := tcc.resolveTidbClusterFromSet(ns, curSet)
-	if tc == nil {
+	dc := dcc.resolveDMClusterFromSet(ns, curSet)
+	if dc == nil {
 		return
 	}
-	glog.V(4).Infof("StatefulSet %s/%s updated, %+v -> %+v.", ns, setName, oldSet.Spec, curSet.Spec)
-	tcc.enqueueTidbCluster(tc)
+	klog.V(4).Infof("StatefulSet %s/%s updated, DMCluster: %s/%s", ns, setName, ns, dc.Name)
+	dcc.enqueueDMCluster(dc)
 }
 
-// deleteStatefulSet enqueues the tidbcluster for the statefulset accounting for deletion tombstones.
-func (tcc *Controller) deleteStatefulSet(obj interface{}) {
+// deleteStatefulSet enqueues the dmcluster for the statefulset accounting for deletion tombstones.
+func (dcc *Controller) deleteStatefulSet(obj interface{}) {
 	set, ok := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
 	setName := set.GetName()
@@ -359,19 +356,19 @@ func (tcc *Controller) deleteStatefulSet(obj interface{}) {
 		}
 	}
 
-	// If it has a TidbCluster, that's all that matters.
-	tc := tcc.resolveTidbClusterFromSet(ns, set)
-	if tc == nil {
+	// If it has a DMCluster, that's all that matters.
+	dc := dcc.resolveDMClusterFromSet(ns, set)
+	if dc == nil {
 		return
 	}
-	glog.V(4).Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
-	tcc.enqueueTidbCluster(tc)
+	klog.V(4).Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
+	dcc.enqueueDMCluster(dc)
 }
 
-// resolveTidbClusterFromSet returns the TidbCluster by a StatefulSet,
-// or nil if the StatefulSet could not be resolved to a matching TidbCluster
+// resolveDMClusterFromSet returns the DMCluster by a StatefulSet,
+// or nil if the StatefulSet could not be resolved to a matching DMCluster
 // of the correct Kind.
-func (tcc *Controller) resolveTidbClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.TidbCluster {
+func (dcc *Controller) resolveDMClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.DMCluster {
 	controllerRef := metav1.GetControllerOf(set)
 	if controllerRef == nil {
 		return nil
@@ -379,17 +376,26 @@ func (tcc *Controller) resolveTidbClusterFromSet(namespace string, set *apps.Sta
 
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
-	if controllerRef.Kind != controllerKind.Kind {
+	if controllerRef.Kind != controller.DMControllerKind.Kind {
 		return nil
 	}
-	tc, err := tcc.tcLister.TidbClusters(namespace).Get(controllerRef.Name)
+	dc, err := dcc.dcLister.DMClusters(namespace).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}
-	if tc.UID != controllerRef.UID {
+	if dc.UID != controllerRef.UID {
 		// The controller we found with this Name is not the same one that the
 		// ControllerRef points to.
 		return nil
 	}
-	return tc
+	return dc
+}
+
+func clusterVersionLessThan2(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return true, err
+	}
+
+	return v.Major() < 2, nil
 }
