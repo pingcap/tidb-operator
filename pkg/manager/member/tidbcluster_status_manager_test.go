@@ -106,8 +106,7 @@ func newFakeTidbClusterStatusManager() (*TidbClusterStatusManager, kubernetes.In
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, 0)
 	scalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
 	scalerInder := scalerInformer.Informer().GetIndexer()
-	tikvGroupInformer := informerFactory.Pingcap().V1alpha1().TiKVGroups()
-	return NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()), kubeCli, cli, scalerInder
+	return NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()), kubeCli, cli, scalerInder
 }
 
 func newTidbClusterAutoScaler(tc *v1alpha1.TidbCluster) *v1alpha1.TidbClusterAutoScaler {

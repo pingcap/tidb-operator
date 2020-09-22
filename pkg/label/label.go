@@ -62,6 +62,9 @@ const (
 	// BackupProtectionFinalizer is the name of finalizer on backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
+	// AutoScalingGroupLabelKey describes the autoscaling group of the TiDB
+	AutoScalingGroupLabelKey = "tidb.pingcap.com/autoscaling-group"
+
 	// High availability is realized based on the topology
 	AnnHATopologyKey = "pingcap.com/ha-topology-key"
 
@@ -455,8 +458,4 @@ func (l Label) IsManagedByTiDBOperator() bool {
 
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
-}
-
-func (l Label) IsGroupPod() bool {
-	return l[NameLabelKey] == "tidb-cluster-group"
 }
