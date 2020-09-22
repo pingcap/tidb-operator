@@ -45,6 +45,9 @@ TiDB Operator manages [TiDB](https://github.com/pingcap/tidb) clusters on [Kuber
 
     Automatically deploy Prometheus, Grafana for TiDB cluster monitoring.
 
+- __Heterogeneous cluster__
+
+    Users can deploy a heterogeneous cluster join existing cluster.
 ## Quick Start
 
 You can follow our [Get Started](https://docs.pingcap.com/tidb-in-kubernetes/stable/get-started) guide to quickly start a testing Kubernetes cluster and play with TiDB Operator on your own machine.
