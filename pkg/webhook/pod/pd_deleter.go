@@ -16,7 +16,6 @@ package pod
 import (
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/label"
 	pdutil "github.com/pingcap/tidb-operator/pkg/manager/member"
 	operatorUtils "github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/webhook/util"
@@ -28,7 +27,6 @@ import (
 )
 
 func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admission.AdmissionResponse {
-
 	name := payload.pod.Name
 	namespace := payload.pod.Namespace
 	ordinal, err := operatorUtils.GetOrdinalFromPodName(name)
@@ -39,19 +37,6 @@ func (pc *PodAdmissionControl) admitDeletePdPods(payload *admitPayload) *admissi
 	if !ok {
 		klog.V(4).Infof("pd pod[%s/%s]'s controller is not tidbcluster, admit to be deleted", namespace, name)
 		return util.ARSuccess()
-	}
-
-	// If the pd pod is deleted by restarter, it is necessary to check former pd restart status
-	if _, exist := payload.pod.Annotations[label.AnnPodDeferDeleting]; exist {
-		existed, err := checkFormerPodRestartStatus(pc.kubeCli, v1alpha1.PDMemberType, payload, ordinal)
-		if err != nil {
-			return util.ARFail(err)
-		}
-		if existed {
-			return &admission.AdmissionResponse{
-				Allowed: false,
-			}
-		}
 	}
 
 	isInOrdinal, err := operatorUtils.IsPodOrdinalNotExceedReplicas(payload.pod, payload.ownerStatefulSet)
