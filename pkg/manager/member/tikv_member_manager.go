@@ -61,6 +61,7 @@ type tikvMemberManager struct {
 	setLister                    v1.StatefulSetLister
 	svcLister                    corelisters.ServiceLister
 	podLister                    corelisters.PodLister
+	cmLister                     corelisters.ConfigMapLister
 	nodeLister                   corelisters.NodeLister
 	autoFailover                 bool
 	tikvFailover                 Failover
@@ -79,6 +80,7 @@ func NewTiKVMemberManager(
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister,
 	nodeLister corelisters.NodeLister,
 	autoFailover bool,
 	tikvFailover Failover,
@@ -88,6 +90,7 @@ func NewTiKVMemberManager(
 	kvmm := tikvMemberManager{
 		pdControl:    pdControl,
 		podLister:    podLister,
+		cmLister:     cmLister,
 		nodeLister:   nodeLister,
 		setControl:   setControl,
 		svcControl:   svcControl,
@@ -283,16 +286,16 @@ func (tkmm *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiKVMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
-	return tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
+	updateConfigMapIfNeed(tkmm.cmLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	return tkmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewServiceForTidbCluster(tc *v1alpha1.TidbCluster, svcConfig SvcConfig) *corev1.Service {
@@ -620,11 +623,6 @@ func getTikVConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 	}
 
-	if tc.BaseTiKVSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
-	}
 	return cm, nil
 }
 

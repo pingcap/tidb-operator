@@ -49,6 +49,7 @@ type ticdcMemberManager struct {
 	stsLister                     appslisters.StatefulSetLister
 	svcLister                     corelisters.ServiceLister
 	podLister                     corelisters.PodLister
+	cmLister                      corelisters.ConfigMapLister
 	svcControl                    controller.ServiceControlInterface
 	stsControl                    controller.StatefulSetControlInterface
 	ticdcStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
@@ -62,6 +63,7 @@ func NewTiCDCMemberManager(
 	stsLister appslisters.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister,
 	svcControl controller.ServiceControlInterface,
 	stsControl controller.StatefulSetControlInterface) manager.Manager {
 	tcmm := &ticdcMemberManager{
@@ -71,6 +73,7 @@ func NewTiCDCMemberManager(
 		stsLister:    stsLister,
 		svcLister:    svcLister,
 		podLister:    podLister,
+		cmLister:     cmLister,
 		svcControl:   svcControl,
 		stsControl:   stsControl,
 	}

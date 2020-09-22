@@ -44,7 +44,7 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
 	}
 	if gconfig.Config == nil {
-		gconfig.Config = map[string]interface{}{}
+		gconfig.Config = new(map[string]interface{})
 	}
 
 	config := new(v1alpha1.TiFlashConfig)
@@ -100,7 +100,7 @@ func buildSidecarContainer(name, path, image string,
 func getTiFlashConfig(tc *v1alpha1.TidbCluster) (*config.GenericConfig, error) {
 	gconfig := tc.Spec.TiFlash.GenericConfig.DeepCopy()
 	if gconfig.Config == nil {
-		gconfig.Config = map[string]interface{}{}
+		gconfig.Config = new(map[string]interface{})
 	}
 
 	if v := gconfig.Get("config.path"); v == nil {

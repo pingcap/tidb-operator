@@ -48,6 +48,7 @@ type pumpMemberManager struct {
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
+	cmLister     corelisters.ConfigMapLister
 }
 
 // NewPumpMemberManager returns a controller to reconcile pump clusters
@@ -58,7 +59,8 @@ func NewPumpMemberManager(
 	cmControl controller.ConfigMapControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister) manager.Manager {
+	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister) manager.Manager {
 	return &pumpMemberManager{
 		setControl,
 		svcControl,
@@ -67,6 +69,7 @@ func NewPumpMemberManager(
 		setLister,
 		svcLister,
 		podLister,
+		cmLister,
 	}
 }
 
@@ -193,7 +196,6 @@ func (pmm *pumpMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) erro
 }
 
 func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
-
 	basePumpSpec, createPump := tc.BasePumpSpec()
 	if !createPump {
 		return nil, nil
@@ -206,17 +208,15 @@ func (pmm *pumpMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *appsv
 	// In-place update should pick the name of currently in-use configmap if exists to avoid rolling-update if:
 	//   - user switch strategy from RollingUpdate to In-place
 	//   - the statefulset and configmap is created by other clients (e.g. helm)
-	if set != nil && basePumpSpec.ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PumpMemberName(tc.Name))
 		})
-		// find an in-use configmap, will update it in-place
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
-	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
+	updateConfigMapIfNeed(pmm.cmLister, basePumpSpec.ConfigUpdateStrategy(), inUseName, newCm)
+	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewPumpHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -256,9 +256,9 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 
 	if tc.IsTLSClusterEnabled() {
 		if spec.Config == nil {
-			spec.Config = make(map[string]interface{})
+			spec.Config = new(map[string]interface{})
 		}
-		securityMap := spec.Config["security"]
+		securityMap := (*spec.Config)["security"]
 		security := map[string]interface{}{}
 		if securityMap != nil {
 			security = securityMap.(map[string]interface{})
@@ -267,7 +267,7 @@ func getNewPumpConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		security["ssl-ca"] = path.Join(pumpCertPath, corev1.ServiceAccountRootCAKey)
 		security["ssl-cert"] = path.Join(pumpCertPath, corev1.TLSCertKey)
 		security["ssl-key"] = path.Join(pumpCertPath, corev1.TLSPrivateKeyKey)
-		spec.Config["security"] = security
+		(*spec.Config)["security"] = security
 	}
 
 	confText, err := MarshalTOML(spec.Config)
@@ -487,7 +487,7 @@ func getPumpLogLevel(tc *v1alpha1.TidbCluster) string {
 		return defaultPumpLogLevel
 	}
 
-	raw, ok := config["log-level"]
+	raw, ok := (*config)["log-level"]
 	if !ok {
 		return defaultPumpLogLevel
 	}

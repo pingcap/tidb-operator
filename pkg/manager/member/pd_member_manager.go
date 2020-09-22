@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/label"
@@ -31,7 +32,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	v1 "k8s.io/client-go/listers/apps/v1"
@@ -59,6 +59,7 @@ type pdMemberManager struct {
 	setLister    v1.StatefulSetLister
 	svcLister    corelisters.ServiceLister
 	podLister    corelisters.PodLister
+	cmLister     corelisters.ConfigMapLister
 	epsLister    corelisters.EndpointsLister
 	pvcLister    corelisters.PersistentVolumeClaimLister
 	pdScaler     Scaler
@@ -76,6 +77,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister,
 	epsLister corelisters.EndpointsLister,
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pdScaler Scaler,
@@ -91,6 +93,7 @@ func NewPDMemberManager(pdControl pdapi.PDControlInterface,
 		setLister,
 		svcLister,
 		podLister,
+		cmLister,
 		epsLister,
 		pvcLister,
 		pdScaler,
@@ -411,10 +414,7 @@ func (pmm *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 	return nil
 }
 
-var preCheckConfigMapEqualFn = func(existing, desired runtime.Object) {
-	old := existing.(*corev1.ConfigMap)
-	new := desired.(*corev1.ConfigMap)
-
+func updateConfigMap(old, new *corev1.ConfigMap) error {
 	tomlField := []string{"config-file" /*pd,tikv,tidb */, "pump-config", "config_templ.toml" /*tiflash*/, "proxy_templ.toml" /*tiflash*/}
 
 	for _, k := range tomlField {
@@ -427,38 +427,87 @@ var preCheckConfigMapEqualFn = func(existing, desired runtime.Object) {
 
 		equal, err := TOMLEqual([]byte(oldData), []byte(newData))
 		if err != nil {
-			klog.Warningf("compare %s and %s failed: %v", oldData, newData, err)
-		} else {
-			klog.V(3).Infof("compare %s and %s %v", oldData, newData, equal)
+			return perrors.Annotatef(err, "compare %s and %s failed: %v", oldData, newData)
 		}
 
-		if err == nil && equal {
+		klog.V(3).Infof("compare %s and %s %v", oldData, newData, equal)
+
+		if equal {
 			new.Data[k] = oldData
 		}
 	}
+
+	return nil
+}
+
+func updateConfigMapIfNeed(
+	cmLister corelisters.ConfigMapLister,
+	configUpdateStrategy v1alpha1.ConfigUpdateStrategy,
+	inUseName string,
+	desired *corev1.ConfigMap,
+) error {
+	if configUpdateStrategy == v1alpha1.ConfigUpdateStrategyInPlace {
+		if inUseName != "" {
+			desired.Name = inUseName
+		}
+		return nil
+	}
+
+	if configUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate {
+		existing, err := cmLister.ConfigMaps(desired.Namespace).Get(inUseName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				AddConfigMapDigestSuffix(desired)
+				return nil
+			}
+
+			return perrors.AddStack(err)
+		}
+
+		err = updateConfigMap(existing, desired)
+		if err != nil {
+			return err
+		}
+
+		AddConfigMapDigestSuffix(desired)
+
+		klog.V(3).Infof("old: %+v, new: %+v", existing, desired)
+		return nil
+	}
+
+	return perrors.Errorf("unknown config update strategy: %v", configUpdateStrategy)
 }
 
 // syncPDConfigMap syncs the configmap of PD
 func (pmm *pdMemberManager) syncPDConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-
 	// For backward compatibility, only sync tidb configmap when .pd.config is non-nil
 	if tc.Spec.PD.Config == nil {
+		klog.V(3).Info("no pd config")
 		return nil, nil
 	}
 	newCm, err := getPDConfigMap(tc)
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.BasePDSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.PDMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
+		klog.V(3).Infof("get old pd config map name: %s", inUseName)
 	}
 
-	return pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
+	err = updateConfigMapIfNeed(pmm.cmLister, tc.BasePDSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
+
+	after, err := pmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
+
+	klog.V(3).Infof("before update: %+v, after: %+v", newCm, after)
+
+	return after, err
 }
 
 func (pmm *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -844,11 +893,6 @@ func getPDConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			"config-file":    string(confText),
 			"startup-script": startScript,
 		},
-	}
-	if tc.BasePDSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
 	}
 	return cm, nil
 }

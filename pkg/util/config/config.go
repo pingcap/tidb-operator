@@ -28,11 +28,11 @@ import (
 // Note: un-exported field inside struct won't be copied and should not be included in config
 // GenericConfig is a wrapper of go interface{} that makes deepcopy-gen happy
 type GenericConfig struct {
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config *map[string]interface{} `json:"config,omitempty"`
 }
 
 func New(o map[string]interface{}) GenericConfig {
-	return GenericConfig{o}
+	return GenericConfig{&o}
 }
 
 func FromJsonObject(x interface{}) (GenericConfig, error) {
@@ -115,7 +115,7 @@ func (c *GenericConfig) UnmarshalToml(v interface{}) error {
 }
 
 func (c *GenericConfig) Set(key string, value interface{}) {
-	set(c.Config, key, value)
+	set(*c.Config, key, value)
 }
 
 func (c *GenericConfig) Get(key string) (value *Value) {
@@ -123,7 +123,7 @@ func (c *GenericConfig) Get(key string) (value *Value) {
 		return nil
 	}
 
-	v := get(c.Config, key)
+	v := get(*c.Config, key)
 	if v == nil {
 		return nil
 	}

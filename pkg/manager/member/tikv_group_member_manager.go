@@ -261,7 +261,7 @@ func (tgm *tikvGroupMemberManager) syncStatefulSetForTiKVGroup(tg *v1alpha1.TiKV
 func (tgm *tikvGroupMemberManager) syncTiKVConfigMap(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
 	// If config is undefined for TiKVGroup, we will directly set it as empty
 	if tg.Spec.Config == nil {
-		tg.Spec.Config = map[string]interface{}{}
+		tg.Spec.Config = new(map[string]interface{})
 	}
 
 	newCm, err := getTikVConfigMapForTiKVGroup(tg, tc)
@@ -439,7 +439,7 @@ func newServiceForTiKVGroup(tg *v1alpha1.TiKVGroup, svcName string) *corev1.Serv
 // TODO: add unit test
 func getTikVConfigMapForTiKVGroup(tg *v1alpha1.TiKVGroup, tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	if tg.Spec.Config == nil {
-		tg.Spec.Config = map[string]interface{}{}
+		tg.Spec.Config = new(map[string]interface{})
 	}
 	version, err := semver.NewVersion(tc.TiKVVersion())
 	if err != nil {

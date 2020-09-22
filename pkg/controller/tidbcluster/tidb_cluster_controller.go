@@ -91,6 +91,7 @@ func NewController(
 	pvInformer := kubeInformerFactory.Core().V1().PersistentVolumes()
 	scInformer := kubeInformerFactory.Storage().V1().StorageClasses()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
+	cmInformer := kubeInformerFactory.Core().V1().ConfigMaps()
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	secretInformer := kubeInformerFactory.Core().V1().Secrets()
 	scalerInformer := informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
@@ -134,6 +135,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
 				pdScaler,
@@ -149,6 +151,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				nodeInformer.Lister(),
 				autoFailover,
 				tikvFailover,
@@ -164,6 +167,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				secretInformer.Lister(),
 				tidbUpgrader,
 				autoFailover,
@@ -209,6 +213,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 			),
 			mm.NewTiFlashMemberManager(
 				pdControl,
@@ -218,6 +223,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				nodeInformer.Lister(),
 				autoFailover,
 				tiflashFailover,
@@ -231,6 +237,7 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				cmInformer.Lister(),
 				svcControl,
 				setControl,
 			),
@@ -303,6 +310,7 @@ func (tcc *Controller) processNextWorkItem() bool {
 			klog.Infof("TidbCluster: %v, still need sync: %v, requeuing", key.(string), err)
 		} else {
 			utilruntime.HandleError(perrors.Annotatef(err, "TidbCluster '%v' sync failed requeuing", key.(string)))
+			klog.Errorf("%+v", err)
 		}
 		tcc.queue.AddRateLimited(key)
 	} else {
@@ -320,7 +328,7 @@ func (tcc *Controller) sync(key string) error {
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		return err
+		return perrors.AddStack(err)
 	}
 	tc, err := tcc.tcLister.TidbClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
@@ -328,7 +336,7 @@ func (tcc *Controller) sync(key string) error {
 		return nil
 	}
 	if err != nil {
-		return err
+		return perrors.AddStack(err)
 	}
 
 	return tcc.syncTidbCluster(tc.DeepCopy())

@@ -54,6 +54,7 @@ type tiflashMemberManager struct {
 	setLister                       v1.StatefulSetLister
 	svcLister                       corelisters.ServiceLister
 	podLister                       corelisters.PodLister
+	cmLister                        corelisters.ConfigMapLister
 	nodeLister                      corelisters.NodeLister
 	autoFailover                    bool
 	tiflashFailover                 Failover
@@ -71,6 +72,7 @@ func NewTiFlashMemberManager(
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	cmLister corelisters.ConfigMapLister,
 	nodeLister corelisters.NodeLister,
 	autoFailover bool,
 	tiflashFailover Failover,
@@ -79,6 +81,7 @@ func NewTiFlashMemberManager(
 	kvmm := tiflashMemberManager{
 		pdControl:       pdControl,
 		podLister:       podLister,
+		cmLister:        cmLister,
 		nodeLister:      nodeLister,
 		setControl:      setControl,
 		svcControl:      svcControl,
@@ -267,16 +270,16 @@ func (tfmm *tiflashMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *a
 	if err != nil {
 		return nil, err
 	}
-	if set != nil && tc.BaseTiFlashSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyInPlace {
-		inUseName := FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
+
+	var inUseName string
+	if set != nil {
+		inUseName = FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
 			return strings.HasPrefix(name, controller.TiFlashMemberName(tc.Name))
 		})
-		if inUseName != "" {
-			newCm.Name = inUseName
-		}
 	}
 
-	return tfmm.typedControl.CreateOrUpdateConfigMap(tc, newCm, preCheckConfigMapEqualFn)
+	updateConfigMapIfNeed(tfmm.cmLister, tc.BaseTiFlashSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	return tfmm.typedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
 func getNewHeadlessService(tc *v1alpha1.TidbCluster) *corev1.Service {
@@ -591,11 +594,11 @@ func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	configText, err := MarshalTOML(config.Config["config"])
+	configText, err := MarshalTOML((*config.Config)["config"])
 	if err != nil {
 		return nil, err
 	}
-	proxyText, err := MarshalTOML(config.Config["proxy"])
+	proxyText, err := MarshalTOML((*config.Config)["proxy"])
 	if err != nil {
 		return nil, err
 	}
@@ -613,12 +616,6 @@ func getTiFlashConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 			"config_templ.toml": string(configText),
 			"proxy_templ.toml":  string(proxyText),
 		},
-	}
-
-	if tc.BaseTiFlashSpec().ConfigUpdateStrategy() == v1alpha1.ConfigUpdateStrategyRollingUpdate {
-		if err := AddConfigMapDigestSuffix(cm); err != nil {
-			return nil, err
-		}
 	}
 
 	return cm, nil
