@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/deps"
+
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -45,10 +47,7 @@ import (
 
 // Controller controls tidbclusters.
 type Controller struct {
-	// kubernetes client interface
-	kubeClient kubernetes.Interface
-	// operator client interface
-	cli versioned.Interface
+	deps *deps.Dependencies
 	// control returns an interface capable of syncing a tidb cluster.
 	// Abstracted out for testing.
 	control ControlInterface
@@ -71,11 +70,6 @@ func NewController(
 	genericCli client.Client,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	autoFailover bool,
-	pdFailoverPeriod time.Duration,
-	tikvFailoverPeriod time.Duration,
-	tidbFailoverPeriod time.Duration,
-	tiflashFailoverPeriod time.Duration,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
 	eventBroadcaster.StartLogging(klog.V(2).Infof)
@@ -120,8 +114,6 @@ func NewController(
 	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	tcc := &Controller{
-		kubeClient: kubeCli,
-		cli:        cli,
 		control: NewDefaultTidbClusterControl(
 			tcControl,
 			mm.NewPDMemberManager(

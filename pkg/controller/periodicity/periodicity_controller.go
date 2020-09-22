@@ -60,7 +60,7 @@ func NewController(
 
 }
 
-func (c *Controller) Run(stopCh <-chan struct{}) {
+func (c *Controller) Run(_ int, stopCh <-chan struct{}) {
 	klog.Infof("Staring periodicity controller")
 	defer klog.Infof("Shutting down periodicity controller")
 	wait.Until(c.run, time.Minute, stopCh)
