@@ -61,8 +61,6 @@ type PodAdmissionControl struct {
 	serviceAccounts sets.String
 	// tc lister
 	tcLister v1alpha1listers.TidbClusterLister
-	// tikv group lister
-	tikvGroupLister v1alpha1listers.TiKVGroupLister
 	// recorder to send event
 	recorder record.EventRecorder
 }
@@ -309,40 +307,9 @@ func (pc *PodAdmissionControl) processAdmitDeleteTiKVPod(pod *core.Pod, ownerSta
 			kind:      v1alpha1.TiDBClusterKind,
 		}
 		return pc.admitDeleteTiKVPods(payload)
-	} else if l.IsGroupPod() {
-		tgName := controllerName
-		tg, err := pc.tikvGroupLister.TiKVGroups(namespace).Get(tgName)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				klog.Infof("tikvgroup[%s/%s] had been deleted,admit to delete pod[%s/%s]", namespace, tgName, namespace, name)
-				return util.ARSuccess()
-			}
-			klog.Errorf("failed get tikvgroup[%s/%s],refuse to delete pod[%s/%s]", namespace, tgName, namespace, name)
-			return util.ARFail(err)
-		}
-		ownerTcName := tg.Spec.ClusterName
-		tc, err := pc.tcLister.TidbClusters(namespace).Get(ownerTcName)
-		if err != nil {
-			// Event if the ownerTC is deleted, we won't delete the tikvgroup pod unless its owner controller is deleted
-			klog.Errorf("failed get tc[%s/%s],refuse to delete pod[%s/%s]", namespace, ownerTcName, namespace, name)
-			return util.ARFail(err)
-		}
-		if tc.IsHeterogeneous() {
-			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), tc.Spec.Cluster.Name, tc.IsTLSClusterEnabled())
-		} else {
-			payload.pdClient = pc.pdControl.GetPDClient(pdapi.Namespace(namespace), ownerTcName, tc.IsTLSClusterEnabled())
-		}
-
-		payload.controller = tg
-		payload.controllerDesc = controllerDesc{
-			name:      tgName,
-			namespace: namespace,
-			kind:      v1alpha1.TiKVGroupKind,
-		}
-		return pc.admitDeleteTiKVPods(payload)
 	}
 
-	klog.Infof("tikv pod[%s/%s] is not managed by tidbcluster or tikvgroup, admit to be deleted", namespace, name)
+	klog.Infof("tikv pod[%s/%s] is not managed by tidbcluster, admit to be deleted", namespace, name)
 	return util.ARSuccess()
 }
 
@@ -385,22 +352,6 @@ func (pc *PodAdmissionControl) admintCreatePods(ar *admission.AdmissionRequest) 
 			klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
 			return util.ARFail(err)
 		}
-	} else if l.IsGroupPod() {
-		tgName, exist := pod.Labels[label.InstanceLabelKey]
-		if !exist {
-			return util.ARSuccess()
-		}
-		tg, err := pc.tikvGroupLister.TiKVGroups(namespace).Get(tgName)
-		if err != nil {
-			klog.Errorf("failed get tikvgroup[%s/%s],refuse to create pod[%s/%s],%v", namespace, tgName, namespace, name, err)
-			return util.ARFail(err)
-		}
-		tcName := tg.Spec.ClusterName
-		ownerTc, err = pc.tcLister.TidbClusters(namespace).Get(tcName)
-		if err != nil {
-			klog.Errorf("failed get tc[%s/%s],refuse to create pod[%s/%s],%v", namespace, tcName, namespace, name, err)
-			return util.ARFail(err)
-		}
 	} else {
 		klog.Infof("tikv pod[%s/%s] has unknown controller, admit to create", namespace, name)
 		return util.ARSuccess()
@@ -431,7 +382,6 @@ func (a *PodAdmissionControl) initialize(cli versioned.Interface, kubeCli kubern
 
 	// initialize listers
 	a.tcLister = informerFactory.Pingcap().V1alpha1().TidbClusters().Lister()
-	a.tikvGroupLister = informerFactory.Pingcap().V1alpha1().TiKVGroups().Lister()
 
 	// Start informer factories after all controller are initialized.
 	informerFactory.Start(stopCh)
