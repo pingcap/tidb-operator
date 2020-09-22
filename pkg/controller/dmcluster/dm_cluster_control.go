@@ -46,7 +46,6 @@ func NewDefaultDMClusterControl(
 	orphanPodsCleaner member.OrphanPodsCleaner,
 	pvcCleaner member.PVCCleanerInterface,
 	pvcResizer member.PVCResizerInterface,
-	podRestarter member.PodRestarter,
 	conditionUpdater DMClusterConditionUpdater,
 	recorder record.EventRecorder) ControlInterface {
 	return &defaultDMClusterControl{
@@ -57,7 +56,6 @@ func NewDefaultDMClusterControl(
 		//metaManager,
 		orphanPodsCleaner,
 		pvcCleaner,
-		podRestarter,
 		pvcResizer,
 		conditionUpdater,
 		recorder,
@@ -72,7 +70,6 @@ type defaultDMClusterControl struct {
 	//metaManager       manager.DMManager
 	orphanPodsCleaner member.OrphanPodsCleaner
 	pvcCleaner        member.PVCCleanerInterface
-	podRestarter      member.PodRestarter
 	pvcResizer        member.PVCResizerInterface
 	conditionUpdater  DMClusterConditionUpdater
 	recorder          record.EventRecorder
@@ -136,11 +133,6 @@ func (dcc *defaultDMClusterControl) updateDMCluster(dc *v1alpha1.DMCluster) erro
 		for podName, reason := range skipReasons {
 			klog.Infof("pod %s of cluster %s/%s is skipped, reason %q", podName, dc.Namespace, dc.Name, reason)
 		}
-	}
-
-	// sync all the pods which need to be restarted
-	if err := dcc.podRestarter.Sync(dc); err != nil {
-		return err
 	}
 
 	// works that should do to making the dm-master cluster current state match the desired state:

@@ -117,7 +117,6 @@ func NewController(
 	tikvUpgrader := mm.NewTiKVUpgrader(pdControl, podControl, podInformer.Lister())
 	tiflashUpgrader := mm.NewTiFlashUpgrader(pdControl, podControl, podInformer.Lister())
 	tidbUpgrader := mm.NewTiDBUpgrader(tidbControl, podInformer.Lister())
-	podRestarter := mm.NewPodRestarter(kubeCli, podInformer.Lister())
 
 	tcc := &Controller{
 		kubeClient: kubeCli,
@@ -235,7 +234,6 @@ func NewController(
 			),
 			mm.NewTidbDiscoveryManager(typedControl),
 			mm.NewTidbClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
-			podRestarter,
 			&tidbClusterConditionUpdater{},
 			recorder,
 		),
