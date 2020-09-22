@@ -1,0 +1,99 @@
+// Copyright 2020 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package autoscaler
+
+import (
+	"fmt"
+
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// The TidbCluster for the external query will be "<original-tcname>-component-external"
+const externalTcNamePattern = "%s-%s-external"
+
+func (am *autoScalerManager) syncExternalResult(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
+	externalTcName := fmt.Sprintf(externalTcNamePattern, tc.ClusterName, component.String())
+	externalTc, err := am.tcLister.TidbClusters(tc.Namespace).Get(externalTcName)
+	if errors.IsNotFound(err) {
+		if targetReplicas > 0 {
+			return am.createExternalAutoCluster(tc, externalTcName, tac, component, targetReplicas)
+		}
+	} else {
+		return err
+	}
+
+	if targetReplicas <= 0 {
+		return am.cli.PingcapV1alpha1().TidbClusters(externalTc.Namespace).Delete(externalTc.Name, nil)
+	}
+
+	return am.updateExternalAutoCluster(externalTc, component, targetReplicas)
+}
+
+func (am *autoScalerManager) createExternalAutoCluster(tc *v1alpha1.TidbCluster, externalTcName string, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType, targetReplicas int32) error {
+	autoTc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      externalTcName,
+			Namespace: tc.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetTiDBClusterAutoscalerOwnerRef(tac),
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			AutoScaler: &v1alpha1.TidbClusterAutoScalerRef{
+				Name:      tac.Name,
+				Namespace: tac.Namespace,
+			},
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			Cluster: &v1alpha1.TidbClusterRef{
+				Name:      tc.Name,
+				Namespace: tc.Namespace,
+			},
+		},
+	}
+
+	switch component {
+	case v1alpha1.TiDBMemberType:
+		autoTc.Spec.TiDB = tc.Spec.TiDB.DeepCopy()
+		autoTc.Spec.TiDB.Replicas = targetReplicas
+	case v1alpha1.TiKVMemberType:
+		autoTc.Spec.TiKV = tc.Spec.TiKV.DeepCopy()
+		autoTc.Spec.TiKV.Replicas = targetReplicas
+	}
+
+	_, err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
+	return err
+}
+
+func (am *autoScalerManager) updateExternalAutoCluster(externalTc *v1alpha1.TidbCluster, component v1alpha1.MemberType, targetReplicas int32) error {
+	updated := externalTc.DeepCopy()
+	switch component {
+	case v1alpha1.TiDBMemberType:
+		if updated.Spec.TiDB.Replicas == targetReplicas {
+			return nil
+		}
+		updated.Spec.TiDB.Replicas = targetReplicas
+	case v1alpha1.TiKVMemberType:
+		if updated.Spec.TiKV.Replicas == targetReplicas {
+			return nil
+		}
+		updated.Spec.TiKV.Replicas = targetReplicas
+	}
+
+	_, err := am.tcControl.UpdateTidbCluster(updated, &updated.Status, &externalTc.Status)
+	return err
+}

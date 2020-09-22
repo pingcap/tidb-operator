@@ -102,42 +102,24 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 }
 
 func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
+	var targetReplicas int32
+	var err error
 	switch component {
 	case v1alpha1.TiDBMemberType:
-		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
+		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
-
-		if tc.Spec.TiDB.Replicas == targetReplicas {
-			return nil
-		}
-
-		updated := tc.DeepCopy()
-		updated.Spec.TiDB.Replicas = targetReplicas
-		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
 			return err
 		}
 	case v1alpha1.TiKVMemberType:
-		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.External.Endpoint, am.kubecli)
+		targetReplicas, err = query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.External.Endpoint, am.kubecli)
 		if err != nil {
 			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
-			return err
-		}
-
-		if tc.Spec.TiKV.Replicas == targetReplicas {
-			return nil
-		}
-
-		updated := tc.DeepCopy()
-		updated.Spec.TiKV.Replicas = targetReplicas
-		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return am.syncExternalResult(tc, tac, component, targetReplicas)
 }
 
 func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
