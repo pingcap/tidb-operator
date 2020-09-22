@@ -67,11 +67,6 @@ func (gs *generalScaler) deleteDeferDeletingPVC(controller runtime.Object,
 		l = label.New().Instance(meta.GetName())
 		l[label.AnnPodNameKey] = podName
 		kind = v1alpha1.TiDBClusterKind
-	case *v1alpha1.TiKVGroup:
-		podName = fmt.Sprintf("%s-%s-group-%d", meta.GetName(), memberType, ordinal)
-		l = label.NewGroup().Instance(meta.GetName())
-		// TODO: support sync meta info into TiKVGroup resources (pod/pvc)
-		kind = v1alpha1.TiKVGroupKind
 	case *v1alpha1.DMCluster:
 		podName = ordinalPodName(memberType, meta.GetName(), ordinal)
 		l = label.NewDM().Instance(meta.GetName())
