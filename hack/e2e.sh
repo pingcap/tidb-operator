@@ -308,9 +308,6 @@ kubeadmConfigPatches:
 - |
   kind: ClusterConfiguration
   apiVersion: kubeadm.k8s.io/v1beta1
-  apiServer:
-    extraArgs:
-      v: "4"
   scheduler:
     extraArgs:
       v: "4"
@@ -320,9 +317,6 @@ kubeadmConfigPatches:
 - |
   kind: ClusterConfiguration
   apiVersion: kubeadm.k8s.io/v1beta2
-  apiServer:
-    extraArgs:
-      v: "4"
   scheduler:
     extraArgs:
       v: "4"
@@ -333,8 +327,6 @@ kubeadmConfigPatches:
   # backward compatibility for Kubernetes 1.12 and prior versions
   kind: ClusterConfiguration
   apiVersion: kubeadm.k8s.io/v1alpha3
-  apiServerExtraArgs:
-    v: "4"
   schedulerExtraArgs:
     v: "4"
   controllerManagerExtraArgs:
