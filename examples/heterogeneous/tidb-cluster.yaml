@@ -6,11 +6,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-<<<<<<< HEAD
-  version: v4.0.6
-=======
-  version: v4.0.3
->>>>>>> 23d8fa3... TidbCluster controller update for cluster reference change (#3003)
+  version: v4.0.4
   timezone: UTC
   pvReclaimPolicy: Delete
   imagePullPolicy: IfNotPresent

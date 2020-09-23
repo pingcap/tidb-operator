@@ -84,27 +84,35 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 		return err
 	}
 	// patch PD PVCs
-	if storageRequest, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
-		err = p.patchPVCs(tc.GetNamespace(), selector.Add(*pdRequirement), storageRequest, "")
-		if err != nil {
-			return err
+	if tc.Spec.PD != nil {
+		if storageRequest, ok := tc.Spec.PD.Requests[corev1.ResourceStorage]; ok {
+			err = p.patchPVCs(tc.GetNamespace(), selector.Add(*pdRequirement), storageRequest, "")
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	// patch TiKV PVCs
-	if storageRequest, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
-		err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tikvRequirement), storageRequest, "")
-		if err != nil {
-			return err
+	if tc.Spec.TiKV != nil {
+		if storageRequest, ok := tc.Spec.TiKV.Requests[corev1.ResourceStorage]; ok {
+			err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tikvRequirement), storageRequest, "")
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	// patch TiFlash PVCs
 	if tc.Spec.TiFlash != nil {
-		for i, claim := range tc.Spec.TiFlash.StorageClaims {
-			if storageRequest, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
-				prefix := fmt.Sprintf("data%d", i)
-				err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tiflashRequirement), storageRequest, prefix)
-				if err != nil {
-					return err
+		if tc.Spec.TiFlash != nil {
+			for i, claim := range tc.Spec.TiFlash.StorageClaims {
+				if storageRequest, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
+					prefix := fmt.Sprintf("data%d", i)
+					err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tiflashRequirement), storageRequest, prefix)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
