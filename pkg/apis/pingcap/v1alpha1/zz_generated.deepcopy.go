@@ -5313,6 +5313,11 @@ func (in *TiKVGCConfig) DeepCopyInto(out *TiKVGCConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableCompactionFilterSkipVersionCheck != nil {
+		in, out := &in.EnableCompactionFilterSkipVersionCheck, &out.EnableCompactionFilterSkipVersionCheck
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
