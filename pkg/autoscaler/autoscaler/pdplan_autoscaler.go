@@ -83,8 +83,18 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 }
 
 func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
-	// TODO in next PR
-	return nil
+	var errs []error
+	for _, group := range groupsToDelete {
+		deleteTc := groupTcMap[group]
+
+		// Remove cluster
+		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+	}
+	return errorutils.NewAggregate(errs)
 }
 
 func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToUpdate []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
