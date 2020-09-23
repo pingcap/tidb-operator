@@ -8529,6 +8529,8 @@ spec:
                             batch-keys:
                               format: int64
                               type: integer
+                            compaction-filter-skip-version-check:
+                              type: boolean
                             enable-compaction-filter:
                               type: boolean
                             max-write-bytes-per-sec:
@@ -11144,6 +11146,8 @@ spec:
                         batch-keys:
                           format: int64
                           type: integer
+                        compaction-filter-skip-version-check:
+                          type: boolean
                         enable-compaction-filter:
                           type: boolean
                         max-write-bytes-per-sec:
