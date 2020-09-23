@@ -63,41 +63,6 @@ roleRef:
   name: {{ .Release.Name }}:tidb-admission-auth
 ---
 
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: {{ .Release.Name }}:tidb-apiserver-auth
-  labels:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: admission-webhook
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
-rules:
-  - apiGroups: ["admission.tidb.pingcap.com"]
-    resources: ["admissionreviews", "mutatingreviews"]
-    verbs: ["create"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ .Release.Name }}:tidb:extension-apiserver-authentication-reader
-  namespace: kube-system
-  labels:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: admission-webhook
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: extension-apiserver-authentication-reader
-subjects:
-  - kind: ServiceAccount
-    name: {{ .Values.admissionWebhook.serviceAccount }}
-    namespace: {{ .Release.Namespace }}
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -116,22 +81,4 @@ subjects:
   - kind: ServiceAccount
     name: {{ .Values.admissionWebhook.serviceAccount }}
     namespace: {{ .Release.Namespace }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ .Release.Name }}:tidb-api-server-auth
-  labels:
-    app.kubernetes.io/name: {{ template "chart.name" . }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: admission-webhook
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ .Release.Name }}:tidb-apiserver-auth
-subjects:
-  - kind: User
-    name: kube-apiserver
 {{- end }}
