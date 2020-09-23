@@ -87,8 +87,6 @@ const (
 	AnnSysctlInit = "tidb.pingcap.com/sysctl-init"
 	// AnnEvictLeaderBeginTime is pod annotation key to indicate the begin time for evicting region leader
 	AnnEvictLeaderBeginTime = "tidb.pingcap.com/evictLeaderBeginTime"
-	// AnnPodDeferDeleting is pod annotation key to indicate the pod which need to be restarted
-	AnnPodDeferDeleting = "tidb.pingcap.com/pod-defer-deleting"
 	// AnnStsSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
 
