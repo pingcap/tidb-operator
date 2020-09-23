@@ -105,18 +105,17 @@ func (p *pvcResizer) Resize(tc *v1alpha1.TidbCluster) error {
 
 	// patch TiFlash PVCs
 	if tc.Spec.TiFlash != nil {
-		if tc.Spec.TiFlash != nil {
-			for i, claim := range tc.Spec.TiFlash.StorageClaims {
-				if storageRequest, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
-					prefix := fmt.Sprintf("data%d", i)
-					err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tiflashRequirement), storageRequest, prefix)
-					if err != nil {
-						return err
-					}
+		for i, claim := range tc.Spec.TiFlash.StorageClaims {
+			if storageRequest, ok := claim.Resources.Requests[corev1.ResourceStorage]; ok {
+				prefix := fmt.Sprintf("data%d", i)
+				err = p.patchPVCs(tc.GetNamespace(), selector.Add(*tiflashRequirement), storageRequest, prefix)
+				if err != nil {
+					return err
 				}
 			}
 		}
 	}
+
 	// patch Pump PVCs
 	if tc.Spec.Pump != nil {
 		if storageRequest, ok := tc.Spec.Pump.Requests[corev1.ResourceStorage]; ok {
