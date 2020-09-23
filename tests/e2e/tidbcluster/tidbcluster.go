@@ -34,7 +34,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/util/config"
 	"github.com/pingcap/tidb-operator/tests"
-	"github.com/pingcap/tidb-operator/tests/apiserver"
 	e2econfig "github.com/pingcap/tidb-operator/tests/e2e/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/framework"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/util/image"
@@ -298,15 +297,6 @@ var _ = ginkgo.Describe("[tidb-operator] TiDBCluster", func() {
 		// backup and restore
 		ginkgo.By(fmt.Sprintf("Backup %q and restore into %q", clusterFrom.ClusterName, clusterTo.ClusterName))
 		oa.BackupRestoreOrDie(&clusterFrom, &clusterTo)
-	})
-
-	ginkgo.It("Test aggregated apiserver", func() {
-		ginkgo.By(fmt.Sprintf("Starting to test apiserver, test apiserver image: %s", cfg.E2EImage))
-		framework.Logf("config: %v", config)
-		aaCtx := apiserver.NewE2eContext(ns, config, cfg.E2EImage)
-		defer aaCtx.Clean()
-		aaCtx.Setup()
-		aaCtx.Do()
 	})
 
 	ginkgo.It("Service: Sync TiDB service", func() {
