@@ -21,8 +21,5 @@ scriptdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 ${scriptdir}/generate-internal-groups.sh \
   all \
-  github.com/pingcap/tidb-operator/pkg/apiserver \
-  github.com/pingcap/tidb-operator/pkg/apiserver/apis \
-  github.com/pingcap/tidb-operator/pkg/apiserver/apis \
   "tidb.pingcap.com:v1alpha1" \
   --go-header-file=${scriptdir}/boilerplate/boilerplate.generatego.txt
