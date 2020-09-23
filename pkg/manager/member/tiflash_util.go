@@ -110,7 +110,12 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfig {
 	}
 
 	if tc.IsHeterogeneous() {
-		setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Namespace)
+		if len(tc.Spec.Cluster.Namespace) > 0 {
+			setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Spec.Cluster.Namespace)
+		} else {
+			setTiFlashConfigDefault(config, tc.Spec.Cluster.Name, tc.Name, tc.Namespace)
+		}
+
 	} else {
 		setTiFlashConfigDefault(config, "", tc.Name, tc.Namespace)
 	}

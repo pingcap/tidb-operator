@@ -308,14 +308,15 @@ func (mm *MonitorManager) syncTidbMonitorRbac(monitor *v1alpha1.TidbMonitor) (*c
 	}
 
 	role := getMonitorRole(monitor, policyRules)
-	role, err = mm.typedControl.CreateOrUpdateRole(monitor, role)
+	role, err = mm.typedControl.CreateOrUpdateClusterRole(monitor, role)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s role failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
 	}
 
 	rb := getMonitorRoleBinding(sa, role, monitor)
-	_, err = mm.typedControl.CreateOrUpdateRoleBinding(monitor, rb)
+
+	_, err = mm.typedControl.CreateOrUpdateClusterRoleBinding(monitor, rb)
 	if err != nil {
 		klog.Errorf("tm[%s/%s]'s rolebinding failed to sync,err: %v", monitor.Namespace, monitor.Name, err)
 		return nil, err
