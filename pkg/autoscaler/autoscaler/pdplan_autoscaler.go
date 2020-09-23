@@ -14,11 +14,14 @@
 package autoscaler
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 )
@@ -80,13 +83,48 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 }
 
 func (am *autoScalerManager) deleteAutoscalingClusters(tc *v1alpha1.TidbCluster, groupsToDelete []string, groupTcMap map[string]*v1alpha1.TidbCluster) error {
-	// TODO in next PR
-	return nil
+	var errs []error
+	for _, group := range groupsToDelete {
+		deleteTc := groupTcMap[group]
+
+		// Remove cluster
+		err := am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Delete(deleteTc.Name, nil)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+	}
+	return errorutils.NewAggregate(errs)
 }
 
-func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groups []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
-	// TODO in next PR
-	return nil
+func (am *autoScalerManager) updateAutoscalingClusters(tac *v1alpha1.TidbClusterAutoScaler, groupsToUpdate []string, groupTcMap map[string]*v1alpha1.TidbCluster, groupPlanMap map[string]pdapi.Plan) error {
+	var errs []error
+	for _, group := range groupsToUpdate {
+		actual, oldTc, plan := groupTcMap[group].DeepCopy(), groupTcMap[group], groupPlanMap[group]
+
+		switch plan.Component {
+		case v1alpha1.TiKVMemberType.String():
+			if tac.Spec.TiKV == nil || actual.Spec.TiKV.Replicas == int32(plan.Count) {
+				continue
+			}
+			actual.Spec.TiKV.Replicas = int32(plan.Count)
+		case v1alpha1.TiDBMemberType.String():
+			if tac.Spec.TiDB == nil || actual.Spec.TiDB.Replicas == int32(plan.Count) {
+				continue
+			}
+			actual.Spec.TiDB.Replicas = int32(plan.Count)
+		default:
+			errs = append(errs, fmt.Errorf("unexpected component %s for group %s in autoscaling plan", plan.Component, group))
+			continue
+		}
+
+		_, err := am.tcControl.UpdateTidbCluster(actual, &actual.Status, &oldTc.Status)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+	}
+	return errorutils.NewAggregate(errs)
 }
 
 func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, groupsToCreate []string, groupPlanMap map[string]pdapi.Plan) error {
