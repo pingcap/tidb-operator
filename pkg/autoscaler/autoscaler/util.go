@@ -143,6 +143,10 @@ func defaultBasicAutoScaler(tac *v1alpha1.TidbClusterAutoScaler, component v1alp
 		spec.MetricsTimeDuration = pointer.StringPtr("3m")
 	}
 
+	if spec.External != nil {
+		return
+	}
+
 	for res, rule := range spec.Rules {
 		if res == corev1.ResourceCPU {
 			if rule.MinThreshold == nil {
@@ -164,11 +168,11 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster) {
 
 	if len(tac.Spec.Resources) == 0 {
 		// Construct default resource
-		if tac.Spec.TiKV != nil {
+		if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil {
 			defaultResources(tc, tac, v1alpha1.TiKVMemberType)
 		}
 
-		if tac.Spec.TiDB != nil {
+		if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil {
 			defaultResources(tc, tac, v1alpha1.TiDBMemberType)
 		}
 	}
@@ -200,6 +204,10 @@ func defaultTAC(tac *v1alpha1.TidbClusterAutoScaler, tc *v1alpha1.TidbCluster) {
 
 func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
 	spec := getBasicAutoScalerSpec(tac, component)
+
+	if spec.External != nil {
+		return nil
+	}
 
 	if len(spec.Rules) == 0 {
 		return fmt.Errorf("no rules defined for component %s in %s/%s", component.String(), tac.Namespace, tac.Name)
@@ -255,10 +263,19 @@ func validateBasicAutoScalerSpec(tac *v1alpha1.TidbClusterAutoScaler, component 
 	return nil
 }
 
-// TODO: add tests for this function
 func validateTAC(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if len(tac.Spec.Resources) == 0 {
-		return fmt.Errorf("no resources provided for %s/%s", tac.Namespace, tac.Name)
+		invalid := false
+		// If one of the spec has no external query, this is invalid
+		if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil {
+			invalid = true
+		}
+		if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil {
+			invalid = true
+		}
+		if invalid {
+			return fmt.Errorf("no resources provided for %s/%s", tac.Namespace, tac.Name)
+		}
 	}
 
 	if tidb := tac.Spec.TiDB; tidb != nil {
@@ -307,11 +324,11 @@ func autoscalerToStrategy(tac *v1alpha1.TidbClusterAutoScaler) *pdapi.Strategy {
 		strategy.Resources = append(strategy.Resources, resource)
 	}
 
-	if tac.Spec.TiDB != nil {
+	if tac.Spec.TiDB != nil && tac.Spec.TiDB.External == nil {
 		strategy.Rules = append(strategy.Rules, autoRulesToStrategyRule(v1alpha1.TiDBMemberType.String(), tac.Spec.TiDB.Rules))
 	}
 
-	if tac.Spec.TiKV != nil {
+	if tac.Spec.TiKV != nil && tac.Spec.TiKV.External == nil {
 		strategy.Rules = append(strategy.Rules, autoRulesToStrategyRule(v1alpha1.TiKVMemberType.String(), tac.Spec.TiKV.Rules))
 	}
 

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/autoscaler/autoscaler/query"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	v1alpha1listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
@@ -100,22 +101,75 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	return am.updateAutoScaling(oldTc, tac)
 }
 
+func (am *autoScalerManager) syncExternal(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler, component v1alpha1.MemberType) error {
+	switch component {
+	case v1alpha1.TiDBMemberType:
+		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiDBMemberType, tac.Spec.TiDB.External.Endpoint, am.kubecli)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
+			return err
+		}
+
+		if tc.Spec.TiDB.Replicas == targetReplicas {
+			return nil
+		}
+
+		updated := tc.DeepCopy()
+		updated.Spec.TiDB.Replicas = targetReplicas
+		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
+			return err
+		}
+	case v1alpha1.TiKVMemberType:
+		targetReplicas, err := query.ExternalService(tc, v1alpha1.TiKVMemberType, tac.Spec.TiKV.External.Endpoint, am.kubecli)
+		if err != nil {
+			klog.Errorf("tac[%s/%s] 's query to the external endpoint got error: %v", tac.Namespace, tac.Name, err)
+			return err
+		}
+
+		if tc.Spec.TiKV.Replicas == targetReplicas {
+			return nil
+		}
+
+		updated := tc.DeepCopy()
+		updated.Spec.TiKV.Replicas = targetReplicas
+		if _, err = am.tcControl.UpdateTidbCluster(updated, &updated.Status, &tc.Status); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
-	// TODO: sync from external endpoints if specified
+	// Sync from external endpoints if specified
+	if tac.Spec.TiDB != nil && tac.Spec.TiDB.External != nil {
+		if err := am.syncExternal(tc, tac, v1alpha1.TiDBMemberType); err != nil {
+			return err
+		}
+	}
+
+	if tac.Spec.TiKV != nil && tac.Spec.TiKV.External != nil {
+		if err := am.syncExternal(tc, tac, v1alpha1.TiKVMemberType); err != nil {
+			return err
+		}
+	}
+
 	// Construct PD Auto-scaling strategy
 	strategy := autoscalerToStrategy(tac)
 
-	// Request PD for auto-scaling plans
-	plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
-	if err != nil {
-		klog.Errorf("cannot get auto-scaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
-		return err
-	}
+	if len(strategy.Rules) != 0 {
+		// Request PD for auto-scaling plans
+		plans, err := controller.GetPDClient(am.pdControl, tc).GetAutoscalingPlans(*strategy)
+		if err != nil {
+			klog.Errorf("cannot get auto-scaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
+			return err
+		}
 
-	// Apply auto-scaling plans
-	if err := am.syncPlans(tc, tac, plans); err != nil {
-		klog.Errorf("cannot apply autoscaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
-		return err
+		// Apply auto-scaling plans
+		if err := am.syncPlans(tc, tac, plans); err != nil {
+			klog.Errorf("cannot apply autoscaling plans for tac[%s/%s] err:%v", tac.Namespace, tac.Name, err)
+			return err
+		}
 	}
 
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
