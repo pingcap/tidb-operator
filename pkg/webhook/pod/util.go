@@ -140,40 +140,6 @@ func getOwnerStatefulSetForTiDBComponent(pod *core.Pod, kubeCli kubernetes.Inter
 	return kubeCli.AppsV1().StatefulSets(namespace).Get(ownerStatefulSetName, meta.GetOptions{})
 }
 
-// checkFormerPodRestartStatus checks whether there are any former pod is going to be restarted
-// return true if existed
-func checkFormerPodRestartStatus(kubeCli kubernetes.Interface, memberType v1alpha1.MemberType, payload *admitPayload, ordinal int32) (bool, error) {
-	namespace := payload.tc.Namespace
-	tc := payload.tc
-	replicas := *payload.ownerStatefulSet.Spec.Replicas
-
-	f := func(name string, ordinal int32, memberType v1alpha1.MemberType) (bool, error) {
-		podName := memberUtil.MemberPodName(tc.Name, ordinal, memberType)
-		pod, err := kubeCli.CoreV1().Pods(namespace).Get(podName, meta.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		if _, existed := pod.Annotations[label.AnnPodDeferDeleting]; existed {
-			return true, nil
-		}
-		return false, nil
-	}
-
-	for k := range helper.GetPodOrdinals(replicas, payload.ownerStatefulSet) {
-		if k > ordinal {
-			existed, err := f(tc.Name, k, memberType)
-			if err != nil {
-				return false, err
-			}
-			if existed {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
-}
-
 func appendExtraLabelsENVForTiKV(labels map[string]string, container *core.Container) {
 	s := ""
 	for k, v := range labels {
