@@ -29,14 +29,6 @@ type Simple struct {
 func TestGetSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	c := New(map[string]interface{}{})
-	c.Set("a.b.c1", 1)
-	c.Set("a.b.c2", 2)
-	c.Set("a.b1", 1)
-	c.Set("a.b2", 2)
-	c.Set("a1", 1)
-	c.Set("a2", 2)
-
 	kv := map[string]int64{
 		"a.b.c1": 1,
 		"a.b.c2": 2,
@@ -46,6 +38,8 @@ func TestGetSet(t *testing.T) {
 		"a2":     2,
 	}
 
+	c := New(map[string]interface{}{})
+
 	for k, v := range kv {
 		c.Set(k, v)
 	}
@@ -54,10 +48,10 @@ func TestGetSet(t *testing.T) {
 		g.Expect(c.Get(k).AsInt()).Should(Equal(v))
 	}
 
-	data, err := json.Marshal(c.Config)
+	data, err := json.Marshal(c.mp)
 	g.Expect(err).Should(BeNil())
-	c.Config = make(map[string]interface{})
-	err = json.Unmarshal(data, &c.Config)
+	c.mp = make(map[string]interface{})
+	err = json.Unmarshal(data, &c.mp)
 	g.Expect(err).Should(BeNil())
 	for k, v := range kv {
 		g.Expect(c.Get(k).AsInt()).Should(Equal(v))
@@ -78,7 +72,7 @@ func fromJSON(data []byte) (c *GenericConfig, err error) {
 	}
 
 	tmp := New(mp)
-	return &tmp, nil
+	return tmp, nil
 }
 
 func TestJsonPatchDefaults(t *testing.T) {
@@ -97,7 +91,7 @@ func TestJsonPatchDefaults(t *testing.T) {
 	mergedConfig, err := customConfig.JsonPatchDefaults(defaultsMp)
 	g.Expect(err).Should(BeNil())
 
-	mergedData, err := json.Marshal(mergedConfig.Config)
+	mergedData, err := json.Marshal(mergedConfig.mp)
 	g.Expect(err).Should(BeNil())
 	eq := jsonpatch.Equal(mergedData, merged)
 	g.Expect(eq).Should(BeTrue())
@@ -106,7 +100,7 @@ func TestJsonPatchDefaults(t *testing.T) {
 func TestDeepCopyJsonObject(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	objects := []GenericConfig{
+	objects := []*GenericConfig{
 		New(nil),
 		New(map[string]interface{}{
 			"k1": true,
@@ -141,13 +135,60 @@ func TestDeepCopyJsonObject(t *testing.T) {
 
 	for _, obj := range objects {
 		copied := obj.DeepCopy()
-		g.Expect(copied).To(Equal(&obj))
+		g.Expect(copied).To(Equal(obj))
 
 		out := New(nil)
-		obj.DeepCopyInto(&out)
+		obj.DeepCopyInto(out)
 		g.Expect(out).To(Equal(obj))
 	}
 	copied := objects[1].DeepCopy()
-	copied.Config["k1"] = false
-	g.Expect(objects[1].Config["k1"]).To(Equal(true), "Mutation copy should net affect origin")
+	copied.mp["k1"] = false
+	g.Expect(objects[1].mp["k1"]).To(Equal(true), "Mutation copy should net affect origin")
+}
+
+func TestJsonMarshal(t *testing.T) {
+	type S struct {
+		Config *GenericConfig `json:"config,omitempty"`
+	}
+
+	g := NewGomegaWithT(t)
+
+	// test Config should be nil
+	s := new(S)
+	err := json.Unmarshal([]byte("{}"), s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).Should(BeNil())
+	data, err := json.Marshal(s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).Should(BeNil())
+
+	// test Config should not be nil
+	s = new(S)
+	err = json.Unmarshal([]byte("{\"config\":{}}"), s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).ShouldNot(BeNil())
+	data, err = json.Marshal(s)
+	g.Expect(err).Should(BeNil())
+	s = new(S)
+	err = json.Unmarshal(data, s)
+	g.Expect(err).Should(BeNil())
+	g.Expect(s.Config).ShouldNot(BeNil())
+
+	// test keep int or float type
+	s = new(S)
+	s.Config = New(map[string]interface{}{})
+	s.Config.Set("int", 1)
+	s.Config.Set("float", float64(1.0))
+	data, err = json.Marshal(s)
+	t.Log("data: ", string(data))
+	g.Expect(err).Should(BeNil())
+	s = new(S)
+	err = json.Unmarshal(data, s)
+	g.Expect(err).Should(BeNil())
+	integer := s.Config.Get("int").AsInt()
+	g.Expect(integer).Should(Equal(int64(1)))
+	float := s.Config.Get("float").AsFloat()
+	g.Expect(float).Should(Equal(float64(1.0)))
+
 }

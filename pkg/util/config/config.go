@@ -15,6 +15,7 @@ package config
 
 import (
 	"bytes"
+	stdjson "encoding/json"
 	"reflect"
 	"strings"
 
@@ -28,38 +29,53 @@ import (
 // Note: un-exported field inside struct won't be copied and should not be included in config
 // GenericConfig is a wrapper of go interface{} that makes deepcopy-gen happy
 type GenericConfig struct {
-	Config *map[string]interface{} `json:"config,omitempty"`
+	mp map[string]interface{}
 }
 
-func New(o map[string]interface{}) GenericConfig {
-	return GenericConfig{&o}
+var _ stdjson.Marshaler = &GenericConfig{}
+var _ stdjson.Unmarshaler = &GenericConfig{}
+
+func (c *GenericConfig) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&c.mp)
 }
 
-func FromJsonObject(x interface{}) (GenericConfig, error) {
+func (c *GenericConfig) UnmarshalJSON(data []byte) error {
+	return json.Unmarshal(data, &c.mp)
+}
+
+func New(o map[string]interface{}) *GenericConfig {
+	return &GenericConfig{o}
+}
+
+func FromJsonObject(x interface{}) (*GenericConfig, error) {
 	data, err := json.Marshal(x)
 	if err != nil {
-		return GenericConfig{}, errors.AddStack(err)
+		return nil, errors.AddStack(err)
 	}
 
 	mp := make(map[string]interface{})
 	err = json.Unmarshal(data, &mp)
 	if err != nil {
-		return GenericConfig{}, errors.AddStack(err)
+		return nil, errors.AddStack(err)
 	}
 
 	return New(mp), nil
 }
 
-func (c *GenericConfig) Unwrap() interface{} {
-	return c.Config
+func (c *GenericConfig) Inner() map[string]interface{} {
+	return c.mp
 }
 
 func (c *GenericConfig) DeepCopyJsonObject() *GenericConfig {
-	// FIXME: mohae/deepcopy is based on reflection, which will lost un-exported field (if any)
 	if c == nil {
 		return nil
 	}
-	return deepcopy.Copy(c).(*GenericConfig)
+	if c.mp == nil {
+		return New(nil)
+	}
+
+	mp := deepcopy.Copy(c.mp).(map[string]interface{})
+	return New(mp)
 }
 
 // JsonPatchDefaults return a new GenericConfig with every item set as the value in defaults if
@@ -70,7 +86,7 @@ func (c *GenericConfig) JsonPatchDefaults(defaults interface{}) (mergedConfig *G
 		return nil, errors.AddStack(err)
 	}
 
-	patchData, err := json.Marshal(c.Config)
+	patchData, err := json.Marshal(c.mp)
 	if err != nil {
 		return nil, errors.AddStack(err)
 	}
@@ -87,7 +103,7 @@ func (c *GenericConfig) JsonPatchDefaults(defaults interface{}) (mergedConfig *G
 	}
 
 	tmp := New(mp)
-	return &tmp, nil
+	return tmp, nil
 }
 
 func (c *GenericConfig) DeepCopy() *GenericConfig {
@@ -96,13 +112,13 @@ func (c *GenericConfig) DeepCopy() *GenericConfig {
 
 func (c *GenericConfig) DeepCopyInto(out *GenericConfig) {
 	*out = *c
-	out.Config = c.DeepCopyJsonObject().Config
+	out.mp = c.DeepCopyJsonObject().mp
 }
 
 func (c *GenericConfig) UnmarshalToml(v interface{}) error {
 	buff := new(bytes.Buffer)
 	encoder := toml.NewEncoder(buff)
-	err := encoder.Encode(c.Config)
+	err := encoder.Encode(c.mp)
 	if err != nil {
 		return errors.AddStack(err)
 	}
@@ -115,7 +131,7 @@ func (c *GenericConfig) UnmarshalToml(v interface{}) error {
 }
 
 func (c *GenericConfig) Set(key string, value interface{}) {
-	set(*c.Config, key, value)
+	set(c.mp, key, value)
 }
 
 func (c *GenericConfig) Get(key string) (value *Value) {
@@ -123,7 +139,7 @@ func (c *GenericConfig) Get(key string) (value *Value) {
 		return nil
 	}
 
-	v := get(*c.Config, key)
+	v := get(c.mp, key)
 	if v == nil {
 		return nil
 	}
@@ -155,6 +171,11 @@ func (v *Value) IsString() bool {
 func (v *Value) AsInt() int64 {
 	rv := reflect.ValueOf(v.inner)
 	return rv.Int()
+}
+
+func (v *Value) AsFloat() float64 {
+	rv := reflect.ValueOf(v.inner)
+	return rv.Float()
 }
 
 func set(ms map[string]interface{}, key string, value interface{}) {

@@ -746,6 +746,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 	setInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Apps().V1().StatefulSets()
 	svcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Services()
 	podInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Pods()
+	cmInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().ConfigMaps()
 	epsInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().Endpoints()
 	pvcInformer := kubeinformers.NewSharedInformerFactory(kubeCli, 0).Core().V1().PersistentVolumeClaims()
 	tcInformer := informers.NewSharedInformerFactory(cli, 0).Pingcap().V1alpha1().TidbClusters()
@@ -768,6 +769,7 @@ func newFakePDMemberManager() (*pdMemberManager, *controller.FakeStatefulSetCont
 		setInformer.Lister(),
 		svcInformer.Lister(),
 		podInformer.Lister(),
+		cmInformer.Lister(),
 		epsInformer.Lister(),
 		pvcInformer.Lister(),
 		pdScaler,
