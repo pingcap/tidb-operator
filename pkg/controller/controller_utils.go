@@ -199,7 +199,7 @@ func GetTiDBMonitorOwnerRef(monitor *v1alpha1.TidbMonitor) metav1.OwnerReference
 	}
 }
 
-func GetTiDBClusterAutoscalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav1.OwnerReference {
+func GetTiDBClusterAutoScalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{

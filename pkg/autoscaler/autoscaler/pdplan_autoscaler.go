@@ -196,12 +196,13 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				Name:      autoTcName,
 				Namespace: tc.Namespace,
 				Labels: map[string]string{
+					label.BaseTCLabelKey:           tc.Name,
 					label.AutoInstanceLabelKey:     tac.Name,
 					label.AutoComponentLabelKey:    component,
 					label.AutoScalingGroupLabelKey: group,
 				},
 				OwnerReferences: []metav1.OwnerReference{
-					controller.GetTiDBClusterAutoscalerOwnerRef(tac),
+					controller.GetTiDBClusterAutoScalerOwnerRef(tac),
 				},
 			},
 			Status: v1alpha1.TidbClusterStatus{
