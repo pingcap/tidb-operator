@@ -77,6 +77,7 @@ exec /tidb-server ${ARGS}
 `))
 
 type TidbStartScriptModel struct {
+	ClusterName     string
 	EnablePlugin    bool
 	PluginDirectory string
 	PluginList      string
