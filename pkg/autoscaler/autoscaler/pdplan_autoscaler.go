@@ -32,14 +32,14 @@ import (
 
 const groupLabelKey = "group"
 
-func (am *autoScalerManager) getAutoScaledClusters(tc *v1alpha1.TidbCluster, components []v1alpha1.MemberType) (tcList []*v1alpha1.TidbCluster, err error) {
+func (am *autoScalerManager) getAutoScaledClusters(tac *v1alpha1.TidbClusterAutoScaler, components []v1alpha1.MemberType) (tcList []*v1alpha1.TidbCluster, err error) {
 	componentStrings := make([]string, len(components))
 	for _, component := range components {
 		componentStrings = append(componentStrings, component.String())
 	}
 
 	// Filter all autoscaled TidbClusters
-	requirement, err := labels.NewRequirement(label.AutoScalingGroupLabelKey, selection.Exists, nil)
+	requirement, err := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Equals, []string{tac.Name})
 	if err != nil {
 		return
 	}
@@ -50,7 +50,7 @@ func (am *autoScalerManager) getAutoScaledClusters(tc *v1alpha1.TidbCluster, com
 	}
 
 	selector := labels.NewSelector().Add(*requirement).Add(*componentRequirement)
-	tcList, err = am.tcLister.TidbClusters(tc.Namespace).List(selector)
+	tcList, err = am.tcLister.TidbClusters(tac.Spec.Cluster.Namespace).List(selector)
 	return
 }
 
@@ -63,7 +63,7 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 		groupPlanMap[groupName] = plan
 	}
 
-	tcList, err := am.getAutoScaledClusters(tc, []v1alpha1.MemberType{component})
+	tcList, err := am.getAutoScaledClusters(tac, []v1alpha1.MemberType{component})
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,11 @@ func (am *autoScalerManager) syncPlans(tc *v1alpha1.TidbCluster, tac *v1alpha1.T
 	existedGroups := sets.String{}
 	groupTcMap := make(map[string]*v1alpha1.TidbCluster)
 	for _, tc := range tcList {
-		groupName := tc.Labels[label.AutoScalingGroupLabelKey]
+		groupName, ok := tc.Labels[label.AutoScalingGroupLabelKey]
+		if !ok {
+			// External Autoscaling Clusters do not have group
+			continue
+		}
 		if len(groupName) == 0 {
 			klog.Errorf("unexpected: tidbcluster [%s/%s] has empty value for label %s", tc.Namespace, tc.Name, label.AutoScalingGroupLabelKey)
 			continue
@@ -230,7 +234,7 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 
 func (am *autoScalerManager) syncMonitor(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
 	if monitorRef := tc.Status.Monitor; monitorRef != nil {
-		autoTcList, err := am.getAutoScaledClusters(tc, []v1alpha1.MemberType{v1alpha1.TiDBMemberType, v1alpha1.TiKVMemberType})
+		autoTcList, err := am.getAutoScaledClusters(tac, []v1alpha1.MemberType{v1alpha1.TiDBMemberType, v1alpha1.TiKVMemberType})
 		if err != nil {
 			return err
 		}

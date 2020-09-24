@@ -26,6 +26,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -82,6 +85,14 @@ func (am *autoScalerManager) Sync(tac *v1alpha1.TidbClusterAutoScaler) error {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Target TidbCluster Ref is deleted, empty the auto-scaling status
+			// And delete all autoscaling clusters
+			requirement, _ := labels.NewRequirement(label.AutoInstanceLabelKey, selection.Equals, []string{tac.Name})
+			err := am.cli.PingcapV1alpha1().TidbClusters(tac.Spec.Cluster.Namespace).DeleteCollection(nil, v1.ListOptions{
+				LabelSelector: labels.NewSelector().Add(*requirement).String(),
+			})
+			if err != nil {
+				klog.Errorf("cannot delete orphan autoscaling clusters for tac[%s/%s], err: %v", tac.Namespace, tac.Name, err)
+			}
 			return nil
 		}
 		return err
