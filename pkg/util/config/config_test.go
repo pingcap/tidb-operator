@@ -170,6 +170,9 @@ func TestJsonOmitempty(t *testing.T) {
 	g.Expect(s.Config).Should(BeNil())
 	data, err := json.Marshal(s)
 	g.Expect(err).Should(BeNil())
+	s = new(S)
+	err = json.Unmarshal(data, s)
+	g.Expect(err).Should(BeNil())
 	g.Expect(s.Config).Should(BeNil())
 
 	// test Config should not be nil
