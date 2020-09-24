@@ -361,6 +361,7 @@ func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batch
 	}
 	if ti.Spec.Resources != nil {
 		podSpec.Spec.Containers[0].Resources = *ti.Spec.Resources
+		podSpec.Spec.InitContainers[0].Resources = *ti.Spec.Resources
 	}
 	if ti.Spec.ImagePullSecrets != nil {
 		podSpec.Spec.ImagePullSecrets = ti.Spec.ImagePullSecrets
