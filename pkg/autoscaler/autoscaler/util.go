@@ -14,6 +14,7 @@
 package autoscaler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -360,4 +361,34 @@ func autoRulesToStrategyRule(component string, rules map[corev1.ResourceName]v1a
 		}
 	}
 	return result
+}
+
+const autoClusterPrefix = "auto-"
+
+func genAutoClusterName(tas *v1alpha1.TidbClusterAutoScaler, component string, labels map[string]string, resource v1alpha1.AutoResource) (string, error) {
+	seed := map[string]interface{}{
+		"namespace": tas.Namespace,
+		"tas":       tas.Name,
+		"component": component,
+		"cpu":       resource.CPU.AsDec().UnscaledBig().Uint64(),
+		"storage":   resource.Storage.AsDec().UnscaledBig().Uint64(),
+		"memory":    resource.Memory.AsDec().UnscaledBig().Uint64(),
+		"labels":    labels,
+	}
+	marshaled, err := json.Marshal(seed)
+	if err != nil {
+		return "", err
+	}
+
+	return autoClusterPrefix + v1alpha1.HashContents(marshaled), nil
+}
+
+func checkAutoscalingComponent(tas *v1alpha1.TidbClusterAutoScaler, component string) bool {
+	switch component {
+	case "tidb":
+		return tas.Spec.TiDB != nil
+	case "tikv":
+		return tas.Spec.TiKV != nil
+	}
+	return false
 }
