@@ -14,11 +14,7 @@ spec:
     version: 6.1.6
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-<<<<<<< HEAD
     version: v4.0.6
-=======
-    version: v4.0.4
->>>>>>> 46ca3b1... Support tidbmonitor monitor multiple cluster. (#3155)
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
