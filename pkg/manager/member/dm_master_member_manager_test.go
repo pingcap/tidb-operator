@@ -176,21 +176,20 @@ func TestMasterMemberManagerSyncCreate(t *testing.T) {
 func TestMasterMemberManagerSyncUpdate(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testcase struct {
-		name                           string
-		modify                         func(cluster *v1alpha1.DMCluster)
-		leaderInfo                     dmapi.MembersLeader
-		masterInfos                    []*dmapi.MastersInfo
-		errWhenUpdateStatefulSet       bool
-		errWhenUpdateMasterService     bool
-		errWhenUpdateMasterPeerService bool
-		errWhenGetLeader               bool
-		errWhenGetMasterInfos          bool
-		statusChange                   func(*apps.StatefulSet)
-		err                            bool
-		expectMasterServiceFn          func(*GomegaWithT, *corev1.Service, error)
-		expectMasterPeerServiceFn      func(*GomegaWithT, *corev1.Service, error)
-		expectStatefulSetFn            func(*GomegaWithT, *apps.StatefulSet, error)
-		expectDMClusterFn              func(*GomegaWithT, *v1alpha1.DMCluster)
+		name                       string
+		modify                     func(cluster *v1alpha1.DMCluster)
+		leaderInfo                 dmapi.MembersLeader
+		masterInfos                []*dmapi.MastersInfo
+		errWhenUpdateStatefulSet   bool
+		errWhenUpdateMasterService bool
+		errWhenGetLeader           bool
+		errWhenGetMasterInfos      bool
+		statusChange               func(*apps.StatefulSet)
+		err                        bool
+		expectMasterServiceFn      func(*GomegaWithT, *corev1.Service, error)
+		expectMasterPeerServiceFn  func(*GomegaWithT, *corev1.Service, error)
+		expectStatefulSetFn        func(*GomegaWithT, *apps.StatefulSet, error)
+		expectDMClusterFn          func(*GomegaWithT, *v1alpha1.DMCluster)
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
