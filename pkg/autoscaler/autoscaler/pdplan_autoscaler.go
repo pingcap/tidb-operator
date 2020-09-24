@@ -160,6 +160,11 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      autoTcName,
 				Namespace: tc.Namespace,
+				Labels: map[string]string{
+					label.AutoInstanceLabelKey:     tac.Name,
+					label.AutoComponentLabelKey:    component,
+					label.AutoScalingGroupLabelKey: group,
+				},
 				OwnerReferences: []metav1.OwnerReference{
 					controller.GetTiDBClusterAutoscalerOwnerRef(tac),
 				},
@@ -229,14 +234,6 @@ func (am *autoScalerManager) createAutoscalingClusters(tc *v1alpha1.TidbCluster,
 				autoTc.Spec.TiDB.Config.Labels[k] = v
 			}
 		}
-
-		// Patch custom labels
-		if autoTc.Labels == nil {
-			autoTc.Labels = map[string]string{}
-		}
-		autoTc.Labels[label.AutoInstanceLabelKey] = tac.Name
-		autoTc.Labels[label.AutoComponentLabelKey] = component
-		autoTc.Labels[label.AutoScalingGroupLabelKey] = group
 
 		_, err = am.cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(autoTc)
 		if err != nil {
