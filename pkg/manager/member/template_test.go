@@ -31,7 +31,7 @@ func TestRenderTiDBInitStartScript(t *testing.T) {
 			name:          "basic",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "",
-			result:        `#!/bin/sh
+			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
 
@@ -86,7 +86,7 @@ exec /tidb-server ${ARGS}
 			name:          "basic with cluster domain",
 			path:          "cluster01-pd:2379",
 			clusterDomain: "test.com",
-			result:        `#!/bin/sh
+			result: `#!/bin/sh
 
 # This script is used to start tidb containers in kubernetes cluster
 
@@ -705,6 +705,82 @@ exec /pd-server ${ARGS}
 				ClusterDomain: tt.clusterDomain,
 			}
 			script, err := RenderPDStartScript(&model)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.result, script); diff != "" {
+				t.Errorf("unexpected (-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestRenderPumpStartScript(t *testing.T) {
+	tests := []struct {
+		name          string
+		scheme        string
+		clusterName   string
+		LogLevel      string
+		Namespace     string
+		clusterDomain string
+		result        string
+	}{
+		{
+			name:          "basic",
+			scheme:        "http",
+			clusterName:   "demo",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "",
+			result: `set -euo pipefail
+
+/pump \
+-pd-urls=http://demo-pd:2379 \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+		{
+			name:          "basic with cluster domain",
+			scheme:        "http",
+			clusterName:   "demo",
+			LogLevel:      "INFO",
+			Namespace:     "demo-ns",
+			clusterDomain: "demo.com",
+			result: `set -euo pipefail
+
+/pump \
+-pd-urls=http://demo-pd:2379 \
+-L=INFO \
+-advertise-addr=` + "`" + `echo ${HOSTNAME}` + "`" + `.demo-pump.demo-ns.svc.demo.com:8250 \
+-config=/etc/pump/pump.toml \
+-data-dir=/data \
+-log-file=
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			model := PumpStartScriptModel{
+				Scheme:        tt.scheme,
+				ClusterName:   tt.clusterName,
+				LogLevel:      tt.LogLevel,
+				Namespace:     tt.Namespace,
+				ClusterDomain: tt.clusterDomain,
+			}
+			script, err := RenderPumpStartScript(&model)
 			if err != nil {
 				t.Fatal(err)
 			}
