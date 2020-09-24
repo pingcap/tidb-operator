@@ -55,6 +55,9 @@ var (
 	// tidbMonitorControllerkind cotnains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerkind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
+	// tidbClusterAutoScalerKind cotnains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
+	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
+
 	// TidbBackupManagerImage is the image of tidb backup manager tool
 	TidbBackupManagerImage string
 
@@ -200,8 +203,8 @@ func GetTiDBClusterAutoscalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
-		APIVersion:         tidbMonitorControllerkind.GroupVersion().String(),
-		Kind:               tidbMonitorControllerkind.Kind,
+		APIVersion:         tidbClusterAutoScalerKind.GroupVersion().String(),
+		Kind:               tidbClusterAutoScalerKind.Kind,
 		Name:               tac.GetName(),
 		UID:                tac.GetUID(),
 		Controller:         &controller,
