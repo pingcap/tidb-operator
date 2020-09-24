@@ -258,14 +258,6 @@ type TidbClusterStatus struct {
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	Conditions []TidbClusterCondition `json:"conditions,omitempty"`
-	// +optional
-	TiKVGroups []GroupRef `json:"tikv-groups,omitempty"`
-	// +optional
-	TiDBGroups []GroupRef `json:"tidb-groups,omitempty"`
-}
-
-type GroupRef struct {
-	Reference corev1.LocalObjectReference `json:",inline"`
 }
 
 // TidbClusterCondition describes the state of a tidb cluster at a certain point.
@@ -365,6 +357,10 @@ type PDSpec struct {
 	// EnableDashboardInternalProxy would directly set `internal-proxy` in the `PdConfig`
 	// +optional
 	EnableDashboardInternalProxy *bool `json:"enableDashboardInternalProxy,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -421,6 +417,10 @@ type TiKVSpec struct {
 	// RecoverFailover indicates that Operator can recover the failover Pods
 	// +optional
 	RecoverFailover bool `json:"recoverFailover,omitempty"`
+
+	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod
+	// +optional
+	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -1563,6 +1563,11 @@ type DMClusterSpec struct {
 	// Optional: Defaults to nil
 	// +optional
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
+
+	// TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+	// that used by dm-master and dm-worker.
+	// +optional
+	TLSClientSecretNames []string `json:"tlsClientSecretNames,omitempty"`
 
 	// Whether Hostnetwork is enabled for DM cluster Pods
 	// Optional: Defaults to false

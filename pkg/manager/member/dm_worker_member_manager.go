@@ -411,6 +411,19 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		})
 	}
 
+	for _, tlsClientSecretName := range dc.Spec.TLSClientSecretNames {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("/var/lib/source-tls/%s", tlsClientSecretName),
+		})
+		vols = append(vols, corev1.Volume{
+			Name: tlsClientSecretName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsClientSecretName,
+				},
+			},
+		})
+	}
+
 	storageSize := DefaultStorageSize
 	if dc.Spec.Worker.StorageSize != "" {
 		storageSize = dc.Spec.Worker.StorageSize
