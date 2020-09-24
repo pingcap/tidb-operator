@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"k8s.io/apimachinery/pkg/api/errors"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kubeinformers "k8s.io/client-go/informers"
@@ -159,14 +160,15 @@ func (am *autoScalerManager) syncPD(tc *v1alpha1.TidbCluster, tac *v1alpha1.Tidb
 }
 
 func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1alpha1.TidbClusterAutoScaler) error {
+	var errs []error
 	if tac.Spec.TiDB != nil {
 		if tac.Spec.TiDB.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiDBMemberType); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		} else {
 			if err := am.syncPD(tc, tac, v1alpha1.TiDBMemberType); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 	}
@@ -174,21 +176,21 @@ func (am *autoScalerManager) syncAutoScaling(tc *v1alpha1.TidbCluster, tac *v1al
 	if tac.Spec.TiKV != nil {
 		if tac.Spec.TiKV.External != nil {
 			if err := am.syncExternal(tc, tac, v1alpha1.TiKVMemberType); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		} else {
 			if err := am.syncPD(tc, tac, v1alpha1.TiKVMemberType); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 	}
 
 	if err := am.syncMonitor(tc, tac); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	klog.Infof("tc[%s/%s]'s tac[%s/%s] synced", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
-	return nil
+	return errorutils.NewAggregate(errs)
 }
 
 func (am *autoScalerManager) updateAutoScaling(oldTc *v1alpha1.TidbCluster,
