@@ -14300,6 +14300,10 @@ spec:
               type: string
             timezone:
               type: string
+            tlsClientSecretNames:
+              items:
+                type: string
+              type: array
             tlsCluster: {}
             tolerations:
               items:

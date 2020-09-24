@@ -678,6 +678,19 @@ Optional: Defaults to nil</p>
 </tr>
 <tr>
 <td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+that used by dm-master and dm-worker.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hostNetwork</code></br>
 <em>
 bool
@@ -4318,6 +4331,19 @@ TLSCluster
 <em>(Optional)</em>
 <p>Whether enable the TLS connection between DM server components
 Optional: Defaults to nil</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsClientSecretNames</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLSClientSecretNames are the names of secrets which stores mysql/tidb server client certificates
+that used by dm-master and dm-worker.</p>
 </td>
 </tr>
 <tr>

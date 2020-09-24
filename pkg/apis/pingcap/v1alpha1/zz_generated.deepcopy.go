@@ -1004,6 +1004,11 @@ func (in *DMClusterSpec) DeepCopyInto(out *DMClusterSpec) {
 		*out = new(TLSCluster)
 		**out = **in
 	}
+	if in.TLSClientSecretNames != nil {
+		in, out := &in.TLSClientSecretNames, &out.TLSClientSecretNames
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.HostNetwork != nil {
 		in, out := &in.HostNetwork, &out.HostNetwork
 		*out = new(bool)
