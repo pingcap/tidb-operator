@@ -236,12 +236,6 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 		return nil
 	}
 
-	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
-		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
-			return err
-		}
-	}
-
 	if tmm.autoFailover {
 		if tmm.shouldRecover(tc) {
 			tmm.tidbFailover.Recover(tc)
@@ -249,6 +243,12 @@ func (tmm *tidbMemberManager) syncTiDBStatefulSetForTidbCluster(tc *v1alpha1.Tid
 			if err := tmm.tidbFailover.Failover(tc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !templateEqual(newTiDBSet, oldTiDBSet) || tc.Status.TiDB.Phase == v1alpha1.UpgradePhase {
+		if err := tmm.tidbUpgrader.Upgrade(tc, oldTiDBSet, newTiDBSet); err != nil {
+			return err
 		}
 	}
 
@@ -623,6 +623,12 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: &privileged,
 					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
 				})
 			}
 		}
@@ -744,6 +750,10 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.Volumes = append(vols, baseTiDBSpec.AdditionalVolumes()...)
 	podSpec.SecurityContext = podSecurityContext
 	podSpec.InitContainers = initContainers
+	podSpec.ServiceAccountName = tc.Spec.TiDB.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
 
 	if baseTiDBSpec.HostNetwork() {
 		podSpec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
@@ -793,11 +803,11 @@ func (tmm *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, se
 	if err != nil {
 		return err
 	}
-	if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
+	if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
+	} else if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&
 		tc.Status.PD.Phase != v1alpha1.UpgradePhase && tc.Status.Pump.Phase != v1alpha1.UpgradePhase {
 		tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
-	} else if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
-		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
 	} else {
 		tc.Status.TiDB.Phase = v1alpha1.NormalPhase
 	}

@@ -49,10 +49,13 @@ type workerMemberManager struct {
 	setControl    controller.StatefulSetControlInterface
 	svcControl    controller.ServiceControlInterface
 	//podControl    controller.PodControlInterface
-	typedControl controller.TypedControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
+	typedControl   controller.TypedControlInterface
+	setLister      v1.StatefulSetLister
+	svcLister      corelisters.ServiceLister
+	podLister      corelisters.PodLister
+	workerScaler   Scaler
+	autoFailover   bool
+	workerFailover DMFailover
 }
 
 // NewWorkerMemberManager returns a *ticdcMemberManager
@@ -63,7 +66,10 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
-	podLister corelisters.PodLister) manager.DMManager {
+	podLister corelisters.PodLister,
+	workerScaler Scaler,
+	autoFailover bool,
+	workerFailover DMFailover) manager.DMManager {
 	return &workerMemberManager{
 		masterControl,
 		setControl,
@@ -73,10 +79,12 @@ func NewWorkerMemberManager(masterControl dmapi.MasterControlInterface,
 		setLister,
 		svcLister,
 		podLister,
-	}
+		workerScaler,
+		autoFailover,
+		workerFailover}
 }
 
-func (wmm *workerMemberManager) Sync(dc *v1alpha1.DMCluster) error {
+func (wmm *workerMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	ns := dc.GetNamespace()
 	dcName := dc.GetName()
 
@@ -194,6 +202,17 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 	if err != nil {
 		return err
 	}
+
+	// Recover failed workers if any before generating desired statefulset
+	if len(dc.Status.Worker.FailureMembers) > 0 {
+		wmm.workerFailover.RemoveUndesiredFailures(dc)
+	}
+	if len(dc.Status.Worker.FailureMembers) > 0 &&
+		dc.Spec.Worker.RecoverFailover &&
+		shouldRecoverDM(dc, label.DMWorkerLabelVal, wmm.podLister) {
+		wmm.workerFailover.Recover(dc)
+	}
+
 	newSts, err := getNewWorkerSetForDMCluster(dc, cm)
 	if err != nil {
 		return err
@@ -209,6 +228,21 @@ func (wmm *workerMemberManager) syncWorkerStatefulSetForDMCluster(dc *v1alpha1.D
 			return err
 		}
 		return nil
+	}
+
+	if err := wmm.workerScaler.Scale(dc, oldSts, newSts); err != nil {
+		return err
+	}
+
+	// Perform failover logic if necessary. Note that this will only update
+	// DMCluster status. The actual scaling performs in next sync loop (if a
+	// new replica needs to be added).
+	if wmm.autoFailover && dc.Spec.Worker.MaxFailoverCount != nil {
+		if dc.WorkerAllPodsStarted() && !dc.WorkerAllMembersReady() {
+			if err := wmm.workerFailover.Failover(dc); err != nil {
+				return err
+			}
+		}
 	}
 
 	return updateStatefulSet(wmm.setControl, dc, newSts, oldSts)
@@ -259,6 +293,16 @@ func (wmm *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 		}
 
 		workerStatus[name] = status
+
+		// offline the workers that already been scaled-in
+		if status.Stage == "offline" {
+			if !isWorkerPodDesired(dc, name) {
+				err := dmClient.DeleteWorker(name)
+				if err != nil {
+					klog.Errorf("fail to remove worker %s, err: %s", worker.Name, err)
+				}
+			}
+		}
 	}
 
 	dc.Status.Worker.Synced = true
@@ -359,6 +403,19 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			Name: "dm-worker-tls", VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(dc.Name, label.DMWorkerLabelVal),
+				},
+			},
+		})
+	}
+
+	for _, tlsClientSecretName := range dc.Spec.TLSClientSecretNames {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("/var/lib/source-tls/%s", tlsClientSecretName),
+		})
+		vols = append(vols, corev1.Volume{
+			Name: tlsClientSecretName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsClientSecretName,
 				},
 			},
 		})
@@ -477,9 +534,7 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			PodManagementPolicy: apps.ParallelPodManagement,
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
-				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.WorkerStsDesiredReplicas()),
-				}},
+			},
 		},
 	}
 
@@ -531,4 +586,14 @@ func getWorkerConfigMap(dc *v1alpha1.DMCluster) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	return cm, nil
+}
+
+func isWorkerPodDesired(dc *v1alpha1.DMCluster, podName string) bool {
+	ordinals := dc.WorkerStsDesiredOrdinals(false)
+	ordinal, err := util.GetOrdinalFromPodName(podName)
+	if err != nil {
+		klog.Errorf("unexpected pod name %q: %v", podName, err)
+		return false
+	}
+	return ordinals.Has(ordinal)
 }

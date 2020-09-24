@@ -143,6 +143,10 @@ type TiDBConfig struct {
 	// imported from v3.1.0
 	// +optional
 	DelayCleanTableLock *uint64 `toml:"delay-clean-table-lock,omitempty" json:"delay-clean-table-lock,omitempty"`
+	// imported from v4.0.5
+	// SkipRegisterToDashboard tells TiDB don't register itself to the dashboard.
+	// +optional
+	SkipRegisterToDashboard *bool `toml:"skip-register-to-dashboard,omitempty" json:"skip-register-to-dashboard,omitempty"`
 	// When enabled, usage data (for example, instance versions) will be reported to PingCAP periodically for user experience analytics.
 	// If this config is set to `false` on all TiDB servers, telemetry will be always disabled regardless of the value of the global variable `tidb_enable_telemetry`.
 	// See PingCAP privacy policy for details: https://pingcap.com/en/privacy-policy/.
@@ -150,6 +154,9 @@ type TiDBConfig struct {
 	// Optional: Defaults to true
 	// +optional
 	EnableTelemetry *bool `toml:"enable-telemetry,omitempty" json:"enable-telemetry,omitempty"`
+	// Labels are labels for TiDB server
+	// +optional
+	Labels map[string]string `toml:"labels,omitempty" json:"labels,omitempty"`
 }
 
 // Log is the log section of config.
@@ -251,7 +258,7 @@ type Performance struct {
 	// Optional: Defaults to 0.05
 	// +optional
 	FeedbackProbability *float64 `toml:"feedback-probability,omitempty" json:"feedback-probability,omitempty"`
-	// Optional: Defaults to 1024
+	// Optional: Defaults to 512
 	// +optional
 	QueryFeedbackLimit *uint `toml:"query-feedback-limit,omitempty" json:"query-feedback-limit,omitempty"`
 	// Optional: Defaults to 0.8

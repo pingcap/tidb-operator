@@ -62,12 +62,11 @@ func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, n
 	tcName := meta.GetName()
 
 	var status *v1alpha1.TiKVStatus
-	switch meta.(type) {
+	switch meta := meta.(type) {
 	case *v1alpha1.TidbCluster:
-		tc := meta.(*v1alpha1.TidbCluster)
-		if tc.Status.PD.Phase == v1alpha1.UpgradePhase || tc.TiKVScaling() {
+		if meta.Status.PD.Phase == v1alpha1.UpgradePhase || meta.TiKVScaling() {
 			klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, tikv status is %v, can not upgrade tikv",
-				ns, tcName, tc.Status.PD.Phase, tc.Status.TiKV.Phase)
+				ns, tcName, meta.Status.PD.Phase, meta.Status.TiKV.Phase)
 			_, podSpec, err := GetLastAppliedConfig(oldSet)
 			if err != nil {
 				return err
@@ -75,10 +74,7 @@ func (tku *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, n
 			newSet.Spec.Template.Spec = *podSpec
 			return nil
 		}
-		status = &tc.Status.TiKV
-	case *v1alpha1.TiDBGroup:
-		tg := meta.(*v1alpha1.TiKVGroup)
-		status = &tg.Status.TiKVStatus
+		status = &meta.Status.TiKV
 	default:
 		return fmt.Errorf("cluster[%s/%s] failed to upgrading tikv due to converting", meta.GetNamespace(), meta.GetName())
 	}

@@ -92,7 +92,7 @@ func (tff *tiflashFailover) Failover(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (tff *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
+func (tff *tiflashFailover) RemoveUndesiredFailures(tc *v1alpha1.TidbCluster) {
 	for key, failureStore := range tc.Status.TiFlash.FailureStores {
 		if !tff.isPodDesired(tc, failureStore.PodName) {
 			// If we delete the pods, e.g. by using advanced statefulset delete
@@ -101,6 +101,11 @@ func (tff *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
 			delete(tc.Status.TiFlash.FailureStores, key)
 		}
 	}
+}
+
+func (tff *tiflashFailover) Recover(tc *v1alpha1.TidbCluster) {
+	tc.Status.TiFlash.FailureStores = nil
+	klog.Infof("TiFlash recover: clear FailureStores, %s/%s", tc.GetNamespace(), tc.GetName())
 }
 
 type fakeTiFlashFailover struct{}
@@ -115,5 +120,7 @@ func (ftff *fakeTiFlashFailover) Failover(_ *v1alpha1.TidbCluster) error {
 }
 
 func (ftff *fakeTiFlashFailover) Recover(_ *v1alpha1.TidbCluster) {
-	return
+}
+
+func (ftff *fakeTiFlashFailover) RemoveUndesiredFailures(_ *v1alpha1.TidbCluster) {
 }

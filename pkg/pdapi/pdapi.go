@@ -88,6 +88,8 @@ type PDClient interface {
 	GetPDLeader() (*pdpb.Member, error)
 	// TransferPDLeader transfers pd leader to specified member
 	TransferPDLeader(name string) error
+	// GetAutoscalingPlans returns the scaling plan for the cluster
+	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
 }
 
 var (
@@ -104,6 +106,7 @@ var (
 	// evictLeaderSchedulerConfigPrefix is the prefix of evict-leader-scheduler
 	// config API, available since PD v3.1.0.
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
+	autoscalingPrefix                = "autoscaling"
 )
 
 // pdClient is default implementation of PDClient
@@ -184,6 +187,55 @@ type MembersInfo struct {
 	Members    []*pdpb.Member       `json:"members,omitempty"`
 	Leader     *pdpb.Member         `json:"leader,omitempty"`
 	EtcdLeader *pdpb.Member         `json:"etcd_leader,omitempty"`
+}
+
+// below copied from github.com/tikv/pd/pkg/autoscaling
+
+// Strategy within a HTTP request provides rules and resources to help make decision for auto scaling.
+type Strategy struct {
+	Rules     []*Rule     `json:"rules"`
+	Resources []*Resource `json:"resources"`
+}
+
+// Rule is a set of constraints for a kind of component.
+type Rule struct {
+	Component   string       `json:"component"`
+	CPURule     *CPURule     `json:"cpu_rule,omitempty"`
+	StorageRule *StorageRule `json:"storage_rule,omitempty"`
+}
+
+// CPURule is the constraints about CPU.
+type CPURule struct {
+	MaxThreshold  float64  `json:"max_threshold"`
+	MinThreshold  float64  `json:"min_threshold"`
+	ResourceTypes []string `json:"resource_types"`
+}
+
+// StorageRule is the constraints about storage.
+type StorageRule struct {
+	MinThreshold  float64  `json:"min_threshold"`
+	ResourceTypes []string `json:"resource_types"`
+}
+
+// Resource represents a kind of resource set including CPU, memory, storage.
+type Resource struct {
+	ResourceType string `json:"resource_type"`
+	// The basic unit of CPU is milli-core.
+	CPU uint64 `json:"cpu"`
+	// The basic unit of memory is byte.
+	Memory uint64 `json:"memory"`
+	// The basic unit of storage is byte.
+	Storage uint64 `json:"storage"`
+	// If count is not set, it indicates no limit.
+	Count *uint64 `json:"count,omitempty"`
+}
+
+// Plan is the final result of auto scaling, which indicates how to scale in or scale out.
+type Plan struct {
+	Component    string            `json:"component"`
+	Count        uint64            `json:"count"`
+	ResourceType string            `json:"resource_type"`
+	Labels       map[string]string `json:"labels"`
 }
 
 type schedulerInfo struct {
@@ -584,9 +636,7 @@ func (pc *pdClient) filterLeaderEvictScheduler(evictLeaderSchedulers []string) (
 			schedulerIds = append(schedulerIds, fmt.Sprintf("%s-%v", evictSchedulerLeader, k))
 		}
 	} else {
-		for _, s := range evictLeaderSchedulers {
-			schedulerIds = append(schedulerIds, s)
-		}
+		schedulerIds = append(schedulerIds, evictLeaderSchedulers...)
 	}
 	return schedulerIds, nil
 }
@@ -621,6 +671,24 @@ func (pc *pdClient) TransferPDLeader(memberName string) error {
 	}
 	err2 := httputil.ReadErrorBody(res.Body)
 	return fmt.Errorf("failed %v to transfer pd leader to %s,error: %v", res.StatusCode, memberName, err2)
+}
+
+func (pc *pdClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
+	apiURL := fmt.Sprintf("%s/%s", pc.url, autoscalingPrefix)
+	data, err := json.Marshal(strategy)
+	if err != nil {
+		return nil, err
+	}
+	body, err := httputil.PostBodyOK(pc.httpClient, apiURL, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	var plans []Plan
+	err = json.Unmarshal(body, &plans)
+	if err != nil {
+		return nil, err
+	}
+	return plans, nil
 }
 
 func getLeaderEvictSchedulerInfo(storeID uint64) *schedulerInfo {

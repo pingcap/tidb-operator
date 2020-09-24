@@ -694,7 +694,8 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(set.Spec.Template.Spec.Containers[0].Image).To(Equal("pd-test-image:v2"))
-				g.Expect(*set.Spec.Replicas).To(Equal(int32(1)))
+				// scale in one pd from 3 -> 2
+				g.Expect(*set.Spec.Replicas).To(Equal(int32(2)))
 				g.Expect(*set.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
@@ -950,6 +951,7 @@ func testAdditionalVolumes(t *testing.T, additionalVolumes []corev1.Volume) func
 
 func TestGetNewPDSetForTidbCluster(t *testing.T) {
 	enable := true
+	asNonRoot := true
 	tests := []struct {
 		name    string
 		tc      v1alpha1.TidbCluster
@@ -1330,6 +1332,68 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 			},
 			testSts: testAdditionalVolumes(t, []corev1.Volume{{Name: "test", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}}),
+		},
+		{
+			name: "PD with PodSecurityContext",
+			tc: v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "tc",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							PodSecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &asNonRoot,
+								Sysctls: []corev1.Sysctl{
+									{
+										Name:  "net.core.somaxconn",
+										Value: "32768",
+									},
+									{
+										Name:  "net.ipv4.tcp_syncookies",
+										Value: "0",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_time",
+										Value: "300",
+									},
+									{
+										Name:  "net.ipv4.tcp_keepalive_intvl",
+										Value: "75",
+									},
+								},
+							},
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{},
+					TiKV: &v1alpha1.TiKVSpec{},
+				},
+			},
+			testSts: func(sts *apps.StatefulSet) {
+				g := NewGomegaWithT(t)
+				g.Expect(sts.Spec.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					RunAsNonRoot: &asNonRoot,
+					Sysctls: []corev1.Sysctl{
+						{
+							Name:  "net.core.somaxconn",
+							Value: "32768",
+						},
+						{
+							Name:  "net.ipv4.tcp_syncookies",
+							Value: "0",
+						},
+						{
+							Name:  "net.ipv4.tcp_keepalive_time",
+							Value: "300",
+						},
+						{
+							Name:  "net.ipv4.tcp_keepalive_intvl",
+							Value: "75",
+						},
+					},
+				}))
+			},
 		},
 		// TODO add more tests
 	}

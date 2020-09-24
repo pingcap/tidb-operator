@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/label"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/util"
-
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +34,7 @@ import (
 	v1 "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/pointer"
 )
 
@@ -48,43 +48,52 @@ const (
 )
 
 type masterMemberManager struct {
-	masterControl dmapi.MasterControlInterface
-	setControl    controller.StatefulSetControlInterface
-	svcControl    controller.ServiceControlInterface
-	//podControl    controller.PodControlInterface
-	typedControl controller.TypedControlInterface
-	setLister    v1.StatefulSetLister
-	svcLister    corelisters.ServiceLister
-	podLister    corelisters.PodLister
-	epsLister    corelisters.EndpointsLister
-	pvcLister    corelisters.PersistentVolumeClaimLister
+	masterControl  dmapi.MasterControlInterface
+	setControl     controller.StatefulSetControlInterface
+	svcControl     controller.ServiceControlInterface
+	typedControl   controller.TypedControlInterface
+	setLister      v1.StatefulSetLister
+	svcLister      corelisters.ServiceLister
+	podLister      corelisters.PodLister
+	epsLister      corelisters.EndpointsLister
+	pvcLister      corelisters.PersistentVolumeClaimLister
+	masterScaler   Scaler
+	masterUpgrader DMUpgrader
+	autoFailover   bool
+	masterFailover DMFailover
 }
 
 // NewMasterMemberManager returns a *masterMemberManager
 func NewMasterMemberManager(masterControl dmapi.MasterControlInterface,
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
-	//podControl controller.PodControlInterface,
 	typedControl controller.TypedControlInterface,
 	setLister v1.StatefulSetLister,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	epsLister corelisters.EndpointsLister,
-	pvcLister corelisters.PersistentVolumeClaimLister) manager.DMManager {
+	pvcLister corelisters.PersistentVolumeClaimLister,
+	masterScaler Scaler,
+	masterUpgrader DMUpgrader,
+	autoFailover bool,
+	masterFailover DMFailover) manager.DMManager {
 	return &masterMemberManager{
 		masterControl,
 		setControl,
 		svcControl,
-		//podControl,
 		typedControl,
 		setLister,
 		svcLister,
 		podLister,
 		epsLister,
-		pvcLister}
+		pvcLister,
+		masterScaler,
+		masterUpgrader,
+		autoFailover,
+		masterFailover}
 }
 
-func (mmm *masterMemberManager) Sync(dc *v1alpha1.DMCluster) error {
+func (mmm *masterMemberManager) SyncDM(dc *v1alpha1.DMCluster) error {
 	// Sync dm-master Service
 	if err := mmm.syncMasterServiceForDMCluster(dc); err != nil {
 		return err
@@ -237,30 +246,62 @@ func (mmm *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.D
 		}
 	}
 
-	// TODO: dm add rolling update later
-	// if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
-	//	if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
-	//		return err
-	//	}
-	// }
+	// Scaling takes precedence over upgrading because:
+	// - if a dm-master fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
+	if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
+		return err
+	}
 
-	// TODO: dm add scaler
-	//if err := mmm.masterScaler.Scale(dc, oldMasterSet, newMasterSet); err != nil {
-	//	return err
-	//}
+	// Perform failover logic if necessary. Note that this will only update
+	// DMCluster status. The actual scaling performs in next sync loop (if a
+	// new replica needs to be added).
+	if mmm.autoFailover {
+		if mmm.shouldRecover(dc) {
+			mmm.masterFailover.Recover(dc)
+		} else if dc.MasterAllPodsStarted() && !dc.MasterAllMembersReady() || dc.MasterAutoFailovering() {
+			if err := mmm.masterFailover.Failover(dc); err != nil {
+				return err
+			}
+		}
+	}
 
-	// TODO: dm add auto failover
-	// if mmm.autoFailover {
-	//	if mmm.shouldRecover(tc) {
-	//		mmm.masterFailover.Recover(tc)
-	//	} else if dc.MasterAllPodsStarted() && !dc.MasterAllMembersReady() || tc.MasterAutoFailovering() {
-	//		if err := mmm.masterFailover.Failover(tc); err != nil {
-	//			return err
-	//		}
-	//	}
-	// }
+	if !templateEqual(newMasterSet, oldMasterSet) || dc.Status.Master.Phase == v1alpha1.UpgradePhase {
+		if err := mmm.masterUpgrader.Upgrade(dc, oldMasterSet, newMasterSet); err != nil {
+			return err
+		}
+	}
 
 	return updateStatefulSet(mmm.setControl, dc, newMasterSet, oldMasterSet)
+}
+
+// shouldRecover checks whether we should perform recovery operation.
+func (mmm *masterMemberManager) shouldRecover(dc *v1alpha1.DMCluster) bool {
+	if dc.Status.Master.FailureMembers == nil {
+		return false
+	}
+	// If all desired replicas (excluding failover pods) of dm cluster are
+	// healthy, we can perform our failover recovery operation.
+	// Note that failover pods may fail (e.g. lack of resources) and we don't care
+	// about them because we're going to delete them.
+	for ordinal := range dc.MasterStsDesiredOrdinals(true) {
+		name := fmt.Sprintf("%s-%d", controller.DMMasterMemberName(dc.GetName()), ordinal)
+		pod, err := mmm.podLister.Pods(dc.Namespace).Get(name)
+		if err != nil {
+			klog.Errorf("pod %s/%s does not exist: %v", dc.Namespace, name, err)
+			return false
+		}
+		if !podutil.IsPodReady(pod) {
+			return false
+		}
+		status, ok := dc.Status.Master.Members[pod.Name]
+		if !ok || !status.Health {
+			return false
+		}
+	}
+	return true
 }
 
 func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *apps.StatefulSet) error {
@@ -278,10 +319,12 @@ func (mmm *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set 
 	if err != nil {
 		return err
 	}
-	if upgrading {
-		dc.Status.Master.Phase = v1alpha1.UpgradePhase
-	} else if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
+
+	// Scaling takes precedence over upgrading.
+	if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
 		dc.Status.Master.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
+		dc.Status.Master.Phase = v1alpha1.UpgradePhase
 	} else {
 		dc.Status.Master.Phase = v1alpha1.NormalPhase
 	}
@@ -481,16 +524,15 @@ func (mmm *masterMemberManager) masterStatefulSetIsUpgrading(set *apps.StatefulS
 	return false, nil
 }
 
-// TODO: uncomment it after dm failover is supported
-//func getDMFailureReplicas(dc *v1alpha1.DMCluster) int {
-//	failureReplicas := 0
-//	for _, failureMember := range dc.Status.Master.FailureMembers {
-//		if failureMember.MemberDeleted {
-//			failureReplicas++
-//		}
-//	}
-//	return failureReplicas
-//}
+func getDMMasterFailureReplicas(dc *v1alpha1.DMCluster) int {
+	failureReplicas := 0
+	for _, failureMember := range dc.Status.Master.FailureMembers {
+		if failureMember.MemberDeleted {
+			failureReplicas++
+		}
+	}
+	return failureReplicas
+}
 
 func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (*apps.StatefulSet, error) {
 	ns := dc.Namespace
@@ -545,6 +587,19 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 		})
 	}
 
+	for _, tlsClientSecretName := range dc.Spec.TLSClientSecretNames {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: tlsClientSecretName, ReadOnly: true, MountPath: fmt.Sprintf("/var/lib/source-tls/%s", tlsClientSecretName),
+		})
+		vols = append(vols, corev1.Volume{
+			Name: tlsClientSecretName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsClientSecretName,
+				},
+			},
+		})
+	}
+
 	storageSize := DefaultStorageSize
 	if dc.Spec.Master.StorageSize != "" {
 		storageSize = dc.Spec.Master.StorageSize
@@ -563,6 +618,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 	setName := controller.DMMasterMemberName(dcName)
 	podAnnotations := CombineAnnotations(controller.AnnProm(8261), baseMasterSpec.Annotations())
 	stsAnnotations := getStsAnnotations(dc.Annotations, label.DMMasterLabelVal)
+	failureReplicas := getDMMasterFailureReplicas(dc)
 
 	masterContainer := corev1.Container{
 		Name:            v1alpha1.DMMasterMemberType.String(),
@@ -636,7 +692,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			OwnerReferences: []metav1.OwnerReference{controller.GetDMOwnerRef(dc)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(dc.MasterStsDesiredReplicas()),
+			Replicas: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas)),
 			Selector: masterLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -664,7 +720,7 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 			UpdateStrategy: apps.StatefulSetUpdateStrategy{
 				Type: apps.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
-					Partition: pointer.Int32Ptr(dc.MasterStsDesiredReplicas()),
+					Partition: pointer.Int32Ptr(dc.Spec.Master.Replicas + int32(failureReplicas)),
 				}},
 		},
 	}
@@ -758,9 +814,7 @@ func (mmm *masterMemberManager) collectUnjoinedMembers(dc *v1alpha1.DMCluster, s
 			}
 		} else {
 			if dc.Status.Master.UnjoinedMembers != nil {
-				if _, ok := dc.Status.Master.UnjoinedMembers[pod.Name]; ok {
-					delete(dc.Status.Master.UnjoinedMembers, pod.Name)
-				}
+				delete(dc.Status.Master.UnjoinedMembers, pod.Name)
 			}
 		}
 	}

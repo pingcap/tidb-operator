@@ -33,13 +33,17 @@ type MasterClient interface {
 	GetMasters() ([]*MastersInfo, error)
 	GetWorkers() ([]*WorkersInfo, error)
 	GetLeader() (MembersLeader, error)
+	EvictLeader() error
+	DeleteMaster(name string) error
+	DeleteWorker(name string) error
 }
 
 var (
 	membersPrefix = "apis/v1alpha1/members"
+	leaderPrefix  = "apis/v1alpha1/leader"
 )
 
-type ListMemberRespHeader struct {
+type RespHeader struct {
 	Result bool   `json:"result,omitempty"`
 	Msg    string `json:"msg,omitempty"`
 }
@@ -88,18 +92,18 @@ type ListMemberLeader struct {
 }
 
 type MastersResp struct {
-	ListMemberRespHeader `json:",inline"`
-	ListMemberResp       []*ListMemberMaster `json:"members,omitempty"`
+	RespHeader     `json:",inline"`
+	ListMemberResp []*ListMemberMaster `json:"members,omitempty"`
 }
 
 type WorkerResp struct {
-	ListMemberRespHeader `json:",inline"`
-	ListMemberResp       []*ListMemberWorker `json:"members,omitempty"`
+	RespHeader     `json:",inline"`
+	ListMemberResp []*ListMemberWorker `json:"members,omitempty"`
 }
 
 type LeaderResp struct {
-	ListMemberRespHeader `json:",inline"`
-	ListMemberResp       []*ListMemberLeader `json:"members,omitempty"`
+	RespHeader     `json:",inline"`
+	ListMemberResp []*ListMemberLeader `json:"members,omitempty"`
 }
 
 // masterClient is default implementation of MasterClient
@@ -174,12 +178,55 @@ func (mc *masterClient) GetLeader() (MembersLeader, error) {
 	return listMemberResp.ListMemberResp[0].MembersLeader, nil
 }
 
-// NewMasterClient returns a new MasterClient
-func NewMasterClient(url string, timeout time.Duration, tlsConfig *tls.Config) MasterClient {
-	var disableKeepalive bool
-	if tlsConfig != nil {
-		disableKeepalive = true
+func (mc *masterClient) EvictLeader() error {
+	query := "/1"
+	apiURL := fmt.Sprintf("%s/%s%s", mc.url, leaderPrefix, query)
+	body, err := httputil.PutBodyOK(mc.httpClient, apiURL)
+	if err != nil {
+		return err
 	}
+	evictLeaderResp := &RespHeader{}
+	err = json.Unmarshal(body, evictLeaderResp)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal evict leader resp: %s, err: %s", body, err)
+	}
+	if !evictLeaderResp.Result {
+		return fmt.Errorf("unable to evict leader, err: %s", evictLeaderResp.Msg)
+	}
+
+	return nil
+}
+
+func (mc *masterClient) deleteMember(query string) error {
+	apiURL := fmt.Sprintf("%s/%s%s", mc.url, membersPrefix, query)
+	body, err := httputil.DeleteBodyOK(mc.httpClient, apiURL)
+	if err != nil {
+		return err
+	}
+	deleteMemeberResp := &RespHeader{}
+	err = json.Unmarshal(body, deleteMemeberResp)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal delete member resp: %s, query: %s, err: %s", body, query, err)
+	}
+	if !deleteMemeberResp.Result {
+		return fmt.Errorf("unable to delete member, query: %s, err: %s", query, deleteMemeberResp.Msg)
+	}
+
+	return nil
+}
+
+func (mc *masterClient) DeleteMaster(name string) error {
+	query := "/master/" + name
+	return mc.deleteMember(query)
+}
+
+func (mc *masterClient) DeleteWorker(name string) error {
+	query := "/worker/" + name
+	return mc.deleteMember(query)
+}
+
+// NewMasterClient returns a new MasterClient
+func NewMasterClient(url string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) MasterClient {
 	return &masterClient{
 		url: url,
 		httpClient: &http.Client{

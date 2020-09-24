@@ -461,7 +461,7 @@ ARGS="--data-dir={{ .DataDir }} \
 --name=${POD_NAME} \
 --peer-urls={{ .Scheme }}://0.0.0.0:8291 \
 --advertise-peer-urls={{ .Scheme }}://${domain}:8291 \
---master-addr=0.0.0.0:8261 \
+--master-addr=:8261 \
 --advertise-addr=${domain}:8261 \
 --config=/etc/dm-master/dm-master.toml \
 "
@@ -472,9 +472,8 @@ then
 #   demo-dm-master-0=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8291,demo-dm-master-1=http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8291
 # The --join args must be:
 #   --join=http://demo-dm-master-0.demo-dm-master-peer.demo.svc:8261,http://demo-dm-master-1.demo-dm-master-peer.demo.svc:8261
-join=` + "`" + `cat {{ .DataDir }}/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ","` + "`" + `
-join=${join%,}
-ARGS="${ARGS} --join=${join}"
+result=$(cat {{ .DataDir }}/join)
+ARGS="${ARGS} --initial-cluster=${result}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
 until result=$(wget -qO- -T 3 ${discovery_url}/new/${encoded_domain_url}/dm 2>/dev/null); do
@@ -534,7 +533,8 @@ fi
 # Use HOSTNAME if POD_NAME is unset for backward compatibility.
 POD_NAME=${POD_NAME:-$HOSTNAME}
 # TODO: dm-worker will support data-dir in the future
-ARGS="--join={{ .MasterAddress }} \
+ARGS="--name=${POD_NAME} \
+--join={{ .MasterAddress }} \
 --advertise-addr=${POD_NAME}.${HEADLESS_SERVICE_NAME}:8262 \
 --worker-addr=0.0.0.0:8262 \
 --config=/etc/dm-worker/dm-worker.toml

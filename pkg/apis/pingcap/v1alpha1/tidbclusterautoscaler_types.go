@@ -15,6 +15,8 @@ package v1alpha1
 
 import (
 	"k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -63,11 +65,13 @@ type TidbClusterAutoScalerSpec struct {
 
 	// We used prometheus to fetch the metrics resources until the pd could provide it.
 	// MetricsUrl represents the url to fetch the metrics info
+	// Deprecated
 	// +optional
 	MetricsUrl *string `json:"metricsUrl,omitempty"`
 
 	// TidbMonitorRef describe the target TidbMonitor, when MetricsUrl and Monitor are both set,
 	// Operator will use MetricsUrl
+	// Deprecated
 	// +optional
 	Monitor *TidbMonitorRef `json:"monitor,omitempty"`
 
@@ -78,6 +82,35 @@ type TidbClusterAutoScalerSpec struct {
 	// TiDB represents the auto-scaling spec for tidb
 	// +optional
 	TiDB *TidbAutoScalerSpec `json:"tidb,omitempty"`
+
+	// Resources represent the resource type definitions that can be used for TiDB/TiKV
+	// The key is resource_type name of the resource
+	// +optional
+	Resources map[string]AutoResource `json:"resources,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// AutoResource describes the resource type definitions
+type AutoResource struct {
+	// CPU defines the CPU of this resource type
+	CPU resource.Quantity `json:"cpu"`
+	// Memory defines the memory of this resource type
+	Memory resource.Quantity `json:"memory"`
+	// Storage defines the storage of this resource type
+	Storage resource.Quantity `json:"storage,omitempty"`
+	// Count defines the max availabel count of this resource type
+	Count *int32 `json:"count,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// AutoRule describes the rules for auto-scaling with PD API
+type AutoRule struct {
+	// MaxThreshold defines the threshold to scale out
+	MaxThreshold float64 `json:"max_threshold"`
+	// MinThreshold defines the threshold to scale in, not applicable to `storage` rule
+	MinThreshold *float64 `json:"min_threshold,omitempty"`
+	// ResourceTypes defines the resource types that can be used for scaling
+	ResourceTypes []string `json:"resource_types,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -97,13 +130,18 @@ type TidbAutoScalerSpec struct {
 type BasicAutoScalerSpec struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
 	// It cannot be less than minReplicas.
+	// Deprecated
 	MaxReplicas int32 `json:"maxReplicas"`
 
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler
 	// can scale down.  It defaults to 1 pod. Scaling is active as long as at least one metric value is
 	// available.
+	// Deprecated
 	// +optional
 	MinReplicas *int32 `json:"minReplicas,omitempty"`
+
+	// Rules defines the rules for auto-scaling with PD API
+	Rules map[corev1.ResourceName]AutoRule `json:"rules,omitempty"`
 
 	// ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in
 	// If not set, the default ScaleInIntervalSeconds will be set to 500
@@ -115,18 +153,32 @@ type BasicAutoScalerSpec struct {
 	// +optional
 	ScaleOutIntervalSeconds *int32 `json:"scaleOutIntervalSeconds,omitempty"`
 
+	// Deprecated
 	// +optional
 	Metrics []CustomMetric `json:"metrics,omitempty"`
 
 	// MetricsTimeDuration describes the Time duration to be queried in the Prometheus
+	// Deprecated
 	// +optional
 	MetricsTimeDuration *string `json:"metricsTimeDuration,omitempty"`
-	// ExternalEndpoint makes the auto-scaler controller able to query the external service
+	// External makes the auto-scaler controller able to query the external service
 	// to fetch the recommended replicas for TiKV/TiDB
 	// +optional
-	ExternalEndpoint *ExternalEndpoint `json:"externalEndpoint,omitempty"`
+	External *ExternalConfig `json:"external,omitempty"`
 }
 
+// +k8s:openapi-gen=true
+// ExternalConfig represents the external config.
+type ExternalConfig struct {
+	// ExternalEndpoint makes the auto-scaler controller able to query the
+	// external service to fetch the recommended replicas for TiKV/TiDB
+	// +optional
+	Endpoint ExternalEndpoint `json:"endpoint"`
+	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.
+	MaxReplicas int32 `json:"maxReplicas"`
+}
+
+// Deprecated
 type CustomMetric struct {
 	// metrics contains the specifications for which to use to calculate the
 	// desired replica count (the maximum replica count across all metrics will

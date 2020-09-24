@@ -450,7 +450,7 @@ func TestDiscoveryDMDiscovery(t *testing.T) {
 		masterClient := dmapi.NewFakeMasterClient()
 		if test.dc != nil {
 			cli.PingcapV1alpha1().DMClusters(test.dc.Namespace).Create(test.dc)
-			fakeMasterControl.SetMasterClient(dmapi.Namespace(test.dc.GetNamespace()), test.dc.GetName(), masterClient)
+			fakeMasterControl.SetMasterClient(test.dc.GetNamespace(), test.dc.GetName(), masterClient)
 		}
 		masterClient.AddReaction(dmapi.GetMastersActionType, func(action *dmapi.Action) (interface{}, error) {
 			return test.getMastersFn()

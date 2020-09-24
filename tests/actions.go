@@ -426,7 +426,7 @@ func (oi *OperatorConfig) OperatorHelmSetBoolean() string {
 	for k, v := range set {
 		arr = append(arr, fmt.Sprintf("--set %s=%v", k, v))
 	}
-	return fmt.Sprintf("%s", strings.Join(arr, " "))
+	return strings.Join(arr, " ")
 }
 
 func (oi *OperatorConfig) OperatorHelmSetString(m map[string]string) string {
@@ -2609,18 +2609,12 @@ func (oa *operatorActions) DataIsTheSameAs(tc, otherInfo *TidbClusterConfig) (bo
 
 	getCntFn := func(db *sql.DB, tableName string) (int, error) {
 		var cnt int
-		rows, err := db.Query(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+		row := db.QueryRow(fmt.Sprintf("SELECT count(*) FROM %s", tableName))
+		err := row.Scan(&cnt)
 		if err != nil {
-			return cnt, fmt.Errorf("failed to select count(*) from %s, %v", tableName, err)
+			return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
 		}
-		for rows.Next() {
-			err := rows.Scan(&cnt)
-			if err != nil {
-				return cnt, fmt.Errorf("failed to scan count from %s, %v", tableName, err)
-			}
-			return cnt, nil
-		}
-		return cnt, fmt.Errorf("can not find count of table %s", tableName)
+		return cnt, nil
 	}
 
 	for i := 0; i < tableNum; i++ {
@@ -2699,7 +2693,7 @@ func (oa *operatorActions) DeployScheduledBackup(info *TidbClusterConfig) error 
 	oa.EmitEvent(info, "DeploySchedulerBackup")
 	klog.Infof("begin to deploy scheduled backup")
 
-	cron := fmt.Sprintf("'*/1 * * * *'")
+	cron := "'*/1 * * * *'"
 	sets := map[string]string{
 		"clusterName":                info.ClusterName,
 		"scheduledBackup.create":     "true",

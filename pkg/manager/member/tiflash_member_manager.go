@@ -207,6 +207,11 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 
 	// Recover failed stores if any before generating desired statefulset
 	if len(tc.Status.TiFlash.FailureStores) > 0 {
+		tfmm.tiflashFailover.RemoveUndesiredFailures(tc)
+	}
+	if len(tc.Status.TiFlash.FailureStores) > 0 &&
+		tc.Spec.TiFlash.RecoverFailover &&
+		shouldRecover(tc, label.TiFlashLabelVal, tfmm.podLister) {
 		tfmm.tiflashFailover.Recover(tc)
 	}
 
@@ -231,12 +236,11 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 		return err
 	}
 
-	if !templateEqual(newSet, oldSet) {
-		if err := tfmm.tiflashUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
-			return err
-		}
-	}
-
+	// Scaling takes precedence over upgrading because:
+	// - if a tiflash fails in the upgrading, users may want to delete it or add
+	//   new replicas
+	// - it's ok to scale in the middle of upgrading (in statefulset controller
+	//   scaling takes precedence over upgrading too)
 	if err := tfmm.tiflashScaler.Scale(tc, oldSet, newSet); err != nil {
 		return err
 	}
@@ -246,6 +250,12 @@ func (tfmm *tiflashMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) erro
 			if err := tfmm.tiflashFailover.Failover(tc); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !templateEqual(newSet, oldSet) {
+		if err := tfmm.tiflashUpgrader.Upgrade(tc, oldSet, newSet); err != nil {
+			return err
 		}
 	}
 
@@ -382,6 +392,12 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: &privileged,
 					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiFlash.ResourceRequirements),
 				})
 			}
 		}
@@ -517,6 +533,9 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	podSpec.Containers = append([]corev1.Container{tiflashContainer}, buildTiFlashSidecarContainers(tc)...)
 	podSpec.Containers = append(podSpec.Containers, baseTiFlashSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiFlash.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
 
 	tiflashset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -619,7 +638,9 @@ func (tfmm *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster
 	if err != nil {
 		return err
 	}
-	if upgrading {
+	if tc.TiFlashStsDesiredReplicas() != *set.Spec.Replicas {
+		tc.Status.TiFlash.Phase = v1alpha1.ScalePhase
+	} else if upgrading {
 		tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	} else {
 		tc.Status.TiFlash.Phase = v1alpha1.NormalPhase

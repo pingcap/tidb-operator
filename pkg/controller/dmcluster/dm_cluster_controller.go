@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
 	mm "github.com/pingcap/tidb-operator/pkg/manager/member"
+	"github.com/pingcap/tidb-operator/pkg/manager/meta"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -73,6 +74,8 @@ func NewController(
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	autoFailover bool,
+	masterFailoverPeriod time.Duration,
+	workerFailoverPeriod time.Duration,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(record.CorrelatorOptions{QPS: 1})
 	eventBroadcaster.StartLogging(klog.V(2).Infof)
@@ -97,8 +100,13 @@ func NewController(
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
-	// podControl := controller.NewRealPodControl(kubeCli, masterControl, podInformer.Lister(), recorder)
+	podControl := controller.NewRealPodControl(kubeCli, nil, podInformer.Lister(), recorder)
 	typedControl := controller.NewTypedControl(controller.NewRealGenericControl(genericCli, recorder))
+	masterScaler := mm.NewMasterScaler(masterControl, pvcInformer.Lister(), pvcControl)
+	masterFailover := mm.NewMasterFailover(cli, masterControl, masterFailoverPeriod, podInformer.Lister(), podControl, pvcInformer.Lister(), pvcControl, pvInformer.Lister(), recorder)
+	workerFailover := mm.NewWorkerFailover(workerFailoverPeriod, recorder)
+	masterUpgrader := mm.NewMasterUpgrader(masterControl, podInformer.Lister())
+	workerScaler := mm.NewWorkerScaler(pvcInformer.Lister(), pvcControl)
 
 	dcc := &Controller{
 		kubeClient: kubeCli,
@@ -109,13 +117,16 @@ func NewController(
 				masterControl,
 				setControl,
 				svcControl,
-				// podControl,
 				typedControl,
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				epsInformer.Lister(),
 				pvcInformer.Lister(),
+				masterScaler,
+				masterUpgrader,
+				autoFailover,
+				masterFailover,
 			),
 			mm.NewWorkerMemberManager(
 				masterControl,
@@ -125,12 +136,15 @@ func NewController(
 				setInformer.Lister(),
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				workerScaler,
+				autoFailover,
+				workerFailover,
 			),
-			//meta.NewReclaimPolicyManager(
-			//	pvcInformer.Lister(),
-			//	pvInformer.Lister(),
-			//	pvControl,
-			//),
+			meta.NewReclaimPolicyDMManager(
+				pvcInformer.Lister(),
+				pvInformer.Lister(),
+				pvControl,
+			),
 			//meta.NewMetaManager(
 			//	pvcInformer.Lister(),
 			//	pvcControl,
@@ -139,12 +153,12 @@ func NewController(
 			//	podInformer.Lister(),
 			//	podControl,
 			//),
-			//mm.NewOrphanPodsCleaner(
-			//	podInformer.Lister(),
-			//	podControl,
-			//	pvcInformer.Lister(),
-			//	kubeCli,
-			//),
+			mm.NewOrphanPodsCleaner(
+				podInformer.Lister(),
+				podControl,
+				pvcInformer.Lister(),
+				kubeCli,
+			),
 			mm.NewRealPVCCleaner(
 				kubeCli,
 				podInformer.Lister(),
@@ -158,8 +172,7 @@ func NewController(
 				pvcInformer,
 				scInformer,
 			),
-			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister(), tikvGroupInformer.Lister()),
-			//podRestarter,
+			//mm.NewDMClusterStatusManager(kubeCli, cli, scalerInformer.Lister()),
 			&dmClusterConditionUpdater{},
 			recorder,
 		),

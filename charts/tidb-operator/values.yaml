@@ -12,12 +12,12 @@ rbac:
 timezone: UTC
 
 # operatorImage is TiDB Operator image
-operatorImage: pingcap/tidb-operator:v1.1.4
+operatorImage: pingcap/tidb-operator:v1.1.5
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 
 # tidbBackupManagerImage is tidb backup manager image
-tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.4
+tidbBackupManagerImage: pingcap/tidb-backup-manager:v1.1.5
 
 #
 # Enable or disable tidb-operator features:
@@ -61,6 +61,10 @@ controllerManager:
   tidbFailoverPeriod: 5m
   # tiflash failover period default(5m)
   tiflashFailoverPeriod: 5m
+  # dm-master failover period default(5m)
+  dmMasterFailoverPeriod: 5m
+  # dm-worker failover period default(5m)
+  dmWorkerFailoverPeriod: 5m
   ## affinity defines pod scheduling rules,affinity default settings is empty.
   ## please read the affinity document before set your scheduling rule:
   ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
@@ -109,40 +113,6 @@ scheduler:
   #   value: tidb-operator
   #   effect: "NoSchedule"
 
-apiserver:
-  # leave the creation of apiserver CA cert/key to user for now
-  # TODO: adopt advanced cert management strategy after #1040 (webhook) merged
-  certificate: ""
-  key: ""
-  caBundle: ""
-
-  create: false
-  replicas: 1
-  serviceAccount: tidb-apiserver
-  resources:
-    limits:
-      cpu: 500m
-      memory: 300Mi
-    requests:
-      cpu: 200m
-      memory: 50Mi
-  # This will default to matching your kubernetes version
-  # kubeSchedulerImageTag:
-  ## affinity defines pod scheduling rules,affinity default settings is empty.
-  ## please read the affinity document before set your scheduling rule:
-  ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-  affinity: {}
-  ## nodeSelector ensure pods only assigning to nodes which have each of the indicated key-value pairs as labels
-  ## ref:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
-  nodeSelector: {}
-  ## Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
-  ## refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
-  tolerations: []
-  # - key: node-role
-  #   operator: Equal
-  #   value: tidb-operator
-  #   effect: "NoSchedule"
-
 # When AdvancedStatefulSet feature is enabled, you must install
 # AdvancedStatefulSet controller.
 # Note that AdvancedStatefulSet CRD must be installed manually via the following
@@ -154,7 +124,7 @@ advancedStatefulset:
   image: pingcap/advanced-statefulset:v0.4.0
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
-  logLevel: 2
+  logLevel: 4
   replicas: 1
   resources:
     limits:

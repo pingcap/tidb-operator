@@ -33,10 +33,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/periodicity"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
-	"github.com/pingcap/tidb-operator/pkg/controller/tidbgroup"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbinitializer"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbmonitor"
-	"github.com/pingcap/tidb-operator/pkg/controller/tikvgroup"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/upgrader"
@@ -62,6 +60,8 @@ var (
 	tikvFailoverPeriod    time.Duration
 	tidbFailoverPeriod    time.Duration
 	tiflashFailoverPeriod time.Duration
+	masterFailoverPeriod  time.Duration
+	workerFailoverPeriod  time.Duration
 	leaseDuration         = 15 * time.Second
 	renewDuration         = 5 * time.Second
 	retryPeriod           = 3 * time.Second
@@ -78,6 +78,8 @@ func init() {
 	flag.DurationVar(&tikvFailoverPeriod, "tikv-failover-period", time.Duration(5*time.Minute), "TiKV failover period default(5m)")
 	flag.DurationVar(&tiflashFailoverPeriod, "tiflash-failover-period", time.Duration(5*time.Minute), "TiFlash failover period default(5m)")
 	flag.DurationVar(&tidbFailoverPeriod, "tidb-failover-period", time.Duration(5*time.Minute), "TiDB failover period")
+	flag.DurationVar(&masterFailoverPeriod, "dm-master-failover-period", time.Duration(5*time.Minute), "dm-master failover period")
+	flag.DurationVar(&workerFailoverPeriod, "dm-worker-failover-period", time.Duration(5*time.Minute), "dm-worker failover period")
 	flag.DurationVar(&controller.ResyncDuration, "resync-duration", time.Duration(30*time.Second), "Resync time of informer")
 	flag.BoolVar(&controller.TestMode, "test-mode", false, "whether tidb-operator run in test mode")
 	flag.StringVar(&controller.TidbBackupManagerImage, "tidb-backup-manager-image", "pingcap/tidb-backup-manager:latest", "The image of backup manager tool")
@@ -185,14 +187,12 @@ func main() {
 		}
 
 		tcController := tidbcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, pdFailoverPeriod, tikvFailoverPeriod, tidbFailoverPeriod, tiflashFailoverPeriod)
-		dcController := dmcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover)
+		dcController := dmcluster.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory, autoFailover, masterFailoverPeriod, workerFailoverPeriod)
 		backupController := backup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		restoreController := restore.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		bsController := backupschedule.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 		tidbInitController := tidbinitializer.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 		tidbMonitorController := tidbmonitor.NewController(kubeCli, genericCli, cli, informerFactory, kubeInformerFactory)
-		tidbGroupController := tidbgroup.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
-		tikvGroupController := tikvgroup.NewController(kubeCli, cli, genericCli, informerFactory, kubeInformerFactory)
 
 		var periodicityController *periodicity.Controller
 		if controller.PodWebhookEnabled {
@@ -226,8 +226,6 @@ func main() {
 		go wait.Forever(func() { bsController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbInitController.Run(workers, ctx.Done()) }, waitDuration)
 		go wait.Forever(func() { tidbMonitorController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { tidbGroupController.Run(workers, ctx.Done()) }, waitDuration)
-		go wait.Forever(func() { tikvGroupController.Run(workers, ctx.Done()) }, waitDuration)
 
 		if controller.PodWebhookEnabled {
 			go wait.Forever(func() { periodicityController.Run(ctx.Done()) }, waitDuration)

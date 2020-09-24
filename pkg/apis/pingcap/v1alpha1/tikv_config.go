@@ -24,6 +24,8 @@ type TiKVConfig struct {
 	// +optional
 	LogFile *string `json:"log-file,omitempty" toml:"log-file,omitempty"`
 	// +optional
+	LogFormat *string `json:"log-format,omitempty" toml:"log-format,omitempty"`
+	// +optional
 	SlowLogFile *string `json:"slow-log-file,omitempty" toml:"slow-log-file,omitempty"`
 	// +optional
 	SlowLogThreshold *string `json:"slow-log-threshold,omitempty" toml:"slow-log-threshold,omitempty"`
@@ -350,9 +352,13 @@ type TiKVImportConfig struct {
 type TiKVGCConfig struct {
 	// +optional
 	// Optional: Defaults to 512
-	BatchKeys *int64 `json:"	batch-keys,omitempty" toml:"	batch-keys,omitempty"`
+	BatchKeys *int64 `json:"batch-keys,omitempty" toml:"batch-keys,omitempty"`
 	// +optional
-	MaxWriteBytesPerSec *string `json:"	max-write-bytes-per-sec,omitempty" toml:"	max-write-bytes-per-sec,omitempty"`
+	MaxWriteBytesPerSec *string `json:"max-write-bytes-per-sec,omitempty" toml:"max-write-bytes-per-sec,omitempty"`
+	// +optional
+	EnableCompactionFilter *bool `json:"enable-compaction-filter,omitempty" toml:"enable-compaction-filter,omitempty"`
+	// +optional
+	EnableCompactionFilterSkipVersionCheck *bool `json:"compaction-filter-skip-version-check,omitempty" toml:"compaction-filter-skip-version-check,omitempty"`
 }
 
 // TiKVDbConfig is the rocksdb config.
@@ -596,6 +602,9 @@ type TiKVServerConfig struct {
 	// Optional: Defaults to 1
 	// +optional
 	StatusThreadPoolSize *string `json:"status-thread-pool-size,omitempty" toml:"status-thread-pool-size,omitempty"`
+	// Optional: Defaults to 10485760
+	// +optional
+	MaxGrpcSendMsgLen *uint `json:"max-grpc-send-msg-len,omitempty" toml:"max-grpc-send-msg-len,omitempty"`
 	// Optional: Defaults to none
 	// +optional
 	GrpcCompressionType *string `json:"grpc-compression-type,omitempty" toml:"grpc-compression-type,omitempty"`

@@ -173,15 +173,16 @@ func (tm *tidbInitManager) syncTiDBInitJob(ti *v1alpha1.TidbInitializer) error {
 	name := ti.GetName()
 	jobName := controller.TiDBInitializerMemberName(ti.Spec.Clusters.Name)
 
-	job, err := tm.jobLister.Jobs(ns).Get(jobName)
+	_, err := tm.jobLister.Jobs(ns).Get(jobName)
 	if err == nil {
 		return nil
 	}
+
 	if !errors.IsNotFound(err) {
 		return fmt.Errorf("TiDBInitializer %s/%s get job %s failed, err: %v", ns, ti.Name, name, err)
 	}
 
-	job, err = tm.makeTiDBInitJob(ti)
+	job, err := tm.makeTiDBInitJob(ti)
 	if err != nil {
 		return err
 	}
@@ -360,6 +361,7 @@ func (tm *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batch
 	}
 	if ti.Spec.Resources != nil {
 		podSpec.Spec.Containers[0].Resources = *ti.Spec.Resources
+		podSpec.Spec.InitContainers[0].Resources = *ti.Spec.Resources
 	}
 	if ti.Spec.ImagePullSecrets != nil {
 		podSpec.Spec.ImagePullSecrets = ti.Spec.ImagePullSecrets

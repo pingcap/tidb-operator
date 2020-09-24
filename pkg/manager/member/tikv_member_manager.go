@@ -64,7 +64,7 @@ type tikvMemberManager struct {
 	nodeLister                   corelisters.NodeLister
 	autoFailover                 bool
 	tikvFailover                 Failover
-	tikvScaler                   TiKVScaler
+	tikvScaler                   Scaler
 	tikvUpgrader                 TiKVUpgrader
 	recorder                     record.EventRecorder
 	tikvStatefulSetIsUpgradingFn func(corelisters.PodLister, pdapi.PDControlInterface, *apps.StatefulSet, *v1alpha1.TidbCluster) (bool, error)
@@ -82,7 +82,7 @@ func NewTiKVMemberManager(
 	nodeLister corelisters.NodeLister,
 	autoFailover bool,
 	tikvFailover Failover,
-	tikvScaler TiKVScaler,
+	tikvScaler Scaler,
 	tikvUpgrader TiKVUpgrader,
 	recorder record.EventRecorder) manager.Manager {
 	kvmm := tikvMemberManager{
@@ -216,6 +216,11 @@ func (tkmm *tikvMemberManager) syncStatefulSetForTidbCluster(tc *v1alpha1.TidbCl
 
 	// Recover failed stores if any before generating desired statefulset
 	if len(tc.Status.TiKV.FailureStores) > 0 {
+		tkmm.tikvFailover.RemoveUndesiredFailures(tc)
+	}
+	if len(tc.Status.TiKV.FailureStores) > 0 &&
+		tc.Spec.TiKV.RecoverFailover &&
+		shouldRecover(tc, label.TiKVLabelVal, tkmm.podLister) {
 		tkmm.tikvFailover.Recover(tc)
 	}
 
@@ -352,6 +357,11 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tikv-tls", ReadOnly: true, MountPath: "/var/lib/tikv-tls",
 		})
+		if tc.Spec.TiKV.MountClusterClientSecret != nil && *tc.Spec.TiKV.MountClusterClientSecret {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: util.ClusterClientVolName, ReadOnly: true, MountPath: util.ClusterClientTLSPath,
+			})
+		}
 	}
 
 	vols := []corev1.Volume{
@@ -381,6 +391,15 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				},
 			},
 		})
+		if tc.Spec.TiKV.MountClusterClientSecret != nil && *tc.Spec.TiKV.MountClusterClientSecret {
+			vols = append(vols, corev1.Volume{
+				Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					},
+				},
+			})
+		}
 	}
 
 	sysctls := "sysctl -w"
@@ -404,6 +423,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 					SecurityContext: &corev1.SecurityContext{
 						Privileged: &privileged,
 					},
+					// Init container resourceRequirements should be equal to app container.
+					// Scheduling is done based on effective requests/limits,
+					// which means init containers can reserve resources for
+					// initialization that are not used during the life of the Pod.
+					// ref:https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+					Resources: controller.ContainerResource(tc.Spec.TiKV.ResourceRequirements),
 				})
 			}
 		}
@@ -490,6 +515,9 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	podSpec.InitContainers = initContainers
 	podSpec.Containers = append([]corev1.Container{tikvContainer}, baseTiKVSpec.AdditionalContainers()...)
 	podSpec.ServiceAccountName = tc.Spec.TiKV.ServiceAccount
+	if podSpec.ServiceAccountName == "" {
+		podSpec.ServiceAccountName = tc.Spec.ServiceAccount
+	}
 
 	tikvset := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

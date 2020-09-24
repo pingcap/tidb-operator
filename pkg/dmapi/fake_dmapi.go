@@ -20,9 +20,12 @@ import (
 type ActionType string
 
 const (
-	GetMastersActionType ActionType = "GetMasters"
-	GetWorkersActionType ActionType = "GetWorkers"
-	GetLeaderActionType  ActionType = "GetLeader"
+	GetMastersActionType   ActionType = "GetMasters"
+	GetWorkersActionType   ActionType = "GetWorkers"
+	GetLeaderActionType    ActionType = "GetLeader"
+	EvictLeaderActionType  ActionType = "EvictLeader"
+	DeleteMasterActionType ActionType = "DeleteMaster"
+	DeleteWorkerActionType ActionType = "DeleteWorker"
 )
 
 type NotFoundReaction struct {
@@ -91,4 +94,22 @@ func (pc *FakeMasterClient) GetLeader() (MembersLeader, error) {
 		return MembersLeader{}, err
 	}
 	return result.(MembersLeader), nil
+}
+
+func (pc *FakeMasterClient) EvictLeader() error {
+	action := &Action{}
+	_, err := pc.fakeAPI(EvictLeaderActionType, action)
+	return err
+}
+
+func (pc *FakeMasterClient) DeleteMaster(_ string) error {
+	action := &Action{}
+	_, err := pc.fakeAPI(DeleteMasterActionType, action)
+	return err
+}
+
+func (pc *FakeMasterClient) DeleteWorker(_ string) error {
+	action := &Action{}
+	_, err := pc.fakeAPI(DeleteWorkerActionType, action)
+	return err
 }

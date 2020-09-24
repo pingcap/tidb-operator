@@ -51,8 +51,6 @@ func checkFormerTiKVPodStatus(kubeCli kubernetes.Interface, controllerDesc contr
 		switch controllerKind {
 		case v1alpha1.TiDBClusterKind:
 			podName = memberUtil.TikvPodName(controllerName, i)
-		case v1alpha1.TiKVGroupKind:
-			podName = memberUtil.TiKVGroupPodName(controllerName, i)
 		default:
 			// unreachable
 			return fmt.Errorf("unknown controller[%s]", controllerKind)
